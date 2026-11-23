@@ -1,0 +1,26 @@
+[
+  {
+    "name": "exact-event-and-predicate",
+    "steps": [
+      {"send": {"source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "kind": "test.echo", "seq": 18446744073709551615, "logical_time": 0, "payload": {"text": "hello", "min": -9223372036854775808}, "correlation_id": "00000000000000000000000000000001"}},
+      {"match": {"kind": "test.echo", "seq": 18446744073709551615, "payload.text": "hello"}, "within_ms": 200},
+      {"send": {"echo": [true, false, null, "世界"]}, "at_ms": 30},
+      {"expect": {"echo": [true, false, null, "世界"]}, "within_ms": 200},
+      {"silence_ms": 10}
+    ]
+  },
+  {
+    "name": "malformed-wire-error",
+    "steps": [
+      {"send_hex": "1817"},
+      {"match": {"error.code": "invalid_argument", "error.retryable": false}, "within_ms": 200}
+    ]
+  },
+  {
+    "name": "golden-deterministic-wire",
+    "steps": [
+      {"send": {"aa": 1, "z": 2}},
+      {"expect_hex": "a2617a0262616101", "within_ms": 200}
+    ]
+  }
+]
