@@ -25,101 +25,76 @@ import SoftmaxCore
         let root = URL(fileURLWithPath: directory, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var manifest: [String] = []
-        var lifecycleLog: [String] = []
-        defer { lifecycleLog.forEach { print($0) } }
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
-                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V, lifecycle: Bool? = nil) throws {
+                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
                     let key = "\(theme)-\(name)"
-                    weak var weakWindow: NSWindow?
-                    weak var weakHost: NSView?
-                    func render() throws {
-                    let hosting = NSHostingView(rootView: view
-                        .frame(width: size.width, height: size.height, alignment: .topLeading)
-                        .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
-                        .environment(\.colorScheme, scheme)
-                        .environment(\.softmaxHighContrast, contrast == .increased)
-                        .environment(\.softmaxFreezeMotion, true))
-                    let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
-                    weakWindow = window
-                    weakHost = hosting
-                    window.appearance = NSAppearance(named: contrast == .increased ? (scheme == .dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua) : (scheme == .dark ? .darkAqua : .aqua))
-                    window.isReleasedWhenClosed = false
-                    window.contentView = hosting
-                    hosting.frame = NSRect(origin: .zero, size: size)
-                    window.orderBack(nil)
-                    // SwiftUI/AppKit may defer intrinsic TextField sizing and autofocus
-                    // beyond one run-loop turn. Require three identical consecutive rasters
-                    // after a minimum settling interval, rather than capturing a 40 ms race.
-                    // This affects fixtures only; production keyboard focus stays unchanged.
-                    let started = Date()
-                    var previous: Data?
-                    var identicalFrames = 0
-                    var stable: Data?
-                    while Date().timeIntervalSince(started) < 2 {
-                        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-                        // AppKit can initially reserve a legacy scroller gutter before
-                        // adopting the runner's overlay preference. Pin fixture scroll
-                        // geometry explicitly; leave production/user preferences alone.
-                        func normalizeScrollers(_ view: NSView) {
-                            if let scroll = view as? NSScrollView, scroll.scrollerStyle != .overlay {
-                                print("Normalizing legacy scroller in native snapshot: \(key)")
-                                scroll.scrollerStyle = .overlay
+                    // Each fixture owns a fresh window and hosting graph. Drain native
+                    // autoreleases before constructing the next fixture/scale.
+                    try autoreleasepool {
+                        let hosting = NSHostingView(rootView: view
+                            .frame(width: size.width, height: size.height, alignment: .topLeading)
+                            .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
+                            .environment(\.colorScheme, scheme)
+                            .environment(\.softmaxHighContrast, contrast == .increased)
+                            .environment(\.softmaxFreezeMotion, true))
+                        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+                        window.appearance = NSAppearance(named: contrast == .increased ? (scheme == .dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua) : (scheme == .dark ? .darkAqua : .aqua))
+                        window.isReleasedWhenClosed = false
+                        // End all fixture-owned AppKit state even if settling or writing fails.
+                        defer {
+                            window.endEditing(for: nil)
+                            window.makeFirstResponder(nil)
+                            window.contentView = nil
+                            window.close()
+                        }
+                        window.contentView = hosting
+                        hosting.frame = NSRect(origin: .zero, size: size)
+                        window.orderBack(nil)
+                        // SwiftUI/AppKit may defer intrinsic TextField sizing and autofocus
+                        // beyond one run-loop turn. Require three identical consecutive rasters
+                        // after a minimum settling interval, rather than capturing a 40 ms race.
+                        // This affects fixtures only; production keyboard focus stays unchanged.
+                        let started = Date()
+                        var previous: Data?
+                        var identicalFrames = 0
+                        var stable: Data?
+                        while Date().timeIntervalSince(started) < 2 {
+                            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                            // AppKit can initially reserve a legacy scroller gutter before
+                            // adopting the runner's overlay preference. Pin fixture scroll
+                            // geometry explicitly; leave production/user preferences alone.
+                            func normalizeScrollers(_ view: NSView) {
+                                if let scroll = view as? NSScrollView, scroll.scrollerStyle != .overlay {
+                                    print("Normalizing legacy scroller in native snapshot: \(key)")
+                                    scroll.scrollerStyle = .overlay
+                                }
+                                for child in view.subviews { normalizeScrollers(child) }
                             }
-                            for child in view.subviews { normalizeScrollers(child) }
+                            normalizeScrollers(hosting)
+                            hosting.layoutSubtreeIfNeeded()
+                            if let editor = window.firstResponder as? NSTextView {
+                                editor.setSelectedRange(NSRange(location: 0, length: 0))
+                            }
+                            window.display()
+                            guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
+                                throw CocoaError(.fileWriteUnknown)
+                            }
+                            hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+                            guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+                            identicalFrames = bytes == previous ? identicalFrames + 1 : 1
+                            previous = bytes
+                            if identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
+                                stable = bytes
+                                break
+                            }
                         }
-                        normalizeScrollers(hosting)
-                        hosting.layoutSubtreeIfNeeded()
-                        if let editor = window.firstResponder as? NSTextView {
-                            editor.setSelectedRange(NSRange(location: 0, length: 0))
+                        guard let bytes = stable else {
+                            throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
                         }
-                        window.display()
-                        guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-                            throw CocoaError(.fileWriteUnknown)
-                        }
-                        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-                        guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
-                        identicalFrames = bytes == previous ? identicalFrames + 1 : 1
-                        previous = bytes
-                        if identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
-                            stable = bytes
-                            break
-                        }
-                    }
-                    guard let bytes = stable else {
-                        throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
-                    }
-                    if let full = lifecycle {
-                        func fields(_ view: NSView) -> [NSTextField] {
-                            let own = (view as? NSTextField).map { $0.isEditable ? [$0] : [] } ?? []
-                            return own + view.subviews.flatMap { fields($0) }
-                        }
-                        let expected: CGFloat = name.hasSuffix("-large") ? 35 : 25
-                        let heights = fields(hosting).map { $0.frame.height }
-                        let mismatch = heights.isEmpty || heights.contains { abs($0 - expected) > 0.5 }
-                        lifecycleLog.append("LIFECYCLE \(key) full=\(full) heights=\(heights) heightMismatch=\(mismatch)")
-                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/Lifecycle", isDirectory: true)
-                        try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
-                        try bytes.write(to: diagnostics.appendingPathComponent(key + ".png"))
-                    } else {
                         try bytes.write(to: root.appendingPathComponent(key + ".png"))
                         manifest.append(key)
-                    }
-                    if lifecycle == true {
-                        window.endEditing(for: nil)
-                        window.makeFirstResponder(nil)
-                        window.contentView = nil
-                    }
-                    window.close()
-                    }
-                    if lifecycle == true {
-                        try autoreleasepool { try render() }
-                    } else {
-                        try render()
-                    }
-                    if let full = lifecycle {
-                        lifecycleLog.append("LIFECYCLE \(key) full=\(full) afterTeardown windowDeallocated=\(weakWindow == nil) hostDeallocated=\(weakHost == nil)")
                     }
                 }
                 let model = ShellModel()
@@ -173,23 +148,6 @@ import SoftmaxCore
                 try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
                 try capture("about-large", NSSize(width: 420, height: 420), AboutView().environment(\.softmaxTextScale, 1.6))
                 try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
-                // Bounded experiment outside the strict360 manifest. Same capture path,
-                // control close-only versus explicit teardown + autorelease-pool drain.
-                for full in [false, true] {
-                    for iteration in 0..<12 {
-                        for large in [false, true] {
-                            let suffix = large ? "-large" : ""
-                            let prefix = "lifecycle-\(full)-\(iteration)"
-                            let scale = large ? 1.6 : 1.0
-                            try capture(prefix + "-commands-empty" + suffix, NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: "no-such-command").environment(\.softmaxTextScale, scale), lifecycle: full)
-                            for tab in [SettingsTab.hub, .audio] {
-                                model.selectedTab = tab
-                                try capture(prefix + "-settings-\(tab.rawValue.lowercased())" + suffix, NSSize(width: 760, height: 540), SettingsView(model: model).environment(\.softmaxTextScale, scale), lifecycle: full)
-                            }
-                        }
-                    }
-                }
-
             }
         }
         try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))
