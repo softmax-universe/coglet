@@ -6,6 +6,272 @@ public final class Generated {
 private Generated() {}
 public interface Message { String rule(); Object toValue(); default byte[] toCbor() { return Codec.encode(rule(), this); } }
 public record Presence<T>(T value) {}
+public record Budgets(BigInteger compute, String compute_mode, BigInteger memory_pages, BigInteger wall_time_us, BigInteger max_events, BigInteger host_bytes) implements Message {
+public String rule() { return "budgets"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("compute", this.compute);
+m.put("compute_mode", this.compute_mode);
+m.put("memory_pages", this.memory_pages);
+m.put("wall_time_us", this.wall_time_us);
+m.put("max_events", this.max_events);
+m.put("host_bytes", this.host_bytes);
+return m; }
+public static Budgets fromCbor(byte[] raw) { return Codec.decodeRecord("budgets", raw, Budgets.class); }
+}
+public record TimerRequest(String id, BigInteger at) implements Message {
+public String rule() { return "timer-request"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("id", this.id);
+m.put("at", this.at);
+return m; }
+public static TimerRequest fromCbor(byte[] raw) { return Codec.decodeRecord("timer-request", raw, TimerRequest.class); }
+}
+public record LlmRequest(String id, String correlation_id, String capability, String model, Map<String, Object> input) implements Message {
+public String rule() { return "llm-request"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("id", this.id);
+m.put("correlation_id", this.correlation_id);
+m.put("capability", this.capability);
+m.put("model", this.model);
+m.put("input", this.input);
+return m; }
+public static LlmRequest fromCbor(byte[] raw) { return Codec.decodeRecord("llm-request", raw, LlmRequest.class); }
+}
+public record LogEntry(String level, String message, Map<String, Object> fields) implements Message {
+public String rule() { return "log-entry"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("level", this.level);
+m.put("message", this.message);
+m.put("fields", this.fields);
+return m; }
+public static LogEntry fromCbor(byte[] raw) { return Codec.decodeRecord("log-entry", raw, LogEntry.class); }
+}
+public sealed interface LlmReply extends Message permits LlmReply1, LlmReply2 {
+static LlmReply fromCbor(byte[] raw) { return (LlmReply) Codec.decodeTyped("llm-reply", raw); }
+}
+public record LlmReply1(String request_id, String status, Map<String, Object> output) implements LlmReply {
+public String rule() { return "llm-reply"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("request_id", this.request_id);
+m.put("status", this.status);
+m.put("output", this.output);
+return m; }
+public static LlmReply1 fromCbor(byte[] raw) { return Codec.decodeRecord("llm-reply", raw, LlmReply1.class); }
+}
+public record LlmReply2(String request_id, String status, Error error) implements LlmReply {
+public String rule() { return "llm-reply"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("request_id", this.request_id);
+m.put("status", this.status);
+m.put("error", this.error);
+return m; }
+public static LlmReply2 fromCbor(byte[] raw) { return Codec.decodeRecord("llm-reply", raw, LlmReply2.class); }
+}
+public record InboxMessage(BigInteger index, String id, String sender, Event event) implements Message {
+public String rule() { return "inbox-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("index", this.index);
+m.put("id", this.id);
+m.put("sender", this.sender);
+m.put("event", this.event);
+return m; }
+public static InboxMessage fromCbor(byte[] raw) { return Codec.decodeRecord("inbox-message", raw, InboxMessage.class); }
+}
+public sealed interface Call extends Message permits Call1, Call2, Call3, Call4, Call5 {
+static Call fromCbor(byte[] raw) { return (Call) Codec.decodeTyped("call", raw); }
+}
+public record Call1(String op, TimerRequest argument, BigInteger result) implements Call {
+public String rule() { return "call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+return m; }
+public static Call1 fromCbor(byte[] raw) { return Codec.decodeRecord("call", raw, Call1.class); }
+}
+public record Call2(String op, Action argument, BigInteger result) implements Call {
+public String rule() { return "call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+return m; }
+public static Call2 fromCbor(byte[] raw) { return Codec.decodeRecord("call", raw, Call2.class); }
+}
+public record Call3(String op, LlmRequest argument, BigInteger result) implements Call {
+public String rule() { return "call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+return m; }
+public static Call3 fromCbor(byte[] raw) { return Codec.decodeRecord("call", raw, Call3.class); }
+}
+public record Call4(String op, LogEntry argument, BigInteger result) implements Call {
+public String rule() { return "call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+return m; }
+public static Call4 fromCbor(byte[] raw) { return Codec.decodeRecord("call", raw, Call4.class); }
+}
+public record Call5(String op, String argument_hex, BigInteger result) implements Call {
+public String rule() { return "call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument_hex", this.argument_hex);
+m.put("result", this.result);
+return m; }
+public static Call5 fromCbor(byte[] raw) { return Codec.decodeRecord("call", raw, Call5.class); }
+}
+public record BoundaryChange(String actor, String audit_id, Object ticket, String method, String target, String path, Object before, Object after) implements Message {
+public String rule() { return "boundary-change"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("actor", this.actor);
+m.put("audit_id", this.audit_id);
+m.put("ticket", this.ticket);
+m.put("method", this.method);
+m.put("target", this.target);
+m.put("path", this.path);
+m.put("before", this.before);
+m.put("after", this.after);
+return m; }
+public static BoundaryChange fromCbor(byte[] raw) { return Codec.decodeRecord("boundary-change", raw, BoundaryChange.class); }
+}
+public record Engine(String build, String policy) implements Message {
+public String rule() { return "engine"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("build", this.build);
+m.put("policy", this.policy);
+return m; }
+public static Engine fromCbor(byte[] raw) { return Codec.decodeRecord("engine", raw, Engine.class); }
+}
+public record Usage(BigInteger compute, BigInteger memory_pages, BigInteger wall_time_us, BigInteger host_bytes) implements Message {
+public String rule() { return "usage"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("compute", this.compute);
+m.put("memory_pages", this.memory_pages);
+m.put("wall_time_us", this.wall_time_us);
+m.put("host_bytes", this.host_bytes);
+return m; }
+public static Usage fromCbor(byte[] raw) { return Codec.decodeRecord("usage", raw, Usage.class); }
+}
+public record Failure(String kind, Error error) implements Message {
+public String rule() { return "failure"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("kind", this.kind);
+m.put("error", this.error);
+return m; }
+public static Failure fromCbor(byte[] raw) { return Codec.decodeRecord("failure", raw, Failure.class); }
+}
+public sealed interface StepRecord extends Message permits StepRecord1, StepRecord2 {
+static StepRecord fromCbor(byte[] raw) { return (StepRecord) Codec.decodeTyped("step-record", raw); }
+}
+public record StepRecord1(String version, String trace_id, String coglet, BigInteger step, BigInteger logical_time, BigInteger seed, Object previous, String code_hash, String manifest_hash, String before_hash, String input_hash, String output_hash, String record_hash, Engine engine, Budgets budgets, List<String> grants, List<Event> events, List<BoundaryChange> boundary, List<Call> calls, List<Action> actions, List<TimerRequest> timers, List<LlmRequest> llm_requests, List<LogEntry> logs, Map<String, String> input_files, Map<String, String> output_files, Usage usage, String status) implements StepRecord {
+public String rule() { return "step-record"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("step", this.step);
+m.put("logical_time", this.logical_time);
+m.put("seed", this.seed);
+m.put("previous", this.previous);
+m.put("code_hash", this.code_hash);
+m.put("manifest_hash", this.manifest_hash);
+m.put("before_hash", this.before_hash);
+m.put("input_hash", this.input_hash);
+m.put("output_hash", this.output_hash);
+m.put("record_hash", this.record_hash);
+m.put("engine", this.engine);
+m.put("budgets", this.budgets);
+m.put("grants", this.grants);
+m.put("events", this.events);
+m.put("boundary", this.boundary);
+m.put("calls", this.calls);
+m.put("actions", this.actions);
+m.put("timers", this.timers);
+m.put("llm_requests", this.llm_requests);
+m.put("logs", this.logs);
+m.put("input_files", this.input_files);
+m.put("output_files", this.output_files);
+m.put("usage", this.usage);
+m.put("status", this.status);
+return m; }
+public static StepRecord1 fromCbor(byte[] raw) { return Codec.decodeRecord("step-record", raw, StepRecord1.class); }
+}
+public record StepRecord2(String version, String trace_id, String coglet, BigInteger step, BigInteger logical_time, BigInteger seed, Object previous, String code_hash, String manifest_hash, String before_hash, String input_hash, String output_hash, String record_hash, Engine engine, Budgets budgets, List<String> grants, List<Event> events, List<BoundaryChange> boundary, List<Call> calls, List<Action> actions, List<TimerRequest> timers, List<LlmRequest> llm_requests, List<LogEntry> logs, Map<String, String> input_files, Map<String, String> output_files, Usage usage, String status, Failure failure) implements StepRecord {
+public String rule() { return "step-record"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("step", this.step);
+m.put("logical_time", this.logical_time);
+m.put("seed", this.seed);
+m.put("previous", this.previous);
+m.put("code_hash", this.code_hash);
+m.put("manifest_hash", this.manifest_hash);
+m.put("before_hash", this.before_hash);
+m.put("input_hash", this.input_hash);
+m.put("output_hash", this.output_hash);
+m.put("record_hash", this.record_hash);
+m.put("engine", this.engine);
+m.put("budgets", this.budgets);
+m.put("grants", this.grants);
+m.put("events", this.events);
+m.put("boundary", this.boundary);
+m.put("calls", this.calls);
+m.put("actions", this.actions);
+m.put("timers", this.timers);
+m.put("llm_requests", this.llm_requests);
+m.put("logs", this.logs);
+m.put("input_files", this.input_files);
+m.put("output_files", this.output_files);
+m.put("usage", this.usage);
+m.put("status", this.status);
+m.put("failure", this.failure);
+return m; }
+public static StepRecord2 fromCbor(byte[] raw) { return Codec.decodeRecord("step-record", raw, StepRecord2.class); }
+}
+public record EffectLedger(List<String> actions, List<String> timers, List<String> llm_requests) implements Message {
+public String rule() { return "effect-ledger"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("actions", this.actions);
+m.put("timers", this.timers);
+m.put("llm_requests", this.llm_requests);
+return m; }
+public static EffectLedger fromCbor(byte[] raw) { return Codec.decodeRecord("effect-ledger", raw, EffectLedger.class); }
+}
+public record Trace(String version, String trace_id, String coglet, EffectLedger initial_effect_ids, List<BigInteger> initial_inbox_wakes, String initial_hash, List<TimerRequest> initial_timers, List<LlmRequest> initial_llm_requests, List<StepRecord> records, Map<String, String> blobs) implements Message {
+public String rule() { return "trace"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("initial_effect_ids", this.initial_effect_ids);
+m.put("initial_inbox_wakes", this.initial_inbox_wakes);
+m.put("initial_hash", this.initial_hash);
+m.put("initial_timers", this.initial_timers);
+m.put("initial_llm_requests", this.initial_llm_requests);
+m.put("records", this.records);
+m.put("blobs", this.blobs);
+return m; }
+public static Trace fromCbor(byte[] raw) { return Codec.decodeRecord("trace", raw, Trace.class); }
+}
+public record Manifest(String version, String id, List<String> subscriptions, List<String> required_capabilities, List<String> exclusive_outputs, Budgets budgets) implements Message {
+public String rule() { return "manifest"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("id", this.id);
+m.put("subscriptions", this.subscriptions);
+m.put("required_capabilities", this.required_capabilities);
+m.put("exclusive_outputs", this.exclusive_outputs);
+m.put("budgets", this.budgets);
+return m; }
+public static Manifest fromCbor(byte[] raw) { return Codec.decodeRecord("manifest", raw, Manifest.class); }
+}
 public record VersionOffer(List<String> versions) implements Message {
 public String rule() { return "version-offer"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
@@ -100,6 +366,27 @@ return m; }
 public static Error fromCbor(byte[] raw) { return Codec.decodeRecord("error", raw, Error.class); }
 }
 static void registerAll() {
+Codec.register("budgets", Budgets.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"compute_mode\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":65536}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"max_events\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}}]}", new String[]{"compute","compute_mode","memory_pages","wall_time_us","max_events","host_bytes"});
+Codec.register("timer-request", TimerRequest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"at\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"id","at"});
+Codec.register("llm-request", LlmRequest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"model\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"input\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"id","correlation_id","capability","model","input"});
+Codec.register("log-entry", LogEntry.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"level\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"debug\"},{\"op\":\"literal\",\"value\":\"info\"},{\"op\":\"literal\",\"value\":\"warn\"},{\"op\":\"literal\",\"value\":\"error\"}]}},{\"name\":\"message\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"fields\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"level","message","fields"});
+Codec.register("llm-reply", LlmReply1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"output\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"request_id","status","output"});
+Codec.register("llm-reply", LlmReply2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"failed\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"request_id","status","error"});
+Codec.register("inbox-message", InboxMessage.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"index\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"sender\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::source-id\"}},{\"name\":\"event\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::event\"}}]}", new String[]{"index","id","sender","event"});
+Codec.register("call", Call1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"timer\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":4}}]}", new String[]{"op","argument","result"});
+Codec.register("call", Call2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"emit\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":4}}]}", new String[]{"op","argument","result"});
+Codec.register("call", Call3.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"llm\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":4}}]}", new String[]{"op","argument","result"});
+Codec.register("call", Call4.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"log\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::log-entry\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":4}}]}", new String[]{"op","argument","result"});
+Codec.register("call", Call5.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"timer\"},{\"op\":\"literal\",\"value\":\"emit\"},{\"op\":\"literal\",\"value\":\"llm\"},{\"op\":\"literal\",\"value\":\"log\"}]}},{\"name\":\"argument_hex\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hex\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":1}}]}", new String[]{"op","argument_hex","result"});
+Codec.register("boundary-change", BoundaryChange.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"actor\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::source-id\"}},{\"name\":\"audit_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"ticket\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"common::correlation-id\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"method\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::method-name\"}},{\"name\":\"target\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"path\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::path\"}},{\"name\":\"before\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hex\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"after\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hex\"},{\"op\":\"literal\",\"value\":null}]}}]}", new String[]{"actor","audit_id","ticket","method","target","path","before","after"});
+Codec.register("engine", Engine.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"build\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"policy\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}}]}", new String[]{"build","policy"});
+Codec.register("usage", Usage.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"compute","memory_pages","wall_time_us","host_bytes"});
+Codec.register("failure", Failure.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"kind\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"compute\"},{\"op\":\"literal\",\"value\":\"memory\"},{\"op\":\"literal\",\"value\":\"wall\"},{\"op\":\"literal\",\"value\":\"host_bytes\"},{\"op\":\"literal\",\"value\":\"trap\"},{\"op\":\"literal\",\"value\":\"guest_return\"},{\"op\":\"literal\",\"value\":\"invalid_argument\"}]}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"kind","error"});
+Codec.register("step-record", StepRecord1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hash\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::engine\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::event\"},\"min\":1}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::boundary-change\"},\"min\":0}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::call\"},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::action\"},\"min\":0}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::log-entry\"},\"min\":0}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::usage\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"committed\"}}]}", new String[]{"version","trace_id","coglet","step","logical_time","seed","previous","code_hash","manifest_hash","before_hash","input_hash","output_hash","record_hash","engine","budgets","grants","events","boundary","calls","actions","timers","llm_requests","logs","input_files","output_files","usage","status"});
+Codec.register("step-record", StepRecord2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hash\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::engine\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::event\"},\"min\":1}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::boundary-change\"},\"min\":0}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::call\"},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::action\"},\"min\":0}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::log-entry\"},\"min\":0}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::usage\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"aborted\"}},{\"name\":\"failure\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::failure\"}}]}", new String[]{"version","trace_id","coglet","step","logical_time","seed","previous","code_hash","manifest_hash","before_hash","input_hash","output_hash","record_hash","engine","budgets","grants","events","boundary","calls","actions","timers","llm_requests","logs","input_files","output_files","usage","status","failure"});
+Codec.register("effect-ledger", EffectLedger.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"},\"min\":0}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"},\"min\":0}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"},\"min\":0}}]}", new String[]{"actions","timers","llm_requests"});
+Codec.register("trace", Trace.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"initial_effect_ids\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::effect-ledger\"}},{\"name\":\"initial_inbox_wakes\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::uint64\"},\"min\":0}},{\"name\":\"initial_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"initial_timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"initial_llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"records\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::step-record\"},\"min\":1}},{\"name\":\"blobs\",\"optional\":false,\"type\":{\"op\":\"map\",\"item\":{\"op\":\"ref\",\"name\":\"abi::hex\"},\"min\":0}}]}", new String[]{"version","trace_id","coglet","initial_effect_ids","initial_inbox_wakes","initial_hash","initial_timers","initial_llm_requests","records","blobs"});
+Codec.register("manifest", Manifest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"subscriptions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"required_capabilities\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"exclusive_outputs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}}]}", new String[]{"version","id","subscriptions","required_capabilities","exclusive_outputs","budgets"});
 Codec.register("version-offer", VersionOffer.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::spec-version\"},\"min\":1}}]}", new String[]{"versions"});
 Codec.register("version-selection", VersionSelection.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::spec-version\"}}]}", new String[]{"version"});
 Codec.register("event", Event.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::source-id\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"source","kind","seq","logical_time","payload","correlation_id"});
@@ -109,6 +396,21 @@ Codec.register("action-accept", ActionAccept2.class, "{\"op\":\"record\",\"field
 Codec.register("action-outcome", ActionOutcome1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"id","correlation_id","status","result"});
 Codec.register("action-outcome", ActionOutcome2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}]}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"id","correlation_id","status","error"});
 Codec.register("error", Error.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error-code\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"code","message","retryable","details"});
+Codec.alias("abi::boundary-change", "boundary-change");
+Codec.alias("abi::budgets", "budgets");
+Codec.alias("abi::call", "call");
+Codec.alias("abi::effect-ledger", "effect-ledger");
+Codec.alias("abi::engine", "engine");
+Codec.alias("abi::failure", "failure");
+Codec.alias("abi::inbox-message", "inbox-message");
+Codec.alias("abi::llm-reply", "llm-reply");
+Codec.alias("abi::llm-request", "llm-request");
+Codec.alias("abi::log-entry", "log-entry");
+Codec.alias("abi::manifest", "manifest");
+Codec.alias("abi::step-record", "step-record");
+Codec.alias("abi::timer-request", "timer-request");
+Codec.alias("abi::trace", "trace");
+Codec.alias("abi::usage", "usage");
 Codec.alias("common::action", "action");
 Codec.alias("common::action-accept", "action-accept");
 Codec.alias("common::action-outcome", "action-outcome");
