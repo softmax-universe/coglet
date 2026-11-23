@@ -3,3 +3,8 @@ name = "coglet-llm"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+coglet-types = { path = "../coglet-types" }
+rusqlite = { version = "0.38", features = ["bundled"] }
+serde_json = "1"
