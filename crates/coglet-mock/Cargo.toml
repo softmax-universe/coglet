@@ -3,3 +3,11 @@ name = "coglet-mock"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+coglet-llm = { path = "../coglet-llm" }
+serde_json = "1"
+
+[dev-dependencies]
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+coglet-types = { path = "../coglet-types" }
