@@ -11,6 +11,15 @@ public enum PermissionStatus: String, CaseIterable, Sendable {
         }
     }
 
+    public var microphoneGuidance: String? {
+        switch self {
+        case .denied: "Microphone access is denied. Open System Settings → Privacy & Security → Microphone, enable Softmax, then return here and refresh. Quit and reopen Softmax if needed."
+        case .restricted: "Microphone access is restricted by macOS policy. Contact your device administrator; Softmax cannot request this permission again."
+        case .unknown, .notGranted: "Microphone authorization is unavailable. Check System Settings → Privacy & Security → Microphone and restart Softmax."
+        case .notDetermined, .granted: nil
+        }
+    }
+
     // CoreGraphics does not distinguish never-requested from denied.
     public static func inputMonitoring(granted: Bool) -> Self {
         granted ? .granted : .notGranted

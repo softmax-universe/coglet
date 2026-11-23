@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test portable core
         run: swift test --package-path apps/softmax-mac
+      - name: Test dev identity pinning (fake keychain, not TCC)
+        run: python3 apps/softmax-mac/Tests/test_dev_signing.py
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
