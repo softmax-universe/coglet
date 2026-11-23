@@ -1,0 +1,33 @@
+{
+  "name": "runtime-version-selection",
+  "peer_role": "surface",
+  "fixtures": [
+    "runtime-binding"
+  ],
+  "steps": [
+    {
+      "send": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1",
+              "0.2"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "hello_reply",
+        "body.selection.version": "0.1",
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    }
+  ]
+}

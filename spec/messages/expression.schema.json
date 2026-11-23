@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/expression.schema.json",
+  "$ref": "#/$defs/expression-profile",
+  "$defs": {
+    "set-expression": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "enum": [
+            "neutral",
+            "listening",
+            "thinking",
+            "speaking",
+            "happy",
+            "concerned"
+          ]
+        },
+        "intensity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        }
+      },
+      "required": [
+        "expression",
+        "intensity",
+        "duration_ms"
+      ],
+      "additionalProperties": false
+    },
+    "expression-state": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "enum": [
+            "neutral",
+            "listening",
+            "thinking",
+            "speaking",
+            "happy",
+            "concerned"
+          ]
+        },
+        "intensity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "remaining_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        }
+      },
+      "required": [
+        "expression",
+        "intensity",
+        "remaining_ms"
+      ],
+      "additionalProperties": false
+    },
+    "expression-profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/set-expression"
+        },
+        {
+          "$ref": "#/$defs/expression-state"
+        }
+      ]
+    }
+  }
+}

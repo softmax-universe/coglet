@@ -1,0 +1,94 @@
+[
+  {
+    "name": "set-expression-valid",
+    "type": "set-expression",
+    "valid": true,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "duration_ms": 1000
+    },
+    "cbor_hex": "a369696e74656e736974791901f46a65787072657373696f6e696c697374656e696e676b6475726174696f6e5f6d731903e8"
+  },
+  {
+    "name": "set-expression-unknown-field",
+    "type": "set-expression",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "duration_ms": 1000,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "set-expression-missing-field",
+    "type": "set-expression",
+    "valid": false,
+    "value": {
+      "intensity": 500,
+      "duration_ms": 1000
+    }
+  },
+  {
+    "name": "expression-state-valid",
+    "type": "expression-state",
+    "valid": true,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "remaining_ms": 900
+    },
+    "cbor_hex": "a369696e74656e736974791901f46a65787072657373696f6e696c697374656e696e676c72656d61696e696e675f6d73190384"
+  },
+  {
+    "name": "expression-state-unknown-field",
+    "type": "expression-state",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "remaining_ms": 900,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "expression-state-missing-field",
+    "type": "expression-state",
+    "valid": false,
+    "value": {
+      "intensity": 500,
+      "remaining_ms": 900
+    }
+  },
+  {
+    "name": "expression-bad-intensity",
+    "type": "set-expression",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 1001,
+      "duration_ms": 1000
+    }
+  },
+  {
+    "name": "expression-bad-duration_ms",
+    "type": "set-expression",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "duration_ms": 60001
+    }
+  },
+  {
+    "name": "expression-bad-expression",
+    "type": "set-expression",
+    "valid": false,
+    "value": {
+      "expression": "mac_only",
+      "intensity": 500,
+      "duration_ms": 1000
+    }
+  }
+]
