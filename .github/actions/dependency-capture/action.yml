@@ -1,0 +1,34 @@
+name: Capture exercised dependency closure
+description: Archive dependency-only roots after the real CI commands succeed.
+inputs:
+  job:
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Complete download closure and archive dependencies only
+      shell: bash
+      env:
+        BUNDLE_JOB: ${{ inputs.job }}
+      run: |
+        if [[ "$BUNDLE_JOB" != java ]]; then
+          # Explicit fetch also covers targets/standalone locks not selected by a
+          # host-only build. Codegen temp crates were exercised by the same tests.
+          for manifest in Cargo.toml conformance/iroh-driver/Cargo.toml coglets/echo/Cargo.toml coglets/counter/Cargo.toml; do
+            cargo fetch --locked --manifest-path "$manifest"
+          done
+          mkdir -p "$HOME/.cache/coglet-wheels"
+          python3 -m pip download -r sdk/guest-rust/tests/requirements.txt -d "$HOME/.cache/coglet-wheels"
+        fi
+        if [[ "$BUNDLE_JOB" == conformance ]]; then
+          python3 -m pip download -r spec/tests/requirements.txt -d "$HOME/.cache/coglet-wheels"
+          (cd spec/tests && bundle cache --all-platforms)
+        fi
+        python3 scripts/ci/dependency_bundle.py pack --job "$BUNDLE_JOB"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: dependency-${{ inputs.job }}
+        path: dependency-bundles/
+        if-no-files-found: error
+        retention-days: 7
+        compression-level: 0

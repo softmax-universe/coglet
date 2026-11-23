@@ -3,18 +3,31 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    inputs:
+      bundle-mode:
+        type: string
+        default: normal
+      bundle-release:
+        type: string
+        default: dependency-mirror-v1
 permissions:
   contents: read
 jobs:
   java:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/dependency-restore
+        with:
+          job: java
+          mode: ${{ inputs.bundle-mode || 'normal' }}
+          release: ${{ inputs.bundle-release || 'dependency-mirror-v1' }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
+          cache: ${{ inputs.bundle-mode != 'proof' && 'maven' || '' }}
           cache-dependency-path: sdk/surface-java/pom.xml
       - uses: actions/setup-python@v5
         with:
@@ -35,3 +48,7 @@ jobs:
           test_identifiers.IdentifierTests.test_java_helper_and_keyword_fields_roundtrip
       - name: Strict native codec and recursive golden/negative fixtures
         run: mvn --batch-mode --no-transfer-progress -f sdk/surface-java/pom.xml test
+      - uses: ./.github/actions/dependency-capture
+        if: inputs.bundle-mode == 'prepare'
+        with:
+          job: java
