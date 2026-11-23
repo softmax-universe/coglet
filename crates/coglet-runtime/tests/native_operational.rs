@@ -30,6 +30,7 @@ fn setup() -> Value {
         .unwrap()["steps"][0]["send"]
         .clone();
     s["manifest"]["id"] = json!(C);
+    s["manifest"]["subscriptions"] = json!(["speech.start", "speech.partial", "speech.end"]);
     // Deliberately reverse lexical ID order: wire order must follow invocation.
     let actions: Vec<_> = ["f", "4"].iter().map(|id| json!({"coglet":C,"id":id.repeat(32),"capability":"expression.set_expression","args":{"expression":"happy","intensity":500,"duration_ms":10},"deadline":50_000_000,"correlation_id":id.repeat(32)})).collect();
     s["initial_effect_ids"]["actions"] = json!(["4".repeat(32), "f".repeat(32)]);
@@ -293,6 +294,101 @@ fn ffi_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_act(
 #[test]
 fn socket_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_act() {
     exercise(false, "socket");
+}
+
+fn native_private_capture(ffi: bool, name: &str) {
+    let _guard = FFI_LOCK.lock().unwrap();
+    let mut host = Host::new(ffi, name);
+    let mut link = host.connect();
+    link.hello();
+    let ops = ["speech.start", "speech.partial", "speech.end"];
+    let schemas: serde_json::Map<String, Value> = ops
+        .iter()
+        .map(|name| {
+            (
+                name.to_string(),
+                json!(format!(
+                    "https://coglet.dev/spec/messages/speech.schema.json#/$defs/{}",
+                    name.replace('.', "-")
+                )),
+            )
+        })
+        .collect();
+    link.send("capabilities",json!({"revision":1,"clock":1100,"entries":[{"name":"speech.control",
+        "events":ops,"reads":[],"actions":[],"exclusive":["audio.mic","audio.speaker"],"schemas":schemas}],
+        "correlation_id":"2".repeat(32)}));
+    link.send("grants",json!({"epoch":1,"entries":[{"coglet":C,"operations":ops,
+        "resources":["audio.mic","audio.speaker"],"expires":100_000_000}],"correlation_id":"3".repeat(32)}));
+    for (i, (kind, revision)) in [
+        ("speech.start", 0),
+        ("speech.partial", 1),
+        ("speech.partial", 1),
+        ("speech.end", 2),
+        ("speech.partial", 3),
+        ("speech.end", 4),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut payload = json!({"utterance":"d".repeat(32)});
+        if *kind != "speech.partial" {
+            payload["position_ms"] = json!(10);
+        }
+        if *kind != "speech.start" {
+            payload["text"] = json!("private text");
+            payload["revision"] = json!(revision);
+        }
+        link.send(
+            "event",
+            json!({"source":S,"kind":kind,"seq":i+1,"logical_time":1200+i,
+            "payload":payload,"correlation_id":"e".repeat(32)}),
+        );
+    }
+    // A health roundtrip is a transport barrier after all six event commits.
+    link.send(
+        "health",
+        json!({"state":"ready","clock":1400,"pending":0,"correlation_id":"9".repeat(32)}),
+    );
+    assert_eq!(decode(&link.recv())["type"], "health");
+    if !ffi {
+        host.stop();
+    }
+    drop(link);
+    if ffi {
+        host.stop();
+    }
+    let store = coglet_runtime::DurableStore::open(&host.dir.join("state.wal")).unwrap();
+    let state = store.state().unwrap();
+    let key = format!("{S}/{}", "d".repeat(32));
+    assert_eq!(state["surface_sequences"][S][0], 6);
+    assert_eq!(state["speech_temporal"]["discarded_revisions"], 3);
+    assert_eq!(state["speech_temporal"]["utterances"][&key]["revision"], 2);
+    assert_eq!(state["speech_temporal"]["utterances"][&key]["ended"], true);
+    if !ffi {
+        assert_eq!(
+            state["private_events"].as_object().unwrap().len(),
+            3,
+            "native socket queued stale private revisions"
+        );
+    }
+    drop(store);
+    let service =
+        coglet_runtime::RuntimeService::open(&host.dir.join("state.wal"), &host.setup, 128)
+            .unwrap();
+    assert_eq!(
+        service.queued(),
+        0,
+        "recovery revived disconnected private input"
+    );
+    drop(service);
+}
+#[test]
+fn ffi_private_capture_filters_late_text_and_persists_end_fence() {
+    native_private_capture(true, "ffi-capture");
+}
+#[test]
+fn socket_private_capture_filters_late_text_and_persists_end_fence() {
+    native_private_capture(false, "socket-capture");
 }
 
 fn library_session(

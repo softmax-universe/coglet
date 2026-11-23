@@ -9,11 +9,13 @@ use std::path::Path;
 mod clock;
 #[path = "dispatch.rs"]
 mod dispatch;
+#[path = "speech_temporal.rs"]
+mod speech_temporal;
 #[path = "surface_events.rs"]
 mod surface_events;
 
 /// Engine implementations must start a fresh instance for every attempt. This
-/// runtime-owned seam is temporary while coglet-engine's public API is empty.
+/// runtime-owned seam awaits integration with the now-published coglet-engine API.
 pub trait Engine {
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport>;
 }
@@ -41,6 +43,8 @@ struct ServiceState {
     surface_sequences: BTreeMap<String, (u64, u64)>,
     #[serde(default)]
     private_events: BTreeMap<u64, surface_events::EventLease>,
+    #[serde(default)]
+    speech_temporal: speech_temporal::SpeechTemporal,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -78,6 +82,9 @@ impl RuntimeService {
             }
             state.runtime.validate_recovered(store.records())?;
             Self::validate_dispatches(&state)?;
+            state
+                .speech_temporal
+                .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
             if let Some(staged) = &state.staged_boundary {
                 let mut derived = state.runtime.clone();
                 derived.apply_boundary_changes(&staged.changes)?;
@@ -101,6 +108,7 @@ impl RuntimeService {
                 staged_boundary: None,
                 surface_sequences: BTreeMap::new(),
                 private_events: BTreeMap::new(),
+                speech_temporal: speech_temporal::SpeechTemporal::default(),
             };
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,

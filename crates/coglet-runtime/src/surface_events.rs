@@ -56,11 +56,15 @@ impl RuntimeService {
         }
         let mut next = self.state.clone();
         Self::advance_surface_sequence(&mut next, event)?;
-        if self.state.runtime.manifest["subscriptions"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|v| v == kind)
+        let deliver =
+            next.speech_temporal
+                .admit(session.surface(), coglet, session.grant_epoch(), event)?;
+        if deliver
+            && self.state.runtime.manifest["subscriptions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|v| v == kind)
         {
             let ordinal = next.router.enqueue(event.clone())?;
             next.private_events.insert(

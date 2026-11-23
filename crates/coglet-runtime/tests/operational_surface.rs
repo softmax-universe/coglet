@@ -226,8 +226,169 @@ fn speech(s: &mut SurfaceSession, epoch: u64) {
         0
     );
 }
+fn capture(s: &mut SurfaceSession, epoch: u64) {
+    let operations = ["speech.start", "speech.partial", "speech.end"];
+    let schemas: serde_json::Map<String, Value> = operations
+        .iter()
+        .map(|name| {
+            (
+                name.to_string(),
+                json!(format!(
+                    "https://coglet.dev/spec/messages/speech.schema.json#/$defs/{}",
+                    name.replace('.', "-")
+                )),
+            )
+        })
+        .collect();
+    assert_eq!(
+        send(
+            s,
+            "capabilities",
+            json!({"revision":1,"clock":1100,"entries":[{
+        "name":"speech.control","events":operations,"reads":[],"actions":[],
+        "exclusive":["audio.mic","audio.speaker"],"schemas":schemas}],"correlation_id":"2".repeat(32)}),
+            110
+        ),
+        0
+    );
+    assert_eq!(
+        send(
+            s,
+            "grants",
+            json!({"epoch":epoch,"entries":[{"coglet":C,
+        "operations":operations,"resources":["audio.mic","audio.speaker"],"expires":500_000}],
+        "correlation_id":"3".repeat(32)}),
+            120
+        ),
+        0
+    );
+}
+#[test]
+fn durable_capture_filter_queues_only_increasing_revisions_before_end() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("capture-filter");
+    let mut setup = setup();
+    setup["manifest"]["subscriptions"] = json!(["speech.start", "speech.partial", "speech.end"]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    capture(&mut s, 1);
+    for (i, (kind, revision)) in [
+        ("speech.start", 0),
+        ("speech.partial", 1),
+        ("speech.partial", 1),
+        ("speech.end", 2),
+        ("speech.partial", 3),
+        ("speech.end", 4),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let mut payload = json!({"utterance":"d".repeat(32)});
+        if *kind != "speech.partial" {
+            payload["position_ms"] = json!(10);
+        }
+        if *kind != "speech.start" {
+            payload["revision"] = json!(revision);
+            payload["text"] = json!("private text");
+        }
+        assert_eq!(
+            send(
+                &mut s,
+                "event",
+                json!({"source":S,"kind":kind,"seq":i+1,"logical_time":1200+i,
+            "payload":payload,"correlation_id":"e".repeat(32)}),
+                130 + i as u64
+            ),
+            0
+        );
+    }
+    assert_eq!(
+        service.lock().unwrap().queued(),
+        3,
+        "stale private text queued a wake"
+    );
+    let mut context = setup["inputs"].clone();
+    context["logical_time"] = json!(200);
+    context["budgets"]["max_events"] = json!(1);
+    let mut engine = coglet_runtime::MockEngine::new(setup["guest_script"].clone());
+    for kind in ["speech.start", "speech.partial", "speech.end"] {
+        let record = service
+            .lock()
+            .unwrap()
+            .run_next(&context, &mut engine)
+            .unwrap()
+            .unwrap();
+        assert_eq!(record["journal"]["events"][0]["kind"], kind);
+    }
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    s.disconnect();
+    drop(s);
+    drop(service);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    capture(&mut s, 2);
+    assert_eq!(
+        send(
+            &mut s,
+            "event",
+            json!({"source":S,"kind":"speech.start","seq":7,"logical_time":1300,
+        "payload":{"utterance":"d".repeat(32),"position_ms":0},"correlation_id":"e".repeat(32)}),
+            150
+        ),
+        -2,
+        "WAL reopen forgot closed utterance identity"
+    );
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn full_router_does_not_commit_capture_revision_or_source_highwater() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("capture-atomic");
+    let mut setup = setup();
+    setup["manifest"]["subscriptions"] = json!(["speech.start", "speech.partial", "speech.end"]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 1).unwrap(),
+    ));
+    let mut session = live(service.clone());
+    capture(&mut session, 1);
+    assert_eq!(send(&mut session, "event", speech_event(1), 130), 0);
+    assert_eq!(
+        send(
+            &mut session,
+            "event",
+            json!({"source":S,"kind":"speech.partial","seq":2,"logical_time":1201,
+        "payload":{"utterance":format!("{:032x}",1),"revision":1,"text":"must not commit"},
+        "correlation_id":"e".repeat(32)}),
+            131
+        ),
+        -2
+    );
+    drop(session);
+    drop(service);
+    let store = coglet_runtime::DurableStore::open(&path).unwrap();
+    let state = store.state().unwrap();
+    assert_eq!(
+        state["surface_sequences"][S][0], 1,
+        "failed enqueue consumed source seq"
+    );
+    let key = format!("{S}/{:032x}", 1);
+    assert_eq!(
+        state["speech_temporal"]["utterances"][&key]["revision"], 0,
+        "failed enqueue consumed hypothesis revision"
+    );
+    assert_eq!(state["speech_temporal"]["utterances"][&key]["ended"], false);
+    drop(store);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
 fn speech_event(seq: u64) -> Value {
-    json!({"source":S,"kind":"speech.start","seq":seq,"logical_time":1200,"payload":{"utterance":"d".repeat(32),"position_ms":0},"correlation_id":"e".repeat(32)})
+    json!({"source":S,"kind":"speech.start","seq":seq,"logical_time":1200,"payload":{"utterance":format!("{seq:032x}"),"position_ms":0},"correlation_id":"e".repeat(32)})
 }
 #[test]
 fn private_event_revoke_disconnect_restart_and_source_highwater() {

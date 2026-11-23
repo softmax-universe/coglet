@@ -23,12 +23,13 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - Linux boot-identity/BOOTTIME anchored runtime clock persisted in the WAL;
 - service-backed socket and C ABI dispatch pumps, ordered by committed calls;
 - automatic same-envelope reconciliation after native reconnect and WAL reopen.
+- durable speech capture start/revision/end fencing and provider call deduplication.
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
 The crate currently owns its `Engine` and snapshot seams because the shared
 `coglet-engine` and `coglet-fs` APIs were empty at implementation start. Those
-seams must be integrated when their owning lanes publish the real APIs.
+seams must now be integrated with the published engine API (PR #47).
 
 ## Verification
 
@@ -79,7 +80,15 @@ The unimplemented boundaries remain explicit:
   service-backed native endpoints attach it. Private event admission intersects
   manifest subscriptions with current grants/resources; grant replacement, expiry,
   disconnect and restart purge old-lease queued input while retaining sequence
-  highwaters. Provider tool calls require a retained successful owner session.
+  highwaters. Capture identities are never reopened across epochs/reconnects;
+  partial/end revisions must increase, and late/equal revisions are counted without
+  forwarding private text or queueing a wake. Source highwater, revision/end fence
+  and enqueue are one WAL transaction. Provider tool calls require a retained
+  successful owner session and identical repeated calls do not queue another event.
+  Tombstones are non-evicting and capped at 4096 utterances plus 4096 provider calls
+  per service; exhaustion fails closed, requiring explicit supervisor lifecycle
+  reconciliation, not silent eviction/reuse. This is a bounded qualification route,
+  not an indefinitely running speech service.
   Native reads never invent guest events; pending+completed observations are bounded
   to 128 with 4096 non-evicting correlation tombstones per connection. Stale durable
   epochs purge read replies/results. Heard reads require a retained accepted speaker
@@ -138,7 +147,11 @@ grants, accepted-action health counts, authenticated outcomes and duplicate term
 delivery, and kill. Reopened WALs contain exactly one terminal mutation/wake per
 action. Separate regressions inject a real OS WAL-write failure and check clock and
 retained-dispatch fencing, and reject an expired outbox head without starving later
-actions. These do not constitute complete speech/read/device qualification.
+actions. Two further actual native-path tests send start/partial/end and stale
+revisions, read back durable end fences/discard counts, and prove disconnected
+private input is not revived. Library tests prove source-order guest delivery and
+that router-full does not commit a revision/highwater. Playback item/stream temporal
+rules, native reads and provider media ownership remain unqualified.
 
 `cargo build -p coglet-runtime --lib` produces static and shared libraries.
 `include/coglet_runtime.h` exposes the frozen coglet_surface_open/send/recv/close
