@@ -8,6 +8,8 @@ publish.workspace = true
 coglet-types = { path = "../coglet-types" }
 ciborium = "0.2"
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
 thiserror = "2"
 hex = "0.4"
 ed25519-dalek = "2"
