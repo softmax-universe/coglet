@@ -95,7 +95,21 @@ credit/durability/hash accounting, real encrypted iroh enrollment gating and
 reverse operation streams, method direction, and enrollment identity binding.
 These are component tests, **not** the language-neutral conformance suite.
 
-## Remaining before acceptance
+## Component acceptance and follow-up ownership
+
+This baseline is milestone 1 only: framing/signing, bidirectional unary iroh
+transport, transfer accounting, and durable enrollment/grant/delegation APIs.
+Acceptance is the focused component tests above, strict Clippy and formatting,
+independent exact-head review, and green CI before merge. It is **not** acceptance
+of the complete hub protocol. Remaining work is serialized on the board:
+
+- `t_01a2083fe588e786`: bounded per-peer scheduler, rates and reset paths.
+- `t_01a2084010cc02e1`: streaming Git, credit, quarantine and durable watermarks.
+- `t_01a205e767bb96f0`: kernel registry, relay/dedupe, audit and sender mapping.
+- `t_01a2084063ee0c84`: reference/mock integration and harness extensions; owns
+  the original unchanged same-suite hub acceptance with zero skipped cases.
+
+## Remaining before full protocol acceptance
 
 1. Durable atomic one-use enrollment, exact grants/delegations/context scopes,
    expiry/revocation and rate limiting; integrate with the kernel, not a second
