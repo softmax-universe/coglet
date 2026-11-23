@@ -21,10 +21,12 @@ ROOT = SPEC.parent
 EVENTS = {'speech.start':'speech-start', 'speech.partial':'speech-partial',
           'speech.end':'speech-end', 'speech.position':'speech-position',
           'speech.barge_in':'speech-barge-in', 'speech.tool_call':'tool-call',
+          'speech.work_intent':'work-intent', 'speech.work_done':'work-done',
           'action.outcome':'action-outcome'}
 ACTIONS = {'speech.speak_chunk':'speak-chunk', 'speech.stop':'stop',
            'speech.backchannel':'backchannel', 'speech.session_open':'session-open',
            'speech.session_close':'session-close', 'speech.tool_result':'tool-result',
+           'speech.work_result':'work-result',
            'expression.set_expression':'set-expression'}
 
 

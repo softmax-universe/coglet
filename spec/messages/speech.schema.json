@@ -364,6 +364,200 @@
         }
       ]
     },
+    "heard-query": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "additionalProperties": false
+    },
+    "heard-record": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "played_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "item",
+        "played_ms",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "work-state": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        }
+      },
+      "required": [
+        "epoch",
+        "pending"
+      ],
+      "additionalProperties": false
+    },
+    "work-intent": {
+      "type": "object",
+      "properties": {
+        "turn": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "call": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/method-name"
+        },
+        "arguments": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        }
+      },
+      "required": [
+        "turn",
+        "call",
+        "epoch",
+        "name",
+        "arguments"
+      ],
+      "additionalProperties": false
+    },
+    "work-result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "turn": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "call": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 18446744073709551615
+            },
+            "status": {
+              "enum": [
+                "succeeded"
+              ]
+            },
+            "value": {
+              "$ref": "common.schema.json#/$defs/profile-map"
+            }
+          },
+          "required": [
+            "turn",
+            "call",
+            "epoch",
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "turn": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "call": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "epoch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 18446744073709551615
+            },
+            "status": {
+              "enum": [
+                "failed"
+              ]
+            },
+            "value": {
+              "$ref": "common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "turn",
+            "call",
+            "epoch",
+            "status",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "work-cancelled": {
+      "type": "object",
+      "properties": {
+        "turn": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "call": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "status": {
+          "enum": [
+            "cancelled"
+          ]
+        },
+        "value": {
+          "$ref": "common.schema.json#/$defs/error"
+        }
+      },
+      "required": [
+        "turn",
+        "call",
+        "epoch",
+        "status",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "work-done": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/work-result"
+        },
+        {
+          "$ref": "#/$defs/work-cancelled"
+        }
+      ]
+    },
     "speech-profile": {
       "anyOf": [
         {
@@ -407,6 +601,27 @@
         },
         {
           "$ref": "#/$defs/tool-result"
+        },
+        {
+          "$ref": "#/$defs/heard-query"
+        },
+        {
+          "$ref": "#/$defs/heard-record"
+        },
+        {
+          "$ref": "#/$defs/work-state"
+        },
+        {
+          "$ref": "#/$defs/work-intent"
+        },
+        {
+          "$ref": "#/$defs/work-result"
+        },
+        {
+          "$ref": "#/$defs/work-cancelled"
+        },
+        {
+          "$ref": "#/$defs/work-done"
         }
       ]
     }
