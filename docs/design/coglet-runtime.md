@@ -88,8 +88,8 @@ Audio cannot go through the step loop (frames arrive every 20 ms or so).
 - **The coglet owns decisions**, waking on events: speech start, partial transcript, end of utterance, playback position. It emits speak-chunk, stop and backchannel intents.
 - **Barge-in has two layers**: the surface stops instantly, then the coglet decides whether to drop or resume.
 - Speech-to-text and text-to-speech location stays agnostic: both are capabilities, so we can A/B on-device and hub-side.
-- **The record keeps only what was heard.** On barge-in the surface reports how many milliseconds of each speak item actually played. The transcript and journal store the item truncated to that point, so the coglet never reasons about words the user didn't hear (prior art: Companion, below).
-- **Speech can hand work off.** A speech turn can start long-running work (an agent, a game action) as an explicit intent with an id, an epoch and size caps. Barge-in cancels it. The voice reports only outcomes the work's result event actually contains.
+- **The record keeps only what was heard.** On barge-in the surface reports how many milliseconds of each speak item actually played. The transcript and journal store the item truncated to that point, so the coglet never reasons about words the user didn't hear. (Companion truncates only the speech model's server-side item; storing the truncated item in the transcript and journal is our addition.)
+- **Speech can hand work off.** A speech turn can start long-running work (an agent, a game action) as an explicit intent with an id, an epoch and size caps (Companion has the call id, work epoch and caps). Barge-in cancels it. The voice may report only outcomes the work's result event contains; Companion asks for this in its prompt, and we make it a requirement.
 - **Hands-free and push-to-talk** are surface modes advertised in caps, not coglet logic.
 
 ## Mindustry avatar
@@ -100,7 +100,7 @@ Audio cannot go through the step loop (frames arrive every 20 ms or so).
   - a **content index** generated from the pinned Mindustry engine source: blocks, units, items and liquids with cost, size, health, inputs, outputs and the defining source line;
   - **recipes**: request patterns mapped to the device calls that satisfy them, each with the source symbols involved, checked by tests against the pinned engine;
   - **activity ideas** for "what should we do?", offered as choices that fit the current game;
-  - an **action library** learned from play: the hub groups journal entries of what the player asked and what was done into examples. Promotion treats it like any other `/data` change.
+  - an **action library** learned from play: the hub groups journal entries of what the player asked and what was done into examples (Companion records the actions; the grouping and learning step is new). Promotion treats it like any other `/data` change.
 - **Richer read devices** beyond raw state, each bounded and paged with a cursor, never full-map snapshots:
   - map find (blocks, ore, terrain, units; fog-respecting);
   - objectives and waves;
@@ -109,7 +109,7 @@ Audio cannot go through the step loop (frames arrive every 20 ms or so).
   - logistics diagnosis (blocked or slow belts, with evidence and its strength);
   - navigation (menus, saves, destinations).
 - **Write devices that don't touch the world**: highlights (labelled, expiring map markers, cleared on world change). Acts that do change the world (move, mine, build ranges, research, helper spawn and stop) go through the motor as usual.
-- **The player's controls stay theirs.** A helper unit assists the player's own build plans and never replaces their ship. Avatar acts never clear human build queues.
+- **The player's controls stay theirs.** A helper unit assists the player's own build plans and never replaces their ship. Avatar acts never clear human build queues (Companion's helper clears only its own queue; we make this an invariant with a test).
 - **Live engine edits** (inspecting or setting engine fields, hot-reloading Java) are a debug capability behind hub policy, never a default grant.
 - **Strategy is the gap.** None of the prior art covers build orders, wave defense or production scaling. The avatar learns those through the factory loop and records them in recipes, rather than hard-coding them.
 
@@ -327,7 +327,7 @@ It has no runtime, hub, sandbox or specs: it is an all-in-one prototype of the F
 | `realtimes.nim` `interrupt(playedMs)`: truncate the spoken item to what played | speech capability (Face section above) |
 | `realtimes.nim` `processWork`: staged, capped, deduped, cancellable voice-to-agent work | speech capability work hand-off |
 | `duplex.m`, `devices.m`: one AVAudioEngine, VoiceProcessingIO echo cancellation that fails loudly, lock-free rings, playback generation flush, device change recovery | `surfaces/face-mac` audio kit |
-| orb overlay, stable signing identity so mic permission survives rebuilds, first-run permission check, OFL fonts | Softmax desktop app shell |
+| orb overlay, stable signing identity so mic permission survives rebuilds, microphone permission request, OFL fonts | Softmax desktop app shell |
 | Mindustry mod hooks (`HookServer`: loopback, bearer token, bounded queue, game-thread dispatch, expiring requests) | game adapter's device server; the same shape suits any in-app adapter |
 | `knowledges.nim`, `GAME_RECIPES.md`, `FUN_THINGS.md`, `PLAYER_REQUESTS.md` | avatar coglet knowledge files (Mindustry avatar section above) |
 | `ActionJournal`, `PlayerRecorder`: bounded off-thread semantic recording, loss counters, attribution of requests to later acts | game surface events, journal and trace store; training export |
