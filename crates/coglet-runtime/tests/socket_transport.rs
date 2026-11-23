@@ -92,8 +92,16 @@ fn idle_socket_emits_heartbeats_without_incoming_frames_and_disconnects() {
 }
 #[test]
 fn listener_modes_existing_socket_and_insecure_parent_fail_closed() {
-    let base = std::env::var("TMPDIR").unwrap();
-    let dir = std::path::PathBuf::from(base).join(format!("runtime-socket-{}", std::process::id()));
+    let base = std::env::var_os("TMPDIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::path::PathBuf::from(
+                std::env::var_os("HOME").expect("test requires HOME or TMPDIR"),
+            )
+            .join(".cache")
+        });
+    std::fs::create_dir_all(&base).unwrap();
+    let dir = base.join(format!("runtime-socket-{}", std::process::id()));
     std::fs::create_dir(&dir).unwrap();
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o755)).unwrap();
     let path = dir.join("s");
