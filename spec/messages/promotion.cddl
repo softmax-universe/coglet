@@ -3,9 +3,23 @@
 ; Closed shapes only; binding, trust and temporal rules are in promotion.md.
 promotion = promotion-propose / promotion-promote / promotion-rollback /
   promotion-status-request / promotion-response / promotion-audit
-promotion-commit = tstr .regexp "^([0-9a-f]{40}|[0-9a-f]{64})$"
-promotion-text = tstr .size (1..18446744073709551615)
-promotion-op = "propose" / "promote" / "rollback" / "status"
+; Redundant type choice resets retained array traversal in pycddl 0.6.4.
+; Intersection preserves exactly the original scalar language.
+promotion-commit = (tstr .regexp "^([0-9a-f]{40}|[0-9a-f]{64})$") .and (tstr / [])
+promotion-text = (tstr .size (1..18446744073709551615)) .and (tstr / [])
+promotion-op = ("propose" / "promote" / "rollback" / "status") .and (tstr / [])
+promotion-id = correlation-id .and (tstr / [])
+promotion-coglet = coglet-id .and (tstr / [])
+promotion-uint = uint64 .and (uint / [])
+promotion-nullable-commit = (promotion-commit / null) .and (tstr / null / [])
+promotion-nullable-id = (correlation-id / null) .and (tstr / null / [])
+promotion-version = "0.1" .and (tstr / [])
+promotion-propose-op = "propose" .and (tstr / [])
+promotion-promote-op = "promote" .and (tstr / [])
+promotion-rollback-op = "rollback" .and (tstr / [])
+promotion-status-op = "status" .and (tstr / [])
+promotion-true = true .and (bool / [])
+promotion-false = false .and (bool / [])
 ; Explicit absent-key constraints preserve closed choices in pycddl 0.6.4:
 ; a failed sibling must not consume a key for the successful alternative.
 ; The second intersection also rejects arrays retained by a failed sibling.
@@ -33,80 +47,89 @@ promotion-response-closure = (
   ? reason: promotion-never
 )
 promotion-envelope = (
-  version: "0.1", correlation_id: correlation-id, coglet: coglet-id
+  version: promotion-version, correlation_id: promotion-id, coglet: promotion-coglet
 )
 promotion-gate-report = {
-  kind: "journal_replay" / "headless_game", suite: promotion-text,
-  candidate: promotion-commit, base: promotion-commit / null,
-  policy_revision: correlation-id, checked_at_ms: uint64,
-  status: "passed" / "failed", evidence_ref: promotion-text,
+  kind: ("journal_replay" / "headless_game") .and (tstr / []), suite: promotion-text,
+  candidate: promotion-commit, base: promotion-nullable-commit,
+  policy_revision: promotion-id, checked_at_ms: promotion-uint,
+  status: ("passed" / "failed") .and (tstr / []), evidence_ref: promotion-text,
   * tstr => nil .and false
 }
 promotion-propose = {
-  promotion-envelope, op: "propose", candidate: promotion-commit,
-  base: promotion-commit / null, expected_generation: uint64,
-  policy_revision: correlation-id, gates: [+ promotion-gate-report],
+  promotion-envelope, op: promotion-propose-op, candidate: promotion-commit,
+  base: promotion-nullable-commit, expected_generation: promotion-uint,
+  policy_revision: promotion-id, gates: [+ promotion-gate-report],
   ? approval_ref: promotion-text, promotion-no-audit, promotion-no-response,
   ? proposal_id: promotion-never, ? reason: promotion-never
 }
 promotion-promote = {
-  promotion-envelope, op: "promote", proposal_id: correlation-id,
-  expected_generation: uint64, promotion-no-audit, promotion-no-response,
+  promotion-envelope, op: promotion-promote-op, proposal_id: promotion-id,
+  expected_generation: promotion-uint, promotion-no-audit, promotion-no-response,
   promotion-no-propose, ? reason: promotion-never
 }
 promotion-rollback = {
-  promotion-envelope, op: "rollback", expected_generation: uint64,
+  promotion-envelope, op: promotion-rollback-op, expected_generation: promotion-uint,
   reason: promotion-text, promotion-no-audit, promotion-no-response,
   promotion-no-propose, ? proposal_id: promotion-never
 }
 promotion-status-request = {
-  promotion-envelope, op: "status", promotion-response-closure,
+  promotion-envelope, op: promotion-status-op, promotion-response-closure,
   promotion-no-response
 }
 promotion-status = {
-  generation: uint64, live_commit: promotion-commit / null,
-  last_known_good: promotion-commit / null, candidate: promotion-commit / null,
-  state: "empty" / "proposed" / "activating" / "probation" / "stable" /
-    "rolling_back" / "stopped",
-  proposal_id: correlation-id / null, policy_revision: correlation-id,
-  probation: promotion-probation / null, recent_health: [0*64 promotion-health]
+  generation: promotion-uint, live_commit: promotion-nullable-commit,
+  last_known_good: promotion-nullable-commit, candidate: promotion-nullable-commit,
+  state: ("empty" / "proposed" / "activating" / "probation" / "stable" /
+    "rolling_back" / "stopped") .and (tstr / []),
+  proposal_id: promotion-nullable-id, policy_revision: promotion-id,
+  probation: (promotion-probation / null) .and (profile-map / null / []),
+  recent_health: [0*64 promotion-health]
 }
 promotion-probation = {
-  started_at_ms: uint64, expires_at_ms: uint64, consecutive_failures: uint64,
-  step_failures: uint64, budget_violations: uint64
+  started_at_ms: promotion-uint, expires_at_ms: promotion-uint, consecutive_failures: promotion-uint,
+  step_failures: promotion-uint, budget_violations: promotion-uint
 }
 promotion-health = {
-  generation: uint64, commit: promotion-commit, observed_at_ms: uint64, healthy: bool,
+  generation: promotion-uint, commit: promotion-commit, observed_at_ms: promotion-uint,
+  healthy: bool .and (bool / []),
   * tstr => nil .and false
 }
 promotion-response = {
-  promotion-envelope, op: "propose", ok: true,
-  result: {proposal_id: correlation-id, state: "proposed"},
+  promotion-envelope, op: promotion-propose-op, ok: promotion-true,
+  result: {proposal_id: promotion-id, state: "proposed"} .and (profile-map / []),
   promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: "promote", ok: true,
-  result: {proposal_id: correlation-id, state: "activating"},
+  promotion-envelope, op: promotion-promote-op, ok: promotion-true,
+  result: {proposal_id: promotion-id, state: "activating"} .and (profile-map / []),
   promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: "rollback", ok: true, result: {state: "rolling_back"},
+  promotion-envelope, op: promotion-rollback-op, ok: promotion-true,
+  result: {state: "rolling_back"} .and (profile-map / []),
   promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: "status", ok: true, result: promotion-status,
+  promotion-envelope, op: promotion-status-op, ok: promotion-true,
+  result: promotion-status .and (profile-map / []),
   promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: promotion-op, ok: false, "error": promotion-error,
+  promotion-envelope, op: promotion-op, ok: promotion-false, "error": promotion-error,
   promotion-response-closure, ? result: promotion-never
 }
+; Revalidate array elements after failed root alternatives consumed traversal
+; state. Both intersections are semantically redundant; keep scalar guards out
+; of array elements because [] resets the enclosing array cursor in pycddl.
+promotion-evidence-refs = ([* tstr .size (1..18446744073709551615)] .and
+  [* tstr .and (tstr / {})]) .and [* tstr]
 promotion-audit = {
-  version: "0.1", audit_id: correlation-id, correlation_id: correlation-id,
-  coglet: coglet-id, actor: "kernel" / coglet-id / hub-id / surface-id,
+  version: promotion-version, audit_id: promotion-id, correlation_id: promotion-id,
+  coglet: promotion-coglet, actor: ("kernel" / coglet-id / hub-id / surface-id) .and (tstr / []),
   operation: promotion-op,
-  phase: "admitted" / "rejected" / "activated" / "probation_passed" /
-    "rollback_triggered" / "restored" / "stopped" / "observed",
-  generation: uint64, observed_at_ms: uint64, proposal_id: correlation-id / null,
-  before_commit: promotion-commit / null, after_commit: promotion-commit / null,
-  policy_revision: correlation-id, reason: promotion-text,
-  evidence_refs: [* promotion-text], promotion-no-response,
+  phase: ("admitted" / "rejected" / "activated" / "probation_passed" /
+    "rollback_triggered" / "restored" / "stopped" / "observed") .and (tstr / []),
+  generation: promotion-uint, observed_at_ms: promotion-uint, proposal_id: promotion-nullable-id,
+  before_commit: promotion-nullable-commit, after_commit: promotion-nullable-commit,
+  policy_revision: promotion-id, reason: promotion-text,
+  evidence_refs: promotion-evidence-refs, promotion-no-response,
   ? op: promotion-never, ? candidate: promotion-never, ? base: promotion-never,
   ? expected_generation: promotion-never, ? gates: promotion-never,
   ? approval_ref: promotion-never

@@ -6,7 +6,7 @@ policy = {
   policy-role, gates: policy-gates, probation: policy-probation
 }
 policy-role = (control_role: "application", human_approval: bool //
-  control_role: "fast_loop" / "factory", human_approval: true)
+  control_role: ("fast_loop" / "factory") .and (tstr / []), human_approval: true)
 ; Positive subset of common uint64 (range controls on aliases are not portable).
 policy-positive-uint64 = 1..18446744073709551615
 policy-gate-fields = (

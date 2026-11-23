@@ -22,20 +22,20 @@ ticket-never = (nil .and false) .and []
 ticket-error = error .and (profile-map / [])
 
 ; Positive subset of common uint64 (range controls on aliases are not portable).
-ticket-positive-uint64 = 1..18446744073709551615
-ticket-text = tstr .size (1..18446744073709551615)
+ticket-positive-uint64 = (1..18446744073709551615) .and (uint / [])
+ticket-text = (tstr .size (1..18446744073709551615)) .and (tstr / [])
 ticket-edit-path = tstr .regexp "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*$"
 ticket-currency = tstr .regexp "^[A-Z]{3}$"
 ticket-required-gates = ["journal_replay"] /
   ["journal_replay", "headless_game"] / ["headless_game", "journal_replay"]
-ticket-progress-state = "queued" / "planning" / "building" / "gate_running" /
-  "cancelling" / "done" / "failed" / "abandoned"
-ticket-state = ticket-progress-state / "needs_input"
-ticket-op = "submit" / "update" / "answer" / "amend" / "cancel" / "result"
+ticket-progress-state = ("queued" / "planning" / "building" / "gate_running" /
+  "cancelling" / "done" / "failed" / "abandoned") .and (tstr / [])
+ticket-state = (ticket-progress-state / "needs_input") .and (tstr / [])
+ticket-op = ("submit" / "update" / "answer" / "amend" / "cancel" / "result") .and (tstr / [])
 
 ticket-ticket = {
   target: {coglet: coglet-id, repo: ticket-text, base: promotion-commit},
-  goal: {description: ticket-text, acceptance: [+ ticket-text]},
+  goal: {description: ticket-text, acceptance: [+ tstr .size (1..18446744073709551615)]},
   context: [* ticket-context],
   capabilities: {
     edit_paths: [* ticket-edit-path], debug_read: bool, debug_write: bool
@@ -51,10 +51,10 @@ ticket-context = {
   kind: "world_snapshot" / "transcript" / "trace" / "document", ref: ticket-text,
   * tstr => ticket-never
 }
-ticket-question = {id: correlation-id, prompt: ticket-text}
+ticket-question = {id: promotion-id, prompt: ticket-text}
 
 ; Groups share fields only; each alternative below is its own closed map.
-ticket-envelope = (version: "0.1", correlation_id: correlation-id)
+ticket-envelope = (version: promotion-version, correlation_id: promotion-id)
 ticket-no-progress = (
   ? revision: ticket-never, ? seq: ticket-never, ? summary: ticket-never,
   ? state: ticket-never, ? question: ticket-never,
@@ -70,66 +70,70 @@ ticket-no-request-payload = (
   ? answer: ticket-never, ? reason: ticket-never
 )
 ticket-mutation = (
-  ticket_id: correlation-id, expected_revision: ticket-positive-uint64
+  ticket_id: promotion-id, expected_revision: ticket-positive-uint64
 )
 ticket-request = ticket-submit-request / ticket-update-request /
   ticket-answer-request / ticket-amend-request / ticket-cancel-request /
   ticket-result-request
 ticket-submit-request = {
-  ticket-envelope, ticket-request-closure, op: "submit", ticket: ticket-ticket,
+  ticket-envelope, ticket-request-closure, op: "submit" .and (tstr / []),
+  ticket: ticket-ticket .and (profile-map / []),
   ? ticket_id: ticket-never, ? expected_revision: ticket-never,
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-update-request = {
-  ticket-envelope, ticket-request-closure, op: "update", ticket_id: correlation-id, after_seq: uint64,
+  ticket-envelope, ticket-request-closure, op: "update" .and (tstr / []),
+  ticket_id: promotion-id, after_seq: promotion-uint,
   ? ticket: ticket-never, ? expected_revision: ticket-never,
   ? question_id: ticket-never, ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-answer-request = {
-  ticket-envelope, ticket-request-closure, op: "answer", ticket-mutation,
-  question_id: correlation-id, answer: ticket-text,
+  ticket-envelope, ticket-request-closure, op: "answer" .and (tstr / []), ticket-mutation,
+  question_id: promotion-id, answer: ticket-text,
   ? ticket: ticket-never, ? after_seq: ticket-never, ? reason: ticket-never
 }
 ticket-amend-request = {
-  ticket-envelope, ticket-request-closure, op: "amend", ticket-mutation, ticket: ticket-ticket,
+  ticket-envelope, ticket-request-closure, op: "amend" .and (tstr / []), ticket-mutation,
+  ticket: ticket-ticket .and (profile-map / []),
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-cancel-request = {
-  ticket-envelope, ticket-request-closure, op: "cancel", ticket-mutation, reason: ticket-text,
+  ticket-envelope, ticket-request-closure, op: "cancel" .and (tstr / []), ticket-mutation, reason: ticket-text,
   ? ticket: ticket-never, ? after_seq: ticket-never,
   ? question_id: ticket-never, ? answer: ticket-never
 }
 ticket-result-request = {
-  ticket-envelope, ticket-request-closure, op: "result", ticket_id: correlation-id,
+  ticket-envelope, ticket-request-closure, op: "result" .and (tstr / []), ticket_id: promotion-id,
   ? ticket: ticket-never, ? expected_revision: ticket-never,
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
 }
 
 ticket-receipt = {
-  ticket_id: correlation-id, revision: ticket-positive-uint64,
+  ticket_id: promotion-id, revision: ticket-positive-uint64,
   state: ticket-state, seq: ticket-positive-uint64
 }
 ticket-response = {
-  ticket-envelope, op: "submit" / "answer" / "amend" / "cancel",
-  ok: true, receipt: ticket-receipt, ? error: ticket-never,
+  ticket-envelope, op: ("submit" / "answer" / "amend" / "cancel") .and (tstr / []),
+  ok: promotion-true, receipt: ticket-receipt .and (profile-map / []), ? error: ticket-never,
   ticket-no-progress, ticket-no-request-payload, ? ticket_id: ticket-never
 } / {
-  ticket-envelope, op: ticket-op, ok: false, "error": ticket-error,
+  ticket-envelope, op: ticket-op, ok: promotion-false, "error": ticket-error,
   ? receipt: ticket-never, ticket-no-progress, ticket-no-request-payload,
   ? ticket_id: ticket-never
 }
 
 ticket-progress = (
-  ticket-envelope, ticket_id: correlation-id,
+  ticket-envelope, ticket_id: promotion-id,
   revision: ticket-positive-uint64, seq: ticket-positive-uint64,
   summary: ticket-text, ticket-no-request-payload,
   ? op: ticket-never, ? ok: ticket-never, ? receipt: ticket-never
 )
 ticket-needs-input = {
-  ticket-progress, state: "needs_input", question: ticket-question,
+  ticket-progress, state: "needs_input" .and (tstr / []),
+  question: ticket-question .and (profile-map / []),
   ? candidate: ticket-never, ? gates: ticket-never, ? error: ticket-never
 }
 ticket-update = {
@@ -139,11 +143,11 @@ ticket-update = {
 } / ticket-needs-input
 
 ticket-result = {
-  ticket-progress, state: "done",
-  candidate: {commit: promotion-commit, signature_ref: ticket-text},
+  ticket-progress, state: "done" .and (tstr / []),
+  candidate: {commit: promotion-commit, signature_ref: ticket-text} .and (profile-map / []),
   gates: [+ promotion-gate-report],
   ? question: ticket-never, ? error: ticket-never
 } / ticket-needs-input / {
-  ticket-progress, state: "failed" / "abandoned", "error": ticket-error,
+  ticket-progress, state: ("failed" / "abandoned") .and (tstr / []), "error": ticket-error,
   ? question: ticket-never, ? candidate: ticket-never, ? gates: ticket-never
 }

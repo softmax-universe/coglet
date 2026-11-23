@@ -217,6 +217,8 @@ class ControlFixtures(unittest.TestCase):
                             if actual != expected:
                                 mismatches.append((group, case['name'], key, scope,
                                                    value, expected, actual))
+                                print(f'mismatch: {group}/{case["name"]} {key} '
+                                      f'{scope}: {value!r}', flush=True)
         print(f'control differential: {count} comparisons; {len(mismatches)} mismatches')
         self.assertEqual(mismatches, [], repr(mismatches[:20]))
 
