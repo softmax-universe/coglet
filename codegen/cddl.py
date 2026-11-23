@@ -24,14 +24,20 @@ def bounds(lo, hi):
 class Parser:
     def __init__(self, text):
         self.tokens = []
+        self.spaced = []  # spaced[k]: token k is preceded by whitespace/comment
+        gap = False
         pos = 0
         while pos < len(text):
             m = TOKEN.match(text, pos)
             if not m:
                 raise ValueError(f'unsupported CDDL construct at {text[pos:pos+40]!r}')
             t = m.group()
-            if not t.isspace() and not t.startswith(';'):
+            if t.isspace() or t.startswith(';'):
+                gap = True
+            else:
                 self.tokens.append(t)
+                self.spaced.append(gap)
+                gap = False
             pos = m.end()
         self.i = 0
 
@@ -90,19 +96,36 @@ class Parser:
                 raise ValueError(f'unsupported CDDL control {op}')
         return node
 
+    def adjacent(self, offset):
+        """True when token at offset touches the previous token (RFC 8610 occur has no inner whitespace)."""
+        k = self.i + offset
+        return k < len(self.tokens) and not self.spaced[k]
+
+    def bound_digit(self, offset):
+        t = self.peek(offset)
+        if not (t or '').isdigit():
+            return False
+        if not self.adjacent(offset):
+            # `* 64 x` / `1 * x`: RFC 8610 `occur = [uint] "*" [uint]` forbids inner whitespace;
+            # strict tools read the number as a type, so accepting it as a bound would diverge.
+            raise ValueError(f'spaced occurrence bound near {t!r}: write n*m with no whitespace (RFC 8610 occur)')
+        return True
+
     def occurrence(self):
         t = self.peek()
         if t in ('?', '+', '*'):
             self.take()
             lo = int(t == '+')
             hi = 1 if t == '?' else None
-            if t == '*' and (self.peek() or '').isdigit():
+            if t == '*' and (self.peek() or '').isdigit() and self.bound_digit(0):
                 hi = int(self.take())
             return bounds(lo, hi)
         if (t or '').isdigit() and self.peek(1) == '*':
+            if not self.adjacent(1):
+                raise ValueError(f'spaced occurrence bound near {t!r}: write n*m with no whitespace (RFC 8610 occur)')
             lo = int(self.take())
             self.take('*')
-            hi = int(self.take()) if (self.peek() or '').isdigit() else None
+            hi = int(self.take()) if (self.peek() or '').isdigit() and self.bound_digit(0) else None
             return bounds(lo, hi)
         return {'min': 1, 'max': 1}
 

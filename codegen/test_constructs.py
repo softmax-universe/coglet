@@ -46,11 +46,25 @@ class ConstructTests(unittest.TestCase):
         self.assertEqual(rules['d']['value'], 'x')
 
     def test_bounds_tuple(self):
-        rules = parse('a = [* 64 tstr]\nb = [1*3 bool]\nc = ["a", ? bool, * 2 tstr]\nd = {* 0 tstr => tstr}')
+        rules = parse('a = [*64 tstr]\nb = [1*3 bool]\nc = ["a", ? bool, *2 tstr]\nd = {*0 tstr => tstr}')
         self.assertEqual(rules['a']['max'], 64)
         self.assertEqual(rules['b']['min'], 1)
         self.assertEqual(rules['c']['op'], 'tuple')
         self.assertEqual(rules['d']['max'], 0)
+
+    def test_spaced_occurrence_bounds_rejected(self):
+        # RFC 8610 occur = [uint] "*" [uint]: no inner whitespace. Strict CDDL tools reject the spaced
+        # forms, so the generator must not silently read them as bounds.
+        for text in ('a = [* 64 tstr]', 'a = {* 0 tstr => tstr}', 'a = [1 * 3 bool]', 'a = [1* 3 bool]',
+                     'a = [1 *3 bool]', 'a = ["a", * 2 tstr]', 'a = [* ; c\n 2 tstr]'):
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'spaced occurrence bound'):
+                parse(text)
+        # Valid controls: adjacent bounds, unbounded star, and a star followed by a non-numeric type.
+        rules = parse('a = [*64 tstr]\nb = [1*3 bool]\nc = [1* bool]\nd = [* tstr]\ne = {* tstr => tstr}')
+        self.assertEqual((rules['a']['min'], rules['a']['max']), (0, 64))
+        self.assertEqual((rules['b']['min'], rules['b']['max']), (1, 3))
+        self.assertEqual((rules['c']['min'], rules['c'].get('max')), (1, None))
+        self.assertIsNone(rules['d'].get('max'))
 
     def test_namespace(self):
         rules = parse_files({'common': 'id = tstr', 'a': 'wire = {id: id}', 'b': 'wire = [* id]'})
@@ -78,7 +92,7 @@ class ConstructTests(unittest.TestCase):
 
     def test_python_runtime_constructs(self):
         from coglet_surface.codec import validate, encode_profile, decode_profile
-        rules = parse('a = [* 2 tstr]\nb = {* 0 tstr => tstr}\nc = ["a", ? bool, * 2 tstr]\nd = nil .and false\ne = tstr .default "a"\nf = {a: tstr, * tstr => nil .and false}')
+        rules = parse('a = [*2 tstr]\nb = {*0 tstr => tstr}\nc = ["a", ? bool, *2 tstr]\nd = nil .and false\ne = tstr .default "a"\nf = {a: tstr, * tstr => nil .and false}')
         cases = [('a', ['a', 'b'], True), ('a', ['a'] * 3, False), ('b', {}, True), ('b', {'x': 'a'}, False),
                  ('c', ['a', True, 'b', 'c'], True), ('c', ['a', 'b'], True), ('c', ['a', False, 'b', 'c', 'd'], False),
                  ('d', None, False), ('d', False, False), ('e', 'b', True), ('e', None, False),
