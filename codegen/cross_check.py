@@ -7,6 +7,7 @@ import cbor2
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from pycddl import Schema, ValidationError
+from fixtures import cases as load_cases, shape_valid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'sdk/surface-python'))
@@ -24,9 +25,13 @@ def main():
             if name in definitions:
                 raise ValueError('ambiguous JSON Schema definition: ' + name)
             definitions[name] = schema
-    count = 0
+    count = skipped = semantic = 0
     for path in sorted((ROOT / 'spec/fixtures').rglob('*.json')):
-        for case in json.loads(path.read_text()):
+        cases = load_cases(path)
+        if cases is None:
+            skipped += 1
+            continue
+        for case in cases:
             if 'valid' not in case:
                 continue
             rule = case['type']
@@ -43,12 +48,13 @@ def main():
                 generated = True
             except ValueError:
                 generated = False
-            if (js, cd, generated) != (case['valid'],) * 3:
+            semantic += bool(case.get('semantic'))
+            if (js, cd, generated) != (shape_valid(case),) * 3:
                 raise AssertionError(f'{path}:{case["name"]}: JSON={js}, CDDL={cd}, generated={generated}')
             count += 1
     if not count:
         raise AssertionError('no semantic fixtures found')
-    print(f'cross-check: {count} fixtures agree across CDDL, JSON Schema and generated validator')
+    print(f'cross-check: {count} fixtures agree across CDDL, JSON Schema and generated validator; {semantic} protocol-semantic, {skipped} semantic-vectors-v1 files skipped')
 
 
 if __name__ == '__main__':
