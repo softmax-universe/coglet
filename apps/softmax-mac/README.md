@@ -2,8 +2,8 @@
 
 Menu-bar-first walking skeleton, macOS 14+, Swift 6 strict concurrency.
 Bundle ID: `com.softmax.app`; display name: **Softmax**. The app is an
-`LSUIElement` agent (no Dock icon). All visuals are placeholders pending the
-design/polish lane.
+`LSUIElement` agent (no Dock icon). Face uses the Companion vectors in `Design/Face`;
+some other shell surfaces remain placeholders pending design/polish integration.
 
 ## Build and run
 
@@ -35,9 +35,10 @@ enrollment and speech-provider delivery remain separate integration work.
 - First launch opens **Welcome to Softmax**. Walk through microphone permission,
   Input Monitoring, then optional launch at login. OS requests happen only on
   explicit button presses. Denied permissions do not prevent finishing onboarding.
-- The status menu opens the floating Face placeholder or Settings, displays the
-  (currently offline) hub status, and quits the app. The Face panel does not take
-  keyboard focus. Settings and onboarding do activate normally.
+- The status menu opens the floating Face or Settings, displays the
+  (currently offline) hub status, and quits the app. Face does not activate the app
+  when shown; it can accept keyboard focus for accessible controls when clicked.
+  Settings and onboarding do activate normally.
 - Settings has General, Hotkey, Audio, Hub, Coglets, Updates and Privacy tabs.
   General → **Show floating orb** enables an optional always-on-top 68-point orb,
   in addition to the menu bar. It defaults off and persists under `floatingOrbEnabled`.
@@ -125,6 +126,42 @@ operation ID; when playback ends, call `finishFacePlayback(operation: id)`. Stal
 completions are ignored and cannot cancel a newer capture. A press during that interval invokes stop before capture
 and emits bargeIn. `machine` external state changes also synchronize the controller.
 This is the playback seam, not a new TTS implementation.
+
+## Face host and speech output
+
+Open Face from the menu, or launch with `--show-face`. Its nonactivating floating
+panel joins all Spaces, remembers its dragged position, and clamps restored bounds
+to a visible screen. Compact Face reduces it to an orb; Expand Face restores the
+280-point panel. Escape cancels unsent capture and speech, stops the simulated demo,
+and hides the panel. While another app has focus, global Escape observation requires
+an existing keyboard-observation grant; no new permission is requested by Face.
+The visible Hide Face and Stop buttons remain available without that grant.
+
+**Start simulated demo** loops idle/listening/thinking/speaking without capturing or
+playing audio. It is explicitly labelled simulated and stops on real capture.
+The `FaceDriver` seam takes state and expression 0.1 values; the current spec has no
+viseme payload. Reduce Motion removes scale motion and transition interpolation;
+semantic mouth/eye changes remain visible. VoiceOver has a state label and native
+buttons. Hiding suspends the render timer; expression expiry uses monotonic time.
+
+Runtime integration owns synthesis, grants, deadlines and action outcomes. It
+replaces the demo driver and calls `FaceHost.beginSpeech()` to obtain a fresh token,
+then `host.speech.enqueue(PCMFrame(...), token:)` for mono Float32 TTS frames and
+`host.speech.finish(token:)` at synthesis end. Do not also call the older
+`ShellModel.beginFacePlayback` seam for this host. `FacePlaybackSession` joins this
+sink to PTT; replacing or stopping output fences old frames/completions. The sink
+finishes only after native played-back callbacks, not after synthesis/scheduling.
+It bounds queued audio to ten seconds, one second per frame and 512 pending
+envelopes; the producer must backpressure rather than drop a failed frame.
+
+`FaceTests` covers each state/expression, invalid inputs/expiry, replacement,
+rendered completion and the local PTT stop path with a fake 4 ms audio stop clock.
+This is **not** a hardware/acoustic latency measurement. `FaceSnapshotTests` compares
+twelve native SwiftUI light/dark renders with reviewed committed PNGs, failing on
+missing baselines. CI uploads `Face-native-snapshots`; intentional baseline updates
+must come from that macOS renderer and be visually reviewed before committing.
+The UI test exercises compact/expand, labelled demo and Escape and attaches a
+native panel screenshot to the `.xcresult` bundle.
 
 ## Real-Mac acceptance checklist (not proven by CI)
 

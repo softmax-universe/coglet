@@ -18,7 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test portable core
+        env:
+          FACE_SNAPSHOT_OUTPUT: ${{ github.workspace }}/apps/softmax-mac/build
         run: swift test --package-path apps/softmax-mac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Face-native-snapshots
+          path: apps/softmax-mac/build/FaceSnapshots
+          if-no-files-found: ignore
       - name: Test dev identity pinning (fake keychain, not TCC)
         run: python3 apps/softmax-mac/Tests/test_dev_signing.py
       - name: Install XcodeGen
