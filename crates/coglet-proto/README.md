@@ -109,6 +109,36 @@ of the complete hub protocol. Remaining work is serialized on the board:
 - `t_01a2084063ee0c84`: reference/mock integration and harness extensions; owns
   the original unchanged same-suite hub acceptance with zero skipped cases.
 
+## Scheduler component (in progress)
+
+`Session::new` automatically shares admission across all connections for the
+same (local endpoint ID, authenticated remote peer). Sixteen streams total
+include provisional classification; at most fifteen may be bulk, two Git, and
+two unclassified. The incoming QUIC bidi capacity is set to sixteen on every
+connection, independently of the shared application limit. Classification has a
+two-second complete-frame timeout even before enrollment. There is no waiting
+application queue: a classified saturation returns retryable resource_exhausted
+before handler dispatch; extra/stalled unclassified streams reset with code 1.
+
+Decoded request accounting conservatively charges the compact JSON diagnostic
+size, including escaping, twice on ingress (retained request and handler copy).
+The cap is 4 MiB with 64 KiB reserved from bulk for control dispatch. The two
+provisional raw frames are separately bounded to 1 MiB each. Control methods are
+hub.stop/cancel/health/receipt. Health, enrollment and other control use separate
+fixed one-minute windows (120/32/240 admissions respectively); these numbers are
+local policy, not standardized wire values. Rate history survives disconnects
+until the window expires. The identity cache fails closed at 4096 entries rather
+than evicting live rates. The Authority's stricter enrollment limits still apply.
+RAII guards release admission and use application code 1 for abandoned stream
+halves, including timeout/cancellation/panic; valid terminal failures remain
+ordinary protocol replies, not malformed-stream resets.
+
+Verified so far: scheduler unit caps and reconnect-rate regression, real-iroh
+two-connection fifteen-bulk saturation with stop/cancel dispatch, shared two-slot
+classification/timeout before enrollment, and malformed frame reset-code checks.
+Additional adversarial Git/byte/client-abort coverage, independent review, hosted
+CI and merge are still pending; this is not completed component acceptance.
+
 ## Remaining before full protocol acceptance
 
 1. Durable atomic one-use enrollment, exact grants/delegations/context scopes,
