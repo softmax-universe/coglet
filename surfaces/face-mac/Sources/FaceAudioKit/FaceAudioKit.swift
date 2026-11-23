@@ -119,6 +119,31 @@ private final class CapturePath: @unchecked Sendable {
     }
 }
 
+// Construct the actual AVFoundation callbacks outside any actor context. The SDK
+// block aliases are not Sendable; keep explicit Sendable types until installation
+// so calling these factories from MainActor cannot infer MainActor callbacks.
+// Capture conversion remains confined to the one serial tap for this graph.
+enum AudioCallbacks {
+    typealias Render = @Sendable (UnsafeMutablePointer<ObjCBool>, UnsafePointer<AudioTimeStamp>,
+                                  AVAudioFrameCount, UnsafeMutablePointer<AudioBufferList>) -> OSStatus
+    typealias Tap = @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void
+
+    nonisolated static func render(playback: PCMQueue) -> Render {
+        { @Sendable silence, _, frames, buffers in
+            let list = UnsafeMutableAudioBufferListPointer(buffers)
+            guard let data = list[0].mData else { return noErr }
+            let n = fa_render(playback.raw, data.assumingMemoryBound(to: Float.self), Int(frames), 1)
+            silence.pointee = ObjCBool(n == 0)
+            return noErr
+        }
+    }
+
+    nonisolated static func tap(capture: PCMQueue, format: AVAudioFormat) throws -> Tap {
+        let path = CapturePath(queue: capture, converter: try CaptureConverter(format: format))
+        return { @Sendable buffer, _ in path.receive(buffer) }
+    }
+}
+
 // RAII owns hardware/observer cleanup even if the caller releases the kit
 // without explicitly stopping. Queue/converter captures outlive in-flight calls.
 private final class GraphLifetime: @unchecked Sendable {
@@ -147,24 +172,18 @@ private final class GraphLifetime: @unchecked Sendable {
             throw FaceAudioError.aecUnavailable
         }
         let deviceFormat = input.outputFormat(forBus: 0)
-        let path = CapturePath(queue: capture, converter: try CaptureConverter(format: deviceFormat))
+        let tap = try AudioCallbacks.tap(capture: capture, format: deviceFormat)
         guard let speechFormat = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1) else {
             throw FaceAudioError.invalidFormat
         }
-        let source = AVAudioSourceNode(format: speechFormat) { silence, _, frames, buffers in
-            let list = UnsafeMutableAudioBufferListPointer(buffers)
-            guard let data = list[0].mData else { return noErr }
-            let n = fa_render(playback.raw, data.assumingMemoryBound(to: Float.self), Int(frames), 1)
-            silence.pointee = ObjCBool(n == 0)
-            return noErr
-        }
+        let source = AVAudioSourceNode(format: speechFormat, renderBlock: AudioCallbacks.render(playback: playback))
         engine.attach(source)
         engine.connect(source, to: engine.mainMixerNode, format: speechFormat)
         if configuration.echoCancellation {
             engine.connect(engine.mainMixerNode, to: engine.outputNode, format: deviceFormat)
             guard deviceFormat == engine.outputNode.inputFormat(forBus: 0) else { throw FaceAudioError.aecUnavailable }
         }
-        input.installTap(onBus: 0, bufferSize: 1024, format: deviceFormat) { buffer, _ in path.receive(buffer) }
+        input.installTap(onBus: 0, bufferSize: 1024, format: deviceFormat, block: tap)
         lifetime.tapped = true
         engine.prepare()
         try engine.start()

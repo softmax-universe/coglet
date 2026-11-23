@@ -56,6 +56,9 @@ audio.stopCapture()
 ring wrap/overflow/discard, concurrent SPSC sample ordering, playback flush /
 generation / position / gain, 48 kHz stereo conversion, energy hangover, and
 fake-engine configuration rebuild/stale-notification/failure/permission paths.
+The production render/tap callbacks are constructed on MainActor and invoked
+from a detached task with synthetic buffers, verifying actor-independent execution,
+playback/underrun output, capture conversion and meters without hardware.
 
 No hardware device is opened by these tests. Real MacBook Pro acoustic AEC
 attenuation, route switching, capture/output latency, barge-in audible tail,

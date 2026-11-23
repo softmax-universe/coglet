@@ -89,6 +89,49 @@ import Dispatch
     #expect(samples.suffix(100).allSatisfy { abs(Int($0) - 8192) < 20 })
 }
 
+// Build on the same actor as start(), then invoke the production blocks off it.
+// No engine/hardware/permission is involved, but neither callback is faked.
+@Test @MainActor func productionCallbacksRunOffMainActor() async throws {
+    let capture = try PCMQueue(capacity: 24000)
+    let playback = try PCMQueue(capacity: 8)
+    let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2))
+    let tap = try AudioCallbacks.tap(capture: capture, format: format)
+    let render = AudioCallbacks.render(playback: playback)
+    #expect([Int16(16384), -16384].withUnsafeBufferPointer { playback.write($0) })
+
+    try await Task.detached {
+        dispatchPrecondition(condition: .notOnQueue(.main))
+        // Erase to the SDK block aliases exactly as at AVFoundation installation.
+        let sdkRender: AVAudioSourceNodeRenderBlock = render
+        let sdkTap: AVAudioNodeTapBlock = tap
+        let outputFormat = try #require(AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1))
+        let output = try #require(AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: 4))
+        output.frameLength = 4
+        var silence = ObjCBool(true)
+        var timestamp = AudioTimeStamp()
+        let status = sdkRender(&silence, &timestamp, 4, output.mutableAudioBufferList)
+        #expect(status == noErr)
+        #expect(!silence.boolValue)
+        #expect(Array(UnsafeBufferPointer(start: output.floatChannelData![0], count: 4)) == [0.5, -0.5, 0, 0])
+        #expect(fa_played(playback.raw) == 2)
+        let underrun = sdkRender(&silence, &timestamp, 4, output.mutableAudioBufferList)
+        #expect(underrun == noErr && silence.boolValue)
+        #expect(Array(UnsafeBufferPointer(start: output.floatChannelData![0], count: 4)) == [0, 0, 0, 0])
+
+        let inputFormat = try #require(AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2))
+        let input = try #require(AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: 4800))
+        input.frameLength = 4800
+        for ch in 0..<2 { for i in 0..<4800 { input.floatChannelData![ch][i] = 0.25 } }
+        for _ in 0..<4 { sdkTap(input, AVAudioTime(sampleTime: 0, atRate: 48000)) }
+        #expect(!fa_failed(capture.raw))
+        var samples = [Int16](repeating: 0, count: 24000)
+        let count = samples.withUnsafeMutableBufferPointer { fa_read(capture.raw, $0.baseAddress, $0.count) }
+        #expect(count > 9000 && count <= 9600)
+        #expect(samples[(count - 100)..<count].allSatisfy { abs(Int($0) - 8192) < 20 })
+        #expect(fa_peak(capture.raw) > 0.24)
+    }.value
+}
+
 @Test func energyHangover() {
     var vad = EnergyVAD()
     let quiet = vad.process([Int16](repeating: 0, count: 2400))
