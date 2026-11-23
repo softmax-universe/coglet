@@ -31,6 +31,11 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: python3 -m pip install -r spec/tests/requirements.txt
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: spec/tests
       - name: Generated types are current
         run: codegen/run --check
       - name: Resolve Jackson before Python test collection
