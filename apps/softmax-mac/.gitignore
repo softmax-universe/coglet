@@ -4,3 +4,5 @@ build/
 *.app.zip
 .build/
 .swiftpm/
+.dev-signing-identity
+__pycache__/
