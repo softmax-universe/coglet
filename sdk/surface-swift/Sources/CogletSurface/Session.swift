@@ -95,6 +95,7 @@ public final class SurfaceSession {
     private var lastReceived: UInt64
     private var lastHealth: UInt64
     private var connected = true
+    private var retired = false
     private var negotiated = false
     private var helloSent = false
     private var helloCorrelation: String?
@@ -127,6 +128,7 @@ public final class SurfaceSession {
         guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
         ledger.epoch += 1
         // Recovery never resumes an uncertain physical effect.
+        ledger.running = true
         for (key, record) in ledger.records where record.accept["accepted"] == .boolean(true) && record.outcome == nil {
             ledger.records[key]?.outcome = Self.outcome(record: record, status: "failed", result: NativeSurfaceError("unavailable").value)
         }
@@ -292,6 +294,7 @@ public final class SurfaceSession {
         }
     }
     public func kill(reason: String) throws {
+        guard !retired else { throw SurfaceFailure.closed }
         // Native hardware stop must ALREADY have happened, independently of the
         // control queue. Repeat it here as a defense in depth.
         backend.stop(owner: nil)
@@ -310,7 +313,26 @@ public final class SurfaceSession {
             }
         }
     }
+    /// Terminal orderly shutdown. Unlike disconnect/deinit, success permits a
+    /// healthy restart without operator reset; it NEVER clears a kill latch.
+    /// Stop external callbacks before calling. This instance is retired even if
+    /// the final save throws: reopen to recover, never reuse it.
+    public func close() throws {
+        guard !retired else { throw SurfaceFailure.closed }
+        disconnect()
+        retired = true
+        do {
+            try cancelPending(status: "cancelled", code: "cancelled", now: lastClock, deliver: false)
+            ledger.running = false
+            try ledger.save()
+        } catch {
+            ledger.running = true; ledger.killed = true
+            throw error
+        }
+    }
+
     public func disconnect() {
+        guard !retired else { return }
         backend.stop(owner: nil)
         guard connected else { return }
         connected = false; grants = []; output = []
@@ -327,10 +349,14 @@ public final class SurfaceSession {
     /// install grants; create a NEW connection/session and negotiate after reset.
     /// Never expose this method to a coglet, provider or hub message dispatcher.
     public func localOperatorResetForNextConnection() throws {
+        guard !retired else { throw SurfaceFailure.closed }
         guard !connected else { throw SurfaceFailure.protocolViolation("reset requires closed connection") }
         backend.stop(owner: nil)
+        retired = true
         ledger.killed = false
-        try ledger.save()
+        ledger.running = false
+        do { try ledger.save() }
+        catch { ledger.killed = true; ledger.running = true; throw error }
     }
 
     private func guarded(_ operation: () throws -> Void) throws {
