@@ -116,7 +116,7 @@ internal enum GeneratedSchema {
     }
 }
 
-public indirect enum CommonCommon: CBORMessage, Equatable, Sendable {
+public indirect enum CommonCommon: CBORMessage, Sendable {
     public static let schemaRule = "common::common"
     case variant1(CommonEvent)
     case variant2(CommonAction)
@@ -190,7 +190,7 @@ public indirect enum CommonCommon: CBORMessage, Equatable, Sendable {
 
 public typealias CommonUint64 = Swift.UInt64
 
-public indirect enum CommonProfileInt: CBORMessage, Equatable, Sendable {
+public indirect enum CommonProfileInt: CBORMessage, Sendable {
     public static let schemaRule = "common::profile-int"
     case variant1(Swift.Int64)
     case variant2(CommonUint64)
@@ -222,7 +222,7 @@ public indirect enum CommonProfileInt: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum CommonProfileValue: CBORMessage, Equatable, Sendable {
+public indirect enum CommonProfileValue: CBORMessage, Sendable {
     public static let schemaRule = "common::profile-value"
     case variant1(CommonProfileInt)
     case variant2(Swift.String)
@@ -296,7 +296,7 @@ public typealias CommonSurfaceId = CBORValue
 
 public typealias CommonHubId = CBORValue
 
-public indirect enum CommonSourceId: CBORMessage, Equatable, Sendable {
+public indirect enum CommonSourceId: CBORMessage, Sendable {
     public static let schemaRule = "common::source-id"
     case variant1(CommonCogletId)
     case variant2(CommonSurfaceId)
@@ -346,7 +346,7 @@ public typealias CommonActionId = CommonCorrelationId
 
 public typealias CommonSpecVersion = CBORValue
 
-public struct CommonVersionOffer: CBORMessage, Equatable, Sendable {
+public struct CommonVersionOffer: CBORMessage, Sendable {
     public static let schemaRule = "common::version-offer"
     public var `versions`: [CommonSpecVersion]
     public init(`versions`: [CommonSpecVersion]) {
@@ -368,7 +368,7 @@ public struct CommonVersionOffer: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonVersionSelection: CBORMessage, Equatable, Sendable {
+public struct CommonVersionSelection: CBORMessage, Sendable {
     public static let schemaRule = "common::version-selection"
     public var `version`: CommonSpecVersion
     public init(`version`: CommonSpecVersion) {
@@ -390,7 +390,7 @@ public struct CommonVersionSelection: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonEvent: CBORMessage, Equatable, Sendable {
+public struct CommonEvent: CBORMessage, Sendable {
     public static let schemaRule = "common::event"
     public var `source`: CommonSourceId
     public var `kind`: CommonCapabilityName
@@ -432,7 +432,7 @@ public struct CommonEvent: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonAction: CBORMessage, Equatable, Sendable {
+public struct CommonAction: CBORMessage, Sendable {
     public static let schemaRule = "common::action"
     public var `id`: CommonActionId
     public var `coglet`: CommonCogletId
@@ -474,7 +474,7 @@ public struct CommonAction: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum CommonActionAccept: CBORMessage, Equatable, Sendable {
+public indirect enum CommonActionAccept: CBORMessage, Sendable {
     public static let schemaRule = "common::action-accept"
     case variant1(CommonActionAcceptVariant1)
     case variant2(CommonActionAcceptVariant2)
@@ -506,7 +506,7 @@ public indirect enum CommonActionAccept: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum CommonActionOutcome: CBORMessage, Equatable, Sendable {
+public indirect enum CommonActionOutcome: CBORMessage, Sendable {
     public static let schemaRule = "common::action-outcome"
     case variant1(CommonActionOutcomeVariant1)
     case variant2(CommonActionOutcomeVariant2)
@@ -538,7 +538,7 @@ public indirect enum CommonActionOutcome: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum CommonErrorCode: CBORMessage, Equatable, Sendable {
+public indirect enum CommonErrorCode: CBORMessage, Sendable {
     public static let schemaRule = "common::error-code"
     case variant1(Swift.String)
     case variant2(Swift.String)
@@ -642,7 +642,7 @@ public indirect enum CommonErrorCode: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonError: CBORMessage, Equatable, Sendable {
+public struct CommonError: CBORMessage, Sendable {
     public static let schemaRule = "common::error"
     public var `code`: CommonErrorCode
     public var `message`: CBORValue
@@ -676,7 +676,7 @@ public struct CommonError: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum Common: CBORMessage, Equatable, Sendable {
+public indirect enum Common: CBORMessage, Sendable {
     public static let schemaRule = "common"
     case variant1(CommonEvent)
     case variant2(CommonAction)
@@ -750,7 +750,7 @@ public indirect enum Common: CBORMessage, Equatable, Sendable {
 
 public typealias Uint64 = Swift.UInt64
 
-public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
+public indirect enum ProfileInt: CBORMessage, Sendable {
     public static let schemaRule = "profile-int"
     case variant1(Swift.Int64)
     case variant2(CommonUint64)
@@ -782,7 +782,7 @@ public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
+public indirect enum ProfileValue: CBORMessage, Sendable {
     public static let schemaRule = "profile-value"
     case variant1(CommonProfileInt)
     case variant2(Swift.String)
@@ -856,7 +856,7 @@ public typealias SurfaceId = CBORValue
 
 public typealias HubId = CBORValue
 
-public indirect enum SourceId: CBORMessage, Equatable, Sendable {
+public indirect enum SourceId: CBORMessage, Sendable {
     public static let schemaRule = "source-id"
     case variant1(CommonCogletId)
     case variant2(CommonSurfaceId)
@@ -906,7 +906,7 @@ public typealias ActionId = CommonCorrelationId
 
 public typealias SpecVersion = CBORValue
 
-public struct VersionOffer: CBORMessage, Equatable, Sendable {
+public struct VersionOffer: CBORMessage, Sendable {
     public static let schemaRule = "version-offer"
     public var `versions`: [CommonSpecVersion]
     public init(`versions`: [CommonSpecVersion]) {
@@ -928,7 +928,7 @@ public struct VersionOffer: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct VersionSelection: CBORMessage, Equatable, Sendable {
+public struct VersionSelection: CBORMessage, Sendable {
     public static let schemaRule = "version-selection"
     public var `version`: CommonSpecVersion
     public init(`version`: CommonSpecVersion) {
@@ -950,7 +950,7 @@ public struct VersionSelection: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct Event: CBORMessage, Equatable, Sendable {
+public struct Event: CBORMessage, Sendable {
     public static let schemaRule = "event"
     public var `source`: CommonSourceId
     public var `kind`: CommonCapabilityName
@@ -992,7 +992,7 @@ public struct Event: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct Action: CBORMessage, Equatable, Sendable {
+public struct Action: CBORMessage, Sendable {
     public static let schemaRule = "action"
     public var `id`: CommonActionId
     public var `coglet`: CommonCogletId
@@ -1034,7 +1034,7 @@ public struct Action: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
+public indirect enum ActionAccept: CBORMessage, Sendable {
     public static let schemaRule = "action-accept"
     case variant1(ActionAcceptVariant1)
     case variant2(ActionAcceptVariant2)
@@ -1066,7 +1066,7 @@ public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
+public indirect enum ActionOutcome: CBORMessage, Sendable {
     public static let schemaRule = "action-outcome"
     case variant1(ActionOutcomeVariant1)
     case variant2(ActionOutcomeVariant2)
@@ -1098,7 +1098,7 @@ public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum ErrorCode: CBORMessage, Equatable, Sendable {
+public indirect enum ErrorCode: CBORMessage, Sendable {
     public static let schemaRule = "error-code"
     case variant1(Swift.String)
     case variant2(Swift.String)
@@ -1202,7 +1202,7 @@ public indirect enum ErrorCode: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct Error: CBORMessage, Equatable, Sendable {
+public struct Error: CBORMessage, Sendable {
     public static let schemaRule = "error"
     public var `code`: CommonErrorCode
     public var `message`: CBORValue
@@ -1236,7 +1236,7 @@ public struct Error: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonActionAcceptVariant1: CBORMessage, Equatable, Sendable {
+public struct CommonActionAcceptVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionAcceptVariant1"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1266,7 +1266,7 @@ public struct CommonActionAcceptVariant1: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonActionAcceptVariant2: CBORMessage, Equatable, Sendable {
+public struct CommonActionAcceptVariant2: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionAcceptVariant2"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1300,7 +1300,7 @@ public struct CommonActionAcceptVariant2: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
+public struct CommonActionOutcomeVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionOutcomeVariant1"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1334,7 +1334,7 @@ public struct CommonActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct CommonActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
+public struct CommonActionOutcomeVariant2: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionOutcomeVariant2"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1368,7 +1368,7 @@ public struct CommonActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
+public struct ActionAcceptVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@ActionAcceptVariant1"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1398,7 +1398,7 @@ public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct ActionAcceptVariant2: CBORMessage, Equatable, Sendable {
+public struct ActionAcceptVariant2: CBORMessage, Sendable {
     public static let schemaRule = "@ActionAcceptVariant2"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1432,7 +1432,7 @@ public struct ActionAcceptVariant2: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct ActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
+public struct ActionOutcomeVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@ActionOutcomeVariant1"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1466,7 +1466,7 @@ public struct ActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct ActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
+public struct ActionOutcomeVariant2: CBORMessage, Sendable {
     public static let schemaRule = "@ActionOutcomeVariant2"
     public var `id`: CommonActionId
     public var `correlation_id`: CommonCorrelationId
@@ -1500,7 +1500,7 @@ public struct ActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
     }
 }
 
-public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Equatable, Sendable {
+public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionOutcomeVariant2Status"
     case variant1(Swift.String)
     case variant2(Swift.String)
@@ -1540,7 +1540,7 @@ public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Equatable, 
     }
 }
 
-public indirect enum ActionOutcomeVariant2Status: CBORMessage, Equatable, Sendable {
+public indirect enum ActionOutcomeVariant2Status: CBORMessage, Sendable {
     public static let schemaRule = "@ActionOutcomeVariant2Status"
     case variant1(Swift.String)
     case variant2(Swift.String)

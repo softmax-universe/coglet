@@ -18,7 +18,7 @@ def field_name(value):
     if not re.fullmatch('[A-Za-z_][A-Za-z0-9_]*', value) or value == '_':
         raise ValueError(f'unsupported Swift field identifier: {value}')
     # Escaping every name covers contextual keywords, including future ones.
-    if value in ('self', 'Self', 'super', 'init', 'deinit', 'subscript', 'Type', 'Protocol', 'cborValue', 'schemaRule', 'toCBOR', 'fromCBOR', 'depth'):
+    if value in ('self', 'Self', 'super', 'init', 'deinit', 'subscript', 'Type', 'Protocol', 'cborValue', 'schemaRule', 'toCBOR', 'fromCBOR', 'depth', 'Swift', 'Foundation', 'CBORCodec', 'CBORValue'):
         value += '_'
     return '`' + value + '`'
 
@@ -28,7 +28,7 @@ def generate_swift(rules):
     require_v1(rules)
     definitions = dict(rules)
     names = {}
-    reserved = {'Swift', 'Any', 'CBORValue', 'CBORMapEntry', 'CBORCodec', 'CBORConvertible', 'CBORMessage', 'CBORFailure', 'SchemaNode', 'SchemaField', 'SchemaTupleItem', 'GeneratedSchema', 'NSRegularExpression', 'NSRange'}
+    reserved = {'Swift', 'Foundation', 'Any', 'Set', 'Equatable', 'Sendable', 'CBORValue', 'CBORMapEntry', 'CBORCodec', 'CBORConvertible', 'CBORMessage', 'CBORFailure', 'SchemaNode', 'SchemaField', 'SchemaTupleItem', 'GeneratedSchema', 'NSRegularExpression', 'NSRange'}
 
     def register(key, swift_name):
         if swift_name in reserved or swift_name in names.values():
@@ -162,7 +162,7 @@ def generate_swift(rules):
         if op not in ('record', 'union') or op == 'record' and 'rest' in node:
             out += [f'public typealias {cls} = {typ(node, cls)}', '']
             continue
-        out += [f'public {"indirect enum" if op == "union" else "struct"} {cls}: CBORMessage, Equatable, Sendable {{', f'    public static let schemaRule = {quote(key)}']
+        out += [f'public {"indirect enum" if op == "union" else "struct"} {cls}: CBORMessage, Sendable {{', f'    public static let schemaRule = {quote(key)}']
         # Inline nodes also have their own validation rule.
         if key.startswith('@'):
             out[-1] = '    public static let schemaRule = ' + quote(key)

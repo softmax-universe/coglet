@@ -15,7 +15,8 @@ class SwiftEmitterTests(unittest.TestCase):
     def test_type_identifier_collisions_fail_closed(self):
         for cddl in ('a-b = tstr\na_b = bool',
                      'CBORValue = tstr',
-                     'swift = tstr', 'any = tstr',
+                     'swift = tstr', 'any = tstr', 'set = tstr',
+                     'equatable = tstr', 'sendable = tstr', 'foundation = tstr',
                      'thing = {choice: tstr / bool}\nthing-choice = tstr',
                      'thing = {name: tstr} / {name: bool}\nthing-variant1 = bool'):
             with self.subTest(cddl=cddl), self.assertRaisesRegex(ValueError, 'collision'):
@@ -44,6 +45,10 @@ class SwiftEmitterTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             generate_swift({'thing': {'op': 'primitive', 'name': 'tstr', 'future': 1}})
 
+    def test_no_normalizing_equatable_on_generated_types(self):
+        source = generate_swift(parse('record = {value: tstr}\nchoice = tstr / bool'))
+        self.assertNotIn('Equatable', source)
+
     @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
     def test_expanded_ir_compiles_and_enforces_constraints(self):
         text = {'op': 'primitive', 'name': 'tstr'}
@@ -60,6 +65,10 @@ class SwiftEmitterTests(unittest.TestCase):
             'sequence': {'op': 'tuple', 'items': [{'type': text, 'min': 0, 'max': 2}, {'type': literal('end'), 'min': 1, 'max': 1}]},
             'open': {'op': 'record', 'fields': [{'name': 'fixed', 'optional': False, 'type': boolean}], 'rest': {'min': 1, 'max': 2, 'key': {'op': 'regexp', 'pattern': '^extra[a-z]$'}, 'item': text}},
         }
+        wrapped = {'op': 'ref', 'name': 'tree'}
+        for _ in range(4):
+            wrapped = {'op': 'default', 'value': None, 'item': {'op': 'intersection', 'items': [wrapped]}}
+        rules['tree'] = {'op': 'union', 'items': [literal(None), {'op': 'array', 'min': 0, 'item': wrapped}]}
         main = '''import Foundation
         func accepted(_ rule: Swift.String, _ value: CBORValue) throws {
             let raw = try CBORCodec.encode(rule: rule, value: value)
@@ -97,6 +106,10 @@ class SwiftEmitterTests(unittest.TestCase):
         try rejected("open", .map([.init("fixed", .boolean(true)), .init("other", .text("x"))]))
         try rejected("open", .map([.init("fixed", .boolean(true)), .init("extraa", .boolean(true))]))
         try rejected("open", .map([.init("fixed", .boolean(true)), .init("extraa", .text("a")), .init("extrab", .text("b")), .init("extrac", .text("c"))]))
+        var deep = CBORValue.null
+        for _ in 0..<64 { deep = .array([deep]) }
+        try accepted("tree", deep)
+        do { _ = try CBORCodec.encode(rule: "tree", value: .array([deep])); fatalError("depth overflow accepted") } catch {}
         print("expanded IR passed")
         '''
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
@@ -118,6 +131,7 @@ class SwiftEmitterTests(unittest.TestCase):
           self: tstr, Self: tstr, super: tstr, init: tstr, deinit: tstr,
           subscript: tstr, Type: tstr, Protocol: tstr, type: tstr,
           foo-bar: tstr, cborValue: tstr, schemaRule: tstr, depth: tstr,
+          Swift: tstr, CBORCodec: tstr, CBORValue: tstr,
           ? optional: null,
           nested: {default: bool},
           choice: "one" / "two"
@@ -143,6 +157,9 @@ class SwiftEmitterTests(unittest.TestCase):
         precondition(typed.`self_` == "ok")
         precondition(typed.`foo_bar` == "ok")
         precondition(typed.`cborValue_` == "ok")
+        precondition(typed.`Swift_` == "ok")
+        precondition(typed.`CBORCodec_` == "ok")
+        precondition(typed.`CBORValue_` == "ok")
         precondition(typed.`optional` == .null)
         precondition(try typed.toCBOR() == bytes)
         let absent = CBORValue.map(try value.requireMap().filter { $0.key != "optional" })

@@ -93,8 +93,8 @@ The native, dependency-free codec in `CBOR.swift` parses the small wire profile
 directly, rejecting evidence that permissive libraries can normalize away:
 non-shortest heads, tags, forbidden simple values and out-of-order keys. It
 checks lengths against remaining input before allocation/integer conversion.
-Wire nesting is bounded to 64 container edges; schema-expression evaluation is
-separately bounded to 512 and tuple matching to 100,000 work steps. Generated
+Wire nesting is bounded to 64 container edges; transparent schema hops per value
+are separately bounded to 512 and tuple matching to 100,000 work steps. Generated
 validation IR and types live in `Sources/CogletTypes/Generated/Types.swift`.
 
 Fields are backtick-escaped, hyphens map to underscores and runtime helper names
@@ -102,6 +102,9 @@ receive trailing underscores; original wire keys are explicit string literals.
 Type/field/helper/inline-name collisions and nonproductive recursive type cycles
 fail generation. The shared native IR boundary rejects unknown constraints.
 Synthetic keyword and expanded-IR tests compile and execute generated Swift.
+Generated records/unions intentionally do not synthesize Equatable: Swift's
+native text equality is not wire identity. Compare validated `toCBOR()` bytes or
+their `CBORValue` representations when exact protocol equality is needed.
 
 `swift test --package-path sdk/surface-swift` recursively discovers fixtures,
 selects generated families from the sole `contracts.json` registry and rejects

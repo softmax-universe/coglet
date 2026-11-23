@@ -204,12 +204,13 @@ public enum CBORCodec {
         try validateNode(node, value)
     }
     internal static func validateNode(_ node: SchemaNode, _ value: CBORValue, depth: Swift.Int = 0) throws {
-        // This is an expression-evaluation budget, not wire nesting. A profile
-        // array level traverses a union, a reference and an array expression.
-        // Leave room for all 64 wire levels while bounding cyclic aliases.
+        // Bound transparent schema hops per value, independently of wire depth.
+        // A real container edge resets this budget; encodeProfile bounds the
+        // whole value tree before validation. Deep legal trees must not spend
+        // their budget on repeated references/intersections at earlier levels.
         guard depth <= 512 else { throw CBORFailure.invalid("schema recursion limit") }
-        func check(_ child: SchemaNode, _ v: CBORValue) throws {
-            try validateNode(child, v, depth: depth + 1)
+        func check(_ child: SchemaNode, _ v: CBORValue, containerEdge: Swift.Bool = false) throws {
+            try validateNode(child, v, depth: containerEdge ? 0 : depth + 1)
         }
         func countValid(_ count: Swift.Int, _ min: Swift.UInt64, _ max: Swift.UInt64?) -> Swift.Bool {
             Swift.UInt64(count) >= min && (max == nil || Swift.UInt64(count) <= max!)
@@ -235,7 +236,7 @@ public enum CBORCodec {
                         for consumed in 1...maximum {
                             work += 1
                             guard work <= 100_000 else { throw CBORFailure.invalid("tuple work limit") }
-                            guard (try? check(slot.node, items[start + consumed - 1])) != nil else { break }
+                            guard (try? check(slot.node, items[start + consumed - 1], containerEdge: true)) != nil else { break }
                             if Swift.UInt64(consumed) >= slot.min { next.insert(start + consumed) }
                         }
                     }
@@ -275,21 +276,21 @@ public enum CBORCodec {
             guard case .text(let text) = value, Swift.UInt64(text.utf8.count) >= low, Swift.UInt64(text.utf8.count) <= high else { throw CBORFailure.invalid("text byte size") }
         case .boundedArray(let min, let max, let child):
             guard case .array(let items) = value, countValid(items.count, min, max) else { throw CBORFailure.invalid("array shape") }
-            for v in items { try check(child, v) }
+            for v in items { try check(child, v, containerEdge: true) }
         case .boundedMap(let min, let max, let key, let child):
             let entries = try value.requireMap()
             guard countValid(entries.count, min, max) else { throw CBORFailure.invalid("map bounds") }
-            for entry in entries { try check(key, .text(entry.key)); try check(child, entry.value) }
+            for entry in entries { try check(key, .text(entry.key), containerEdge: true); try check(child, entry.value, containerEdge: true) }
         case .openRecord(let fields, let min, let max, let key, let child):
             let entries = try value.requireMap()
             var rest = 0
             for entry in entries {
                 if let f = fields.first(where: { $0.name.utf8.elementsEqual(entry.key.utf8) }) {
-                    try check(f.node, entry.value)
+                    try check(f.node, entry.value, containerEdge: true)
                 } else {
                     rest += 1
-                    try check(key, .text(entry.key))
-                    try check(child, entry.value)
+                    try check(key, .text(entry.key), containerEdge: true)
+                    try check(child, entry.value, containerEdge: true)
                 }
             }
             guard countValid(rest, min, max) else { throw CBORFailure.invalid("record rest bounds") }
@@ -300,7 +301,7 @@ public enum CBORCodec {
             let entries = try value.requireMap()
             for entry in entries {
                 guard let f = fields.first(where: { $0.name.utf8.elementsEqual(entry.key.utf8) }) else { throw CBORFailure.invalid("unknown field") }
-                try check(f.node, entry.value)
+                try check(f.node, entry.value, containerEdge: true)
             }
             for f in fields where !f.optional {
                 guard field(entries, f.name) != nil else { throw CBORFailure.invalid("missing required field") }
