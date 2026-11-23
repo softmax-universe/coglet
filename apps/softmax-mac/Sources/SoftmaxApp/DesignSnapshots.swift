@@ -28,7 +28,7 @@ import SoftmaxCore
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
-                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
+                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V, diagnosticOnly: Bool = false) throws {
                     let key = "\(theme)-\(name)"
                     let hosting = NSHostingView(rootView: view
                         .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -100,7 +100,7 @@ import SoftmaxCore
                             func fields(_ view: NSView) -> [String] {
                                 var rows: [String] = []
                                 if let field = view as? NSTextField {
-                                    rows.append("type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil)")
+                                    rows.append("type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil) heightMismatch=\(abs(field.frame.height - field.intrinsicContentSize.height) > 0.5)")
                                 }
                                 return rows + view.subviews.flatMap { fields($0) }
                             }
@@ -127,8 +127,13 @@ import SoftmaxCore
                     guard let bytes = stable else {
                         throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
                     }
-                    try bytes.write(to: root.appendingPathComponent(key + ".png"))
-                    manifest.append(key)
+                    if diagnosticOnly {
+                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
+                        try bytes.write(to: diagnostics.appendingPathComponent(key + "-accepted.png"))
+                    } else {
+                        try bytes.write(to: root.appendingPathComponent(key + ".png"))
+                        manifest.append(key)
+                    }
                     window.close()
                 }
                 let model = ShellModel()
@@ -182,6 +187,17 @@ import SoftmaxCore
                 try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
                 try capture("about-large", NSSize(width: 420, height: 420), AboutView().environment(\.softmaxTextScale, 1.6))
                 try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
+                // Diagnostic stress, outside the strict 360-image manifest. Alternate
+                // text scales to test whether the wrong height belongs to a preceding
+                // capture. The intrinsic-invalidation probe still preserves both rasters.
+                // No baseline, production layout or acceptance tolerance changes.
+                for iteration in 0..<12 {
+                    for scale in [1.0, 1.6] {
+                        let suffix = "probe-\(iteration)-scale-\(scale)"
+                        try capture("commands-\(suffix)", NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: "no-such-command").environment(\.softmaxTextScale, scale), diagnosticOnly: true)
+                        try capture("settings-\(suffix)", NSSize(width: 760, height: 540), SettingsView(model: model).environment(\.softmaxTextScale, scale), diagnosticOnly: true)
+                    }
+                }
             }
         }
         try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))
