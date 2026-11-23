@@ -60,6 +60,9 @@ class BundleTests(unittest.TestCase):
             root = Path(directory)
             (root / 'Cargo.lock').write_text('locked')
             initial = bundle.input_key(root, 'rust', 'cargo')
+            from unittest.mock import patch
+            with patch.dict(bundle.os.environ, {'ImageVersion': 'new-runner-image'}):
+                self.assertNotEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
             (root / 'unrelated.rs').write_text('changed')
             self.assertEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
             (root / 'Cargo.lock').write_text('new lock')
@@ -72,8 +75,25 @@ class BundleTests(unittest.TestCase):
         def missing(name, directory):
             raise FileNotFoundError('mirror unavailable')
         self.assertFalse(bundle.restore_one('missing', {}, missing, required=False))
+        def timeout(name, directory):
+            import subprocess
+            raise subprocess.TimeoutExpired('gh', 180)
+        self.assertFalse(bundle.restore_one('slow', {}, timeout, required=False))
         with self.assertRaisesRegex(RuntimeError, 'required dependency bundle'):
             bundle.restore_one('missing', {}, missing, required=True)
+
+    def test_toolchain_miss_installs_declared_components_and_wasi_target(self):
+        from unittest.mock import patch
+        spec = importlib.util.spec_from_file_location('bundle', Path(__file__).with_name('dependency_bundle.py'))
+        bundle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bundle)
+        with patch.object(bundle.subprocess, 'run') as run:
+            bundle.install_toolchain_on_miss('1.100.0', restored=True)
+            run.assert_not_called()
+            bundle.install_toolchain_on_miss('1.100.0', restored=False)
+            run.assert_called_once_with(['rustup', 'toolchain', 'install', '1.100.0', '--profile',
+                                         'minimal', '--component', 'clippy,rustfmt', '--target',
+                                         'wasm32-wasip1'], check=True)
 
 
 if __name__ == '__main__':

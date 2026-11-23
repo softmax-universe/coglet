@@ -68,6 +68,10 @@ def input_key(root, job, ecosystem):
         'gems': ['**/Gemfile', '**/Gemfile.lock'],
     }[ecosystem]
     hashed = hashlib.sha256(f'v1|ubuntu-24.04|x86_64|java21|py312|ruby32|{job}|{ecosystem}'.encode())
+    # Hosted image identity pins preinstalled Maven/JDK/bootstrap tool versions.
+    # A new image deliberately starts cold instead of selecting an incompatible
+    # immutable Maven plugin closure. The daily refresh publishes the new set.
+    hashed.update(os.environ.get('ImageVersion', 'local').encode())
     tracked = None
     if (root / '.git').exists():
         tracked = set(subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode().split('\0'))
@@ -91,11 +95,20 @@ def restore_one(name, roots, download, required=False):
             unpack(stage / (name + '.tar.gz'), roots, manifest['sha256'])
             print(f'Restored {name}: sha256={manifest["sha256"]} source={manifest["source_sha"]}', flush=True)
             return True
-    except (OSError, ValueError, KeyError, tarfile.TarError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, tarfile.TarError, subprocess.SubprocessError) as error:
         print(f'Bundle {name} unavailable: {error}; upstream fallback', flush=True)
         if required:
             raise RuntimeError(f'required dependency bundle {name} unavailable; publish this input set first') from error
         return False
+
+
+def install_toolchain_on_miss(channel, restored):
+    if not restored:
+        # An environment override selects a toolchain, not the file's profile,
+        # targets or components. Explicitly install that full closure on misses.
+        subprocess.run(['rustup', 'toolchain', 'install', channel, '--profile',
+                        'minimal', '--component', 'clippy,rustfmt', '--target',
+                        'wasm32-wasip1'], check=True)
 
 
 def cache_roots(root, channel):
@@ -137,8 +150,10 @@ def main():
     for ecosystem in ecosystems:
         name = f'{args.job}-{ecosystem}-{input_key(root, args.job, ecosystem)}'
         if args.operation == 'restore':
-            restore_one(name, roots[ecosystem], download,
-                        required=args.required and ecosystem in {'maven', 'cargo', 'rustup'})
+            restored = restore_one(name, roots[ecosystem], download,
+                                   required=args.required and ecosystem in {'maven', 'cargo', 'rustup'})
+            if ecosystem == 'rustup':
+                install_toolchain_on_miss(channel, restored)
         else:
             out.mkdir(exist_ok=True)
             archive = out / (name + '.tar.gz')
