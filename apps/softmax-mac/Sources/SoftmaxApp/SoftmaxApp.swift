@@ -203,7 +203,7 @@ final class ShellModel: ObservableObject {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = ShellModel()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
@@ -244,6 +244,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showSettings(tab: SettingsTab? = nil) {
+        // Preserve the unfinished chapter, but never leave it occluded behind Settings.
+        onboardingWindow?.orderOut(nil)
         if let tab { model.selectedTab = tab }
         if settingsWindow == nil {
             settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 760, height: 540),
@@ -251,6 +253,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if let closed = notification.object as? NSWindow, closed === settingsWindow,
+           model.state == .onboarding {
+            onboardingWindow?.makeKeyAndOrderFront(nil)
+        }
     }
 
     func showOnboarding() {
@@ -293,7 +302,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = title
         window.isReleasedWhenClosed = false
         window.contentMinSize = size
-        window.contentView = NSHostingView(rootView: SoftmaxWindowRoot { view })
+        window.delegate = self
+        let host = SoftmaxHostingView(rootView: SoftmaxWindowRoot { view }
+            .accessibilityElement(children: .contain).accessibilityLabel(title))
+        host.setAccessibilityLabel(title)
+        window.contentView = host
         window.center()
         return window
     }

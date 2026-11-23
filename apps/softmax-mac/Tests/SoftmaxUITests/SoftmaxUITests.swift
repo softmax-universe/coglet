@@ -10,7 +10,11 @@ final class SoftmaxUITests: XCTestCase {
         let onboarding = app.windows["Welcome to Softmax"]
         XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
         for step in 0..<3 {
-            try app.performAccessibilityAudit()
+            print("AX onboarding chapter \(step):\n\(app.debugDescription)")
+            try app.performAccessibilityAudit { issue in
+                print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
+                return false // Diagnostics only: never suppress an issue.
+            }
             let image = XCTAttachment(screenshot: onboarding.screenshot())
             image.name = "onboarding-step-\(step)"; image.lifetime = .keepAlways; add(image)
             if step < 2 { onboarding.buttons["Continue"].click() }
@@ -21,8 +25,13 @@ final class SoftmaxUITests: XCTestCase {
         let settings = app.windows["Softmax Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         for section in ["General", "Hotkey", "Audio", "Hub", "Coglets", "Updates", "Privacy"] {
+            XCTAssertFalse(onboarding.exists, "Settings must not occlude unfinished onboarding")
             settings.buttons[section].click()
-            try app.performAccessibilityAudit()
+            print("AX settings \(section):\n\(app.debugDescription)")
+            try app.performAccessibilityAudit { issue in
+                print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
+                return false
+            }
             let image = XCTAttachment(screenshot: settings.screenshot())
             image.name = "settings-\(section)"; image.lifetime = .keepAlways; add(image)
         }

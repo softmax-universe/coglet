@@ -58,14 +58,15 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[4]) {
                     Text(model.selectedTab.rawValue).font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
-                    DesignGroup {
+                    DesignGroup(label: "\(model.selectedTab.rawValue) settings") {
                         switch model.selectedTab {
                         case .general:
                             Text("Softmax lives in your menu bar. Close windows without quitting.")
                             Picker("Appearance", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
+                                .pickerStyle(.radioGroup)
                             Picker("Text size", selection: $textScale) {
                                 Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
-                            }
+                            }.pickerStyle(.radioGroup)
                             Toggle("Show floating orb", isOn: $model.orbEnabled).accessibilityIdentifier("floatingOrbToggle")
                             Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                             LoginItemControls(model: model)
@@ -135,12 +136,12 @@ struct OnboardingView: View {
     private let titles = ["Welcome to Softmax", "Voice & shortcut", "Hub & ready"]
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
-            Text("\(step + 1) of 3").font(.system(size: SoftmaxDesignTokens.fontCaption))
+            Text("\(step + 1) of 3").font(.system(size: SoftmaxDesignTokens.fontBody, weight: .medium))
             Text(titles[step]).font(.system(size: SoftmaxDesignTokens.fontDisplay, weight: .semibold))
             ScrollView {
                 Image("onboarding-\(["welcome", "permissions", "hub"][step])").resizable().scaledToFit()
                     .frame(height: 100).frame(maxWidth: .infinity).accessibilityHidden(true)
-                DesignGroup {
+                DesignGroup(label: titles[step]) {
                     switch step {
                     case 0:
                         Text("Speak without switching apps.").font(.system(size: SoftmaxDesignTokens.fontTitle))

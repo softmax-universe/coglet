@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+/// This app has no Touch Bar controls. Do not expose an empty generated bar.
+final class SoftmaxHostingView<Content: View>: NSHostingView<Content> {
+    override func makeTouchBar() -> NSTouchBar? { nil }
+}
+
 private struct SoftmaxTextScaleKey: EnvironmentKey { static let defaultValue = 1.0 }
 private struct SoftmaxHighContrastKey: EnvironmentKey { static let defaultValue = false }
 private struct SoftmaxFreezeMotionKey: EnvironmentKey { static let defaultValue = false }
@@ -28,6 +33,7 @@ struct SoftmaxTheme: ViewModifier {
 }
 
 struct DesignGroup<Content: View>: View {
+    var label = "Options"
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.softmaxHighContrast) private var forceContrast
@@ -40,6 +46,8 @@ struct DesignGroup<Content: View>: View {
                         in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup))
             .overlay(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup)
                 .strokeBorder(contrast == .increased || forceContrast ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.border : SoftmaxDesignTokens.Light.border), lineWidth: contrast == .increased || forceContrast ? 2 : 1))
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(label)
     }
 }
 
