@@ -18,6 +18,12 @@ transport = "stdio"
 command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/wamr-conformance"]
 
 [[implementations]]
+name = "wasmtime-fuel"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/wasmtime-conformance"]
+
+[[implementations]]
 name = "surface-rust-reference"
 suites = ["surface"]
 peer_roles = ["runtime"]
