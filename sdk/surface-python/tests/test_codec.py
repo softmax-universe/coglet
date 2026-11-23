@@ -39,6 +39,9 @@ class CodecTests(unittest.TestCase):
                         import cbor2
                         with self.assertRaises(ValueError):
                             decode(case['type'], cbor2.dumps(case['value']))
+                        if 'cbor_hex' in case:
+                            with self.assertRaises(ValueError):
+                                decode(case['type'], bytes.fromhex(case['cbor_hex']))
                         invalid += 1
         self.assertGreater(valid, 0)
         print(f'Python fixtures: {valid} shape-valid, {invalid} shape-invalid, {wire} wire-invalid, {semantic} protocol-semantic, {skipped} semantic-vectors-v1 files skipped')

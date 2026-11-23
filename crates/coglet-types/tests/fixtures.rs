@@ -163,6 +163,10 @@ fn spec_fixtures() {
                     validate(ty, &d).unwrap();
                 } else if let Ok(v) = conv {
                     assert!(validate(ty, &v).is_err(), "{name}: invalid accepted");
+                    assert!(encode(ty, &v).is_err(), "{name}: invalid encoded");
+                    if let Ok(raw) = coglet_types::encode_profile(&v) {
+                        assert!(decode(ty, &raw).is_err(), "{name}: invalid shape decoded");
+                    }
                     if let Some(h) = c.get("cbor_hex").and_then(|h| h.as_str()) {
                         assert!(
                             decode(ty, &hex(h)).is_err(),
