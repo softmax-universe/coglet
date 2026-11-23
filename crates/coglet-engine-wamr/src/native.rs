@@ -12,7 +12,7 @@ unsafe extern "C" {
     fn ce_set_budget(ctx: *mut c_void, budget: i32);
     fn ce_remaining(ctx: *mut c_void) -> i32;
     fn ce_terminate(ctx: *mut c_void);
-    fn ce_exception(ctx: *mut c_void) -> *const c_char;
+    fn ce_copy_exception(ctx: *mut c_void, output: *mut c_char, capacity: u32) -> i32;
     fn ce_write(ctx: *mut c_void, ptr: u32, bytes: *const u8, len: u32) -> i32;
     fn ce_destroy(ctx: *mut c_void);
     fn ce_read(ctx: *mut c_void, ptr: u32, bytes: *mut u8, len: u32) -> i32;
@@ -238,11 +238,14 @@ impl Native {
         if unsafe { ce_remaining(self.ctx) } <= 0 {
             return Err(Error::ComputeExhausted);
         }
-        let message = unsafe { ce_exception(self.ctx) };
-        let text = if message.is_null() {
+        // Caller-owned snapshot; the watchdog may write WAMR's exception until
+        // it is joined, so never read the runtime's borrowed internal buffer.
+        let mut message = [0 as c_char; 128];
+        let copied = unsafe { ce_copy_exception(self.ctx, message.as_mut_ptr(), 128) };
+        let text = if copied != 1 {
             "missing export".into()
         } else {
-            unsafe { CStr::from_ptr(message) }
+            unsafe { CStr::from_ptr(message.as_ptr()) }
                 .to_string_lossy()
                 .into_owned()
         };

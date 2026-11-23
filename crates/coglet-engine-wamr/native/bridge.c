@@ -1,5 +1,6 @@
 #include "wasm_export.h"
 #include "wasm_exec_env.h"
+#include "wasm_runtime.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -99,7 +100,12 @@ int ce_call(Context *c, const char *name, uint32_t argc, uint32_t *argv) {
 }
 void ce_terminate(Context *c) { wasm_runtime_terminate(c->instance); }
 int ce_valid(Context *c, uint32_t ptr, uint32_t len) { return wasm_runtime_validate_app_addr(c->instance, ptr, len); }
-const char *ce_exception(Context *c) { return wasm_runtime_get_exception(c->instance); }
+// Copy under WAMR's exception lock: terminate may overwrite its internal
+// buffer concurrently. Never expose a borrowed pointer to that mutable buffer.
+int ce_copy_exception(Context *c, char *output, uint32_t capacity) {
+    if (!output || capacity < EXCEPTION_BUF_LEN) return -1;
+    return wasm_runtime_copy_exception(c->instance, output) ? 1 : 0;
+}
 int ce_write(Context *c, uint32_t ptr, const uint8_t *bytes, uint32_t len) {
     if (!wasm_runtime_validate_app_addr(c->instance, ptr, len)) return 0;
     if (len) memcpy(wasm_runtime_addr_app_to_native(c->instance, ptr), bytes, len);

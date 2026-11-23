@@ -13,6 +13,7 @@ unsafe extern "C" {
     fn ce_set_budget(ctx: *mut c_void, budget: i32);
     fn ce_remaining(ctx: *mut c_void) -> i32;
     fn ce_terminate(ctx: *mut c_void);
+    fn ce_copy_exception(ctx: *mut c_void, output: *mut c_char, capacity: u32) -> i32;
     fn ce_destroy(ctx: *mut c_void);
 }
 static LOCK: Mutex<()> = Mutex::new(());
@@ -113,6 +114,59 @@ fn native_runaway_deadline_then_fresh_recovery() {
     let mut next = Native::new(GUEST);
     unsafe { ce_set_budget(next.ctx, 1000) };
     assert_eq!(next.call("handle", 0), (1, 42));
+}
+
+#[test]
+fn exception_snapshot_survives_deadline_write_and_concurrent_copies() {
+    let _lock = LOCK.lock().unwrap();
+    let mut n = Native::new("(module (func (export \"trap\") unreachable))");
+    unsafe { ce_set_budget(n.ctx, 1000) };
+    assert_eq!(n.call("trap", 0).0, 0);
+    let mut original = [0i8; 128];
+    assert_eq!(
+        unsafe { ce_copy_exception(n.ctx, original.as_mut_ptr(), 127) },
+        -1
+    );
+    assert_eq!(
+        unsafe { ce_copy_exception(n.ctx, original.as_mut_ptr(), 128) },
+        1
+    );
+    let trap = original;
+    let address = n.ctx as usize;
+    let barrier = Arc::new(std::sync::Barrier::new(2));
+    let writer_barrier = barrier.clone();
+    let writer = std::thread::spawn(move || {
+        writer_barrier.wait();
+        for _ in 0..1000 {
+            unsafe { ce_terminate(address as *mut c_void) };
+        }
+    });
+    barrier.wait();
+    for _ in 0..1000 {
+        let mut snapshot = [0i8; 128];
+        assert_eq!(
+            unsafe { ce_copy_exception(n.ctx, snapshot.as_mut_ptr(), 128) },
+            1
+        );
+        let message = unsafe { std::ffi::CStr::from_ptr(snapshot.as_ptr()) }
+            .to_str()
+            .unwrap();
+        assert!(
+            message == "Exception: unreachable" || message == "Exception: terminated by user",
+            "{message}"
+        );
+        assert_eq!(
+            original, trap,
+            "termination must not mutate a caller-owned snapshot"
+        );
+    }
+    writer.join().unwrap();
+    assert_eq!(
+        unsafe { std::ffi::CStr::from_ptr(original.as_ptr()) }
+            .to_str()
+            .unwrap(),
+        "Exception: unreachable"
+    );
 }
 
 #[test]
