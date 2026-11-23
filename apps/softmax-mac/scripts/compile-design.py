@@ -14,7 +14,8 @@ for source in sorted((root / 'Design/MenuBar').rglob('*18@1x.svg')):
     name = source.stem.replace('-18@1x', '')
     target = assets / f'menu-{name}.imageset'
     target.mkdir(exist_ok=True)
-    cairosvg.svg2pdf(url=str(source), write_to=str(target / 'template.pdf'))
+    # PDF pages use points: compile at 72 dpi so 18 CSS px stays 18 AppKit pt.
+    cairosvg.svg2pdf(url=str(source), write_to=str(target / 'template.pdf'), dpi=72)
     (target / 'Contents.json').write_text(json.dumps({
         'images': [{'idiom': 'universal', 'filename': 'template.pdf'}],
         'info': {'author': 'xcode', 'version': 1},

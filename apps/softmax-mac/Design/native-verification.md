@@ -12,8 +12,13 @@ baked light/dark colours. Onboarding artwork keeps its original colours.
 `Softmax Mac` CI on `macos-latest` builds the real app and runs XCUITest:
 - existing Face/orb/window navigation smoke tests;
 - `testOnboardingAndEverySettingsSectionAccessibilityAudit`, using
-  `XCUIApplication.performAccessibilityAudit()` with no issue suppression for all
-  three onboarding chapters and all seven Settings sections;
+  `XCUIApplication.performAccessibilityAudit()` for all three onboarding chapters
+  and all seven Settings sections. All product controls and all contrast findings
+  fail closed. The handler logs and excludes only two OS chrome findings observed
+  in native run 45116636568: missing description on the disabled empty application
+  Touch Bar, and parent/child mismatch inside the system `_XCUI:ZoomWindow`
+  button's disabled 14×14 group. No product element, missing action, contrast,
+  clipping or dynamic-type failure is exempt. Review the handler with native CI;
 - keyboard search, synonym, Return and Escape round trip.
 
 The built app's isolated `--ui-testing --design-snapshots OUTPUT` entry point

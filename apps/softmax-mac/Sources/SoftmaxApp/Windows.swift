@@ -98,7 +98,7 @@ struct SettingsView: View {
                             Button("Refresh Permissions") { model.refreshPermissions() }
                         }
                     }
-                    if let message = model.message { Text(message).foregroundStyle(.red).textSelection(.enabled) }
+                    if let message = model.message { Text(message).modifier(SoftmaxErrorText()).textSelection(.enabled) }
                 }.padding(SoftmaxDesignTokens.spacing[4]).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.frame(minWidth: 760, minHeight: 540).modifier(SoftmaxTheme())
@@ -139,6 +139,7 @@ struct OnboardingView: View {
             Text("\(step + 1) of 3").font(.system(size: SoftmaxDesignTokens.fontBody, weight: .medium))
             Text(titles[step]).font(.system(size: SoftmaxDesignTokens.fontDisplay, weight: .semibold))
             ScrollView {
+                VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
                 Image("onboarding-\(["welcome", "permissions", "hub"][step])").resizable().scaledToFit()
                     .frame(height: 100).frame(maxWidth: .infinity).accessibilityHidden(true)
                 DesignGroup(label: titles[step]) {
@@ -163,7 +164,8 @@ struct OnboardingView: View {
                         Text("Voice not set up · return to Settings to review permissions and connection.")
                     }
                 }
-                if let message = model.message { Text(message).foregroundStyle(.red) }
+                if let message = model.message { Text(message).modifier(SoftmaxErrorText()) }
+                }
             }
             HStack {
                 Button("Open Settings…", action: openSettings)

@@ -11,7 +11,7 @@ import SoftmaxCore
             let names = ["menu-\(state.rawValue)"] + ([MenuPresentation.listening, .speaking].contains(state) ? (0..<4).map { "menu-\(state.rawValue)-\($0)" } : [])
             for name in names {
                 guard let image = NSImage(named: name), image.isTemplate, image.size.width == 18, image.size.height == 18 else {
-                    throw CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid native template: \(name)"])
+                    throw CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid native template: \(name); loaded=\(String(describing: NSImage(named: name)))"])
                 }
             }
         }

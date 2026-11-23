@@ -174,7 +174,7 @@ struct MicrophoneControls: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Microphone: \(model.permissions.microphone.rawValue)")
             if let guidance = model.permissions.microphone.microphoneGuidance {
-                Text(guidance).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                Text(guidance).modifier(SoftmaxErrorText()).fixedSize(horizontal: false, vertical: true)
             }
             if model.permissions.microphone == .notDetermined {
                 Button("Allow Microphone") { Task { await model.requestMicrophone() } }

@@ -32,6 +32,14 @@ struct SoftmaxTheme: ViewModifier {
     }
 }
 
+/// Error copy uses the reviewed token pairs, not the low-contrast system red.
+struct SoftmaxErrorText: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View {
+        content.foregroundStyle(scheme == .dark ? SoftmaxDesignTokens.Dark.danger : SoftmaxDesignTokens.Light.danger)
+    }
+}
+
 struct DesignGroup<Content: View>: View {
     var label = "Options"
     @Environment(\.colorScheme) private var scheme

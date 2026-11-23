@@ -61,7 +61,7 @@ struct SoftmaxMenuView: View {
             Text("Push-to-talk: \(model.hotkeyName)")
             Text("Hub disconnected · no hub configured")
             Text("Local runtime: not connected")
-            if model.updates.updateAvailable { Text("Update available · install from Updates") }
+            if model.updates.updateAvailable || presentation == .update { Text("Update available · install from Updates") }
             Divider()
             Button("Open Face") { dismiss(); showFace() }
             Button("Open Chat") { dismiss(); showChat(false) }

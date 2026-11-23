@@ -16,6 +16,18 @@ enum HUDPresentation: String, CaseIterable {
         case .error: "Audio stopped · check Settings"
         }
     }
+    var hint: String {
+        switch self {
+        case .idle: ""
+        case .listening: "Release to send"
+        case .thinking: "Esc to cancel"
+        case .speaking: "Esc to stop"
+        case .cancelled: "Audio discarded"
+        case .microphoneDenied: "Open Settings → Privacy"
+        case .offline: "Review connection in Settings"
+        case .error: "Review audio in Settings"
+        }
+    }
 }
 
 @MainActor final class TalkHUD {
@@ -57,7 +69,7 @@ enum HUDPresentation: String, CaseIterable {
             let area = screen.visibleFrame
             panel?.setFrameOrigin(NSPoint(x: area.maxX - 344, y: area.maxY - 104))
         }
-        if changed, let panel, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        if changed, let panel, !panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             panel.alphaValue = 0; panel.orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = Double(SoftmaxDesignTokens.motionHudFadeMs) / 1000
@@ -106,7 +118,7 @@ struct TalkHUDView: View {
             }
             if state == .listening {
                 ProgressView(value: Double(min(1, max(0, level))), total: 1).accessibilityLabel("Microphone level")
-            } else { Text(state == .idle ? hotkey : "Esc to cancel").font(.system(size: SoftmaxDesignTokens.fontCaption)) }
+            } else { Text(state == .idle ? hotkey : state.hint).font(.system(size: SoftmaxDesignTokens.fontCaption)) }
         }.padding(SoftmaxDesignTokens.spacing[3]).frame(width: 320, height: 88)
             .modifier(SoftmaxTheme()).clipShape(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusWindow))
     }

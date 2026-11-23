@@ -1,6 +1,21 @@
 import XCTest
 
 final class SoftmaxUITests: XCTestCase {
+    /// Native CI on macOS 26 reports two OS-owned chrome defects:
+    /// its disabled empty application Touch Bar, and the Zoom button's internal
+    /// disabled 14 pt group. Never exempt a product control or any contrast issue.
+    @MainActor
+    private func isSystemChrome(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        guard let element = issue.element, !element.isEnabled else { return false }
+        if issue.auditType == .sufficientElementDescription,
+           element.elementType == .touchBar && element.children(matching: .any).count == 0 {
+            return true
+        }
+        return issue.auditType == .parentChild && element.elementType == .group
+            && element.frame.size == CGSize(width: 14, height: 14)
+            && element.debugDescription.contains("identifier: '_XCUI:ZoomWindow'")
+    }
+
     @MainActor
     func testOnboardingAndEverySettingsSectionAccessibilityAudit() throws {
         let app = XCUIApplication()
@@ -13,7 +28,7 @@ final class SoftmaxUITests: XCTestCase {
             print("AX onboarding chapter \(step):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
-                return false // Diagnostics only: never suppress an issue.
+                return self.isSystemChrome(issue)
             }
             let image = XCTAttachment(screenshot: onboarding.screenshot())
             image.name = "onboarding-step-\(step)"; image.lifetime = .keepAlways; add(image)
@@ -30,7 +45,7 @@ final class SoftmaxUITests: XCTestCase {
             print("AX settings \(section):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
-                return false
+                return self.isSystemChrome(issue)
             }
             let image = XCTAttachment(screenshot: settings.screenshot())
             image.name = "settings-\(section)"; image.lifetime = .keepAlways; add(image)
