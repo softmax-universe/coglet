@@ -1,3 +1,49 @@
 {
-  "$comment": "Placeholder only; not an approved validation schema."
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": "0.1"
+    },
+    "id": {
+      "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+    },
+    "subscriptions": {
+      "type": "array",
+      "items": {
+        "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "exclusive_outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+      },
+      "minItems": 0,
+      "uniqueItems": true
+    },
+    "budgets": {
+      "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/budgets"
+    }
+  },
+  "required": [
+    "version",
+    "id",
+    "subscriptions",
+    "required_capabilities",
+    "exclusive_outputs",
+    "budgets"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/manifest.schema.json"
 }
