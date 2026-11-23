@@ -356,6 +356,43 @@ for op, kind, argument in [('emit', 'actions', action), ('timer', 'timers', time
                     inputs={k: rec[k] for k in ['trace_id', 'coglet', 'step', 'logical_time', 'seed', 'previous', 'engine', 'budgets', 'grants', 'events', 'boundary']},
                     guest_script=dict(calls=rec['calls'], writes={}, termination=rec['status'], usage=rec['usage']))
         timelines.append(dict(name=name, steps=[dict(send=send), dict(expect=dict(journal=rec, state_hash=rec['output_hash'], record_hash=rec['record_hash']), within_ms=200), dict(journal_hash=rec['record_hash'], path='record_hash')]))
+# Result precedence is independently checkable even without an engine's resource meter.
+for op, kind, argument in [('emit', 'actions', action), ('timer', 'timers', timer), ('llm', 'llm_requests', llm)]:
+    for scope in ('historical', 'same-step'):
+        ledger = copy.deepcopy(empty_ledger)
+        rec = copy.deepcopy(base)
+        if scope == 'historical':
+            ledger[kind] = [ID]
+        else:
+            rec['calls'].append(dict(op=op, argument=argument, result=0))
+            rec[kind] = [argument]
+        rec['calls'].append(dict(op=op, argument=argument, result=4))
+        sample = dict(trace, initial_effect_ids=ledger, records=[seal(rec)])
+        trace_case(scope+'-'+op+'-conflict-control', sample)
+        for result in (1, 2, 3):
+            bad = copy.deepcopy(sample)
+            bad['records'][0]['calls'][-1]['result'] = result
+            bad['records'][0] = seal(bad['records'][0])
+            trace_case(scope+'-'+op+'-wrong-result-'+str(result), bad, False, 'call result precedence')
+    for result in (0, 3):
+        rec = copy.deepcopy(base)
+        rec['calls'] = [dict(op=op, argument=argument, result=result)]
+        rec[kind] = [argument] if result == 0 else []
+        trace_case('fresh-'+op+'-result-'+str(result), dict(trace, records=[seal(rec)]))
+    if op in ('emit', 'llm'):
+        for reason in (('capability', 'identity') if op == 'emit' else ('capability',)):
+            denied = dict(argument)
+            denied['capability' if reason == 'capability' else 'coglet'] = 'other.write' if reason == 'capability' else 'coglet:'+'9'*64
+            for historical in (False, True):
+                ledger = copy.deepcopy(empty_ledger)
+                if historical:
+                    ledger[kind] = [ID]
+                for result in (1, 2, 3, 4):
+                    rec = copy.deepcopy(base)
+                    rec['calls'] = [dict(op=op, argument=denied, result=result)]
+                    trace_case(f'{op}-{reason}-denied-{historical}-result-{result}',
+                               dict(trace, initial_effect_ids=ledger, records=[seal(rec)]),
+                               result == 2, None if result == 2 else 'call result precedence')
 # Initial pending work must be present in the complete historical ledger.
 invalid = dict(trace, initial_timers=[timer])
 trace_case('pending-timer-missing-ledger', invalid, False, 'initial pending work')

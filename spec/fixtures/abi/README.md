@@ -23,7 +23,12 @@ can be schema-valid, and must not be mislabeled invalid to the recursive codegen
 exercise rehashed trace corruptions and framing. `trace-cases.fixture` contains
 rehashed malformed inbox/reply/JSONL/wake cases, batching and trace-boundary wake
 controls, plus historical completed effect-ID conflicts and fresh-ID controls for
-all three effect kinds. Both schemas validate the trace containers; semantic
+all three effect kinds. Rehashed historical and same-step duplicates returning
+invalid_argument, permission_denied or resource_exhausted must fail; authorized
+conflict and fresh-ID controls must pass. Capability/identity denial precedes
+dedup even for historical IDs. Fresh authorized calls may stage or exhaust
+resources: these fixtures do not independently implement engine resource metering.
+Both schemas validate the trace containers; semantic
 validation must then reject each negative for its named reason, not a hash error.
 The actual ABI schema roots are tested separately from selected helper rules.
 `llm-reply-trace.fixture` is a

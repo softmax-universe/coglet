@@ -200,14 +200,28 @@ def check_trace(trace, manifest_validator=None):
         staged = set(ids)
         for call in rec['calls']:
             kind = {'emit': 'actions', 'timer': 'timers', 'llm': 'llm_requests'}.get(call['op'])
-            if kind is None or 'argument' not in call:
+            if 'argument' not in call:
+                # The call schema restricts raw malformed arguments to result 1.
                 continue
-            identity = (kind, call['argument']['id'])
-            if call['result'] == 4 and identity not in staged:
-                raise ValueError('conflict without prior effect id')
-            if call['result'] == 0:
-                if identity in staged:
-                    raise ValueError('duplicate effect id accepted')
+            argument = call['argument']
+            identity = (kind, argument['id']) if kind is not None else None
+            denied = (call['op'] in ('emit', 'llm') and argument['capability'] not in rec['grants'])
+            denied |= call['op'] == 'emit' and argument['coglet'] != rec['coglet']
+            # Typed arguments already passed the call schema: result 1 cannot
+            # bypass permission/dedup. Only resource admission remains engine-
+            # dependent for an authorized fresh ID (or a log without an ID).
+            if denied:
+                allowed = {2}
+            elif identity is not None and identity in staged:
+                allowed = {4}
+            else:
+                allowed = {0, 3}
+            if call['result'] not in allowed:
+                detail = ('duplicate effect id accepted' if call['result'] == 0 and identity in staged
+                          else 'conflict without prior effect id' if call['result'] == 4 and not denied
+                          else 'unexpected result')
+                raise ValueError('call result precedence: ' + detail)
+            if call['result'] == 0 and identity is not None:
                 staged.add(identity)
         if rec['status'] == 'committed':
             ids = staged
