@@ -118,7 +118,7 @@ struct TalkHUDView: View {
             }
             if state == .listening {
                 ProgressView(value: Double(min(1, max(0, level))), total: 1).accessibilityLabel("Microphone level")
-            } else { Text(state == .idle ? hotkey : state.hint).font(.system(size: SoftmaxDesignTokens.fontCaption)) }
+            } else { Text(state == .idle ? hotkey : state.hint).softmaxFont(SoftmaxDesignTokens.fontCaption) }
         }.padding(SoftmaxDesignTokens.spacing[3]).frame(width: 320, height: 88)
             .modifier(SoftmaxTheme()).clipShape(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusWindow))
     }

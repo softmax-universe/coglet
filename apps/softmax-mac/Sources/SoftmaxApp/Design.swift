@@ -15,6 +15,21 @@ extension EnvironmentValues {
     var softmaxFreezeMotion: Bool { get { self[SoftmaxFreezeMotionKey.self] } set { self[SoftmaxFreezeMotionKey.self] = newValue } }
 }
 
+/// Keep explicit title/caption tokens in the same text-size system as body copy.
+struct SoftmaxTokenFont: ViewModifier {
+    var size: CGFloat
+    var weight: Font.Weight = .regular
+    @Environment(\.softmaxTextScale) private var scale
+    func body(content: Content) -> some View {
+        content.font(.system(size: size * scale, weight: weight))
+    }
+}
+extension View {
+    func softmaxFont(_ size: CGFloat, weight: Font.Weight = .regular) -> some View {
+        modifier(SoftmaxTokenFont(size: size, weight: weight))
+    }
+}
+
 /// JSON-generated values are compiled directly from Design/DesignTokens.swift.
 /// Increased contrast uses native semantic foregrounds and explicit group outlines.
 struct SoftmaxTheme: ViewModifier {
@@ -82,7 +97,7 @@ struct AboutView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
                 Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 72, height: 72).accessibilityHidden(true)
-                Text("Softmax for Mac").font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
+                Text("Softmax for Mac").softmaxFont(SoftmaxDesignTokens.fontTitle, weight: .semibold)
                 Text(information).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 Button("Copy version information") {
                     NSPasteboard.general.clearContents(); NSPasteboard.general.setString(information, forType: .string)

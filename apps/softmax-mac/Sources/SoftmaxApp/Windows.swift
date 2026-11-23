@@ -25,6 +25,10 @@ struct SettingsView: View {
     @State private var query = ""
     @FocusState private var searchFocused: Bool
     @State private var shortcuts = false
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.softmaxHighContrast) private var forceContrast
+    private var accent: Color { scheme == .dark ? SoftmaxDesignTokens.Dark.accent : SoftmaxDesignTokens.Light.accent }
     private var tabs: [SettingsTab] {
         SettingsTab.allCases.filter { query.isEmpty || ($0.rawValue + " " + $0.keywords).localizedCaseInsensitiveContains(query) }
     }
@@ -41,23 +45,25 @@ struct SettingsView: View {
                         if direction == .down { model.selectedTab = tabs[min(index + 1, tabs.count - 1)] }
                         if direction == .up { model.selectedTab = tabs[max(index - 1, 0)] }
                     }
-                Text("\(tabs.count) sections").font(.system(size: SoftmaxDesignTokens.fontCaption))
+                Text("\(tabs.count) sections").softmaxFont(SoftmaxDesignTokens.fontCaption)
                 ForEach(tabs) { tab in
                     Button { model.selectedTab = tab } label: {
                         Text(tab.rawValue).frame(maxWidth: .infinity, alignment: .leading).padding(6)
-                            .background(model.selectedTab == tab ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl))
+                            .background(model.selectedTab == tab ? accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl))
+                            .overlay(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl)
+                                .strokeBorder(model.selectedTab == tab && (contrast == .increased || forceContrast) ? accent : .clear, lineWidth: 2))
                     }.buttonStyle(.borderless)
                         .fontWeight(model.selectedTab == tab ? .semibold : .regular)
                         .accessibilityAddTraits(model.selectedTab == tab ? .isSelected : [])
                 }
                 if tabs.isEmpty { Text("No matching settings") }
                 Spacer()
-                Button("Keyboard shortcuts  ?") { shortcuts = true }
+                Button("Keyboard shortcuts  ?") { shortcuts = true }.keyboardShortcut("?", modifiers: [])
             }.padding(16).frame(width: 180)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[4]) {
-                    Text(model.selectedTab.rawValue).font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
+                    Text(model.selectedTab.rawValue).softmaxFont(SoftmaxDesignTokens.fontTitle, weight: .semibold)
                     DesignGroup(label: "\(model.selectedTab.rawValue) settings") {
                         switch model.selectedTab {
                         case .general:
@@ -108,8 +114,8 @@ struct SettingsView: View {
             .onExitCommand { if !query.isEmpty { query = "" } else { searchFocused = false } }
             .sheet(isPresented: $shortcuts) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Keyboard shortcuts").font(.title2)
-                    Text("⌘K  Search settings\n↑ ↓  Select section\nReturn  Open first match\nEsc  Clear search or cancel speech\n⌘,  Settings\nRight Option  Push-to-talk")
+                    Text("Keyboard shortcuts").softmaxFont(SoftmaxDesignTokens.fontTitle)
+                    Text("⌘K  Search settings\n↑ ↓  Select section\nReturn  Open first match\nEsc  Clear search or cancel speech\n⌘,  Settings\n\(model.hotkeyName)  Push-to-talk")
                     Button("Done") { shortcuts = false }.keyboardShortcut(.cancelAction)
                 }.padding(24)
             }
@@ -136,8 +142,8 @@ struct OnboardingView: View {
     private let titles = ["Welcome to Softmax", "Voice & shortcut", "Hub & ready"]
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
-            Text("\(step + 1) of 3").font(.system(size: SoftmaxDesignTokens.fontBody, weight: .medium))
-            Text(titles[step]).font(.system(size: SoftmaxDesignTokens.fontDisplay, weight: .semibold))
+            Text("\(step + 1) of 3").softmaxFont(SoftmaxDesignTokens.fontBody, weight: .medium)
+            Text(titles[step]).softmaxFont(SoftmaxDesignTokens.fontDisplay, weight: .semibold)
             ScrollView {
                 VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
                 Image("onboarding-\(["welcome", "permissions", "hub"][step])").resizable().scaledToFit()
@@ -145,11 +151,11 @@ struct OnboardingView: View {
                 DesignGroup(label: titles[step]) {
                     switch step {
                     case 0:
-                        Text("Speak without switching apps.").font(.system(size: SoftmaxDesignTokens.fontTitle))
+                        Text("Speak without switching apps.").softmaxFont(SoftmaxDesignTokens.fontTitle)
                         Text("Softmax lives in your menu bar. Face stays nearby when you need it, out of the way when you don’t.")
                         Text("Microphone and global shortcut access are optional. You choose when audio is live.")
                     case 1:
-                        Text("Let Softmax hear you.").font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
+                        Text("Let Softmax hear you.").softmaxFont(SoftmaxDesignTokens.fontTitle, weight: .semibold)
                         Text("Microphone access is used when you hold to talk. Release the shortcut to send. No always-on listening in v1.")
                         MicrophoneControls(model: model)
                         Divider()
