@@ -320,7 +320,7 @@ From the repo docs, not a code-level audit of each pod.
 
 It has no runtime, hub, sandbox or specs: it is an all-in-one prototype of the Face and the desktop app, not of Coglet. We take its solved problems, not its architecture.
 
-**The repo is GPLv3** (it vendors Mindustry). Port ideas only. The exception is the duplex audio code, which says it was adapted from Polyworld's MIT voice experiments; port that from the MIT original, with attribution.
+**Licensing:** Companion's own code and docs are Softmax IP, so we reuse them directly (copy, then adapt to Coglet's interfaces). The repo's GPLv3 licence covers the vendored Mindustry engine under `apps/mindustry/source/`, which is Anuke's; that part is not ours to relicense. The duplex audio code keeps its MIT Polyworld attribution.
 
 | Companion piece | Where it lands in Coglet |
 |---|---|
