@@ -30,8 +30,19 @@ private struct Fixture: Decodable {
     let name: Swift.String
     let type: Swift.String?
     let valid: Swift.Bool?
+    let semantic: Swift.Bool?
     let value: FixtureValue?
     let cbor_hex: Swift.String?
+}
+
+private func isVectorFile(_ file: URL) throws -> Swift.Bool {
+    let marker = URL(fileURLWithPath: file.path + ".format")
+    guard FileManager.default.fileExists(atPath: marker.path) else { return false }
+    let format = try Swift.String(contentsOf: marker, encoding: .utf8)
+    guard format == "semantic-vectors-v1" || format == "semantic-vectors-v1\n" else {
+        throw CBORFailure.invalid("unknown fixture marker: " + marker.path)
+    }
+    return true
 }
 
 final class CodecTests: XCTestCase {
@@ -53,7 +64,14 @@ final class CodecTests: XCTestCase {
         let files = enumerator.compactMap { $0 as? URL }.filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
         XCTAssertFalse(files.isEmpty)
         var counts = [0, 0, 0]
+        var vectorFiles = 0
+        var semanticCases = 0
+        var nongoldenShapes = 0
         for file in files {
+            if try isVectorFile(file) {
+                vectorFiles += 1
+                continue
+            }
             let fixtures = try JSONDecoder().decode([Fixture].self, from: Data(contentsOf: file))
             XCTAssertFalse(fixtures.isEmpty, file.path)
             for f in fixtures {
@@ -62,14 +80,17 @@ final class CodecTests: XCTestCase {
                     let rule = try XCTUnwrap(f.type, label)
                     XCTAssertNotNil(GeneratedSchema.rules[rule], "unknown fixture rule: " + rule)
                     let json = try XCTUnwrap(f.value, label)
-                    if valid {
-                        let golden = try hex(XCTUnwrap(f.cbor_hex, label))
+                    if valid || f.semantic == true {
                         let value = try json.wireValue()
+                        let encoded = try CBORCodec.encode(rule: rule, value: value)
+                        let golden = try f.cbor_hex.map(hex) ?? encoded
                         XCTAssertEqual(try CBORCodec.encode(rule: rule, value: value), golden, label)
                         let decoded = try CBORCodec.decode(rule: rule, bytes: golden)
                         XCTAssertEqual(try CBORCodec.encode(rule: rule, value: decoded), golden, label)
                         XCTAssertEqual(try GeneratedSchema.typedRoundTrip(rule: rule, bytes: golden), golden, label)
-                        counts[0] += 1
+                        if f.semantic == true { semanticCases += 1 }
+                        else if f.cbor_hex != nil { counts[0] += 1 }
+                        else { nongoldenShapes += 1 }
                     } else {
                         XCTAssertThrowsError(try CBORCodec.encode(rule: rule, value: json.wireValue()), label)
                         // Semantic invalids representable in the profile must also
@@ -91,7 +112,31 @@ final class CodecTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(counts[0], 33)
         XCTAssertGreaterThanOrEqual(counts[1], 43)
         XCTAssertGreaterThanOrEqual(counts[2], 17)
-        print("Swift fixtures: \(counts[0]) golden, \(counts[1]) semantic-invalid, \(counts[2]) wire-invalid")
+        print("Swift fixtures: \(counts[0]) golden, \(counts[1]) semantic-invalid, \(counts[2]) wire-invalid; \(semanticCases) protocol-semantic cases, \(nongoldenShapes) nongolden shapes, \(vectorFiles) marked vector files skipped (protocol-owned)")
+    }
+
+    func testFixtureMetadataIsExplicit() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("coglet-fixture-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("vectors.json")
+        let marker = dir.appendingPathComponent("vectors.json.format")
+        try "not a codec case array".write(to: file, atomically: true, encoding: .utf8)
+        XCTAssertFalse(try isVectorFile(file))
+        for supported in ["semantic-vectors-v1", "semantic-vectors-v1\n"] {
+            try supported.write(to: marker, atomically: true, encoding: .utf8)
+            XCTAssertTrue(try isVectorFile(file))
+        }
+        for unsupported in ["", "semantic-vectors-v2", "semantic-vectors-v1\n\n", " semantic-vectors-v1"] {
+            try unsupported.write(to: marker, atomically: true, encoding: .utf8)
+            XCTAssertThrowsError(try isVectorFile(file))
+        }
+        // Protocol-semantic negatives must still have a valid wire shape.
+        let shape = Data("{\"name\":\"temporal-negative\",\"type\":\"uint64\",\"valid\":false,\"semantic\":true,\"value\":0}".utf8)
+        let fixture = try JSONDecoder().decode(Fixture.self, from: shape)
+        XCTAssertEqual(fixture.semantic, true)
+        let value = try XCTUnwrap(fixture.value).wireValue()
+        XCTAssertEqual(try CBORCodec.encode(rule: "uint64", value: value), [0])
     }
 
     func testWireBoundsAndUnicodeIdentity() throws {
