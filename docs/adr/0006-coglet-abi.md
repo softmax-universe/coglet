@@ -1,4 +1,4 @@
-# ADR-0004: Core Wasm ABI and atomic step journals
+# ADR-0006: Core Wasm ABI and atomic step journals
 
 - Status: Proposed
 - Date: 2026-11-23
