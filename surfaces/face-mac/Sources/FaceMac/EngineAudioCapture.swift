@@ -43,6 +43,11 @@ private final class CaptureBuffer: @unchecked Sendable {
     }
 }
 
+// Free function deliberately has no main-actor context: the tap runs on the render thread.
+private func makeCaptureTap(_ storage: CaptureBuffer) -> AVAudioNodeTapBlock {
+    { pcm, _ in storage.append(pcm) }
+}
+
 @MainActor public final class EngineAudioCapture: AudioCapture {
     public let frames: AsyncStream<PCMFrame>
     private let buffer: CaptureBuffer
@@ -63,8 +68,7 @@ private final class CaptureBuffer: @unchecked Sendable {
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw CocoaError(.fileReadUnknown) }
         buffer.reset()
-        let storage = buffer
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { pcm, _ in storage.append(pcm) }
+        input.installTap(onBus: 0, bufferSize: 1024, format: format, block: makeCaptureTap(buffer))
         self.engine = engine
         do { engine.prepare(); try engine.start() }
         catch { _ = stop(); throw error }

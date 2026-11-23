@@ -36,7 +36,12 @@ struct StatusLabel: View {
 @MainActor
 final class ShellModel: ObservableObject {
     let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
-    @Published var machine: AppStateMachine
+    @Published var machine: AppStateMachine {
+        didSet {
+            // Runtime owns external speech/hub transitions; keep barge-in in sync.
+            if machine.state != oldValue.state { ptt.setState(machine.state) }
+        }
+    }
     @Published var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown)
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
@@ -56,6 +61,17 @@ final class ShellModel: ObservableObject {
     lazy var ptt = PushToTalk(keys: keySource, audio: EngineAudioCapture())
     var onTalkChange: (() -> Void)?
     var routePermissions: (() -> Void)?
+    /// Runtime/Face installs the actual synchronous playback stop before speaking.
+    var stopFacePlayback: (() -> Void)?
+    func beginFacePlayback(stop: @escaping () -> Void) {
+        stopFacePlayback = stop
+        ptt.setState(.speaking)
+    }
+    func finishFacePlayback() {
+        stopFacePlayback = nil
+        ptt.setState(.idle)
+    }
+    func finishSpeechInput() { ptt.setState(.idle) }
     var state: AppState {
         talkState == .idle ? machine.state : talkState
     }
@@ -76,6 +92,12 @@ final class ShellModel: ObservableObject {
         }
         ptt.mode = toggleMode ? .toggle : .hold
         ptt.routeToPermissions = { [weak self] in self?.routePermissions?() }
+        ptt.permissionProvider = {
+            PermissionSnapshot(
+                microphone: .microphone(rawValue: AVCaptureDevice.authorizationStatus(for: .audio).rawValue),
+                inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
+        }
+        ptt.stopPlayback = { [weak self] in self?.stopFacePlayback?(); self?.stopFacePlayback = nil }
         ptt.playStartSound = { [weak self] in if self?.startSound == true { NSSound(named: "Tink")?.play() } }
         ptt.onChange = { [weak self] in
             guard let self else { return }

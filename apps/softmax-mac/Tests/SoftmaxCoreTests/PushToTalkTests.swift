@@ -106,6 +106,20 @@ final class PushToTalkTests: XCTestCase, @unchecked Sendable {
         ptt.start()
         return (ptt, keys, audio, clock)
     }
+    func testLivePermissionProviderPreventsStaleGrantCapture() async {
+        let (ptt, keys, audio, _) = fixture()
+        ptt.permissionProvider = { .init(microphone: .denied, inputMonitoring: .granted) }
+        keys.send(.press)
+        XCTAssertEqual(audio.starts, 0)
+        XCTAssertEqual(ptt.state, .idle)
+    }
+    func testHardwareTimestampsDiscardTapDespiteSlowDelivery() async {
+        let (ptt, keys, audio, clock) = fixture()
+        keys.eventTimestamp = 10; keys.send(.press)
+        clock.time = 12; keys.eventTimestamp = 10.1; keys.send(.release)
+        XCTAssertEqual(ptt.state, .idle)
+        XCTAssertEqual(audio.stops, 1)
+    }
     func testHoldReleaseEmitsTimestampedPCM() async {
         let keys = FakeKeys()
         let audio = FakeAudio()
@@ -133,6 +147,7 @@ final class PushToTalkTests: XCTestCase, @unchecked Sendable {
 private final class FakeKeys: PushToTalkKeySource {
     var onEvent: ((PushToTalkKeyEvent) -> Void)?
     var allowed = true
+    var eventTimestamp: TimeInterval?
     func start() -> Bool { allowed }
     func stop() {}
     func send(_ event: PushToTalkKeyEvent) { onEvent?(event) }

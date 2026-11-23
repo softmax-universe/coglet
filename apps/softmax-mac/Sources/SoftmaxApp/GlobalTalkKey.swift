@@ -6,7 +6,9 @@ import SoftmaxCore
 @MainActor final class GlobalTalkKey: PushToTalkKeySource {
     var onEvent: ((PushToTalkKeyEvent) -> Void)?
     var onRecorded: ((Int, UInt64) -> Void)?
-    var recording = false { didSet { down = false; onEvent?(.cancelled) } }
+    private(set) var eventTimestamp: TimeInterval?
+    var recording = false { didSet { down = false; pendingModifier = nil; onEvent?(.cancelled) } }
+    private var pendingModifier: Int?
     var keyCode: Int = 61
     var modifiers: UInt64 = 0
     private var down = false
@@ -44,6 +46,7 @@ import SoftmaxCore
         source = nil; tap = nil; down = false; onEvent?(.cancelled)
     }
     private func receive(_ type: CGEventType, _ event: CGEvent) {
+        eventTimestamp = Double(event.timestamp) / 1_000_000_000
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             down = false; onEvent?(.cancelled)
             if CGPreflightListenEventAccess(), let tap { CGEvent.tapEnable(tap: tap, enable: true) }
@@ -53,8 +56,13 @@ import SoftmaxCore
         let code = Int(event.getIntegerValueField(.keyboardEventKeycode))
         let repeatKey = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
         if recording {
-            guard !repeatKey, type == .keyDown || (type == .flagsChanged &&
-                event.flags.rawValue & (Self.sideBits[code] ?? 0) != 0) else { return }
+            guard !repeatKey else { return }
+            if type == .flagsChanged, let side = Self.sideBits[code] {
+                if event.flags.rawValue & side != 0 { pendingModifier = code; return }
+                guard pendingModifier == code else { return }
+                recording = false; onRecorded?(code, 0); return
+            }
+            guard type == .keyDown else { return }
             var flags = event.flags.rawValue & Self.modifierMask
             if Self.sideBits[code] != nil { flags = 0 }
             recording = false; onRecorded?(code, flags); return
@@ -68,7 +76,7 @@ import SoftmaxCore
         } else {
             active = down && required
         }
-        if active && !down && !repeatKey { down = true; onEvent?(.press) }
+        if active && !down && !repeatKey && code == keyCode { down = true; onEvent?(.press) }
         else if !active && down { down = false; onEvent?(.release) }
     }
 }

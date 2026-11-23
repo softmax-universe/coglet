@@ -4,9 +4,11 @@ import FaceMac
 public enum PushToTalkKeyEvent: Sendable { case press, release, cancelled, permissionDenied }
 @MainActor public protocol PushToTalkKeySource: AnyObject {
     var onEvent: ((PushToTalkKeyEvent) -> Void)? { get set }
+    var eventTimestamp: TimeInterval? { get }
     func start() -> Bool
     func stop()
 }
+public extension PushToTalkKeySource { var eventTimestamp: TimeInterval? { nil } }
 public enum TalkMode: String, Sendable { case hold, toggle }
 public enum SpeechInput: Sendable, Equatable {
     case utterance(Utterance)
@@ -34,6 +36,7 @@ public struct Utterance: Sendable, Equatable {
     public var inputLevel: Float { state == .listening ? audio.inputLevel : 0 }
     public var onChange: (() -> Void)?
     public var routeToPermissions: (() -> Void)?
+    public var permissionProvider: (() -> PermissionSnapshot)?
     public var stopPlayback: (() -> Void)?
     public var playStartSound: (() -> Void)?
     private var startedAt: TimeInterval?
@@ -47,7 +50,10 @@ public struct Utterance: Sendable, Equatable {
         (speechInput, output) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(4))
     }
     public func start() {
-        keys.onEvent = { [weak self] in self?.handle($0) }
+        keys.onEvent = { [weak self] event in
+            guard let self else { return }
+            handle(event, at: keys.eventTimestamp)
+        }
         enabled = keys.start()
         if !enabled { routeToPermissions?() }
     }
@@ -59,21 +65,23 @@ public struct Utterance: Sendable, Equatable {
         if state != .listening { cancel() }
         self.state = state; onChange?()
     }
-    public func handle(_ event: PushToTalkKeyEvent) {
+    public func handle(_ event: PushToTalkKeyEvent, at timestamp: TimeInterval? = nil) {
+        if case .press = event, let permissionProvider { permissions = permissionProvider() }
         switch event {
         case .permissionDenied:
             enabled = false; cancel(); routeToPermissions?()
         case .cancelled: cancel()
         case .release:
             keyDown = false
-            if mode == .hold { finish() }
+            if mode == .hold { finish(at: timestamp) }
         case .press:
             guard enabled, !keyDown else { return }
             keyDown = true
-            if mode == .toggle && startedAt != nil { finish(); return }
+            if mode == .toggle && startedAt != nil { finish(at: timestamp); return }
             guard startedAt == nil else { return }
             guard permissions.canUseGlobalPushToTalk else { routeToPermissions?(); return }
             guard state != .onboarding else { routeToPermissions?(); return }
+            let pressTime = timestamp ?? now()
             if state == .speaking {
                 stopPlayback?()
                 output.yield(.bargeIn(timestamp: now()))
@@ -82,7 +90,7 @@ public struct Utterance: Sendable, Equatable {
             catch {
                 _ = audio.stop(); state = .error; onChange?(); return
             }
-            startedAt = now(); elapsed = 0; state = .listening
+            startedAt = pressTime; elapsed = 0; state = .listening
             playStartSound?(); onChange?()
             timer?.cancel()
             timer = Task { [weak self] in
@@ -95,6 +103,7 @@ public struct Utterance: Sendable, Equatable {
         }
     }
     public func tick() {
+        if let permissionProvider { permissions = permissionProvider() }
         guard let startedAt else { return }
         elapsed = min(120, max(0, now() - startedAt))
         if elapsed >= 120 { finish() } else { onChange?() }
@@ -104,10 +113,10 @@ public struct Utterance: Sendable, Equatable {
         if startedAt != nil { _ = audio.stop(); state = .idle }
         startedAt = nil; elapsed = 0; keyDown = false; onChange?()
     }
-    private func finish() {
+    private func finish(at timestamp: TimeInterval? = nil) {
         guard let start = startedAt else { return }
         timer?.cancel(); timer = nil; startedAt = nil
-        let end = min(now(), start + 120)
+        let end = min(timestamp ?? now(), start + 120)
         let captured = audio.stop()
         elapsed = max(0, end - start)
         guard elapsed >= 0.250 else { state = .idle; onChange?(); return }
