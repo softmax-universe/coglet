@@ -114,7 +114,7 @@ resource_exhausted, permission_denied, unavailable or invalid_argument as approp
 
 `db-host-call` extends the invocation-ordered `calls` array of `db-step-record`;
 ordinary ABI calls are unchanged. `db-step-record` is the same closed record as
-ABI step-record except version=0.2, the extended call union and required fields
+ABI step-record except version=0.2, the extended call/failure unions and required fields
 `db_before`, `db_after` (revision), `db_schema_version` and `db_catalog_hash`.
 For abort db_after=db_before; for committed read-only steps they are equal; for a
 committed unit with writes/enqueues db_after=db_before+1, rejecting uint64 overflow.
@@ -135,6 +135,36 @@ a cursor against current state, resolving a statement catalog, or dispatching.
 Replay aborts on a divergence; it never falls back to live reads. Replay also uses
 the recorded schema/catalog/grants, not current ones. `events` is Factory semantic
 history, never a second copy of journal calls or a journal replay input.
+
+### Host-decided recovery abort
+
+Only ABI 0.2 extends the aborted record's failure to `db-failure`: an unchanged
+ABI `failure`, or the closed `{kind: "db_recovery_abort", prepared_record_hash:
+hash}`. The latter means handle returned 0, no DB call poisoned the unit and the complete
+successful decision was durably prepared, but authoritative recovery proved its
+DB marker absent. It is not guest_return, a synthetic failed call, or a timeout.
+The hash identifies the discarded successful preparation, not the final aborted
+record. Never attach this failure to a committed record or a marker-present unit.
+
+Retain the prepared invocation-ordered calls and their provisional results, events,
+boundary, input snapshot, usage and admission identity in the aborted record.
+Discard all guest filesystem writes and staged effects: output_files=input_files,
+output_hash=input_hash, db_after=db_before; actions, timers, llm_requests and logs
+are empty. Consume the attempt's wakes as for an ordinary durable ABI abort, and
+compute a new record_hash over this aborted record. Boundary changes survive.
+Durably publish that abort before deleting its preparation; crash during this
+replacement retries the same abort publication idempotently. No automatic rerun.
+
+Offline replay executes the guest against recorded calls/results and must reproduce
+successful handle=0 with no poisoned DB unit. Only after validating that execution
+does it apply the recorded host abort, discarding provisional writes/effects and
+checking the abort invariants above. A guest failure, changed/missing/extra call or
+different result is divergence, not an alternative justification for this failure.
+Replay uses the recorded failure as the recovery decision: it never consults a live
+marker or requires the discarded preparation. The preparation hash is an audit
+binding, not independently verifiable durability evidence in an offline archive.
+Marker-present recovery instead publishes the exact prepared committed record;
+replay follows ordinary successful execution and must not apply an abort overlay.
 
 ## Outbox lifecycle and recovery
 

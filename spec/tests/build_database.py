@@ -55,6 +55,8 @@ def schemas():
             return [imported(x) for x in value]
         return value
     defs = {}
+    defs['db-recovery-abort'] = obj(dict(kind=const('db_recovery_abort'), prepared_record_hash={'$ref':ABI+'hash'}))
+    defs['db-failure'] = union({'$ref':ABI+'failure'}, ref('db-recovery-abort'))
     defs['db-cell'] = union({'type': 'null'}, integer(-(2**63), 2**64-1), text(0))
     defs['db-cursor'] = text(1)
     defs['db-statement'] = obj(dict(operation=const('statement'), statement=dict(type='string', pattern='^[a-z][a-z0-9_]{0,63}(?![\\s\\S])'), mode={'enum':['read','write']}, params=arr(ref('db-cell'),32), max_rows=integer(1,64), max_bytes=integer(256,65536), cursor=ref('db-cursor')), ('cursor',))
@@ -79,6 +81,8 @@ def schemas():
             if old == 'manifest':
                 extra['database'] = ref('db-config')
             elif old == 'step-record':
+                if 'failure' in props:
+                    props['failure'] = ref('db-failure')
                 props['calls']['items'] = union({'$ref':ABI+'call'},ref('db-host-call'))
                 extra = dict(db_before=U64,db_after=U64,db_schema_version=U64,db_catalog_hash={'$ref':ABI+'hash'})
             elif old == 'trace':
@@ -103,6 +107,7 @@ def extended_cddl():
         if old=='manifest':
             line=line[:-1]+', database: db-config}'
         elif old=='step-record':
+            line=line.replace('failure: failure', 'failure: db-failure')
             line=line.replace('calls: [* call]', 'calls: [* (call / db-host-call)]')
             line=line.replace('record_hash: hash,','record_hash: hash, db_before: uint64, db_after: uint64, db_schema_version: uint64, db_catalog_hash: hash,')
         elif old=='trace':
@@ -150,6 +155,19 @@ def fixtures():
             candidate.update(initial_db_revision=7,final_db_revision=7)
             candidate['records']=[]
         add(new,new,candidate)
+        if old=='step-record':
+            aborted=deepcopy(candidate)
+            aborted.update(status='aborted', failure=dict(kind='db_recovery_abort',prepared_record_hash='b'*64))
+            aborted.update(output_files=deepcopy(aborted['input_files']),output_hash=aborted['input_hash'],actions=[],timers=[],llm_requests=[],logs=[])
+            add('recovery-abort','db-step-record',aborted)
+            missing=deepcopy(aborted)
+            del missing['failure']['prepared_record_hash']
+            add('recovery-abort-missing-prepare','db-step-record',missing,False)
+            wrong=deepcopy(aborted)
+            wrong['failure']['prepared_record_hash']='bad'
+            add('recovery-abort-bad-prepare','db-step-record',wrong,False)
+            add('committed-with-recovery-failure','db-step-record',dict(aborted,status='committed'),False)
+            add('frozen-rejects-recovery-abort','db-step-record',dict(aborted,version='0.1'),False)
     return out
 
 
@@ -167,6 +185,12 @@ def timelines():
     ]:
         request=dict(operation='db.step',fixture='private-goals-v1',grants=['db.read','db.write','worker.dispatch'],calls=script,termination='committed')
         cases.append(dict(name='db-'+name,peer_role='guest',steps=[{'send':request},{'expect':expected,'within_ms':500}]))
+    for marker in (False,True):
+        request=dict(operation='db.step',fixture='private-goals-v1',grants=['db.read','db.write','worker.dispatch'],calls=[ENQUEUE],termination='committed',recovery=dict(crash='after_db_commit' if marker else 'after_prepare',prepared_record_hash='b'*64))
+        expected=dict(replies=[ENQUEUED],status='committed' if marker else 'aborted',db_before=7,db_after=8 if marker else 7,dispatch=['1'*32] if marker else [],recovery=dict(marker_present=marker,journal_published=True,guest_return=0,guest_effects_published=marker,prepared_record_hash='b'*64))
+        if not marker:
+            expected['failure']=dict(kind='db_recovery_abort',prepared_record_hash='b'*64)
+        cases.append(dict(name='db-recovery-'+('marker-roll-forward' if marker else 'no-marker-abort'),peer_role='guest',steps=[{'send':request},{'expect':expected,'within_ms':500}]))
     return cases
 
 

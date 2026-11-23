@@ -71,7 +71,7 @@ ABI commit. The preparation is a recovery artifact, not a second execution journ
 | Crash point | Required recovery |
 |---|---|
 | Before durable prepare | Roll back DB; no dispatch. Recover ordinary ABI attempt admission; no automatic live rerun. |
-| After prepare, before DB commit | Marker absent after authoritative DB recovery: discard preparation, roll back, durably record an aborted attempt; no effects. |
+| After prepare, before DB commit | Marker absent after authoritative DB recovery: roll back, publish ABI 0.2 db_recovery_abort retaining provisional calls and the prepared hash, then discard preparation; no guest effects. |
 | DB commit uncertain | Query the marker, not guest code. Inaccessible DB means hold; never infer abort from timeout. |
 | After DB commit, before journal publication | Matching marker: roll forward the exact prepared journal/files/input consumption. Never rerun or turn the committed DB unit into an abort. |
 | After journal publication, before dispatch | Reconcile marker/hash, resume eligible pending intents. |
@@ -92,6 +92,16 @@ applying migrations or dispatching intents. Recovery is not replay. The Factory
 `events` table holds meaningful cognitive decisions only; it is not a copy of the
 journal or an alternative event-sourcing authority. The journal owns execution
 history; SQL owns live cognitive state. Snapshots carry both recovery positions.
+
+The DB extension adds `db-failure` without changing frozen ABI 0.1: an ordinary
+ABI failure or `{kind: "db_recovery_abort", prepared_record_hash: hash}` for the
+prepare/no-marker case. Replay must reproduce successful calls and handle=0, then
+apply that recorded host decision, discard guest effects and preserve the input
+snapshot/revision. It must not fabricate a guest failure or query live DB state.
+The capability spec's Host-decided recovery abort section defines publication,
+wake consumption and replay invariants; marker-present recovery must roll forward
+the prepared committed record instead. The hash is an audit reference, not proof
+of physical durability from an offline archive.
 
 ### Migrations, snapshots and compatibility
 

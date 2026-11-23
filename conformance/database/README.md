@@ -33,3 +33,15 @@ Phase 1 additionally owns real grant isolation, paging cursor authentication and
 expiry, revision conflict, row/byte/time/call budgets, FK/version constraints,
 crash prepare/marker/publication fencing, and backup restore qualification.
 Phase 2 owns real dispatcher uncertainty, receipt and inbox restart qualification.
+
+Recovery cases additionally supply `recovery.crash` (`after_prepare` or
+`after_db_commit`) and a deterministic `prepared_record_hash` fixture identity.
+The adapter must inject that crash and perform authoritative recovery before
+reporting `recovery.marker_present`, `journal_published`, `guest_return`,
+`guest_effects_published`, and the prepared hash. These are observations, not
+guest parameters or instructions to fabricate success. With no marker the result
+has the ABI 0.2 `db_recovery_abort` failure and no effects; with a matching marker
+it is committed with no failure. Both retain the successful provisional replies.
+The scripted controls reject inverted markers/statuses, wrong prepare identities,
+guest failure, absent publication and leaked/suppressed effects. Real crash
+durability remains an implementation qualification obligation.

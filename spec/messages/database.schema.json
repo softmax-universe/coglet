@@ -3,6 +3,32 @@
   "$id": "https://coglet.dev/spec/messages/database.schema.json",
   "$ref": "#/$defs/database",
   "$defs": {
+    "db-recovery-abort": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "db_recovery_abort"
+        },
+        "prepared_record_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        }
+      },
+      "required": [
+        "kind",
+        "prepared_record_hash"
+      ],
+      "additionalProperties": false
+    },
+    "db-failure": {
+      "anyOf": [
+        {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/failure"
+        },
+        {
+          "$ref": "#/$defs/db-recovery-abort"
+        }
+      ]
+    },
     "db-cell": {
       "anyOf": [
         {
@@ -732,7 +758,7 @@
               "const": "aborted"
             },
             "failure": {
-              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/failure"
+              "$ref": "#/$defs/db-failure"
             },
             "db_before": {
               "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"

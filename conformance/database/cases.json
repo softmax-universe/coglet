@@ -387,5 +387,125 @@
         "within_ms": 500
       }
     ]
+  },
+  {
+    "name": "db-recovery-no-marker-abort",
+    "peer_role": "guest",
+    "steps": [
+      {
+        "send": {
+          "operation": "db.step",
+          "fixture": "private-goals-v1",
+          "grants": [
+            "db.read",
+            "db.write",
+            "worker.dispatch"
+          ],
+          "calls": [
+            {
+              "operation": "enqueue",
+              "intent_id": "11111111111111111111111111111111",
+              "idempotency_key": "22222222222222222222222222222222",
+              "kind": "worker.dispatch",
+              "payload": {
+                "task": "a"
+              },
+              "correlation_id": "33333333333333333333333333333333"
+            }
+          ],
+          "termination": "committed",
+          "recovery": {
+            "crash": "after_prepare",
+            "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      },
+      {
+        "expect": {
+          "replies": [
+            {
+              "status": "enqueued",
+              "intent_id": "11111111111111111111111111111111",
+              "duplicate": false
+            }
+          ],
+          "status": "aborted",
+          "db_before": 7,
+          "db_after": 7,
+          "dispatch": [],
+          "recovery": {
+            "marker_present": false,
+            "journal_published": true,
+            "guest_return": 0,
+            "guest_effects_published": false,
+            "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "failure": {
+            "kind": "db_recovery_abort",
+            "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        },
+        "within_ms": 500
+      }
+    ]
+  },
+  {
+    "name": "db-recovery-marker-roll-forward",
+    "peer_role": "guest",
+    "steps": [
+      {
+        "send": {
+          "operation": "db.step",
+          "fixture": "private-goals-v1",
+          "grants": [
+            "db.read",
+            "db.write",
+            "worker.dispatch"
+          ],
+          "calls": [
+            {
+              "operation": "enqueue",
+              "intent_id": "11111111111111111111111111111111",
+              "idempotency_key": "22222222222222222222222222222222",
+              "kind": "worker.dispatch",
+              "payload": {
+                "task": "a"
+              },
+              "correlation_id": "33333333333333333333333333333333"
+            }
+          ],
+          "termination": "committed",
+          "recovery": {
+            "crash": "after_db_commit",
+            "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      },
+      {
+        "expect": {
+          "replies": [
+            {
+              "status": "enqueued",
+              "intent_id": "11111111111111111111111111111111",
+              "duplicate": false
+            }
+          ],
+          "status": "committed",
+          "db_before": 7,
+          "db_after": 8,
+          "dispatch": [
+            "11111111111111111111111111111111"
+          ],
+          "recovery": {
+            "marker_present": true,
+            "journal_published": true,
+            "guest_return": 0,
+            "guest_effects_published": true,
+            "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        },
+        "within_ms": 500
+      }
+    ]
   }
 ]

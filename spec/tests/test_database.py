@@ -64,6 +64,18 @@ def step_contract(request, observed):
     """Check declared engine-seam outcomes, not simulate execution or synthesize them."""
     if len(observed['replies'])!=len(request['calls']): raise ValueError('reply count')
     poisoned=any(x['status']=='failed' for x in observed['replies'])
+    if 'recovery' in request:
+        recovery=observed['recovery']
+        marker=request['recovery']['crash']=='after_db_commit'
+        prepared=request['recovery']['prepared_record_hash']
+        if recovery != dict(marker_present=marker,journal_published=True,guest_return=0,guest_effects_published=marker,prepared_record_hash=prepared):
+            raise ValueError('recovery observations')
+        if poisoned or request['termination']!='committed': raise ValueError('unsuccessful preparation')
+        if observed['status']!=('committed' if marker else 'aborted'): raise ValueError('marker decision')
+        if marker:
+            if 'failure' in observed: raise ValueError('committed failure')
+        elif observed.get('failure')!=dict(kind='db_recovery_abort',prepared_record_hash=prepared):
+            raise ValueError('recovery failure binding')
     if poisoned and observed['status']!='aborted': raise ValueError('poison must abort')
     if observed['status']=='aborted':
         if observed['db_after']!=observed['db_before'] or observed['dispatch']:
@@ -88,6 +100,21 @@ def step_contract(request, observed):
     writes=bool(inserted) or any(c['operation']=='statement' and c['mode']=='write' and r['status']=='page' for c,r in zip(request['calls'],observed['replies']))
     delta=1 if writes and observed['status']=='committed' else 0
     if observed['db_after']!=observed['db_before']+delta: raise ValueError('revision')
+
+
+def recovery_replay_contract(record, execution):
+    """Archive-only case oracle, not guest execution or physical recovery."""
+    if record['version']!='0.2' or record['status']!='aborted' or record['failure']['kind']!='db_recovery_abort':
+        raise ValueError('not a recovery abort')
+    if execution['guest_return']!=0 or execution['calls']!=record['calls']:
+        raise ValueError('replay divergence')
+    for call in record['calls']:
+        if call['op']=='db' and (call['result']!=0 or call['response']['status']=='failed'):
+            raise ValueError('poisoned preparation')
+    if record['output_files']!=record['input_files'] or record['output_hash']!=record['input_hash'] or record['db_after']!=record['db_before']:
+        raise ValueError('abort state')
+    if any(record[k] for k in ('actions','timers','llm_requests','logs')):
+        raise ValueError('abort effects')
 
 
 class Sink:
@@ -199,5 +226,52 @@ class DatabaseContracts(unittest.TestCase):
         bad=deepcopy(dup['steps'][1]['expect'])
         bad['replies'][1]['intent_id']='4'*32
         with self.assertRaises(ValueError): step_contract(dup['steps'][0]['send'],bad)
+
+    def test_recovery_outcome_negative_controls(self):
+        for case in self.timelines:
+            request=case['steps'][0]['send']
+            if 'recovery' not in request: continue
+            response=case['steps'][1]['expect']
+            mutations=[]
+            for key,value in response['recovery'].items():
+                bad=deepcopy(response)
+                bad['recovery'][key]=not value if isinstance(value,bool) else (1 if key=='guest_return' else 'c'*64)
+                mutations.append(bad)
+            bad=deepcopy(response)
+            bad['status']='aborted' if response['status']=='committed' else 'committed'
+            mutations.append(bad)
+            bad=deepcopy(response)
+            bad['failure']=dict(kind='db_recovery_abort',prepared_record_hash='c'*64)
+            mutations.append(bad)
+            bad=deepcopy(response)
+            bad['replies'][0]=dict(status='failed',error=dict(code='conflict',message='fail',retryable=False))
+            mutations.append(bad)
+            if 'failure' in response:
+                bad=deepcopy(response)
+                del bad['failure']
+                mutations.append(bad)
+            for bad in mutations:
+                with self.assertRaises(ValueError): step_contract(request,bad)
+                with self.assertRaises(AssertionError): asyncio.run(run_scripted(case,[bad]))
+
+    def test_frozen_failure_remains_closed(self):
+        value=dict(kind='db_recovery_abort',prepared_record_hash='b'*64)
+        abi=self.schemas[1]
+        self.assertFalse(Draft202012Validator({'$ref':abi['$id']+'#/$defs/failure'},registry=self.registry).is_valid(value))
+        with self.assertRaises(ValidationError):
+            Schema('entry = failure\n'+self.cddl).validate_cbor(cbor2.dumps(value))
+
+    def test_archive_recovery_abort_contract(self):
+        record=deepcopy(next(c['value'] for c in self.cases if c['name']=='recovery-abort'))
+        execution=dict(guest_return=0,calls=deepcopy(record['calls']))
+        recovery_replay_contract(record,execution)
+        for mutation in [dict(execution,guest_return=1),dict(execution,calls=[]),dict(execution,calls=execution['calls']*2)]:
+            with self.assertRaises(ValueError): recovery_replay_contract(record,mutation)
+        for field,value in [('db_after',8),('output_hash','c'*64),('output_files',{'/data/leak':'00'}),('status','committed')]+[(k,[{}]) for k in ('actions','timers','llm_requests','logs')]:
+            with self.assertRaises(ValueError): recovery_replay_contract(dict(record,**{field:value}),execution)
+        bad=deepcopy(record)
+        call=next(c for c in bad['calls'] if c['op']=='db')
+        call['response']=dict(status='failed',error=dict(code='conflict',message='fail',retryable=False))
+        with self.assertRaises(ValueError): recovery_replay_contract(bad,dict(guest_return=0,calls=bad['calls']))
 
 if __name__=='__main__': unittest.main()
