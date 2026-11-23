@@ -127,7 +127,9 @@ name = "coglet-mock"
 version = "0.1.0"
 dependencies = [
  "coglet-llm",
+ "coglet-surface-rust",
  "coglet-types",
+ "serde",
  "serde_json",
 ]
 
@@ -150,6 +152,12 @@ dependencies = [
 [[package]]
 name = "coglet-surface-rust"
 version = "0.1.0"
+dependencies = [
+ "coglet-types",
+ "libc",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "coglet-trace"
