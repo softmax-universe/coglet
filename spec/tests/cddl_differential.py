@@ -48,15 +48,20 @@ def mutations(value):
         yield path, result
 
 
-def audit(spec, family, extra_roots=()):
+def audit(spec, family, extra_roots=(), includes=()):
     spec = Path(spec)
     family_cddl = spec / 'messages' / (family + '.cddl')
     if not family_cddl.exists():
         family_cddl = spec / (family + '.cddl')
     paths = [family_cddl]
+    for name in includes:
+        path = spec / 'messages' / (name + '.cddl')
+        if not path.exists():
+            path = spec / (name + '.cddl')
+        paths.append(path)
     if family != 'common':
         paths.append(spec / 'messages/common.cddl')
-    source = '\n'.join(path.read_text() for path in paths)
+    source = '\n'.join(path.read_text() for path in dict.fromkeys(paths))
     # The first assignment is the actual CDDL public entry, not a helper.
     public = re.search(r'^\s*([\w-]+)\s*=', re.sub(r';[^\n]*', '', source), re.M).group(1)
     documents = [json.loads(p.read_text()) for p in (spec / 'messages').glob('*.schema.json')]
@@ -147,9 +152,10 @@ if __name__ == '__main__':
     parser.add_argument('--spec', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--family', required=True)
     parser.add_argument('--root', action='append', default=[])
+    parser.add_argument('--include', action='append', default=[], help='Additional imported CDDL family')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
-    result = audit(args.spec, args.family, args.root)
+    result = audit(args.spec, args.family, args.root, args.include)
     if args.output:
         args.output.write_text(json.dumps(result, indent=2) + '\n')
     raise SystemExit(bool(result['mismatches']))

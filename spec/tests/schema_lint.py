@@ -75,8 +75,15 @@ def lint(root):
                 generator = rstr.Rstr(random.Random(0))
                 examples = set(candidates)
                 for _ in range(32):
-                    examples.add(generator.xeger(pattern))
-                positives = sorted(example for example in examples if expression.search(example))
+                    try:
+                        examples.add(generator.xeger(pattern))
+                    except (ValueError, KeyError, NotImplementedError):
+                        # rstr bounds repeats at 100 and cannot generate every
+                        # valid regex. Actual fixture witnesses remain usable;
+                        # absent matching witnesses still fail closed below.
+                        break
+                positives = sorted((example for example in examples if expression.search(example)),
+                                   key=lambda value: (len(value), value))
                 if not positives:
                     findings.append(dict(ref, kind='pattern-no-positive-witness', pattern=pattern))
                     continue

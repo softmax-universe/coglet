@@ -17,6 +17,21 @@ class SchemaLintTests(unittest.TestCase):
             (root / 'spec/impossible.schema.json').write_text(r'{"pattern":"(?!)"}')
             self.assertEqual(lint(root)[0]['kind'], 'pattern-no-positive-witness')
 
+    def test_fixed_large_repeat_uses_actual_witness(self):
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / 'spec').mkdir()
+            path = root / 'spec/large.schema.json'
+            path.write_text(json.dumps({'pattern': r'^[a-f]{128}(?![\s\S])',
+                                        'examples': ['a' * 128]}))
+            self.assertEqual(lint(root), [])
+            path.write_text(json.dumps({'pattern': r'^[a-f]{128}$',
+                                        'examples': ['a' * 128]}))
+            self.assertEqual(lint(root)[0]['kind'], 'pattern-trailing-newline')
+            path.write_text(json.dumps({'pattern': r'^[a-f]{128}(?![\s\S])'}))
+            self.assertEqual(lint(root)[0]['kind'], 'pattern-no-positive-witness')
+
     def test_json_pattern_trailing_newline(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

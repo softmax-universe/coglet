@@ -30,6 +30,26 @@ class ReferenceCddlTests(unittest.TestCase):
         self.assertGreater(result['comparisons'], 2000)
         self.assertGreater(result['accepted_controls'], 100)
 
+    def test_differential_explicit_import(self):
+        import tempfile
+        from cddl_differential import audit
+        with tempfile.TemporaryDirectory() as td:
+            spec = Path(td)
+            (spec / 'messages').mkdir()
+            (spec / 'fixtures/tickets').mkdir(parents=True)
+            (spec / 'messages/tickets.cddl').write_text('root = imported\n')
+            (spec / 'messages/promotion.cddl').write_text('imported = "ok"\n')
+            (spec / 'messages/common.cddl').write_text('common = uint\n')
+            (spec / 'messages/tickets.schema.json').write_text(json.dumps({
+                '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                '$id': 'https://example.test/tickets', 'const': 'ok',
+                '$defs': {'root': {'const': 'ok'}}}))
+            (spec / 'fixtures/tickets/cases.json').write_text(json.dumps([
+                {'name': 'import', 'type': 'root', 'valid': True, 'value': 'ok'}]))
+            result = audit(spec, 'tickets', includes=['promotion'])
+            self.assertEqual(result['mismatches'], 0)
+            self.assertGreater(result['accepted_controls'], 0)
+
     def test_zero_occurrence_map_does_not_consume_keys(self):
         for source in ['root = {*0 tstr => tstr}', 'root = {0*0 forbidden: tstr}']:
             schema = Schema(source)
