@@ -4,5 +4,8 @@
   "abi": "generated",
   "surface": "generated",
   "speech": "generated",
-  "expression": "generated"
+  "expression": "generated",
+  "policy": "draft-validated",
+  "promotion": "draft-validated",
+  "tickets": "draft-validated"
 }
