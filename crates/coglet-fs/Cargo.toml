@@ -3,3 +3,9 @@ name = "coglet-fs"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+sha2 = "0.10"
+serde_json = "1"
+tempfile = "3"
+fs2 = "0.4"
