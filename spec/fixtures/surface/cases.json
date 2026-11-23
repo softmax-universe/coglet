@@ -1,0 +1,911 @@
+[
+  {
+    "name": "hello-valid",
+    "type": "hello",
+    "valid": true,
+    "value": {
+      "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      },
+      "clock": 0,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a465636c6f636b00656f66666572a16876657273696f6e738163302e3167737572666163657848737572666163653a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "hello-unknown-field",
+    "type": "hello",
+    "valid": false,
+    "value": {
+      "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      },
+      "clock": 0,
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "hello-missing-field",
+    "type": "hello",
+    "valid": false,
+    "value": {
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      },
+      "clock": 0,
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "hello-reply-valid",
+    "type": "hello-reply",
+    "valid": true,
+    "value": {
+      "selection": {
+        "version": "0.1"
+      },
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a26973656c656374696f6ea16776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "hello-reply-unknown-field",
+    "type": "hello-reply",
+    "valid": false,
+    "value": {
+      "selection": {
+        "version": "0.1"
+      },
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "hello-reply-missing-field",
+    "type": "hello-reply",
+    "valid": false,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "cap-entry-valid",
+    "type": "cap-entry",
+    "valid": true,
+    "value": {
+      "name": "speech.control",
+      "events": [
+        "speech.start"
+      ],
+      "reads": [
+        "speech.config"
+      ],
+      "actions": [
+        "speech.stop"
+      ],
+      "exclusive": [
+        "audio.mic",
+        "audio.speaker"
+      ],
+      "schemas": {
+        "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+        "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+        "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+      }
+    },
+    "cbor_hex": "a6646e616d656e7370656563682e636f6e74726f6c657265616473816d7370656563682e636f6e666967666576656e7473816c7370656563682e737461727467616374696f6e73816b7370656563682e73746f7067736368656d6173a36b7370656563682e73746f70783f68747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f73746f706c7370656563682e7374617274784768747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d73746172746d7370656563682e636f6e666967784868747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d636f6e666967696578636c75736976658269617564696f2e6d69636d617564696f2e737065616b6572"
+  },
+  {
+    "name": "cap-entry-unknown-field",
+    "type": "cap-entry",
+    "valid": false,
+    "value": {
+      "name": "speech.control",
+      "events": [
+        "speech.start"
+      ],
+      "reads": [
+        "speech.config"
+      ],
+      "actions": [
+        "speech.stop"
+      ],
+      "exclusive": [
+        "audio.mic",
+        "audio.speaker"
+      ],
+      "schemas": {
+        "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+        "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+        "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "cap-entry-missing-field",
+    "type": "cap-entry",
+    "valid": false,
+    "value": {
+      "events": [
+        "speech.start"
+      ],
+      "reads": [
+        "speech.config"
+      ],
+      "actions": [
+        "speech.stop"
+      ],
+      "exclusive": [
+        "audio.mic",
+        "audio.speaker"
+      ],
+      "schemas": {
+        "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+        "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+        "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+      }
+    }
+  },
+  {
+    "name": "grant-valid",
+    "type": "grant",
+    "valid": true,
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "operations": [
+        "speech.stop"
+      ],
+      "resources": [
+        "audio.speaker"
+      ],
+      "expires": 1000000
+    },
+    "cbor_hex": "a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731a000f4240697265736f7572636573816d617564696f2e737065616b65726a6f7065726174696f6e73816b7370656563682e73746f70"
+  },
+  {
+    "name": "grant-unknown-field",
+    "type": "grant",
+    "valid": false,
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "operations": [
+        "speech.stop"
+      ],
+      "resources": [
+        "audio.speaker"
+      ],
+      "expires": 1000000,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "grant-missing-field",
+    "type": "grant",
+    "valid": false,
+    "value": {
+      "operations": [
+        "speech.stop"
+      ],
+      "resources": [
+        "audio.speaker"
+      ],
+      "expires": 1000000
+    }
+  },
+  {
+    "name": "read-valid",
+    "type": "read",
+    "valid": true,
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "speech.config",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a66461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651a000f42406a6361706162696c6974796d7370656563682e636f6e6669676b6772616e745f65706f6368016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "read-unknown-field",
+    "type": "read",
+    "valid": false,
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "speech.config",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000000,
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "read-missing-field",
+    "type": "read",
+    "valid": false,
+    "value": {
+      "capability": "speech.config",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000000,
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "read-reply-valid",
+    "type": "read-reply",
+    "valid": true,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {},
+      "snapshot": 1
+    },
+    "cbor_hex": "a4626f6bf56576616c7565a068736e617073686f74016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "read-reply-unknown-field",
+    "type": "read-reply",
+    "valid": false,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {},
+      "snapshot": 1,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "read-reply-missing-field",
+    "type": "read-reply",
+    "valid": false,
+    "value": {
+      "ok": true,
+      "value": {},
+      "snapshot": 1
+    }
+  },
+  {
+    "name": "act-valid",
+    "type": "act",
+    "valid": true,
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "speech.stop",
+        "args": {
+          "stream": "11111111111111111111111111111111"
+        },
+        "deadline": 1000000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a266616374696f6ea6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a16673747265616d7820313131313131313131313131313131313131313131313131313131313131313166636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651a000f42406a6361706162696c6974796b7370656563682e73746f706e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316b6772616e745f65706f636801"
+  },
+  {
+    "name": "act-unknown-field",
+    "type": "act",
+    "valid": false,
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "speech.stop",
+        "args": {
+          "stream": "11111111111111111111111111111111"
+        },
+        "deadline": 1000000,
+        "correlation_id": "11111111111111111111111111111111"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "act-missing-field",
+    "type": "act",
+    "valid": false,
+    "value": {
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "speech.stop",
+        "args": {
+          "stream": "11111111111111111111111111111111"
+        },
+        "deadline": 1000000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    }
+  },
+  {
+    "name": "health-valid",
+    "type": "health",
+    "valid": true,
+    "value": {
+      "state": "ready",
+      "clock": 0,
+      "pending": 0,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a465636c6f636b006573746174656572656164796770656e64696e67006e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "health-unknown-field",
+    "type": "health",
+    "valid": false,
+    "value": {
+      "state": "ready",
+      "clock": 0,
+      "pending": 0,
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "health-missing-field",
+    "type": "health",
+    "valid": false,
+    "value": {
+      "clock": 0,
+      "pending": 0,
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "kill-valid",
+    "type": "kill",
+    "valid": true,
+    "value": {
+      "reason": "operator",
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a266726561736f6e686f70657261746f726e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "kill-unknown-field",
+    "type": "kill",
+    "valid": false,
+    "value": {
+      "reason": "operator",
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "kill-missing-field",
+    "type": "kill",
+    "valid": false,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "surface-error-valid",
+    "type": "surface-error",
+    "valid": true,
+    "value": {
+      "error": {
+        "code": "permission_denied",
+        "message": "No grant",
+        "retryable": false
+      },
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a2656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d657373616765684e6f206772616e7469726574727961626c65f46e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "surface-error-unknown-field",
+    "type": "surface-error",
+    "valid": false,
+    "value": {
+      "error": {
+        "code": "permission_denied",
+        "message": "No grant",
+        "retryable": false
+      },
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "surface-error-missing-field",
+    "type": "surface-error",
+    "valid": false,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "capabilities-valid",
+    "type": "capabilities",
+    "valid": true,
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "speech.control",
+          "events": [
+            "speech.start"
+          ],
+          "reads": [
+            "speech.config"
+          ],
+          "actions": [
+            "speech.stop"
+          ],
+          "exclusive": [
+            "audio.mic",
+            "audio.speaker"
+          ],
+          "schemas": {
+            "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+            "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+            "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a465636c6f636b0067656e747269657381a6646e616d656e7370656563682e636f6e74726f6c657265616473816d7370656563682e636f6e666967666576656e7473816c7370656563682e737461727467616374696f6e73816b7370656563682e73746f7067736368656d6173a36b7370656563682e73746f70783f68747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f73746f706c7370656563682e7374617274784768747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d73746172746d7370656563682e636f6e666967784868747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d636f6e666967696578636c75736976658269617564696f2e6d69636d617564696f2e737065616b6572687265766973696f6e016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "capabilities-unknown-field",
+    "type": "capabilities",
+    "valid": false,
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "speech.control",
+          "events": [
+            "speech.start"
+          ],
+          "reads": [
+            "speech.config"
+          ],
+          "actions": [
+            "speech.stop"
+          ],
+          "exclusive": [
+            "audio.mic",
+            "audio.speaker"
+          ],
+          "schemas": {
+            "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+            "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+            "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "capabilities-missing-field",
+    "type": "capabilities",
+    "valid": false,
+    "value": {
+      "clock": 0,
+      "entries": [
+        {
+          "name": "speech.control",
+          "events": [
+            "speech.start"
+          ],
+          "reads": [
+            "speech.config"
+          ],
+          "actions": [
+            "speech.stop"
+          ],
+          "exclusive": [
+            "audio.mic",
+            "audio.speaker"
+          ],
+          "schemas": {
+            "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+            "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+            "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "grants-valid",
+    "type": "grants",
+    "valid": true,
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "speech.stop"
+          ],
+          "resources": [
+            "audio.speaker"
+          ],
+          "expires": 1000000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a36565706f63680167656e747269657381a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731a000f4240697265736f7572636573816d617564696f2e737065616b65726a6f7065726174696f6e73816b7370656563682e73746f706e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "grants-unknown-field",
+    "type": "grants",
+    "valid": false,
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "speech.stop"
+          ],
+          "resources": [
+            "audio.speaker"
+          ],
+          "expires": 1000000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "grants-missing-field",
+    "type": "grants",
+    "valid": false,
+    "value": {
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "speech.stop"
+          ],
+          "resources": [
+            "audio.speaker"
+          ],
+          "expires": 1000000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "surface-message-valid",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "hello",
+      "body": {
+        "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "clock": 0,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a465636c6f636b00656f66666572a16876657273696f6e738163302e3167737572666163657848737572666163653a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656568656c6c6f"
+  },
+  {
+    "name": "surface-message-unknown-field",
+    "type": "surface-message",
+    "valid": false,
+    "value": {
+      "type": "hello",
+      "body": {
+        "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "clock": 0,
+        "correlation_id": "11111111111111111111111111111111"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "surface-message-missing-field",
+    "type": "surface-message",
+    "valid": false,
+    "value": {
+      "body": {
+        "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "clock": 0,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    }
+  },
+  {
+    "name": "wire-hello",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "hello",
+      "body": {
+        "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "clock": 0,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a465636c6f636b00656f66666572a16876657273696f6e738163302e3167737572666163657848737572666163653a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656568656c6c6f"
+  },
+  {
+    "name": "wire-hello_reply",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "hello_reply",
+      "body": {
+        "selection": {
+          "version": "0.1"
+        },
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a26973656c656374696f6ea16776657273696f6e63302e316e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656b68656c6c6f5f7265706c79"
+  },
+  {
+    "name": "wire-capabilities",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "capabilities",
+      "body": {
+        "revision": 1,
+        "clock": 0,
+        "entries": [
+          {
+            "name": "speech.control",
+            "events": [
+              "speech.start"
+            ],
+            "reads": [
+              "speech.config"
+            ],
+            "actions": [
+              "speech.stop"
+            ],
+            "exclusive": [
+              "audio.mic",
+              "audio.speaker"
+            ],
+            "schemas": {
+              "speech.start": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start",
+              "speech.config": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-config",
+              "speech.stop": "https://coglet.dev/spec/messages/speech.schema.json#/$defs/stop"
+            }
+          }
+        ],
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a465636c6f636b0067656e747269657381a6646e616d656e7370656563682e636f6e74726f6c657265616473816d7370656563682e636f6e666967666576656e7473816c7370656563682e737461727467616374696f6e73816b7370656563682e73746f7067736368656d6173a36b7370656563682e73746f70783f68747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f73746f706c7370656563682e7374617274784768747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d73746172746d7370656563682e636f6e666967784868747470733a2f2f636f676c65742e6465762f737065632f6d657373616765732f7370656563682e736368656d612e6a736f6e232f24646566732f7370656563682d636f6e666967696578636c75736976658269617564696f2e6d69636d617564696f2e737065616b6572687265766973696f6e016e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656c6361706162696c6974696573"
+  },
+  {
+    "name": "wire-grants",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "grants",
+      "body": {
+        "epoch": 1,
+        "entries": [
+          {
+            "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "operations": [
+              "speech.stop"
+            ],
+            "resources": [
+              "audio.speaker"
+            ],
+            "expires": 1000000
+          }
+        ],
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a36565706f63680167656e747269657381a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731a000f4240697265736f7572636573816d617564696f2e737065616b65726a6f7065726174696f6e73816b7370656563682e73746f706e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065666772616e7473"
+  },
+  {
+    "name": "wire-event",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "event",
+      "body": {
+        "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "speech.start",
+        "seq": 0,
+        "logical_time": 0,
+        "payload": {
+          "utterance": "11111111111111111111111111111111",
+          "position_ms": 0
+        },
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a66373657100646b696e646c7370656563682e737461727466736f757263657848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a2697574746572616e6365782031313131313131313131313131313131313131313131313131313131313131316b706f736974696f6e5f6d73006c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065656576656e74"
+  },
+  {
+    "name": "wire-read",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "read",
+      "body": {
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "speech.config",
+        "args": {},
+        "grant_epoch": 1,
+        "deadline": 1000000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a66461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651a000f42406a6361706162696c6974796d7370656563682e636f6e6669676b6772616e745f65706f6368016e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656472656164"
+  },
+  {
+    "name": "wire-read_reply",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "read_reply",
+      "body": {
+        "correlation_id": "11111111111111111111111111111111",
+        "ok": true,
+        "value": {},
+        "snapshot": 1
+      }
+    },
+    "cbor_hex": "a264626f6479a4626f6bf56576616c7565a068736e617073686f74016e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656a726561645f7265706c79"
+  },
+  {
+    "name": "wire-act",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "act",
+      "body": {
+        "grant_epoch": 1,
+        "action": {
+          "id": "11111111111111111111111111111111",
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "capability": "speech.stop",
+          "args": {
+            "stream": "11111111111111111111111111111111"
+          },
+          "deadline": 1000000,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    "cbor_hex": "a264626f6479a266616374696f6ea6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a16673747265616d7820313131313131313131313131313131313131313131313131313131313131313166636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651a000f42406a6361706162696c6974796b7370656563682e73746f706e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316b6772616e745f65706f636801647479706563616374"
+  },
+  {
+    "name": "wire-accept",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "accept",
+      "body": {
+        "id": "11111111111111111111111111111111",
+        "correlation_id": "11111111111111111111111111111111",
+        "accepted": true
+      }
+    },
+    "cbor_hex": "a264626f6479a362696478203131313131313131313131313131313131313131313131313131313131313131686163636570746564f56e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131647479706566616363657074"
+  },
+  {
+    "name": "wire-health",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "health",
+      "body": {
+        "state": "ready",
+        "clock": 0,
+        "pending": 0,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a465636c6f636b006573746174656572656164796770656e64696e67006e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065666865616c7468"
+  },
+  {
+    "name": "wire-kill",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "kill",
+      "body": {
+        "reason": "operator",
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a266726561736f6e686f70657261746f726e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065646b696c6c"
+  },
+  {
+    "name": "wire-error",
+    "type": "surface-message",
+    "valid": true,
+    "value": {
+      "type": "error",
+      "body": {
+        "error": {
+          "code": "permission_denied",
+          "message": "No grant",
+          "retryable": false
+        },
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a264626f6479a2656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d657373616765684e6f206772616e7469726574727961626c65f46e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065656572726f72"
+  },
+  {
+    "name": "read-reply-error-True",
+    "type": "read-reply",
+    "valid": true,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "ok": false,
+      "error": {
+        "code": "permission_denied",
+        "message": "No grant",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a3626f6bf4656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d657373616765684e6f206772616e7469726574727961626c65f46e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "read-reply-error-False",
+    "type": "read-reply",
+    "valid": false,
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {},
+      "snapshot": 0,
+      "error": {
+        "code": "permission_denied",
+        "message": "No grant",
+        "retryable": false
+      }
+    }
+  }
+]

@@ -1,0 +1,78 @@
+{
+  "name": "late-partial-and-stale-revision",
+  "peer_role": "runtime",
+  "fixtures": [
+    "surface-base",
+    "audio-late-partial-and-stale-revision"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.1"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.start"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.partial",
+        "body.payload.revision": 2
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.end",
+        "body.payload.revision": 3
+      },
+      "within_ms": 200
+    },
+    {
+      "silence_ms": 150,
+      "at_ms": 200
+    }
+  ]
+}

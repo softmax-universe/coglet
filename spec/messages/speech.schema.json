@@ -1,0 +1,414 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/speech.schema.json",
+  "$ref": "#/$defs/speech-profile",
+  "$defs": {
+    "speech-start": {
+      "type": "object",
+      "properties": {
+        "utterance": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "position_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "utterance",
+        "position_ms"
+      ],
+      "additionalProperties": false
+    },
+    "speech-partial": {
+      "type": "object",
+      "properties": {
+        "utterance": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 16384
+        }
+      },
+      "required": [
+        "utterance",
+        "revision",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "speech-end": {
+      "type": "object",
+      "properties": {
+        "utterance": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "text": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 16384
+        },
+        "position_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "utterance",
+        "revision",
+        "text",
+        "position_ms"
+      ],
+      "additionalProperties": false
+    },
+    "speech-position": {
+      "type": "object",
+      "properties": {
+        "stream": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "chunk": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "item": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "played_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "position_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "state": {
+          "enum": [
+            "playing",
+            "ducked",
+            "stopped",
+            "finished"
+          ]
+        }
+      },
+      "required": [
+        "stream",
+        "chunk",
+        "item",
+        "played_ms",
+        "position_ms",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "speech-barge-in": {
+      "type": "object",
+      "properties": {
+        "utterance": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "stream": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "item": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "played_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "position_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "reflex": {
+          "enum": [
+            "stopped",
+            "ducked"
+          ]
+        }
+      },
+      "required": [
+        "utterance",
+        "stream",
+        "item",
+        "played_ms",
+        "position_ms",
+        "reflex"
+      ],
+      "additionalProperties": false
+    },
+    "speak-chunk": {
+      "type": "object",
+      "properties": {
+        "stream": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "chunk": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "final": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stream",
+        "chunk",
+        "text",
+        "final"
+      ],
+      "additionalProperties": false
+    },
+    "stop": {
+      "type": "object",
+      "properties": {
+        "stream": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "stream"
+      ],
+      "additionalProperties": false
+    },
+    "backchannel": {
+      "type": "object",
+      "properties": {
+        "stream": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "cue": {
+          "enum": [
+            "ack",
+            "thinking",
+            "agree"
+          ]
+        }
+      },
+      "required": [
+        "stream",
+        "cue"
+      ],
+      "additionalProperties": false
+    },
+    "speech-route": {
+      "type": "object",
+      "properties": {
+        "placement": {
+          "enum": [
+            "surface",
+            "runtime",
+            "hub",
+            "provider"
+          ]
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "placement",
+        "route"
+      ],
+      "additionalProperties": false
+    },
+    "speech-config": {
+      "type": "object",
+      "properties": {
+        "stt": {
+          "$ref": "#/$defs/speech-route"
+        },
+        "tts": {
+          "$ref": "#/$defs/speech-route"
+        },
+        "barge": {
+          "enum": [
+            "stop",
+            "duck"
+          ]
+        },
+        "session_mode": {
+          "enum": [
+            "text",
+            "speech_to_speech"
+          ]
+        }
+      },
+      "required": [
+        "stt",
+        "tts",
+        "barge",
+        "session_mode"
+      ],
+      "additionalProperties": false
+    },
+    "session-open": {
+      "type": "object",
+      "properties": {
+        "session": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "route": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "session",
+        "route"
+      ],
+      "additionalProperties": false
+    },
+    "session-close": {
+      "type": "object",
+      "properties": {
+        "session": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "additionalProperties": false
+    },
+    "tool-call": {
+      "type": "object",
+      "properties": {
+        "session": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "call": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "name": {
+          "$ref": "common.schema.json#/$defs/method-name"
+        },
+        "arguments": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        }
+      },
+      "required": [
+        "session",
+        "call",
+        "name",
+        "arguments"
+      ],
+      "additionalProperties": false
+    },
+    "tool-result": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "session": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "call": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "ok": {
+              "enum": [
+                true
+              ]
+            },
+            "value": {
+              "$ref": "common.schema.json#/$defs/profile-map"
+            }
+          },
+          "required": [
+            "session",
+            "call",
+            "ok",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "session": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "call": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "ok": {
+              "enum": [
+                false
+              ]
+            },
+            "value": {
+              "$ref": "common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "session",
+            "call",
+            "ok",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "speech-profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/speech-start"
+        },
+        {
+          "$ref": "#/$defs/speech-partial"
+        },
+        {
+          "$ref": "#/$defs/speech-end"
+        },
+        {
+          "$ref": "#/$defs/speech-position"
+        },
+        {
+          "$ref": "#/$defs/speech-barge-in"
+        },
+        {
+          "$ref": "#/$defs/speak-chunk"
+        },
+        {
+          "$ref": "#/$defs/stop"
+        },
+        {
+          "$ref": "#/$defs/backchannel"
+        },
+        {
+          "$ref": "#/$defs/speech-route"
+        },
+        {
+          "$ref": "#/$defs/speech-config"
+        },
+        {
+          "$ref": "#/$defs/session-open"
+        },
+        {
+          "$ref": "#/$defs/session-close"
+        },
+        {
+          "$ref": "#/$defs/tool-call"
+        },
+        {
+          "$ref": "#/$defs/tool-result"
+        }
+      ]
+    }
+  }
+}

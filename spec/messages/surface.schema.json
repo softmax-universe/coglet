@@ -1,0 +1,572 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/surface.schema.json",
+  "$ref": "#/$defs/surface-message",
+  "$defs": {
+    "hello": {
+      "type": "object",
+      "properties": {
+        "surface": {
+          "$ref": "common.schema.json#/$defs/surface-id"
+        },
+        "offer": {
+          "$ref": "common.schema.json#/$defs/version-offer"
+        },
+        "clock": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "surface",
+        "offer",
+        "clock",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "hello-reply": {
+      "type": "object",
+      "properties": {
+        "selection": {
+          "$ref": "common.schema.json#/$defs/version-selection"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "selection",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "schema-refs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "common.schema.json#/$defs/capability-name"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "cap-entry": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "common.schema.json#/$defs/capability-name"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "reads": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "exclusive": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "schemas": {
+          "$ref": "#/$defs/schema-refs"
+        }
+      },
+      "required": [
+        "name",
+        "events",
+        "reads",
+        "actions",
+        "exclusive",
+        "schemas"
+      ],
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "clock": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cap-entry"
+          }
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "revision",
+        "clock",
+        "entries",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "grant": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/capability-name"
+          }
+        },
+        "expires": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "coglet",
+        "operations",
+        "resources",
+        "expires"
+      ],
+      "additionalProperties": false
+    },
+    "grants": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/grant"
+          }
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "epoch",
+        "entries",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "read": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "capability": {
+          "$ref": "common.schema.json#/$defs/capability-name"
+        },
+        "args": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "grant_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "deadline": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "coglet",
+        "capability",
+        "args",
+        "grant_epoch",
+        "deadline",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "read-reply": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "correlation_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "ok": {
+              "enum": [
+                true
+              ]
+            },
+            "value": {
+              "$ref": "common.schema.json#/$defs/profile-map"
+            },
+            "snapshot": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            }
+          },
+          "required": [
+            "correlation_id",
+            "ok",
+            "value",
+            "snapshot"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "correlation_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "ok": {
+              "enum": [
+                false
+              ]
+            },
+            "error": {
+              "$ref": "common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "correlation_id",
+            "ok",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "act": {
+      "type": "object",
+      "properties": {
+        "grant_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "action": {
+          "$ref": "common.schema.json#/$defs/action"
+        }
+      },
+      "required": [
+        "grant_epoch",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "health": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "enum": [
+            "ready",
+            "degraded",
+            "stopped"
+          ]
+        },
+        "clock": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "pending": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "state",
+        "clock",
+        "pending",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "kill": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "reason",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "surface-error": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "common.schema.json#/$defs/error"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "error",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "surface-message": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "hello"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/hello"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "hello_reply"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/hello-reply"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "capabilities"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/capabilities"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "grants"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/grants"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "event"
+              ]
+            },
+            "body": {
+              "$ref": "common.schema.json#/$defs/event"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "read"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/read"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "read_reply"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/read-reply"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "act"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/act"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "accept"
+              ]
+            },
+            "body": {
+              "$ref": "common.schema.json#/$defs/action-accept"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "health"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/health"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "kill"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/kill"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "error"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/surface-error"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

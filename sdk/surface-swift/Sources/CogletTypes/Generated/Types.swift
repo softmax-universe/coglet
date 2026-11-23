@@ -46,6 +46,41 @@ internal enum GeneratedSchema {
         "common::action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
         "common::error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
         "common::error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "expression::expression-entry": .reference("expression::expression-profile"),
+        "expression::set-expression": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "duration_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
+        "expression::expression-state": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "remaining_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
+        "expression::expression-profile": .union([.reference("expression::set-expression"), .reference("expression::expression-state")]),
+        "speech::speech-entry": .reference("speech::speech-profile"),
+        "speech::speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
+        "speech::speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
+        "speech::speech-end": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")])), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
+        "speech::speech-position": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "chunk", optional: false, node: .reference("common::uint64")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "position_ms", optional: false, node: .reference("common::uint64")), .init(name: "state", optional: false, node: .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]))]),
+        "speech::speech-barge-in": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "position_ms", optional: false, node: .reference("common::uint64")), .init(name: "reflex", optional: false, node: .union([.literal(.text("stopped")), .literal(.text("ducked"))]))]),
+        "speech::speak-chunk": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "chunk", optional: false, node: .reference("common::uint64")), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,4096}$")])), .init(name: "final", optional: false, node: .boolean)]),
+        "speech::stop": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id"))]),
+        "speech::backchannel": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "cue", optional: false, node: .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]))]),
+        "speech::speech-route": .record([.init(name: "placement", optional: false, node: .union([.literal(.text("surface")), .literal(.text("runtime")), .literal(.text("hub")), .literal(.text("provider"))])), .init(name: "route", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,256}$")]))]),
+        "speech::speech-config": .record([.init(name: "stt", optional: false, node: .reference("speech::speech-route")), .init(name: "tts", optional: false, node: .reference("speech::speech-route")), .init(name: "barge", optional: false, node: .union([.literal(.text("stop")), .literal(.text("duck"))])), .init(name: "session_mode", optional: false, node: .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]))]),
+        "speech::session-open": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "route", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,256}$")]))]),
+        "speech::session-close": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id"))]),
+        "speech::tool-call": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
+        "speech::tool-result": .union([.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
+        "speech::speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result")]),
+        "surface::surface-entry": .reference("surface::surface-message"),
+        "surface::hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::schema-refs": .boundedMap(0, nil, .reference("common::capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
+        "surface::cap-entry": .record([.init(name: "name", optional: false, node: .reference("common::capability-name")), .init(name: "events", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "reads", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "exclusive", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "schemas", optional: false, node: .reference("surface::schema-refs"))]),
+        "surface::capabilities": .record([.init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface::cap-entry"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::grant": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "operations", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "resources", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "expires", optional: false, node: .reference("common::uint64"))]),
+        "surface::grants": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface::grant"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::read": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::read-reply": .union([.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "surface::act": .record([.init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "action", optional: false, node: .reference("common::action"))]),
+        "surface::health": .record([.init(name: "state", optional: false, node: .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))])), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::kill": .record([.init(name: "reason", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,16384}$")])), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::surface-error": .record([.init(name: "error", optional: false, node: .reference("common::error")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface::surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
         "abi": .union([.reference("abi::trace"), .reference("abi::step-record"), .reference("abi::inbox-message"), .reference("abi::timer-request"), .reference("abi::llm-request"), .reference("abi::llm-reply"), .reference("abi::log-entry"), .reference("abi::manifest")]),
         "hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
         "hex": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
@@ -89,6 +124,41 @@ internal enum GeneratedSchema {
         "action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
         "error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
         "error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "expression-entry": .reference("expression::expression-profile"),
+        "set-expression": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "duration_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
+        "expression-state": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "remaining_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
+        "expression-profile": .union([.reference("expression::set-expression"), .reference("expression::expression-state")]),
+        "speech-entry": .reference("speech::speech-profile"),
+        "speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
+        "speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
+        "speech-end": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")])), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
+        "speech-position": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "chunk", optional: false, node: .reference("common::uint64")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "position_ms", optional: false, node: .reference("common::uint64")), .init(name: "state", optional: false, node: .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]))]),
+        "speech-barge-in": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "position_ms", optional: false, node: .reference("common::uint64")), .init(name: "reflex", optional: false, node: .union([.literal(.text("stopped")), .literal(.text("ducked"))]))]),
+        "speak-chunk": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "chunk", optional: false, node: .reference("common::uint64")), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,4096}$")])), .init(name: "final", optional: false, node: .boolean)]),
+        "stop": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id"))]),
+        "backchannel": .record([.init(name: "stream", optional: false, node: .reference("common::correlation-id")), .init(name: "cue", optional: false, node: .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]))]),
+        "speech-route": .record([.init(name: "placement", optional: false, node: .union([.literal(.text("surface")), .literal(.text("runtime")), .literal(.text("hub")), .literal(.text("provider"))])), .init(name: "route", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,256}$")]))]),
+        "speech-config": .record([.init(name: "stt", optional: false, node: .reference("speech::speech-route")), .init(name: "tts", optional: false, node: .reference("speech::speech-route")), .init(name: "barge", optional: false, node: .union([.literal(.text("stop")), .literal(.text("duck"))])), .init(name: "session_mode", optional: false, node: .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]))]),
+        "session-open": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "route", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,256}$")]))]),
+        "session-close": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id"))]),
+        "tool-call": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
+        "tool-result": .union([.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
+        "speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result")]),
+        "surface-entry": .reference("surface::surface-message"),
+        "hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "schema-refs": .boundedMap(0, nil, .reference("common::capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
+        "cap-entry": .record([.init(name: "name", optional: false, node: .reference("common::capability-name")), .init(name: "events", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "reads", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "exclusive", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "schemas", optional: false, node: .reference("surface::schema-refs"))]),
+        "capabilities": .record([.init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface::cap-entry"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "grant": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "operations", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "resources", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "expires", optional: false, node: .reference("common::uint64"))]),
+        "grants": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface::grant"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "read": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "read-reply": .union([.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "act": .record([.init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "action", optional: false, node: .reference("common::action"))]),
+        "health": .record([.init(name: "state", optional: false, node: .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))])), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "kill": .record([.init(name: "reason", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,16384}$")])), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface-error": .record([.init(name: "error", optional: false, node: .reference("common::error")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
         "@AbiLogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
         "@AbiLlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
         "@AbiLlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
@@ -107,6 +177,31 @@ internal enum GeneratedSchema {
         "@CommonActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@CommonActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
         "@CommonActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@ExpressionSetExpressionExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@ExpressionExpressionStateExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@SpeechSpeechPositionState": .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]),
+        "@SpeechSpeechBargeInReflex": .union([.literal(.text("stopped")), .literal(.text("ducked"))]),
+        "@SpeechBackchannelCue": .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]),
+        "@SpeechSpeechRoutePlacement": .union([.literal(.text("surface")), .literal(.text("runtime")), .literal(.text("hub")), .literal(.text("provider"))]),
+        "@SpeechSpeechConfigBarge": .union([.literal(.text("stop")), .literal(.text("duck"))]),
+        "@SpeechSpeechConfigSessionMode": .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]),
+        "@SpeechToolResultVariant1": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
+        "@SpeechToolResultVariant2": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "@SurfaceReadReplyVariant1": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]),
+        "@SurfaceReadReplyVariant2": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@SurfaceHealthState": .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))]),
+        "@SurfaceSurfaceMessageVariant1": .record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]),
+        "@SurfaceSurfaceMessageVariant2": .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]),
+        "@SurfaceSurfaceMessageVariant3": .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]),
+        "@SurfaceSurfaceMessageVariant4": .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]),
+        "@SurfaceSurfaceMessageVariant5": .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]),
+        "@SurfaceSurfaceMessageVariant6": .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]),
+        "@SurfaceSurfaceMessageVariant7": .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]),
+        "@SurfaceSurfaceMessageVariant8": .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]),
+        "@SurfaceSurfaceMessageVariant9": .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]),
+        "@SurfaceSurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
+        "@SurfaceSurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
+        "@SurfaceSurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
         "@LogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
         "@LlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
         "@LlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
@@ -125,6 +220,31 @@ internal enum GeneratedSchema {
         "@ActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@ActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
         "@ActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@SetExpressionExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@ExpressionStateExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@SpeechPositionState": .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]),
+        "@SpeechBargeInReflex": .union([.literal(.text("stopped")), .literal(.text("ducked"))]),
+        "@BackchannelCue": .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]),
+        "@SpeechRoutePlacement": .union([.literal(.text("surface")), .literal(.text("runtime")), .literal(.text("hub")), .literal(.text("provider"))]),
+        "@SpeechConfigBarge": .union([.literal(.text("stop")), .literal(.text("duck"))]),
+        "@SpeechConfigSessionMode": .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]),
+        "@ToolResultVariant1": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
+        "@ToolResultVariant2": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "@ReadReplyVariant1": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]),
+        "@ReadReplyVariant2": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@HealthState": .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))]),
+        "@SurfaceMessageVariant1": .record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]),
+        "@SurfaceMessageVariant2": .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]),
+        "@SurfaceMessageVariant3": .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]),
+        "@SurfaceMessageVariant4": .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]),
+        "@SurfaceMessageVariant5": .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]),
+        "@SurfaceMessageVariant6": .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]),
+        "@SurfaceMessageVariant7": .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]),
+        "@SurfaceMessageVariant8": .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]),
+        "@SurfaceMessageVariant9": .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]),
+        "@SurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
+        "@SurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
+        "@SurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
         "@AbiCallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
         "@AbiStepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@AbiStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
@@ -181,6 +301,41 @@ internal enum GeneratedSchema {
         case "common::action-outcome": typed = try CommonActionOutcome.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::error-code": typed = try CommonErrorCode.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::error": typed = try CommonError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression::expression-entry": typed = try ExpressionExpressionEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression::set-expression": typed = try ExpressionSetExpression.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression::expression-state": typed = try ExpressionExpressionState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression::expression-profile": typed = try ExpressionExpressionProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-entry": typed = try SpeechSpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-start": typed = try SpeechSpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-partial": typed = try SpeechSpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-end": typed = try SpeechSpeechEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-position": typed = try SpeechSpeechPosition.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-barge-in": typed = try SpeechSpeechBargeIn.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speak-chunk": typed = try SpeechSpeakChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::stop": typed = try SpeechStop.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::backchannel": typed = try SpeechBackchannel.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-route": typed = try SpeechSpeechRoute.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-config": typed = try SpeechSpeechConfig.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::session-open": typed = try SpeechSessionOpen.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::session-close": typed = try SpeechSessionClose.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::tool-call": typed = try SpeechToolCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::tool-result": typed = try SpeechToolResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::speech-profile": typed = try SpeechSpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::surface-entry": typed = try SurfaceSurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::hello": typed = try SurfaceHello.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::hello-reply": typed = try SurfaceHelloReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::schema-refs": typed = try SurfaceSchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::cap-entry": typed = try SurfaceCapEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::capabilities": typed = try SurfaceCapabilities.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::grant": typed = try SurfaceGrant.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::grants": typed = try SurfaceGrants.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::read": typed = try SurfaceRead.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::read-reply": typed = try SurfaceReadReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::act": typed = try SurfaceAct.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::health": typed = try SurfaceHealth.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::kill": typed = try SurfaceKill.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::surface-error": typed = try SurfaceSurfaceError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::surface-message": typed = try SurfaceSurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi": typed = try Abi.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hash": typed = try Hash.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hex": typed = try Hex.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -224,6 +379,41 @@ internal enum GeneratedSchema {
         case "action-outcome": typed = try ActionOutcome.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "error-code": typed = try ErrorCode.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "error": typed = try Error.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression-entry": typed = try ExpressionEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "set-expression": typed = try SetExpression.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression-state": typed = try ExpressionState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "expression-profile": typed = try ExpressionProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-entry": typed = try SpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-start": typed = try SpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-partial": typed = try SpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-end": typed = try SpeechEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-position": typed = try SpeechPosition.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-barge-in": typed = try SpeechBargeIn.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speak-chunk": typed = try SpeakChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "stop": typed = try Stop.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "backchannel": typed = try Backchannel.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-route": typed = try SpeechRoute.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-config": typed = try SpeechConfig.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "session-open": typed = try SessionOpen.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "session-close": typed = try SessionClose.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "tool-call": typed = try ToolCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "tool-result": typed = try ToolResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech-profile": typed = try SpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface-entry": typed = try SurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hello": typed = try Hello.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hello-reply": typed = try HelloReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "schema-refs": typed = try SchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "cap-entry": typed = try CapEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "capabilities": typed = try Capabilities.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "grant": typed = try Grant.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "grants": typed = try Grants.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "read": typed = try Read.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "read-reply": typed = try ReadReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "act": typed = try Act.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "health": typed = try Health.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "kill": typed = try Kill.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface-error": typed = try SurfaceError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface-message": typed = try SurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         default: throw CBORFailure.invalid("unknown typed rule")
         }
         return try CBORCodec.encode(rule: rule, value: typed)
@@ -1434,6 +1624,1162 @@ public struct CommonError: CBORMessage, Sendable {
     }
 }
 
+public typealias ExpressionExpressionEntry = ExpressionExpressionProfile
+
+public struct ExpressionSetExpression: CBORMessage, Sendable {
+    public static let schemaRule = "expression::set-expression"
+    public var `expression`: ExpressionSetExpressionExpression
+    public var `intensity`: Swift.UInt64
+    public var `duration_ms`: Swift.UInt64
+    public init(`expression`: ExpressionSetExpressionExpression, `intensity`: Swift.UInt64, `duration_ms`: Swift.UInt64) {
+        self.`expression` = `expression`
+        self.`intensity` = `intensity`
+        self.`duration_ms` = `duration_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`expression` = try ExpressionSetExpressionExpression.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expression")), depth: depth + 1)
+        self.`intensity` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intensity")), depth: depth + 1)
+        self.`duration_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "duration_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("expression", try self.`expression`.cborValue(depth: depth + 1)))
+        entries.append(.init("intensity", try self.`intensity`.cborValue(depth: depth + 1)))
+        entries.append(.init("duration_ms", try self.`duration_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ExpressionExpressionState: CBORMessage, Sendable {
+    public static let schemaRule = "expression::expression-state"
+    public var `expression`: ExpressionExpressionStateExpression
+    public var `intensity`: Swift.UInt64
+    public var `remaining_ms`: Swift.UInt64
+    public init(`expression`: ExpressionExpressionStateExpression, `intensity`: Swift.UInt64, `remaining_ms`: Swift.UInt64) {
+        self.`expression` = `expression`
+        self.`intensity` = `intensity`
+        self.`remaining_ms` = `remaining_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`expression` = try ExpressionExpressionStateExpression.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expression")), depth: depth + 1)
+        self.`intensity` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intensity")), depth: depth + 1)
+        self.`remaining_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "remaining_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("expression", try self.`expression`.cborValue(depth: depth + 1)))
+        entries.append(.init("intensity", try self.`intensity`.cborValue(depth: depth + 1)))
+        entries.append(.init("remaining_ms", try self.`remaining_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ExpressionExpressionProfile: CBORMessage, Sendable {
+    public static let schemaRule = "expression::expression-profile"
+    case variant1(ExpressionSetExpression)
+    case variant2(ExpressionExpressionState)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("expression::set-expression"), cborValue)) != nil {
+            self = .variant1(try ExpressionSetExpression.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("expression::expression-state"), cborValue)) != nil {
+            self = .variant2(try ExpressionExpressionState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("expression::set-expression"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("expression::expression-state"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SpeechSpeechEntry = SpeechSpeechProfile
+
+public struct SpeechSpeechStart: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-start"
+    public var `utterance`: CommonCorrelationId
+    public var `position_ms`: CommonUint64
+    public init(`utterance`: CommonCorrelationId, `position_ms`: CommonUint64) {
+        self.`utterance` = `utterance`
+        self.`position_ms` = `position_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechPartial: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-partial"
+    public var `utterance`: CommonCorrelationId
+    public var `revision`: Swift.UInt64
+    public var `text`: CBORValue
+    public init(`utterance`: CommonCorrelationId, `revision`: Swift.UInt64, `text`: CBORValue) {
+        self.`utterance` = `utterance`
+        self.`revision` = `revision`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechEnd: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-end"
+    public var `utterance`: CommonCorrelationId
+    public var `revision`: Swift.UInt64
+    public var `text`: CBORValue
+    public var `position_ms`: CommonUint64
+    public init(`utterance`: CommonCorrelationId, `revision`: Swift.UInt64, `text`: CBORValue, `position_ms`: CommonUint64) {
+        self.`utterance` = `utterance`
+        self.`revision` = `revision`
+        self.`text` = `text`
+        self.`position_ms` = `position_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechPosition: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-position"
+    public var `stream`: CommonCorrelationId
+    public var `chunk`: CommonUint64
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `position_ms`: CommonUint64
+    public var `state`: SpeechSpeechPositionState
+    public init(`stream`: CommonCorrelationId, `chunk`: CommonUint64, `item`: CommonCorrelationId, `played_ms`: CommonUint64, `position_ms`: CommonUint64, `state`: SpeechSpeechPositionState) {
+        self.`stream` = `stream`
+        self.`chunk` = `chunk`
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`position_ms` = `position_ms`
+        self.`state` = `state`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`chunk` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "chunk")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+        self.`state` = try SpeechSpeechPositionState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("chunk", try self.`chunk`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechBargeIn: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-barge-in"
+    public var `utterance`: CommonCorrelationId
+    public var `stream`: CommonCorrelationId
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `position_ms`: CommonUint64
+    public var `reflex`: SpeechSpeechBargeInReflex
+    public init(`utterance`: CommonCorrelationId, `stream`: CommonCorrelationId, `item`: CommonCorrelationId, `played_ms`: CommonUint64, `position_ms`: CommonUint64, `reflex`: SpeechSpeechBargeInReflex) {
+        self.`utterance` = `utterance`
+        self.`stream` = `stream`
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`position_ms` = `position_ms`
+        self.`reflex` = `reflex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+        self.`reflex` = try SpeechSpeechBargeInReflex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reflex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("reflex", try self.`reflex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeakChunk: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speak-chunk"
+    public var `stream`: CommonCorrelationId
+    public var `chunk`: CommonUint64
+    public var `text`: CBORValue
+    public var `final`: Swift.Bool
+    public init(`stream`: CommonCorrelationId, `chunk`: CommonUint64, `text`: CBORValue, `final`: Swift.Bool) {
+        self.`stream` = `stream`
+        self.`chunk` = `chunk`
+        self.`text` = `text`
+        self.`final` = `final`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`chunk` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "chunk")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`final` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("chunk", try self.`chunk`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("final", try self.`final`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechStop: CBORMessage, Sendable {
+    public static let schemaRule = "speech::stop"
+    public var `stream`: CommonCorrelationId
+    public init(`stream`: CommonCorrelationId) {
+        self.`stream` = `stream`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechBackchannel: CBORMessage, Sendable {
+    public static let schemaRule = "speech::backchannel"
+    public var `stream`: CommonCorrelationId
+    public var `cue`: SpeechBackchannelCue
+    public init(`stream`: CommonCorrelationId, `cue`: SpeechBackchannelCue) {
+        self.`stream` = `stream`
+        self.`cue` = `cue`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`cue` = try SpeechBackchannelCue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cue")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("cue", try self.`cue`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechRoute: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-route"
+    public var `placement`: SpeechSpeechRoutePlacement
+    public var `route`: CBORValue
+    public init(`placement`: SpeechSpeechRoutePlacement, `route`: CBORValue) {
+        self.`placement` = `placement`
+        self.`route` = `route`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`placement` = try SpeechSpeechRoutePlacement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "placement")), depth: depth + 1)
+        self.`route` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "route")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("placement", try self.`placement`.cborValue(depth: depth + 1)))
+        entries.append(.init("route", try self.`route`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSpeechConfig: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-config"
+    public var `stt`: SpeechSpeechRoute
+    public var `tts`: SpeechSpeechRoute
+    public var `barge`: SpeechSpeechConfigBarge
+    public var `session_mode`: SpeechSpeechConfigSessionMode
+    public init(`stt`: SpeechSpeechRoute, `tts`: SpeechSpeechRoute, `barge`: SpeechSpeechConfigBarge, `session_mode`: SpeechSpeechConfigSessionMode) {
+        self.`stt` = `stt`
+        self.`tts` = `tts`
+        self.`barge` = `barge`
+        self.`session_mode` = `session_mode`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stt` = try SpeechSpeechRoute.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stt")), depth: depth + 1)
+        self.`tts` = try SpeechSpeechRoute.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "tts")), depth: depth + 1)
+        self.`barge` = try SpeechSpeechConfigBarge.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "barge")), depth: depth + 1)
+        self.`session_mode` = try SpeechSpeechConfigSessionMode.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session_mode")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stt", try self.`stt`.cborValue(depth: depth + 1)))
+        entries.append(.init("tts", try self.`tts`.cborValue(depth: depth + 1)))
+        entries.append(.init("barge", try self.`barge`.cborValue(depth: depth + 1)))
+        entries.append(.init("session_mode", try self.`session_mode`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSessionOpen: CBORMessage, Sendable {
+    public static let schemaRule = "speech::session-open"
+    public var `session`: CommonCorrelationId
+    public var `route`: CBORValue
+    public init(`session`: CommonCorrelationId, `route`: CBORValue) {
+        self.`session` = `session`
+        self.`route` = `route`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`route` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "route")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("route", try self.`route`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechSessionClose: CBORMessage, Sendable {
+    public static let schemaRule = "speech::session-close"
+    public var `session`: CommonCorrelationId
+    public init(`session`: CommonCorrelationId) {
+        self.`session` = `session`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechToolCall: CBORMessage, Sendable {
+    public static let schemaRule = "speech::tool-call"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `name`: CommonMethodName
+    public var `arguments`: CommonProfileMap
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `name`: CommonMethodName, `arguments`: CommonProfileMap) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`name` = `name`
+        self.`arguments` = `arguments`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`name` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`arguments` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "arguments")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("arguments", try self.`arguments`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechToolResult: CBORMessage, Sendable {
+    public static let schemaRule = "speech::tool-result"
+    case variant1(SpeechToolResultVariant1)
+    case variant2(SpeechToolResultVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try SpeechToolResultVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try SpeechToolResultVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
+    public static let schemaRule = "speech::speech-profile"
+    case variant1(SpeechSpeechStart)
+    case variant2(SpeechSpeechPartial)
+    case variant3(SpeechSpeechEnd)
+    case variant4(SpeechSpeechPosition)
+    case variant5(SpeechSpeechBargeIn)
+    case variant6(SpeechSpeakChunk)
+    case variant7(SpeechStop)
+    case variant8(SpeechBackchannel)
+    case variant9(SpeechSpeechRoute)
+    case variant10(SpeechSpeechConfig)
+    case variant11(SpeechSessionOpen)
+    case variant12(SpeechSessionClose)
+    case variant13(SpeechToolCall)
+    case variant14(SpeechToolResult)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("speech::speech-start"), cborValue)) != nil {
+            self = .variant1(try SpeechSpeechStart.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-partial"), cborValue)) != nil {
+            self = .variant2(try SpeechSpeechPartial.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-end"), cborValue)) != nil {
+            self = .variant3(try SpeechSpeechEnd.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-position"), cborValue)) != nil {
+            self = .variant4(try SpeechSpeechPosition.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-barge-in"), cborValue)) != nil {
+            self = .variant5(try SpeechSpeechBargeIn.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speak-chunk"), cborValue)) != nil {
+            self = .variant6(try SpeechSpeakChunk.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::stop"), cborValue)) != nil {
+            self = .variant7(try SpeechStop.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::backchannel"), cborValue)) != nil {
+            self = .variant8(try SpeechBackchannel.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-route"), cborValue)) != nil {
+            self = .variant9(try SpeechSpeechRoute.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-config"), cborValue)) != nil {
+            self = .variant10(try SpeechSpeechConfig.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::session-open"), cborValue)) != nil {
+            self = .variant11(try SpeechSessionOpen.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::session-close"), cborValue)) != nil {
+            self = .variant12(try SpeechSessionClose.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::tool-call"), cborValue)) != nil {
+            self = .variant13(try SpeechToolCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::tool-result"), cborValue)) != nil {
+            self = .variant14(try SpeechToolResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-start"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-partial"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-end"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-position"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-barge-in"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speak-chunk"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::stop"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::backchannel"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-route"), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-config"), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::session-open"), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::session-close"), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::tool-call"), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::tool-result"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SurfaceSurfaceEntry = SurfaceSurfaceMessage
+
+public struct SurfaceHello: CBORMessage, Sendable {
+    public static let schemaRule = "surface::hello"
+    public var `surface`: CommonSurfaceId
+    public var `offer`: CommonVersionOffer
+    public var `clock`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`surface`: CommonSurfaceId, `offer`: CommonVersionOffer, `clock`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`surface` = `surface`
+        self.`offer` = `offer`
+        self.`clock` = `clock`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`surface` = try CommonSurfaceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "surface")), depth: depth + 1)
+        self.`offer` = try CommonVersionOffer.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offer")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("surface", try self.`surface`.cborValue(depth: depth + 1)))
+        entries.append(.init("offer", try self.`offer`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceHelloReply: CBORMessage, Sendable {
+    public static let schemaRule = "surface::hello-reply"
+    public var `selection`: CommonVersionSelection
+    public var `correlation_id`: CommonCorrelationId
+    public init(`selection`: CommonVersionSelection, `correlation_id`: CommonCorrelationId) {
+        self.`selection` = `selection`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`selection` = try CommonVersionSelection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "selection")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("selection", try self.`selection`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SurfaceSchemaRefs = [CBORMapEntry]
+
+public struct SurfaceCapEntry: CBORMessage, Sendable {
+    public static let schemaRule = "surface::cap-entry"
+    public var `name`: CommonCapabilityName
+    public var `events`: [CommonCapabilityName]
+    public var `reads`: [CommonCapabilityName]
+    public var `actions`: [CommonCapabilityName]
+    public var `exclusive`: [CommonCapabilityName]
+    public var `schemas`: SurfaceSchemaRefs
+    public init(`name`: CommonCapabilityName, `events`: [CommonCapabilityName], `reads`: [CommonCapabilityName], `actions`: [CommonCapabilityName], `exclusive`: [CommonCapabilityName], `schemas`: SurfaceSchemaRefs) {
+        self.`name` = `name`
+        self.`events` = `events`
+        self.`reads` = `reads`
+        self.`actions` = `actions`
+        self.`exclusive` = `exclusive`
+        self.`schemas` = `schemas`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`name` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`events` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`reads` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reads")), depth: depth + 1)
+        self.`actions` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`exclusive` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive")), depth: depth + 1)
+        self.`schemas` = try SurfaceSchemaRefs.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "schemas")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("reads", try self.`reads`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive", try self.`exclusive`.cborValue(depth: depth + 1)))
+        entries.append(.init("schemas", try self.`schemas`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceCapabilities: CBORMessage, Sendable {
+    public static let schemaRule = "surface::capabilities"
+    public var `revision`: Swift.UInt64
+    public var `clock`: CommonUint64
+    public var `entries`: [SurfaceCapEntry]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`revision`: Swift.UInt64, `clock`: CommonUint64, `entries`: [SurfaceCapEntry], `correlation_id`: CommonCorrelationId) {
+        self.`revision` = `revision`
+        self.`clock` = `clock`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`entries` = try [SurfaceCapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceGrant: CBORMessage, Sendable {
+    public static let schemaRule = "surface::grant"
+    public var `coglet`: CommonCogletId
+    public var `operations`: [CommonCapabilityName]
+    public var `resources`: [CommonCapabilityName]
+    public var `expires`: CommonUint64
+    public init(`coglet`: CommonCogletId, `operations`: [CommonCapabilityName], `resources`: [CommonCapabilityName], `expires`: CommonUint64) {
+        self.`coglet` = `coglet`
+        self.`operations` = `operations`
+        self.`resources` = `resources`
+        self.`expires` = `expires`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`operations` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operations")), depth: depth + 1)
+        self.`resources` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "resources")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("operations", try self.`operations`.cborValue(depth: depth + 1)))
+        entries.append(.init("resources", try self.`resources`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceGrants: CBORMessage, Sendable {
+    public static let schemaRule = "surface::grants"
+    public var `epoch`: Swift.UInt64
+    public var `entries`: [SurfaceGrant]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`epoch`: Swift.UInt64, `entries`: [SurfaceGrant], `correlation_id`: CommonCorrelationId) {
+        self.`epoch` = `epoch`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`entries` = try [SurfaceGrant].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceRead: CBORMessage, Sendable {
+    public static let schemaRule = "surface::read"
+    public var `coglet`: CommonCogletId
+    public var `capability`: CommonCapabilityName
+    public var `args`: CommonProfileMap
+    public var `grant_epoch`: Swift.UInt64
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`coglet`: CommonCogletId, `capability`: CommonCapabilityName, `args`: CommonProfileMap, `grant_epoch`: Swift.UInt64, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`grant_epoch` = `grant_epoch`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SurfaceReadReply: CBORMessage, Sendable {
+    public static let schemaRule = "surface::read-reply"
+    case variant1(SurfaceReadReplyVariant1)
+    case variant2(SurfaceReadReplyVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), cborValue)) != nil {
+            self = .variant1(try SurfaceReadReplyVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try SurfaceReadReplyVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceAct: CBORMessage, Sendable {
+    public static let schemaRule = "surface::act"
+    public var `grant_epoch`: Swift.UInt64
+    public var `action`: CommonAction
+    public init(`grant_epoch`: Swift.UInt64, `action`: CommonAction) {
+        self.`grant_epoch` = `grant_epoch`
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`action` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceHealth: CBORMessage, Sendable {
+    public static let schemaRule = "surface::health"
+    public var `state`: SurfaceHealthState
+    public var `clock`: CommonUint64
+    public var `pending`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`state`: SurfaceHealthState, `clock`: CommonUint64, `pending`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`state` = `state`
+        self.`clock` = `clock`
+        self.`pending` = `pending`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`state` = try SurfaceHealthState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`pending` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceKill: CBORMessage, Sendable {
+    public static let schemaRule = "surface::kill"
+    public var `reason`: CBORValue
+    public var `correlation_id`: CommonCorrelationId
+    public init(`reason`: CBORValue, `correlation_id`: CommonCorrelationId) {
+        self.`reason` = `reason`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`reason` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reason")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("reason", try self.`reason`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceError: CBORMessage, Sendable {
+    public static let schemaRule = "surface::surface-error"
+    public var `error`: CommonError
+    public var `correlation_id`: CommonCorrelationId
+    public init(`error`: CommonError, `correlation_id`: CommonCorrelationId) {
+        self.`error` = `error`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SurfaceSurfaceMessage: CBORMessage, Sendable {
+    public static let schemaRule = "surface::surface-message"
+    case variant1(SurfaceSurfaceMessageVariant1)
+    case variant2(SurfaceSurfaceMessageVariant2)
+    case variant3(SurfaceSurfaceMessageVariant3)
+    case variant4(SurfaceSurfaceMessageVariant4)
+    case variant5(SurfaceSurfaceMessageVariant5)
+    case variant6(SurfaceSurfaceMessageVariant6)
+    case variant7(SurfaceSurfaceMessageVariant7)
+    case variant8(SurfaceSurfaceMessageVariant8)
+    case variant9(SurfaceSurfaceMessageVariant9)
+    case variant10(SurfaceSurfaceMessageVariant10)
+    case variant11(SurfaceSurfaceMessageVariant11)
+    case variant12(SurfaceSurfaceMessageVariant12)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), cborValue)) != nil {
+            self = .variant1(try SurfaceSurfaceMessageVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), cborValue)) != nil {
+            self = .variant2(try SurfaceSurfaceMessageVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), cborValue)) != nil {
+            self = .variant3(try SurfaceSurfaceMessageVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), cborValue)) != nil {
+            self = .variant4(try SurfaceSurfaceMessageVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), cborValue)) != nil {
+            self = .variant5(try SurfaceSurfaceMessageVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), cborValue)) != nil {
+            self = .variant6(try SurfaceSurfaceMessageVariant6.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), cborValue)) != nil {
+            self = .variant7(try SurfaceSurfaceMessageVariant7.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), cborValue)) != nil {
+            self = .variant8(try SurfaceSurfaceMessageVariant8.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), cborValue)) != nil {
+            self = .variant9(try SurfaceSurfaceMessageVariant9.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), cborValue)) != nil {
+            self = .variant10(try SurfaceSurfaceMessageVariant10.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), cborValue)) != nil {
+            self = .variant11(try SurfaceSurfaceMessageVariant11.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), cborValue)) != nil {
+            self = .variant12(try SurfaceSurfaceMessageVariant12.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum Abi: CBORMessage, Sendable {
     public static let schemaRule = "abi"
     case variant1(AbiTrace)
@@ -2638,6 +3984,1162 @@ public struct Error: CBORMessage, Sendable {
     }
 }
 
+public typealias ExpressionEntry = ExpressionExpressionProfile
+
+public struct SetExpression: CBORMessage, Sendable {
+    public static let schemaRule = "set-expression"
+    public var `expression`: SetExpressionExpression
+    public var `intensity`: Swift.UInt64
+    public var `duration_ms`: Swift.UInt64
+    public init(`expression`: SetExpressionExpression, `intensity`: Swift.UInt64, `duration_ms`: Swift.UInt64) {
+        self.`expression` = `expression`
+        self.`intensity` = `intensity`
+        self.`duration_ms` = `duration_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`expression` = try SetExpressionExpression.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expression")), depth: depth + 1)
+        self.`intensity` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intensity")), depth: depth + 1)
+        self.`duration_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "duration_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("expression", try self.`expression`.cborValue(depth: depth + 1)))
+        entries.append(.init("intensity", try self.`intensity`.cborValue(depth: depth + 1)))
+        entries.append(.init("duration_ms", try self.`duration_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ExpressionState: CBORMessage, Sendable {
+    public static let schemaRule = "expression-state"
+    public var `expression`: ExpressionStateExpression
+    public var `intensity`: Swift.UInt64
+    public var `remaining_ms`: Swift.UInt64
+    public init(`expression`: ExpressionStateExpression, `intensity`: Swift.UInt64, `remaining_ms`: Swift.UInt64) {
+        self.`expression` = `expression`
+        self.`intensity` = `intensity`
+        self.`remaining_ms` = `remaining_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`expression` = try ExpressionStateExpression.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expression")), depth: depth + 1)
+        self.`intensity` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intensity")), depth: depth + 1)
+        self.`remaining_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "remaining_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("expression", try self.`expression`.cborValue(depth: depth + 1)))
+        entries.append(.init("intensity", try self.`intensity`.cborValue(depth: depth + 1)))
+        entries.append(.init("remaining_ms", try self.`remaining_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ExpressionProfile: CBORMessage, Sendable {
+    public static let schemaRule = "expression-profile"
+    case variant1(ExpressionSetExpression)
+    case variant2(ExpressionExpressionState)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("expression::set-expression"), cborValue)) != nil {
+            self = .variant1(try ExpressionSetExpression.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("expression::expression-state"), cborValue)) != nil {
+            self = .variant2(try ExpressionExpressionState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("expression::set-expression"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("expression::expression-state"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SpeechEntry = SpeechSpeechProfile
+
+public struct SpeechStart: CBORMessage, Sendable {
+    public static let schemaRule = "speech-start"
+    public var `utterance`: CommonCorrelationId
+    public var `position_ms`: CommonUint64
+    public init(`utterance`: CommonCorrelationId, `position_ms`: CommonUint64) {
+        self.`utterance` = `utterance`
+        self.`position_ms` = `position_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechPartial: CBORMessage, Sendable {
+    public static let schemaRule = "speech-partial"
+    public var `utterance`: CommonCorrelationId
+    public var `revision`: Swift.UInt64
+    public var `text`: CBORValue
+    public init(`utterance`: CommonCorrelationId, `revision`: Swift.UInt64, `text`: CBORValue) {
+        self.`utterance` = `utterance`
+        self.`revision` = `revision`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechEnd: CBORMessage, Sendable {
+    public static let schemaRule = "speech-end"
+    public var `utterance`: CommonCorrelationId
+    public var `revision`: Swift.UInt64
+    public var `text`: CBORValue
+    public var `position_ms`: CommonUint64
+    public init(`utterance`: CommonCorrelationId, `revision`: Swift.UInt64, `text`: CBORValue, `position_ms`: CommonUint64) {
+        self.`utterance` = `utterance`
+        self.`revision` = `revision`
+        self.`text` = `text`
+        self.`position_ms` = `position_ms`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechPosition: CBORMessage, Sendable {
+    public static let schemaRule = "speech-position"
+    public var `stream`: CommonCorrelationId
+    public var `chunk`: CommonUint64
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `position_ms`: CommonUint64
+    public var `state`: SpeechPositionState
+    public init(`stream`: CommonCorrelationId, `chunk`: CommonUint64, `item`: CommonCorrelationId, `played_ms`: CommonUint64, `position_ms`: CommonUint64, `state`: SpeechPositionState) {
+        self.`stream` = `stream`
+        self.`chunk` = `chunk`
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`position_ms` = `position_ms`
+        self.`state` = `state`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`chunk` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "chunk")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+        self.`state` = try SpeechPositionState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("chunk", try self.`chunk`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechBargeIn: CBORMessage, Sendable {
+    public static let schemaRule = "speech-barge-in"
+    public var `utterance`: CommonCorrelationId
+    public var `stream`: CommonCorrelationId
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `position_ms`: CommonUint64
+    public var `reflex`: SpeechBargeInReflex
+    public init(`utterance`: CommonCorrelationId, `stream`: CommonCorrelationId, `item`: CommonCorrelationId, `played_ms`: CommonUint64, `position_ms`: CommonUint64, `reflex`: SpeechBargeInReflex) {
+        self.`utterance` = `utterance`
+        self.`stream` = `stream`
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`position_ms` = `position_ms`
+        self.`reflex` = `reflex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`utterance` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "utterance")), depth: depth + 1)
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`position_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "position_ms")), depth: depth + 1)
+        self.`reflex` = try SpeechBargeInReflex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reflex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("utterance", try self.`utterance`.cborValue(depth: depth + 1)))
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("position_ms", try self.`position_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("reflex", try self.`reflex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeakChunk: CBORMessage, Sendable {
+    public static let schemaRule = "speak-chunk"
+    public var `stream`: CommonCorrelationId
+    public var `chunk`: CommonUint64
+    public var `text`: CBORValue
+    public var `final`: Swift.Bool
+    public init(`stream`: CommonCorrelationId, `chunk`: CommonUint64, `text`: CBORValue, `final`: Swift.Bool) {
+        self.`stream` = `stream`
+        self.`chunk` = `chunk`
+        self.`text` = `text`
+        self.`final` = `final`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`chunk` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "chunk")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`final` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("chunk", try self.`chunk`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("final", try self.`final`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Stop: CBORMessage, Sendable {
+    public static let schemaRule = "stop"
+    public var `stream`: CommonCorrelationId
+    public init(`stream`: CommonCorrelationId) {
+        self.`stream` = `stream`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Backchannel: CBORMessage, Sendable {
+    public static let schemaRule = "backchannel"
+    public var `stream`: CommonCorrelationId
+    public var `cue`: BackchannelCue
+    public init(`stream`: CommonCorrelationId, `cue`: BackchannelCue) {
+        self.`stream` = `stream`
+        self.`cue` = `cue`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stream` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stream")), depth: depth + 1)
+        self.`cue` = try BackchannelCue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cue")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stream", try self.`stream`.cborValue(depth: depth + 1)))
+        entries.append(.init("cue", try self.`cue`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechRoute: CBORMessage, Sendable {
+    public static let schemaRule = "speech-route"
+    public var `placement`: SpeechRoutePlacement
+    public var `route`: CBORValue
+    public init(`placement`: SpeechRoutePlacement, `route`: CBORValue) {
+        self.`placement` = `placement`
+        self.`route` = `route`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`placement` = try SpeechRoutePlacement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "placement")), depth: depth + 1)
+        self.`route` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "route")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("placement", try self.`placement`.cborValue(depth: depth + 1)))
+        entries.append(.init("route", try self.`route`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechConfig: CBORMessage, Sendable {
+    public static let schemaRule = "speech-config"
+    public var `stt`: SpeechSpeechRoute
+    public var `tts`: SpeechSpeechRoute
+    public var `barge`: SpeechConfigBarge
+    public var `session_mode`: SpeechConfigSessionMode
+    public init(`stt`: SpeechSpeechRoute, `tts`: SpeechSpeechRoute, `barge`: SpeechConfigBarge, `session_mode`: SpeechConfigSessionMode) {
+        self.`stt` = `stt`
+        self.`tts` = `tts`
+        self.`barge` = `barge`
+        self.`session_mode` = `session_mode`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`stt` = try SpeechSpeechRoute.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stt")), depth: depth + 1)
+        self.`tts` = try SpeechSpeechRoute.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "tts")), depth: depth + 1)
+        self.`barge` = try SpeechConfigBarge.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "barge")), depth: depth + 1)
+        self.`session_mode` = try SpeechConfigSessionMode.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session_mode")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("stt", try self.`stt`.cborValue(depth: depth + 1)))
+        entries.append(.init("tts", try self.`tts`.cborValue(depth: depth + 1)))
+        entries.append(.init("barge", try self.`barge`.cborValue(depth: depth + 1)))
+        entries.append(.init("session_mode", try self.`session_mode`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SessionOpen: CBORMessage, Sendable {
+    public static let schemaRule = "session-open"
+    public var `session`: CommonCorrelationId
+    public var `route`: CBORValue
+    public init(`session`: CommonCorrelationId, `route`: CBORValue) {
+        self.`session` = `session`
+        self.`route` = `route`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`route` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "route")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("route", try self.`route`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SessionClose: CBORMessage, Sendable {
+    public static let schemaRule = "session-close"
+    public var `session`: CommonCorrelationId
+    public init(`session`: CommonCorrelationId) {
+        self.`session` = `session`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ToolCall: CBORMessage, Sendable {
+    public static let schemaRule = "tool-call"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `name`: CommonMethodName
+    public var `arguments`: CommonProfileMap
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `name`: CommonMethodName, `arguments`: CommonProfileMap) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`name` = `name`
+        self.`arguments` = `arguments`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`name` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`arguments` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "arguments")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("arguments", try self.`arguments`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ToolResult: CBORMessage, Sendable {
+    public static let schemaRule = "tool-result"
+    case variant1(ToolResultVariant1)
+    case variant2(ToolResultVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try ToolResultVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try ToolResultVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechProfile: CBORMessage, Sendable {
+    public static let schemaRule = "speech-profile"
+    case variant1(SpeechSpeechStart)
+    case variant2(SpeechSpeechPartial)
+    case variant3(SpeechSpeechEnd)
+    case variant4(SpeechSpeechPosition)
+    case variant5(SpeechSpeechBargeIn)
+    case variant6(SpeechSpeakChunk)
+    case variant7(SpeechStop)
+    case variant8(SpeechBackchannel)
+    case variant9(SpeechSpeechRoute)
+    case variant10(SpeechSpeechConfig)
+    case variant11(SpeechSessionOpen)
+    case variant12(SpeechSessionClose)
+    case variant13(SpeechToolCall)
+    case variant14(SpeechToolResult)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("speech::speech-start"), cborValue)) != nil {
+            self = .variant1(try SpeechSpeechStart.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-partial"), cborValue)) != nil {
+            self = .variant2(try SpeechSpeechPartial.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-end"), cborValue)) != nil {
+            self = .variant3(try SpeechSpeechEnd.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-position"), cborValue)) != nil {
+            self = .variant4(try SpeechSpeechPosition.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-barge-in"), cborValue)) != nil {
+            self = .variant5(try SpeechSpeechBargeIn.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speak-chunk"), cborValue)) != nil {
+            self = .variant6(try SpeechSpeakChunk.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::stop"), cborValue)) != nil {
+            self = .variant7(try SpeechStop.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::backchannel"), cborValue)) != nil {
+            self = .variant8(try SpeechBackchannel.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-route"), cborValue)) != nil {
+            self = .variant9(try SpeechSpeechRoute.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::speech-config"), cborValue)) != nil {
+            self = .variant10(try SpeechSpeechConfig.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::session-open"), cborValue)) != nil {
+            self = .variant11(try SpeechSessionOpen.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::session-close"), cborValue)) != nil {
+            self = .variant12(try SpeechSessionClose.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::tool-call"), cborValue)) != nil {
+            self = .variant13(try SpeechToolCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::tool-result"), cborValue)) != nil {
+            self = .variant14(try SpeechToolResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-start"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-partial"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-end"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-position"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-barge-in"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speak-chunk"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::stop"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::backchannel"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-route"), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::speech-config"), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::session-open"), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::session-close"), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::tool-call"), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::tool-result"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SurfaceEntry = SurfaceSurfaceMessage
+
+public struct Hello: CBORMessage, Sendable {
+    public static let schemaRule = "hello"
+    public var `surface`: CommonSurfaceId
+    public var `offer`: CommonVersionOffer
+    public var `clock`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`surface`: CommonSurfaceId, `offer`: CommonVersionOffer, `clock`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`surface` = `surface`
+        self.`offer` = `offer`
+        self.`clock` = `clock`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`surface` = try CommonSurfaceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "surface")), depth: depth + 1)
+        self.`offer` = try CommonVersionOffer.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offer")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("surface", try self.`surface`.cborValue(depth: depth + 1)))
+        entries.append(.init("offer", try self.`offer`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HelloReply: CBORMessage, Sendable {
+    public static let schemaRule = "hello-reply"
+    public var `selection`: CommonVersionSelection
+    public var `correlation_id`: CommonCorrelationId
+    public init(`selection`: CommonVersionSelection, `correlation_id`: CommonCorrelationId) {
+        self.`selection` = `selection`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`selection` = try CommonVersionSelection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "selection")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("selection", try self.`selection`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SchemaRefs = [CBORMapEntry]
+
+public struct CapEntry: CBORMessage, Sendable {
+    public static let schemaRule = "cap-entry"
+    public var `name`: CommonCapabilityName
+    public var `events`: [CommonCapabilityName]
+    public var `reads`: [CommonCapabilityName]
+    public var `actions`: [CommonCapabilityName]
+    public var `exclusive`: [CommonCapabilityName]
+    public var `schemas`: SurfaceSchemaRefs
+    public init(`name`: CommonCapabilityName, `events`: [CommonCapabilityName], `reads`: [CommonCapabilityName], `actions`: [CommonCapabilityName], `exclusive`: [CommonCapabilityName], `schemas`: SurfaceSchemaRefs) {
+        self.`name` = `name`
+        self.`events` = `events`
+        self.`reads` = `reads`
+        self.`actions` = `actions`
+        self.`exclusive` = `exclusive`
+        self.`schemas` = `schemas`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`name` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`events` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`reads` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reads")), depth: depth + 1)
+        self.`actions` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`exclusive` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive")), depth: depth + 1)
+        self.`schemas` = try SurfaceSchemaRefs.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "schemas")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("reads", try self.`reads`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive", try self.`exclusive`.cborValue(depth: depth + 1)))
+        entries.append(.init("schemas", try self.`schemas`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Capabilities: CBORMessage, Sendable {
+    public static let schemaRule = "capabilities"
+    public var `revision`: Swift.UInt64
+    public var `clock`: CommonUint64
+    public var `entries`: [SurfaceCapEntry]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`revision`: Swift.UInt64, `clock`: CommonUint64, `entries`: [SurfaceCapEntry], `correlation_id`: CommonCorrelationId) {
+        self.`revision` = `revision`
+        self.`clock` = `clock`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`entries` = try [SurfaceCapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Grant: CBORMessage, Sendable {
+    public static let schemaRule = "grant"
+    public var `coglet`: CommonCogletId
+    public var `operations`: [CommonCapabilityName]
+    public var `resources`: [CommonCapabilityName]
+    public var `expires`: CommonUint64
+    public init(`coglet`: CommonCogletId, `operations`: [CommonCapabilityName], `resources`: [CommonCapabilityName], `expires`: CommonUint64) {
+        self.`coglet` = `coglet`
+        self.`operations` = `operations`
+        self.`resources` = `resources`
+        self.`expires` = `expires`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`operations` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operations")), depth: depth + 1)
+        self.`resources` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "resources")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("operations", try self.`operations`.cborValue(depth: depth + 1)))
+        entries.append(.init("resources", try self.`resources`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Grants: CBORMessage, Sendable {
+    public static let schemaRule = "grants"
+    public var `epoch`: Swift.UInt64
+    public var `entries`: [SurfaceGrant]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`epoch`: Swift.UInt64, `entries`: [SurfaceGrant], `correlation_id`: CommonCorrelationId) {
+        self.`epoch` = `epoch`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`entries` = try [SurfaceGrant].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Read: CBORMessage, Sendable {
+    public static let schemaRule = "read"
+    public var `coglet`: CommonCogletId
+    public var `capability`: CommonCapabilityName
+    public var `args`: CommonProfileMap
+    public var `grant_epoch`: Swift.UInt64
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`coglet`: CommonCogletId, `capability`: CommonCapabilityName, `args`: CommonProfileMap, `grant_epoch`: Swift.UInt64, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`grant_epoch` = `grant_epoch`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ReadReply: CBORMessage, Sendable {
+    public static let schemaRule = "read-reply"
+    case variant1(ReadReplyVariant1)
+    case variant2(ReadReplyVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), cborValue)) != nil {
+            self = .variant1(try ReadReplyVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try ReadReplyVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Act: CBORMessage, Sendable {
+    public static let schemaRule = "act"
+    public var `grant_epoch`: Swift.UInt64
+    public var `action`: CommonAction
+    public init(`grant_epoch`: Swift.UInt64, `action`: CommonAction) {
+        self.`grant_epoch` = `grant_epoch`
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`action` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Health: CBORMessage, Sendable {
+    public static let schemaRule = "health"
+    public var `state`: HealthState
+    public var `clock`: CommonUint64
+    public var `pending`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`state`: HealthState, `clock`: CommonUint64, `pending`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`state` = `state`
+        self.`clock` = `clock`
+        self.`pending` = `pending`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`state` = try HealthState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`pending` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Kill: CBORMessage, Sendable {
+    public static let schemaRule = "kill"
+    public var `reason`: CBORValue
+    public var `correlation_id`: CommonCorrelationId
+    public init(`reason`: CBORValue, `correlation_id`: CommonCorrelationId) {
+        self.`reason` = `reason`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`reason` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reason")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("reason", try self.`reason`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceError: CBORMessage, Sendable {
+    public static let schemaRule = "surface-error"
+    public var `error`: CommonError
+    public var `correlation_id`: CommonCorrelationId
+    public init(`error`: CommonError, `correlation_id`: CommonCorrelationId) {
+        self.`error` = `error`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SurfaceMessage: CBORMessage, Sendable {
+    public static let schemaRule = "surface-message"
+    case variant1(SurfaceMessageVariant1)
+    case variant2(SurfaceMessageVariant2)
+    case variant3(SurfaceMessageVariant3)
+    case variant4(SurfaceMessageVariant4)
+    case variant5(SurfaceMessageVariant5)
+    case variant6(SurfaceMessageVariant6)
+    case variant7(SurfaceMessageVariant7)
+    case variant8(SurfaceMessageVariant8)
+    case variant9(SurfaceMessageVariant9)
+    case variant10(SurfaceMessageVariant10)
+    case variant11(SurfaceMessageVariant11)
+    case variant12(SurfaceMessageVariant12)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), cborValue)) != nil {
+            self = .variant1(try SurfaceMessageVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), cborValue)) != nil {
+            self = .variant2(try SurfaceMessageVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), cborValue)) != nil {
+            self = .variant3(try SurfaceMessageVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), cborValue)) != nil {
+            self = .variant4(try SurfaceMessageVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), cborValue)) != nil {
+            self = .variant5(try SurfaceMessageVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), cborValue)) != nil {
+            self = .variant6(try SurfaceMessageVariant6.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), cborValue)) != nil {
+            self = .variant7(try SurfaceMessageVariant7.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), cborValue)) != nil {
+            self = .variant8(try SurfaceMessageVariant8.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), cborValue)) != nil {
+            self = .variant9(try SurfaceMessageVariant9.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), cborValue)) != nil {
+            self = .variant10(try SurfaceMessageVariant10.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), cborValue)) != nil {
+            self = .variant11(try SurfaceMessageVariant11.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), cborValue)) != nil {
+            self = .variant12(try SurfaceMessageVariant12.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum AbiLogEntryLevel: CBORMessage, Sendable {
     public static let schemaRule = "@AbiLogEntryLevel"
     case variant1(Swift.String)
@@ -3452,6 +5954,850 @@ public struct CommonActionOutcomeVariant2: CBORMessage, Sendable {
     }
 }
 
+public indirect enum ExpressionSetExpressionExpression: CBORMessage, Sendable {
+    public static let schemaRule = "@ExpressionSetExpressionExpression"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("neutral")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("listening")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speaking")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("happy")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("concerned")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("neutral")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("listening")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speaking")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("happy")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("concerned")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ExpressionExpressionStateExpression: CBORMessage, Sendable {
+    public static let schemaRule = "@ExpressionExpressionStateExpression"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("neutral")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("listening")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speaking")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("happy")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("concerned")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("neutral")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("listening")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speaking")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("happy")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("concerned")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechPositionState: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechSpeechPositionState"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("playing")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("ducked")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("finished")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("playing")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ducked")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("finished")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechBargeInReflex: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechSpeechBargeInReflex"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("ducked")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ducked")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechBackchannelCue: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechBackchannelCue"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("ack")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("agree")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ack")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("agree")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechRoutePlacement: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechSpeechRoutePlacement"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("surface")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("runtime")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("provider")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("surface")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("runtime")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("provider")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechConfigBarge: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechSpeechConfigBarge"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stop")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("duck")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stop")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("duck")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechSpeechConfigSessionMode: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechSpeechConfigSessionMode"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("text")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speech_to_speech")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("text")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speech_to_speech")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechToolResultVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechToolResultVariant1"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonProfileMap
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonProfileMap) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`ok` = `ok`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechToolResultVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechToolResultVariant2"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonError
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonError) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`ok` = `ok`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceReadReplyVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceReadReplyVariant1"
+    public var `correlation_id`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonProfileMap
+    public var `snapshot`: CommonUint64
+    public init(`correlation_id`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonProfileMap, `snapshot`: CommonUint64) {
+        self.`correlation_id` = `correlation_id`
+        self.`ok` = `ok`
+        self.`value` = `value`
+        self.`snapshot` = `snapshot`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+        self.`snapshot` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "snapshot")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        entries.append(.init("snapshot", try self.`snapshot`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceReadReplyVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceReadReplyVariant2"
+    public var `correlation_id`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `error`: CommonError
+    public init(`correlation_id`: CommonCorrelationId, `ok`: Swift.Bool, `error`: CommonError) {
+        self.`correlation_id` = `correlation_id`
+        self.`ok` = `ok`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SurfaceHealthState: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceHealthState"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("ready")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("degraded")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ready")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("degraded")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant1"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHello
+    public init(`type`: Swift.String, `body`: SurfaceHello) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHello.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant2"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHelloReply
+    public init(`type`: Swift.String, `body`: SurfaceHelloReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHelloReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant3"
+    public var `type`: Swift.String
+    public var `body`: SurfaceCapabilities
+    public init(`type`: Swift.String, `body`: SurfaceCapabilities) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceCapabilities.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant4"
+    public var `type`: Swift.String
+    public var `body`: SurfaceGrants
+    public init(`type`: Swift.String, `body`: SurfaceGrants) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceGrants.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant5"
+    public var `type`: Swift.String
+    public var `body`: CommonEvent
+    public init(`type`: Swift.String, `body`: CommonEvent) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant6: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant6"
+    public var `type`: Swift.String
+    public var `body`: SurfaceRead
+    public init(`type`: Swift.String, `body`: SurfaceRead) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceRead.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant7: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant7"
+    public var `type`: Swift.String
+    public var `body`: SurfaceReadReply
+    public init(`type`: Swift.String, `body`: SurfaceReadReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceReadReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant8: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant8"
+    public var `type`: Swift.String
+    public var `body`: SurfaceAct
+    public init(`type`: Swift.String, `body`: SurfaceAct) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceAct.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant9: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant9"
+    public var `type`: Swift.String
+    public var `body`: CommonActionAccept
+    public init(`type`: Swift.String, `body`: CommonActionAccept) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonActionAccept.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant10: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant10"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHealth
+    public init(`type`: Swift.String, `body`: SurfaceHealth) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHealth.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant11: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant11"
+    public var `type`: Swift.String
+    public var `body`: SurfaceKill
+    public init(`type`: Swift.String, `body`: SurfaceKill) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceKill.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceSurfaceMessageVariant12: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceSurfaceMessageVariant12"
+    public var `type`: Swift.String
+    public var `body`: SurfaceSurfaceError
+    public init(`type`: Swift.String, `body`: SurfaceSurfaceError) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceSurfaceError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum LogEntryLevel: CBORMessage, Sendable {
     public static let schemaRule = "@LogEntryLevel"
     case variant1(Swift.String)
@@ -4260,6 +7606,850 @@ public struct ActionOutcomeVariant2: CBORMessage, Sendable {
         entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
         entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
         entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SetExpressionExpression: CBORMessage, Sendable {
+    public static let schemaRule = "@SetExpressionExpression"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("neutral")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("listening")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speaking")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("happy")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("concerned")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("neutral")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("listening")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speaking")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("happy")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("concerned")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ExpressionStateExpression: CBORMessage, Sendable {
+    public static let schemaRule = "@ExpressionStateExpression"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("neutral")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("listening")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speaking")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("happy")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("concerned")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("neutral")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("listening")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speaking")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("happy")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("concerned")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechPositionState: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechPositionState"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("playing")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("ducked")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("finished")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("playing")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ducked")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("finished")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechBargeInReflex: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechBargeInReflex"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("ducked")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ducked")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum BackchannelCue: CBORMessage, Sendable {
+    public static let schemaRule = "@BackchannelCue"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("ack")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("thinking")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("agree")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ack")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("thinking")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("agree")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechRoutePlacement: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechRoutePlacement"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("surface")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("runtime")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("provider")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("surface")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("runtime")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("provider")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechConfigBarge: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechConfigBarge"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stop")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("duck")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stop")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("duck")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechConfigSessionMode: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechConfigSessionMode"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("text")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("speech_to_speech")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("text")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("speech_to_speech")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ToolResultVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@ToolResultVariant1"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonProfileMap
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonProfileMap) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`ok` = `ok`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ToolResultVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@ToolResultVariant2"
+    public var `session`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonError
+    public init(`session`: CommonCorrelationId, `call`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonError) {
+        self.`session` = `session`
+        self.`call` = `call`
+        self.`ok` = `ok`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`session` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "session")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ReadReplyVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@ReadReplyVariant1"
+    public var `correlation_id`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `value`: CommonProfileMap
+    public var `snapshot`: CommonUint64
+    public init(`correlation_id`: CommonCorrelationId, `ok`: Swift.Bool, `value`: CommonProfileMap, `snapshot`: CommonUint64) {
+        self.`correlation_id` = `correlation_id`
+        self.`ok` = `ok`
+        self.`value` = `value`
+        self.`snapshot` = `snapshot`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+        self.`snapshot` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "snapshot")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        entries.append(.init("snapshot", try self.`snapshot`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ReadReplyVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@ReadReplyVariant2"
+    public var `correlation_id`: CommonCorrelationId
+    public var `ok`: Swift.Bool
+    public var `error`: CommonError
+    public init(`correlation_id`: CommonCorrelationId, `ok`: Swift.Bool, `error`: CommonError) {
+        self.`correlation_id` = `correlation_id`
+        self.`ok` = `ok`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`ok` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ok")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HealthState: CBORMessage, Sendable {
+    public static let schemaRule = "@HealthState"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("ready")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("degraded")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("ready")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("degraded")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant1"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHello
+    public init(`type`: Swift.String, `body`: SurfaceHello) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHello.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant2"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHelloReply
+    public init(`type`: Swift.String, `body`: SurfaceHelloReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHelloReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant3"
+    public var `type`: Swift.String
+    public var `body`: SurfaceCapabilities
+    public init(`type`: Swift.String, `body`: SurfaceCapabilities) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceCapabilities.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant4"
+    public var `type`: Swift.String
+    public var `body`: SurfaceGrants
+    public init(`type`: Swift.String, `body`: SurfaceGrants) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceGrants.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant5"
+    public var `type`: Swift.String
+    public var `body`: CommonEvent
+    public init(`type`: Swift.String, `body`: CommonEvent) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant6: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant6"
+    public var `type`: Swift.String
+    public var `body`: SurfaceRead
+    public init(`type`: Swift.String, `body`: SurfaceRead) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceRead.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant7: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant7"
+    public var `type`: Swift.String
+    public var `body`: SurfaceReadReply
+    public init(`type`: Swift.String, `body`: SurfaceReadReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceReadReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant8: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant8"
+    public var `type`: Swift.String
+    public var `body`: SurfaceAct
+    public init(`type`: Swift.String, `body`: SurfaceAct) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceAct.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant9: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant9"
+    public var `type`: Swift.String
+    public var `body`: CommonActionAccept
+    public init(`type`: Swift.String, `body`: CommonActionAccept) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonActionAccept.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant10: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant10"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHealth
+    public init(`type`: Swift.String, `body`: SurfaceHealth) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHealth.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant11: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant11"
+    public var `type`: Swift.String
+    public var `body`: SurfaceKill
+    public init(`type`: Swift.String, `body`: SurfaceKill) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceKill.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SurfaceMessageVariant12: CBORMessage, Sendable {
+    public static let schemaRule = "@SurfaceMessageVariant12"
+    public var `type`: Swift.String
+    public var `body`: SurfaceSurfaceError
+    public init(`type`: Swift.String, `body`: SurfaceSurfaceError) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceSurfaceError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
