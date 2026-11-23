@@ -52,8 +52,49 @@ def check_transition(old_raw, new_raw):
             raise ValueError('heard alignment changed')
         if current['played_ms'] < item['played_ms']:
             raise ValueError('heard position regressed')
-        if item['stopped'] and (not current['stopped'] or current['played_ms'] != item['played_ms']):
+        if item['stopped'] and current != item:
             raise ValueError('heard stopped item advanced')
+
+
+def collect_owner_read(old_raw, surface, read, *, stopped=False):
+    """Live collection contract oracle. Caller has authenticated the owner read.
+
+    Stop is supplied by the existing playback boundary, not a new read field.
+    Offline replay deliberately does not call this function.
+    """
+    state = read_state(old_raw)
+    items = {(i['surface'], i['item']): i for i in state['items']}
+    key = (surface, read['item'])
+    item: dict | None = items.get(key)
+    if item is not None and item['stopped']:
+        return old_raw
+    if item is None:
+        item = dict(surface=surface, item=read['item'], duration_ms=0,
+                    played_ms=0, stopped=False, spans=[], heard='')
+        items[key] = item
+    played = read['played_ms']
+    if played < item['played_ms']:
+        raise ValueError('heard position regressed')
+    item['duration_ms'] = max(item['duration_ms'], played)
+    archived = ''.join(s['text'] for s in item['spans']).encode('utf-8')
+    text = read['text'].encode('utf-8')
+    last_end = item['spans'][-1]['end_ms'] if item['spans'] else 0
+    if played > last_end and text.startswith(archived) and len(text) > len(archived):
+        item['spans'].append(dict(end_ms=played, text=text[len(archived):].decode('utf-8')))
+    item.update(played_ms=played, stopped=stopped)
+    prefix = ''.join(s['text'] for s in item['spans'] if s['end_ms'] <= played)
+    item['heard'] = prefix.encode('utf-8')[:16384].decode('utf-8', errors='ignore')
+    state['items'] = [items[k] for k in sorted(items)]
+    new_raw = encode(state).hex()
+    check_transition(old_raw, new_raw)
+    return new_raw
+
+
+def check_owner_read_archive(old_raw, new_raw, surface, read, *, stopped=False):
+    """Live producer check, separate from archive-only replay validation."""
+    check_transition(old_raw, new_raw)
+    if collect_owner_read(old_raw, surface, read, stopped=stopped) != new_raw:
+        raise ValueError('heard read mismatch')
 
 
 def replay_heard(trace):

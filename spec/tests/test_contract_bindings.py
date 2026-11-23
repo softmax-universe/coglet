@@ -111,7 +111,8 @@ class ContractBindings(unittest.TestCase):
                 line.startswith('| ') and '**B**' in line]
         expected = {'E-budget', 'E-0001', 'E-0008', 'E-0003', 'H-transform',
                     'W-binding', 'W-llm', 'L-gateway', 'R-retry', 'W-reserved',
-                    'R-origin', 'S-speech', 'H-relay-grants', 'H-private', 'H-synthesis', 'F-path'}
+                    'R-origin', 'S-speech', 'H-relay-grants', 'H-private', 'H-synthesis', 'F-path',
+                    'R-heard-private', 'R-heard-persist', 'H-sender-epoch'}
         self.assertEqual({row[0].strip().split(':')[0] for row in rows}, expected)
         self.assertEqual(len(rows), len(expected))
         owners = {'t_01a205e4fdee443e', 't_01a205e5cb4956e5', 't_01a205e673b63cb9',

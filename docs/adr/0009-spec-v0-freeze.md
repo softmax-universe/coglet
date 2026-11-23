@@ -202,6 +202,40 @@ The ABI generator, rehashed positive/negative traces and actual harness timeline
 regressions exercise these rules. No ADR status, engine/speech qualification or
 existing M1 gate is accepted or changed by this amendment.
 
+## Amendment M-D: heard-state construction from owner reads
+
+The runtime constructs the private ABI `heard-state` conservatively from existing
+owner-only `speech.heard {item, played_ms, text}` reads. This amendment introduces
+NO wire fields or changes to position/barge_in. For each live item, duration_ms is
+the maximum played_ms observed so far: known media extent at that recording,
+never a predicted final duration. Positions never regress. A stopped item freezes
+in full, including its spans; stopping may record one final read before the freeze.
+
+Compare the read text's exact UTF-8 bytes with the concatenation of ALL archived
+span text (not a normalized string or duration-ratio estimate). If played_ms is
+greater than the last span end (zero for an empty list), and text strictly extends
+that byte prefix, append ONE `{end_ms: played_ms, text: <new suffix>}` span.
+Zero played_ms or empty text yields no span. Unchanged text, shrink or revision
+also yields no span; played_ms/duration may still advance under stopped/no-regress
+rules. Never replace existing spans. Derive heard solely from spans ending at or
+before played_ms, with the ABI's existing UTF-8 cap. Thus revisions do not rewrite
+history and unknown alignment never supplies guessed text.
+
+Live collection is a separate boundary from offline replay. Only collection
+consults authenticated owner reads; archive-only replay uses initial state and
+hashed runtime.heard boundaries, with no live read or oracle injection. Tests
+`test_owner_reads_wire_archive_fresh_replay` and
+`test_owner_read_archive_mismatch_and_nonappend_rejected` exercise this join,
+including a fresh replay process receiving only encoded archive bytes.
+
+Richer native per-item alignment is NOT a v0 requirement. It is an explicit M1
+qualification gate on surface Rust **t_01a205e673b63cb9** and surface Swift
+**t_01a205e6f7d2d882**; it may only append spans consistently with these rules,
+never revise an archived span. Core runtime/fs persistence, heard-path privacy
+and debug exclusions, and hub.actions sender epoch-map retention have separate
+named M1 owners/proofs in `docs/reviews/spec-v0-m1-gates.md`. No native or durable
+implementation qualification, ADR acceptance or freeze acceptance is claimed.
+
 ## Alternatives
 
 - Tag the independently tested individual specs immediately: rejected because

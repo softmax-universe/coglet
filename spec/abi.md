@@ -211,6 +211,10 @@ it; it must be durable before that step consumes conversation history. It may
 also occur in trailing_boundary, including zero-step exports. Thus it fits the
 closed applied-mutation format above without adding an event or untyped header.
 
+Live construction from owner reads is specified in
+[speech heard-history](capabilities/speech.md#heard-only-conversation-history-adr-0010) and
+[ADR-0009 M-D](../docs/adr/0009-spec-v0-freeze.md#amendment-m-d-heard-state-construction-from-owner-reads).
+
 `heard-state` contains `items`, ordered by (surface,item), unique per pair. Each
 `heard-item` carries surface, item, duration_ms, played_ms, stopped, ordered spans
 `{end_ms,text}` and the derived `heard` text. Span ends strictly increase within

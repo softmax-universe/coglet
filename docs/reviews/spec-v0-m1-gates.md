@@ -37,6 +37,17 @@ NOT claims that those implementation tests already exist or passed.
 | H-synthesis: synthesized outcome authority | **B** | hub proto **t_01a205e73c70350a** | Require `synthesized_success_without_authority_denied`, unknown/unadmitted action, wrong source/owner/correlation, duplicate terminal and retained authority audit controls; valid authenticated surface outcomes and authorized terminal failure controls must still work. Source syntax or test-only trace vectors cannot authorize success or a physical effect. |
 | F-path: production path enforcement after portable-schema broadening | **B** | fs **t_01a205e58c02c6ae** | Preserve existing `test_path_contract` and forbidden-character fixtures; require runtime mount/descriptor tests for all C0, DEL, backslash, dot/empty segments, escapes and Unicode exact bytes. Codecs alone do not enforce the full path contract. |
 
+### M-D carried qualification gates (non-blocking for v0)
+
+These are disposition **B**, not unperformed v0 wire changes. Required proof
+names below are unexecuted M1 obligations, not claims of native qualification.
+
+| ID / residual row | Disposition | Named M1 owners | Required proof / frozen rule |
+|---|---|---|---|
+| R-heard-private: heard-path privacy and debug exclusions | **B** | runtime core **t_01a205e5cb4956e5** (primary) | Supporting owners: fs **t_01a205e58c02c6ae**, hub proto **t_01a205e73c70350a** for remote debug. Require `heard_path_guest_write_create_denied`, `heard_path_debug_write_denied`, `heard_archive_private_owner_only`, `heard_revocation_denies_live_not_rewrite_archive`. The reserved runtime-write-only path cannot be mutated through guest/debug/inbox routes; transcript privacy applies to archive/export/debug access. |
+| R-heard-persist: heard persistence and native alignment | **B** | runtime core **t_01a205e5cb4956e5** (primary) | Supporting owners: fs **t_01a205e58c02c6ae**; Phase 2 surface Rust **t_01a205e673b63cb9**, Swift **t_01a205e6f7d2d882**. Core/fs require `heard_durable_before_reasoning`, `heard_crash_restart_archive_only_replay`, `heard_owner_reads_append_only`. Rust/Swift require `native_item_alignment_owner_bound`, `native_alignment_only_appends_spans`, `stopped_item_alignment_frozen`. Richer native alignment is NOT required for v0 and may only append spans consistently with ADR-0009 M-D, never rewrite archived spans. Contract-oracle vectors do not prove native alignment or durable storage. |
+| H-sender-epoch: hub.actions sender epoch-map retention | **B** | hub proto **t_01a205e73c70350a** | Require `hub_actions_sender_map_and_envelope_durable_before_send`, `hub_actions_restart_retry_identical_bytes`, `hub_actions_new_sample_does_not_remap_old_id`, `hub_actions_missing_stale_map_refused`. Establish mapping to the receiving runtime epoch and retain the complete once-mapped request before first send; retries cannot resample/retranslate. |
+
 ## Freeze-owner handoff and scope boundary
 
 ADR-0009 records the bounded decisions and amendments. M-B does not change the
