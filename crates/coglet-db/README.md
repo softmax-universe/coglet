@@ -9,8 +9,18 @@ Implemented and exercised against bundled SQLite:
 - Private host-root database per authenticated owner, hashed directory name,
   restrictive Unix permissions, symlink checks, exclusive owner lease, foreign
   keys, WAL and synchronous FULL configuration.
-- Trusted, pinned-catalog candidate statement IDs, positional binding, separate
-  read/write grants, and SQLite authorizer isolation from schema/host metadata.
+- Immutable typed catalog statement IDs, exact positional parameter/result types,
+  result names, per-statement read tables and a separate mutation target; canonical
+  CBOR/SHA256 digest binds all metadata and SQL. The public approval route requires
+  typed metadata. Conservative single-table reads prove a nonnullable unique key
+  against the actual SQLite schema, including effective BINARY ordering; partial,
+  expression and nullable unique indexes do not prove a tie-break key. Separate
+  read/write grants and SQLite authorizer isolation protect schema/host metadata.
+- Dedicated enqueue with pinned host intent grants, canonical-CBOR payload storage,
+  same-key/content lookup before proposed-ID uniqueness, retained original IDs and
+  conflict poisoning. Actual Factory schema/catalog integration is tested, including
+  FK dependency reads without widening mutation authority. This is provisional
+  storage only: no production commit, dispatcher, publication fence or receipt path.
 - Short RAII rollback units, sticky failure poisoning, affected-row comparison for
   optimistic updates, a 32-call limit and cancellation inside SQLite at a supplied
   absolute host deadline. No public successful commit or schema provisioning API
@@ -25,16 +35,16 @@ names do not establish shared black-box runtime/engine conformance. Tests use
 
 Required before task acceptance:
 
-1. Replace candidate catalog parameter-count-only binding with pinned parameter
-   types, per-statement table/column/order metadata and a canonical catalog digest.
-   The current conservative SQL subset is not a general portable-SQL parser.
+1. Integrate the typed catalog digest with code/schema/manifest admission. Catalog
+   construction alone is not operator approval or ABI support. The conservative
+   SQL subset is intentionally not a general portable-SQL parser.
 2. Authenticated revision-bound cursors and admitted-attempt expiry; exact pinned
    revision accounting; ABI input/output and aggregate host-byte reservation.
 3. Prepared step/DB marker/exact journal publication, restart recovery at every
    crash point, and offline recorded-result replay without a DB connection.
-4. Dedicated immutable-key outbox enqueue, including identical-retry precedence,
-   changed-content/ID conflicts, and journal-publication dispatch fencing. Actual
-   external dispatch stays outside phase 1.
+4. Integrate immutable-key enqueue with revisions and journal-publication dispatch
+   fencing. Current native tests use cfg(test) commits; they are not engine
+   acceptance or crash qualification. External dispatch stays outside phase 1.
 5. Factory Wasm schema/repository and guest SDK import; explicit approved forward
    migration, verified backup/restore and schema compatibility checks.
 6. Runtime/engine opt-in admission and real shared conformance adapters, all named

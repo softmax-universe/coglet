@@ -12,6 +12,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod catalog;
+mod outbox;
+pub use catalog::{CellType, Column, TypedStatement};
+pub use outbox::{Enqueued, Intent};
+
 pub type Result<T> = std::result::Result<T, String>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -37,6 +42,7 @@ pub struct Statement {
     mode: Mode,
     parameters: usize,
     expected_affected: Option<u64>,
+    binding: Option<catalog::Binding>,
 }
 impl Statement {
     pub fn new(id: &str, sql: &str, mode: Mode, parameters: usize) -> Self {
@@ -46,6 +52,7 @@ impl Statement {
             mode,
             parameters,
             expected_affected: None,
+            binding: None,
         }
     }
     /// A compare-and-swap statement must affect exactly one row. A mismatch is
@@ -59,7 +66,7 @@ pub struct Catalog {
     statements: BTreeMap<String, Statement>,
 }
 impl Catalog {
-    pub fn approve(statements: Vec<Statement>) -> Result<Self> {
+    fn approve(statements: Vec<Statement>) -> Result<Self> {
         let mut entries = BTreeMap::new();
         for entry in statements {
             // Intentionally narrow portable subset. Catalogs are trusted pinned
@@ -79,7 +86,6 @@ impl Catalog {
                 || sql.contains("/*")
                 || sql.contains("RETURNING")
                 || sql.contains("REPLACE")
-                || sql.contains("JSON")
                 || sql.contains("CURRENT_");
             // Calls are forbidden, including clock/random/extensions. Bare
             // INSERT column and VALUES lists are the only admitted parentheses.
@@ -266,6 +272,7 @@ impl Database {
             deadline,
             poisoned: false,
             calls: 0,
+            intent_grants: None,
             finished: false,
         })
     }
@@ -286,6 +293,7 @@ pub struct Unit<'a> {
     deadline: Instant,
     poisoned: bool,
     calls: usize,
+    intent_grants: Option<std::collections::BTreeSet<String>>,
     finished: bool,
 }
 impl Unit<'_> {
@@ -297,6 +305,7 @@ impl Unit<'_> {
         max_rows: usize,
         max_bytes: usize,
     ) -> Result<Page> {
+        self.calls = self.calls.saturating_add(1);
         let result = self.execute(id, mode, params, max_rows, max_bytes);
         if result.is_err() {
             self.poisoned = true;
@@ -325,20 +334,28 @@ impl Unit<'_> {
         {
             return Err("invalid bounds".into());
         }
-        self.calls += 1;
+        if (mode == Mode::Read && !self.grants.read) || (mode == Mode::Write && !self.grants.write)
+        {
+            return Err("permission denied".into());
+        }
         if self.poisoned {
             return Err("poisoned unit".into());
         }
         if self.calls > 32 || Instant::now() >= self.deadline {
             return Err("resource exhausted".into());
         }
-        if (mode == Mode::Read && !self.grants.read) || (mode == Mode::Write && !self.grants.write)
-        {
-            return Err("permission denied".into());
-        }
         let spec = self.catalog.statements.get(id).ok_or("unknown statement")?;
         if spec.mode != mode || spec.parameters != params.len() {
             return Err("statement binding mismatch".into());
+        }
+        if spec.binding.as_ref().is_some_and(|binding| {
+            !binding
+                .parameters
+                .iter()
+                .zip(params)
+                .all(|(kind, value)| kind.accepts(value))
+        }) {
+            return Err("parameter type mismatch".into());
         }
         let values: Vec<_> = params
             .iter()
@@ -348,12 +365,20 @@ impl Unit<'_> {
                 Cell::Text(s) => s.clone().into(),
             })
             .collect();
+        if let Some(binding) = &spec.binding {
+            binding.validate_order(&self.db.connection)?;
+        }
+        let permitted_tables = spec.binding.as_ref().map(|binding| binding.tables.clone());
         self.db
             .connection
             .authorizer(Some(move |ctx: rusqlite::hooks::AuthContext<'_>| {
                 use rusqlite::hooks::{AuthAction as A, Authorization as Decision};
-                let application =
-                    |table: &str| ["objects", "relations", "events", "work_queue"].contains(&table);
+                let application = |table: &str| {
+                    ["objects", "relations", "events", "work_queue"].contains(&table)
+                        && permitted_tables
+                            .as_ref()
+                            .is_none_or(|tables| tables.iter().any(|t| t == table))
+                };
                 if ctx.database_name.is_some_and(|name| name != "main") || ctx.accessor.is_some() {
                     return Decision::Deny;
                 }
@@ -363,7 +388,11 @@ impl Unit<'_> {
                     A::Insert { table_name }
                     | A::Delete { table_name }
                     | A::Update { table_name, .. } => {
-                        mode == Mode::Write && application(table_name)
+                        mode == Mode::Write
+                            && application(table_name)
+                            && permitted_tables.as_ref().is_none_or(|tables| {
+                                tables.first().is_some_and(|t| t == table_name)
+                            })
                     }
                     _ => false,
                 };
@@ -405,6 +434,13 @@ impl Unit<'_> {
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>();
+        if spec
+            .binding
+            .as_ref()
+            .is_some_and(|binding| binding.columns.iter().map(|c| &c.name).ne(columns.iter()))
+        {
+            return Err("result column binding mismatch".into());
+        }
         if columns.len() > 16
             || columns.iter().any(|c| c.is_empty() || c.len() > 4096)
             || columns
@@ -444,6 +480,15 @@ impl Unit<'_> {
                     }
                     _ => return Err("unrepresentable cell".into()),
                 });
+            }
+            if spec.binding.as_ref().is_some_and(|binding| {
+                binding
+                    .columns
+                    .iter()
+                    .zip(&cells)
+                    .any(|(column, cell)| !column.kind.accepts(cell))
+            }) {
+                return Err("result type mismatch".into());
             }
             rows.push(cells);
             // Reserve the largest possible revision encoding until runtime

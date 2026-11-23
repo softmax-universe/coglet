@@ -116,8 +116,8 @@ fn factory_schema_has_all_tables_indexes_and_foreign_keys() {
     assert!(host.db.execute("INSERT INTO relations(id,source_id,target_id,type,data_json,version) VALUES ('r','absent','absent','depends_on','{}',1)", []).is_err());
     assert!(host.db.execute("INSERT INTO work_queue(task_id,state,priority,attempt,version) VALUES ('absent','pending',0,0,1)", []).is_err());
     assert!(host.db.execute("INSERT INTO events(id,object_id,event_type,payload_json,created_at,version) VALUES ('e','absent','created','{}',0,1)", []).is_err());
-    host.db.execute("INSERT INTO outbox(intent_id,idempotency_key,kind,payload_json,correlation_id,state,attempt,version) VALUES ('a','key','test.run','{}','corr','pending',0,1)", []).unwrap();
-    assert!(host.db.execute("INSERT INTO outbox(intent_id,idempotency_key,kind,payload_json,correlation_id,state,attempt,version) VALUES ('b','key','test.run','{}','corr','pending',0,1)", []).is_err());
+    host.db.execute("INSERT INTO outbox(intent_id,idempotency_key,kind,payload_cbor_hex,correlation_id,state,attempt,version) VALUES ('a','key','test.run','a0','corr','pending',0,1)", []).unwrap();
+    assert!(host.db.execute("INSERT INTO outbox(intent_id,idempotency_key,kind,payload_cbor_hex,correlation_id,state,attempt,version) VALUES ('b','key','test.run','a0','corr','pending',0,1)", []).is_err());
 }
 
 #[test]

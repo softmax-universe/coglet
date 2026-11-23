@@ -9,8 +9,9 @@ catalog hash: approved catalog admission/migrations/recovery must come first.
 
 - Portable forward schema source `migrations/0001.sql`: objects, relations,
   semantic events, work_queue, outbox and schema_migrations; foreign keys,
-  deterministic-key indexes and explicit optimistic versions. JSON stays opaque
-  text. No SQLite JSON functions, replace/upsert or SQLite-specific SQL types.
+  deterministic-key indexes, explicit NOT NULL primary keys and optimistic versions.
+  Semantic JSON stays opaque text; dedicated host outbox payloads use canonical
+  CBOR hex so profile values retain identity. No SQLite JSON functions or upsert.
 - Repository `get_object`, `query_objects`, `get_relations`, `create_object`,
   optimistic `update_object`, `append_event`, and dedicated `enqueue_outbox`.
   Multiple calls share the host step transaction; there is no guest commit.
@@ -49,10 +50,12 @@ seven named acceptance cases through the shared real/mock runtime suite.
 
 ## Required next
 
-1. Pin typed catalog parameters/columns/table access/unique ordering and digest in
-   the host; catalog.rs is deployment data, not an approved catalog yet.
-2. Finish host revision/cursor/attempt accounting/error protocol and immutable
-   outbox enqueue, including same-key/content precedence and lifetime uniqueness.
+1. Bind the native typed catalog digest to manifest/code/schema admission. The
+   native coglet-db suite now consumes catalog.rs and the actual migration source,
+   enforcing types, FK read dependencies, unique order and immutable enqueue;
+   catalog.rs remains deployment data, not an operator-approved live deployment.
+2. Finish host revision/cursor/admitted-attempt accounting/error protocol and
+   journal-fenced enqueue. Native outbox tests do not enable runtime support.
 3. Implement the **operator-authorized host migration runner**. The SQL file is
    input, not approval. Bind approval to owner, versions, migration digest,
    candidate code and recovery plan; verify quiesced backup/restore, apply a
