@@ -61,7 +61,16 @@ def lower_first(name):
 
 class Emitter:
     def __init__(self, rules):
-        self.rules = rules
+        self.schema_rules = rules
+        # Unique unqualified exports and their qualified names denote the same
+        # native type, not duplicate record/interface definitions.
+        self.rules = dict(rules)
+        for rule, node in rules.items():
+            if '::' in rule:
+                leaf = rule.rsplit('::', 1)[1]
+                if leaf in rules and rules[leaf] == node:
+                    self.rules[rule] = {'op': 'ref', 'name': leaf}
+        rules = self.rules
         self.names = {}
         self.symbols = {}
         for sym in RESERVED_SYMBOLS:
@@ -107,8 +116,11 @@ class Emitter:
                 if target in stack:
                     raise ValueError(f'recursive Go type alias through rule {target!r}')
                 walk(self.rules[target], stack | {target})
-            elif op in ('array', 'map'):
+            elif op in ('array', 'map', 'default'):
                 walk(node['item'], stack)
+            elif op in ('union', 'intersection') and self.go_type(node) != 'any':
+                for child in node['items']:
+                    walk(child, stack)
         walk(self.rules[rule], {rule})
 
     # --- type mapping -------------------------------------------------
@@ -125,6 +137,10 @@ class Emitter:
             if name in stack:
                 return 'any'
             return self.go_type(self.rules[name], False, stack + (name,))
+        if op == 'default':
+            return self.go_type(node['item'], named, stack)
+        if op == 'tuple':
+            return '[]any'
         if op in ('regexp', 'size'):
             return 'string'
         if op == 'primitive':
@@ -152,7 +168,7 @@ class Emitter:
             return 'map[string]' + self.go_type(node['item'], named, stack)
         if op == 'record':
             return 'map[string]any'
-        if op == 'union':
+        if op in ('union', 'intersection'):
             kinds = {self.go_type(item, False, stack) for item in node['items']}
             return kinds.pop() if len(kinds) == 1 else 'any'
         raise ValueError(f'unsupported IR op {op!r}')
@@ -162,6 +178,10 @@ class Emitter:
         op = node['op']
         if op == 'ref':
             return 'as' + self.names[node['name']]
+        if op == 'default':
+            return self.conv(node['item'])
+        if op == 'tuple':
+            return 'func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) }'
         gt = self.go_type(node)
         if gt == 'any':
             return 'codec.AsAny'
@@ -173,7 +193,7 @@ class Emitter:
             return 'codec.AsUint64'
         if gt == 'int64':
             return 'codec.AsInt64'
-        if op == 'union':
+        if op in ('union', 'intersection'):
             return self.conv(node['items'][0])
         if op == 'array':
             return f'func(x any) ({gt}, error) {{ return codec.AsList(x, {self.conv(node["item"])}) }}'
@@ -190,7 +210,7 @@ class Emitter:
     # --- emission -----------------------------------------------------
     def struct(self, name, rule, record, variant=None):
         fields = []
-        seen = {}
+        seen = {'Rest': 'record rest'} if 'rest' in record else {}
         for f in record['fields']:
             ident = exported(f['name'], f'field of {rule}')
             if ident in RESERVED_MEMBERS:
@@ -203,12 +223,15 @@ class Emitter:
         out = []
         label = f'branch {variant} of CDDL rule {rule!r}' if variant else f'CDDL rule {rule!r}'
         out.append(f'// {name} is {label}. Optional fields are pointers; nil means absent.')
-        if not fields:
+        rest = record.get('rest')
+        if not fields and rest is None:
             out.append(f'type {name} struct{{}}')
         else:
-            width = max(len(i) for i, _, _ in fields)
+            width = max([len(i) for i, _, _ in fields] + ([4] if rest is not None else []))
             out.append(f'type {name} struct {{')
             out += [f'\t{i.ljust(width)} {t}' for i, t, _ in fields]
+            if rest is not None:
+                out.append(f'\t{"Rest".ljust(width)} map[string]{self.go_type(rest["item"])}')
             out.append('}')
         out.append('')
         out += [f'// ToValue returns the generic CBOR value model of the record.',
@@ -220,11 +243,17 @@ class Emitter:
                 out += [f'\tif v.{ident} != nil {{', f'\t\tm[{key}] = *v.{ident}', '\t}']
             else:
                 out.append(f'\tm[{key}] = v.{ident}')
+        if rest is not None:
+            known = ' || '.join(f'k == {go_string(f["name"])}' for f in record['fields'])
+            out += ['\tfor k, e := range v.Rest {']
+            if known:
+                out += [f'\t\tif {known} {{', '\t\t\tcontinue', '\t\t}']
+            out += ['\t\tm[k] = e', '\t}']
         out += ['\treturn m', '}', '']
         out += [f'func as{name}(x any) ({name}, error) {{', f'\tvar out {name}']
-        if fields:
+        if fields or rest is not None:
             out += ['\tm, ok := x.(map[string]any)', '\tif !ok {', '\t\treturn out, codec.ErrShape', '\t}',
-                    '\tvar err error']
+                    *(['\tvar err error'] if any(not f['optional'] for _, _, f in fields) else [])]
         else:
             out += ['\tif _, ok := x.(map[string]any); !ok {', '\t\treturn out, codec.ErrShape', '\t}']
         for ident, _, f in fields:
@@ -235,11 +264,18 @@ class Emitter:
                         '\t\t\treturn out, err', '\t\t}', f'\t\tout.{ident} = &t', '\t}']
             else:
                 out += [f'\tif out.{ident}, err = {fn}(m[{key}]); err != nil {{', '\t\treturn out, err', '\t}']
+        if rest is not None:
+            known = ' || '.join(f'k == {go_string(f["name"])}' for f in record['fields'])
+            fn = self.call(self.conv(rest['item']))
+            out += [f'\tout.Rest = make(map[string]{self.go_type(rest["item"])})', '\tfor k, raw := range m {']
+            if known:
+                out += [f'\t\tif {known} {{', '\t\t\tcontinue', '\t\t}']
+            out += [f'\t\tt, err := {fn}(raw)', '\t\tif err != nil {', '\t\t\treturn out, err', '\t\t}', '\t\tout.Rest[k] = t', '\t}']
         out += ['\treturn out, nil', '}', '']
         return out
 
     def generate(self):
-        ir = json.dumps(self.rules, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+        ir = json.dumps(self.schema_rules, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
         out = ['// Code generated by codegen/run. DO NOT EDIT.', '', 'package types', '',
                f'import "{CODEC_IMPORT}"', '',
                '// SchemaJSON is the validation IR compiled from spec/messages/*.cddl.',

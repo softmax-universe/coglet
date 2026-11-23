@@ -19,7 +19,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Java emitter keyword and collision regressions
-        run: python3 -m unittest discover -s codegen -p test_java.py -v
+      - name: Resolve Jackson before Python test collection
+        run: mvn --batch-mode --no-transfer-progress -f sdk/surface-java/pom.xml dependency:resolve
+      - name: Java emitter keyword and collision regressions (no skips)
+        run: >-
+          python3 codegen/required_tests.py
+          test_java
+          test_identifiers.IdentifierTests.test_java_helper_and_keyword_fields_roundtrip
       - name: Strict native codec and recursive golden/negative fixtures
         run: mvn --batch-mode --no-transfer-progress -f sdk/surface-java/pom.xml test

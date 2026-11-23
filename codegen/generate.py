@@ -1,213 +1,117 @@
 #!/usr/bin/env python3
-"""Fail-closed CDDL subset compiler. No third-party generation dependencies."""
+"""Fail-closed CDDL compiler. Shared IR is documented in codegen/IR.md."""
 import argparse
 import json
+import keyword
 from pathlib import Path
 import re
 import subprocess
 import sys
 
+from cddl import parse, parse_files
+from contracts import schema_paths
+
 ROOT = Path(__file__).resolve().parents[1]
-TOKEN = re.compile(r'\s+|;[^\n]*|"(?:[^"\\]|\\.)*"|-?[0-9]+|[A-Za-z_][A-Za-z0-9_-]*|\.regexp|\.size|\.\.|=>|[{}\[\](),:?+*/=]')
-
-
-def parse(text):
-    tokens = []
-    pos = 0
-    while pos < len(text):
-        m = TOKEN.match(text, pos)
-        if not m:
-            raise ValueError(f'unsupported CDDL at {text[pos:pos+40]!r}')
-        token = m.group()
-        if not token.isspace() and not token.startswith(';'):
-            tokens.append(token)
-        pos = m.end()
-    i = 0
-
-    def take(expected=None):
-        nonlocal i
-        if i == len(tokens):
-            raise ValueError('unexpected end of CDDL')
-        value = tokens[i]
-        if expected is not None and value != expected:
-            raise ValueError(f'expected {expected!r}, got {value!r}')
-        i += 1
-        return value
-
-    def peek():
-        return tokens[i] if i < len(tokens) else None
-
-    def expr():
-        items = [atom()]
-        while peek() == '/':
-            take('/')
-            items.append(atom())
-        return items[0] if len(items) == 1 else {'op': 'union', 'items': items}
-
-    def atom():
-        token = take()
-        if token == '(':
-            result = expr()
-            take(')')
-            return result
-        if token == '{':
-            if peek() == '*':
-                take('*')
-                take('tstr')
-                take('=>')
-                result = {'op': 'map', 'item': expr()}
-                take('}')
-                return result
-            fields = []
-            while peek() != '}':
-                optional = peek() == '?'
-                if optional:
-                    take('?')
-                name = take()
-                if name.startswith('"'):
-                    name = json.loads(name)
-                take(':')
-                fields.append({'name': name, 'optional': optional, 'type': expr()})
-                if peek() != ',':
-                    break
-                take(',')
-            take('}')
-            return {'op': 'record', 'fields': fields}
-        if token == '[':
-            count = take()
-            if count not in ('*', '+'):
-                raise ValueError('only homogeneous * and + arrays are supported')
-            result = {'op': 'array', 'min': int(count == '+'), 'item': expr()}
-            take(']')
-            return result
-        if re.fullmatch(r'-?[0-9]+', token):
-            low = int(token)
-            if peek() == '..':
-                take('..')
-                return {'op': 'range', 'min': low, 'max': int(take())}
-            return {'op': 'literal', 'value': low}
-        if token.startswith('"') or token in ('true', 'false', 'null'):
-            return {'op': 'literal', 'value': json.loads(token)}
-        if token == 'tstr' and peek() in ('.regexp', '.size'):
-            control = take()
-            if control == '.regexp':
-                return {'op': 'regexp', 'pattern': json.loads(take())}
-            take('(')
-            low = int(take())
-            take('..')
-            high = int(take())
-            take(')')
-            return {'op': 'size', 'min': low, 'max': high}
-        if token in ('tstr', 'bool'):
-            return {'op': 'primitive', 'name': token}
-        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_-]*', token):
-            raise ValueError(f'unsupported CDDL token {token}')
-        return {'op': 'ref', 'name': token}
-
-    rules = {}
-    while i < len(tokens):
-        name = take()
-        take('=')
-        if name in rules:
-            raise ValueError(f'duplicate rule {name}')
-        rules[name] = expr()
-    def refs(node):
-        if isinstance(node, dict):
-            if node.get('op') == 'ref' and node['name'] not in rules:
-                raise ValueError(f'undefined rule {node["name"]}')
-            for child in node.values():
-                refs(child)
-        elif isinstance(node, list):
-            for child in node:
-                refs(child)
-    refs(rules)
-    return rules
+RUST_KEYWORDS = set('as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait true type unsafe use where while abstract become box do final macro override priv typeof unsized virtual yield try gen'.split())
+RESERVED_TYPES = {'Message', 'Any', 'Literal', 'ClassVar', 'String', 'Option', 'Vec', 'SCHEMA', 'RECORDS', 'Result', 'Serialize', 'Deserialize'}
 
 
 def title(name):
-    return ''.join(part.title() for part in name.replace('_', '-').split('-'))
+    result = ''.join(part[:1].upper() + part[1:] for part in re.split(r'[-_:]+', name.replace('$', '')))
+    if not result or not result.isascii() or not result.isidentifier() or result in RESERVED_TYPES or result in RUST_KEYWORDS:
+        raise ValueError(f'unsupported/reserved generated type identifier {name!r} -> {result!r}')
+    return result
+
+
+def identifier(key):
+    ident = key.replace('-', '_')
+    if not ident.isascii() or not ident.isidentifier() or ident.startswith('_'):
+        raise ValueError(f'unsupported field identifier {key!r}')
+    if keyword.iskeyword(ident) or keyword.issoftkeyword(ident) or ident in RUST_KEYWORDS:
+        ident += '_'
+    if ident in ('to_cbor', 'from_cbor'):
+        raise ValueError(f'reserved Message field {key!r}')
+    return ident
 
 
 def rust_type(node):
     op = node['op']
-    if op == 'ref':
-        return title(node['name'])
-    if op in ('regexp', 'size') or op == 'primitive' and node['name'] == 'tstr':
-        return 'String'
-    if op == 'primitive' and node['name'] == 'bool':
-        return 'bool'
-    if op == 'range' and node['min'] >= 0:
-        return 'u64'
-    if op == 'array':
-        return f'Vec<{rust_type(node["item"])}>'
-    if op == 'map':
-        return 'std::collections::BTreeMap<String, ciborium::Value>'
-    if op == 'literal' and type(node['value']) is bool:
-        return 'bool'
-    if op == 'literal' and isinstance(node['value'], str):
-        return 'String'
-    if op == 'union' and all(n['op'] in ('literal', 'ref') for n in node['items']):
-        # Text-only aliases are ergonomic; mixed/recursive values use CBOR Value.
-        if all(n['op'] == 'literal' and isinstance(n['value'], str) for n in node['items']):
-            return 'String'
-        if all(n['op'] == 'ref' and n['name'].endswith('-id') for n in node['items']):
-            return 'String'
+    if op == 'ref': return title(node['name'])
+    if op in ('intersection', 'default'):
+        return rust_type(node['items'][0] if op == 'intersection' else node['item'])
+    if op in ('regexp', 'size') or op == 'primitive' and node['name'] == 'tstr': return 'String'
+    if op == 'primitive' and node['name'] == 'bool': return 'bool'
+    if op == 'range' and node['min'] >= 0: return 'u64'
+    if op == 'array': return f'Vec<{rust_type(node["item"])}>'
+    if op in ('map', 'record'): return 'std::collections::BTreeMap<String, ciborium::Value>'
+    if op == 'literal' and type(node['value']) is bool: return 'bool'
+    if op == 'literal' and isinstance(node['value'], str): return 'String'
+    if op == 'union' and all(n['op'] == 'ref' and n['name'].endswith('-id') for n in node['items']): return 'String'
+    if op == 'union' and all(n['op'] == 'literal' and isinstance(n['value'], str) for n in node['items']): return 'String'
     return 'ciborium::Value'
 
 
 def python_type(node):
     op = node['op']
-    if op == 'ref':
-        return title(node['name'])
-    if op in ('regexp', 'size') or op == 'primitive' and node['name'] == 'tstr':
-        return 'str'
-    if op == 'primitive' and node['name'] == 'bool':
-        return 'bool'
-    if op == 'range':
-        return 'int'
-    if op == 'literal':
-        return 'Literal[' + repr(node['value']) + ']'
-    if op == 'array':
-        return f'list[{python_type(node["item"])}]'
-    if op == 'map':
-        return 'dict[str, Any]'
+    if op == 'ref': return title(node['name'])
+    if op in ('intersection', 'default'):
+        return python_type(node['items'][0] if op == 'intersection' else node['item'])
+    if op in ('regexp', 'size') or op == 'primitive' and node['name'] == 'tstr': return 'str'
+    if op == 'primitive' and node['name'] == 'bool': return 'bool'
+    if op == 'range': return 'int'
+    if op == 'literal': return 'Literal[' + repr(node['value']) + ']'
+    if op == 'array': return f'list[{python_type(node["item"])}]'
+    if op in ('map', 'record'): return 'dict[str, Any]'
+    if op == 'tuple': return 'list[Any]'
     return 'Any'
 
 
 def generate(rules):
+    # Reserve every generated type, including synthetic union variants, up front.
+    used = {}
+    def reserve(ident, source):
+        if ident in used:
+            raise ValueError(f'generated identifier collision: {source!r} and {used[ident]!r} -> {ident}')
+        used[ident] = source
+    for name, node in rules.items():
+        reserve(title(name), name)
+        variants = node['items'] if node['op'] == 'union' else [node]
+        if len(variants) > 1 and all(v['op'] == 'record' and 'rest' not in v for v in variants):
+            for i in range(len(variants)): reserve(title(name) + str(i+1), name + f' variant {i+1}')
     ir = json.dumps(rules, sort_keys=True, separators=(',', ':'))
+    # A quoted Rust string cannot be terminated by schema-controlled raw delimiters.
     rust = ['// Generated by codegen/run. DO NOT EDIT.', 'use serde::{Deserialize, Serialize};',
-            'pub const SCHEMA_JSON: &str = r###"' + ir + '"###;']
+            'pub const SCHEMA_JSON: &str = ' + json.dumps(ir, ensure_ascii=False) + ';']
+    # Field identifiers cannot start with '_', and generated types start with a
+    # capital letter: this namespace cannot be captured by schema identifiers.
     py = ['# Generated by codegen/run. DO NOT EDIT.', 'from __future__ import annotations',
-          'from dataclasses import dataclass', 'from typing import Any, ClassVar, Literal',
+          'import dataclasses as _coglet_dataclasses', 'from typing import Any, ClassVar, Literal',
           'import json', 'from .codec import Message', 'SCHEMA = json.loads(' + repr(ir) + ')']
     registry = {}
     for name, node in rules.items():
         variants = node['items'] if node['op'] == 'union' else [node]
-        if all(v['op'] == 'record' for v in variants):
+        if all(v['op'] == 'record' and 'rest' not in v for v in variants):
             names = []
             for index, variant in enumerate(variants):
                 cls = title(name) + (str(index + 1) if len(variants) > 1 else '')
                 names.append(cls)
-                rust += ['#[derive(Debug, Clone, Serialize, Deserialize)]', '#[serde(deny_unknown_fields)]', f'pub struct {cls} {{']
-                py += ['@dataclass', f'class {cls}(Message):', f'    _rule: ClassVar[str] = {name!r}']
-                # Required fields first: Python dataclasses prohibit defaults before required.
+                rust += ['#[derive(Debug, Clone, Serialize, Deserialize)]', '#[serde(deny_unknown_fields)]', '#[allow(non_snake_case)]', f'pub struct {cls} {{']
+                py += ['@_coglet_dataclasses.dataclass', f'class {cls}(Message):', f'    _rule: ClassVar[str] = {name!r}']
                 fields = sorted(variant['fields'], key=lambda f: f['optional'])
-                for field in fields:
-                    rt = rust_type(field['type'])
-                    pt = python_type(field['type'])
-                    key = field['name']
-                    ident = key.replace('-', '_')
-                    if key in ('type', 'ref', 'match', 'self'):
-                        ident += '_'
-                    if ident != key:
-                        rust.append(f'#[serde(rename = {json.dumps(key)})]')
-                    if field['optional']:
+                seen = set()
+                for f in fields:
+                    rt, pt, key = rust_type(f['type']), python_type(f['type']), f['name']
+                    ident = identifier(key)
+                    if ident in seen: raise ValueError(f'field identifier collision in {name}: {key!r} -> {ident}')
+                    seen.add(ident)
+                    if ident != key: rust.append(f'#[serde(rename = {json.dumps(key)})]')
+                    if f['optional']:
                         rust.append('#[serde(default, skip_serializing_if = "Option::is_none")]')
                         rt = f'Option<{rt}>'
-                        pt += ' | None = None'
+                        pt += ' | None'
                     rust.append(f'pub {ident}: {rt},')
-                    py.append(f'    {ident}: {pt}')
+                    default = 'default=None, ' if f['optional'] else ''
+                    py.append(f'    {ident}: {pt} = _coglet_dataclasses.field({default}metadata={{"wire": {key!r}}})')
                 rust.append('}')
                 rust += [f'impl {cls} {{', 'pub fn to_cbor(&self) -> Result<Vec<u8>, String> {', f'crate::encode_typed({json.dumps(name)}, self)', '}', 'pub fn from_cbor(raw: &[u8]) -> Result<Self, String> {', f'crate::decode_typed({json.dumps(name)}, raw)', '}', '}']
             registry[name] = names
@@ -217,15 +121,12 @@ def generate(rules):
                 py.append(f'{title(name)} = ' + ' | '.join(names))
         else:
             rust.append(f'pub type {title(name)} = {rust_type(node)};')
-            # Runtime aliases avoid unresolved or recursive assignments; field annotations
-            # retain the CDDL names and all constraints are enforced by the IR validator.
-            py.append(f'{title(name)} = {python_type(node) if node["op"] not in ("ref", "array") else "Any"}')
+            py.append(f'{title(name)} = {python_type(node) if node["op"] in ("primitive", "range", "literal", "map", "tuple") else "Any"}')
     py += ['RECORDS = {' + ', '.join(repr(k) + ': [' + ', '.join(v) + ']' for k, v in registry.items()) + '}']
     outputs = {'crates/coglet-types/src/generated.rs': '\n'.join(rust) + '\n',
                'sdk/surface-python/coglet_surface/generated.py': '\n'.join(py) + '\n'}
     formatted = subprocess.run(['rustfmt', '--edition', '2024'], input=outputs['crates/coglet-types/src/generated.rs'], text=True, capture_output=True, check=True)
     outputs['crates/coglet-types/src/generated.rs'] = formatted.stdout
-    # Target emitters consume the shared IR; parsing remains language-neutral.
     from emit_go import generate as generate_go
     from emit_java import generate as generate_java
     outputs.update(generate_go(rules))
@@ -237,8 +138,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
-    texts = [p.read_text() for p in sorted((ROOT / 'spec/messages').glob('*.cddl'))]
-    rules = parse('\n'.join(texts))
+    files = {p.stem: p.read_text() for p in schema_paths(ROOT)}
+    rules = parse_files(files)
     stale = []
     for path, content in generate(rules).items():
         path = ROOT / path
@@ -247,10 +148,8 @@ def main():
             if not args.check:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
-    if args.check and stale:
-        sys.exit('stale generated files: ' + ', '.join(stale))
+    if args.check and stale: sys.exit('stale generated files: ' + ', '.join(stale))
     print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Java outputs ' + ('current' if args.check else 'written'))
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': main()
