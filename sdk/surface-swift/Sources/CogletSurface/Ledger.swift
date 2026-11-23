@@ -94,6 +94,9 @@ final class SurfaceLedger {
     var epoch: UInt64 = 0
     var sequence: UInt64 = 0
     var killed = false
+    // Write-ahead authority marker. A missing marker in an old snapshot is
+    // uncertain, not proof of an orderly shutdown.
+    var running = false
     var records: [String: SurfaceActionRecord] = [:]
     init(store: any SurfaceLedgerStore, identity: String) throws {
         self.store = store; self.identity = identity
@@ -103,6 +106,8 @@ final class SurfaceLedger {
               case .unsigned(let sequence) = root["sequence"], case .boolean(let killed) = root["killed"],
               case .map(let rows) = root["records"] else { throw SurfaceFailure.protocolViolation("invalid/lost identity ledger") }
         self.epoch = epoch; self.sequence = sequence; self.killed = killed
+        running = root["running"] != .boolean(false)
+        if running { self.killed = true }
         for row in rows {
             guard case .text(let encoded) = row.value["envelope"], let raw = Data(base64Encoded: encoded),
                   let accept = row.value["accept"],
@@ -134,7 +139,7 @@ final class SurfaceLedger {
         }
         let bytes = try CBORCodec.encodeProfile(.record([
             ("identity", .text(identity)), ("epoch", .unsigned(epoch)), ("sequence", .unsigned(sequence)),
-            ("killed", .boolean(killed)), ("records", .map(rows))]))
+            ("killed", .boolean(killed)), ("running", .boolean(running)), ("records", .map(rows))]))
         guard bytes.count <= 268_435_456 else { throw SurfaceFailure.exhausted }
         try store.save(bytes)
     }
