@@ -66,6 +66,7 @@ pub struct SurfaceSession {
     read_ids: BTreeSet<String>,
     read_results: VecDeque<(String, Value)>,
     read_result_authority: BTreeMap<String, reads::PendingRead>,
+    heard_reads: BTreeSet<String>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
     sent_dispatches: BTreeSet<String>,
 }
@@ -103,6 +104,7 @@ impl SurfaceSession {
             read_ids: BTreeSet::new(),
             read_results: VecDeque::new(),
             read_result_authority: BTreeMap::new(),
+            heard_reads: BTreeSet::new(),
             service: None,
             sent_dispatches: BTreeSet::new(),
         }
@@ -190,6 +192,7 @@ impl SurfaceSession {
         self.reads.clear();
         self.read_results.clear();
         self.read_result_authority.clear();
+        self.heard_reads.clear();
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         validate("surface-message", &message)?;
@@ -353,10 +356,25 @@ impl SurfaceSession {
                 "read_reply" => self.receive_read_reply(body, now)?,
                 "event" => {
                     let service = self.service.clone().ok_or("no durable event coordinator")?;
-                    service
+                    let heard = service
                         .lock()
                         .map_err(|_| "runtime service poisoned")?
                         .record_surface_event(self, body, now)?;
+                    if let Some(id) = heard {
+                        let owner = service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .heard_owner();
+                        self.request_read(
+                            &owner,
+                            "speech.heard",
+                            json!({"item":body["payload"]["item"]}),
+                            &id,
+                            now.checked_add(1_000_000).ok_or("read deadline overflow")?,
+                            now,
+                        )?;
+                        self.heard_reads.insert(id);
+                    }
                 }
                 "error" => {
                     self.disconnect();

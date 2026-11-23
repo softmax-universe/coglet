@@ -33,7 +33,7 @@ impl RuntimeService {
         session: &SurfaceSession,
         event: &Value,
         now: u64,
-    ) -> Result<()> {
+    ) -> Result<Option<String>> {
         validate("event", event)?;
         let kind = event["kind"].as_str().ok_or("missing event kind")?;
         if event["source"] != session.surface()
@@ -59,6 +59,7 @@ impl RuntimeService {
         let deliver =
             next.speech_temporal
                 .admit(session.surface(), coglet, session.grant_epoch(), event)?;
+        let heard = Self::stage_heard_observation(&mut next, session, event, expires)?;
         if deliver
             && self.state.runtime.manifest["subscriptions"]
                 .as_array()
@@ -77,10 +78,14 @@ impl RuntimeService {
                 },
             );
         }
-        self.commit_surface_state(next)
+        self.commit_surface_state(next)?;
+        Ok(heard)
     }
     pub(crate) fn purge_surface_events(&mut self, surface: &str, epoch: u64) -> Result<()> {
         let mut next = self.state.clone();
+        let old_heard = next.heard_pending.len();
+        next.heard_pending
+            .retain(|_, p| p.surface != surface || p.epoch != epoch);
         let revoked: Vec<_> = next
             .private_events
             .iter()
@@ -88,7 +93,7 @@ impl RuntimeService {
                 (lease.surface == surface && lease.epoch == epoch).then_some(*id)
             })
             .collect();
-        if revoked.is_empty() {
+        if revoked.is_empty() && old_heard == next.heard_pending.len() {
             return Ok(());
         }
         for id in &revoked {
@@ -100,6 +105,9 @@ impl RuntimeService {
     }
     pub(super) fn expire_private_events(&mut self, now: u64) -> Result<()> {
         let mut next = self.state.clone();
+        let old_heard = next.heard_pending.len();
+        next.heard_pending
+            .retain(|_, p| now < p.expires && self.surface_epoch(&p.surface) == p.epoch);
         let revoked: Vec<_> = next
             .private_events
             .iter()
@@ -108,7 +116,7 @@ impl RuntimeService {
                     .then_some(*id)
             })
             .collect();
-        if revoked.is_empty() {
+        if revoked.is_empty() && old_heard == next.heard_pending.len() {
             return Ok(());
         }
         for id in &revoked {

@@ -15,6 +15,8 @@ const S: &str = "surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 #[cfg(feature = "native-engine")]
 #[path = "support/native_engine_cases.rs"]
 mod native_engine_cases;
+#[path = "support/native_heard.rs"]
+mod native_heard;
 
 static FFI_LOCK: Mutex<()> = Mutex::new(());
 fn decode(raw: &[u8]) -> Value {

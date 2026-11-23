@@ -200,6 +200,7 @@ impl RuntimeService {
         self.purge_surface_events(surface, self.surface_epoch(surface))?;
         next.router = self.state.router.clone();
         next.private_events = self.state.private_events.clone();
+        next.heard_pending = self.state.heard_pending.clone();
         self.commit_dispatch(next)
     }
     /// Persist BEFORE returning bytes to a transport. An old ID is reconciled

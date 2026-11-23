@@ -9,6 +9,8 @@ use std::path::Path;
 mod clock;
 #[path = "dispatch.rs"]
 mod dispatch;
+#[path = "live_heard.rs"]
+mod live_heard;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
@@ -51,6 +53,8 @@ struct ServiceState {
     private_events: BTreeMap<u64, surface_events::EventLease>,
     #[serde(default)]
     speech_temporal: speech_temporal::SpeechTemporal,
+    #[serde(default)]
+    heard_pending: BTreeMap<String, live_heard::HeardObservation>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -117,6 +121,7 @@ impl RuntimeService {
                 surface_sequences: BTreeMap::new(),
                 private_events: BTreeMap::new(),
                 speech_temporal: speech_temporal::SpeechTemporal::default(),
+                heard_pending: BTreeMap::new(),
             };
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
@@ -166,7 +171,8 @@ impl RuntimeService {
         }
         // Restart has no live authenticated leases. Keep source highwaters but
         // never deliver queued old-owner observations into a fresh connection.
-        if !state.private_events.is_empty() {
+        if !state.private_events.is_empty() || !state.heard_pending.is_empty() {
+            state.heard_pending.clear();
             let revoked = std::mem::take(&mut state.private_events);
             state
                 .router
@@ -211,6 +217,9 @@ impl RuntimeService {
                 .as_u64()
                 .ok_or("missing logical_time")?,
         )?;
+        if !self.state.heard_pending.is_empty() {
+            return Ok(None);
+        }
         self.queue_due_timers(
             context["logical_time"]
                 .as_u64()

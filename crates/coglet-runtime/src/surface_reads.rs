@@ -12,6 +12,14 @@ pub(super) struct PendingRead {
 }
 
 impl SurfaceSession {
+    pub(crate) fn collects_heard(&self) -> bool {
+        self.operations
+            .get("speech.heard")
+            .is_some_and(|v| v == "read")
+    }
+    pub(crate) fn authorize_heard(&self, coglet: &str, now: u64) -> Result<()> {
+        self.authorize(coglet, "speech.heard", "read", now)
+    }
     /// Queue one native, side-effect-free observation. `deadline` is in the
     /// runtime epoch; only the outgoing envelope is translated to surface time.
     pub fn request_read(
@@ -132,6 +140,10 @@ impl SurfaceSession {
             })
             .collect();
         for (id, code) in expired {
+            if self.heard_reads.remove(&id) && code == "deadline_exceeded" {
+                self.disconnect();
+                return;
+            }
             let read = self.reads.remove(&id).unwrap();
             self.remove_queued_read(&id);
             self.read_results.push_back((read.coglet, json!({"correlation_id":id,
@@ -193,6 +205,19 @@ impl SurfaceSession {
             {
                 return Err("heard text exceeds UTF-8 byte limit".into());
             }
+        }
+        if self.heard_reads.contains(id) {
+            if body["ok"] != true {
+                return Err("owner heard observation unavailable".into());
+            }
+            let service = self.service.clone().ok_or("no heard coordinator")?;
+            service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .record_heard_read(self, id, &body["value"], now)?;
+            self.heard_reads.remove(id);
+            self.reads.remove(id);
+            return Ok(());
         }
         let read = self.reads.remove(id).unwrap();
         self.read_results

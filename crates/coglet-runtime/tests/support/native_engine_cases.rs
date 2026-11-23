@@ -6,7 +6,7 @@ mod expiry;
 fn escaped(raw: &[u8]) -> String {
     raw.iter().map(|b| format!("\\{b:02x}")).collect()
 }
-fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
+pub(super) fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
     setup["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(wasm));
     let raw = hex::decode(
         setup["initial_files"]["/code/build/provenance.cbor"]

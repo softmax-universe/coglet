@@ -24,6 +24,8 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - service-backed socket and C ABI dispatch pumps, ordered by committed calls;
 - automatic same-envelope reconciliation after native reconnect and WAL reopen.
 - durable speech capture start/revision/end fencing and provider call deduplication.
+- native runtime-issued owner heard reads with durable pre-reasoning barriers,
+  conservative M-D spans and journaled runtime.heard boundaries (see [live-heard.md](live-heard.md)).
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
@@ -98,7 +100,11 @@ The unimplemented boundaries remain explicit:
   to 128 with 4096 non-evicting correlation tombstones per connection. Stale durable
   epochs purge read replies/results. Heard reads require a retained accepted speaker
   item and current speaker lease; provider-native items without retained ownership
-  currently fail closed. Heard-state construction from reads remains to be wired.
+  currently fail closed. Both native transports initiate heard reads from authenticated
+  position/barge observations when speech.history is advertised. An atomic durable
+  barrier prevents reasoning until the corresponding runtime.heard boundary is
+  committed; revoke, expiry, disconnect and restart purge abandoned barriers with
+  private input. This is a runtime policy, not a new guest import or surface RPC.
 - Close/disconnect with real device I/O and complete speech temporal normalization
   remain unqualified. The native operational test backend is a deterministic receipt
   ledger, not a physical device/provider or production surface SDK qualification.
@@ -159,7 +165,10 @@ actions. Two further actual native-path tests send start/partial/end and stale
 revisions, read back durable end fences/discard counts, and prove disconnected
 private input is not revived. Library tests prove source-order guest delivery and
 that router-full does not commit a revision/highwater. Playback item/stream temporal
-rules, native reads and provider media ownership remain unqualified.
+rules and provider media ownership remain unqualified. Five heard regressions cover
+native socket/C reads, conservative prefix construction, revoked late replies and
+runtime-clock barrier expiry. With native-engine, those same native paths execute
+real Wasm and verify runtime.heard precedes each position-consuming step.
 
 `cargo build -p coglet-runtime --lib` produces static and shared libraries.
 `include/coglet_runtime.h` exposes the frozen coglet_surface_open/send/recv/close
@@ -180,8 +189,8 @@ platforms provide verified supervisor clock continuity.
 
 The equivalent Linux daemon transport is:
 `cogletd --surface-service-socket SOCKET BINDING_JSON PEER_UID WAL SETUP_JSON`.
-This mode explicitly serves the coordinator, not an inert probe, but still has no
-production guest engine/scheduler. Supply a supervisor-owned persistent WAL directory.
+This mode serves the coordinator and optionally the qualified native-engine scheduler
+described above. Supply a supervisor-owned persistent WAL directory.
 
 On Linux, `cogletd --surface-probe-socket ABSOLUTE_PATH BINDING_JSON PEER_UID`
 serves the same negotiation shell. The parent directory must be owned mode0700
