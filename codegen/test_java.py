@@ -90,15 +90,7 @@ public class Main {
 
 class JavaEmitterTests(unittest.TestCase):
     def generate_v2(self, emit, rules):
-        """Emit v2 rules. The shared target_ir guard is owned elsewhere; stand in for it only
-        while it still rejects additive v2 IR, so this suite does not depend on its rollout."""
-        try:
-            return emit.generate(rules)
-        except ValueError as e:
-            if 'unsupported native target IR' not in str(e): raise
-            real, emit.require_v1 = emit.require_v1, lambda r: None
-            try: return emit.generate(rules)
-            finally: emit.require_v1 = real
+        return emit.generate(rules)
 
     def emitter(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
