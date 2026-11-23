@@ -45,7 +45,7 @@ struct SettingsView: View {
             case .coglets:
                 Text("No coglets loaded. Local runtime integration is not implemented yet.")
             case .updates:
-                Text("Updates are not connected in this development build. Sparkle, signing and notarization follow in the release integration.")
+                UpdatesView(updates: model.updates)
             case .privacy:
                 Text("Audio is captured only while push-to-talk is listening (maximum 120 seconds). Runtime speech delivery is a separate integration.")
                 Text("Microphone: \(model.permissions.microphone.rawValue)")
