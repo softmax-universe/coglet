@@ -63,5 +63,8 @@
     "intensity": 0,
     "remaining_ms": 0
   },
+  "startup_epoch_by_case": {
+    "grant-epoch-fence": 2
+  },
   "case_audio_timelines": "spec/fixtures/speech/timelines.json"
 }

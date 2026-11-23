@@ -42,7 +42,7 @@
     {
       "match": {
         "type": "grants",
-        "body.epoch": 1
+        "body.epoch": 2
       },
       "within_ms": 200
     },
@@ -50,7 +50,7 @@
       "send": {
         "type": "act",
         "body": {
-          "grant_epoch": 2,
+          "grant_epoch": 1,
           "action": {
             "id": "11111111111111111111111111111111",
             "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",

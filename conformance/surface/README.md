@@ -8,7 +8,8 @@ with harness PR #15. These are test inputs, not an implementation pass claim.
   provisions the trusted binding and deterministic clock/hello/config/grant in
   [`adapter-config.json`](../../spec/fixtures/surface/adapter-config.json).
   Advertise all provisioned operations with the pinned schema refs; publish
-  capabilities revision 1 and grants epoch 1 immediately after hello_reply.
+  capabilities revision 1 and grants epoch 1 immediately after hello_reply,
+  except grant-epoch-fence starts at epoch 2 per startup_epoch_by_case.
 - `peer_role=surface`: runtime-under-test; `runtime-binding` enrolls only the
   fixture surface and supports only protocol 0.1. It does not grant actions.
 - `kill-at-100ms`: additionally fires the local off-switch at case time 100 ms.

@@ -30,11 +30,11 @@ def outputs():
          'speech.session_open','speech.session_close','speech.tool_result',
          'expression.set_expression','expression.state']
     resources=['audio.mic','audio.speaker','display.face']
-    def setup():
+    def setup(epoch=1):
         return [{'expect':hello,'within_ms':200},
                 {'send':{'type':'hello_reply','body':values['surface']['hello-reply']}},
                 {'match':{'type':'capabilities','body.revision':1},'within_ms':200},
-                {'match':{'type':'grants','body.epoch':1},'within_ms':200}]
+                {'match':{'type':'grants','body.epoch':epoch},'within_ms':200}]
     def accept(a,accepted=True,code=None):
         match={'type':'accept','body.id':a['body']['action']['id'],
                'body.correlation_id':a['body']['action']['correlation_id'],'body.accepted':accepted}
@@ -49,7 +49,8 @@ def outputs():
         labels=['surface-base']
         if suite=='speech': labels.append('audio-'+name)
         if name=='kill-latched': labels.append('kill-at-100ms')
-        out[f'conformance/{suite}/{name}.json']=dumps({'name':name,'peer_role':'runtime','fixtures':labels,'steps':setup()+steps})
+        epoch=2 if name=='grant-epoch-fence' else 1
+        out[f'conformance/{suite}/{name}.json']=dumps({'name':name,'peer_role':'runtime','fixtures':labels,'steps':setup(epoch)+steps})
     # The normative fixture setup is separate from wire scripts; not an extension
     # of the harness's {name,steps} envelope.
     out['spec/fixtures/surface/adapter-config.json']=dumps({
@@ -57,18 +58,16 @@ def outputs():
         'grant':{'epoch':1,'entries':[{'coglet':cog,'operations':ops,'resources':resources,'expires':10000000}],
                  'correlation_id':cid},
         'speech_config':cfg,'initial_expression':{'expression':'neutral','intensity':0,'remaining_ms':0},
+        'startup_epoch_by_case':{'grant-epoch-fence':2},
         'case_audio_timelines':'spec/fixtures/speech/timelines.json'})
     read={'type':'read','body':values['surface']['read']}
     case('surface','read-config',[{'send':read},{'expect':{'type':'read_reply','body':{
          'correlation_id':cid,'ok':True,'value':cfg,'snapshot':1}},'within_ms':200}])
     a=action('expression.set_expression',values['expression']['set-expression'])
     case('surface','action-accept-outcome',[{'send':a},accept(a),outcome(a,'succeeded')])
-    stale=copy.deepcopy(a); stale['body']['grant_epoch']=0
-    # Epoch zero is a schema error, so use an old but structurally valid epoch
-    # after fixture regrant to epoch 2 (the test adapter's case startup mode).
+    stale=copy.deepcopy(a)
+    # The fixture starts at epoch 2; epoch 1 is a well-formed stale request.
     stale['body']['grant_epoch']=1
-    # Separate case uses epoch 2 unknown future grant; same denial rule.
-    stale['body']['grant_epoch']=2
     case('surface','grant-epoch-fence',[{'send':stale},accept(stale,False,'permission_denied')])
     foreign=copy.deepcopy(a); foreign['body']['action']['coglet']='coglet:'+'c'*64
     case('surface','per-coglet-denial',[{'send':foreign},accept(foreign,False,'permission_denied')])
