@@ -1,3 +1,197 @@
 {
-  "$comment": "Placeholder only; not an approved validation schema."
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/policy.schema.json",
+  "title": "Per-coglet policy \u2014 DRAFT 0.1 (M3 freeze)",
+  "$comment": "DRAFT; not frozen at v0. Semantic checks are specified in the companion Markdown.",
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "journal_replay",
+            "headless_game"
+          ]
+        },
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "max_age_ms": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "suite",
+        "max_age_ms"
+      ],
+      "additionalProperties": false
+    },
+    "probation": {
+      "type": "object",
+      "properties": {
+        "window_ms": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "health_interval_ms": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "health_timeout_ms": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "max_consecutive_failures": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "max_step_failures": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "max_budget_violations": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "window_ms",
+        "health_interval_ms",
+        "health_timeout_ms",
+        "max_consecutive_failures",
+        "max_step_failures",
+        "max_budget_violations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": "0.1"
+    },
+    "status": {
+      "const": "DRAFT"
+    },
+    "coglet": {
+      "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+    },
+    "revision": {
+      "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+    },
+    "control_role": {
+      "enum": [
+        "application",
+        "fast_loop",
+        "factory"
+      ]
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/gate"
+      },
+      "minItems": 1,
+      "maxItems": 2
+    },
+    "human_approval": {
+      "type": "boolean"
+    },
+    "probation": {
+      "$ref": "#/$defs/probation"
+    }
+  },
+  "required": [
+    "version",
+    "status",
+    "coglet",
+    "revision",
+    "control_role",
+    "gates",
+    "human_approval",
+    "probation"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "control_role": {
+            "enum": [
+              "fast_loop",
+              "factory"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "human_approval": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "gates": {
+          "contains": {
+            "properties": {
+              "kind": {
+                "const": "journal_replay"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

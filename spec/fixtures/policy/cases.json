@@ -1,0 +1,574 @@
+[
+  {
+    "name": "application",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a865676174657381a3646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d76316a6d61785f6167655f6d7319ea6066636f676c65747847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667374617475736544524146546776657273696f6e63302e31687265766973696f6e782031313131313131313131313131313131313131313131313131313131313131316970726f626174696f6ea66977696e646f775f6d7319ea60716865616c74685f74696d656f75745f6d73191388716d61785f737465705f6661696c7572657301726865616c74685f696e74657276616c5f6d731903e8756d61785f6275646765745f76696f6c6174696f6e730178186d61785f636f6e73656375746976655f6661696c75726573036c636f6e74726f6c5f726f6c656b6170706c69636174696f6e6e68756d616e5f617070726f76616cf4"
+  },
+  {
+    "name": "fast_loop",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "fast_loop",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": true,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a865676174657381a3646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d76316a6d61785f6167655f6d7319ea6066636f676c65747847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667374617475736544524146546776657273696f6e63302e31687265766973696f6e782031313131313131313131313131313131313131313131313131313131313131316970726f626174696f6ea66977696e646f775f6d7319ea60716865616c74685f74696d656f75745f6d73191388716d61785f737465705f6661696c7572657301726865616c74685f696e74657276616c5f6d731903e8756d61785f6275646765745f76696f6c6174696f6e730178186d61785f636f6e73656375746976655f6661696c75726573036c636f6e74726f6c5f726f6c6569666173745f6c6f6f706e68756d616e5f617070726f76616cf5"
+  },
+  {
+    "name": "fast_loop-no-approval",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "fast_loop",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "factory",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "factory",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": true,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a865676174657381a3646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d76316a6d61785f6167655f6d7319ea6066636f676c65747847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667374617475736544524146546776657273696f6e63302e31687265766973696f6e782031313131313131313131313131313131313131313131313131313131313131316970726f626174696f6ea66977696e646f775f6d7319ea60716865616c74685f74696d656f75745f6d73191388716d61785f737465705f6661696c7572657301726865616c74685f696e74657276616c5f6d731903e8756d61785f6275646765745f76696f6c6174696f6e730178186d61785f636f6e73656375746976655f6661696c75726573036c636f6e74726f6c5f726f6c6567666163746f72796e68756d616e5f617070726f76616cf5"
+  },
+  {
+    "name": "factory-no-approval",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "factory",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "game-with-two-gates",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        },
+        {
+          "kind": "headless_game",
+          "suite": "world:scenario-v1",
+          "max_age_ms": 30000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a865676174657382a3646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d76316a6d61785f6167655f6d7319ea60a3646b696e646d686561646c6573735f67616d6565737569746571776f726c643a7363656e6172696f2d76316a6d61785f6167655f6d7319753066636f676c65747847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667374617475736544524146546776657273696f6e63302e31687265766973696f6e782031313131313131313131313131313131313131313131313131313131313131316970726f626174696f6ea66977696e646f775f6d7319ea60716865616c74685f74696d656f75745f6d73191388716d61785f737465705f6661696c7572657301726865616c74685f696e74657276616c5f6d731903e8756d61785f6275646765745f76696f6c6174696f6e730178186d61785f636f6e73656375746976655f6661696c75726573036c636f6e74726f6c5f726f6c656b6170706c69636174696f6e6e68756d616e5f617070726f76616cf4"
+  },
+  {
+    "name": "unknown-field",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      },
+      "provider": "x"
+    },
+    "valid": false
+  },
+  {
+    "name": "wrong-version",
+    "type": "policy",
+    "value": {
+      "version": "0.2",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "not-draft",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "FROZEN",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "zero-window",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 0,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "float-timeout",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 1.5,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "overflow",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 18446744073709551616,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "bad-id",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:xyz",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "empty-gates",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "bad-gate",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "unit_test",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "zero-age",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 0
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "missing-replay",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "headless_game",
+          "suite": "world:scenario-v1",
+          "max_age_ms": 30000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate-kind-different-suite",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        },
+        {
+          "kind": "journal_replay",
+          "suite": "other",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "interval-exceeds-timeout",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 6000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "timeout-exceeds-window",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 60001,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false,
+    "semantic": true
+  }
+]
