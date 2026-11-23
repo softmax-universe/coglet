@@ -116,7 +116,8 @@ class ContractBindings(unittest.TestCase):
         self.assertEqual({row[0].strip().split(':')[0] for row in rows}, expected)
         self.assertEqual(len(rows), len(expected))
         owners = {'t_01a205e4fdee443e', 't_01a205e5cb4956e5', 't_01a205e673b63cb9',
-                  't_01a205e73c70350a', 't_01a205e78cbb1f52', 't_01a205e58c02c6ae'}
+                  't_01a205e73c70350a', 't_01a205e78cbb1f52', 't_01a205e58c02c6ae',
+                  't_01a205e767bb96f0'}
         for row in rows:
             self.assertEqual(len(row), 4)
             self.assertIn(row[1].strip(), ('**A**', '**B**'))
@@ -124,6 +125,14 @@ class ContractBindings(unittest.TestCase):
                 self.assertEqual(sum(owner in row[2] for owner in owners), 1, row)
             else:
                 self.assertIn('test_', row[2])
+        by_id = {row[0].strip().split(':')[0]: row for row in rows}
+        for gate in ('R-heard-private', 'R-heard-persist'):
+            self.assertIn('t_01a205e5cb4956e5', by_id[gate][2])
+            self.assertIn('t_01a205e58c02c6ae', by_id[gate][3])
+        for surface_owner in ('t_01a205e673b63cb9', 't_01a205e6f7d2d882'):
+            self.assertIn(surface_owner, by_id['R-heard-persist'][3])
+        self.assertIn('t_01a205e767bb96f0', by_id['H-sender-epoch'][2])
+        self.assertIn('t_01a205e73c70350a', by_id['H-sender-epoch'][3])
 
     def test_llm_selected_capability_requires_exact_operation(self):
         value = copy.deepcopy(build.examples()['abi:llm-request'])
