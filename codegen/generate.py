@@ -67,6 +67,8 @@ def python_type(node):
 
 
 def generate(rules):
+    from swift import generate_swift
+    swift = generate_swift(rules)
     # Reserve every generated type, including synthetic union variants, up front.
     used = {}
     def reserve(ident, source):
@@ -131,6 +133,7 @@ def generate(rules):
     from emit_java import generate as generate_java
     outputs.update(generate_go(rules))
     outputs.update(generate_java(rules))
+    outputs['sdk/surface-swift/Sources/CogletTypes/Generated/Types.swift'] = swift
     return outputs
 
 
@@ -149,7 +152,7 @@ def main():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
     if args.check and stale: sys.exit('stale generated files: ' + ', '.join(stale))
-    print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Java outputs ' + ('current' if args.check else 'written'))
+    print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Java/Swift outputs ' + ('current' if args.check else 'written'))
 
 
 if __name__ == '__main__': main()
