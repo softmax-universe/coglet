@@ -65,10 +65,21 @@ server, mock hub and registry claims are not yet implemented.
   path/ref/surface limits, or atomic cancellation of kernel-owned pending writes.
   Those remain mandatory integration work. All provisioning/replacement is local
   operator configuration, never a new remotely self-authorizing method.
-- `transfer::Receiver` tracks cumulative credit, contiguous offsets, correlation,
-  bounded hex chunks and complete transfer SHA-256. Call `consumed()` only after
-  all accepted bytes have reached durable bounded quarantine storage. This is
-  accounting, not Git validation or a durable storage implementation.
+- `transfer::{Receiver, Sender}` track cumulative raw-byte credit, contiguous
+  offsets, correlation, bounded hex chunks and terminal state. The receiver
+  checks the complete transfer SHA-256. Call `consumed()` only after accepted
+  bytes have reached durable bounded quarantine storage.
+- `transfer::{send_chunks, receive_chunks, DurableSink}` implement the raw data
+  phase on framed async streams, with at most 32 KiB per chunk and a 64 KiB
+  outstanding window. A failed durable sink does not replenish credit. **These
+  are not complete Git operations:** the owner must verify signed metadata and
+  watermarks before the first credit, enforce deadlines and reset-on-abandon,
+  check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
+  authority/watermarks and commit durable refs/receipts before terminal success.
+  There is no production `DurableSink` or Session streaming dispatch yet.
+  Raw data-phase tests exercise a 150000-byte transfer and stalled durable
+  consumption over real iroh on the hub ALPN, plus sink failure and source EOF.
+  They do not establish push/fetch/restart/replay acceptance.
 
 Kernel integration must keep registry, relay batch dedupe/audit, private-event
 routing and immutable once-mapped sender action envelopes in `coglet-hub`.
