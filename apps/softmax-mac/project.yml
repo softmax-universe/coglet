@@ -20,6 +20,8 @@ targets:
     type: framework
     platform: macOS
     sources: [Sources/SoftmaxCore]
+    dependencies:
+      - package: FaceMac
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.softmax.app.core
@@ -45,6 +47,7 @@ targets:
     sources: [Tests/SoftmaxCoreTests]
     dependencies:
       - target: SoftmaxCore
+      - package: FaceMac
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.softmax.app.core-tests

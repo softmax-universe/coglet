@@ -154,7 +154,8 @@ struct ConversationView: View {
             if model.voicePanelSelected {
                 Text("Voice").font(.title2)
                 MicrophoneControls(model: model)
-                Text("Voice capture is not connected yet. No microphone audio is being recorded.")
+                Text("Use the push-to-talk hotkey to capture audio. Runtime speech delivery is not connected yet.")
+                Text("Push-to-talk: \(model.state.rawValue)")
             } else {
                 Text("Chat").font(.title2)
                 Text("Your local runtime is not connected yet. Draft a message here; sending will be available once connected.")
