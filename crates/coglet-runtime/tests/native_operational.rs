@@ -1,5 +1,5 @@
 //! Actual pointer boundary and actual cogletd socket: no SurfaceSession test shim.
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", target_os = "macos"))]
 use coglet_runtime::{cbor, ffi::*};
 use serde_json::{Value, json};
 use std::{

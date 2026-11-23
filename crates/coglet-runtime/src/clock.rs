@@ -47,7 +47,61 @@ fn sample() -> Result<(String, u64)> {
         .ok_or("boot clock overflow")?;
     Ok((boot, micros))
 }
-#[cfg(not(target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn sample() -> Result<(String, u64)> {
+    // Boot-session UUID is stable across process restarts and wall-clock edits.
+    // Do not fall back to kern.boottime, which can move when civil time changes.
+    let mut boot = [0u8; 128];
+    let mut len = boot.len();
+    // SAFETY: sysctl writes no more than len bytes into the supplied buffer.
+    if unsafe {
+        libc::sysctlbyname(
+            c"kern.bootsessionuuid".as_ptr(),
+            boot.as_mut_ptr().cast(),
+            &mut len,
+            std::ptr::null_mut(),
+            0,
+        )
+    } != 0
+        || len != 37
+        || boot[36] != 0
+    {
+        return Err("kernel boot-session UUID unavailable".into());
+    }
+    let boot = std::str::from_utf8(&boot[..36]).map_err(|_| "invalid boot-session UUID")?;
+    if !boot.bytes().enumerate().all(|(i, b)| {
+        if [8, 13, 18, 23].contains(&i) {
+            b == b'-'
+        } else {
+            b.is_ascii_hexdigit()
+        }
+    }) {
+        return Err("invalid boot-session UUID".into());
+    }
+    #[repr(C)]
+    struct Timebase {
+        numer: u32,
+        denom: u32,
+    }
+    unsafe extern "C" {
+        fn mach_continuous_time() -> u64;
+        fn mach_timebase_info(info: *mut Timebase) -> i32;
+    }
+    let mut scale = Timebase { numer: 0, denom: 0 };
+    // SAFETY: timebase_info receives a valid writable struct; the continuous
+    // clock has no preconditions and includes sleep (macOS 10.12 / iOS 10+).
+    let ticks = unsafe {
+        if mach_timebase_info(&mut scale) != 0 || scale.denom == 0 || scale.numer == 0 {
+            return Err("continuous clock timebase unavailable".into());
+        }
+        mach_continuous_time()
+    };
+    let micros =
+        u64::try_from(u128::from(ticks) * u128::from(scale.numer) / u128::from(scale.denom) / 1000)
+            .map_err(|_| "boot clock overflow")?;
+    Ok((format!("darwin:{boot}"), micros))
+}
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
 fn sample() -> Result<(String, u64)> {
     Err("supervisor clock continuity is not implemented on this platform".into())
 }
@@ -59,6 +113,11 @@ impl RuntimeService {
             return Err("runtime requires WAL recovery".into());
         }
         let (boot, micros) = sample()?;
+        self.supervised_at(boot, micros)
+    }
+    // Keep the recovery policy identical across OS samplers. Tests inject only
+    // the kernel sample, never bypass WAL reopen/dispatch validation.
+    fn supervised_at(&mut self, boot: String, micros: u64) -> Result<u64> {
         if self.state.clock_anchor.is_none() {
             if !self.state.dispatches.is_empty() {
                 return Err("existing dispatches have no supervised clock anchor".into());
@@ -90,6 +149,100 @@ impl RuntimeService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::{Value, json};
+    fn fixture(name: &str) -> (std::path::PathBuf, Value) {
+        let cases: Value =
+            serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+        let mut setup = cases
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == "no-effects")
+            .unwrap()["steps"][0]["send"]
+            .clone();
+        let action = json!({"coglet":setup["manifest"]["id"],"id":"4".repeat(32),"capability":"expression.set_expression","args":{"expression":"happy","intensity":500,"duration_ms":10},"deadline":50_000_000,"correlation_id":"5".repeat(32)});
+        setup["initial_actions"] = json!([action]);
+        setup["initial_effect_ids"]["actions"] = json!(["4".repeat(32)]);
+        let dir = std::env::temp_dir().join(format!("clock-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        (dir, setup)
+    }
+    #[test]
+    fn same_boot_wal_recovery_preserves_epoch_and_elapsed_time() {
+        let (dir, setup) = fixture("same-boot");
+        let path = dir.join("wal");
+        let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+        let first = service.supervised_at("boot-a".into(), 100).unwrap();
+        drop(service);
+        let mut recovered = RuntimeService::open(&path, &setup, 128).unwrap();
+        assert_eq!(
+            recovered.supervised_at("boot-a".into(), 1_000_100).unwrap(),
+            first + 1_000_000
+        );
+        drop(recovered);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn prepared_dispatch_recovery_refuses_new_boot_and_missing_anchor() {
+        let (dir, setup) = fixture("prepared");
+        let path = dir.join("wal");
+        let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+        service.supervised_at("boot-a".into(), 100).unwrap();
+        let surface = format!("surface:{}", "b".repeat(64));
+        let coglet = setup["manifest"]["id"].as_str().unwrap();
+        let mut session = crate::SurfaceSession::new(
+            crate::SurfaceBinding::new(surface.clone(), vec![coglet.into()]).unwrap(),
+        );
+        for frame in [
+            json!({"type":"hello","body":{"surface":surface,"offer":{"versions":["0.1"]},"clock":1000,"correlation_id":"1".repeat(32)}}),
+            json!({"type":"capabilities","body":{"revision":1,"clock":1000,"entries":[{"name":"expression.control","events":[],"reads":[],"actions":["expression.set_expression"],"exclusive":["display.face"],"schemas":{"expression.set_expression":"https://coglet.dev/spec/messages/expression.schema.json#/$defs/set-expression"}}],"correlation_id":"2".repeat(32)}}),
+            json!({"type":"grants","body":{"epoch":1,"entries":[{"coglet":coglet,"operations":["expression.set_expression"],"resources":["display.face"],"expires":50_000_000}],"correlation_id":"3".repeat(32)}}),
+        ] {
+            assert_eq!(session.send(&crate::cbor(&frame).unwrap(), 100), 0);
+        }
+        let raw = service
+            .prepare_dispatch(&session, &"4".repeat(32), 100)
+            .unwrap();
+        drop(service);
+        let mut recovered = RuntimeService::open(&path, &setup, 128).unwrap();
+        assert!(
+            recovered
+                .supervised_at("boot-b".into(), 200)
+                .unwrap_err()
+                .contains("reboot")
+        );
+        assert_eq!(recovered.supervised_at("boot-a".into(), 200).unwrap(), 100);
+        assert_eq!(
+            recovered
+                .prepare_dispatch(&session, &"4".repeat(32), 200)
+                .unwrap(),
+            raw
+        );
+        // Persist an older-runtime WAL with prepared bytes but no anchor.
+        recovered.state.clock_anchor = None;
+        recovered
+            .store
+            .commit(&serde_json::to_value(&recovered.state).unwrap(), None)
+            .unwrap();
+        drop(recovered);
+        let mut legacy = RuntimeService::open(&path, &setup, 128).unwrap();
+        assert!(
+            legacy
+                .supervised_at("boot-a".into(), 300)
+                .unwrap_err()
+                .contains("no supervised clock anchor")
+        );
+        drop(legacy);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn native_boot_sample_is_stable_and_monotonic() {
+        let (boot, first) = sample().unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        let (again, next) = sample().unwrap();
+        assert_eq!(boot, again);
+        assert!(next > first);
+    }
     #[test]
     fn clock_accounts_for_downtime_and_refuses_reboot_rollback_overflow() {
         let a = ClockAnchor {
