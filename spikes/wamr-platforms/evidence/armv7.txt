@@ -1,0 +1,7 @@
+answer=42 pointer_bits=32
+i64_carry=ok
+memory_max=2_pages grow_over_max=rejected
+linear_memory_bytes=65536 boundary_store=ok oob=trapped
+compute_cap=10000 trap=Exception: instruction limit exceeded
+after_cap=42
+pool_total_bytes=2096936 pool_used_bytes=19352 pool_peak_bytes=19352

@@ -1,0 +1,24 @@
+name: WAMR platforms
+on:
+  pull_request:
+    paths: ['spikes/wamr-platforms/**', '.github/workflows/wamr-platforms.yml']
+  push:
+    branches: [main]
+    paths: ['spikes/wamr-platforms/**', '.github/workflows/wamr-platforms.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  armv7-qemu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user wabt time
+      - run: rustup toolchain install 1.91.1 --profile minimal && rustup target add --toolchain 1.91.1 armv7-unknown-linux-gnueabihf
+      - run: bash spikes/wamr-platforms/test-armv7.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wamr-armv7-measurements
+          path: spikes/wamr-platforms/results/
