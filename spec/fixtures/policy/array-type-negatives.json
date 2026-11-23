@@ -1,0 +1,15 @@
+[
+  {
+    "name": "gates[0].kind=[1]", "type": "policy", "valid": false,
+    "value": {
+      "version": "0.1", "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111", "control_role": "application",
+      "human_approval": false,
+      "gates": [{"kind": [1], "suite": "suite:replay-v1", "max_age_ms": 60000}],
+      "probation": {"window_ms": 60000, "health_interval_ms": 1000,
+        "health_timeout_ms": 5000, "max_consecutive_failures": 3,
+        "max_step_failures": 1, "max_budget_violations": 1}
+    }
+  }
+]

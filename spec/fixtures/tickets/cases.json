@@ -1,0 +1,1456 @@
+[
+  {
+    "name": "ticket",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "submit",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "submit-receipt",
+    "type": "response",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ok": true,
+      "receipt": {
+        "ticket_id": "11111111111111111111111111111111",
+        "revision": 1,
+        "state": "queued",
+        "seq": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a5626f6bf5626f70667375626d69746772656365697074a4637365710165737461746566717565756564687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "update",
+      "ticket_id": "11111111111111111111111111111111",
+      "after_seq": 0
+    },
+    "valid": true,
+    "cbor_hex": "a5626f70667570646174656776657273696f6e63302e316961667465725f73657100697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "answer",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "answer",
+      "ticket_id": "11111111111111111111111111111111",
+      "expected_revision": 1,
+      "question_id": "11111111111111111111111111111111",
+      "answer": "Use the bounded route"
+    },
+    "valid": true,
+    "cbor_hex": "a7626f7066616e7377657266616e73776572755573652074686520626f756e64656420726f7574656776657273696f6e63302e31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316b7175657374696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131317165787065637465645f7265766973696f6e01"
+  },
+  {
+    "name": "answer-receipt",
+    "type": "response",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "answer",
+      "ok": true,
+      "receipt": {
+        "ticket_id": "11111111111111111111111111111111",
+        "revision": 1,
+        "state": "planning",
+        "seq": 2
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a5626f6bf5626f7066616e737765726772656365697074a4637365710265737461746568706c616e6e696e67687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "amend",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "amend",
+      "ticket_id": "11111111111111111111111111111111",
+      "expected_revision": 1,
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a6626f7065616d656e64667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131317165787065637465645f7265766973696f6e01"
+  },
+  {
+    "name": "amend-receipt",
+    "type": "response",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "amend",
+      "ok": true,
+      "receipt": {
+        "ticket_id": "11111111111111111111111111111111",
+        "revision": 2,
+        "state": "queued",
+        "seq": 2
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a5626f6bf5626f7065616d656e646772656365697074a4637365710265737461746566717565756564687265766973696f6e02697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "cancel",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "cancel",
+      "ticket_id": "11111111111111111111111111111111",
+      "expected_revision": 1,
+      "reason": "No longer needed"
+    },
+    "valid": true,
+    "cbor_hex": "a6626f706663616e63656c66726561736f6e704e6f206c6f6e676572206e65656465646776657273696f6e63302e31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131317165787065637465645f7265766973696f6e01"
+  },
+  {
+    "name": "cancel-receipt",
+    "type": "response",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "cancel",
+      "ok": true,
+      "receipt": {
+        "ticket_id": "11111111111111111111111111111111",
+        "revision": 2,
+        "state": "cancelling",
+        "seq": 2
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a5626f6bf5626f706663616e63656c6772656365697074a463736571026573746174656a63616e63656c6c696e67687265766973696f6e02697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "result",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "result",
+      "ticket_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a4626f7066726573756c746776657273696f6e63302e31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-queued",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "queued",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a76373657102657374617465667175657565646773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-planning",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "planning",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a7637365710265737461746568706c616e6e696e676773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-building",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "building",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a76373657102657374617465686275696c64696e676773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-gate_running",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "gate_running",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a763736571026573746174656c676174655f72756e6e696e676773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-cancelling",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "cancelling",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a763736571026573746174656a63616e63656c6c696e676773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-done",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a7637365710265737461746564646f6e656773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-failed",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "failed",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a76373657102657374617465666661696c65646773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "update-abandoned",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "abandoned",
+      "summary": "Compiling candidate"
+    },
+    "valid": true,
+    "cbor_hex": "a76373657102657374617465696162616e646f6e65646773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "question-update",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "needs_input",
+      "summary": "Compiling candidate",
+      "question": {
+        "id": "11111111111111111111111111111111",
+        "prompt": "Which route is allowed?"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a863736571026573746174656b6e656564735f696e7075746773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687175657374696f6ea2626964782031313131313131313131313131313131313131313131313131313131313131316670726f6d707477576869636820726f75746520697320616c6c6f7765643f687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "question-result",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "needs_input",
+      "summary": "Compiling candidate",
+      "question": {
+        "id": "11111111111111111111111111111111",
+        "prompt": "Which route is allowed?"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a863736571026573746174656b6e656564735f696e7075746773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687175657374696f6ea2626964782031313131313131313131313131313131313131313131313131313131313131316670726f6d707477576869636820726f75746520697320616c6c6f7765643f687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "done",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": true,
+    "cbor_hex": "a9637365710265676174657381a86462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d763166737461747573667061737365646963616e6469646174657828626262626262626262626262626262626262626262626262626262626262626262626262626262626c65766964656e63655f7265666f61727469666163743a676174652d316d636865636b65645f61745f6d731903e86f706f6c6963795f7265766973696f6e7820313131313131313131313131313131313131313131313131313131313131313165737461746564646f6e656773756d6d617279781b43616e646964617465206275696c7420616e6420636865636b65646776657273696f6e63302e31687265766973696f6e016963616e646964617465a266636f6d6d69747828626262626262626262626262626262626262626262626262626262626262626262626262626262626d7369676e61747572655f7265666b7369676e61747572653a31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "failed",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "failed",
+      "summary": "Compiling candidate",
+      "error": {
+        "code": "conflict",
+        "message": "generation changed",
+        "retryable": false
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a86373657102656572726f72a364636f646568636f6e666c696374676d6573736167657267656e65726174696f6e206368616e67656469726574727961626c65f4657374617465666661696c65646773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "abandoned",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "abandoned",
+      "summary": "Compiling candidate",
+      "error": {
+        "code": "conflict",
+        "message": "generation changed",
+        "retryable": false
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a86373657102656572726f72a364636f646568636f6e666c696374676d6573736167657267656e65726174696f6e206368616e67656469726574727961626c65f4657374617465696162616e646f6e65646773756d6d61727973436f6d70696c696e672063616e6469646174656776657273696f6e63302e31687265766973696f6e01697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "rejection",
+    "type": "response",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "cancel",
+      "ok": false,
+      "error": {
+        "code": "conflict",
+        "message": "generation changed",
+        "retryable": false
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a5626f6bf4626f706663616e63656c656572726f72a364636f646568636f6e666c696374676d6573736167657267656e65726174696f6e206368616e67656469726574727961626c65f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "provider-field",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      },
+      "hermes_task_id": "t_123"
+    },
+    "valid": false
+  },
+  {
+    "name": "worker-profile",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      },
+      "worker_profile": "default"
+    },
+    "valid": false
+  },
+  {
+    "name": "missing-acceptance",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": []
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "no-replay",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate-gates",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "journal_replay"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "zero-time",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 0,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "float-spend",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 0.5,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "bad-currency",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "usd"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "absolute-path",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "/src"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "traversal",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src/../manifest"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "dot-path",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "."
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "empty-segment",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src//x"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "backslash",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src\\x"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "context-inline",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1",
+          "text": "private transcript"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "done-missing-signature",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "done-with-failed-gate",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "failed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "done-gate-wrong-candidate",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "cccccccccccccccccccccccccccccccccccccccc",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "question-without-prompt",
+    "type": "update",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "needs_input",
+      "summary": "Compiling candidate",
+      "question": {
+        "id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "question-on-done",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ],
+      "question": {
+        "id": "11111111111111111111111111111111",
+        "prompt": "Which route is allowed?"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "failed-with-candidate",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "failed",
+      "summary": "Compiling candidate",
+      "error": {
+        "code": "conflict",
+        "message": "generation changed",
+        "retryable": false
+      },
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "receipt-zero-revision",
+    "type": "receipt",
+    "value": {
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 0,
+      "state": "queued",
+      "seq": 1
+    },
+    "valid": false
+  }
+]

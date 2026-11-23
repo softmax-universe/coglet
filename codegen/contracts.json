@@ -5,5 +5,8 @@
   "surface": "generated",
   "speech": "generated",
   "expression": "generated",
-  "database": "generated"
+  "database": "generated",
+  "policy": "draft-validated",
+  "promotion": "draft-validated",
+  "tickets": "draft-validated"
 }
