@@ -118,6 +118,47 @@ fn swallowed_compute_and_reservation_errors_cannot_commit() {
     assert_eq!(o.result, Err(Error::MemoryExhausted));
 }
 #[test]
+fn exact_exhaustion_then_ignored_safe_point_aborts_but_final_exact_charge_succeeds() {
+    // Allocation uses one unit. The handle's final nine-unit charge is valid;
+    // asking for any further boundary must latch exhaustion even if ignored.
+    for operation in 0..5 {
+        let o = run(
+            move || {
+                guest(move |_, _, cx| {
+                    cx.charge(9)?;
+                    match operation {
+                        0 => {}
+                        1 => {
+                            let _ = cx.charge(1);
+                        }
+                        2 => {
+                            let _ = cx.reserve_runtime(1);
+                        }
+                        3 => {
+                            let _ = cx.check_stack(1);
+                        }
+                        _ => {
+                            let _ = cx.call("coglet_v0", "log", &[0, 2]);
+                        }
+                    }
+                    Ok(0)
+                })
+            },
+            &mut NeverHost,
+            10,
+        );
+        assert_eq!(o.compute_used, 10);
+        assert_eq!(
+            o.result,
+            if operation == 0 {
+                Ok(())
+            } else {
+                Err(Error::ComputeExhausted)
+            }
+        );
+    }
+}
+#[test]
 fn proc_exit_zero_cannot_be_accepted_by_host_or_swallowed() {
     let o = run(
         || {

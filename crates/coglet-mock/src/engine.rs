@@ -257,11 +257,9 @@ impl Context<'_> {
         }
         result
     }
-    fn boundary(&self) -> Result<()> {
-        if let Some(e) = &self.failure {
-            return Err(e.clone());
-        }
-        self.budget.before_guest_call()
+    fn boundary(&mut self) -> Result<()> {
+        let result = self.budget.before_guest_call();
+        self.checked(result)
     }
     pub fn charge(&mut self, units: u64) -> Result<()> {
         self.boundary()?;
