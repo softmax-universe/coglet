@@ -120,10 +120,20 @@ passed all 39 unit plus 9 UI tests. Exactly one PNG differs from its reference:
 old/new inspection shows only the selected row's right edge is 17 pt narrower;
 all other 359 images are byte-pixel identical, including the previously unstable
 Hub field. This is consistent with a legacy scroller gutter, not changed text.
-The capture harness now explicitly sets descendant NSScrollViews to overlay
-scrollers and logs each legacy-style conversion. This fixture-only hypothesis
-still requires native execution and strict 360-state comparison; no reference,
-production preference, comparator tolerance or accessibility waiver changed.
+The capture harness explicitly sets descendant NSScrollViews to overlay
+scrollers and logs each legacy-style conversion. Native run `45131249212`
+confirms legacy scrollers in 164 fixtures and passes all 39 unit and 9 UI tests,
+including both keyboard regressions and the light/dark accessibility audits.
+Overlay normalization fixes the anomalous `light-commands` edge, and changes
+23 other references that previously retained legacy gutters; the remaining
+337 images are pixel-identical. All 23 old/new pairs were visually inspected:
+seven command selection outlines widen without moving text; four large About
+licence paragraphs reflow into the wider viewport; eight large onboarding
+panels and four large General panels widen/reflow inside their scroll regions.
+No copy, navigation, footer or production preference changes. These 23 native
+references are updated from that run, not synthesized. A fresh independent CI
+render must still confirm cross-run determinism against all 360 references.
+The comparator tolerance and accessibility exemptions remain unchanged.
 
 ## Intentional differences from the design study
 
