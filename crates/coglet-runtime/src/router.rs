@@ -75,6 +75,9 @@ impl Router {
     pub(crate) fn events(&self) -> impl Iterator<Item = &Value> {
         self.queue.iter().map(|(_, event)| event)
     }
+    pub(crate) fn entries(&self) -> impl Iterator<Item = &(u64, Value)> {
+        self.queue.iter()
+    }
     pub fn is_full(&self) -> bool {
         self.queue.len() >= self.capacity
     }

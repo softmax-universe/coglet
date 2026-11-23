@@ -58,12 +58,151 @@ impl Engine for ObservedTransition<'_> {
     }
 }
 
+/// Internal segment cutoffs refer to the same exclusively owned WAL. Old
+/// records remain immutable; one state transaction promotes all coordinator
+/// metadata without opening a second writable owner or dropping receipts.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CompletedSegment {
+    initial_setup: Value,
+    trace_id: Value,
+    end: usize,
+}
+
 impl RuntimeService {
+    pub(super) fn segment_offset(&self) -> usize {
+        self.state.completed_segments.last().map_or(0, |s| s.end)
+    }
+
+    pub(super) fn validate_segments(
+        state: &ServiceState,
+        root: &Value,
+        records: &[Value],
+    ) -> Result<usize> {
+        let mut expected = root.clone();
+        let mut offset = 0;
+        let mut time_floor = 0;
+        let mut source_floor = 0;
+        let mut seen = std::collections::BTreeSet::new();
+        for segment in &state.completed_segments {
+            validate("correlation-id", &segment.trace_id)?;
+            if !seen.insert(segment.trace_id.as_str().unwrap())
+                || segment.initial_setup != expected
+                || segment.end <= offset
+                || segment.end > records.len()
+            {
+                return Err("invalid recovered segment header/cutoff/identity".into());
+            }
+            let old = Runtime::reconstruct(&segment.initial_setup, &records[offset..segment.end])?;
+            if records[offset]["logical_time"]
+                .as_u64()
+                .ok_or("missing segment clock")?
+                < time_floor
+            {
+                return Err("segment journal clock precedes predecessor".into());
+            }
+            time_floor = time_floor.max(old.time);
+            source_floor = source_floor.max(old.next_source_seq);
+            if !old.sealed || old.trace_id.as_ref() != Some(&segment.trace_id) {
+                return Err("completed segment lacks matching durable seal".into());
+            }
+            let next_id = state
+                .completed_segments
+                .iter()
+                .find(|s| s.end > segment.end)
+                .map(|s| &s.trace_id)
+                .or(state.runtime.trace_id.as_ref())
+                .ok_or("missing successor trace identity")?;
+            expected = old.start_segment(next_id)?.initial_setup;
+            offset = segment.end;
+        }
+        if state.runtime.initial_setup != expected
+            || state.runtime.time < time_floor
+            || state.runtime.next_source_seq < source_floor
+            || records
+                .get(offset)
+                .is_some_and(|r| r["logical_time"].as_u64().is_none_or(|t| t < time_floor))
+            || state
+                .runtime
+                .trace_id
+                .as_ref()
+                .is_some_and(|id| seen.contains(id.as_str().unwrap_or("")))
+        {
+            return Err(
+                "recovered initial snapshot/header differs from configuration/segment chain".into(),
+            );
+        }
+        Ok(offset)
+    }
+
+    /// Atomically start a fresh trace-local chain after a durable seal. Keeps
+    /// router ordinals, pending wakes, dispatch receipts, leases, lifetime IDs,
+    /// source reservations and epoch clock in the same exclusively locked WAL.
+    pub fn start_segment(&mut self, trace_id: &Value) -> Result<()> {
+        if !self.store.is_healthy() || self.state.staged_boundary.is_some() {
+            return Err("segment transfer requires healthy WAL and no staged boundary".into());
+        }
+        if self
+            .state
+            .completed_segments
+            .iter()
+            .any(|s| &s.trace_id == trace_id)
+        {
+            return Err("segment trace identity already used".into());
+        }
+        let mut next = self.state.clone();
+        let runtime = next.runtime.start_segment(trace_id)?;
+        next.completed_segments.push(CompletedSegment {
+            initial_setup: next.runtime.initial_setup.clone(),
+            trace_id: next
+                .runtime
+                .trace_id
+                .clone()
+                .ok_or("missing predecessor trace ID")?,
+            end: self.store.records().len(),
+        });
+        next.runtime = runtime;
+        self.store.commit(
+            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+            None,
+        )?;
+        self.state = next;
+        #[cfg(feature = "native-engine")]
+        {
+            self.native = None;
+        }
+        Ok(())
+    }
+
+    /// Export a retained sealed predecessor. Caller separately authorizes
+    /// private-data release and authenticates the cutoff and complete header.
+    pub fn export_segment(&self, trace_id: &Value) -> Result<Value> {
+        if !self.store.is_healthy() {
+            return Err("WAL requires recovery before segment export".into());
+        }
+        let mut offset = 0;
+        for segment in &self.state.completed_segments {
+            if &segment.trace_id == trace_id {
+                let mut runtime = Runtime::reconstruct(
+                    &segment.initial_setup,
+                    &self.store.records()[offset..segment.end],
+                )?;
+                runtime.retained_blobs = self.state.runtime.retained_blobs.clone();
+                return runtime.export_trace(trace_id);
+            }
+            offset = segment.end;
+        }
+        Err("unknown completed segment".into())
+    }
+
     /// Export all durable state through this serialized cutoff. Caller must
     /// authorize private-data release and authenticate cutoff/completeness. Any
     /// staged applied boundary is first sealed in the WAL, without a guest wake.
     /// A resulting sealed trace cannot resume until explicitly segmented.
     pub fn export_trace(&mut self, trace_id: &Value, logical_time: u64) -> Result<Value> {
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err("unresolved attempt prevents complete export".into());
+        }
         if !self.store.is_healthy() {
             return Err("runtime requires WAL recovery before export".into());
         }
@@ -184,6 +323,9 @@ impl Runtime {
     /// Export the complete atomic header and exact journal bytes' JSON view.
     /// The caller must authorize release of private data and bind completeness.
     pub fn export_trace(&self, trace_id: &Value) -> Result<Value> {
+        if self.unresolved_attempt.is_some() {
+            return Err("unresolved attempt prevents complete export".into());
+        }
         validate("correlation-id", trace_id)?;
         if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
             return Err("trace identity changed".into());
@@ -229,6 +371,9 @@ impl Runtime {
     /// is an in-memory candidate: a durable coordinator must atomically persist
     /// it with its router/dispatch metadata before admitting or exporting work.
     pub fn start_segment(&self, trace_id: &Value) -> Result<Self> {
+        if self.unresolved_attempt.is_some() {
+            return Err("unresolved attempt prevents segmentation".into());
+        }
         validate("correlation-id", trace_id)?;
         if !self.sealed || self.trace_id.as_ref() == Some(trace_id) {
             return Err("new segment requires sealed predecessor and fresh trace identity".into());
@@ -239,6 +384,7 @@ impl Runtime {
             "initial_llm_requests":self.pending_llm.values().collect::<Vec<_>>()});
         let mut next = Self::from_fixture(&setup)?;
         next.trace_id = Some(trace_id.clone());
+        next.retained_blobs = self.retained_blobs.clone();
         next.next_source_seq = self.next_source_seq;
         next.time = self.time;
         Ok(next)

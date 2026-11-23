@@ -11,6 +11,7 @@ pub struct NativeEngine {
     code: Vec<u8>,
     runtime_bytes: u32,
     stack_bytes: u32,
+    prepared: Option<(coglet_engine_wamr::WamrInstance, StepInput, Instant, u32)>,
 }
 impl NativeEngine {
     pub fn new(
@@ -36,6 +37,7 @@ impl NativeEngine {
             code,
             runtime_bytes,
             stack_bytes,
+            prepared: None,
         };
         Wamr::interpreter()
             .load(&engine.code, &engine.limits(budgets, Instant::now())?)
@@ -96,7 +98,8 @@ impl Engine for NativeEngine {
         let metadata = Wamr::interpreter().metadata();
         Some(json!({"build":metadata.build,"policy":metadata.compute_mode}))
     }
-    fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
+    fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
+        self.prepared = None;
         let started = Instant::now();
         if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
             return Err("native engine code pin mismatch".into());
@@ -111,15 +114,21 @@ impl Engine for NativeEngine {
         let instance = engine
             .instantiate(&module, limits)
             .map_err(|e| e.to_string())?;
-        let outcome = instance.handle(
-            StepInput {
-                events: cbor(&inputs["events"])?,
-                step: inputs["step"].as_u64().ok_or("step")?,
-                logical_time: inputs["logical_time"].as_u64().ok_or("logical time")?,
-                seed: inputs["seed"].as_u64().ok_or("seed")?,
-            },
-            &mut TransactionHost(host),
-        );
+        let input = StepInput {
+            events: cbor(&inputs["events"])?,
+            step: inputs["step"].as_u64().ok_or("step")?,
+            logical_time: inputs["logical_time"].as_u64().ok_or("logical time")?,
+            seed: inputs["seed"].as_u64().ok_or("seed")?,
+        };
+        self.prepared = Some((instance, input, started, memory_pages));
+        Ok(())
+    }
+    fn execute(&mut self, _inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
+        let (instance, input, started, memory_pages) = self
+            .prepared
+            .take()
+            .ok_or("native execution requires successful admission")?;
+        let outcome = instance.handle(input, &mut TransactionHost(host));
         let failure = outcome.result.err().map(|error| {
             use coglet_engine::Error::*;
             let (kind, code) = match &error {

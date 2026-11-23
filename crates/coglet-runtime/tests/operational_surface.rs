@@ -769,6 +769,70 @@ fn terminal_rejection_is_one_durable_append_and_zero_step_export_includes_it() {
     std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
 #[test]
+fn fenced_attempt_with_staged_receipt_reopens_and_defers_later_receipts() {
+    use coglet_runtime::{Engine, EngineReport, Runtime, RuntimeService, StepHost};
+    struct Lost(Option<Value>);
+    impl Engine for Lost {
+        fn execute(
+            &mut self,
+            inputs: &Value,
+            _: &mut StepHost,
+        ) -> coglet_runtime::Result<EngineReport> {
+            self.0 = Some(inputs.clone());
+            Err("lost outcome".into())
+        }
+    }
+    let path = wal("attempt-staged");
+    let mut setup = setup();
+    let mut second = action();
+    second["id"] = json!("6".repeat(32));
+    setup["initial_effect_ids"]["actions"] = json!([action()["id"], second["id"]]);
+    setup["initial_actions"] = json!([action(), second]);
+    let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    for id in [
+        action()["id"].as_str().unwrap(),
+        second["id"].as_str().unwrap(),
+    ] {
+        service.prepare_dispatch(&s, id, 130).unwrap();
+    }
+    let reject = |id: Value| json!({"id":id,"correlation_id":action()["correlation_id"],"accepted":false,"error":{"code":"permission_denied","message":"revoked","retryable":false}});
+    service
+        .record_surface_accept(&s, &reject(action()["id"].clone()), 140)
+        .unwrap();
+    let mut inputs = setup["inputs"].clone();
+    inputs["logical_time"] = json!(200);
+    let mut lost = Lost(None);
+    assert!(service.run_next(&inputs, &mut lost).is_err());
+    assert!(
+        service
+            .record_surface_accept(&s, &reject(second["id"].clone()), 210)
+            .is_err(),
+        "later receipt changed fenced boundary"
+    );
+    drop(service);
+    let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+    let mut original = Runtime::from_fixture(&setup).unwrap();
+    let result = original
+        .step(
+            lost.0.as_ref().unwrap(),
+            &mut coglet_runtime::MockEngine::new(setup["guest_script"].clone()),
+        )
+        .unwrap();
+    service.recover_attempt(&result["journal"]).unwrap();
+    assert_eq!(service.queued(), 0);
+    service
+        .record_surface_accept(&s, &reject(second["id"].clone()), 210)
+        .unwrap();
+    assert_eq!(service.queued(), 1);
+    drop(service);
+    drop(RuntimeService::open(&path, &setup, 128).unwrap());
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+
+#[test]
 fn retries_remain_reconcilable_until_deadline_plus_retention() {
     let path = wal("retention");
     let setup = setup();

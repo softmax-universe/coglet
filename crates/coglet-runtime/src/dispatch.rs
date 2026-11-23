@@ -165,6 +165,9 @@ impl RuntimeService {
         self.commit_dispatch(next)
     }
     fn stage_terminal(next: &mut ServiceState, event: Value, now: u64) -> Result<()> {
+        if next.runtime.unresolved_attempt.is_some() {
+            return Err("terminal receipt deferred until attempt reconciliation".into());
+        }
         if next.runtime.sealed || now < next.runtime.time {
             return Err("cannot materialize terminal in sealed/past segment".into());
         }
