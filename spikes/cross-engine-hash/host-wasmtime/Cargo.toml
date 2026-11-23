@@ -1,0 +1,14 @@
+[package]
+name = "xhash-wasmtime"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1.0.104"
+wasm-encoder = { version = "0.263.0", features = ["wasmparser"] }
+wasmparser = "0.263.0"
+wasmtime = "51.0.0"
+wasmtime-wasi = "51.0.0"

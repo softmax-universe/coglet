@@ -3,3 +3,13 @@ name = "coglet-types"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+ciborium = "0.2"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# Fixture JSON must keep full integer precision (u64 overflow must be detectable).
+serde_json = { version = "1", features = ["arbitrary_precision"] }
