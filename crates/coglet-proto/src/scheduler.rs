@@ -106,7 +106,7 @@ impl PeerScheduler {
         let git = matches!(method, "hub.git.push" | "hub.git.fetch");
         let mut state = self.0.lock().unwrap();
         if (!provisional && state.streams >= 16)
-            || (bulk && state.bulk >= 15)
+            || (bulk && (state.bulk >= 15 || state.streams >= 15 + usize::from(provisional)))
             || (git && state.git >= 2)
             || bytes > MAX_QUEUED_BYTES - state.bytes
             || (bulk && bytes > MAX_QUEUED_BYTES - CONTROL_BYTES - state.bulk_bytes)
@@ -186,6 +186,20 @@ impl Drop for Permit {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn provisional_slot_sixteen_cannot_become_bulk_even_with_existing_control() {
+        let scheduler = PeerScheduler::default();
+        let mut held = Vec::new();
+        held.push(scheduler.admit("hub.cancel", 1).unwrap());
+        for _ in 0..14 {
+            held.push(scheduler.admit("hub.status", 1).unwrap());
+        }
+        let mut classification = scheduler.classify().unwrap();
+        assert!(classification.admit("hub.status", 1).is_err());
+        drop(classification);
+        assert!(scheduler.admit("hub.status", 1).is_err());
+        assert!(scheduler.admit("hub.stop", 1).is_ok());
+    }
     #[test]
     fn reconnect_does_not_reset_peer_rate_limits() {
         let local = iroh::SecretKey::from_bytes(&[11; 32]).public();

@@ -109,7 +109,7 @@ of the complete hub protocol. Remaining work is serialized on the board:
 - `t_01a2084063ee0c84`: reference/mock integration and harness extensions; owns
   the original unchanged same-suite hub acceptance with zero skipped cases.
 
-## Scheduler component (in progress)
+## Scheduler component
 
 `Session::new` automatically shares admission across all connections for the
 same (local endpoint ID, authenticated remote peer). Sixteen streams total
@@ -133,20 +133,32 @@ RAII guards release admission and use application code 1 for abandoned stream
 halves, including timeout/cancellation/panic; valid terminal failures remain
 ordinary protocol replies, not malformed-stream resets.
 
-Verified so far: scheduler unit caps and reconnect-rate regression, real-iroh
-two-connection fifteen-bulk saturation with stop/cancel dispatch, shared two-slot
-classification/timeout before enrollment, and malformed frame reset-code checks.
-Additional adversarial Git/byte/client-abort coverage, independent review, hosted
-CI and merge are still pending; this is not completed component acceptance.
+Verified component tests: scheduler caps and reconnect-rate regression; real-iroh
+fifteen-bulk saturation with stop/cancel dispatch; two-slot classification/timeout
+before enrollment; malformed frame resets; two-Git saturation and deadline
+recovery; decoded-byte saturation below the stream cap with cancel dispatch;
+separate health/enroll/control rates; handler panic and serve-abort release;
+and caller timeout/cancellation/malformed/trailing replies with observed code 1.
+The saturation cases use two distinct connections for one authenticated peer.
+The mixed-control provisional-slot regression additionally checks that slot 16
+can never become bulk even when fewer than fifteen existing streams are bulk.
+These are component tests, not full protocol/reference/mock conformance.
+
+The 4 MiB limit measures serialized decoded request data, not allocator RSS:
+JSON tree overhead, parser temporaries and the separately bounded provisional
+frames are additional memory. Incoming and outgoing operations deliberately
+share the per-peer total budget; direction is not a way around sixteen streams.
+The reserved slot guarantees control admission under **bulk** saturation, not
+under saturation by already-admitted control operations. All operation work,
+including waiting for unary FIN, remains bounded by the request deadline.
 
 ## Remaining before full protocol acceptance
 
 1. Durable atomic one-use enrollment, exact grants/delegations/context scopes,
    expiry/revocation and rate limiting; integrate with the kernel, not a second
    independent policy authority.
-2. Per-peer operation/git/decoded-byte bounds, two unclassified-stream budget,
-   reserved control slot/fair scheduling, deadlines and application-code-1 reset
-   on every invalid/timeout path. Current transport tasks are not yet bounded.
+2. Integrate scheduler permits with the future multi-frame Git operation
+   lifetime; unary tasks and classification are bounded in this component.
 3. Git push/fetch multi-frame operation integration (the unary API does not
    implement git transfers), sender credit validation, signed metadata/watermark
    checks before disclosure/credit, bounded Git quarantine/fsck/archive/provenance

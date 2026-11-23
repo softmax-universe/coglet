@@ -267,6 +267,9 @@ impl Session {
                         .map_err(error)?
                         .map_err(error)?;
                     send.finish().map_err(error)?;
+                    // Preserve the terminal rejection while explicitly stopping
+                    // unread input with the protocol error code (Drop uses 0).
+                    let _ = recv.stop(1u32.into());
                     return Ok(());
                 }
             };
