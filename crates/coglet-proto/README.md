@@ -109,14 +109,56 @@ of the complete hub protocol. Remaining work is serialized on the board:
 - `t_01a2084063ee0c84`: reference/mock integration and harness extensions; owns
   the original unchanged same-suite hub acceptance with zero skipped cases.
 
+## Scheduler component
+
+`Session::new` automatically shares admission across all connections for the
+same (local endpoint ID, authenticated remote peer). Sixteen streams total
+include provisional classification; at most fifteen may be bulk, two Git, and
+two unclassified. The incoming QUIC bidi capacity is set to sixteen on every
+connection, independently of the shared application limit. Classification has a
+two-second complete-frame timeout even before enrollment. There is no waiting
+application queue: a classified saturation returns retryable resource_exhausted
+before handler dispatch; extra/stalled unclassified streams reset with code 1.
+
+Decoded request accounting conservatively charges the compact JSON diagnostic
+size, including escaping, twice on ingress (retained request and handler copy).
+The cap is 4 MiB with 64 KiB reserved from bulk for control dispatch. The two
+provisional raw frames are separately bounded to 1 MiB each. Control methods are
+hub.stop/cancel/health/receipt. Health, enrollment and other control use separate
+fixed one-minute windows (120/32/240 admissions respectively); these numbers are
+local policy, not standardized wire values. Rate history survives disconnects
+until the window expires. The identity cache fails closed at 4096 entries rather
+than evicting live rates. The Authority's stricter enrollment limits still apply.
+RAII guards release admission and use application code 1 for abandoned stream
+halves, including timeout/cancellation/panic; valid terminal failures remain
+ordinary protocol replies, not malformed-stream resets.
+
+Verified component tests: scheduler caps and reconnect-rate regression; real-iroh
+fifteen-bulk saturation with stop/cancel dispatch; two-slot classification/timeout
+before enrollment; malformed frame resets; two-Git saturation and deadline
+recovery; decoded-byte saturation below the stream cap with cancel dispatch;
+separate health/enroll/control rates; handler panic and serve-abort release;
+and caller timeout/cancellation/malformed/trailing replies with observed code 1.
+The saturation cases use two distinct connections for one authenticated peer.
+The mixed-control provisional-slot regression additionally checks that slot 16
+can never become bulk even when fewer than fifteen existing streams are bulk.
+These are component tests, not full protocol/reference/mock conformance.
+
+The 4 MiB limit measures serialized decoded request data, not allocator RSS:
+JSON tree overhead, parser temporaries and the separately bounded provisional
+frames are additional memory. Incoming and outgoing operations deliberately
+share the per-peer total budget; direction is not a way around sixteen streams.
+The reserved slot guarantees control admission under **bulk** saturation, not
+under saturation by already-admitted control operations. All operation work,
+including waiting for unary FIN, remains bounded by the request deadline.
+
 ## Remaining before full protocol acceptance
 
 1. Durable atomic one-use enrollment, exact grants/delegations/context scopes,
    expiry/revocation and rate limiting; integrate with the kernel, not a second
    independent policy authority.
-2. Per-peer operation/git/decoded-byte bounds, two unclassified-stream budget,
-   reserved control slot/fair scheduling, deadlines and application-code-1 reset
-   on every invalid/timeout path. Current transport tasks are not yet bounded.
+2. Integrate scheduler permits with the future multi-frame Git operation
+   lifetime; unary tasks and classification are bounded in this component.
 3. Git push/fetch multi-frame operation integration (the unary API does not
    implement git transfers), sender credit validation, signed metadata/watermark
    checks before disclosure/credit, bounded Git quarantine/fsck/archive/provenance

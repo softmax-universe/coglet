@@ -1,6 +1,7 @@
 //! Bidirectional operation transport on an authenticated iroh connection.
 //! Enrollment and operation authority are supplied by the service; this module
 //! never turns transport identity or negotiation into a grant.
+use crate::scheduler::{Classification, PeerScheduler};
 use crate::wire::{read_frame, write_frame};
 use iroh::{EndpointId, endpoint::Connection};
 use serde_json::{Value, json};
@@ -72,6 +73,32 @@ pub struct Session {
     local: EndpointId,
     role: Role,
     selected: Arc<AtomicBool>,
+    scheduler: PeerScheduler,
+}
+
+/// Iroh defaults to application reset 0 on Drop. Every abandoned operation,
+/// including a cancelled future or a handler panic, must instead use code 1.
+struct StreamGuard {
+    send: iroh::endpoint::SendStream,
+    recv: iroh::endpoint::RecvStream,
+    completed: bool,
+}
+impl StreamGuard {
+    fn new(send: iroh::endpoint::SendStream, recv: iroh::endpoint::RecvStream) -> Self {
+        Self {
+            send,
+            recv,
+            completed: false,
+        }
+    }
+}
+impl Drop for StreamGuard {
+    fn drop(&mut self) {
+        if !self.completed {
+            let _ = self.send.reset(1u32.into());
+            let _ = self.recv.stop(1u32.into());
+        }
+    }
 }
 
 fn validate(rule: &str, value: &Value) -> Result<(), TransportError> {
@@ -93,7 +120,9 @@ impl Session {
         if connection.alpn() != ALPN {
             return Err(error("wrong ALPN"));
         }
+        connection.set_max_concurrent_bi_streams(16u32.into());
         Ok(Self {
+            scheduler: PeerScheduler::shared(local, connection.remote_id()).map_err(error)?,
             connection,
             local,
             role,
@@ -112,14 +141,23 @@ impl Session {
             return Err(error("wrong method direction"));
         }
         let duration = Duration::from_millis(request["timeout_ms"].as_u64().unwrap());
+        let _permit = self
+            .scheduler
+            .admit(
+                request["method"].as_str().unwrap(),
+                serde_json::to_vec(&request).map_err(error)?.len(),
+            )
+            .map_err(error)?;
         timeout(duration, async {
-            let (mut send, mut recv) = self.connection.open_bi().await.map_err(error)?;
-            write_frame(&mut send, &request).await.map_err(error)?;
+            let (send, recv) = self.connection.open_bi().await.map_err(error)?;
+            let mut streams = StreamGuard::new(send, recv);
+            let StreamGuard { send, recv, .. } = &mut streams;
+            write_frame(send, &request).await.map_err(error)?;
             send.finish().map_err(error)?;
-            let reply = read_frame(&mut recv).await.map_err(error)?;
+            let reply = read_frame(recv).await.map_err(error)?;
             self.check_reply(&request, &reply)?;
             let mut extra = [0];
-            if tokio::io::AsyncReadExt::read(&mut recv, &mut extra)
+            if tokio::io::AsyncReadExt::read(recv, &mut extra)
                 .await
                 .map_err(error)?
                 != 0
@@ -130,6 +168,7 @@ impl Session {
             if request["method"] == "hub.enroll" && reply["type"] == "reply" {
                 self.selected.store(true, Ordering::Release);
             }
+            streams.completed = true;
             Ok(reply)
         })
         .await
@@ -184,11 +223,16 @@ impl Session {
     pub async fn serve(self, handler: Arc<dyn OperationHandler>) -> Result<(), TransportError> {
         let mut tasks = tokio::task::JoinSet::new();
         loop {
+            // Completed tasks must not accumulate behind a continuously ready
+            // accept branch. At most the admitted peer budget remains in the set.
+            while tasks.try_join_next().is_some() {}
             tokio::select! {
                 next = self.connection.accept_bi() => {
                     let (send, recv) = next.map_err(error)?;
+                    let streams = StreamGuard::new(send, recv);
+                    let Ok(classification) = self.scheduler.classify() else { continue; };
                     let session = self.clone(); let handler = handler.clone();
-                    tasks.spawn(async move { session.respond(send, recv, handler).await });
+                    tasks.spawn(async move { session.respond(streams, classification, handler).await });
                 }
                 _ = tasks.join_next(), if !tasks.is_empty() => {}
             }
@@ -197,17 +241,38 @@ impl Session {
 
     async fn respond(
         &self,
-        mut send: iroh::endpoint::SendStream,
-        mut recv: iroh::endpoint::RecvStream,
+        mut streams: StreamGuard,
+        mut classification: Classification,
         handler: Arc<dyn OperationHandler>,
     ) {
+        let StreamGuard { send, recv, .. } = &mut streams;
         let result: Result<(), TransportError> = async {
-            let request = timeout(Duration::from_secs(2), read_frame(&mut recv))
+            let request = timeout(Duration::from_secs(2), read_frame(recv))
                 .await
                 .map_err(error)?
                 .map_err(error)?;
             let received = Instant::now();
             validate("hub-request", &request)?;
+            // Charge both retained request and the owned handler copy. Raw frame
+            // buffers are separately bounded by the two classification slots.
+            let bytes = serde_json::to_vec(&request).map_err(error)?.len() * 2;
+            let permit = classification.admit(request["method"].as_str().unwrap(), bytes);
+            let _permit = match permit {
+                Ok(permit) => permit,
+                Err(_) => {
+                    let mut reply = failure(&request, "resource_exhausted");
+                    reply["error"]["retryable"] = json!(true);
+                    timeout(Duration::from_secs(2), write_frame(send, &reply))
+                        .await
+                        .map_err(error)?
+                        .map_err(error)?;
+                    send.finish().map_err(error)?;
+                    // Preserve the terminal rejection while explicitly stopping
+                    // unread input with the protocol error code (Drop uses 0).
+                    let _ = recv.stop(1u32.into());
+                    return Ok(());
+                }
+            };
             let deadline =
                 received + Duration::from_millis(request["timeout_ms"].as_u64().unwrap());
             timeout_at(deadline, async {
@@ -247,7 +312,7 @@ impl Session {
                 if enroll && reply["type"] == "reply" {
                     self.selected.store(true, Ordering::Release);
                 }
-                write_frame(&mut send, &reply).await.map_err(error)?;
+                write_frame(send, &reply).await.map_err(error)?;
                 send.finish().map_err(error)?;
                 Ok(())
             })
@@ -255,9 +320,8 @@ impl Session {
             .map_err(error)?
         }
         .await;
-        if result.is_err() {
-            let _ = send.reset(1u32.into());
-            let _ = recv.stop(1u32.into());
+        if result.is_ok() {
+            streams.completed = true;
         }
     }
 }
