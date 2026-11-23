@@ -122,7 +122,7 @@ fn exception_snapshot_survives_deadline_write_and_concurrent_copies() {
     let mut n = Native::new("(module (func (export \"trap\") unreachable))");
     unsafe { ce_set_budget(n.ctx, 1000) };
     assert_eq!(n.call("trap", 0).0, 0);
-    let mut original = [0i8; 128];
+    let mut original = [0 as c_char; 128];
     assert_eq!(
         unsafe { ce_copy_exception(n.ctx, original.as_mut_ptr(), 127) },
         -1
@@ -143,7 +143,7 @@ fn exception_snapshot_survives_deadline_write_and_concurrent_copies() {
     });
     barrier.wait();
     for _ in 0..1000 {
-        let mut snapshot = [0i8; 128];
+        let mut snapshot = [0 as c_char; 128];
         assert_eq!(
             unsafe { ce_copy_exception(n.ctx, snapshot.as_mut_ptr(), 128) },
             1
