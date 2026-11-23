@@ -59,7 +59,9 @@ jobs:
       - name: Compare reviewed native snapshots and build HTML side-by-sides
         if: ${{ !cancelled() }}
         working-directory: apps/softmax-mac
-        run: uv run --with pillow==12.0.0 python scripts/check-design-snapshots.py --actual build/DesignSnapshots
+        run: |
+          uv run --with pillow==12.0.0 python scripts/tests/test_design_snapshots.py
+          uv run --with pillow==12.0.0 python scripts/check-design-snapshots.py --actual build/DesignSnapshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:

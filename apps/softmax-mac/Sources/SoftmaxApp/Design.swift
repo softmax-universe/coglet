@@ -55,7 +55,7 @@ struct SoftmaxWindowRoot<Content: View>: View {
 }
 
 struct AboutView: View {
-    @State private var licenses = false
+    @State var licenses = false
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development" }
     private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unversioned" }
     private var information: String { "Softmax \(version) (\(build)) · \(Bundle.main.object(forInfoDictionaryKey: "SoftmaxReleaseChannel") as? String ?? "development")\nRuntime: not connected" }
@@ -74,7 +74,7 @@ struct AboutView: View {
                 }
                 DisclosureGroup("Licences and acknowledgements", isExpanded: $licenses) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Softmax and Coglet — see the repository licence. Sparkle — MIT licence. Full licence texts ship with this app.")
+                        Text("Sparkle — MIT licence and third-party notices. Full Sparkle licence texts ship with this app. Softmax and Coglet source is available from the repository.")
                         Link("Sparkle licence", destination: URL(string: "https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE")!)
                         if let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt") { Link("Read bundled licences", destination: url) }
                     }.padding(.top, 8)

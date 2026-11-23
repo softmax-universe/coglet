@@ -21,3 +21,12 @@ for source in sorted((root / 'Design/MenuBar').rglob('*18@1x.svg')):
         'properties': {'preserves-vector-representation': True, 'template-rendering-intent': 'template'}
     }, indent=2) + '\n')
 print('Compiled AppIcon and native menu template PDFs.')
+for source in sorted((root / 'Design/Onboarding').glob('*.svg')):
+    target = assets / f'onboarding-{source.stem}.imageset'
+    target.mkdir(exist_ok=True)
+    cairosvg.svg2pdf(url=str(source), write_to=str(target / 'artwork.pdf'))
+    (target / 'Contents.json').write_text(json.dumps({
+        'images': [{'idiom': 'universal', 'filename': 'artwork.pdf'}],
+        'info': {'author': 'xcode', 'version': 1},
+        'properties': {'preserves-vector-representation': True, 'template-rendering-intent': 'original'}
+    }, indent=2) + '\n')

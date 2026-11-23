@@ -6,6 +6,22 @@ import SoftmaxCore
 /// fixtures, no TCC, capture, updater, persistence or network side effects.
 @MainActor enum DesignSnapshots {
     static func run(to directory: String) throws {
+        // Asset compilation and precedence are acceptance assertions, not visual guesses.
+        for state in MenuPresentation.allCases {
+            let names = ["menu-\(state.rawValue)"] + ([MenuPresentation.listening, .speaking].contains(state) ? (0..<4).map { "menu-\(state.rawValue)-\($0)" } : [])
+            for name in names {
+                guard let image = NSImage(named: name), image.isTemplate, image.size.width == 18, image.size.height == 18 else {
+                    throw CocoaError(.fileReadCorruptFile, userInfo: [NSLocalizedDescriptionKey: "Missing or invalid native template: \(name)"])
+                }
+            }
+        }
+        for activity in [AppState.listening, .speaking, .thinking] {
+            guard MenuPresentation.resolve(activity: activity, hasError: true, hubConnected: false, updateAvailable: true).rawValue == activity.rawValue else { throw CocoaError(.validationMultipleErrors) }
+        }
+        guard MenuPresentation.resolve(activity: .idle, hasError: true, hubConnected: false, updateAvailable: true) == .error,
+              MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: false, updateAvailable: true) == .offline,
+              MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: true, updateAvailable: true) == .update,
+              MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: true, updateAvailable: false) == .idle else { throw CocoaError(.validationMultipleErrors) }
         let root = URL(fileURLWithPath: directory, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var manifest: [String] = []
@@ -46,6 +62,10 @@ import SoftmaxCore
                     model.permissions = PermissionSnapshot(microphone: permission, inputMonitoring: permission)
                     try capture("onboarding-voice-\(permission.rawValue)", NSSize(width: 620, height: 500), OnboardingView(model: model, openSettings: {}, finish: {}, step: 1))
                 }
+                for status in [LoginItemStatus.disabled, .enabled, .requiresApproval, .unavailable, .unknown] {
+                    model.loginItem = status
+                    try capture("onboarding-login-\(status.rawValue)", NSSize(width: 620, height: 500), OnboardingView(model: model, openSettings: {}, finish: {}, step: 2))
+                }
                 for tab in SettingsTab.allCases {
                     model.selectedTab = tab
                     try capture("settings-\(tab.rawValue.lowercased())", NSSize(width: 760, height: 540), SettingsView(model: model))
@@ -60,7 +80,17 @@ import SoftmaxCore
                 }
                 let host = FaceHost(shell: model)
                 try capture("face-idle", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                for (name, state) in [("listening", FaceState.listening(level: 0.4)), ("thinking", .thinking), ("speaking", .speaking(level: 0.4))] {
+                    host.driver.setState(state)
+                    try capture("face-\(name)", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                }
+                for expression in ["happy", "concerned"] {
+                    host.driver.setState(.idle)
+                    try host.driver.setExpression(expression, intensity: 1000, durationMS: 60000)
+                    try capture("face-\(expression)", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                }
                 try capture("about", NSSize(width: 420, height: 420), AboutView())
+                try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
             }
         }
         try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))

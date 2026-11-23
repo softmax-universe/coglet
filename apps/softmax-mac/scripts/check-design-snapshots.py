@@ -7,19 +7,21 @@ comparison context only, never accepted as native references.
 import argparse
 import json
 from pathlib import Path
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageStat
 
 ROOT = Path(__file__).resolve().parents[1]
 
 def expected_keys():
     names = [f'onboarding-{i}' for i in range(3)]
     names += ['onboarding-voice-' + s for s in ['notDetermined', 'restricted', 'denied', 'granted', 'notGranted', 'unknown']]
+    names += ['onboarding-login-' + s for s in ['disabled', 'enabled', 'requiresApproval', 'unavailable', 'unknown']]
     for tab in ['general', 'hotkey', 'audio', 'hub', 'coglets', 'updates', 'privacy']:
         names += [f'settings-{tab}', f'settings-{tab}-large']
     names += ['hud-' + s for s in ['idle', 'listening', 'thinking', 'speaking', 'cancelled', 'microphone-denied', 'offline', 'error']]
     for state in ['idle', 'listening', 'thinking', 'speaking', 'offline', 'update', 'error']:
         names += ['menu-' + state, 'template-' + state]
-    names += ['face-idle', 'about']
+    names += ['face-' + s for s in ['idle', 'listening', 'thinking', 'speaking', 'happy', 'concerned']]
+    names += ['about', 'about-licenses']
     return {theme + '-' + n for theme in ['light', 'dark', 'light-contrast', 'dark-contrast'] for n in names}
 
 def compare(actual, baseline, output):
@@ -35,6 +37,8 @@ def compare(actual, baseline, output):
         if not (actual / (key + '.png')).exists():
             errors.append(f'{key}: missing actual'); continue
         new = Image.open(actual / (key + '.png')).convert('RGB')
+        if max(ImageStat.Stat(new).var) < 0.5:
+            errors.append(f'{key}: blank or uniform native render')
         if (baseline / (key + '.png')).exists():
             old = Image.open(baseline / (key + '.png')).convert('RGB')
             if old.size != new.size:

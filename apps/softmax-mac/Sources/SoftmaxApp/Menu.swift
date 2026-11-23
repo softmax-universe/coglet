@@ -48,6 +48,7 @@ struct MenuTemplate: View {
 
 struct SoftmaxMenuView: View {
     @ObservedObject var model: ShellModel
+    @Environment(\.dismiss) private var dismiss
     var showFace: () -> Void
     var showChat: (Bool) -> Void
     var settings: () -> Void
@@ -60,14 +61,15 @@ struct SoftmaxMenuView: View {
             Text("Push-to-talk: \(model.hotkeyName)")
             Text("Hub disconnected · no hub configured")
             Text("Local runtime: not connected")
+            if model.updates.updateAvailable { Text("Update available · install from Updates") }
             Divider()
-            Button("Open Face", action: showFace)
-            Button("Open Chat") { showChat(false) }
-            Button("Open Voice") { showChat(true) }
+            Button("Open Face") { dismiss(); showFace() }
+            Button("Open Chat") { dismiss(); showChat(false) }
+            Button("Open Voice") { dismiss(); showChat(true) }
             Divider()
-            Button("Settings…", action: settings).keyboardShortcut(",")
+            Button("Settings…") { dismiss(); settings() }.keyboardShortcut(",")
             Button("Check for Updates…") { model.updates.checkForUpdates() }.disabled(!model.updates.enabled)
-            Button("About Softmax", action: about)
+            Button("About Softmax") { dismiss(); about() }
             Divider()
             Button("Quit Softmax", action: quit).keyboardShortcut("q")
         }.buttonStyle(.borderless).padding(SoftmaxDesignTokens.spacing[3])
@@ -77,6 +79,6 @@ struct SoftmaxMenuView: View {
 
 extension ShellModel {
     var menuPresentation: MenuPresentation {
-        MenuPresentation.resolve(activity: state, hasError: message != nil, hubConnected: false, updateAvailable: false)
+        MenuPresentation.resolve(activity: state, hasError: message != nil, hubConnected: false, updateAvailable: updates.updateAvailable)
     }
 }

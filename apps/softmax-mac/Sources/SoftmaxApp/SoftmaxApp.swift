@@ -145,12 +145,14 @@ final class ShellModel: ObservableObject {
         didSet { if !testing { orbPreferences.isEnabled = orbEnabled } }
     }
     private let orbPreferences = OrbPreferences()
+    private var updateSubscription: AnyCancellable?
 
     init() {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
         machine = AppStateMachine(onboardingComplete: !testing && UserDefaults.standard.bool(forKey: "onboardingComplete"))
         refreshPermissions()
         orbEnabled = !testing && orbPreferences.isEnabled
+        updateSubscription = updates.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     func refreshPermissions() {

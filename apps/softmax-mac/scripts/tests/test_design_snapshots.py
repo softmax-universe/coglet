@@ -29,7 +29,9 @@ class SnapshotGateTests(unittest.TestCase):
             try:
                 (actual / 'manifest.json').write_text(json.dumps(['test-unit-fixture']))
                 for directory in (actual, baseline):
-                    Image.new('RGB', (10, 10), 'white').save(directory / 'test-unit-fixture.png')
+                    image = Image.new('RGB', (10, 10), 'white')
+                    image.putpixel((0, 0), (0, 0, 0))
+                    image.save(directory / 'test-unit-fixture.png')
                 self.assertTrue(gate.compare(actual, baseline, root / 'out'))
                 Image.new('RGB', (10, 10), 'black').save(actual / 'test-unit-fixture.png')
                 self.assertFalse(gate.compare(actual, baseline, root / 'out'))

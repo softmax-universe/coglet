@@ -32,7 +32,9 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
                 TextField("Search settings  ⌘K", text: $query).focused($searchFocused)
-                    .accessibilityLabel("Search settings").onSubmit { if let tab = tabs.first { model.selectedTab = tab } }
+                    .accessibilityLabel("Search settings").onSubmit {
+                        if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
+                    }
                     .onMoveCommand { direction in
                         guard !tabs.isEmpty else { return }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
@@ -42,7 +44,8 @@ struct SettingsView: View {
                 Text("\(tabs.count) sections").font(.system(size: SoftmaxDesignTokens.fontCaption))
                 ForEach(tabs) { tab in
                     Button { model.selectedTab = tab } label: {
-                        Text(tab.rawValue).frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 6)
+                        Text(tab.rawValue).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+                            .background(model.selectedTab == tab ? Color.accentColor.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl))
                     }.buttonStyle(.borderless)
                         .fontWeight(model.selectedTab == tab ? .semibold : .regular)
                         .accessibilityAddTraits(model.selectedTab == tab ? .isSelected : [])
@@ -135,6 +138,8 @@ struct OnboardingView: View {
             Text("\(step + 1) of 3").font(.system(size: SoftmaxDesignTokens.fontCaption))
             Text(titles[step]).font(.system(size: SoftmaxDesignTokens.fontDisplay, weight: .semibold))
             ScrollView {
+                Image("onboarding-\(["welcome", "permissions", "hub"][step])").resizable().scaledToFit()
+                    .frame(height: 100).frame(maxWidth: .infinity).accessibilityHidden(true)
                 DesignGroup {
                     switch step {
                     case 0:
@@ -142,6 +147,8 @@ struct OnboardingView: View {
                         Text("Softmax lives in your menu bar. Face stays nearby when you need it, out of the way when you don’t.")
                         Text("Microphone and global shortcut access are optional. You choose when audio is live.")
                     case 1:
+                        Text("Let Softmax hear you.").font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
+                        Text("Microphone access is used when you hold to talk. Release the shortcut to send. No always-on listening in v1.")
                         MicrophoneControls(model: model)
                         Divider()
                         Text("Input Monitoring lets Right Option activate push-to-talk outside Softmax. Typed text is not retained.")
