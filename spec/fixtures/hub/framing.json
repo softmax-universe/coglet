@@ -1,0 +1,38 @@
+[
+  {
+    "name": "short-prefix",
+    "hex": "0000"
+  },
+  {
+    "name": "zero-length",
+    "hex": "00000000"
+  },
+  {
+    "name": "oversize-prefix",
+    "hex": "00100001"
+  },
+  {
+    "name": "truncated-body",
+    "hex": "00000002a0"
+  },
+  {
+    "name": "trailing-frame",
+    "hex": "00000001a000"
+  },
+  {
+    "name": "indefinite-map",
+    "hex": "00000002bfff"
+  },
+  {
+    "name": "byte-string",
+    "hex": "0000000140"
+  },
+  {
+    "name": "non-shortest-int",
+    "hex": "000000021800"
+  },
+  {
+    "name": "duplicate-key",
+    "hex": "00000007a2616101616102"
+  }
+]

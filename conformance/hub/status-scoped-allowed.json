@@ -1,0 +1,30 @@
+{
+  "name": "status-scoped-allowed",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.status-scoped-allowed",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.status",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000029",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "ticket": "66666666666666666666666666666666"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000029",
+        "result.state": "stopped"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "inbox-boundary-queued",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.inbox-boundary-queued",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.inbox",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000f",
+        "timeout_ms": 2000,
+        "params": {
+          "message": {
+            "id": "ffffffffffffffffffffffffffffffff",
+            "sender": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "event": {
+              "source": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {
+                "text": "hello\nworld"
+              },
+              "correlation_id": "ffffffffffffffffffffffffffffffff"
+            }
+          },
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000f",
+        "result.state": "queued"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.cancel",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000001b",
+        "timeout_ms": 2000,
+        "params": {
+          "operation_id": "0000000000000000000000000000000f"
+        },
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000001b",
+        "result.state": "cancelled"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "fetch-logs-equal-conflict",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.fetch-logs-equal-conflict",
+    "hub.reverse-fetch-observer"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "00000000000000000000000000000030",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000030",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    },
+    {
+      "match": {
+        "method": "hub.git.fetch",
+        "params.ref": "refs/heads/logs",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "transfer",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size": 862,
+        "sha256": "309d5d08021bfd7bbd468c24acade3ba62f6d795c491e7b94430fcfc317629a6",
+        "update": {
+          "statement": {
+            "purpose": "logs-ref",
+            "hub": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+            "generation": 3,
+            "ref": "refs/heads/logs",
+            "old": "8a4d27705e9443df09a9409a589442036672ffa4",
+            "new": "3a8949dcd1db1d520f0e62b722f4ca6d88a12e88",
+            "archive_sha256": "960f071f85a690c7843ad057961511c5f2e205558023a37c23fd520bd0e4ffe8"
+          },
+          "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "signature": "93aa8f258591a0b95bdbdfe49f3f5184a161032bd35b687e115f7ebb42e1b70de7a777fc4d874dc0acee5def2ff1863f3c4df877b8884e10cb0bb2c1dfa3970a"
+        }
+      },
+      "stream": 100,
+      "finish": false
+    }
+  ]
+}

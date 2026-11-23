@@ -1,0 +1,34 @@
+{
+  "name": "publish-rewrite-failure-no-promotion",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.publish-rewrite-failure-no-promotion",
+    "hub.publish-rewrite-oracle"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "00000000000000000000000000000033",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000033",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

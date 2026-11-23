@@ -1,0 +1,101 @@
+{
+  "name": "fetch-logs-catch-up",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.fetch-logs-catch-up",
+    "hub.reverse-fetch-observer"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "0000000000000000000000000000002e",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000002e",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    },
+    {
+      "match": {
+        "method": "hub.git.fetch",
+        "params.ref": "refs/heads/logs",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "transfer",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size": 862,
+        "sha256": "309d5d08021bfd7bbd468c24acade3ba62f6d795c491e7b94430fcfc317629a6",
+        "update": {
+          "statement": {
+            "purpose": "logs-ref",
+            "hub": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+            "generation": 3,
+            "ref": "refs/heads/logs",
+            "old": "19cbb3cab4cdfb54fcf8a95839ccf42c9d537bb6",
+            "new": "3a8949dcd1db1d520f0e62b722f4ca6d88a12e88",
+            "archive_sha256": "960f071f85a690c7843ad057961511c5f2e205558023a37c23fd520bd0e4ffe8"
+          },
+          "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "signature": "0418cfc309f37cfac34b542cbe31e5abdb9c05cc851983bdd202fd71811306e9817180946a4e39ba956ef60f1a088311806e927fd8c441c95ab76071c741b90f"
+        }
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "match": {
+        "type": "credit",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 862
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "chunk",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offset": 0,
+        "hex": "23207632206769742062756e646c650a3361383934396463643164623164353230663065363262373232663463613664383861313265383820726566732f68656164732f6c6f67730a0a5041434b000000020000000c9c0e789c9d8d4b0ac2301400f73945f6a2e4ff011157dee3e5e545036d53622a3dbe056fe0ac6633cce8445cda22293a991d5088def910add72e25873e3a15c04a2345f16c854ecbe032624a1a2119cc255953b0048836e888588cc298adf647cd601bafd6f9a3ee63ebc4afe52777da615e27bad4e50353cd372e8fa952d609c14fe280619be73a06fd15b3a93ddfe74e853f69a10ea3b6856bf6055734494a9c0e789c9d8b4d0ac2301484f73945f6a23c5fd3fc80882bef9136931a689b1253e9f10d78036731cc07f3d50248688cb0ecd8c0f108edb4725d88c360ec3590e21022732488cd17ac555aaf021b433d9c52ed48ce3bd5aab78d993aad0dc7e895f07b7de5229fe9a87b81bcc5df78e0f0cb36e392d68f9f53b8cbab690af79a489ea8458c795952adf84b16739edee7822827ac28bea6bc4a165f0b704884e803801f789c7bc3b88751b7a4283555c120cd2431c538313939d5c034d1d8c0d2c8d8dc3c29c522c5d0c0c8d8382929d120d1d8d2d0c4c270626c2f93211700ef1f102eaf01789c33310002859cfcf46286bd5eebb285df5678ca3b6deb9f37cd94efd3e9984500aa910c83a702789c33343030333151484a2c49ced0cb2acecfcb61705cda1669eaddc12e11f8c2f0c5b7df1153fa7c370300fe6a0f4fb603789cab564a4fcd4b2d4a2cc9cccf53b25230ace5aa461531c21031aee50200ffa711fbaf01789c33310002859cfcf462064d818301bb7d6ca45f242fc8586037ede3553bffb300a0a00c59a702789c33343030333151484a2c49ced0cb2acecfcb61b85b2b39293cfecd279d70491d75cdc8931bcdb7db030004070e57b402789cab564a4fcd4b2d4a2cc9cccf53b25230ace5aa461531aae50200e9370bfcaf01789c33310002859cfcf46286d8f2cb5a85bedc266d0715db3904779a5db050d80800973c0a68a702789c33343030333151484a2c49ced0cb2acecfcb61f0af290c893d756155e75fa3d7370beb9716356445000016a8109cb201789cab564a4fcd4b2d4a2cc9cccf53b25230ace502003eb505feee0fa3dd95755a186d7d1804d5ab620d4e2c3184"
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "send": {
+        "type": "end",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "send": {
+        "type": "reply",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "result": {}
+      },
+      "stream": 100,
+      "finish": true
+    }
+  ]
+}

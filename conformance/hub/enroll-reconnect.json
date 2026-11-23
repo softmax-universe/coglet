@@ -1,0 +1,33 @@
+{
+  "name": "enroll-reconnect",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.enroll-reconnect"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "00000000000000000000000000000003",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000003",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

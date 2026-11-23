@@ -1,0 +1,101 @@
+{
+  "name": "fetch-published-identical",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.fetch-published-identical",
+    "hub.reverse-fetch-observer"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "0000000000000000000000000000002b",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000002b",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    },
+    {
+      "match": {
+        "method": "hub.git.fetch",
+        "params.ref": "refs/published/main",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "transfer",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size": 1184,
+        "sha256": "b5d40d17598229404c0ab122d7957a5136294e6f4301b675db6c0a99b2392d92",
+        "update": {
+          "statement": {
+            "purpose": "published-ref",
+            "hub": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+            "generation": 3,
+            "ref": "refs/published/main",
+            "old": "13c06d56ade83bd770dc7498d4f37d10f0daf2c7",
+            "new": "263ed7f883254cd830e16f67d2d25ec711c30def",
+            "archive_sha256": "094ac9ae11d5f30b96e04de164fbf3861761b4dc41556961eccbf370c91d04e1"
+          },
+          "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "signature": "3a04a7845b738c47a36507261a14086efa331f709a328dd08aaddd4f9750753e36edb707134476c865ec406695b69615b91c19ab635fd2f853c1a232c4ca2e06"
+        }
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "match": {
+        "type": "credit",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bytes": 1184
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "chunk",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "offset": 0,
+        "hex": "23207632206769742062756e646c650a3236336564376638383332353463643833306531366636376432643235656337313163333064656620726566732f7075626c69736865642f6d61696e0a0a5041434b000000020000000d910f789c9dcb4d0ec2201040e13da7606f340394a14d8c71e53d0666b024fd0b52d3e36be20d7cab6ff35a15d1c3c06cc1210c94a0cfd613067626093b34883db9e82592571b55599a362e01b24762e95de4108053e8869ebbec021bc8c0946d0a8af636ae553fcad1f62afa9a7fb8cb41f336c9a52c6f9a0adfb40918acf508a04ff04da5759e4b6bf2d7acb63d4ee5350a9fab64fd94452ab5b22edaa90fe61a4b58910f789c9dcb3d0e02211040e19e53d01b0d033302893156de63805925d9bf206bf6f89a78035ff535af37112d390d143d404426ef18a2436782c4120cdac40e0152e6a4566e32774d2122e6429eb9989c1d0594211078281420201a4b399357bcf5e7d2f4bdee7d6ba22fc30f37d9795a4739d5f9cd632d570dfeecada5b331fa60bea9bc4c53ed5dfe9ad5baa5b1be9e528e4d06fd90591af7baccdaaa0f2bc94a38e8038023789cfbc8789051b7a428355521cddcc82cc938c5c4d43035d1dcccc43231d1d4c4282539d5c4cc3239c5c4d8dcd424c53031d1207962ec2426432e00ec6f108ba206789c3331000285a4cc3c86ab0913ce9e603df1bf5725e1aacb045e1fa6ec2b574d20b2a59939290c6dc76e3faa548cee7ec6743a6dea3c6fb53fefa59d0d0d0ccc4c4c147213f332d3528b4b181c97b6459a7a77b04b04be307cf1ed77c4943edfcd0096e8289fa502789c33343030333151282e492dd02b4f2cce65b8f167d205a5df5f2eb2eb2eac3ef1a0852164abec1d0010b8108838789c63482cce65646060000007860143ab02789c333430303331512828ca2f4bcd4bcc4b4ed54b4eca2f6278a92a7fa8eac492d44b4c8797cd31591994652c6205004fe51082bd1d789cad904b8e1b310c44af9355c09f2869979b1824454d1a70bb8db6939939d15c73948d4f900dc145e1a15e7dbdfdcdf3b11db7809fb8df8feb169f97c76fa3a21fbf668b0659a435afd8d2ca3ade801c88b1428ea49293b355500ee4d68d01a11a1169a4ef67c676cf172f81a13541642e1d86e0e861d6aad50c5081a9c3b25802cae843cb8ab2716f3cada8a9ef8fe3cf19798963dfb7e7c70f95cad549da24f22e520ab213a00d489891ca2ada818fe3dcdeb69b5d5f4d3a9b88bb778d5a90969704ac46b5af07854b4322fb271461a804c53165c08832bb54bd9ff97e6ecf67defe1ff279daed318f737f217904a95b5d21f7298395c2c2aac280a59eb517f4351447ac0da9d7e269d0ca70ae9d04bf01603f8c26b603789cab564a4fcd4b2d4a2cc9cccf53b25230ace5aa461531c21031aee50200ffa711fbe901831e789c4b4a9ae02772b756725278fc9b4f3ae1923aea9a9127379a6fb7070088180a68b402789cab564a4fcd4b2d4a2cc9cccf53b25230ace5aa461531aae50200e9370bfce9018366789c4b4a9ae027e25f5318127beac2aacebf46af6f16d62f2d6ac88a00009ab90cadb201789cab564a4fcd4b2d4a2cc9cccf53b25230ace502003eb505fe78479f4aa85a1a08948cc0850543b9883c998307"
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "send": {
+        "type": "end",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "stream": 100,
+      "finish": false
+    },
+    {
+      "send": {
+        "type": "reply",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "result": {}
+      },
+      "stream": 100,
+      "finish": true
+    }
+  ]
+}

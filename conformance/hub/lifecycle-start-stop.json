@@ -1,0 +1,86 @@
+{
+  "name": "lifecycle-start-stop",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.lifecycle-start-stop",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.start",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000006",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000006",
+        "result.state": "applied"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.status",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000007",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000007",
+        "result.state": "running"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.stop",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000008",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000008",
+        "result.state": "applied"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.status",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000009",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000009",
+        "result.state": "stopped"
+      },
+      "within_ms": 2000
+    }
+  ]
+}
