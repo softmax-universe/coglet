@@ -156,6 +156,13 @@ final class SoftmaxUITests: XCTestCase {
             let palette = app.descendants(matching: .any).matching(identifier: "Softmax Commands").firstMatch
             XCTAssertTrue(palette.waitForExistence(timeout: 5))
             let scroll = palette.scrollViews.firstMatch
+            // AX includes the native bezel's 1pt outsets above and below the
+            // explicit SwiftUI layout frame (25/35pt); assert both scale anchors.
+            let expectedSearchHeight: CGFloat = scale == "1.0" ? 27 : 37
+            let search = palette.textFields["Search commands and settings"]
+            XCTAssertTrue(search.exists)
+            XCTAssertEqual(search.frame.height, expectedSearchHeight, accuracy: 0.5,
+                           "Command search must use the reviewed scale-specific height")
             // Keyboard input only: clicking a row would auto-scroll and hide the regression.
             for _ in 0..<10 { palette.typeKey(.downArrow, modifierFlags: []) }
             let last = palette.buttons["About Softmax"]
@@ -178,6 +185,10 @@ final class SoftmaxUITests: XCTestCase {
             XCTAssertTrue(scroll.frame.contains(filtered.frame), "Filtering from the bottom must reveal the first match")
             palette.typeKey(.return, modifierFlags: [])
             XCTAssertTrue(app.windows["Softmax Settings"].buttons["Refresh Permissions"].waitForExistence(timeout: 5))
+            let settingsSearch = app.windows["Softmax Settings"].textFields["Search settings"]
+            XCTAssertTrue(settingsSearch.exists)
+            XCTAssertEqual(settingsSearch.frame.height, expectedSearchHeight, accuracy: 0.5,
+                           "Settings filter must share command search geometry")
             app.terminate()
         }
     }
