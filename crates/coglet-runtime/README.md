@@ -13,6 +13,8 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - pending actions and terminal receipt boundary validation, preserving lifetime IDs;
 - deterministic heard-state validation, monotonic alignment and reserved path protection;
 - trailing boundary seals (including zero-step exports) and offline boundary replay.
+- shared binding-checked surface negotiation, bounded replies and health/inactivity;
+- real embedded C ABI and Linux UID-authenticated private Unix socket framing.
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
@@ -27,6 +29,7 @@ cargo test -p coglet-runtime
 cargo clippy -p coglet-runtime --all-targets -- -D warnings
 cargo fmt -p coglet-runtime -- --check
 python3 crates/coglet-runtime/tools/check-primary-abi.py
+python3 crates/coglet-runtime/tools/check-surface.py
 ```
 
 The launcher runs the unmodified `conformance/abi/cases.json` corpus through the
@@ -49,11 +52,13 @@ fails. No recorded output files or return values are fed into guest execution.
   exist, but those language-neutral profiles have not been implemented).
 - Complete pending-action/outbox lifecycle, including surface-specific source binding,
   crash-durable byte-identical mapped dispatch/reconnect reconciliation.
-- The common surface state machine, catalog/grant enforcement, clock mapping,
-  health/kill/disconnect, private authenticated Unix socket, and embedded C ABI.
-- Native pointer/buffer/queue probes and both transport harness runs.
-- `cogletd` production server mode (only `--version` and the explicit data-only
-  `--mock-stdio` adapter exist; unsupported invocation fails closed).
+- Operational surface state machine: trusted catalog/grant enforcement, private
+  events, reads, receipts and clock mapping. Negotiation and stopped health are
+  implemented; all operational input currently fails closed with unavailable.
+- Close/disconnect with pending real native I/O: native pointer/buffer/backpressure
+  and heartbeat probes exist, but no operational native I/O can be admitted yet.
+- `cogletd` production server mode. Only --version, --mock-stdio and the explicit
+  --surface-probe-socket negotiation shell exist; ordinary invocation fails closed.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
   Recovery checks all code files, pending-ledger membership, inbox wake indices,
   trace identity and journal head/chain, but not a full reconstruction of all host
@@ -82,3 +87,32 @@ it to empty; future trace import must require the complete header explicitly.
 The shared source sequence persists in service state and advances for committed
 runtime-source events and receipt appends. Fresh fixture setup starts at zero;
 production restart/segment transfer must retain the full lifetime source metadata.
+
+## Native surface boundary (negotiation gate only)
+
+`cargo build -p coglet-runtime --lib` produces static and shared libraries.
+`include/coglet_runtime.h` exposes the frozen coglet_surface_open/send/recv/close
+signatures plus runtime-owned `coglet_runtime_configure(config,n)`. Before open,
+trusted application code configures UTF-8 JSON with `surface` and
+`permitted_coglets`. Configuration is immutable per process, identical retries
+are idempotent, and hello supplies no authentication. Handle calls must be
+serialized and recv polled at least once per second on the non-audio control
+queue. No calls after close. Unsupported operations cannot acquire authority.
+
+On Linux, `cogletd --surface-probe-socket ABSOLUTE_PATH BINDING_JSON PEER_UID`
+serves the same negotiation shell. The parent directory must be owned mode0700
+(or is created mode0700), the socket is0600, and SO_PEERCRED must match the
+supervisor-configured peer UID. Ancestors must be supervisor-trusted; existing
+socket paths are never unlinked. This mode is NOT the production runtime daemon.
+
+`check-surface.py` stages unchanged original surface cases whose peer_role is
+surface (the harness plays a surface, runtime is under test). **All current
+runtime-side cases are negotiation-only**: two cases over each real transport,
+four passes with zero skips. It verifies the fresh JUnit inventory, and compiles
+and runs `tests/native_surface.c` against the actual shared library. Native probes
+cover null/unsupported open, copied input lifetime, size query, short-buffer
+nondequeue, exact read, would-block/n=0, bounded-send no-effect, malformed input,
+close, unsolicited heartbeat and stale-link timeout. Rust tests cover hostile
+binding/lifecycle/profile, framing, UID denial, path permissions and idle socket
+heartbeats. These tests do not qualify unimplemented grant/private-event/dispatch
+semantics merely because the present two-case runtime-side corpus passes.

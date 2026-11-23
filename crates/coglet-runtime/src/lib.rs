@@ -1,16 +1,21 @@
 //! Product-neutral runtime. Guest code never receives native surface handles.
 mod boundary;
 mod execution;
+pub mod ffi;
 mod filesystem;
 mod heard;
 mod host;
 mod journal;
 mod router;
+#[cfg(target_os = "linux")]
+pub mod socket;
+mod surface;
 pub use execution::{Engine, EngineReport, MockEngine, Runtime, RuntimeService};
 pub use filesystem::{Snapshot, digest, valid_path};
 pub use host::{EffectLedger, StepHost};
 pub use journal::DurableStore;
 pub use router::Router;
+pub use surface::{SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
 
 use serde_json::Value;
 

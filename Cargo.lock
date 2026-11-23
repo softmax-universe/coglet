@@ -141,6 +141,7 @@ version = "0.1.0"
 dependencies = [
  "coglet-types",
  "hex",
+ "libc",
  "serde",
  "serde_json",
  "sha2",
