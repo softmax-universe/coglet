@@ -52,25 +52,52 @@ fresh invitations; **redirect it into a private file, not logs**. Windows defaul
 closed when no peers are configured, otherwise bootstrap enrollment lasts 60s.
 Revocation/provisioning are local Kernel APIs. Restart closes old invite windows.
 
+## Recovery and local adapters exercised
+
+- Action attempts reconcile `hub.receipt` in the exact original actor/ticket/target
+  scope, never replaying an ambiguous action. Unknown effects have a durable
+  `unavailable` result with explicit details; applied/queued receiver receipts are
+  returned as receipts, not invented action-accepts. Concurrent live duplicates
+  are backpressured rather than racing receipt lookup before remote admission.
+- A short synchronous fence covers each transport-future poll. Revocation and
+  ticket termination share that fence, wake/cancel pending dispatch, and never
+  wait for a peer's network reply. A real-wire test stalls A while dispatching B,
+  admits an outcome which overtakes accept, and revokes A within bounded time.
+- Permanent exact actor/ticket tombstones cancel retained unapplied deliveries
+  transactionally with audit. Already attempted effects cannot be undone.
+- Registry provisioning first commits an audited exact intent. Registry/audit
+  failure is fail-closed and repaired by an identical retry after restart; malformed
+  initial proofs cannot poison an identity. Authority remains the binding owner.
+- Accepted health uses a hub-local monotonic timestamp, not peer uptime. Status
+  degrades after 30 seconds, disconnects on final transport loss, and boots
+  disconnected. Tokens distinguish concurrent/replacement connections. Cleanup
+  has reserved bounded capacity, so bulk request saturation cannot drop it.
+- Trusted local `event_deliveries`/`ack_events` expose stable target-scoped tokens;
+  ack is permitted only after the consumer's durable commit. Action outcomes are
+  retained/deduped for the identity lifetime, independently of queue consumption.
+- The binary now holds an exclusive state lock and publishes a fully fsynced key
+  through atomic rename. A subprocess smoke checks serve startup, concurrent-owner
+  refusal, SIGINT shutdown, and stable-identity reopening.
+
 ## Not ready to land — remaining work
 
-An early independent source review found integration gaps; it is not approval:
+The early independent review and focused WIP review are **not ship approval**.
+Remaining same-card acceptance work:
 
-1. Ambiguous action attempts are fenced against blind replay, but must gain
-   explicit receipt reconciliation and durable unavailable/unknown-effect results.
-2. The current dispatch path holds a global async boundary lock across network
-   I/O. Replace it with short admission fencing and revocation-aware cancellation;
-   prove stalled peer A cannot delay revocation or peer B.
-3. Registration commits Authority's delegation before kernel registry/audit.
-   Add an explicit recoverable provisioning transaction/intent so a registry or
-   audit failure cannot leave an unrepairable half-registration.
-4. Complete health elapsed-time degradation/disconnection observations, ticket
-   termination and queued-action cancellation, negative forged-outcome coverage,
-   and local adapter exposure of acknowledged queue delivery.
-5. Hardening/recovery tests, final independent exact-head review, green CI and
-   merged PR are still required. No final acceptance or production-readiness claim.
+1. Explicit operator recovery for a pending provisioning intent whose delegation
+   expires during a crash gap. Identical nonexpired recovery is covered, but a
+   corrected higher-generation delegation currently conflicts. Do not silently
+   replace authority; use Authority's operator-only strict-generation API.
+2. Additional hardening: first-write/expiry/revocation races, scoped ticket ending
+   during an in-flight action, queued/failed/cancelled receipt recovery and restart,
+   late outcomes after unknown-effect termination, audit-atomic cancellation,
+   unmapped/overflowed deadlines, and private speech cross-target negatives.
+3. Review ambiguous-action receipt semantics against the frozen protocol before
+   claiming full action conformance. Current conformance claim remains only the
+   10 unchanged event-kernel cases above; no scheduler/Git/runtime/mock claim.
+4. Final independent exact-head review, current-main rebase, green CI, merged PR,
+   and the card's final review handoff remain required.
 
-The initial review's missing action-outcome admission and permanently saturating
-pending event store were fixed test-first. The other findings remain open above.
 Full scheduler/Git/reference+mock integration stays with the producer-split owners
 listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
+

@@ -30,21 +30,41 @@ struct Peer {
     device: String,
     grants: Vec<Grant>,
 }
-fn identity(root: &Path) -> Result<SecretKey, Box<dyn std::error::Error>> {
+fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Error>> {
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     fs::create_dir_all(root)?;
+    if !fs::symlink_metadata(root)?.is_dir() {
+        return Err("state directory must not be a symlink".into());
+    }
     // The containing directory protects SQLite, journals and local provisioning.
     fs::set_permissions(root, fs::Permissions::from_mode(0o700))?;
+    let lock_path = root.join("hub.lock");
+    if let Ok(meta) = fs::symlink_metadata(&lock_path)
+        && (!meta.is_file() || meta.permissions().mode() & 0o077 != 0)
+    {
+        return Err("hub.lock must be a private regular file".into());
+    }
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(lock_path)?;
+    lock.try_lock()?;
     let path = root.join("hub.key");
     if !path.exists() {
         let key = SecretKey::generate();
+        let staging = root.join(format!(".hub.key.{}.pending", key.public()));
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
             .mode(0o600)
-            .open(&path)?;
+            .open(&staging)?;
         file.write_all(hex::encode(key.to_bytes()).as_bytes())?;
         file.sync_all()?;
+        fs::rename(staging, &path)?;
+        fs::File::open(root)?.sync_all()?;
     }
     let meta = fs::symlink_metadata(&path)?;
     if !meta.is_file() || meta.permissions().mode() & 0o077 != 0 {
@@ -53,7 +73,7 @@ fn identity(root: &Path) -> Result<SecretKey, Box<dyn std::error::Error>> {
     let bytes: [u8; 32] = hex::decode(fs::read_to_string(path)?)?
         .try_into()
         .map_err(|_| "invalid identity key")?;
-    Ok(SecretKey::from_bytes(&bytes))
+    Ok((SecretKey::from_bytes(&bytes), lock))
 }
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let root = Path::new(&args[2]);
-    let key = identity(root)?;
+    let (key, _state_lock) = identity(root)?;
     if args[1] == "identity" {
         println!("{}", json!({"hub":key.public().to_string()}));
         return Ok(());
@@ -123,7 +143,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tasks.spawn(async move {
                     let _permit=permit;
                     if let Ok(Ok(connection))=tokio::time::timeout(Duration::from_secs(10),incoming).await
-                        && let Ok(session)=Session::new(connection,local,Role::Hub) { let _=session.serve(Arc::new(kernel)).await; }
+                        && let Ok(session)=Session::new(connection,local,Role::Hub) {
+                            let peer=session.peer();
+                            if let Ok(token)=kernel.transport_connected(peer).await {
+                                let _=session.serve(Arc::new(kernel.clone())).await;
+                                let _=kernel.transport_disconnected(peer,token).await;
+                            }
+                        }
                 });
             }
         }

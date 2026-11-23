@@ -1,6 +1,6 @@
 use std::process::Command;
 #[test]
-fn binary_initializes_private_stable_identity_and_serves_metadata() {
+fn binary_initializes_private_stable_identity() {
     let dir = tempfile::tempdir().unwrap();
     let binary = env!("CARGO_BIN_EXE_coglet-hub");
     let first = Command::new(binary)
