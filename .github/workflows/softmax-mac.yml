@@ -1,0 +1,48 @@
+name: Softmax Mac
+on:
+  push:
+    branches: [main, feat/softmax-mac-shell]
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', '.github/workflows/softmax-mac.yml']
+  pull_request:
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', '.github/workflows/softmax-mac.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: softmax-mac-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test portable core
+        run: swift test --package-path apps/softmax-mac
+      - name: Test dev identity pinning (fake keychain, not TCC)
+        run: python3 apps/softmax-mac/Tests/test_dev_signing.py
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: apps/softmax-mac
+        run: xcodegen generate
+      - name: Build and test app (unit + UI smoke)
+        working-directory: apps/softmax-mac
+        run: >-
+          xcodebuild test -project Softmax.xcodeproj -scheme Softmax
+          -destination 'platform=macOS' -derivedDataPath build
+          -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Package app artifact
+        working-directory: apps/softmax-mac
+        run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug/Softmax.app Softmax.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Softmax-macOS
+          path: apps/softmax-mac/Softmax.app.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Softmax-test-results
+          path: apps/softmax-mac/TestResults.xcresult
+          if-no-files-found: ignore

@@ -1,0 +1,115 @@
+import SwiftUI
+import ServiceManagement
+
+enum SettingsTab: String, CaseIterable, Identifiable {
+    case general = "General", hotkey = "Hotkey", audio = "Audio", hub = "Hub"
+    case coglets = "Coglets", updates = "Updates", privacy = "Privacy"
+    var id: Self { self }
+}
+
+struct SettingsView: View {
+    @ObservedObject var model: ShellModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                ForEach(SettingsTab.allCases) { tab in
+                    Button(tab.rawValue) { model.selectedTab = tab }
+                        .accessibilityAddTraits(model.selectedTab == tab ? .isSelected : [])
+                }
+            }
+            Divider()
+            Text(model.selectedTab.rawValue).font(.title2)
+            switch model.selectedTab {
+            case .general:
+                Text("Softmax lives in your menu bar. Close windows without quitting.")
+                Toggle("Show floating orb", isOn: $model.orbEnabled)
+                    .accessibilityIdentifier("floatingOrbToggle")
+                Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
+                LoginItemControls(model: model)
+            case .hotkey:
+                Text("Push-to-talk: \(model.hotkeyName)")
+                HStack {
+                    Button(model.recordingKey ? "Cancel Recording" : "Record Hotkey…") { model.recordHotkey() }
+                    Button("Reset to Right Option") { model.resetHotkey() }
+                }
+                if model.recordingKey { Text("Press a key or chord. Modifier-only keys are supported.") }
+                Toggle("Toggle mode (press to start, press again to stop)", isOn: $model.toggleMode)
+                Toggle("Play start sound", isOn: $model.startSound)
+                Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
+                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+            case .audio:
+                MicrophoneControls(model: model)
+                Text("Default system input · voice processing and echo cancellation enabled.")
+            case .hub:
+                Text("Offline — no hub configured. Enrollment and connectivity are not implemented yet.")
+            case .coglets:
+                Text("No coglets loaded. Local runtime integration is not implemented yet.")
+            case .updates:
+                UpdatesView(updates: model.updates)
+            case .privacy:
+                Text("Audio is captured only while push-to-talk is listening (maximum 120 seconds). Runtime speech delivery is a separate integration.")
+                Text("Microphone: \(model.permissions.microphone.rawValue)")
+                Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
+                Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
+                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+                Button("Refresh Permissions") { model.refreshPermissions() }
+            }
+            if let message = model.message { Text(message).foregroundStyle(.red).textSelection(.enabled) }
+            Spacer()
+        }.padding(24).frame(width: 680, height: 420)
+    }
+}
+
+struct LoginItemControls: View {
+    @ObservedObject var model: ShellModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Launch at login: \(model.loginItem.rawValue)")
+            HStack {
+                Button("Enable Launch at Login") { model.setLoginItem(enabled: true) }
+                Button("Disable Launch at Login") { model.setLoginItem(enabled: false) }
+                Button("Login Item Settings") {
+                    if !model.testing { SMAppService.openSystemSettingsLoginItems() }
+                }
+            }
+        }
+    }
+}
+
+struct OnboardingView: View {
+    @ObservedObject var model: ShellModel
+    var openSettings: () -> Void
+    var finish: () -> Void
+    @State private var step = 0
+    private let titles = ["Microphone", "Input Monitoring", "Launch at login"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Welcome to Softmax").font(.largeTitle)
+            Text("Step \(step + 1) of 3 · \(titles[step])").font(.headline)
+            switch step {
+            case 0:
+                Text("Allow the microphone for future push-to-talk conversations. You can continue without access and enable it later in Privacy settings.")
+                MicrophoneControls(model: model)
+            case 1:
+                Text("Input Monitoring lets Right Option activate push-to-talk outside Softmax. Change the key in Settings › Hotkey.")
+                Text("Status: \(model.permissions.inputMonitoring.rawValue)")
+                Button("Request Input Monitoring") { model.requestInputMonitoring() }
+                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+            default:
+                Text("Optionally start Softmax when you sign in. macOS may require approval in Login Items.")
+                LoginItemControls(model: model)
+            }
+            if let message = model.message { Text(message).foregroundStyle(.red) }
+            Spacer()
+            HStack {
+                Button("Open Settings…", action: openSettings)
+                Spacer()
+                if step > 0 { Button("Back") { step -= 1 } }
+                Button(step < 2 ? "Continue" : "Finish") {
+                    if step < 2 { step += 1 } else { finish() }
+                }.keyboardShortcut(.defaultAction)
+            }
+        }.padding(24).frame(width: 560, height: 400)
+    }
+}

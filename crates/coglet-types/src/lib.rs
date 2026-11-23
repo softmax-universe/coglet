@@ -281,7 +281,11 @@ fn regex_for(pattern: &str) -> Result<Regex, String> {
         return Ok(r.clone());
     }
     // CDDL regexps match the whole string; `\z` (not `$`) so a trailing newline fails.
-    let r = Regex::new(&format!(r"\A(?:{pattern})\z"))
+    // The portable any-character class must not expand Unicode whitespace
+    // tables thousands of times for bounded text fields. This is equivalent
+    // for every Unicode scalar, including newline, not an ASCII approximation.
+    let portable = pattern.replace(r"[\s\S]", "(?s:.)");
+    let r = Regex::new(&format!(r"\A(?:{portable})\z"))
         .map_err(|e| format!("bad regexp {pattern:?}: {e}"))?;
     c.insert(pattern.to_owned(), r.clone());
     Ok(r)
@@ -398,6 +402,58 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                 errs.join("; ")
             ))
         }
+        "intersection" => {
+            only_keys(e, &["op", "items"])?;
+            let items = field(e, "items")?.as_array().ok_or("intersection items")?;
+            if items.is_empty() {
+                return Err("empty intersection".into());
+            }
+            items.iter().try_for_each(|x| eval(s, x, v, depth + 1))
+        }
+        "default" => {
+            only_keys(e, &["op", "item", "value"])?;
+            field(e, "value")?;
+            eval(s, field(e, "item")?, v, depth + 1)
+        }
+        "tuple" => {
+            only_keys(e, &["op", "items"])?;
+            let Value::Array(a) = v else {
+                return Err("expected tuple array".into());
+            };
+            let mut positions = BTreeSet::from([0usize]);
+            for item in field(e, "items")?.as_array().ok_or("tuple items")? {
+                only_keys(item, &["type", "min", "max"])?;
+                let min = int_of(field(item, "min")?)?;
+                let max = item
+                    .get("max")
+                    .map(int_of)
+                    .transpose()?
+                    .unwrap_or(a.len() as i128);
+                if min < 0 || max < min {
+                    return Err("invalid tuple bounds".into());
+                }
+                let mut next = BTreeSet::new();
+                for start in positions {
+                    let limit = max.min((a.len() - start) as i128) as usize;
+                    for count in 0..=limit {
+                        if count as i128 >= min {
+                            next.insert(start + count);
+                        }
+                        if count == limit
+                            || eval(s, field(item, "type")?, &a[start + count], depth + 1).is_err()
+                        {
+                            break;
+                        }
+                    }
+                }
+                positions = next;
+            }
+            if positions.contains(&a.len()) {
+                Ok(())
+            } else {
+                Err("tuple mismatch".into())
+            }
+        }
         "primitive" => {
             only_keys(e, &["op", "name"])?;
             match (field(e, "name")?.as_str().ok_or("primitive name")?, v) {
@@ -426,15 +482,29 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
             a.iter().try_for_each(|x| eval(s, item, x, depth + 1))
         }
         "map" => {
-            only_keys(e, &["op", "item"])?;
+            only_keys(e, &["op", "item", "key", "min", "max"])?;
             let Value::Map(m) = v else {
                 return Err("expected map".into());
             };
+            let min = e.get("min").map(int_of).transpose()?.unwrap_or(0);
+            let max = e
+                .get("max")
+                .map(int_of)
+                .transpose()?
+                .unwrap_or(m.len() as i128);
+            if (m.len() as i128) < min || (m.len() as i128) > max {
+                return Err("map occurrence bounds".into());
+            }
             let item = field(e, "item")?;
-            m.iter().try_for_each(|(_, x)| eval(s, item, x, depth + 1))
+            m.iter().try_for_each(|(k, x)| {
+                if let Some(key) = e.get("key") {
+                    eval(s, key, k, depth + 1)?;
+                }
+                eval(s, item, x, depth + 1)
+            })
         }
         "record" => {
-            only_keys(e, &["op", "fields"])?;
+            only_keys(e, &["op", "fields", "rest"])?;
             let fields = field(e, "fields")?.as_array().ok_or("record fields")?;
             let Value::Map(m) = v else {
                 return Err("expected map".into());
@@ -457,16 +527,44 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                     None => return Err(format!("missing field `{name}`")),
                 }
             }
-            for (k, _) in m {
+            let mut extras = 0;
+            for (k, x) in m {
                 if !matches!(k, Value::Text(t) if known.contains(t.as_str())) {
-                    return Err("unknown field".into());
+                    let rest = e.get("rest").ok_or("unknown field")?;
+                    only_keys(rest, &["item", "key", "min", "max"])?;
+                    if let Some(key) = rest.get("key") {
+                        eval(s, key, k, depth + 1)?;
+                    }
+                    eval(s, field(rest, "item")?, x, depth + 1)?;
+                    extras += 1;
+                }
+            }
+            if let Some(rest) = e.get("rest") {
+                let min = int_of(field(rest, "min")?)?;
+                let max = rest.get("max").map(int_of).transpose()?.unwrap_or(extras);
+                if extras < min || extras > max {
+                    return Err("record rest occurrence bounds".into());
                 }
             }
             Ok(())
         }
         "regexp" => {
             only_keys(e, &["op", "pattern"])?;
-            let re = regex_for(field(e, "pattern")?.as_str().ok_or("pattern")?)?;
+            let pattern = field(e, "pattern")?.as_str().ok_or("pattern")?;
+            // Common portable bounded text pattern: count Unicode scalars
+            // directly, avoiding a multi-megabyte expanded regex automaton.
+            if let Some(bounds) = pattern
+                .strip_prefix(r"^[\s\S]{")
+                .and_then(|p| p.strip_suffix("}$"))
+                && let Some((lo, hi)) = bounds.split_once(',')
+                && let (Ok(lo), Ok(hi)) = (lo.parse::<usize>(), hi.parse::<usize>())
+            {
+                return match v {
+                    Value::Text(t) if (lo..=hi).contains(&t.chars().count()) => Ok(()),
+                    _ => Err("regexp bounded text mismatch".into()),
+                };
+            }
+            let re = regex_for(pattern)?;
             match v {
                 Value::Text(t) if re.is_match(t) => Ok(()),
                 Value::Text(_) => Err("regexp mismatch".into()),
