@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install packaging tools
-        run: brew install xcodegen create-dmg
+        run: brew install xcodegen create-dmg openssl@3
       - name: Fetch pinned Sparkle tools
         run: bash apps/softmax-mac/scripts/sparkle-tools.sh "$RUNNER_TEMP/sparkle"
       - name: Archive, sign, notarize, staple and verify app and DMG
@@ -61,7 +61,7 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_SPARKLE_PRIVATE_KEY }}
           SPARKLE_BIN: ${{ runner.temp }}/sparkle/bin
           RELEASE_TAG: ${{ github.ref_name }}
-        run: python3 apps/softmax-mac/scripts/release.py --mode developer-id --tag "$RELEASE_TAG"
+        run: OPENSSL="$(brew --prefix openssl@3)/bin/openssl" python3 apps/softmax-mac/scripts/release.py --mode developer-id --tag "$RELEASE_TAG"
       - name: Publish verified release
         env:
           GH_TOKEN: ${{ github.token }}

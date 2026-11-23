@@ -45,10 +45,14 @@ def validate_appcast(path, dmg, version, build, prefix):
         raise ValueError('Missing/invalid Ed25519 signature')
     return signature
 
-def configure_bundle(app, version, build, mode):
+def configure_bundle(app, version, build, mode, proof_public_key=None):
     path = Path(app) / 'Contents/Info.plist'
     data = plistlib.loads(path.read_bytes())
     if data.get('SUPublicEDKey') != PUBLIC_KEY:
         raise ValueError('Bundle Sparkle public key mismatch')
+    if proof_public_key is not None:
+        if mode != 'adhoc':
+            raise ValueError('Proof key forbidden in production bundle')
+        data['SUPublicEDKey'] = proof_public_key
     data.update(CFBundleShortVersionString=version, CFBundleVersion=str(build), SoftmaxReleaseChannel=mode)
     path.write_bytes(plistlib.dumps(data))

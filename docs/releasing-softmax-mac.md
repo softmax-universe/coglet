@@ -18,7 +18,7 @@ Repository Actions secrets (never commit their values):
 | `SOFTMAX_MAC_APPLE_ID` | Apple account owning the app-specific password |
 | `SOFTMAX_MAC_TEAM_ID` | Must equal Z7589R323Y |
 | `SOFTMAX_MAC_NOTARY_PASSWORD` | App-specific password, validated by notarytool |
-| `SOFTMAX_MAC_SPARKLE_PRIVATE_KEY` | Sparkle base64 64-byte seed + public key |
+| `SOFTMAX_MAC_SPARKLE_PRIVATE_KEY` | Sparkle base64 32-byte Ed25519 seed |
 
 The signing P12/password were sourced from the existing MacBook `~/.bb-signing/`
 backup; notarization uses its existing app-specific Apple password. Baby Bear's
@@ -72,7 +72,9 @@ tools are pinned to 2.10.1; the tools tarball is SHA-256 checked.
    CI skips Finder scripting (`--skip-jenkins`), so Finder-specific icon layout
    is not an acceptance claim; polish can add a prebuilt `.DS_Store` later.
 5. Sign the DMG, notarize it separately, staple and validate it, and run
-   `spctl -a -vvv -t install`. Both app and DMG signatures must verify.
+   `spctl -a -vvv -t open --context context:primary-signature`. Apple documents
+   this DMG policy in [Testing a Notarised Product](https://developer.apple.com/forums/thread/130560);
+   `-t install` is the PKG policy, not the DMG gate. Both app and DMG signatures must verify.
 6. Run actual Sparkle `sign_update` and `generate_appcast`, validate XML/version/
    URL/length/signature fields, then use `sign_update --verify` on the generated
    enclosure signature. Publish only after every check passes.

@@ -36,6 +36,9 @@ class ReleasePolicyTests(unittest.TestCase):
             value=plistlib.loads(info.read_bytes())
             self.assertEqual(value['CFBundleVersion'],'17')
             self.assertEqual(value['SoftmaxReleaseChannel'],'developer-id')
+            with self.assertRaises(ValueError): configure_bundle(app,'1.2.3',17,'developer-id','proof-key')
+            configure_bundle(app,'1.2.3',17,'adhoc','proof-key')
+            self.assertEqual(plistlib.loads(info.read_bytes())['SUPublicEDKey'],'proof-key')
             info.write_bytes(plistlib.dumps({'SUPublicEDKey':'wrong'}))
             with self.assertRaises(ValueError): configure_bundle(app,'1.2.3',17,'developer-id')
 
@@ -78,6 +81,19 @@ class ReleasePolicyTests(unittest.TestCase):
         ent=plistlib.loads((SCRIPTS.parent/'release.entitlements').read_bytes())
         self.assertEqual(set(ent),{'com.apple.security.device.audio-input','com.apple.security.network.client','com.apple.security.network.server'})
         self.assertTrue(all(ent.values()))
+
+    def test_sparkle_seed_format_and_production_key_pin(self):
+        from types import SimpleNamespace
+        with patch.dict(os.environ,{'OPENSSL':'openssl','SPARKLE_PRIVATE_KEY':base64.b64encode(bytes(32)).decode()}):
+            result=SimpleNamespace(stdout=b'public-der-prefix'+base64.b64decode(PUBLIC_KEY))
+            with patch.object(release.subprocess,'run',return_value=result):
+                private,public=release.prepare_sparkle_key('developer-id')
+                self.assertEqual(len(base64.b64decode(private)),32)
+                self.assertEqual(public,PUBLIC_KEY)
+            with patch.object(release.subprocess,'run',return_value=SimpleNamespace(stdout=bytes(44))):
+                with self.assertRaises(ValueError): release.prepare_sparkle_key('developer-id')
+        with patch.dict(os.environ,{'SPARKLE_PRIVATE_KEY':base64.b64encode(bytes(64)).decode()}):
+            with self.assertRaises(ValueError): release.prepare_sparkle_key('adhoc')
 
     def test_notary_rejection_is_fatal(self):
         with patch.object(release,'run',side_effect=['{"id":"test-rejection","status":"Invalid"}',None]):
