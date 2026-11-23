@@ -134,9 +134,12 @@ execute the vectors; codec skips are never protocol passes. No format guessing
 or catch-and-skip parse errors. Draft-family exclusions are separate counts.
 
 Cross-check uses actual CDDL and independent JSON Schema, not generated IR as an
-oracle. Where pycddl 0.6.4 disagrees on new surface nested/regexp cases, the
-surface snapshot's version-pinned Ruby CDDL validator must independently decide;
-its invocation failures are fatal, and fallback checks are counted.
+oracle. `spec/tests/reference_cddl.py` always executes the Ruby CDDL backend
+pinned by `spec/tests/Gemfile.lock`; it never switches validators according to
+an expected fixture label. Install it with `BUNDLE_GEMFILE=spec/tests/Gemfile
+bundle install` (set `BUNDLE_PATH` explicitly when using a non-default install).
+Schema/tool failures are fatal `ReferenceError`, distinct from an instance
+`ValidationError`. See `spec/tests/REFERENCE-CDDL.md` for API and regressions.
 
 ## Tests
 
