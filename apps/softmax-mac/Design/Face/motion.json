@@ -1,0 +1,68 @@
+{
+  "status": "presentation-only; expression protocol is not specified",
+  "layers": [
+    "head",
+    "eyes",
+    "mouth",
+    "expression"
+  ],
+  "channels": {
+    "blink": {
+      "range": [
+        0,
+        1
+      ],
+      "durationMs": 120,
+      "idleIntervalMs": [
+        3800,
+        6200
+      ]
+    },
+    "gazeX": {
+      "range": [
+        -18,
+        18
+      ],
+      "unit": "master SVG units"
+    },
+    "gazeY": {
+      "range": [
+        -12,
+        12
+      ],
+      "unit": "master SVG units"
+    },
+    "mouthOpen": {
+      "range": [
+        0,
+        1
+      ],
+      "height": [
+        16,
+        88
+      ],
+      "smoothingMs": 70
+    },
+    "listenScale": {
+      "range": [
+        1,
+        1.025
+      ],
+      "periodMs": 1100
+    },
+    "expressionBlend": {
+      "range": [
+        0,
+        1
+      ],
+      "durationMs": 180
+    }
+  },
+  "reduceMotion": {
+    "listenScale": 1,
+    "blink": 0,
+    "expressionBlend": "instant",
+    "mouthOpen": "static speaking pose"
+  },
+  "ownership": "surface presentation interpolates; coglet chooses semantic expression after ADR"
+}
