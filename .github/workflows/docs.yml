@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Softmax Mac design assets
+        run: bash scripts/check-assets.sh
       - uses: lycheeverse/lychee-action@v2
         with:
           args: --offline --include-fragments --no-progress './**/*.md'
