@@ -1,3 +1,5 @@
 cbor2==5.6.5
 jsonschema==4.23.0
+# Legacy spec branches still import this. It is NOT the reference oracle;
+# use reference_cddl and the separately locked Ruby CDDL backend instead.
 pycddl==0.6.4
