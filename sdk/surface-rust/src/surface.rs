@@ -812,7 +812,7 @@ impl Surface {
         self.store
             .record_admission(coglet, id, corr, raw, epoch, deadline)
             .map_err(serr)?;
-        let cancelled = self.speech.admit(op, coglet, &token, args, now);
+        let cancelled = self.speech.admit_bound(op, coglet, &token, id, args, now);
         self.pending.insert(
             token.clone(),
             Pending {

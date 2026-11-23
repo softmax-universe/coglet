@@ -77,8 +77,8 @@ pub struct SpeechState {
     active_session: Option<String>,
     utterances: BTreeMap<String, Utterance>,
     utt_order: VecDeque<String>,
-    /// item -> (stream, max played_ms)
-    items: BTreeMap<String, (String, u64)>,
+    /// (stream, original wire action item) -> max played_ms. Never native tokens.
+    items: BTreeMap<(String, String), u64>,
     stream_position: BTreeMap<String, u64>,
     provider_streams: BTreeMap<String, String>,
     tool_allow: BTreeSet<String>,
@@ -297,6 +297,20 @@ impl SpeechState {
         args: &Json,
         now: u64,
     ) -> Vec<String> {
+        self.admit_bound(op, coglet, id, id, args, now)
+    }
+
+    /// Native completion tokens must never replace persisted wire media identities.
+    #[allow(clippy::too_many_arguments)]
+    pub fn admit_bound(
+        &mut self,
+        op: &str,
+        coglet: &str,
+        id: &str,
+        wire_id: &str,
+        args: &Json,
+        now: u64,
+    ) -> Vec<String> {
         match op {
             "speech.speak_chunk" => {
                 let stream = s(args, "stream").to_owned();
@@ -318,7 +332,7 @@ impl SpeechState {
                 st.finalized |= args.get("final").and_then(Json::as_bool).unwrap_or(false);
                 st.last_admit = now;
                 st.pending.push(id.to_owned());
-                self.items.insert(id.to_owned(), (stream, 0));
+                self.items.insert((stream, wire_id.to_owned()), 0);
             }
             "speech.backchannel" => {
                 let stream = s(args, "stream").to_owned();
@@ -335,7 +349,7 @@ impl SpeechState {
                         pending: vec![id.to_owned()],
                     },
                 );
-                self.items.insert(id.to_owned(), (stream, 0));
+                self.items.insert((stream, wire_id.to_owned()), 0);
             }
             "speech.stop" => {
                 if let Some(st) = self.streams.get_mut(s(args, "stream")) {
@@ -552,20 +566,20 @@ impl SpeechState {
                 {
                     return self.discard("stream position regressed");
                 }
-                match self.items.get_mut(&item) {
-                    Some((st, p)) if *st == stream => {
+                match self.items.get_mut(&(stream.clone(), item.clone())) {
+                    Some(p) => {
                         if played_ms < *p {
                             return self.discard("item played_ms regressed");
                         }
                         *p = played_ms;
                     }
-                    Some(_) => return self.discard("item belongs to another stream"),
+
                     None => {
                         // Only provider-originated items may be introduced by native code.
                         if !self.provider_streams.contains_key(&stream) {
                             return self.discard("position for unknown item");
                         }
-                        self.items.insert(item.clone(), (stream.clone(), played_ms));
+                        self.items.insert((stream.clone(), item.clone()), played_ms);
                     }
                 }
                 self.stream_position.insert(stream.clone(), position_ms);
@@ -595,10 +609,10 @@ impl SpeechState {
                     return self.discard("barge-in without an active stream");
                 }
                 let provider = self.provider_streams.contains_key(&stream);
-                match self.items.get_mut(&item) {
-                    Some((st, p)) if *st == stream && played_ms >= *p => *p = played_ms,
+                match self.items.get_mut(&(stream.clone(), item.clone())) {
+                    Some(p) if played_ms >= *p => *p = played_ms,
                     None if provider => {
-                        self.items.insert(item.clone(), (stream.clone(), played_ms));
+                        self.items.insert((stream.clone(), item.clone()), played_ms);
                     }
                     _ => return self.discard("barge-in item unknown or regressed"),
                 }
