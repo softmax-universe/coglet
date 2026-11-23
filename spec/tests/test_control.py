@@ -151,25 +151,38 @@ class ControlFixtures(unittest.TestCase):
         print(f'control total: {len(all_cases)} fixtures; '
               f'{sum(c["valid"] for c in all_cases)} golden round-trips')
 
-    def test_schema_roots_and_sibling_field_mutations(self):
+    def test_schema_root_differential_mutations(self):
         # A selected rule can be closed while a root choice leaks keys consumed
         # by failed siblings. Exercise every root with all fixture shapes and
         # borrowed sibling fields, not only unknown-field mutations.
         count = 0
+        mismatches = []
         for group, path in SCHEMAS.items():
+            seen = set()
             validator = Draft202012Validator(self.schemas[path], registry=self.registry)
             cddl = cddl_schema(group)
             cases = [case for fixture in sorted((SPEC / 'fixtures' / group).rglob('*.json'))
                      for case in json.loads(fixture.read_text())]
-            messages = [c for c in cases if c['type'] not in
-                        ('status', 'gate-report', 'ticket', 'receipt')]
+            messages = cases  # Helpers must not accidentally enter a root.
             siblings = {(key, json.dumps(value, sort_keys=True)): value
                         for c in messages if c['valid']
                         for key, value in c['value'].items()}
+            # Probe malformed value domains as well as valid sibling values:
+            # failed union alternatives can retain array traversal state.
+            for key in {key for key, _ in siblings}:
+                for value in [None, False, True, 0, -1, '', 'x', [], [1],
+                              [{'x': 1}], {}, {'x': 1}]:
+                    siblings[(key, json.dumps(value, sort_keys=True))] = value
+            unions = []
+            for rule in ({'request', 'response', 'update', 'result'} if group == 'tickets'
+                         else {'response'} if group == 'promotion' else set()):
+                selected = dict(self.schemas[path])
+                selected.pop('oneOf', None)
+                selected.pop('anyOf', None)
+                selected['$ref'] = '#/$defs/' + rule
+                unions.append((rule, Draft202012Validator(selected, registry=self.registry),
+                               cddl_schema(group, rule)))
             for case in messages:
-                if group != 'tickets':
-                    self.assertEqual(validator.is_valid(case['value']),
-                                     case['valid'] or case.get('semantic', False))
                 selected = dict(self.schemas[path])
                 if case['type'] != 'policy':
                     selected.pop('oneOf', None)
@@ -179,27 +192,33 @@ class ControlFixtures(unittest.TestCase):
                 selected_cddl = cddl_schema(group, case['type'])
                 variants = [('fixture', case['value'])]
                 if case['valid']:
-                    self.assertTrue(validator.is_valid(case['value']))
                     variants += [(key, {**case['value'], key: value})
-                                 for (key, _), value in siblings.items()
-                                 if key not in case['value']]
+                                 for (key, _), value in siblings.items()]
                 for key, value in variants:
                     with self.subTest(group=group, case=case['name'], added=key):
                         # Some ticket result/update shapes overlap legitimately;
                         # root acceptance is the union, not the selected rule.
                         for scope, json_validator, cddl_validator in [
                             ('root', validator, cddl),
-                            ('selected', selected_validator, selected_cddl),
-                        ]:
+                            ('selected-' + case['type'], selected_validator, selected_cddl),
+                        ] + unions:
+                            raw = cbor2.dumps(value)
+                            identity = (scope, raw)
+                            if identity in seen:
+                                continue
+                            seen.add(identity)
+                            count += 1
                             expected = json_validator.is_valid(value)
                             try:
                                 cddl_validator.validate_cbor(cbor2.dumps(value))
                                 actual = True
                             except ValidationError:
                                 actual = False
-                            self.assertEqual(actual, expected, scope + ' CDDL / JSON Schema')
-                    count += 1
-        print(f'control: {count} root fixture/sibling-field checks')
+                            if actual != expected:
+                                mismatches.append((group, case['name'], key, scope,
+                                                   value, expected, actual))
+        print(f'control differential: {count} comparisons; {len(mismatches)} mismatches')
+        self.assertEqual(mismatches, [], repr(mismatches[:20]))
 
     def test_every_operation_has_positive_fixture(self):
         for group, required in [('promotion', {'propose', 'promote', 'rollback', 'status'}),

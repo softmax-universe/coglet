@@ -16,6 +16,11 @@ tickets = ticket-request / ticket-response / ticket-update / ticket-result
 ; The second intersection also rejects arrays retained by a failed sibling.
 ticket-never = (nil .and false) .and []
 
+; Preserve the imported closed error record. The redundant map/empty-array
+; choice resets failed-sibling array traversal state in pycddl 0.6.4. The
+; intersection with common error still admits ONLY that closed error map.
+ticket-error = error .and (profile-map / [])
+
 ; Positive subset of common uint64 (range controls on aliases are not portable).
 ticket-positive-uint64 = 1..18446744073709551615
 ticket-text = tstr .size (1..18446744073709551615)
@@ -112,7 +117,7 @@ ticket-response = {
   ok: true, receipt: ticket-receipt, ? error: ticket-never,
   ticket-no-progress, ticket-no-request-payload, ? ticket_id: ticket-never
 } / {
-  ticket-envelope, op: ticket-op, ok: false, error: error,
+  ticket-envelope, op: ticket-op, ok: false, "error": ticket-error,
   ? receipt: ticket-never, ticket-no-progress, ticket-no-request-payload,
   ? ticket_id: ticket-never
 }
@@ -139,6 +144,6 @@ ticket-result = {
   gates: [+ promotion-gate-report],
   ? question: ticket-never, ? error: ticket-never
 } / ticket-needs-input / {
-  ticket-progress, state: "failed" / "abandoned", error: error,
+  ticket-progress, state: "failed" / "abandoned", "error": ticket-error,
   ? question: ticket-never, ? candidate: ticket-never, ? gates: ticket-never
 }

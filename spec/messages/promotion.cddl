@@ -10,6 +10,8 @@ promotion-op = "propose" / "promote" / "rollback" / "status"
 ; a failed sibling must not consume a key for the successful alternative.
 ; The second intersection also rejects arrays retained by a failed sibling.
 promotion-never = (nil .and false) .and []
+; Equivalent common error with explicit array-backtracking reset (see tickets).
+promotion-error = error .and (profile-map / [])
 promotion-no-audit = (
   ? audit_id: promotion-never, ? actor: promotion-never,
   ? operation: promotion-never, ? phase: promotion-never,
@@ -92,7 +94,7 @@ promotion-response = {
   promotion-envelope, op: "status", ok: true, result: promotion-status,
   promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: promotion-op, ok: false, error: error,
+  promotion-envelope, op: promotion-op, ok: false, "error": promotion-error,
   promotion-response-closure, ? result: promotion-never
 }
 promotion-audit = {
