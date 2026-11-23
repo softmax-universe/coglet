@@ -1,0 +1,514 @@
+[
+  {
+    "name": "fresh-instance-per-step",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "fresh-global",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f03030200010504010101020606017f0141000b071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1202040041000b0b002300230041016a24000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": true,
+          "error": null
+        },
+        "within_ms": 3000
+      },
+      {
+        "send": {
+          "op": "step",
+          "fixture": "fresh-global",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f03030200010504010101020606017f0141000b071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1202040041000b0b002300230041016a24000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 1,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": true,
+          "error": null
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "runaway-deadline-and-recovery",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "runaway",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1002040041000b090003400c000b41000b",
+          "compute_mode": "qualified",
+          "compute": 2147483647,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 20000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "deadline_exceeded"
+        },
+        "within_ms": 3000
+      },
+      {
+        "send": {
+          "op": "step",
+          "fixture": "success",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 1,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": true,
+          "error": null
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "deterministic-compute-exhaustion",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "runaway",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1002040041000b090003400c000b41000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "compute_exhausted",
+          "compute_used": 1000
+        },
+        "within_ms": 3000
+      },
+      {
+        "send": {
+          "op": "step",
+          "fixture": "runaway",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1002040041000b090003400c000b41000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 1,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "compute_exhausted",
+          "compute_used": 1000
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "allocation-shares-budget",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "allocation-runaway",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1002090003400c000b41000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "compute_exhausted",
+          "compute_used": 1000
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "linear-memory-growth-cap",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "memory-growth",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a1d02040041000b160041014000410147047f41010541014000417f470b0b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": true,
+          "error": null
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "invalid-allocation",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "invalid-allocation",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b020400417f0b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "invalid_pointer"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "memory-too-large",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "memory-too-large",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010103071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "memory_exhausted"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "forbidden-random",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "forbidden-random",
+          "module_hex": "0061736d0100000001150360027f7f017f60017f017f60057f7f7e7e7e017f02250116776173695f736e617073686f745f70726576696577310a72616e646f6d5f67657400000303020102050401010102071f03066d656d6f72790200096162695f616c6c6f6300010668616e646c6500020a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "unqualified_module"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "wrong-import-signature",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "wrong-import-signature",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f02130109636f676c65745f76300574696d657200000303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300010668616e646c6500020a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "unqualified_module"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "start-forbidden",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "start-forbidden",
+          "module_hex": "0061736d0100000001120360000060017f017f60057f7f7e7e7e017f030403000102050401010102071f03066d656d6f72790200096162695f616c6c6f6300010668616e646c6500020801000a0e0302000b040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "unqualified_module"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "zero-compute-is-not-unlimited",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "success",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 0,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "invalid_argument"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "signed-ffi-overflow-refused",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "success",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "qualified",
+          "compute": 2147483648,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "invalid_argument"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "unqualified-aot-refused",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "success",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "aot",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "unsupported_mode"
+        },
+        "within_ms": 3000
+      }
+    ]
+  },
+  {
+    "name": "unknown-compute-mode-refused",
+    "timeout_ms": 10000,
+    "steps": [
+      {
+        "send": {
+          "op": "step",
+          "fixture": "success",
+          "module_hex": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010102071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+          "compute_mode": "unknown",
+          "compute": 1000,
+          "memory_pages": 2,
+          "host_bytes": 4096,
+          "runtime_bytes": 8388608,
+          "stack_bytes": 65536,
+          "wall_time_us": 1000000,
+          "events_hex": "81a0",
+          "step": 0,
+          "logical_time": 0,
+          "seed": 0
+        }
+      },
+      {
+        "match": {
+          "ok": false,
+          "error": "unsupported_mode"
+        },
+        "within_ms": 3000
+      }
+    ]
+  }
+]

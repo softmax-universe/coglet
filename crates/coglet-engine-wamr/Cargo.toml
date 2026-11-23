@@ -3,3 +3,21 @@ name = "coglet-engine-wamr"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[features]
+default = ["interpreter"]
+interpreter = []
+aot = []
+
+[dependencies]
+coglet-engine = { path = "../coglet-engine" }
+wasmparser = "=0.245.1"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wat = "1.245.1"
+
+[build-dependencies]
+cmake = "0.1.54"
+sha2 = "0.10.9"
