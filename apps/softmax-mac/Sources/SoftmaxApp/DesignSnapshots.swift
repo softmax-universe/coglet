@@ -31,10 +31,10 @@ import SoftmaxCore
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
                 func capture<V: View>(_ name: String, _ size: NSSize, _ view: V, lifecycle: Bool? = nil) throws {
+                    let key = "\(theme)-\(name)"
                     weak var weakWindow: NSWindow?
                     weak var weakHost: NSView?
                     func render() throws {
-                    let key = "\(theme)-\(name)"
                     let hosting = NSHostingView(rootView: view
                         .frame(width: size.width, height: size.height, alignment: .topLeading)
                         .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
