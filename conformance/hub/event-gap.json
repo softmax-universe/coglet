@@ -1,0 +1,37 @@
+{
+  "name": "event-gap",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.event-gap"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.events",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000014",
+        "timeout_ms": 2000,
+        "params": {
+          "events": [
+            {
+              "source": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+              "kind": "test.event",
+              "seq": 2,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "11111111111111111111111111111111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000014",
+        "type": "error",
+        "error.code": "conflict"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import unittest
 
 import cbor2
 from jsonschema import Draft202012Validator
-from pycddl import Schema, ValidationError
+from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode

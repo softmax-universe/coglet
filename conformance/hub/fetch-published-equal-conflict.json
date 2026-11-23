@@ -1,0 +1,66 @@
+{
+  "name": "fetch-published-equal-conflict",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.fetch-published-equal-conflict",
+    "hub.reverse-fetch-observer"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "0000000000000000000000000000002c",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": null
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000002c",
+        "type": "reply",
+        "result.selection.version": "0.1"
+      },
+      "within_ms": 2000
+    },
+    {
+      "match": {
+        "method": "hub.git.fetch",
+        "params.ref": "refs/published/main",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "transfer",
+        "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size": 1184,
+        "sha256": "b5d40d17598229404c0ab122d7957a5136294e6f4301b675db6c0a99b2392d92",
+        "update": {
+          "statement": {
+            "purpose": "published-ref",
+            "hub": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+            "generation": 3,
+            "ref": "refs/published/main",
+            "old": "58944cd57aad0cc3584ef85171d581844025cc57",
+            "new": "263ed7f883254cd830e16f67d2d25ec711c30def",
+            "archive_sha256": "094ac9ae11d5f30b96e04de164fbf3861761b4dc41556961eccbf370c91d04e1"
+          },
+          "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "signature": "027a63273e9b7b92603d63fd9cbfcfb09159136a6ea4538061c3b22f385a462c490be78636e80ffadae7b1287319809a829515dc6e35ff1ff98358c960ec540c"
+        }
+      },
+      "stream": 100,
+      "finish": false
+    }
+  ]
+}

@@ -50,6 +50,119 @@ internal enum GeneratedSchema {
         "expression::set-expression": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "duration_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
         "expression::expression-state": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "remaining_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
         "expression::expression-profile": .union([.reference("expression::set-expression"), .reference("expression::expression-state")]),
+        "hub::wire": .reference("hub::hub-frame"),
+        "hub::hub-null": .literal(.null),
+        "hub::hub-bool": .boolean,
+        "hub::hub-oid": .intersection([.text, .regexp("^[0-9a-f]{40}$")]),
+        "hub::hub-hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "hub::hub-build-version": .literal(.text("0.1")),
+        "hub::hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_commit", optional: false, node: .reference("hub::hub-oid")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub::hub-signature": .intersection([.text, .regexp("^[0-9a-f]{128}$")]),
+        "hub::hub-secret": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "hub::hub-text": .intersection([.text, .size(0, 65536)]),
+        "hub::hub-path": .intersection([.text, .regexp("^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}$|^@step/[0-9]{1,20}$")]),
+        "hub::hub-write-path": .intersection([.text, .regexp("^/data/[a-zA-Z0-9_./-]{1,512}$")]),
+        "hub::hub-chunk-hex": .intersection([.text, .regexp("^([0-9a-f]{2}){1,32768}$")]),
+        "hub::hub-timeout": .range(.unsigned(1), .unsigned(300000)),
+        "hub::hub-size": .range(.unsigned(1), .unsigned(67108864)),
+        "hub::hub-read-size": .range(.unsigned(1), .unsigned(65536)),
+        "hub::hub-queue": .range(.unsigned(0), .unsigned(256)),
+        "hub::hub-maybe-oid": .union([.reference("hub::hub-oid"), .reference("hub::hub-null")]),
+        "hub::hub-target": .union([.reference("common::coglet-id"), .reference("hub::hub-null")]),
+        "hub::hub-maybe-step": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
+        "hub::hub-maybe-error": .union([.reference("common::error"), .reference("hub::hub-null")]),
+        "hub::hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
+        "hub::hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
+        "hub::hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
+        "hub::hub-ref": .union([.literal(.text("refs/heads/hub")), .literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
+        "hub::hub-fetch-ref": .union([.literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
+        "hub::hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("hub.git.push")), .literal(.text("hub.git.fetch")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("debug.read")), .literal(.text("debug.write")), .literal(.text("debug.pause")), .literal(.text("debug.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub::hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
+        "hub::hub-purpose-delegation": .literal(.text("delegation")),
+        "hub::hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
+        "hub::hub-ref-purpose": .union([.literal(.text("hub-ref")), .literal(.text("published-ref")), .literal(.text("logs-ref"))]),
+        "hub::hub-ref-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-ref-purpose")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "ref", optional: false, node: .reference("hub::hub-ref")), .init(name: "old", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "new", optional: false, node: .reference("hub::hub-oid")), .init(name: "archive_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64"))]),
+        "hub::hub-signed-delegation": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-delegation-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "hub::hub-signed-ref": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-ref-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "hub::hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_commit", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
+        "hub::hub-queued": .literal(.text("queued")),
+        "hub::hub-receipt-queued": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-queued")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub::hub-applied": .literal(.text("applied")),
+        "hub::hub-receipt-applied": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-applied")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub::hub-cancelled": .literal(.text("cancelled")),
+        "hub::hub-receipt-cancelled": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-cancelled")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub::hub-failed": .literal(.text("failed")),
+        "hub::hub-receipt-failed": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-failed")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "hub::hub-mutation-receipt": .union([.reference("hub::hub-receipt-queued"), .reference("hub::hub-receipt-applied"), .reference("hub::hub-receipt-cancelled"), .reference("hub::hub-receipt-failed")]),
+        "hub::hub-inbox-delivery": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("common::event"))]),
+        "hub::hub-event-batch": .boundedArray(0, 64, .reference("common::event")),
+        "hub::hub-health-item": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status"))]),
+        "hub::hub-health-items": .boundedArray(0, 256, .reference("hub::hub-health-item")),
+        "hub::hub-enroll-params": .record([.init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "invite", optional: false, node: .reference("hub::hub-maybe-secret"))]),
+        "hub::hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
+        "hub::hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub::hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
+        "hub::hub-events-params": .record([.init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
+        "hub::hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
+        "hub::hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
+        "hub::hub-write-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-write-path")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "expected_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub::hub-inbox-params": .record([.init(name: "message", optional: false, node: .reference("hub::hub-inbox-delivery")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub::hub-health-params": .record([.init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "uptime_ms", optional: false, node: .reference("common::uint64")), .init(name: "queue_depth", optional: false, node: .reference("common::uint64")), .init(name: "available_bytes", optional: false, node: .reference("common::uint64")), .init(name: "coglets", optional: false, node: .reference("hub::hub-health-items"))]),
+        "hub::hub-operation-params": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hub::hub-context": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub::hub-enroll-request-method": .literal(.text("hub.enroll")),
+        "hub::hub-enroll-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-enroll-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-enroll-params"))]),
+        "hub::hub-install-request-method": .literal(.text("hub.install")),
+        "hub::hub-install-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-install-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-install-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-start-request-method": .literal(.text("hub.start")),
+        "hub::hub-start-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-start-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-stop-request-method": .literal(.text("hub.stop")),
+        "hub::hub-stop-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-stop-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-status-request-method": .literal(.text("hub.status")),
+        "hub::hub-status-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-status-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-git-push-request-method": .literal(.text("hub.git.push")),
+        "hub::hub-git-push-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-push-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-push-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-git-fetch-request-method": .literal(.text("hub.git.fetch")),
+        "hub::hub-git-fetch-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-fetch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-fetch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-events-request-method": .literal(.text("hub.events")),
+        "hub::hub-events-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-events-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-events-params"))]),
+        "hub::hub-actions-request-method": .literal(.text("hub.actions")),
+        "hub::hub-actions-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-actions-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-actions-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::debug-read-request-method": .literal(.text("debug.read")),
+        "hub::debug-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::debug-write-request-method": .literal(.text("debug.write")),
+        "hub::debug-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
+        "hub::debug-pause-request-method": .literal(.text("debug.pause")),
+        "hub::debug-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::debug-step-request-method": .literal(.text("debug.step")),
+        "hub::debug-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-inbox-request-method": .literal(.text("hub.inbox")),
+        "hub::hub-inbox-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-inbox-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-inbox-params"))]),
+        "hub::hub-health-request-method": .literal(.text("hub.health")),
+        "hub::hub-health-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-health-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-health-params"))]),
+        "hub::hub-receipt-request-method": .literal(.text("hub.receipt")),
+        "hub::hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-cancel-request-method": .literal(.text("hub.cancel")),
+        "hub::hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "hub::hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
+        "hub::hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
+        "hub::hub-events-result": .record([.init(name: "next_seq", optional: false, node: .reference("common::uint64"))]),
+        "hub::hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
+        "hub::hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
+        "hub::hub-success-type": .literal(.text("reply")),
+        "hub::hub-success": .record([.init(name: "type", optional: false, node: .reference("hub::hub-success-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "result", optional: false, node: .reference("hub::hub-result"))]),
+        "hub::hub-failure-type": .literal(.text("error")),
+        "hub::hub-failure": .record([.init(name: "type", optional: false, node: .reference("hub::hub-failure-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "hub::hub-credit-type": .literal(.text("credit")),
+        "hub::hub-credit": .record([.init(name: "type", optional: false, node: .reference("hub::hub-credit-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "bytes", optional: false, node: .reference("common::uint64"))]),
+        "hub::hub-chunk-type": .literal(.text("chunk")),
+        "hub::hub-chunk": .record([.init(name: "type", optional: false, node: .reference("hub::hub-chunk-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "hub::hub-end-type": .literal(.text("end")),
+        "hub::hub-end": .record([.init(name: "type", optional: false, node: .reference("hub::hub-end-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hub::hub-transfer-type": .literal(.text("transfer")),
+        "hub::hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
+        "hub::hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
         "speech::speech-entry": .reference("speech::speech-profile"),
         "speech::speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
         "speech::speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
@@ -65,7 +178,14 @@ internal enum GeneratedSchema {
         "speech::session-close": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id"))]),
         "speech::tool-call": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
         "speech::tool-result": .union([.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
-        "speech::speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result")]),
+        "speech::heard-query": .record([.init(name: "item", optional: false, node: .reference("common::correlation-id"))]),
+        "speech::heard-record": .record([.init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
+        "speech::work-state": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "pending", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "speech::work-intent": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
+        "speech::work-result": .union([.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
+        "speech::work-cancelled": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("cancelled"))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "speech::work-done": .union([.reference("speech::work-result"), .reference("speech::work-cancelled")]),
+        "speech::speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result"), .reference("speech::heard-query"), .reference("speech::heard-record"), .reference("speech::work-state"), .reference("speech::work-intent"), .reference("speech::work-result"), .reference("speech::work-cancelled"), .reference("speech::work-done")]),
         "surface::surface-entry": .reference("surface::surface-message"),
         "surface::hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface::hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
@@ -128,6 +248,119 @@ internal enum GeneratedSchema {
         "set-expression": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "duration_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
         "expression-state": .record([.init(name: "expression", optional: false, node: .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))])), .init(name: "intensity", optional: false, node: .range(.unsigned(0), .unsigned(1000))), .init(name: "remaining_ms", optional: false, node: .range(.unsigned(0), .unsigned(60000)))]),
         "expression-profile": .union([.reference("expression::set-expression"), .reference("expression::expression-state")]),
+        "wire": .reference("hub::hub-frame"),
+        "hub-null": .literal(.null),
+        "hub-bool": .boolean,
+        "hub-oid": .intersection([.text, .regexp("^[0-9a-f]{40}$")]),
+        "hub-hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "hub-build-version": .literal(.text("0.1")),
+        "hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_commit", optional: false, node: .reference("hub::hub-oid")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub-signature": .intersection([.text, .regexp("^[0-9a-f]{128}$")]),
+        "hub-secret": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "hub-text": .intersection([.text, .size(0, 65536)]),
+        "hub-path": .intersection([.text, .regexp("^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}$|^@step/[0-9]{1,20}$")]),
+        "hub-write-path": .intersection([.text, .regexp("^/data/[a-zA-Z0-9_./-]{1,512}$")]),
+        "hub-chunk-hex": .intersection([.text, .regexp("^([0-9a-f]{2}){1,32768}$")]),
+        "hub-timeout": .range(.unsigned(1), .unsigned(300000)),
+        "hub-size": .range(.unsigned(1), .unsigned(67108864)),
+        "hub-read-size": .range(.unsigned(1), .unsigned(65536)),
+        "hub-queue": .range(.unsigned(0), .unsigned(256)),
+        "hub-maybe-oid": .union([.reference("hub::hub-oid"), .reference("hub::hub-null")]),
+        "hub-target": .union([.reference("common::coglet-id"), .reference("hub::hub-null")]),
+        "hub-maybe-step": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
+        "hub-maybe-error": .union([.reference("common::error"), .reference("hub::hub-null")]),
+        "hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
+        "hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
+        "hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
+        "hub-ref": .union([.literal(.text("refs/heads/hub")), .literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
+        "hub-fetch-ref": .union([.literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
+        "hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("hub.git.push")), .literal(.text("hub.git.fetch")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("debug.read")), .literal(.text("debug.write")), .literal(.text("debug.pause")), .literal(.text("debug.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
+        "hub-purpose-delegation": .literal(.text("delegation")),
+        "hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
+        "hub-ref-purpose": .union([.literal(.text("hub-ref")), .literal(.text("published-ref")), .literal(.text("logs-ref"))]),
+        "hub-ref-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-ref-purpose")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "ref", optional: false, node: .reference("hub::hub-ref")), .init(name: "old", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "new", optional: false, node: .reference("hub::hub-oid")), .init(name: "archive_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64"))]),
+        "hub-signed-delegation": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-delegation-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "hub-signed-ref": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-ref-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_commit", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
+        "hub-queued": .literal(.text("queued")),
+        "hub-receipt-queued": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-queued")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub-applied": .literal(.text("applied")),
+        "hub-receipt-applied": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-applied")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub-cancelled": .literal(.text("cancelled")),
+        "hub-receipt-cancelled": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-cancelled")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
+        "hub-failed": .literal(.text("failed")),
+        "hub-receipt-failed": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-failed")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "hub-mutation-receipt": .union([.reference("hub::hub-receipt-queued"), .reference("hub::hub-receipt-applied"), .reference("hub::hub-receipt-cancelled"), .reference("hub::hub-receipt-failed")]),
+        "hub-inbox-delivery": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("common::event"))]),
+        "hub-event-batch": .boundedArray(0, 64, .reference("common::event")),
+        "hub-health-item": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status"))]),
+        "hub-health-items": .boundedArray(0, 256, .reference("hub::hub-health-item")),
+        "hub-enroll-params": .record([.init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "invite", optional: false, node: .reference("hub::hub-maybe-secret"))]),
+        "hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
+        "hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
+        "hub-events-params": .record([.init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
+        "hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
+        "hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
+        "hub-write-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-write-path")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "expected_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub-inbox-params": .record([.init(name: "message", optional: false, node: .reference("hub::hub-inbox-delivery")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub-health-params": .record([.init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "uptime_ms", optional: false, node: .reference("common::uint64")), .init(name: "queue_depth", optional: false, node: .reference("common::uint64")), .init(name: "available_bytes", optional: false, node: .reference("common::uint64")), .init(name: "coglets", optional: false, node: .reference("hub::hub-health-items"))]),
+        "hub-operation-params": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hub-context": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
+        "hub-enroll-request-method": .literal(.text("hub.enroll")),
+        "hub-enroll-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-enroll-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-enroll-params"))]),
+        "hub-install-request-method": .literal(.text("hub.install")),
+        "hub-install-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-install-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-install-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-start-request-method": .literal(.text("hub.start")),
+        "hub-start-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-start-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-stop-request-method": .literal(.text("hub.stop")),
+        "hub-stop-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-stop-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-status-request-method": .literal(.text("hub.status")),
+        "hub-status-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-status-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-git-push-request-method": .literal(.text("hub.git.push")),
+        "hub-git-push-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-push-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-push-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-git-fetch-request-method": .literal(.text("hub.git.fetch")),
+        "hub-git-fetch-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-fetch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-fetch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-events-request-method": .literal(.text("hub.events")),
+        "hub-events-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-events-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-events-params"))]),
+        "hub-actions-request-method": .literal(.text("hub.actions")),
+        "hub-actions-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-actions-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-actions-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "debug-read-request-method": .literal(.text("debug.read")),
+        "debug-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "debug-write-request-method": .literal(.text("debug.write")),
+        "debug-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
+        "debug-pause-request-method": .literal(.text("debug.pause")),
+        "debug-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "debug-step-request-method": .literal(.text("debug.step")),
+        "debug-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-inbox-request-method": .literal(.text("hub.inbox")),
+        "hub-inbox-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-inbox-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-inbox-params"))]),
+        "hub-health-request-method": .literal(.text("hub.health")),
+        "hub-health-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-health-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-health-params"))]),
+        "hub-receipt-request-method": .literal(.text("hub.receipt")),
+        "hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-cancel-request-method": .literal(.text("hub.cancel")),
+        "hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
+        "hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
+        "hub-events-result": .record([.init(name: "next_seq", optional: false, node: .reference("common::uint64"))]),
+        "hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
+        "hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
+        "hub-success-type": .literal(.text("reply")),
+        "hub-success": .record([.init(name: "type", optional: false, node: .reference("hub::hub-success-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "result", optional: false, node: .reference("hub::hub-result"))]),
+        "hub-failure-type": .literal(.text("error")),
+        "hub-failure": .record([.init(name: "type", optional: false, node: .reference("hub::hub-failure-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "hub-credit-type": .literal(.text("credit")),
+        "hub-credit": .record([.init(name: "type", optional: false, node: .reference("hub::hub-credit-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "bytes", optional: false, node: .reference("common::uint64"))]),
+        "hub-chunk-type": .literal(.text("chunk")),
+        "hub-chunk": .record([.init(name: "type", optional: false, node: .reference("hub::hub-chunk-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "hub-end-type": .literal(.text("end")),
+        "hub-end": .record([.init(name: "type", optional: false, node: .reference("hub::hub-end-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hub-transfer-type": .literal(.text("transfer")),
+        "hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
+        "hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
         "speech-entry": .reference("speech::speech-profile"),
         "speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
         "speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
@@ -143,7 +376,14 @@ internal enum GeneratedSchema {
         "session-close": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id"))]),
         "tool-call": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
         "tool-result": .union([.record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
-        "speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result")]),
+        "heard-query": .record([.init(name: "item", optional: false, node: .reference("common::correlation-id"))]),
+        "heard-record": .record([.init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
+        "work-state": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "pending", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "work-intent": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "name", optional: false, node: .reference("common::method-name")), .init(name: "arguments", optional: false, node: .reference("common::profile-map"))]),
+        "work-result": .union([.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))])]),
+        "work-cancelled": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("cancelled"))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "work-done": .union([.reference("speech::work-result"), .reference("speech::work-cancelled")]),
+        "speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result"), .reference("speech::heard-query"), .reference("speech::heard-record"), .reference("speech::work-state"), .reference("speech::work-intent"), .reference("speech::work-result"), .reference("speech::work-cancelled"), .reference("speech::work-done")]),
         "surface-entry": .reference("surface::surface-message"),
         "hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
@@ -187,6 +427,8 @@ internal enum GeneratedSchema {
         "@SpeechSpeechConfigSessionMode": .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]),
         "@SpeechToolResultVariant1": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
         "@SpeechToolResultVariant2": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "@SpeechWorkResultVariant1": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
+        "@SpeechWorkResultVariant2": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]),
         "@SurfaceReadReplyVariant1": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]),
         "@SurfaceReadReplyVariant2": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@SurfaceHealthState": .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))]),
@@ -230,6 +472,8 @@ internal enum GeneratedSchema {
         "@SpeechConfigSessionMode": .union([.literal(.text("text")), .literal(.text("speech_to_speech"))]),
         "@ToolResultVariant1": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
         "@ToolResultVariant2": .record([.init(name: "session", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "value", optional: false, node: .reference("common::error"))]),
+        "@WorkResultVariant1": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]),
+        "@WorkResultVariant2": .record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]),
         "@ReadReplyVariant1": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(true))), .init(name: "value", optional: false, node: .reference("common::profile-map")), .init(name: "snapshot", optional: false, node: .reference("common::uint64"))]),
         "@ReadReplyVariant2": .record([.init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ok", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@HealthState": .union([.literal(.text("ready")), .literal(.text("degraded")), .literal(.text("stopped"))]),
@@ -305,6 +549,119 @@ internal enum GeneratedSchema {
         case "expression::set-expression": typed = try ExpressionSetExpression.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "expression::expression-state": typed = try ExpressionExpressionState.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "expression::expression-profile": typed = try ExpressionExpressionProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::wire": typed = try HubWire.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-null": typed = try HubHubNull.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-bool": typed = try HubHubBool.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-oid": typed = try HubHubOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-hash": typed = try HubHubHash.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-build-version": typed = try HubHubBuildVersion.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-build-record": typed = try HubHubBuildRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-signature": typed = try HubHubSignature.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-secret": typed = try HubHubSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-text": typed = try HubHubText.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-path": typed = try HubHubPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-write-path": typed = try HubHubWritePath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-chunk-hex": typed = try HubHubChunkHex.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-timeout": typed = try HubHubTimeout.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-size": typed = try HubHubSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-read-size": typed = try HubHubReadSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-queue": typed = try HubHubQueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-oid": typed = try HubHubMaybeOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-target": typed = try HubHubTarget.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-step": typed = try HubHubMaybeStep.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-error": typed = try HubHubMaybeError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-secret": typed = try HubHubMaybeSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-empty": typed = try HubHubEmpty.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-state": typed = try HubHubState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-ref": typed = try HubHubRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-fetch-ref": typed = try HubHubFetchRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-method": typed = try HubHubMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-methods": typed = try HubHubMethods.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-purpose-delegation": typed = try HubHubPurposeDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-delegation-statement": typed = try HubHubDelegationStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-ref-purpose": typed = try HubHubRefPurpose.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-ref-statement": typed = try HubHubRefStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-signed-delegation": typed = try HubHubSignedDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-signed-ref": typed = try HubHubSignedRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-status": typed = try HubHubStatus.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-queued": typed = try HubHubQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-queued": typed = try HubHubReceiptQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-applied": typed = try HubHubApplied.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-applied": typed = try HubHubReceiptApplied.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-cancelled": typed = try HubHubCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-cancelled": typed = try HubHubReceiptCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-failed": typed = try HubHubFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-failed": typed = try HubHubReceiptFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-mutation-receipt": typed = try HubHubMutationReceipt.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-inbox-delivery": typed = try HubHubInboxDelivery.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-event-batch": typed = try HubHubEventBatch.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-health-item": typed = try HubHubHealthItem.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-health-items": typed = try HubHubHealthItems.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-enroll-params": typed = try HubHubEnrollParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-install-params": typed = try HubHubInstallParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-push-params": typed = try HubHubPushParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-fetch-params": typed = try HubHubFetchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-events-params": typed = try HubHubEventsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-actions-params": typed = try HubHubActionsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-read-params": typed = try HubHubReadParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-write-params": typed = try HubHubWriteParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-inbox-params": typed = try HubHubInboxParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-health-params": typed = try HubHubHealthParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-operation-params": typed = try HubHubOperationParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-context": typed = try HubHubContext.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-enroll-request-method": typed = try HubHubEnrollRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-enroll-request": typed = try HubHubEnrollRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-install-request-method": typed = try HubHubInstallRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-install-request": typed = try HubHubInstallRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-start-request-method": typed = try HubHubStartRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-start-request": typed = try HubHubStartRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-stop-request-method": typed = try HubHubStopRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-stop-request": typed = try HubHubStopRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-status-request-method": typed = try HubHubStatusRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-status-request": typed = try HubHubStatusRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-git-push-request-method": typed = try HubHubGitPushRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-git-push-request": typed = try HubHubGitPushRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-git-fetch-request-method": typed = try HubHubGitFetchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-git-fetch-request": typed = try HubHubGitFetchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-events-request-method": typed = try HubHubEventsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-events-request": typed = try HubHubEventsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-actions-request-method": typed = try HubHubActionsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-actions-request": typed = try HubHubActionsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-read-request-method": typed = try HubDebugReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-read-request": typed = try HubDebugReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-write-request-method": typed = try HubDebugWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-write-request": typed = try HubDebugWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-pause-request-method": typed = try HubDebugPauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-pause-request": typed = try HubDebugPauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-step-request-method": typed = try HubDebugStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::debug-step-request": typed = try HubDebugStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-inbox-request-method": typed = try HubHubInboxRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-inbox-request": typed = try HubHubInboxRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-health-request-method": typed = try HubHubHealthRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-health-request": typed = try HubHubHealthRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-request-method": typed = try HubHubReceiptRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-receipt-request": typed = try HubHubReceiptRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-cancel-request-method": typed = try HubHubCancelRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-cancel-request": typed = try HubHubCancelRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-request": typed = try HubHubRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-enroll-result": typed = try HubHubEnrollResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-read-result": typed = try HubHubReadResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-events-result": typed = try HubHubEventsResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-step-result": typed = try HubHubStepResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-result": typed = try HubHubResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-success-type": typed = try HubHubSuccessType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-success": typed = try HubHubSuccess.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-failure-type": typed = try HubHubFailureType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-failure": typed = try HubHubFailure.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-credit-type": typed = try HubHubCreditType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-credit": typed = try HubHubCredit.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-chunk-type": typed = try HubHubChunkType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-chunk": typed = try HubHubChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-end-type": typed = try HubHubEndType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-end": typed = try HubHubEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-transfer-type": typed = try HubHubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-transfer": typed = try HubHubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-frame": typed = try HubHubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-entry": typed = try SpeechSpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-start": typed = try SpeechSpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-partial": typed = try SpeechSpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -320,6 +677,13 @@ internal enum GeneratedSchema {
         case "speech::session-close": typed = try SpeechSessionClose.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::tool-call": typed = try SpeechToolCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::tool-result": typed = try SpeechToolResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::heard-query": typed = try SpeechHeardQuery.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::heard-record": typed = try SpeechHeardRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::work-state": typed = try SpeechWorkState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::work-intent": typed = try SpeechWorkIntent.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::work-result": typed = try SpeechWorkResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::work-cancelled": typed = try SpeechWorkCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "speech::work-done": typed = try SpeechWorkDone.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-profile": typed = try SpeechSpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::surface-entry": typed = try SurfaceSurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::hello": typed = try SurfaceHello.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -383,6 +747,119 @@ internal enum GeneratedSchema {
         case "set-expression": typed = try SetExpression.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "expression-state": typed = try ExpressionState.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "expression-profile": typed = try ExpressionProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "wire": typed = try Wire.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-null": typed = try HubNull.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-bool": typed = try HubBool.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-oid": typed = try HubOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-hash": typed = try HubHash.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-build-version": typed = try HubBuildVersion.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-build-record": typed = try HubBuildRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-signature": typed = try HubSignature.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-secret": typed = try HubSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-text": typed = try HubText.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-path": typed = try HubPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-write-path": typed = try HubWritePath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-chunk-hex": typed = try HubChunkHex.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-timeout": typed = try HubTimeout.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-size": typed = try HubSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-read-size": typed = try HubReadSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-queue": typed = try HubQueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-oid": typed = try HubMaybeOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-target": typed = try HubTarget.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-step": typed = try HubMaybeStep.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-error": typed = try HubMaybeError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-secret": typed = try HubMaybeSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-empty": typed = try HubEmpty.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-state": typed = try HubState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-ref": typed = try HubRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-fetch-ref": typed = try HubFetchRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-method": typed = try HubMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-methods": typed = try HubMethods.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-purpose-delegation": typed = try HubPurposeDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-delegation-statement": typed = try HubDelegationStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-ref-purpose": typed = try HubRefPurpose.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-ref-statement": typed = try HubRefStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-signed-delegation": typed = try HubSignedDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-signed-ref": typed = try HubSignedRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-status": typed = try HubStatus.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-queued": typed = try HubQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-queued": typed = try HubReceiptQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-applied": typed = try HubApplied.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-applied": typed = try HubReceiptApplied.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-cancelled": typed = try HubCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-cancelled": typed = try HubReceiptCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-failed": typed = try HubFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-failed": typed = try HubReceiptFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-mutation-receipt": typed = try HubMutationReceipt.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-inbox-delivery": typed = try HubInboxDelivery.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-event-batch": typed = try HubEventBatch.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-health-item": typed = try HubHealthItem.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-health-items": typed = try HubHealthItems.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-enroll-params": typed = try HubEnrollParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-install-params": typed = try HubInstallParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-push-params": typed = try HubPushParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-fetch-params": typed = try HubFetchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-events-params": typed = try HubEventsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-actions-params": typed = try HubActionsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-read-params": typed = try HubReadParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-write-params": typed = try HubWriteParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-inbox-params": typed = try HubInboxParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-health-params": typed = try HubHealthParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-operation-params": typed = try HubOperationParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-context": typed = try HubContext.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-enroll-request-method": typed = try HubEnrollRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-enroll-request": typed = try HubEnrollRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-install-request-method": typed = try HubInstallRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-install-request": typed = try HubInstallRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-start-request-method": typed = try HubStartRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-start-request": typed = try HubStartRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-stop-request-method": typed = try HubStopRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-stop-request": typed = try HubStopRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-status-request-method": typed = try HubStatusRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-status-request": typed = try HubStatusRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-git-push-request-method": typed = try HubGitPushRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-git-push-request": typed = try HubGitPushRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-git-fetch-request-method": typed = try HubGitFetchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-git-fetch-request": typed = try HubGitFetchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-events-request-method": typed = try HubEventsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-events-request": typed = try HubEventsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-actions-request-method": typed = try HubActionsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-actions-request": typed = try HubActionsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-read-request-method": typed = try DebugReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-read-request": typed = try DebugReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-write-request-method": typed = try DebugWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-write-request": typed = try DebugWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-pause-request-method": typed = try DebugPauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-pause-request": typed = try DebugPauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-step-request-method": typed = try DebugStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "debug-step-request": typed = try DebugStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-inbox-request-method": typed = try HubInboxRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-inbox-request": typed = try HubInboxRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-health-request-method": typed = try HubHealthRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-health-request": typed = try HubHealthRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-request-method": typed = try HubReceiptRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-receipt-request": typed = try HubReceiptRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-cancel-request-method": typed = try HubCancelRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-cancel-request": typed = try HubCancelRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-request": typed = try HubRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-enroll-result": typed = try HubEnrollResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-read-result": typed = try HubReadResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-events-result": typed = try HubEventsResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-step-result": typed = try HubStepResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-result": typed = try HubResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-success-type": typed = try HubSuccessType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-success": typed = try HubSuccess.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-failure-type": typed = try HubFailureType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-failure": typed = try HubFailure.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-credit-type": typed = try HubCreditType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-credit": typed = try HubCredit.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-chunk-type": typed = try HubChunkType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-chunk": typed = try HubChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-end-type": typed = try HubEndType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-end": typed = try HubEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-transfer-type": typed = try HubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-transfer": typed = try HubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-frame": typed = try HubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-entry": typed = try SpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-start": typed = try SpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-partial": typed = try SpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -398,6 +875,13 @@ internal enum GeneratedSchema {
         case "session-close": typed = try SessionClose.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "tool-call": typed = try ToolCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "tool-result": typed = try ToolResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "heard-query": typed = try HeardQuery.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "heard-record": typed = try HeardRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "work-state": typed = try WorkState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "work-intent": typed = try WorkIntent.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "work-result": typed = try WorkResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "work-cancelled": typed = try WorkCancelled.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "work-done": typed = try WorkDone.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-profile": typed = try SpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface-entry": typed = try SurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hello": typed = try Hello.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1718,6 +2202,2688 @@ public indirect enum ExpressionExpressionProfile: CBORMessage, Sendable {
     }
 }
 
+public typealias HubWire = HubHubFrame
+
+public typealias HubHubNull = CBORValue
+
+public typealias HubHubBool = Swift.Bool
+
+public typealias HubHubOid = CBORValue
+
+public typealias HubHubHash = CBORValue
+
+public typealias HubHubBuildVersion = Swift.String
+
+public struct HubHubBuildRecord: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-build-record"
+    public var `version`: HubHubBuildVersion
+    public var `source_commit`: HubHubOid
+    public var `recipe_sha256`: HubHubHash
+    public var `policy_sha256`: HubHubHash
+    public var `transform_sha256`: HubHubHash
+    public var `original_sha256`: HubHubHash
+    public var `rewritten_sha256`: HubHubHash
+    public init(`version`: HubHubBuildVersion, `source_commit`: HubHubOid, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
+        self.`version` = `version`
+        self.`source_commit` = `source_commit`
+        self.`recipe_sha256` = `recipe_sha256`
+        self.`policy_sha256` = `policy_sha256`
+        self.`transform_sha256` = `transform_sha256`
+        self.`original_sha256` = `original_sha256`
+        self.`rewritten_sha256` = `rewritten_sha256`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try HubHubBuildVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`source_commit` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_commit")), depth: depth + 1)
+        self.`recipe_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "recipe_sha256")), depth: depth + 1)
+        self.`policy_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy_sha256")), depth: depth + 1)
+        self.`transform_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "transform_sha256")), depth: depth + 1)
+        self.`original_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "original_sha256")), depth: depth + 1)
+        self.`rewritten_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rewritten_sha256")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("source_commit", try self.`source_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("recipe_sha256", try self.`recipe_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("policy_sha256", try self.`policy_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("transform_sha256", try self.`transform_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("original_sha256", try self.`original_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("rewritten_sha256", try self.`rewritten_sha256`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubSignature = CBORValue
+
+public typealias HubHubSecret = CBORValue
+
+public typealias HubHubText = CBORValue
+
+public typealias HubHubPath = CBORValue
+
+public typealias HubHubWritePath = CBORValue
+
+public typealias HubHubChunkHex = CBORValue
+
+public typealias HubHubTimeout = Swift.UInt64
+
+public typealias HubHubSize = Swift.UInt64
+
+public typealias HubHubReadSize = Swift.UInt64
+
+public typealias HubHubQueue = Swift.UInt64
+
+public indirect enum HubHubMaybeOid: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-oid"
+    case variant1(HubHubOid)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-oid"), cborValue)) != nil {
+            self = .variant1(try HubHubOid.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-oid"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubTarget: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-target"
+    case variant1(CommonCogletId)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::coglet-id"), cborValue)) != nil {
+            self = .variant1(try CommonCogletId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::coglet-id"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMaybeStep: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-step"
+    case variant1(CommonUint64)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant1(try CommonUint64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMaybeError: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-error"
+    case variant1(CommonError)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::error"), cborValue)) != nil {
+            self = .variant1(try CommonError.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::error"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMaybeSecret: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-secret"
+    case variant1(HubHubSecret)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-secret"), cborValue)) != nil {
+            self = .variant1(try HubHubSecret.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-secret"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubEmpty = [CBORMapEntry]
+
+public indirect enum HubHubState: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-state"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("running")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("paused")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("faulted")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("running")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("paused")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("faulted")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-ref"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/hub")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/hub")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubFetchRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-fetch-ref"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMethod: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-method"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    case variant7(Swift.String)
+    case variant8(Swift.String)
+    case variant9(Swift.String)
+    case variant10(Swift.String)
+    case variant11(Swift.String)
+    case variant12(Swift.String)
+    case variant13(Swift.String)
+    case variant14(Swift.String)
+    case variant15(Swift.String)
+    case variant16(Swift.String)
+    case variant17(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("hub.enroll")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.install")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.start")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.stop")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.status")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.git.push")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.git.fetch")), cborValue)) != nil {
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.events")), cborValue)) != nil {
+            self = .variant8(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.actions")), cborValue)) != nil {
+            self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.read")), cborValue)) != nil {
+            self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.write")), cborValue)) != nil {
+            self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.pause")), cborValue)) != nil {
+            self = .variant12(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.step")), cborValue)) != nil {
+            self = .variant13(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.inbox")), cborValue)) != nil {
+            self = .variant14(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.health")), cborValue)) != nil {
+            self = .variant15(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.receipt")), cborValue)) != nil {
+            self = .variant16(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.cancel")), cborValue)) != nil {
+            self = .variant17(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.enroll")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.install")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.start")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.stop")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.status")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.git.push")), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.git.fetch")), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.events")), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.actions")), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.read")), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.write")), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.pause")), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.step")), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.inbox")), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.health")), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.receipt")), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.cancel")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubMethods = [HubHubMethod]
+
+public typealias HubHubPurposeDelegation = Swift.String
+
+public struct HubHubDelegationStatement: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-delegation-statement"
+    public var `purpose`: HubHubPurposeDelegation
+    public var `coglet`: CommonCogletId
+    public var `device`: CommonNodeId
+    public var `hub`: CommonNodeId
+    public var `generation`: CommonUint64
+    public var `expires`: CommonUint64
+    public var `methods`: HubHubMethods
+    public init(`purpose`: HubHubPurposeDelegation, `coglet`: CommonCogletId, `device`: CommonNodeId, `hub`: CommonNodeId, `generation`: CommonUint64, `expires`: CommonUint64, `methods`: HubHubMethods) {
+        self.`purpose` = `purpose`
+        self.`coglet` = `coglet`
+        self.`device` = `device`
+        self.`hub` = `hub`
+        self.`generation` = `generation`
+        self.`expires` = `expires`
+        self.`methods` = `methods`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`purpose` = try HubHubPurposeDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+        self.`methods` = try HubHubMethods.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "methods")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        entries.append(.init("methods", try self.`methods`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubRefPurpose: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-ref-purpose"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("hub-ref")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("published-ref")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("logs-ref")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub-ref")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("published-ref")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("logs-ref")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubRefStatement: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-ref-statement"
+    public var `purpose`: HubHubRefPurpose
+    public var `hub`: CommonNodeId
+    public var `coglet`: CommonCogletId
+    public var `ref`: HubHubRef
+    public var `old`: HubHubMaybeOid
+    public var `new`: HubHubOid
+    public var `archive_sha256`: HubHubHash
+    public var `generation`: CommonUint64
+    public init(`purpose`: HubHubRefPurpose, `hub`: CommonNodeId, `coglet`: CommonCogletId, `ref`: HubHubRef, `old`: HubHubMaybeOid, `new`: HubHubOid, `archive_sha256`: HubHubHash, `generation`: CommonUint64) {
+        self.`purpose` = `purpose`
+        self.`hub` = `hub`
+        self.`coglet` = `coglet`
+        self.`ref` = `ref`
+        self.`old` = `old`
+        self.`new` = `new`
+        self.`archive_sha256` = `archive_sha256`
+        self.`generation` = `generation`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`purpose` = try HubHubRefPurpose.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`ref` = try HubHubRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+        self.`old` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "old")), depth: depth + 1)
+        self.`new` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "new")), depth: depth + 1)
+        self.`archive_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "archive_sha256")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        entries.append(.init("old", try self.`old`.cborValue(depth: depth + 1)))
+        entries.append(.init("new", try self.`new`.cborValue(depth: depth + 1)))
+        entries.append(.init("archive_sha256", try self.`archive_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubSignedDelegation: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-signed-delegation"
+    public var `statement`: HubHubDelegationStatement
+    public var `signer`: CommonNodeId
+    public var `signature`: HubHubSignature
+    public init(`statement`: HubHubDelegationStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
+        self.`statement` = `statement`
+        self.`signer` = `signer`
+        self.`signature` = `signature`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`statement` = try HubHubDelegationStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
+        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
+        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubSignedRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-signed-ref"
+    public var `statement`: HubHubRefStatement
+    public var `signer`: CommonNodeId
+    public var `signature`: HubHubSignature
+    public init(`statement`: HubHubRefStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
+        self.`statement` = `statement`
+        self.`signer` = `signer`
+        self.`signature` = `signature`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`statement` = try HubHubRefStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
+        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
+        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubStatus: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-status"
+    public var `state`: HubHubState
+    public var `live_commit`: HubHubMaybeOid
+    public var `step`: CommonUint64
+    public var `pending`: HubHubQueue
+    public var `error`: HubHubMaybeError
+    public init(`state`: HubHubState, `live_commit`: HubHubMaybeOid, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
+        self.`state` = `state`
+        self.`live_commit` = `live_commit`
+        self.`step` = `step`
+        self.`pending` = `pending`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`state` = try HubHubState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`live_commit` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_commit")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`pending` = try HubHubQueue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+        self.`error` = try HubHubMaybeError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("live_commit", try self.`live_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubQueued = Swift.String
+
+public struct HubHubReceiptQueued: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-receipt-queued"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubQueued
+    public var `step`: HubHubNull
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubQueued, `step`: HubHubNull, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubQueued.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubApplied = Swift.String
+
+public struct HubHubReceiptApplied: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-receipt-applied"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubApplied
+    public var `step`: CommonUint64
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubApplied, `step`: CommonUint64, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubApplied.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubCancelled = Swift.String
+
+public struct HubHubReceiptCancelled: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-receipt-cancelled"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubCancelled
+    public var `step`: HubHubNull
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubCancelled, `step`: HubHubNull, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubCancelled.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubFailed = Swift.String
+
+public struct HubHubReceiptFailed: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-receipt-failed"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubFailed
+    public var `step`: HubHubNull
+    public var `error`: CommonError
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubFailed, `step`: HubHubNull, `error`: CommonError) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubFailed.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMutationReceipt: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-mutation-receipt"
+    case variant1(HubHubReceiptQueued)
+    case variant2(HubHubReceiptApplied)
+    case variant3(HubHubReceiptCancelled)
+    case variant4(HubHubReceiptFailed)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-queued"), cborValue)) != nil {
+            self = .variant1(try HubHubReceiptQueued.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-applied"), cborValue)) != nil {
+            self = .variant2(try HubHubReceiptApplied.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-cancelled"), cborValue)) != nil {
+            self = .variant3(try HubHubReceiptCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-failed"), cborValue)) != nil {
+            self = .variant4(try HubHubReceiptFailed.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-queued"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-applied"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-cancelled"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-failed"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubInboxDelivery: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-inbox-delivery"
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: CommonEvent
+    public init(`id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: CommonEvent) {
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubEventBatch = [CommonEvent]
+
+public struct HubHubHealthItem: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-health-item"
+    public var `coglet`: CommonCogletId
+    public var `status`: HubHubStatus
+    public init(`coglet`: CommonCogletId, `status`: HubHubStatus) {
+        self.`coglet` = `coglet`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`status` = try HubHubStatus.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubHealthItems = [HubHubHealthItem]
+
+public struct HubHubEnrollParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-enroll-params"
+    public var `offer`: CommonVersionOffer
+    public var `invite`: HubHubMaybeSecret
+    public init(`offer`: CommonVersionOffer, `invite`: HubHubMaybeSecret) {
+        self.`offer` = `offer`
+        self.`invite` = `invite`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`offer` = try CommonVersionOffer.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offer")), depth: depth + 1)
+        self.`invite` = try HubHubMaybeSecret.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "invite")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("offer", try self.`offer`.cborValue(depth: depth + 1)))
+        entries.append(.init("invite", try self.`invite`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubInstallParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-install-params"
+    public var `delegation`: HubHubSignedDelegation
+    public var `initial`: HubHubSignedRef
+    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubSignedRef) {
+        self.`delegation` = `delegation`
+        self.`initial` = `initial`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`delegation` = try HubHubSignedDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "delegation")), depth: depth + 1)
+        self.`initial` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("delegation", try self.`delegation`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial", try self.`initial`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubPushParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-push-params"
+    public var `update`: HubHubSignedRef
+    public var `size`: HubHubSize
+    public var `sha256`: HubHubHash
+    public init(`update`: HubHubSignedRef, `size`: HubHubSize, `sha256`: HubHubHash) {
+        self.`update` = `update`
+        self.`size` = `size`
+        self.`sha256` = `sha256`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
+        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
+        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubFetchParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-fetch-params"
+    public var `ref`: HubHubFetchRef
+    public init(`ref`: HubHubFetchRef) {
+        self.`ref` = `ref`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`ref` = try HubHubFetchRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubEventsParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-events-params"
+    public var `events`: HubHubEventBatch
+    public init(`events`: HubHubEventBatch) {
+        self.`events` = `events`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`events` = try HubHubEventBatch.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubActionsParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-actions-params"
+    public var `action`: CommonAction
+    public init(`action`: CommonAction) {
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`action` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubReadParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-read-params"
+    public var `path`: HubHubPath
+    public var `offset`: CommonUint64
+    public var `limit`: HubHubReadSize
+    public init(`path`: HubHubPath, `offset`: CommonUint64, `limit`: HubHubReadSize) {
+        self.`path` = `path`
+        self.`offset` = `offset`
+        self.`limit` = `limit`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubHubPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`limit` = try HubHubReadSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "limit")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("limit", try self.`limit`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubWriteParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-write-params"
+    public var `path`: HubHubWritePath
+    public var `text`: HubHubText
+    public var `expected_hash`: HubHubHash
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`path`: HubHubWritePath, `text`: HubHubText, `expected_hash`: HubHubHash, `actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`path` = `path`
+        self.`text` = `text`
+        self.`expected_hash` = `expected_hash`
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubHubWritePath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`text` = try HubHubText.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`expected_hash` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expected_hash")), depth: depth + 1)
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("expected_hash", try self.`expected_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubInboxParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-inbox-params"
+    public var `message`: HubHubInboxDelivery
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`message`: HubHubInboxDelivery, `actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`message` = `message`
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`message` = try HubHubInboxDelivery.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubHealthParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-health-params"
+    public var `device`: CommonNodeId
+    public var `uptime_ms`: CommonUint64
+    public var `queue_depth`: CommonUint64
+    public var `available_bytes`: CommonUint64
+    public var `coglets`: HubHubHealthItems
+    public init(`device`: CommonNodeId, `uptime_ms`: CommonUint64, `queue_depth`: CommonUint64, `available_bytes`: CommonUint64, `coglets`: HubHubHealthItems) {
+        self.`device` = `device`
+        self.`uptime_ms` = `uptime_ms`
+        self.`queue_depth` = `queue_depth`
+        self.`available_bytes` = `available_bytes`
+        self.`coglets` = `coglets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`uptime_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "uptime_ms")), depth: depth + 1)
+        self.`queue_depth` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "queue_depth")), depth: depth + 1)
+        self.`available_bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "available_bytes")), depth: depth + 1)
+        self.`coglets` = try HubHubHealthItems.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("uptime_ms", try self.`uptime_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("queue_depth", try self.`queue_depth`.cborValue(depth: depth + 1)))
+        entries.append(.init("available_bytes", try self.`available_bytes`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglets", try self.`coglets`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubOperationParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-operation-params"
+    public var `operation_id`: CommonCorrelationId
+    public init(`operation_id`: CommonCorrelationId) {
+        self.`operation_id` = `operation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubContext: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-context"
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubEnrollRequestMethod = Swift.String
+
+public struct HubHubEnrollRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-enroll-request"
+    public var `method`: HubHubEnrollRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEnrollParams
+    public init(`method`: HubHubEnrollRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEnrollParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubEnrollRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEnrollParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubInstallRequestMethod = Swift.String
+
+public struct HubHubInstallRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-install-request"
+    public var `method`: HubHubInstallRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubInstallParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubInstallRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubInstallParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubInstallRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubInstallParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubStartRequestMethod = Swift.String
+
+public struct HubHubStartRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-start-request"
+    public var `method`: HubHubStartRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStartRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStartRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubStopRequestMethod = Swift.String
+
+public struct HubHubStopRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-stop-request"
+    public var `method`: HubHubStopRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStopRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStopRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubStatusRequestMethod = Swift.String
+
+public struct HubHubStatusRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-status-request"
+    public var `method`: HubHubStatusRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStatusRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStatusRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubGitPushRequestMethod = Swift.String
+
+public struct HubHubGitPushRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-git-push-request"
+    public var `method`: HubHubGitPushRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubPushParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubGitPushRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubPushParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubGitPushRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubPushParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubGitFetchRequestMethod = Swift.String
+
+public struct HubHubGitFetchRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-git-fetch-request"
+    public var `method`: HubHubGitFetchRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubFetchParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubGitFetchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubFetchParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubGitFetchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubFetchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubEventsRequestMethod = Swift.String
+
+public struct HubHubEventsRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-events-request"
+    public var `method`: HubHubEventsRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEventsParams
+    public init(`method`: HubHubEventsRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEventsParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubEventsRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEventsParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubActionsRequestMethod = Swift.String
+
+public struct HubHubActionsRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-actions-request"
+    public var `method`: HubHubActionsRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubActionsParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubActionsRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubActionsParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubActionsRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubActionsParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubDebugReadRequestMethod = Swift.String
+
+public struct HubDebugReadRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::debug-read-request"
+    public var `method`: HubDebugReadRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubReadParams
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubReadParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubDebugWriteRequestMethod = Swift.String
+
+public struct HubDebugWriteRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::debug-write-request"
+    public var `method`: HubDebugWriteRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubWriteParams
+    public init(`method`: HubDebugWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubWriteParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubDebugPauseRequestMethod = Swift.String
+
+public struct HubDebugPauseRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::debug-pause-request"
+    public var `method`: HubDebugPauseRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugPauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugPauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubDebugStepRequestMethod = Swift.String
+
+public struct HubDebugStepRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::debug-step-request"
+    public var `method`: HubDebugStepRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubInboxRequestMethod = Swift.String
+
+public struct HubHubInboxRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-inbox-request"
+    public var `method`: HubHubInboxRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubInboxParams
+    public init(`method`: HubHubInboxRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubInboxParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubInboxRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubInboxParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubHealthRequestMethod = Swift.String
+
+public struct HubHubHealthRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-health-request"
+    public var `method`: HubHubHealthRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubHealthParams
+    public init(`method`: HubHubHealthRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubHealthParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubHealthRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubHealthParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubReceiptRequestMethod = Swift.String
+
+public struct HubHubReceiptRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-receipt-request"
+    public var `method`: HubHubReceiptRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubOperationParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubReceiptRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubOperationParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubReceiptRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubOperationParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubCancelRequestMethod = Swift.String
+
+public struct HubHubCancelRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-cancel-request"
+    public var `method`: HubHubCancelRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubOperationParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubCancelRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubOperationParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubCancelRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubOperationParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-request"
+    case variant1(HubHubEnrollRequest)
+    case variant2(HubHubInstallRequest)
+    case variant3(HubHubStartRequest)
+    case variant4(HubHubStopRequest)
+    case variant5(HubHubStatusRequest)
+    case variant6(HubHubGitPushRequest)
+    case variant7(HubHubGitFetchRequest)
+    case variant8(HubHubEventsRequest)
+    case variant9(HubHubActionsRequest)
+    case variant10(HubDebugReadRequest)
+    case variant11(HubDebugWriteRequest)
+    case variant12(HubDebugPauseRequest)
+    case variant13(HubDebugStepRequest)
+    case variant14(HubHubInboxRequest)
+    case variant15(HubHubHealthRequest)
+    case variant16(HubHubReceiptRequest)
+    case variant17(HubHubCancelRequest)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-request"), cborValue)) != nil {
+            self = .variant1(try HubHubEnrollRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-install-request"), cborValue)) != nil {
+            self = .variant2(try HubHubInstallRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-start-request"), cborValue)) != nil {
+            self = .variant3(try HubHubStartRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-stop-request"), cborValue)) != nil {
+            self = .variant4(try HubHubStopRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-status-request"), cborValue)) != nil {
+            self = .variant5(try HubHubStatusRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-git-push-request"), cborValue)) != nil {
+            self = .variant6(try HubHubGitPushRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), cborValue)) != nil {
+            self = .variant7(try HubHubGitFetchRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-events-request"), cborValue)) != nil {
+            self = .variant8(try HubHubEventsRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-actions-request"), cborValue)) != nil {
+            self = .variant9(try HubHubActionsRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-read-request"), cborValue)) != nil {
+            self = .variant10(try HubDebugReadRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-write-request"), cborValue)) != nil {
+            self = .variant11(try HubDebugWriteRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-pause-request"), cborValue)) != nil {
+            self = .variant12(try HubDebugPauseRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-step-request"), cborValue)) != nil {
+            self = .variant13(try HubDebugStepRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-inbox-request"), cborValue)) != nil {
+            self = .variant14(try HubHubInboxRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-health-request"), cborValue)) != nil {
+            self = .variant15(try HubHubHealthRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-request"), cborValue)) != nil {
+            self = .variant16(try HubHubReceiptRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-cancel-request"), cborValue)) != nil {
+            self = .variant17(try HubHubCancelRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-enroll-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-install-request"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-start-request"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-stop-request"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-status-request"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-git-push-request"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-events-request"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-actions-request"), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-read-request"), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-write-request"), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-pause-request"), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-step-request"), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-inbox-request"), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-health-request"), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-request"), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-cancel-request"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubEnrollResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-enroll-result"
+    public var `selection`: CommonVersionSelection
+    public var `device`: CommonNodeId
+    public var `hub`: CommonNodeId
+    public init(`selection`: CommonVersionSelection, `device`: CommonNodeId, `hub`: CommonNodeId) {
+        self.`selection` = `selection`
+        self.`device` = `device`
+        self.`hub` = `hub`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`selection` = try CommonVersionSelection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "selection")), depth: depth + 1)
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("selection", try self.`selection`.cborValue(depth: depth + 1)))
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubReadResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-read-result"
+    public var `step`: CommonUint64
+    public var `snapshot_hash`: HubHubHash
+    public var `text`: HubHubText
+    public var `next_offset`: CommonUint64
+    public var `eof`: HubHubBool
+    public init(`step`: CommonUint64, `snapshot_hash`: HubHubHash, `text`: HubHubText, `next_offset`: CommonUint64, `eof`: HubHubBool) {
+        self.`step` = `step`
+        self.`snapshot_hash` = `snapshot_hash`
+        self.`text` = `text`
+        self.`next_offset` = `next_offset`
+        self.`eof` = `eof`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`snapshot_hash` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "snapshot_hash")), depth: depth + 1)
+        self.`text` = try HubHubText.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
+        self.`eof` = try HubHubBool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "eof")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("snapshot_hash", try self.`snapshot_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("eof", try self.`eof`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubEventsResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-events-result"
+    public var `next_seq`: CommonUint64
+    public init(`next_seq`: CommonUint64) {
+        self.`next_seq` = `next_seq`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`next_seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_seq")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("next_seq", try self.`next_seq`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHubStepResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-step-result"
+    public var `receipt`: HubHubMutationReceipt
+    public var `step`: CommonUint64
+    public init(`receipt`: HubHubMutationReceipt, `step`: CommonUint64) {
+        self.`receipt` = `receipt`
+        self.`step` = `step`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`receipt` = try HubHubMutationReceipt.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "receipt")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("receipt", try self.`receipt`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-result"
+    case variant1(HubHubEnrollResult)
+    case variant2(HubHubMutationReceipt)
+    case variant3(HubHubStatus)
+    case variant4(CommonActionAccept)
+    case variant5(HubHubReadResult)
+    case variant6(HubHubEventsResult)
+    case variant7(HubHubStepResult)
+    case variant8(HubHubEmpty)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-result"), cborValue)) != nil {
+            self = .variant1(try HubHubEnrollResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-mutation-receipt"), cborValue)) != nil {
+            self = .variant2(try HubHubMutationReceipt.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-status"), cborValue)) != nil {
+            self = .variant3(try HubHubStatus.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::action-accept"), cborValue)) != nil {
+            self = .variant4(try CommonActionAccept.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-read-result"), cborValue)) != nil {
+            self = .variant5(try HubHubReadResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-events-result"), cborValue)) != nil {
+            self = .variant6(try HubHubEventsResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-step-result"), cborValue)) != nil {
+            self = .variant7(try HubHubStepResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-empty"), cborValue)) != nil {
+            self = .variant8(try HubHubEmpty.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-enroll-result"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-mutation-receipt"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-status"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::action-accept"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-read-result"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-events-result"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-step-result"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-empty"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubSuccessType = Swift.String
+
+public struct HubHubSuccess: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-success"
+    public var `type`: HubHubSuccessType
+    public var `correlation_id`: CommonCorrelationId
+    public var `result`: HubHubResult
+    public init(`type`: HubHubSuccessType, `correlation_id`: CommonCorrelationId, `result`: HubHubResult) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubSuccessType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`result` = try HubHubResult.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubFailureType = Swift.String
+
+public struct HubHubFailure: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-failure"
+    public var `type`: HubHubFailureType
+    public var `correlation_id`: CommonCorrelationId
+    public var `error`: CommonError
+    public init(`type`: HubHubFailureType, `correlation_id`: CommonCorrelationId, `error`: CommonError) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubFailureType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubCreditType = Swift.String
+
+public struct HubHubCredit: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-credit"
+    public var `type`: HubHubCreditType
+    public var `correlation_id`: CommonCorrelationId
+    public var `bytes`: CommonUint64
+    public init(`type`: HubHubCreditType, `correlation_id`: CommonCorrelationId, `bytes`: CommonUint64) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`bytes` = `bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubCreditType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("bytes", try self.`bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubChunkType = Swift.String
+
+public struct HubHubChunk: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-chunk"
+    public var `type`: HubHubChunkType
+    public var `correlation_id`: CommonCorrelationId
+    public var `offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`type`: HubHubChunkType, `correlation_id`: CommonCorrelationId, `offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`offset` = `offset`
+        self.`hex` = `hex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubChunkType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubEndType = Swift.String
+
+public struct HubHubEnd: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-end"
+    public var `type`: HubHubEndType
+    public var `correlation_id`: CommonCorrelationId
+    public init(`type`: HubHubEndType, `correlation_id`: CommonCorrelationId) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubEndType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHubTransferType = Swift.String
+
+public struct HubHubTransfer: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-transfer"
+    public var `type`: HubHubTransferType
+    public var `correlation_id`: CommonCorrelationId
+    public var `size`: HubHubSize
+    public var `sha256`: HubHubHash
+    public var `update`: HubHubSignedRef
+    public init(`type`: HubHubTransferType, `correlation_id`: CommonCorrelationId, `size`: HubHubSize, `sha256`: HubHubHash, `update`: HubHubSignedRef) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`size` = `size`
+        self.`sha256` = `sha256`
+        self.`update` = `update`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubTransferType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
+        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
+        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
+        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubFrame: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-frame"
+    case variant1(HubHubRequest)
+    case variant2(HubHubSuccess)
+    case variant3(HubHubFailure)
+    case variant4(HubHubCredit)
+    case variant5(HubHubChunk)
+    case variant6(HubHubEnd)
+    case variant7(HubHubTransfer)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-request"), cborValue)) != nil {
+            self = .variant1(try HubHubRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-success"), cborValue)) != nil {
+            self = .variant2(try HubHubSuccess.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-failure"), cborValue)) != nil {
+            self = .variant3(try HubHubFailure.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-credit"), cborValue)) != nil {
+            self = .variant4(try HubHubCredit.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-chunk"), cborValue)) != nil {
+            self = .variant5(try HubHubChunk.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-end"), cborValue)) != nil {
+            self = .variant6(try HubHubEnd.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-transfer"), cborValue)) != nil {
+            self = .variant7(try HubHubTransfer.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-success"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-failure"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-credit"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-chunk"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-end"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-transfer"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public typealias SpeechSpeechEntry = SpeechSpeechProfile
 
 public struct SpeechSpeechStart: CBORMessage, Sendable {
@@ -2150,6 +5316,224 @@ public indirect enum SpeechToolResult: CBORMessage, Sendable {
     }
 }
 
+public struct SpeechHeardQuery: CBORMessage, Sendable {
+    public static let schemaRule = "speech::heard-query"
+    public var `item`: CommonCorrelationId
+    public init(`item`: CommonCorrelationId) {
+        self.`item` = `item`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechHeardRecord: CBORMessage, Sendable {
+    public static let schemaRule = "speech::heard-record"
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `text`: CBORValue
+    public init(`item`: CommonCorrelationId, `played_ms`: CommonUint64, `text`: CBORValue) {
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechWorkState: CBORMessage, Sendable {
+    public static let schemaRule = "speech::work-state"
+    public var `epoch`: Swift.UInt64
+    public var `pending`: Swift.UInt64
+    public init(`epoch`: Swift.UInt64, `pending`: Swift.UInt64) {
+        self.`epoch` = `epoch`
+        self.`pending` = `pending`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`pending` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechWorkIntent: CBORMessage, Sendable {
+    public static let schemaRule = "speech::work-intent"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `name`: CommonMethodName
+    public var `arguments`: CommonProfileMap
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `name`: CommonMethodName, `arguments`: CommonProfileMap) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`name` = `name`
+        self.`arguments` = `arguments`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`name` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`arguments` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "arguments")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("arguments", try self.`arguments`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechWorkResult: CBORMessage, Sendable {
+    public static let schemaRule = "speech::work-result"
+    case variant1(SpeechWorkResultVariant1)
+    case variant2(SpeechWorkResultVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try SpeechWorkResultVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try SpeechWorkResultVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechWorkCancelled: CBORMessage, Sendable {
+    public static let schemaRule = "speech::work-cancelled"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonError
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonError) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SpeechWorkDone: CBORMessage, Sendable {
+    public static let schemaRule = "speech::work-done"
+    case variant1(SpeechWorkResult)
+    case variant2(SpeechWorkCancelled)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("speech::work-result"), cborValue)) != nil {
+            self = .variant1(try SpeechWorkResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-cancelled"), cborValue)) != nil {
+            self = .variant2(try SpeechWorkCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-result"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-cancelled"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
     public static let schemaRule = "speech::speech-profile"
     case variant1(SpeechSpeechStart)
@@ -2166,6 +5550,13 @@ public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
     case variant12(SpeechSessionClose)
     case variant13(SpeechToolCall)
     case variant14(SpeechToolResult)
+    case variant15(SpeechHeardQuery)
+    case variant16(SpeechHeardRecord)
+    case variant17(SpeechWorkState)
+    case variant18(SpeechWorkIntent)
+    case variant19(SpeechWorkResult)
+    case variant20(SpeechWorkCancelled)
+    case variant21(SpeechWorkDone)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("speech::speech-start"), cborValue)) != nil {
@@ -2224,6 +5615,34 @@ public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
             self = .variant14(try SpeechToolResult.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("speech::heard-query"), cborValue)) != nil {
+            self = .variant15(try SpeechHeardQuery.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::heard-record"), cborValue)) != nil {
+            self = .variant16(try SpeechHeardRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-state"), cborValue)) != nil {
+            self = .variant17(try SpeechWorkState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-intent"), cborValue)) != nil {
+            self = .variant18(try SpeechWorkIntent.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-result"), cborValue)) != nil {
+            self = .variant19(try SpeechWorkResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-cancelled"), cborValue)) != nil {
+            self = .variant20(try SpeechWorkCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-done"), cborValue)) != nil {
+            self = .variant21(try SpeechWorkDone.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -2272,6 +5691,27 @@ public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("speech::tool-result"), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::heard-query"), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::heard-record"), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-state"), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-intent"), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-result"), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-cancelled"), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-done"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -4078,6 +7518,2688 @@ public indirect enum ExpressionProfile: CBORMessage, Sendable {
     }
 }
 
+public typealias Wire = HubHubFrame
+
+public typealias HubNull = CBORValue
+
+public typealias HubBool = Swift.Bool
+
+public typealias HubOid = CBORValue
+
+public typealias HubHash = CBORValue
+
+public typealias HubBuildVersion = Swift.String
+
+public struct HubBuildRecord: CBORMessage, Sendable {
+    public static let schemaRule = "hub-build-record"
+    public var `version`: HubHubBuildVersion
+    public var `source_commit`: HubHubOid
+    public var `recipe_sha256`: HubHubHash
+    public var `policy_sha256`: HubHubHash
+    public var `transform_sha256`: HubHubHash
+    public var `original_sha256`: HubHubHash
+    public var `rewritten_sha256`: HubHubHash
+    public init(`version`: HubHubBuildVersion, `source_commit`: HubHubOid, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
+        self.`version` = `version`
+        self.`source_commit` = `source_commit`
+        self.`recipe_sha256` = `recipe_sha256`
+        self.`policy_sha256` = `policy_sha256`
+        self.`transform_sha256` = `transform_sha256`
+        self.`original_sha256` = `original_sha256`
+        self.`rewritten_sha256` = `rewritten_sha256`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try HubHubBuildVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`source_commit` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_commit")), depth: depth + 1)
+        self.`recipe_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "recipe_sha256")), depth: depth + 1)
+        self.`policy_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy_sha256")), depth: depth + 1)
+        self.`transform_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "transform_sha256")), depth: depth + 1)
+        self.`original_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "original_sha256")), depth: depth + 1)
+        self.`rewritten_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rewritten_sha256")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("source_commit", try self.`source_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("recipe_sha256", try self.`recipe_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("policy_sha256", try self.`policy_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("transform_sha256", try self.`transform_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("original_sha256", try self.`original_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("rewritten_sha256", try self.`rewritten_sha256`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubSignature = CBORValue
+
+public typealias HubSecret = CBORValue
+
+public typealias HubText = CBORValue
+
+public typealias HubPath = CBORValue
+
+public typealias HubWritePath = CBORValue
+
+public typealias HubChunkHex = CBORValue
+
+public typealias HubTimeout = Swift.UInt64
+
+public typealias HubSize = Swift.UInt64
+
+public typealias HubReadSize = Swift.UInt64
+
+public typealias HubQueue = Swift.UInt64
+
+public indirect enum HubMaybeOid: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-oid"
+    case variant1(HubHubOid)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-oid"), cborValue)) != nil {
+            self = .variant1(try HubHubOid.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-oid"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubTarget: CBORMessage, Sendable {
+    public static let schemaRule = "hub-target"
+    case variant1(CommonCogletId)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::coglet-id"), cborValue)) != nil {
+            self = .variant1(try CommonCogletId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::coglet-id"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMaybeStep: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-step"
+    case variant1(CommonUint64)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant1(try CommonUint64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMaybeError: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-error"
+    case variant1(CommonError)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::error"), cborValue)) != nil {
+            self = .variant1(try CommonError.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::error"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMaybeSecret: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-secret"
+    case variant1(HubHubSecret)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-secret"), cborValue)) != nil {
+            self = .variant1(try HubHubSecret.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-secret"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubEmpty = [CBORMapEntry]
+
+public indirect enum HubState: CBORMessage, Sendable {
+    public static let schemaRule = "hub-state"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("stopped")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("running")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("paused")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("faulted")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("stopped")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("running")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("paused")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("faulted")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub-ref"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/hub")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/hub")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubFetchRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub-fetch-ref"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMethod: CBORMessage, Sendable {
+    public static let schemaRule = "hub-method"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    case variant7(Swift.String)
+    case variant8(Swift.String)
+    case variant9(Swift.String)
+    case variant10(Swift.String)
+    case variant11(Swift.String)
+    case variant12(Swift.String)
+    case variant13(Swift.String)
+    case variant14(Swift.String)
+    case variant15(Swift.String)
+    case variant16(Swift.String)
+    case variant17(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("hub.enroll")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.install")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.start")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.stop")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.status")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.git.push")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.git.fetch")), cborValue)) != nil {
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.events")), cborValue)) != nil {
+            self = .variant8(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.actions")), cborValue)) != nil {
+            self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.read")), cborValue)) != nil {
+            self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.write")), cborValue)) != nil {
+            self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.pause")), cborValue)) != nil {
+            self = .variant12(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("debug.step")), cborValue)) != nil {
+            self = .variant13(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.inbox")), cborValue)) != nil {
+            self = .variant14(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.health")), cborValue)) != nil {
+            self = .variant15(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.receipt")), cborValue)) != nil {
+            self = .variant16(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("hub.cancel")), cborValue)) != nil {
+            self = .variant17(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.enroll")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.install")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.start")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.stop")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.status")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.git.push")), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.git.fetch")), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.events")), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.actions")), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.read")), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.write")), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.pause")), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug.step")), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.inbox")), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.health")), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.receipt")), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub.cancel")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubMethods = [HubHubMethod]
+
+public typealias HubPurposeDelegation = Swift.String
+
+public struct HubDelegationStatement: CBORMessage, Sendable {
+    public static let schemaRule = "hub-delegation-statement"
+    public var `purpose`: HubHubPurposeDelegation
+    public var `coglet`: CommonCogletId
+    public var `device`: CommonNodeId
+    public var `hub`: CommonNodeId
+    public var `generation`: CommonUint64
+    public var `expires`: CommonUint64
+    public var `methods`: HubHubMethods
+    public init(`purpose`: HubHubPurposeDelegation, `coglet`: CommonCogletId, `device`: CommonNodeId, `hub`: CommonNodeId, `generation`: CommonUint64, `expires`: CommonUint64, `methods`: HubHubMethods) {
+        self.`purpose` = `purpose`
+        self.`coglet` = `coglet`
+        self.`device` = `device`
+        self.`hub` = `hub`
+        self.`generation` = `generation`
+        self.`expires` = `expires`
+        self.`methods` = `methods`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`purpose` = try HubHubPurposeDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+        self.`methods` = try HubHubMethods.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "methods")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        entries.append(.init("methods", try self.`methods`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubRefPurpose: CBORMessage, Sendable {
+    public static let schemaRule = "hub-ref-purpose"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("hub-ref")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("published-ref")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("logs-ref")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("hub-ref")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("published-ref")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("logs-ref")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubRefStatement: CBORMessage, Sendable {
+    public static let schemaRule = "hub-ref-statement"
+    public var `purpose`: HubHubRefPurpose
+    public var `hub`: CommonNodeId
+    public var `coglet`: CommonCogletId
+    public var `ref`: HubHubRef
+    public var `old`: HubHubMaybeOid
+    public var `new`: HubHubOid
+    public var `archive_sha256`: HubHubHash
+    public var `generation`: CommonUint64
+    public init(`purpose`: HubHubRefPurpose, `hub`: CommonNodeId, `coglet`: CommonCogletId, `ref`: HubHubRef, `old`: HubHubMaybeOid, `new`: HubHubOid, `archive_sha256`: HubHubHash, `generation`: CommonUint64) {
+        self.`purpose` = `purpose`
+        self.`hub` = `hub`
+        self.`coglet` = `coglet`
+        self.`ref` = `ref`
+        self.`old` = `old`
+        self.`new` = `new`
+        self.`archive_sha256` = `archive_sha256`
+        self.`generation` = `generation`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`purpose` = try HubHubRefPurpose.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`ref` = try HubHubRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+        self.`old` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "old")), depth: depth + 1)
+        self.`new` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "new")), depth: depth + 1)
+        self.`archive_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "archive_sha256")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        entries.append(.init("old", try self.`old`.cborValue(depth: depth + 1)))
+        entries.append(.init("new", try self.`new`.cborValue(depth: depth + 1)))
+        entries.append(.init("archive_sha256", try self.`archive_sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubSignedDelegation: CBORMessage, Sendable {
+    public static let schemaRule = "hub-signed-delegation"
+    public var `statement`: HubHubDelegationStatement
+    public var `signer`: CommonNodeId
+    public var `signature`: HubHubSignature
+    public init(`statement`: HubHubDelegationStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
+        self.`statement` = `statement`
+        self.`signer` = `signer`
+        self.`signature` = `signature`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`statement` = try HubHubDelegationStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
+        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
+        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubSignedRef: CBORMessage, Sendable {
+    public static let schemaRule = "hub-signed-ref"
+    public var `statement`: HubHubRefStatement
+    public var `signer`: CommonNodeId
+    public var `signature`: HubHubSignature
+    public init(`statement`: HubHubRefStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
+        self.`statement` = `statement`
+        self.`signer` = `signer`
+        self.`signature` = `signature`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`statement` = try HubHubRefStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
+        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
+        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubStatus: CBORMessage, Sendable {
+    public static let schemaRule = "hub-status"
+    public var `state`: HubHubState
+    public var `live_commit`: HubHubMaybeOid
+    public var `step`: CommonUint64
+    public var `pending`: HubHubQueue
+    public var `error`: HubHubMaybeError
+    public init(`state`: HubHubState, `live_commit`: HubHubMaybeOid, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
+        self.`state` = `state`
+        self.`live_commit` = `live_commit`
+        self.`step` = `step`
+        self.`pending` = `pending`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`state` = try HubHubState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`live_commit` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_commit")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`pending` = try HubHubQueue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+        self.`error` = try HubHubMaybeError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("live_commit", try self.`live_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubQueued = Swift.String
+
+public struct HubReceiptQueued: CBORMessage, Sendable {
+    public static let schemaRule = "hub-receipt-queued"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubQueued
+    public var `step`: HubHubNull
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubQueued, `step`: HubHubNull, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubQueued.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubApplied = Swift.String
+
+public struct HubReceiptApplied: CBORMessage, Sendable {
+    public static let schemaRule = "hub-receipt-applied"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubApplied
+    public var `step`: CommonUint64
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubApplied, `step`: CommonUint64, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubApplied.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubCancelled = Swift.String
+
+public struct HubReceiptCancelled: CBORMessage, Sendable {
+    public static let schemaRule = "hub-receipt-cancelled"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubCancelled
+    public var `step`: HubHubNull
+    public var `error`: HubHubNull
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubCancelled, `step`: HubHubNull, `error`: HubHubNull) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubCancelled.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubFailed = Swift.String
+
+public struct HubReceiptFailed: CBORMessage, Sendable {
+    public static let schemaRule = "hub-receipt-failed"
+    public var `operation_id`: CommonCorrelationId
+    public var `state`: HubHubFailed
+    public var `step`: HubHubNull
+    public var `error`: CommonError
+    public init(`operation_id`: CommonCorrelationId, `state`: HubHubFailed, `step`: HubHubNull, `error`: CommonError) {
+        self.`operation_id` = `operation_id`
+        self.`state` = `state`
+        self.`step` = `step`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+        self.`state` = try HubHubFailed.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
+        self.`step` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMutationReceipt: CBORMessage, Sendable {
+    public static let schemaRule = "hub-mutation-receipt"
+    case variant1(HubHubReceiptQueued)
+    case variant2(HubHubReceiptApplied)
+    case variant3(HubHubReceiptCancelled)
+    case variant4(HubHubReceiptFailed)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-queued"), cborValue)) != nil {
+            self = .variant1(try HubHubReceiptQueued.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-applied"), cborValue)) != nil {
+            self = .variant2(try HubHubReceiptApplied.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-cancelled"), cborValue)) != nil {
+            self = .variant3(try HubHubReceiptCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-failed"), cborValue)) != nil {
+            self = .variant4(try HubHubReceiptFailed.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-queued"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-applied"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-cancelled"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-failed"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubInboxDelivery: CBORMessage, Sendable {
+    public static let schemaRule = "hub-inbox-delivery"
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: CommonEvent
+    public init(`id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: CommonEvent) {
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubEventBatch = [CommonEvent]
+
+public struct HubHealthItem: CBORMessage, Sendable {
+    public static let schemaRule = "hub-health-item"
+    public var `coglet`: CommonCogletId
+    public var `status`: HubHubStatus
+    public init(`coglet`: CommonCogletId, `status`: HubHubStatus) {
+        self.`coglet` = `coglet`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`status` = try HubHubStatus.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHealthItems = [HubHubHealthItem]
+
+public struct HubEnrollParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-enroll-params"
+    public var `offer`: CommonVersionOffer
+    public var `invite`: HubHubMaybeSecret
+    public init(`offer`: CommonVersionOffer, `invite`: HubHubMaybeSecret) {
+        self.`offer` = `offer`
+        self.`invite` = `invite`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`offer` = try CommonVersionOffer.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offer")), depth: depth + 1)
+        self.`invite` = try HubHubMaybeSecret.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "invite")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("offer", try self.`offer`.cborValue(depth: depth + 1)))
+        entries.append(.init("invite", try self.`invite`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubInstallParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-install-params"
+    public var `delegation`: HubHubSignedDelegation
+    public var `initial`: HubHubSignedRef
+    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubSignedRef) {
+        self.`delegation` = `delegation`
+        self.`initial` = `initial`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`delegation` = try HubHubSignedDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "delegation")), depth: depth + 1)
+        self.`initial` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("delegation", try self.`delegation`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial", try self.`initial`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubPushParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-push-params"
+    public var `update`: HubHubSignedRef
+    public var `size`: HubHubSize
+    public var `sha256`: HubHubHash
+    public init(`update`: HubHubSignedRef, `size`: HubHubSize, `sha256`: HubHubHash) {
+        self.`update` = `update`
+        self.`size` = `size`
+        self.`sha256` = `sha256`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
+        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
+        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubFetchParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-fetch-params"
+    public var `ref`: HubHubFetchRef
+    public init(`ref`: HubHubFetchRef) {
+        self.`ref` = `ref`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`ref` = try HubHubFetchRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubEventsParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-events-params"
+    public var `events`: HubHubEventBatch
+    public init(`events`: HubHubEventBatch) {
+        self.`events` = `events`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`events` = try HubHubEventBatch.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubActionsParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-actions-params"
+    public var `action`: CommonAction
+    public init(`action`: CommonAction) {
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`action` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubReadParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-read-params"
+    public var `path`: HubHubPath
+    public var `offset`: CommonUint64
+    public var `limit`: HubHubReadSize
+    public init(`path`: HubHubPath, `offset`: CommonUint64, `limit`: HubHubReadSize) {
+        self.`path` = `path`
+        self.`offset` = `offset`
+        self.`limit` = `limit`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubHubPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`limit` = try HubHubReadSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "limit")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("limit", try self.`limit`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubWriteParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-write-params"
+    public var `path`: HubHubWritePath
+    public var `text`: HubHubText
+    public var `expected_hash`: HubHubHash
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`path`: HubHubWritePath, `text`: HubHubText, `expected_hash`: HubHubHash, `actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`path` = `path`
+        self.`text` = `text`
+        self.`expected_hash` = `expected_hash`
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubHubWritePath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`text` = try HubHubText.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`expected_hash` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expected_hash")), depth: depth + 1)
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("expected_hash", try self.`expected_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubInboxParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-inbox-params"
+    public var `message`: HubHubInboxDelivery
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`message`: HubHubInboxDelivery, `actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`message` = `message`
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`message` = try HubHubInboxDelivery.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubHealthParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-health-params"
+    public var `device`: CommonNodeId
+    public var `uptime_ms`: CommonUint64
+    public var `queue_depth`: CommonUint64
+    public var `available_bytes`: CommonUint64
+    public var `coglets`: HubHubHealthItems
+    public init(`device`: CommonNodeId, `uptime_ms`: CommonUint64, `queue_depth`: CommonUint64, `available_bytes`: CommonUint64, `coglets`: HubHubHealthItems) {
+        self.`device` = `device`
+        self.`uptime_ms` = `uptime_ms`
+        self.`queue_depth` = `queue_depth`
+        self.`available_bytes` = `available_bytes`
+        self.`coglets` = `coglets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`uptime_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "uptime_ms")), depth: depth + 1)
+        self.`queue_depth` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "queue_depth")), depth: depth + 1)
+        self.`available_bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "available_bytes")), depth: depth + 1)
+        self.`coglets` = try HubHubHealthItems.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("uptime_ms", try self.`uptime_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("queue_depth", try self.`queue_depth`.cborValue(depth: depth + 1)))
+        entries.append(.init("available_bytes", try self.`available_bytes`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglets", try self.`coglets`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubOperationParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub-operation-params"
+    public var `operation_id`: CommonCorrelationId
+    public init(`operation_id`: CommonCorrelationId) {
+        self.`operation_id` = `operation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation_id", try self.`operation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubContext: CBORMessage, Sendable {
+    public static let schemaRule = "hub-context"
+    public var `actor`: CommonSourceId
+    public var `ticket`: CommonCorrelationId?
+    public init(`actor`: CommonSourceId, `ticket`: CommonCorrelationId? = nil) {
+        self.`actor` = `actor`
+        self.`ticket` = `ticket`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`ticket` = try CBORCodec.field(entries, "ticket").map { try CommonCorrelationId.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        if let v = self.`ticket` { entries.append(.init("ticket", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubEnrollRequestMethod = Swift.String
+
+public struct HubEnrollRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-enroll-request"
+    public var `method`: HubHubEnrollRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEnrollParams
+    public init(`method`: HubHubEnrollRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEnrollParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubEnrollRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEnrollParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubInstallRequestMethod = Swift.String
+
+public struct HubInstallRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-install-request"
+    public var `method`: HubHubInstallRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubInstallParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubInstallRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubInstallParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubInstallRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubInstallParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubStartRequestMethod = Swift.String
+
+public struct HubStartRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-start-request"
+    public var `method`: HubHubStartRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStartRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStartRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubStopRequestMethod = Swift.String
+
+public struct HubStopRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-stop-request"
+    public var `method`: HubHubStopRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStopRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStopRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubStatusRequestMethod = Swift.String
+
+public struct HubStatusRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-status-request"
+    public var `method`: HubHubStatusRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubHubStatusRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubStatusRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubGitPushRequestMethod = Swift.String
+
+public struct HubGitPushRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-git-push-request"
+    public var `method`: HubHubGitPushRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubPushParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubGitPushRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubPushParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubGitPushRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubPushParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubGitFetchRequestMethod = Swift.String
+
+public struct HubGitFetchRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-git-fetch-request"
+    public var `method`: HubHubGitFetchRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubFetchParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubGitFetchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubFetchParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubGitFetchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubFetchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubEventsRequestMethod = Swift.String
+
+public struct HubEventsRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-events-request"
+    public var `method`: HubHubEventsRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEventsParams
+    public init(`method`: HubHubEventsRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEventsParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubEventsRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEventsParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubActionsRequestMethod = Swift.String
+
+public struct HubActionsRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-actions-request"
+    public var `method`: HubHubActionsRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubActionsParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubActionsRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubActionsParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubActionsRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubActionsParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias DebugReadRequestMethod = Swift.String
+
+public struct DebugReadRequest: CBORMessage, Sendable {
+    public static let schemaRule = "debug-read-request"
+    public var `method`: HubDebugReadRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubReadParams
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubReadParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias DebugWriteRequestMethod = Swift.String
+
+public struct DebugWriteRequest: CBORMessage, Sendable {
+    public static let schemaRule = "debug-write-request"
+    public var `method`: HubDebugWriteRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubWriteParams
+    public init(`method`: HubDebugWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubWriteParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias DebugPauseRequestMethod = Swift.String
+
+public struct DebugPauseRequest: CBORMessage, Sendable {
+    public static let schemaRule = "debug-pause-request"
+    public var `method`: HubDebugPauseRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugPauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugPauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias DebugStepRequestMethod = Swift.String
+
+public struct DebugStepRequest: CBORMessage, Sendable {
+    public static let schemaRule = "debug-step-request"
+    public var `method`: HubDebugStepRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubEmpty
+    public var `context`: HubHubContext
+    public init(`method`: HubDebugStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubDebugStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubEmpty.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubInboxRequestMethod = Swift.String
+
+public struct HubInboxRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-inbox-request"
+    public var `method`: HubHubInboxRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubInboxParams
+    public init(`method`: HubHubInboxRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubInboxParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubInboxRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubInboxParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubHealthRequestMethod = Swift.String
+
+public struct HubHealthRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-health-request"
+    public var `method`: HubHubHealthRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubHealthParams
+    public init(`method`: HubHubHealthRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubHealthParams) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubHealthRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubHealthParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubReceiptRequestMethod = Swift.String
+
+public struct HubReceiptRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-receipt-request"
+    public var `method`: HubHubReceiptRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubOperationParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubReceiptRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubOperationParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubReceiptRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubOperationParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubCancelRequestMethod = Swift.String
+
+public struct HubCancelRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-cancel-request"
+    public var `method`: HubHubCancelRequestMethod
+    public var `target`: CommonCogletId
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubHubOperationParams
+    public var `context`: HubHubContext
+    public init(`method`: HubHubCancelRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubOperationParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubHubCancelRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubHubOperationParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub-request"
+    case variant1(HubHubEnrollRequest)
+    case variant2(HubHubInstallRequest)
+    case variant3(HubHubStartRequest)
+    case variant4(HubHubStopRequest)
+    case variant5(HubHubStatusRequest)
+    case variant6(HubHubGitPushRequest)
+    case variant7(HubHubGitFetchRequest)
+    case variant8(HubHubEventsRequest)
+    case variant9(HubHubActionsRequest)
+    case variant10(HubDebugReadRequest)
+    case variant11(HubDebugWriteRequest)
+    case variant12(HubDebugPauseRequest)
+    case variant13(HubDebugStepRequest)
+    case variant14(HubHubInboxRequest)
+    case variant15(HubHubHealthRequest)
+    case variant16(HubHubReceiptRequest)
+    case variant17(HubHubCancelRequest)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-request"), cborValue)) != nil {
+            self = .variant1(try HubHubEnrollRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-install-request"), cborValue)) != nil {
+            self = .variant2(try HubHubInstallRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-start-request"), cborValue)) != nil {
+            self = .variant3(try HubHubStartRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-stop-request"), cborValue)) != nil {
+            self = .variant4(try HubHubStopRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-status-request"), cborValue)) != nil {
+            self = .variant5(try HubHubStatusRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-git-push-request"), cborValue)) != nil {
+            self = .variant6(try HubHubGitPushRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), cborValue)) != nil {
+            self = .variant7(try HubHubGitFetchRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-events-request"), cborValue)) != nil {
+            self = .variant8(try HubHubEventsRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-actions-request"), cborValue)) != nil {
+            self = .variant9(try HubHubActionsRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-read-request"), cborValue)) != nil {
+            self = .variant10(try HubDebugReadRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-write-request"), cborValue)) != nil {
+            self = .variant11(try HubDebugWriteRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-pause-request"), cborValue)) != nil {
+            self = .variant12(try HubDebugPauseRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::debug-step-request"), cborValue)) != nil {
+            self = .variant13(try HubDebugStepRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-inbox-request"), cborValue)) != nil {
+            self = .variant14(try HubHubInboxRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-health-request"), cborValue)) != nil {
+            self = .variant15(try HubHubHealthRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-receipt-request"), cborValue)) != nil {
+            self = .variant16(try HubHubReceiptRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-cancel-request"), cborValue)) != nil {
+            self = .variant17(try HubHubCancelRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-enroll-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-install-request"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-start-request"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-stop-request"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-status-request"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-git-push-request"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-events-request"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-actions-request"), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-read-request"), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-write-request"), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-pause-request"), value)
+        case .variant13(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::debug-step-request"), value)
+        case .variant14(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-inbox-request"), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-health-request"), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-receipt-request"), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-cancel-request"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubEnrollResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub-enroll-result"
+    public var `selection`: CommonVersionSelection
+    public var `device`: CommonNodeId
+    public var `hub`: CommonNodeId
+    public init(`selection`: CommonVersionSelection, `device`: CommonNodeId, `hub`: CommonNodeId) {
+        self.`selection` = `selection`
+        self.`device` = `device`
+        self.`hub` = `hub`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`selection` = try CommonVersionSelection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "selection")), depth: depth + 1)
+        self.`device` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "device")), depth: depth + 1)
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("selection", try self.`selection`.cborValue(depth: depth + 1)))
+        entries.append(.init("device", try self.`device`.cborValue(depth: depth + 1)))
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubReadResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub-read-result"
+    public var `step`: CommonUint64
+    public var `snapshot_hash`: HubHubHash
+    public var `text`: HubHubText
+    public var `next_offset`: CommonUint64
+    public var `eof`: HubHubBool
+    public init(`step`: CommonUint64, `snapshot_hash`: HubHubHash, `text`: HubHubText, `next_offset`: CommonUint64, `eof`: HubHubBool) {
+        self.`step` = `step`
+        self.`snapshot_hash` = `snapshot_hash`
+        self.`text` = `text`
+        self.`next_offset` = `next_offset`
+        self.`eof` = `eof`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`snapshot_hash` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "snapshot_hash")), depth: depth + 1)
+        self.`text` = try HubHubText.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
+        self.`eof` = try HubHubBool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "eof")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("snapshot_hash", try self.`snapshot_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("eof", try self.`eof`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubEventsResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub-events-result"
+    public var `next_seq`: CommonUint64
+    public init(`next_seq`: CommonUint64) {
+        self.`next_seq` = `next_seq`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`next_seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_seq")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("next_seq", try self.`next_seq`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubStepResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub-step-result"
+    public var `receipt`: HubHubMutationReceipt
+    public var `step`: CommonUint64
+    public init(`receipt`: HubHubMutationReceipt, `step`: CommonUint64) {
+        self.`receipt` = `receipt`
+        self.`step` = `step`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`receipt` = try HubHubMutationReceipt.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "receipt")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("receipt", try self.`receipt`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub-result"
+    case variant1(HubHubEnrollResult)
+    case variant2(HubHubMutationReceipt)
+    case variant3(HubHubStatus)
+    case variant4(CommonActionAccept)
+    case variant5(HubHubReadResult)
+    case variant6(HubHubEventsResult)
+    case variant7(HubHubStepResult)
+    case variant8(HubHubEmpty)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-result"), cborValue)) != nil {
+            self = .variant1(try HubHubEnrollResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-mutation-receipt"), cborValue)) != nil {
+            self = .variant2(try HubHubMutationReceipt.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-status"), cborValue)) != nil {
+            self = .variant3(try HubHubStatus.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::action-accept"), cborValue)) != nil {
+            self = .variant4(try CommonActionAccept.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-read-result"), cborValue)) != nil {
+            self = .variant5(try HubHubReadResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-events-result"), cborValue)) != nil {
+            self = .variant6(try HubHubEventsResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-step-result"), cborValue)) != nil {
+            self = .variant7(try HubHubStepResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-empty"), cborValue)) != nil {
+            self = .variant8(try HubHubEmpty.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-enroll-result"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-mutation-receipt"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-status"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::action-accept"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-read-result"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-events-result"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-step-result"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-empty"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubSuccessType = Swift.String
+
+public struct HubSuccess: CBORMessage, Sendable {
+    public static let schemaRule = "hub-success"
+    public var `type`: HubHubSuccessType
+    public var `correlation_id`: CommonCorrelationId
+    public var `result`: HubHubResult
+    public init(`type`: HubHubSuccessType, `correlation_id`: CommonCorrelationId, `result`: HubHubResult) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubSuccessType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`result` = try HubHubResult.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubFailureType = Swift.String
+
+public struct HubFailure: CBORMessage, Sendable {
+    public static let schemaRule = "hub-failure"
+    public var `type`: HubHubFailureType
+    public var `correlation_id`: CommonCorrelationId
+    public var `error`: CommonError
+    public init(`type`: HubHubFailureType, `correlation_id`: CommonCorrelationId, `error`: CommonError) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubFailureType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubCreditType = Swift.String
+
+public struct HubCredit: CBORMessage, Sendable {
+    public static let schemaRule = "hub-credit"
+    public var `type`: HubHubCreditType
+    public var `correlation_id`: CommonCorrelationId
+    public var `bytes`: CommonUint64
+    public init(`type`: HubHubCreditType, `correlation_id`: CommonCorrelationId, `bytes`: CommonUint64) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`bytes` = `bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubCreditType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("bytes", try self.`bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubChunkType = Swift.String
+
+public struct HubChunk: CBORMessage, Sendable {
+    public static let schemaRule = "hub-chunk"
+    public var `type`: HubHubChunkType
+    public var `correlation_id`: CommonCorrelationId
+    public var `offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`type`: HubHubChunkType, `correlation_id`: CommonCorrelationId, `offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`offset` = `offset`
+        self.`hex` = `hex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubChunkType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubEndType = Swift.String
+
+public struct HubEnd: CBORMessage, Sendable {
+    public static let schemaRule = "hub-end"
+    public var `type`: HubHubEndType
+    public var `correlation_id`: CommonCorrelationId
+    public init(`type`: HubHubEndType, `correlation_id`: CommonCorrelationId) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubEndType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubTransferType = Swift.String
+
+public struct HubTransfer: CBORMessage, Sendable {
+    public static let schemaRule = "hub-transfer"
+    public var `type`: HubHubTransferType
+    public var `correlation_id`: CommonCorrelationId
+    public var `size`: HubHubSize
+    public var `sha256`: HubHubHash
+    public var `update`: HubHubSignedRef
+    public init(`type`: HubHubTransferType, `correlation_id`: CommonCorrelationId, `size`: HubHubSize, `sha256`: HubHubHash, `update`: HubHubSignedRef) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`size` = `size`
+        self.`sha256` = `sha256`
+        self.`update` = `update`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubHubTransferType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
+        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
+        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
+        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
+        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubFrame: CBORMessage, Sendable {
+    public static let schemaRule = "hub-frame"
+    case variant1(HubHubRequest)
+    case variant2(HubHubSuccess)
+    case variant3(HubHubFailure)
+    case variant4(HubHubCredit)
+    case variant5(HubHubChunk)
+    case variant6(HubHubEnd)
+    case variant7(HubHubTransfer)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("hub::hub-request"), cborValue)) != nil {
+            self = .variant1(try HubHubRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-success"), cborValue)) != nil {
+            self = .variant2(try HubHubSuccess.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-failure"), cborValue)) != nil {
+            self = .variant3(try HubHubFailure.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-credit"), cborValue)) != nil {
+            self = .variant4(try HubHubCredit.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-chunk"), cborValue)) != nil {
+            self = .variant5(try HubHubChunk.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-end"), cborValue)) != nil {
+            self = .variant6(try HubHubEnd.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-transfer"), cborValue)) != nil {
+            self = .variant7(try HubHubTransfer.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-success"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-failure"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-credit"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-chunk"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-end"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-transfer"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public typealias SpeechEntry = SpeechSpeechProfile
 
 public struct SpeechStart: CBORMessage, Sendable {
@@ -4510,6 +10632,224 @@ public indirect enum ToolResult: CBORMessage, Sendable {
     }
 }
 
+public struct HeardQuery: CBORMessage, Sendable {
+    public static let schemaRule = "heard-query"
+    public var `item`: CommonCorrelationId
+    public init(`item`: CommonCorrelationId) {
+        self.`item` = `item`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HeardRecord: CBORMessage, Sendable {
+    public static let schemaRule = "heard-record"
+    public var `item`: CommonCorrelationId
+    public var `played_ms`: CommonUint64
+    public var `text`: CBORValue
+    public init(`item`: CommonCorrelationId, `played_ms`: CommonUint64, `text`: CBORValue) {
+        self.`item` = `item`
+        self.`played_ms` = `played_ms`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`text` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct WorkState: CBORMessage, Sendable {
+    public static let schemaRule = "work-state"
+    public var `epoch`: Swift.UInt64
+    public var `pending`: Swift.UInt64
+    public init(`epoch`: Swift.UInt64, `pending`: Swift.UInt64) {
+        self.`epoch` = `epoch`
+        self.`pending` = `pending`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`pending` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct WorkIntent: CBORMessage, Sendable {
+    public static let schemaRule = "work-intent"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `name`: CommonMethodName
+    public var `arguments`: CommonProfileMap
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `name`: CommonMethodName, `arguments`: CommonProfileMap) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`name` = `name`
+        self.`arguments` = `arguments`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`name` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`arguments` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "arguments")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("arguments", try self.`arguments`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum WorkResult: CBORMessage, Sendable {
+    public static let schemaRule = "work-result"
+    case variant1(WorkResultVariant1)
+    case variant2(WorkResultVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try WorkResultVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try WorkResultVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "value", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "turn", optional: false, node: .reference("common::correlation-id")), .init(name: "call", optional: false, node: .reference("common::correlation-id")), .init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "value", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct WorkCancelled: CBORMessage, Sendable {
+    public static let schemaRule = "work-cancelled"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonError
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonError) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum WorkDone: CBORMessage, Sendable {
+    public static let schemaRule = "work-done"
+    case variant1(SpeechWorkResult)
+    case variant2(SpeechWorkCancelled)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("speech::work-result"), cborValue)) != nil {
+            self = .variant1(try SpeechWorkResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-cancelled"), cborValue)) != nil {
+            self = .variant2(try SpeechWorkCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-result"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-cancelled"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum SpeechProfile: CBORMessage, Sendable {
     public static let schemaRule = "speech-profile"
     case variant1(SpeechSpeechStart)
@@ -4526,6 +10866,13 @@ public indirect enum SpeechProfile: CBORMessage, Sendable {
     case variant12(SpeechSessionClose)
     case variant13(SpeechToolCall)
     case variant14(SpeechToolResult)
+    case variant15(SpeechHeardQuery)
+    case variant16(SpeechHeardRecord)
+    case variant17(SpeechWorkState)
+    case variant18(SpeechWorkIntent)
+    case variant19(SpeechWorkResult)
+    case variant20(SpeechWorkCancelled)
+    case variant21(SpeechWorkDone)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("speech::speech-start"), cborValue)) != nil {
@@ -4584,6 +10931,34 @@ public indirect enum SpeechProfile: CBORMessage, Sendable {
             self = .variant14(try SpeechToolResult.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("speech::heard-query"), cborValue)) != nil {
+            self = .variant15(try SpeechHeardQuery.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::heard-record"), cborValue)) != nil {
+            self = .variant16(try SpeechHeardRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-state"), cborValue)) != nil {
+            self = .variant17(try SpeechWorkState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-intent"), cborValue)) != nil {
+            self = .variant18(try SpeechWorkIntent.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-result"), cborValue)) != nil {
+            self = .variant19(try SpeechWorkResult.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-cancelled"), cborValue)) != nil {
+            self = .variant20(try SpeechWorkCancelled.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("speech::work-done"), cborValue)) != nil {
+            self = .variant21(try SpeechWorkDone.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -4632,6 +11007,27 @@ public indirect enum SpeechProfile: CBORMessage, Sendable {
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("speech::tool-result"), value)
+        case .variant15(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::heard-query"), value)
+        case .variant16(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::heard-record"), value)
+        case .variant17(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-state"), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-intent"), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-result"), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-cancelled"), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("speech::work-done"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -6382,6 +12778,82 @@ public struct SpeechToolResultVariant2: CBORMessage, Sendable {
     }
 }
 
+public struct SpeechWorkResultVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechWorkResultVariant1"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonProfileMap
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonProfileMap) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SpeechWorkResultVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@SpeechWorkResultVariant2"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonError
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonError) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public struct SurfaceReadReplyVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@SurfaceReadReplyVariant1"
     public var `correlation_id`: CommonCorrelationId
@@ -8033,6 +14505,82 @@ public struct ToolResultVariant2: CBORMessage, Sendable {
         entries.append(.init("session", try self.`session`.cborValue(depth: depth + 1)))
         entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
         entries.append(.init("ok", try self.`ok`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct WorkResultVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@WorkResultVariant1"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonProfileMap
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonProfileMap) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct WorkResultVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@WorkResultVariant2"
+    public var `turn`: CommonCorrelationId
+    public var `call`: CommonCorrelationId
+    public var `epoch`: Swift.UInt64
+    public var `status`: Swift.String
+    public var `value`: CommonError
+    public init(`turn`: CommonCorrelationId, `call`: CommonCorrelationId, `epoch`: Swift.UInt64, `status`: Swift.String, `value`: CommonError) {
+        self.`turn` = `turn`
+        self.`call` = `call`
+        self.`epoch` = `epoch`
+        self.`status` = `status`
+        self.`value` = `value`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`turn` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "turn")), depth: depth + 1)
+        self.`call` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "call")), depth: depth + 1)
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`value` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "value")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("turn", try self.`turn`.cborValue(depth: depth + 1)))
+        entries.append(.init("call", try self.`call`.cborValue(depth: depth + 1)))
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
         entries.append(.init("value", try self.`value`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)

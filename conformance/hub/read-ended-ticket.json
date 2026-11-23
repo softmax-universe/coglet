@@ -1,0 +1,35 @@
+{
+  "name": "read-ended-ticket",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.read-ended-ticket",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "debug.read",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000001f",
+        "timeout_ms": 2000,
+        "params": {
+          "path": "/data/test.txt",
+          "offset": 0,
+          "limit": 64
+        },
+        "context": {
+          "actor": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+          "ticket": "77777777777777777777777777777777"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000001f",
+        "type": "error",
+        "error.code": "permission_denied"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

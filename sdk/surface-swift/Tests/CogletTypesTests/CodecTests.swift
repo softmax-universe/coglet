@@ -33,6 +33,20 @@ private struct Fixture: Decodable {
     let semantic: Swift.Bool?
     let value: FixtureValue?
     let cbor_hex: Swift.String?
+
+    private enum CodingKeys: Swift.String, CodingKey {
+        case name, type, valid, semantic, value, cbor_hex
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(Swift.String.self, forKey: .name)
+        type = try c.decodeIfPresent(Swift.String.self, forKey: .type)
+        valid = try c.decodeIfPresent(Swift.Bool.self, forKey: .valid)
+        semantic = try c.decodeIfPresent(Swift.Bool.self, forKey: .semantic)
+        value = c.contains(.value) ? try c.decode(FixtureValue.self, forKey: .value) : nil
+        cbor_hex = try c.decodeIfPresent(Swift.String.self, forKey: .cbor_hex)
+    }
 }
 
 private func isVectorFile(_ file: URL) throws -> Swift.Bool {
@@ -83,6 +97,25 @@ final class CodecTests: XCTestCase {
             guard let byte = Swift.UInt8(Swift.String(chars[$0...$0 + 1]), radix: 16) else { throw CBORFailure.invalid("bad hex") }
             return byte
         }
+    }
+
+    func testFixtureValueDistinguishesNullFromMissing() throws {
+        func decode(_ json: Swift.String) throws -> Fixture {
+            try JSONDecoder().decode(Fixture.self, from: Data(json.utf8))
+        }
+        let explicitNull = try decode(#"{"name":"null","value":null}"#)
+        let nullValue = try XCTUnwrap(explicitNull.value).wireValue()
+        XCTAssertEqual(nullValue, .null)
+        XCTAssertEqual(try CBORCodec.encodeProfile(nullValue), [0xf6])
+
+        // The recursive runner's XCTUnwrap must still reject an absent value.
+        let missing = try decode(#"{"name":"missing"}"#)
+        XCTAssertNil(missing.value)
+
+        let normal = try decode(#"{"name":"normal","value":42}"#)
+        let normalValue = try XCTUnwrap(normal.value).wireValue()
+        XCTAssertEqual(normalValue, .unsigned(42))
+        XCTAssertEqual(try CBORCodec.encodeProfile(normalValue), [0x18, 0x2a])
     }
 
     func testRecursiveFixtures() throws {

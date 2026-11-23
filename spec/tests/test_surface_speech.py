@@ -10,7 +10,7 @@ import unittest
 
 import cbor2
 from jsonschema import Draft202012Validator
-from pycddl import Schema, ValidationError
+from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, encode, decode
@@ -21,10 +21,12 @@ ROOT = SPEC.parent
 EVENTS = {'speech.start':'speech-start', 'speech.partial':'speech-partial',
           'speech.end':'speech-end', 'speech.position':'speech-position',
           'speech.barge_in':'speech-barge-in', 'speech.tool_call':'tool-call',
+          'speech.work_intent':'work-intent', 'speech.work_done':'work-done',
           'action.outcome':'action-outcome'}
 ACTIONS = {'speech.speak_chunk':'speak-chunk', 'speech.stop':'stop',
            'speech.backchannel':'backchannel', 'speech.session_open':'session-open',
            'speech.session_close':'session-close', 'speech.tool_result':'tool-result',
+           'speech.work_result':'work-result',
            'expression.set_expression':'set-expression'}
 
 
@@ -51,12 +53,13 @@ class ProfileFixtures(unittest.TestCase):
         schema = self.schemas[profile]
         validator = Draft202012Validator({'$ref':schema['$id']+'#/$defs/'+rule}, registry=self.registry)
         js_valid = validator.is_valid(value)
-        checked=subprocess.run(['ruby','-rbundler/setup',str(SPEC/'tests/cddl_check.rb'),rule,
-                                str(self.cddl_paths[profile])], input=json.dumps(value).encode(),
-                               env=self.ruby_env, capture_output=True, timeout=10)
-        self.assertIn(checked.returncode,(0,1),checked.stderr.decode())
-        cddl_valid=checked.returncode==0
-        self.assertEqual(js_valid,cddl_valid,(profile,rule,value,checked.stderr.decode()))
+        reference = Schema('selected = ' + rule + '\n' + self.cddl_paths[profile].read_text())
+        try:
+            reference.validate_cbor(cbor2.dumps(value))
+            cddl_valid = True
+        except ValidationError:
+            cddl_valid = False
+        self.assertEqual(js_valid,cddl_valid,(profile,rule,value))
         return js_valid
 
     def wire(self, msg):

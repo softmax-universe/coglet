@@ -1,0 +1,33 @@
+{
+  "name": "enroll-wrong-node",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.enroll-wrong-node"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.enroll",
+        "target": null,
+        "correlation_id": "00000000000000000000000000000001",
+        "timeout_ms": 2000,
+        "params": {
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "invite": "1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000001",
+        "type": "error",
+        "error.code": "unauthenticated"
+      },
+      "within_ms": 2000
+    }
+  ]
+}
