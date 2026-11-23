@@ -24,20 +24,30 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
             root = Path(temp)
             (root / 'codegen').mkdir()
-            shutil.copy(ROOT / 'codegen/generate.py', root / 'codegen/generate.py')
+            for source in ('generate.py', 'emit_go.py', 'emit_java.py'):
+                shutil.copy(ROOT / 'codegen' / source, root / 'codegen' / source)
             (root / 'spec/messages').mkdir(parents=True)
             (root / 'spec/messages/test.cddl').write_text('thing = {name: tstr}')
             cmd = [sys.executable, str(root / 'codegen/generate.py')]
             subprocess.run(cmd, check=True, capture_output=True)
             subprocess.run(cmd + ['--check'], check=True, capture_output=True)
-            out = root / 'sdk/surface-python/coglet_surface/generated.py'
-            out.write_text(out.read_text() + '# stale\n')
-            result = subprocess.run(cmd + ['--check'], capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn('stale generated files', result.stderr)
-            self.assertTrue(out.read_text().endswith('# stale\n'))
-            subprocess.run(cmd, check=True, capture_output=True)
-            subprocess.run(cmd + ['--check'], check=True, capture_output=True)
+            for target in ('sdk/surface-python/coglet_surface/generated.py',
+                           'sdk/surface-go/types/generated.go',
+                           'sdk/surface-java/src/main/java/org/coglet/surface/Generated.java',
+                           'sdk/surface-java/src/main/resources/schema.json'):
+                out = root / target
+                original = out.read_text()
+                out.write_text(original + '// stale\n')
+                result = subprocess.run(cmd + ['--check'], capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(target, result.stderr)
+                self.assertEqual(out.read_text(), original + '// stale\n')
+                out.unlink()
+                result = subprocess.run(cmd + ['--check'], capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(out.exists(), '--check must not recreate missing files')
+                subprocess.run(cmd, check=True, capture_output=True)
+                subprocess.run(cmd + ['--check'], check=True, capture_output=True)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 # CDDL code generation
 
-Run `codegen/run` from any directory; commit its Rust and Python outputs.
-`codegen/run --check` is read-only and exits nonzero if either output is stale
+Run `codegen/run` from any directory; commit its Rust, Python, Go and Java outputs.
+`codegen/run --check` is read-only and exits nonzero if any output is stale
 or missing. The conformance CI job enforces this, exercises the generator and
 cross-checks the generated validator against actual CDDL and JSON Schema on
 all semantic fixtures. Generation requires Python >=3.11 and the repository's
@@ -43,7 +43,19 @@ Dataclass annotations alone are not validation; constraints are enforced at
 encode/decode. Optional record fields use `None` to mean absent (current optional
 fields cannot explicitly contain null).
 
-Both runtimes enforce the `spec/conventions.md` CBOR profile before shape
+Go (`sdk/surface-go/types`): generated structs, pointer optional fields, and
+interfaces with numbered structs for record unions. Records expose `ToCBOR`
+and `Decode<Type>` functions. Generic `Encode` / `Decode` support every rule.
+Native strict CBOR and IR validation live in `sdk/surface-go/codec`.
+
+Java 21 (`sdk/surface-java`): `Generated` contains records, sealed interfaces
+for record unions, and `Presence<T>` for optional fields (null means absent).
+Records expose `toCbor` / `fromCbor`; `Codec.encode` / `decode` handle every rule.
+Integers use `BigInteger`; Jackson reads JSON schemas/fixtures, never CBOR.
+Both emitters escape keywords and reject ambiguous sanitized identifiers.
+See each SDK README for the typed API and presence semantics.
+
+All four runtimes enforce the `spec/conventions.md` CBOR profile before shape
 validation: no bytes/tags/floats, no duplicate/non-text keys, no indefinite or
 non-shortest forms, no trailing data, and exact UTF-8/integer bounds. Map keys
 are ordered by their encoded bytes, recursively. Decoders/encoders bound CBOR
@@ -59,9 +71,11 @@ codegen/run --check
 cargo test -p coglet-types --locked -- --nocapture
 uv run --project sdk/surface-python --locked pytest sdk/surface-python/tests -s
 uv run --python 3.12 --with-requirements spec/tests/requirements.txt python codegen/cross_check.py
+(cd sdk/surface-go && go test -v ./...)
+(cd sdk/surface-java && mvn --batch-mode test) # JDK 21
 ```
 
-Rust and Python fixture tests recursively discover `spec/fixtures/**/*.json`.
+All four languages' fixture tests recursively discover `spec/fixtures/**/*.json`.
 Fixture files currently contain arrays of semantic cases (`name`, `type`,
 `valid`, `value`, and `cbor_hex` for valid cases) or wire-negative cases
 (`name`, `cbor_hex`). New files are picked up without updating a manifest.
@@ -72,8 +86,7 @@ claim of protocol implementation conformance.
 
 ## Remaining targets
 
-Swift (`sdk/surface-swift`), Go (`sdk/surface-go`), and Java
-(`sdk/surface-java`) emitters and their native runtime/fixture tests are
-follow-ups. They must consume the same CDDL IR and run the same recursively
+The Swift (`sdk/surface-swift`) emitter and its native runtime/fixture tests are
+a follow-up. It must consume the same CDDL IR and run the same recursively
 collected fixture corpus; no placeholder code for these targets is claimed as
 implemented here.
