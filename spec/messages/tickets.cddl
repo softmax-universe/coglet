@@ -1,0 +1,57 @@
+; Draft 0.1 payloads; import promotion.cddl and common.cddl once each.
+; Closed records. Uniqueness, authority and temporal checks are in tickets.md.
+tickets = ticket-request / ticket-response / ticket-update / ticket-result
+ticket-positive-uint64 = 1..18446744073709551615
+ticket-text = tstr .size (1..18446744073709551615)
+ticket-edit-path = tstr .regexp "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*$"
+ticket-currency = tstr .regexp "^[A-Z]{3}$"
+ticket-required-gates = ["journal_replay"] /
+  ["journal_replay", "headless_game"] / ["headless_game", "journal_replay"]
+ticket-progress-state = "queued" / "planning" / "building" / "gate_running" /
+  "cancelling" / "done" / "failed" / "abandoned"
+ticket-state = ticket-progress-state / "needs_input"
+ticket-op = "submit" / "update" / "answer" / "amend" / "cancel" / "result"
+ticket-ticket = {
+  target: {coglet: coglet-id, repo: ticket-text, base: promotion-commit},
+  goal: {description: ticket-text, acceptance: [+ tstr .size (1..18446744073709551615)]},
+  context: [* ticket-context],
+  capabilities: {edit_paths: [* ticket-edit-path], debug_read: bool, debug_write: bool},
+  gates: {required: ticket-required-gates, human_approval: bool},
+  budget: {time_ms: ticket-positive-uint64, spend_microunits: ticket-positive-uint64,
+    currency: ticket-currency}
+}
+ticket-context = {kind: "world_snapshot" / "transcript" / "trace" / "document", ref: ticket-text}
+ticket-question = {id: correlation-id, prompt: ticket-text}
+ticket-envelope = (version: "0.1", correlation_id: correlation-id)
+ticket-mutation = (ticket_id: correlation-id, expected_revision: ticket-positive-uint64)
+ticket-request = ticket-submit-request / ticket-update-request /
+  ticket-answer-request / ticket-amend-request / ticket-cancel-request / ticket-result-request
+ticket-submit-request = {ticket-envelope, op: "submit", ticket: ticket-ticket}
+ticket-update-request = {
+  ticket-envelope, op: "update", ticket_id: correlation-id, after_seq: uint64
+}
+ticket-answer-request = {
+  ticket-envelope, op: "answer", ticket-mutation, question_id: correlation-id, answer: ticket-text
+}
+ticket-amend-request = {ticket-envelope, op: "amend", ticket-mutation, ticket: ticket-ticket}
+ticket-cancel-request = {ticket-envelope, op: "cancel", ticket-mutation, reason: ticket-text}
+ticket-result-request = {ticket-envelope, op: "result", ticket_id: correlation-id}
+ticket-receipt = {
+  ticket_id: correlation-id, revision: ticket-positive-uint64,
+  state: ticket-state, seq: ticket-positive-uint64
+}
+ticket-response = {
+  ticket-envelope, op: "submit" / "answer" / "amend" / "cancel", ok: true,
+  receipt: ticket-receipt
+} / {ticket-envelope, op: ticket-op, ok: false, "error": error}
+ticket-progress = (
+  ticket-envelope, ticket_id: correlation-id, revision: ticket-positive-uint64,
+  seq: ticket-positive-uint64, summary: ticket-text
+)
+ticket-needs-input = {ticket-progress, state: "needs_input", question: ticket-question}
+ticket-update = {ticket-progress, state: ticket-progress-state} / ticket-needs-input
+ticket-result = {
+  ticket-progress, state: "done",
+  candidate: {commit: promotion-commit, signature_ref: ticket-text},
+  gates: [+ promotion-gate-report]
+} / ticket-needs-input / {ticket-progress, state: "failed" / "abandoned", "error": error}

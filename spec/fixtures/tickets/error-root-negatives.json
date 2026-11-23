@@ -1,0 +1,18 @@
+[
+  {
+    "name": "failed-result-error-integer-array", "type": "result", "valid": false,
+    "value": {"version": "0.1", "correlation_id": "11111111111111111111111111111111", "ticket_id": "11111111111111111111111111111111", "revision": 1, "seq": 2, "state": "failed", "summary": "Compiling candidate", "error": [1]}
+  },
+  {
+    "name": "failed-result-error-malformed-map-array", "type": "result", "valid": false,
+    "value": {"version": "0.1", "correlation_id": "11111111111111111111111111111111", "ticket_id": "11111111111111111111111111111111", "revision": 1, "seq": 2, "state": "failed", "summary": "Compiling candidate", "error": [{"x": 1}]}
+  },
+  {
+    "name": "abandoned-result-error-integer-array", "type": "result", "valid": false,
+    "value": {"version": "0.1", "correlation_id": "11111111111111111111111111111111", "ticket_id": "11111111111111111111111111111111", "revision": 1, "seq": 2, "state": "abandoned", "summary": "Compiling candidate", "error": [1]}
+  },
+  {
+    "name": "abandoned-result-error-malformed-map-array", "type": "result", "valid": false,
+    "value": {"version": "0.1", "correlation_id": "11111111111111111111111111111111", "ticket_id": "11111111111111111111111111111111", "revision": 1, "seq": 2, "state": "abandoned", "summary": "Compiling candidate", "error": [{"x": 1}]}
+  }
+]

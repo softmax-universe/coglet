@@ -1,0 +1,699 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/promotion.schema.json",
+  "title": "Kernel promotion \u2014 DRAFT 0.1 (M3 freeze)",
+  "$comment": "DRAFT; not frozen at v0. Semantic checks are specified in the companion Markdown.",
+  "$defs": {
+    "commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})(?![\\s\\S])"
+    },
+    "gate-report": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "journal_replay",
+            "headless_game"
+          ]
+        },
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate": {
+          "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+        },
+        "base": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "checked_at_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed"
+          ]
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kind",
+        "suite",
+        "candidate",
+        "base",
+        "policy_revision",
+        "checked_at_ms",
+        "status",
+        "evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "propose": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "op": {
+          "const": "propose"
+        },
+        "candidate": {
+          "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+        },
+        "base": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_generation": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "policy_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "gates": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/gate-report"
+          },
+          "minItems": 1
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "version",
+        "correlation_id",
+        "coglet",
+        "op",
+        "candidate",
+        "base",
+        "expected_generation",
+        "policy_revision",
+        "gates"
+      ],
+      "additionalProperties": false
+    },
+    "promote": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "op": {
+          "const": "promote"
+        },
+        "proposal_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "expected_generation": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "version",
+        "correlation_id",
+        "coglet",
+        "op",
+        "proposal_id",
+        "expected_generation"
+      ],
+      "additionalProperties": false
+    },
+    "rollback": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "op": {
+          "const": "rollback"
+        },
+        "expected_generation": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "version",
+        "correlation_id",
+        "coglet",
+        "op",
+        "expected_generation",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "status-request": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "op": {
+          "const": "status"
+        }
+      },
+      "required": [
+        "version",
+        "correlation_id",
+        "coglet",
+        "op"
+      ],
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "generation": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "live_commit": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_known_good": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "empty",
+            "proposed",
+            "activating",
+            "probation",
+            "stable",
+            "rolling_back",
+            "stopped"
+          ]
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "probation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "started_at_ms": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                "expires_at_ms": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                "consecutive_failures": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                "step_failures": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                "budget_violations": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                }
+              },
+              "required": [
+                "started_at_ms",
+                "expires_at_ms",
+                "consecutive_failures",
+                "step_failures",
+                "budget_violations"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recent_health": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "generation": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+              },
+              "commit": {
+                "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+              },
+              "observed_at_ms": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+              },
+              "healthy": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "generation",
+              "commit",
+              "observed_at_ms",
+              "healthy"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 64
+        }
+      },
+      "required": [
+        "generation",
+        "live_commit",
+        "last_known_good",
+        "candidate",
+        "state",
+        "proposal_id",
+        "policy_revision",
+        "probation",
+        "recent_health"
+      ],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "op": {
+              "const": "propose"
+            },
+            "ok": {
+              "const": true
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "proposal_id": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+                },
+                "state": {
+                  "const": "proposed"
+                }
+              },
+              "required": [
+                "proposal_id",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "coglet",
+            "op",
+            "ok",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "op": {
+              "const": "promote"
+            },
+            "ok": {
+              "const": true
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "proposal_id": {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+                },
+                "state": {
+                  "const": "activating"
+                }
+              },
+              "required": [
+                "proposal_id",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "coglet",
+            "op",
+            "ok",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "op": {
+              "const": "rollback"
+            },
+            "ok": {
+              "const": true
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "const": "rolling_back"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "coglet",
+            "op",
+            "ok",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "op": {
+              "const": "status"
+            },
+            "ok": {
+              "const": true
+            },
+            "result": {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/status"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "coglet",
+            "op",
+            "ok",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "op": {
+              "enum": [
+                "propose",
+                "promote",
+                "rollback",
+                "status"
+              ]
+            },
+            "ok": {
+              "const": false
+            },
+            "error": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "coglet",
+            "op",
+            "ok",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "audit": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "audit_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "actor": {
+          "anyOf": [
+            {
+              "const": "kernel"
+            },
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/hub-id"
+            },
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/surface-id"
+            }
+          ]
+        },
+        "operation": {
+          "enum": [
+            "propose",
+            "promote",
+            "rollback",
+            "status"
+          ]
+        },
+        "phase": {
+          "enum": [
+            "admitted",
+            "rejected",
+            "activated",
+            "probation_passed",
+            "rollback_triggered",
+            "restored",
+            "stopped",
+            "observed"
+          ]
+        },
+        "generation": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "observed_at_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before_commit": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after_commit": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "version",
+        "audit_id",
+        "correlation_id",
+        "coglet",
+        "actor",
+        "operation",
+        "phase",
+        "generation",
+        "observed_at_ms",
+        "proposal_id",
+        "before_commit",
+        "after_commit",
+        "policy_revision",
+        "reason",
+        "evidence_refs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/propose"
+    },
+    {
+      "$ref": "#/$defs/promote"
+    },
+    {
+      "$ref": "#/$defs/rollback"
+    },
+    {
+      "$ref": "#/$defs/status-request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    },
+    {
+      "$ref": "#/$defs/audit"
+    }
+  ]
+}
