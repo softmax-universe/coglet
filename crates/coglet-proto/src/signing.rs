@@ -31,7 +31,7 @@ pub fn verify(
     } else {
         "hub-signed-ref"
     };
-    let value = ciborium::Value::serialized(signed).map_err(|_| InvalidSignature)?;
+    let value = crate::wire::profile(signed).map_err(|_| InvalidSignature)?;
     coglet_types::validate(rule, &value).map_err(|_| InvalidSignature)?;
     if signed["signer"] != expected_signer {
         return Err(InvalidSignature);

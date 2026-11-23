@@ -75,7 +75,7 @@ pub struct Session {
 }
 
 fn validate(rule: &str, value: &Value) -> Result<(), TransportError> {
-    let value = ciborium::Value::serialized(value).map_err(error)?;
+    let value = crate::wire::profile(value).map_err(error)?;
     coglet_types::validate(rule, &value).map_err(error)
 }
 

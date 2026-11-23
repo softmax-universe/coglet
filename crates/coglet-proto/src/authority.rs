@@ -75,7 +75,7 @@ fn digest(secret: &str) -> String {
     hex::encode(Sha256::digest(secret.as_bytes()))
 }
 fn valid(rule: &str, value: &serde_json::Value) -> bool {
-    ciborium::Value::serialized(value).is_ok_and(|v| coglet_types::validate(rule, &v).is_ok())
+    crate::wire::profile(value).is_ok_and(|v| coglet_types::validate(rule, &v).is_ok())
 }
 impl Authority {
     pub fn open(path: impl AsRef<Path>) -> Result<Self> {

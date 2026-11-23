@@ -5,9 +5,45 @@ use serde_json::Value;
 #[error("invalid CBOR profile")]
 pub struct Invalid;
 
+// Generic serde bridges expose serde_json's private Number map when another
+// workspace member enables arbitrary_precision. Interpret JSON variants directly
+// so feature unification cannot change wire bytes or signature validation.
+pub(crate) fn profile(value: &Value) -> Result<ciborium::Value, Invalid> {
+    fn convert(value: &Value, depth: usize) -> Result<ciborium::Value, Invalid> {
+        use ciborium::Value as Cbor;
+        if depth > coglet_types::MAX_DEPTH {
+            return Err(Invalid);
+        }
+        Ok(match value {
+            Value::Null => Cbor::Null,
+            Value::Bool(v) => Cbor::Bool(*v),
+            Value::String(v) => Cbor::Text(v.clone()),
+            Value::Number(v) => {
+                if let Some(v) = v.as_u64() {
+                    Cbor::Integer(v.into())
+                } else if let Some(v) = v.as_i64() {
+                    Cbor::Integer(v.into())
+                } else {
+                    return Err(Invalid);
+                }
+            }
+            Value::Array(v) => Cbor::Array(
+                v.iter()
+                    .map(|v| convert(v, depth + 1))
+                    .collect::<Result<_, _>>()?,
+            ),
+            Value::Object(v) => Cbor::Map(
+                v.iter()
+                    .map(|(k, v)| Ok((Cbor::Text(k.clone()), convert(v, depth + 1)?)))
+                    .collect::<Result<_, Invalid>>()?,
+            ),
+        })
+    }
+    convert(value, 0)
+}
+
 pub fn encode(value: &Value) -> Result<Vec<u8>, Invalid> {
-    let value = ciborium::Value::serialized(value).map_err(|_| Invalid)?;
-    coglet_types::encode_profile(&value).map_err(|_| Invalid)
+    coglet_types::encode_profile(&profile(value)?).map_err(|_| Invalid)
 }
 
 pub fn decode(bytes: &[u8]) -> Result<Value, Invalid> {

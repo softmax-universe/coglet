@@ -74,7 +74,7 @@ impl Receiver {
     }
 
     fn frame(&self, rule: &str, frame: &Value) -> Result<(), InvalidTransfer> {
-        let value = ciborium::Value::serialized(frame).map_err(|_| InvalidTransfer)?;
+        let value = crate::wire::profile(frame).map_err(|_| InvalidTransfer)?;
         coglet_types::validate(rule, &value).map_err(|_| InvalidTransfer)?;
         if frame["correlation_id"] != self.id {
             return Err(InvalidTransfer);
