@@ -85,6 +85,13 @@ For a live upgrade, quiesce steps, take a recovery snapshot, run approved transa
 
 ## Open design questions
 
+Resolution proposal: [ADR-0013](../adr/0013-factory-db-capability.md) and the
+[database capability](../../spec/capabilities/database.md) decide the storage,
+outbox, journal/recovery, snapshot and migration contracts. The ADR explicitly
+defers worker capacity/budget strategy and detailed Hermes adapter design to
+Factory Phase 2; it does not authorize an implementation before review/merge.
+The original questions below are retained as the proposal's provenance.
+
 - Exact DB capability protocol and transaction lifetime under the event-step ABI.
 - Durable outbox ownership: Factory DB, host dispatcher, and the atomicity/reconciliation contract.
 - Relationship between Coglet's execution journal and the Factory's semantic events (avoid duplicate event sourcing).
