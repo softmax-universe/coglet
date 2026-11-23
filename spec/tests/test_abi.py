@@ -133,7 +133,10 @@ def check_trace(trace, manifest_validator=None):
     previous = None
     files = None
     ids = set()
-    requests = {}
+    requests = {r['id']: r for r in trace['initial_llm_requests']}
+    timers = {t['id']: t for t in trace['initial_timers']}
+    ids.update(('llm_requests', key) for key in requests)
+    ids.update(('timers', key) for key in timers)
     replies = set()
     for index, rec in enumerate(trace['records']):
         before = check_record(rec)
@@ -184,6 +187,14 @@ def check_trace(trace, manifest_validator=None):
                 if request is None or reply['request_id'] in replies or event['correlation_id'] != request['correlation_id']:
                     raise ValueError('uncorrelated or duplicate LLM reply')
                 replies.add(reply['request_id'])
+        for event in rec['events']:
+            if event['kind'] == 'runtime.timer':
+                payload = event['payload']
+                timer = timers.pop(payload['id'], None)
+                if timer != payload or rec['logical_time'] < timer['at'] or event['correlation_id'] != timer['id']:
+                    raise ValueError('unrequested, early or duplicate timer')
+        for timer in rec['timers']:
+            timers[timer['id']] = timer
         for request in rec['llm_requests']:
             requests[request['id']] = request
         previous, files = rec['record_hash'], rec['output_files']

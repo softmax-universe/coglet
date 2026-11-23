@@ -835,6 +835,20 @@
         "initial_hash": {
           "$ref": "#/$defs/hash"
         },
+        "initial_timers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/timer-request"
+          },
+          "minItems": 0
+        },
+        "initial_llm_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/llm-request"
+          },
+          "minItems": 0
+        },
         "records": {
           "type": "array",
           "items": {
@@ -854,6 +868,8 @@
         "trace_id",
         "coglet",
         "initial_hash",
+        "initial_timers",
+        "initial_llm_requests",
         "records",
         "blobs"
       ],

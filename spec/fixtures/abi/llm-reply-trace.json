@@ -3,6 +3,8 @@
   "trace_id": "55555555555555555555555555555555",
   "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
   "initial_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+  "initial_timers": [],
+  "initial_llm_requests": [],
   "records": [
     {
       "version": "0.1",

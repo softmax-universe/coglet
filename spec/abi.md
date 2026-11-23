@@ -158,7 +158,12 @@ proposal is silently adopted as frozen ABI here.
 ## Journal and trace: one format
 
 Schemas: [CDDL](messages/abi.cddl), [JSON Schema](messages/abi.schema.json).
-A trace contains version, trace_id, coglet, initial_hash, records and blobs.
+A trace contains version, trace_id, coglet, initial_hash, initial_timers,
+initial_llm_requests, records and blobs. Initial pending timer/LLM arrays capture
+requests committed before this recording began, so a promotion does not orphan
+future wakes/replies. Step counters are trace-local; effect IDs remain unique
+across the coglet lifetime, including earlier traces. A runtime must retain its
+dedup ledger; trace validation only verifies identities visible in the recording.
 Journal streams frame each deterministic-CBOR step-record with u32be byte length;
 archive JSON is a fixture view. Storage policy bounds frame size. Each record
 retains exact events, boundary audit, input/output snapshots, code/manifest hashes,

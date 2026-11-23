@@ -118,7 +118,7 @@ for status in ['committed', 'aborted']:
     branches.append(obj(p))
 basecddl = ', '.join(k + ': ' + c for k, s, c in stepfields)
 rule('step-record', {'oneOf': branches}, '{' + basecddl + ', status: "committed"} / {' + basecddl + ', status: "aborted", failure: failure}')
-record('trace', fields + [('initial_hash', local('hash'), 'hash'), ('records', arr(local('step-record'), 1), '[+ step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
+record('trace', fields + [('initial_hash', local('hash'), 'hash'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record'), 1), '[+ step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
 manifest = obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'),
                 **{k: dict(arr(ref('capability-name')), uniqueItems=True) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']},
                 'budgets': {'$ref': ABI + '#/$defs/budgets'}})
@@ -160,7 +160,7 @@ log = dict(level='info', message='wake', fields={})
 action = dict(id=ID, coglet=COG, capability='motor.move', args=dict(x=1), deadline=100, correlation_id=ID)
 llm_reply = dict(request_id=ID, status='succeeded', output=dict(text='hello'))
 inbox = dict(index=0, id=ID, sender=HUB, event=dict(event, source=HUB, kind='hub.steer', payload=dict(text='hello')))
-trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_hash=base['before_hash'], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
+trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_hash=base['before_hash'], initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
 valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='debug.data.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
 cases = []
 for typ, value in valids.items():
