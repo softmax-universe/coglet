@@ -25,7 +25,8 @@ fn limits(compute: u64) -> Limits {
         host_bytes: 4096,
         runtime_bytes: 8 * 1024 * 1024,
         stack_bytes: 64 * 1024,
-        deadline: Instant::now() + Duration::from_secs(1),
+        // Non-deadline cases must tolerate the serialized runaway test.
+        deadline: Instant::now() + Duration::from_secs(30),
     }
 }
 fn bytes(init: &str, alloc: &str, handle: &str) -> Vec<u8> {
@@ -128,7 +129,9 @@ fn host_stack_and_memory_bound() {
 fn runaway_deadline_then_next_fresh_call_succeeds() {
     let b = bytes("", "i32.const 0", "(loop $l br $l) i32.const 0");
     let mut l = limits(i32::MAX as u64);
-    l.deadline = Instant::now() + Duration::from_millis(20);
+    // Setup can wait behind the runtime lock while the memory-bound fixture
+    // validates thousands of functions; 20ms races that unrelated work.
+    l.deadline = Instant::now() + Duration::from_secs(1);
     assert_eq!(run(&b, l).result, Err(Error::DeadlineExceeded));
     assert_eq!(
         run(&bytes("", "i32.const 0", "i32.const 0"), limits(1000)).result,

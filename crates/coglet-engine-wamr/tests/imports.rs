@@ -36,7 +36,9 @@ fn limits() -> Limits {
         host_bytes: 4096,
         runtime_bytes: 8 * 1024 * 1024,
         stack_bytes: 64 * 1024,
-        deadline: Instant::now() + Duration::from_secs(1),
+        // Instances serialize on the WAMR runtime lock; other tests may hold
+        // it while exercising their explicit five-second deadline.
+        deadline: Instant::now() + Duration::from_secs(30),
     }
 }
 fn guest(ptr: i64, len: i64) -> Vec<u8> {
@@ -131,7 +133,10 @@ fn host_cannot_mask_an_invalid_memory_buffer() {
 
 #[test]
 fn allocation_does_not_reset_wall_deadline() {
-    struct Cancellable;
+    struct Cancellable {
+        deadline: Instant,
+        entered: bool,
+    }
     impl Host for Cancellable {
         fn call(
             &mut self,
@@ -141,6 +146,8 @@ fn allocation_does_not_reset_wall_deadline() {
             _: &mut dyn GuestMemory,
             budget: &mut StepBudget,
         ) -> Result<u32> {
+            self.entered = true;
+            assert_eq!(budget.deadline(), self.deadline);
             loop {
                 budget.check_deadline()?;
                 std::thread::yield_now();
@@ -153,11 +160,15 @@ fn allocation_does_not_reset_wall_deadline() {
     (func (export "abi_alloc") (param i32) (result i32) i32.const 0 i32.const 0 call $log drop i32.const 0)
     (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) unreachable))"#).unwrap();
     let mut l = limits();
-    l.deadline = Instant::now() + Duration::from_millis(20);
-    assert_eq!(
-        run(&b, l, &mut Cancellable).result,
-        Err(Error::DeadlineExceeded)
-    );
+    // Leave room for load/instantiate on contended and emulated runners. The
+    // exact deadline identity below proves no reset, without a 20ms setup race.
+    l.deadline = Instant::now() + Duration::from_secs(5);
+    let mut host = Cancellable {
+        deadline: l.deadline,
+        entered: false,
+    };
+    assert_eq!(run(&b, l, &mut host).result, Err(Error::DeadlineExceeded));
+    assert!(host.entered, "deadline must expire during allocation");
 }
 
 #[test]
