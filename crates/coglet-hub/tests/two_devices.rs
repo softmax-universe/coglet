@@ -50,11 +50,28 @@ async fn stalled_dispatch_stops_when_trusted_authority_expires() {
         kernel.prepare_action(&r.coglet, action, json!({"actor":actor}), Some(0)).await.unwrap();
         let stalled = Arc::new(StalledSurface(tokio::sync::Notify::new()));
         let responder = tokio::spawn(ds.serve(stalled.clone()));
+        let retry_session = hs.clone();
         let dispatch = tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();async move {kernel.dispatch_action(&target,&"44".repeat(16),hs).await}});
         stalled.0.notified().await;
+        let mut extra_dispatches=Vec::new();
+        for n in 1..8u8 {
+            let id=format!("{n:02x}").repeat(16);
+            let action=json!({"id":id,"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
+            kernel.prepare_action(&r.coglet,action,json!({"actor":actor}),Some(0)).await.unwrap();
+            extra_dispatches.push(tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();let session=retry_session.clone();async move {kernel.dispatch_action(&target,&id,session).await}}));
+            stalled.0.notified().await;
+        }
+        let ninth="99".repeat(16);
+        let action=json!({"id":ninth,"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
+        kernel.prepare_action(&r.coglet,action,json!({"actor":actor}),Some(0)).await.unwrap();
+        assert!(matches!(kernel.dispatch_action(&r.coglet,&ninth,retry_session).await,Err(coglet_hub::Error::Full)),"capacity saturation poisoned an unsent action");
+        let db=rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+        let retained:(i64,Option<String>)=db.query_row("SELECT attempted,reply FROM deliveries WHERE id=?1",[ninth],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
+        assert_eq!(retained,(0,None));
         now.store(10000, Ordering::SeqCst);
         let result = tokio::time::timeout(Duration::from_millis(500), dispatch).await.expect("expired authority did not fence pending transport").unwrap().unwrap();
         assert_eq!(result["error"]["details"]["unknown_effect"], true);
+        for task in extra_dispatches {tokio::time::timeout(Duration::from_millis(500),task).await.unwrap().unwrap().unwrap();}
         responder.abort(); serving.abort(); device.close().await; hub.close().await;
     }).await.unwrap();
 }

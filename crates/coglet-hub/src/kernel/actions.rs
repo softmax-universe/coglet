@@ -114,6 +114,14 @@ impl Kernel {
     /// fences replay, including after process restart. Recovery must reconcile the
     /// receiver receipt; it must never manufacture a new action ID or deadline.
     pub async fn dispatch_action(&self, target: &str, id: &str, session: Session) -> Result<Value> {
+        // Reserve before retaining an attempt: local capacity refusal proves no
+        // I/O happened and must never become durable unknown-effect uncertainty.
+        let driver = Arc::new(
+            self.dispatch
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| Error::Full)?,
+        );
         let key = (target.to_owned(), id.to_owned());
         {
             let mut fence = self.boundary.lock().map_err(|_| Error::Denied)?;
@@ -148,14 +156,16 @@ impl Kernel {
         let mut result = if attempted {
             None
         } else {
-            self.request_fenced(&session, request.clone()).await.ok()
+            self.request_fenced(&session, request.clone(), driver.clone())
+                .await
+                .ok()
         };
         if result.is_none() {
             // An ambiguous attempt is never resent. Query the original operation
             // under the original actor/ticket, with a fresh observation correlation.
             let receipt = json!({"method":"hub.receipt","target":target,"correlation_id":hex::encode(&iroh::SecretKey::generate().to_bytes()[..16]),"timeout_ms":5000,"params":{"operation_id":id},"context":request["context"]});
             result = self
-                .request_fenced(&session, receipt)
+                .request_fenced(&session, receipt, driver.clone())
                 .await
                 .ok()
                 .filter(|v| v["type"] == "reply" && v["result"]["operation_id"] == id);
@@ -183,7 +193,12 @@ impl Kernel {
             tx.commit()?; Ok(serde_json::from_str(&saved)?)
         }).await
     }
-    async fn request_fenced(&self, session: &Session, request: Value) -> Result<Value> {
+    async fn request_fenced(
+        &self,
+        session: &Session,
+        request: Value,
+        permit: Arc<tokio::sync::OwnedSemaphorePermit>,
+    ) -> Result<Value> {
         // Authority is synchronous SQLite, so drive the transport future on a
         // bounded blocking executor. No State/boundary lock survives a poll.
         // This budget is distinct from control work: stalled peers cannot consume
@@ -194,11 +209,6 @@ impl Kernel {
                 self.0.send_replace(true);
             }
         }
-        let permit = self
-            .dispatch
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| Error::Full)?;
         let (cancel, mut cancelled) = tokio::sync::watch::channel(false);
         let _cancel = Cancel(cancel);
         let state = self.state.clone();
