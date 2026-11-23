@@ -127,7 +127,7 @@ def generate(rules):
     py += ['RECORDS = {' + ', '.join(repr(k) + ': [' + ', '.join(v) + ']' for k, v in registry.items()) + '}']
     outputs = {'crates/coglet-types/src/generated.rs': '\n'.join(rust) + '\n',
                'sdk/surface-python/coglet_surface/generated.py': '\n'.join(py) + '\n'}
-    formatted = subprocess.run(['rustfmt', '--edition', '2024'], input=outputs['crates/coglet-types/src/generated.rs'], text=True, capture_output=True, check=True)
+    formatted = subprocess.run(['rustfmt', '--edition', '2024'], input=outputs['crates/coglet-types/src/generated.rs'], text=True, stdout=subprocess.PIPE, check=True)
     outputs['crates/coglet-types/src/generated.rs'] = formatted.stdout
     from emit_go import generate as generate_go
     from emit_java import generate as generate_java

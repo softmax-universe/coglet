@@ -50,6 +50,15 @@ names below are unexecuted M1 obligations, not claims of native qualification.
 
 ## Freeze-owner handoff and scope boundary
 
+Post-freeze disposition (2026-11-23): David directed merge-as-is and fix-forward;
+ADR-0009 is accepted and `spec-v0` remains at
+`c9c22b6878898282848484c52df4d37c054f6720`. Post-freeze review and formal status
+reconciliation of the other ADRs belong to **t_01a207e76001ac2c**. This includes
+reviewing byte-count versus character-count enforcement for the speech read text
+cap under S-speech; no native validation is implied by schema acceptance. The
+freeze card owns only the separate rustfmt CI fix and this acceptance record.
+The pre-freeze handoff below is retained as history, not a new hold on the tag.
+
 ADR-0009 records the bounded decisions and amendments. M-B does not change the
 formal Proposed status of ADRs 0001/0008/0003, accept unperformed qualification,
 merge #36 or tag spec-v0. The freeze owner must decide formal statuses using the
