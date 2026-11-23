@@ -61,7 +61,9 @@ PATH_PATTERN = r'^/(code|data|logs)(/[^/\u0000-\u001f\u007f\\]+)+'
 PATH = {'type': 'string', 'pattern': PATH_PATTERN + r'(?![\s\S])'}
 rule('hash', H, 'tstr .regexp "^[0-9a-f]{64}$"')
 rule('hex', HEX, 'tstr .regexp "^([0-9a-f]{2})*$"')
-rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN + '$'))
+# CDDL regex consumers include Go RE2, which accepts \\xHH but not \\uHHHH.
+# Keep JSON Schema's ECMA spelling and express the same ASCII range portably.
+rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN.replace(r'\u00', r'\x') + '$'))
 # Path-key grammar and blob digest keys are cross-field semantic checks. pycddl
 # 0.6.4 incorrectly applies a regex key control to the entire enclosing map.
 rule('snapshot', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')
@@ -145,6 +147,13 @@ code = bytes.fromhex(files['/code/bin/step.wasm'])
 manifest_bytes = encode(man)
 codehash = hashlib.sha256(code).hexdigest()
 manhash = hashlib.sha256(manifest_bytes).hexdigest()
+# Test-only identity transform provenance, not a qualified production build.
+provenance = dict(version='0.1', source_commit='a'*40,
+                  recipe_sha256=hashlib.sha256(b'fixture recipe').hexdigest(),
+                  policy_sha256=hashlib.sha256(b'test-only policy').hexdigest(),
+                  transform_sha256=hashlib.sha256(b'test-only identity transform').hexdigest(),
+                  original_sha256=codehash, rewritten_sha256=codehash)
+files['/code/build/provenance.cbor'] = encode(provenance).hex()
 base = dict(version='0.1', trace_id='5'*32, coglet=COG, step=0, logical_time=10, seed=7, previous=None,
             code_hash=codehash, manifest_hash=manhash, before_hash=digest(files), input_hash=digest(files), output_hash=digest(files),
             engine=dict(build='fixture-v1', policy='TBD-by-ADR-0003'), budgets=budget, grants=man['required_capabilities'], events=[event],
@@ -283,6 +292,37 @@ def trace_case(name, value, valid=True, error=None):
     if error:
         item['error'] = error
     trace_cases.append(item)
+
+# Provenance negatives rehash every enclosing tree/record: digest failures must
+# not conceal absent, malformed or wrong-output provenance.
+provenance_cases = [dict(name='provenance-control', value=copy.deepcopy(trace), valid=True)]
+for name, replacement in [
+    ('missing', None),
+    ('wrong-output', encode(dict(provenance, rewritten_sha256='0'*64)).hex()),
+    ('missing-policy', encode({k: v for k, v in provenance.items() if k != 'policy_sha256'}).hex()),
+    ('unknown-field', encode(dict(provenance, unknown=True)).hex()),
+    ('malformed-cbor', 'a1'),
+    ('trailing-cbor', encode(provenance).hex() + '00'),
+    ('noncanonical-cbor', 'b807' + encode(provenance).hex()[2:]),
+]:
+    sample = json.loads(json.dumps(trace))
+    rec = sample['records'][0]
+    for side in ('input', 'output'):
+        snapshot = rec[side + '_files']
+        if replacement is None:
+            snapshot.pop('/code/build/provenance.cbor')
+        else:
+            snapshot['/code/build/provenance.cbor'] = replacement
+        rec[side + '_hash'] = digest(snapshot)
+    rec['before_hash'] = rec['input_hash']
+    sample['initial_hash'] = rec['before_hash']
+    sample['records'][0] = seal(rec)
+    provenance_cases.append(dict(name='provenance-' + name, value=sample, valid=False))
+write('spec/fixtures/abi/provenance-cases.fixture', provenance_cases)
+write('conformance/abi/provenance.json', [dict(name=c['name'], steps=[
+    dict(send=dict(operation='abi.validate_trace', trace=c['value'])),
+    dict(expect=dict(valid=c['valid'], dispatched=False), within_ms=200),
+]) for c in provenance_cases])
 
 trace_case('async-reply-control', reply_trace)
 debug_trace = dict(trace, records=[dict(records)['debug-step']])
@@ -430,7 +470,10 @@ for name, initial, maximum, admitted in [('initial-memory-at-cap', 2, 2, True),
                                         ('initial-memory-over-cap', 3, 3, False),
                                         ('maximum-memory-over-cap', 2, 3, False)]:
     module = admission_module(initial, maximum)
-    initial_files = dict(files, **{'/code/bin/step.wasm': module.hex()})
+    initial_files = dict(files, **{'/code/bin/step.wasm': module.hex(),
+        '/code/build/provenance.cbor': encode(dict(provenance,
+            original_sha256=hashlib.sha256(module).hexdigest(),
+            rewritten_sha256=hashlib.sha256(module).hexdigest())).hex()})
     response = dict(admitted=admitted, instantiated=admitted, handle_calls=0,
                     effective_memory_pages=budget['memory_pages'],
                     pending_events=[event], journal=None, record_hash=None,

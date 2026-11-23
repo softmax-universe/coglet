@@ -127,6 +127,29 @@ No protocol implementation is registered in `conformance/impls.toml`.
   codegen freshness and whitespace checks passed. Final-head independent review,
   CI, merge and tag are still pending.
 
+## Repair batch 4 (PR #36, not freeze acceptance)
+
+- Bound ABI replay to the existing hub `hub-build-record`: every snapshot retains
+  canonical `/code/build/provenance.cbor`, and its rewritten digest must match the
+  pinned executable/blob. Reused the hub schema rather than inventing a second
+  provenance record. Signing and transform qualification remain admission gates,
+  not properties inferred from matching hashes. Fixture identity transforms are
+  expressly test-only.
+- Regenerated ABI fixture trees and record chains with retained provenance.
+  `test_provenance_trace` validates eight shape-valid, rehashed trace vectors
+  (positive, missing, wrong output, missing policy, extra field, malformed CBOR,
+  trailing CBOR and noncanonical CBOR), checks the shared CDDL rule and executes
+  the corresponding harness timelines with flipped-result negative controls.
+  No real replay implementation is claimed.
+- Read failed Go/conformance CI logs for batch 3: Go RE2 rejects `\\u` regex
+  escapes. Changed the CDDL spelling of ASCII control ranges to portable `\\xHH`,
+  preserving JSON Schema semantics/JSON fixture escapes, then regenerated all
+  five consumers. This matches the Core lane's explicit decision on the card.
+- Owner ran all 69 spec tests, codegen freshness (396 rules/five outputs), Go
+  module tests and all Go emitter tests successfully. Earlier this run 27 harness
+  regressions and four loopback self-tests also passed. Final-head CI and
+  independent review remain outstanding; no tag is authorized yet.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.

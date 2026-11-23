@@ -169,6 +169,29 @@ def check_record(rec):
     return before
 
 
+def check_provenance(files, code_hash):
+    """Replay binding only; admission signatures/qualification are separate."""
+    raw_hex = files.get('/code/build/provenance.cbor')
+    if raw_hex is None:
+        raise ValueError('missing build provenance')
+    try:
+        raw = bytes.fromhex(raw_hex)
+        value = decode(raw)
+        if encode(value) != raw:
+            raise ValueError('noncanonical provenance')
+        hub = json.loads((SPEC / 'messages/hub.schema.json').read_text())
+        common = json.loads((SPEC / 'messages/common.schema.json').read_text())
+        registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in [hub, common])
+        schema = {'$ref': hub['$id'] + '#/$defs/hub-build-record'}
+        if not Draft202012Validator(schema, registry=registry).is_valid(value):
+            raise ValueError('build record shape')
+        if value['rewritten_sha256'] != code_hash:
+            raise ValueError('output digest')
+    except (ValueError, TypeError, KeyError, cbor2.CBORDecodeError) as error:
+        raise ValueError('invalid build provenance: ' + str(error)) from error
+    return value
+
+
 def check_trace(trace, manifest_validator=None):
     previous = None
     files = None
@@ -203,6 +226,9 @@ def check_trace(trace, manifest_validator=None):
                 raise ValueError('blob mismatch')
         if rec['input_files'].get('/code/bin/step.wasm') != trace['blobs'][rec['code_hash']]:
             raise ValueError('code not pinned')
+        check_provenance(rec['input_files'], rec['code_hash'])
+        if index and rec['input_files'].get('/code/build/provenance.cbor') != trace['records'][0]['input_files'].get('/code/build/provenance.cbor'):
+            raise ValueError('trace provenance changed')
         man = decode(bytes.fromhex(trace['blobs'][rec['manifest_hash']]))
         check_manifest(man)
         if manifest_validator is not None:

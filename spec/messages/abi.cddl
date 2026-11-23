@@ -2,7 +2,7 @@
 abi = trace / step-record / inbox-message / timer-request / llm-request / llm-reply / log-entry / manifest
 hash = tstr .regexp "^[0-9a-f]{64}$"
 hex = tstr .regexp "^([0-9a-f]{2})*$"
-path = tstr .regexp "^/(code|data|logs)(/[^/\\u0000-\\u001f\\u007f\\\\]+)+$"
+path = tstr .regexp "^/(code|data|logs)(/[^/\\x00-\\x1f\\x7f\\\\]+)+$"
 snapshot = {* tstr => hex}
 budgets = {"compute": 1..18446744073709551615, "compute_mode": tstr .size (1..18446744073709551615), "memory_pages": 1..65536, "wall_time_us": 1..18446744073709551615, "max_events": 1..18446744073709551615, "host_bytes": 1..18446744073709551615}
 timer-request = {"id": correlation-id, "at": uint64}

@@ -258,6 +258,19 @@ manifest schema. All /code auxiliary files are in snapshots. Identity/signatures
 are separately verified at admission; hashes are not signatures. A consumer must
 retain all content, never only expiring URLs or hashes.
 
+Every pinned `/code` snapshot MUST include `/code/build/provenance.cbor`, the
+unchanged core-deterministic CBOR `hub-build-record` from the admitted archive
+(see [hub publication](hub-protocol.md)). Replay validates that shared schema and
+requires `rewritten_sha256 == code_hash == SHA256(/code/bin/step.wasm)`; missing,
+malformed, noncanonical or mismatched provenance fails closed before execution.
+Provenance stays unchanged for the trace's pinned code revision. Do not replace
+it with a new record naming the same output. This binding is not signature or
+transform qualification: the admission audit retains the signed archive statement
+and qualification evidence, while the build service retains original/recipe/
+policy/tool bytes for build reproduction. Pure replay neither recompiles nor
+requires a live build service. Fixture identity transforms are test-only, not
+production policy acceptance.
+
 Committed effect arrays equal successful calls filtered by operation, in order;
 on abort they are empty but calls remain diagnostic. log appends sorted-key compact
 JSON log-entry plus LF to /logs/events.jsonl. Failure kinds distinguish compute,
