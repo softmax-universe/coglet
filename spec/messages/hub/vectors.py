@@ -72,6 +72,44 @@ with tempfile.TemporaryDirectory() as td:
     git_update = {'statement': git_statement, 'signer': hub, 'signature': sig.hex()}
     git_fixture = {'update': git_update, 'size': len(bundle), 'sha256': hashlib.sha256(bundle).hexdigest(),
                    'bundle_hex': bundle.hex(), 'archive_hex': archive.hex()}
+    fetch_vectors = []
+    for purpose, refname in [('published-ref', 'refs/published/main'), ('logs-ref', 'refs/heads/logs')]:
+        git('checkout', '--orphan', purpose)
+        git('rm', '-rf', '.')
+        if purpose == 'published-ref':
+            (repo / 'bin').mkdir(exist_ok=True)
+            (repo / 'bin/step.wasm').write_bytes(bytes.fromhex('0061736d01000000'))
+        else:
+            (repo / 'logs').mkdir(exist_ok=True)
+        history = []
+        old = None
+        for generation in [1, 2, 3]:
+            file = repo / ('manifest' if purpose == 'published-ref' else 'logs/batch.jsonl')
+            file.write_text(''.join(json.dumps({'generation': n}) + '\n' for n in range(1, generation + 1)))
+            git('add', '.')
+            git('-c', 'commit.gpgsign=false', 'commit', '-qm', f'{purpose} generation {generation}')
+            new = git('rev-parse', 'HEAD').decode().strip()
+            git('update-ref', refname, new)
+            archive = git('archive', '--format=tar', new)
+            git('bundle', 'create', str(p / 'fetch-bundle'), refname)
+            raw = (p / 'fetch-bundle').read_bytes()
+            statement = dict(purpose=purpose, hub=hub, coglet=cid, generation=generation,
+                             ref=refname, old=old, new=new, archive_sha256=hashlib.sha256(archive).hexdigest())
+            payload = ('coglet/hub/0:' + purpose + '\n').encode() + encode(statement)
+            (p / 'msg').write_bytes(payload)
+            sig = subprocess.check_output(['openssl', 'pkeyutl', '-sign', '-keyform', 'DER',
+                '-inkey', str(p / 'cog'), '-rawin', '-in', str(p / 'msg')])
+            history.append({'update': {'statement': statement, 'signer': cog, 'signature': sig.hex()},
+                            'size': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(), 'bundle_hex': raw.hex()})
+            old = new
+        competing = copy.deepcopy(history[2])
+        competing['update']['statement']['old'] = history[0]['update']['statement']['new']
+        payload = ('coglet/hub/0:' + purpose + '\n').encode() + encode(competing['update']['statement'])
+        (p / 'msg').write_bytes(payload)
+        competing['update']['signature'] = subprocess.check_output(['openssl', 'pkeyutl', '-sign',
+            '-keyform', 'DER', '-inkey', str(p / 'cog'), '-rawin', '-in', str(p / 'msg')]).hex()
+        fetch_vectors.append({'ref': refname, 'history': history, 'competing': competing})
+(OUT / 'fetch.json').write_text(json.dumps(fetch_vectors, indent=2) + '\n')
 (OUT / 'git.json').write_text(json.dumps(git_fixture, indent=2) + '\n')
 (OUT / 'signatures.json').write_text(json.dumps(vectors, indent=2) + '\n')
 framing = [
@@ -89,7 +127,7 @@ def request(method, params=None, target: str | None=cid):
     serial += 1
     result = {'method': method, 'target': target, 'correlation_id': f'{serial:032x}',
               'timeout_ms': 2000, 'params': params or {}}
-    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.git.push', 'hub.actions', 'debug.pause', 'debug.step', 'hub.receipt', 'hub.cancel']:
+    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'hub.git.push', 'hub.git.fetch', 'debug.read', 'hub.actions', 'debug.pause', 'debug.step', 'hub.receipt', 'hub.cancel']:
         result['context'] = {'actor': 'hub:' + hub}
     return result
 
@@ -192,6 +230,45 @@ case('inbox-boundary-queued', exchange(queued, {'result.state': 'queued'}) +
      exchange(request('hub.cancel', {'operation_id': queued['correlation_id']}), {'result.state': 'cancelled'}))
 case('single-step-requires-pause', err(request('debug.step'), 'conflict'))
 case('start-missing-capability', err(request('hub.start'), 'permission_denied'))
+# Scoped observation authorization: identical transport peer, distinct provenance.
+for method, params, suffix in [
+    ('debug.read', {'path': '/data/test.txt', 'offset': 0, 'limit': 64}, 'read'),
+    ('hub.git.fetch', {'ref': 'refs/heads/logs'}, 'fetch'),
+    ('hub.status', {}, 'status')]:
+    for mode in ['actor-isolation', 'ended-ticket', 'missing-ticket']:
+        r = request(method, params)
+        r['context'] = {'actor': cid}
+        if mode != 'missing-ticket':
+            r['context']['ticket'] = '7' * 32
+        case(f'{suffix}-{mode}', err(r, 'permission_denied'))
+    r = request(method, params)
+    r['context'] = {'actor': cid, 'ticket': '6' * 32}
+    expected = {'read': {'result.text': 'original'}, 'fetch': {'type': 'transfer'},
+                'status': {'result.state': 'stopped'}}[suffix]
+    case(f'{suffix}-scoped-allowed', exchange(r, expected))
+
+# Hub-under-test fetches on a reverse stream after harness enrollment.
+# Fixture hooks supply the durable observer baseline and trigger one fetch.
+for group in fetch_vectors:
+    label = 'published' if group['ref'] == 'refs/published/main' else 'logs'
+    for mode in ['catch-up', 'identical', 'equal-conflict', 'older']:
+        offered = group['competing'] if mode == 'equal-conflict' else group['history'][1 if mode == 'older' else 2]
+        op = 'a' * 32
+        stream = 100
+        steps = exchange(request('hub.enroll', {'offer': {'versions': ['0.1']}, 'invite': None}, None),
+                         {'type': 'reply', 'result.selection.version': '0.1'})
+        steps += [{'match': {'method': 'hub.git.fetch', 'params.ref': group['ref'], 'correlation_id': op}, 'within_ms': 2000},
+                  {'send': dict(type='transfer', correlation_id=op, **{k: offered[k] for k in ['size', 'sha256', 'update']}),
+                   'stream': stream, 'finish': False}]
+        if mode in ['catch-up', 'identical']:
+            steps += [{'match': {'type': 'credit', 'correlation_id': op, 'bytes': offered['size']}, 'within_ms': 2000},
+                      {'send': {'type': 'chunk', 'correlation_id': op, 'offset': 0, 'hex': offered['bundle_hex']}, 'stream': stream, 'finish': False},
+                      {'send': {'type': 'end', 'correlation_id': op}, 'stream': stream, 'finish': False},
+                      {'send': {'type': 'reply', 'correlation_id': op, 'result': {}}, 'stream': stream, 'finish': True}]
+        # Rejection and persisted state are mandatory fixture post-run oracles.
+        name = f'fetch-{label}-{mode}'
+        cases.append({'name': name, 'peer_role': 'device',
+                      'fixtures': ['hub.' + name, 'hub.reverse-fetch-observer'], 'steps': steps})
 for item in cases:
     (SPEC.parent / 'conformance/hub' / (item['name'] + '.json')).write_text(json.dumps(item, indent=2) + '\n')
 print(f'Generated {len(vectors)} signing vectors, {len(framing)} framing negatives, {len(cases)} harness cases')

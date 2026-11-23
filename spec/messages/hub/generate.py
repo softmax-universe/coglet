@@ -119,7 +119,7 @@ obj('hub-receipt-applied', {'operation_id': 'correlation-id', 'state': enum('hub
 obj('hub-receipt-cancelled', {'operation_id': 'correlation-id', 'state': enum('hub-cancelled', ['cancelled']), 'step': 'hub-null', 'error': 'hub-null'})
 obj('hub-receipt-failed', {'operation_id': 'correlation-id', 'state': enum('hub-failed', ['failed']), 'step': 'hub-null', 'error': 'error'})
 union('hub-mutation-receipt', ['hub-receipt-' + s for s in ['queued', 'applied', 'cancelled', 'failed']])
-obj('hub-inbox-message', {'id': 'correlation-id', 'sender': 'source-id', 'event': 'event'})
+obj('hub-inbox-delivery', {'id': 'correlation-id', 'sender': 'source-id', 'event': 'event'})
 array('hub-event-batch', 'event', 64)
 obj('hub-health-item', {'coglet': 'coglet-id', 'status': 'hub-status'})
 array('hub-health-items', 'hub-health-item', 256)
@@ -132,7 +132,7 @@ obj('hub-actions-params', {'action': 'action'})
 obj('hub-read-params', {'path': 'hub-path', 'offset': 'uint64', 'limit': 'hub-read-size'})
 obj('hub-write-params', {'path': 'hub-write-path', 'text': 'hub-text', 'expected_hash': 'hub-hash',
                          'actor': 'source-id', 'ticket': 'correlation-id'}, optional=['ticket'])
-obj('hub-inbox-params', {'message': 'hub-inbox-message', 'actor': 'source-id', 'ticket': 'correlation-id'}, optional=['ticket'])
+obj('hub-inbox-params', {'message': 'hub-inbox-delivery', 'actor': 'source-id', 'ticket': 'correlation-id'}, optional=['ticket'])
 obj('hub-health-params', {'device': 'node-id', 'uptime_ms': 'uint64', 'queue_depth': 'uint64',
                           'available_bytes': 'uint64', 'coglets': 'hub-health-items'})
 obj('hub-operation-params', {'operation_id': 'correlation-id'})
@@ -148,7 +148,7 @@ for method, p in zip(methods, params):
     target = 'hub-null' if method in ['hub.enroll', 'hub.health'] else 'coglet-id'
     fields = {'method': m, 'target': target, 'correlation_id': 'correlation-id',
               'timeout_ms': 'hub-timeout', 'params': p}
-    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.git.push', 'hub.actions', 'debug.pause', 'debug.step', 'hub.receipt', 'hub.cancel']:
+    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'hub.git.push', 'hub.git.fetch', 'debug.read', 'hub.actions', 'debug.pause', 'debug.step', 'hub.receipt', 'hub.cancel']:
         fields['context'] = 'hub-context'
     obj(name, fields)
     requests.append(name)

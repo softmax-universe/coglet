@@ -86,10 +86,83 @@ class HubFixtures(unittest.TestCase):
                     Draft202012Validator(request, registry=self.registry).validate(step['send'])
                     frame = step['send']
                     if 'type' in frame:
-                        self.assertEqual(step['stream'], int(frame['correlation_id'], 16))
-                        self.assertEqual(step['finish'], frame['type'] == 'end')
+                        if 'hub.reverse-fetch-observer' in case['fixtures']:
+                            self.assertEqual(step['stream'], 100)
+                            self.assertEqual(step['finish'], frame['type'] == 'reply')
+                        else:
+                            self.assertEqual(step['stream'], int(frame['correlation_id'], 16))
+                            self.assertEqual(step['finish'], frame['type'] == 'end')
                 else:
                     self.assertGreater(step.get('within_ms', 200), 0)
+
+    def test_observation_context_required(self):
+        for method in ['debug.read', 'hub.git.fetch', 'hub.status']:
+            rule = method.replace('.', '-') + '-request'
+            good = next(c['value'] for c in self.cases if c['name'] == rule)
+            validator = Draft202012Validator(dict(self.root, **{'$ref': f'#/$defs/{rule}'}), registry=self.registry)
+            for context, valid in [(None, False), ({}, False), ({'ticket': '6' * 32}, False),
+                                   ({'actor': good['context']['actor'], 'ticket': '6' * 32}, True)]:
+                value = copy.deepcopy(good)
+                if context is None:
+                    del value['context']
+                else:
+                    value['context'] = context
+                self.assertEqual(validator.is_valid(value), valid)
+                cddl = Schema(f'fixture = {rule}\n' + self.cddl)
+                if valid:
+                    cddl.validate_cbor(encode(value))
+                else:
+                    with self.assertRaises(ValidationError):
+                        cddl.validate_cbor(encode(value))
+
+    def test_fetch_history_artifacts_and_observer_oracle(self):
+        # Spec oracle + actual signed git artifacts, NOT a running hub test.
+        import subprocess
+        import tempfile
+        groups = json.loads((SPEC / 'fixtures/hub/fetch.json').read_text())
+        self.assertEqual({g['ref'] for g in groups}, {'refs/published/main', 'refs/heads/logs'})
+        def observe(prior, incoming):
+            if incoming['generation'] < prior['generation']:
+                return 'conflict'
+            if incoming['generation'] == prior['generation']:
+                return 'noop' if incoming == prior else 'conflict'
+            return 'accept'
+        for group in groups:
+            a, b, c = [v['update']['statement'] for v in group['history']]
+            self.assertNotEqual(a['new'], c['old'])
+            self.assertEqual(b['new'], c['old'])
+            self.assertEqual(observe(a, c), 'accept')
+            self.assertEqual(observe(c, c), 'noop')
+            self.assertEqual(observe(c, b), 'conflict')
+            self.assertEqual(observe(c, group['competing']['update']['statement']), 'conflict')
+            for vector in group['history'] + [group['competing']]:
+                signed = vector['update']
+                statement = signed['statement']
+                Schema('fixture = hub-signed-ref\n' + self.cddl).validate_cbor(encode(signed))
+                Draft202012Validator(dict(self.root, **{'$ref': '#/$defs/hub-signed-ref'}), registry=self.registry).validate(signed)
+                with tempfile.TemporaryDirectory() as td:
+                    path = Path(td)
+                    raw = bytes.fromhex(vector['bundle_hex'])
+                    self.assertEqual(len(raw), vector['size'])
+                    self.assertEqual(hashlib.sha256(raw).hexdigest(), vector['sha256'])
+                    (path / 'bundle').write_bytes(raw)
+                    subprocess.run(['git', 'init', '-q', str(path / 'repo')], check=True)
+                    def git(*args):
+                        return subprocess.check_output(['git', '-C', str(path / 'repo'), *args], stderr=subprocess.STDOUT)
+                    git('bundle', 'verify', str(path / 'bundle'))
+                    git('fetch', '-q', str(path / 'bundle'), group['ref'] + ':' + group['ref'])
+                    git('fsck', '--strict')
+                    self.assertEqual(hashlib.sha256(git('archive', '--format=tar', statement['new'])).hexdigest(), statement['archive_sha256'])
+                    paths = git('ls-tree', '-r', '--name-only', statement['new']).decode().splitlines()
+                    if group['ref'] == 'refs/heads/logs':
+                        self.assertTrue(all(p.startswith('logs/') for p in paths))
+                    else:
+                        self.assertIn('bin/step.wasm', paths)
+                    (path / 'key').write_bytes(bytes.fromhex('302a300506032b6570032100' + signed['signer']))
+                    (path / 'sig').write_bytes(bytes.fromhex(signed['signature']))
+                    (path / 'msg').write_bytes(('coglet/hub/0:' + statement['purpose'] + '\n').encode() + encode(statement))
+                    subprocess.run(['openssl', 'pkeyutl', '-verify', '-pubin', '-keyform', 'DER', '-inkey', str(path / 'key'),
+                                    '-rawin', '-in', str(path / 'msg'), '-sigfile', str(path / 'sig')], check=True, capture_output=True)
 
     def test_signing_vectors(self):
         # openssl is available on the supported CI Linux fixture runner.

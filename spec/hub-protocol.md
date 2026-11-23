@@ -98,12 +98,22 @@ revokes its grants and cancels its unapplied writes; provenance records carry it
 | `hub.health` | device → hub | null; metadata only |
 | `hub.receipt`, `hub.cancel` | either | original target; original authenticated caller only |
 
-Hub-originated install/start/stop/git.push/actions/pause/step requests carry
-`context: {actor, ? ticket}` at request level; receipt/cancel also carry context
-to identify the original actor/ticket scope. Debug.write and hub.inbox carry
-the same fields in params. The hub asserts this provenance, and devices bind it
-to locally configured ticket/actor-scoped grants. All intervention audits and
-cancellation checks use that context, never an action payload actor override.
+All hub-originated requests, including status, debug.read and git.fetch,
+MUST carry `context: {actor, ? ticket}` at request level, except debug.write
+and hub.inbox which carry the same fields in params. Receipt/cancel also carry
+context to identify the original actor/ticket scope. The hub authenticates its
+client and asserts this provenance; devices intersect peer authority with local
+`(actor, ticket-or-absent, method, target)` grants and path/ref limits. Missing
+context is invalid; an unknown actor, ended ticket or missing scoped grant is
+`permission_denied`. Omitting a ticket selects only explicitly provisioned
+non-ticket authority, never the union of that actor's ticket grants. The hub
+MUST NOT remove/substitute a client's ticket or actor to borrow kernel authority.
+These checks precede status/read disclosure and fetch metadata, and repeat before
+each response/data frame. Revocation terminates the stream without further data;
+already disclosed bytes cannot be recalled. Receipt lookup cannot cross scopes.
+All intervention audits and cancellation checks use that context, never an action
+payload actor override. Device-originated events/health use the authenticated
+relay binding instead, and enroll uses its one-use invite/allowlist.
 
 `debug.read` and `debug.write` never imply one another or pause/step. A debug
 reader needing pause or single-step needs those additional explicit grants.
@@ -151,8 +161,13 @@ still process boundary mutations without executing guest code.
 
 `debug.pause` is acknowledged `applied` only once no guest step is running;
 it does not pause real-time surface reflexes or the kill switch. `debug.step`
-requires paused state, applies pending boundary work, executes exactly one event
-batch (possibly empty), and stays paused, returning the committed step number.
+requires paused state, applies pending boundary work, executes exactly one nonempty
+event batch, and stays paused, returning the committed step number. If no event
+is queued, the runtime records a synthetic common `runtime.debug_step` event
+(source = target coglet, next durable source sequence, current runtime logical
+time, payload = `{}`, correlation_id = this step operation ID). This wake uses
+the same source sequencer as other runtime-generated events, bypasses subscription
+filtering and is journaled; no empty batch is passed to the ABI.
 Concurrent step requests serialize; no implicit resume. On failure, remain
 paused or faulted, never silently run. A step timeout can have committed; inspect
 its receipt. `debug.read` uses one committed snapshot, never partially running
@@ -191,13 +206,29 @@ resource bound.
 
 For each update, `ref-statement` includes purpose, hub node, coglet ID, exact ref,
 old commit (null only for creation), new commit, archive SHA-256 and increasing
-generation. Verify signer, purpose/ref consistency, archive digest and generation
-before durable compare-and-swap; old mismatch or generation replay is `conflict`.
-For fetch observations, an identical previously verified statement is a no-op
-regardless of fresh operation ID; equal-generation different statements conflict.
-An older statement never rewinds the local tracked ref. Only a new generation
-advancing the tracked ref performs CAS; a first fetch pins the verified current
-statement as baseline without requiring its historical old tip locally.
+generation. The authoritative writer (including the receiver of hub pushes)
+MUST compare `old` with its current authoritative tip and require a strictly
+higher generation in one durable CAS; mismatch/replay is `conflict`.
+
+Fetch is authenticated snapshot observation, NOT replay of a publisher CAS.
+After verifying signer, current delegation, purpose/hub/target/ref, complete
+bundle and archive digest, an observer atomically compares the signed generation
+with its durable watermark scoped by (hub, coglet, ref):
+- No watermark: pin the verified current statement as the baseline.
+- Higher generation: accept the current snapshot even if `old` differs from the
+  observed tip. For A(gen 1) → B(gen 2) → C(gen 3), an observer at A accepts the
+  signed B→C statement and C bundle without retrieving B. `old` describes the
+  publisher transition, not the observer's precondition.
+- Equal generation: only the identical previously verified statement is a no-op;
+  any different statement is `conflict`, even if its new tip matches.
+- Lower generation: reject with `conflict`; never rewind the observed watermark.
+
+Recheck against the latest watermark at commit so concurrent fetch completions
+cannot overwrite a newer observation. Persist statement, watermark and tracked
+ref atomically; reconnect/restart cannot erase anti-replay state. A same-statement
+retry still verifies its transfer and current authority. Fetch may skip historical
+observations but MUST retain its own accepted-statement audit. It does not prove
+possession of every intermediate publication; that is not a 0.1 guarantee.
 An exact duplicate operation returns its original receipt instead. No forced ref
 rewind: rollback is a new authorized generation whose new commit restores a
 last-known-good tree, with correct old ref; signed history never loses audit.
@@ -228,7 +259,11 @@ Git push: request declares size/hash and signed ref statement; responder sends
 bytes, then `hub-end`. Responder validates, queues update and eventually replies.
 Fetch: request specifies ref; responder sends `hub-transfer` metadata and signed
 statement, waits for initiator credit, sends chunks/end, then terminal success.
-Receiver verifies before accepting/importing. Zero/missing/trailing chunks,
+Receiver verifies before accepting/importing. A fetch observer MUST check signed
+metadata against its current watermark before issuing credit; an older or
+equal-but-different statement is a local `conflict` and resets the stream with
+application code 1 without credit. Recheck the watermark after transfer as well.
+Zero/missing/trailing chunks,
 incorrect offsets, bytes beyond declared size or hash mismatch fail atomically.
 No partial resume; retry same operation or start a new fetch. Rejected transfers
 have no ref/data effects and quarantines are removed on timeout/cancellation.
@@ -263,9 +298,12 @@ always wins. Expired actions cannot be dispatched even after reconnect.
 
 `hub.inbox` queues one delivery `{id, sender, event}`; event is the unchanged
 common event envelope and `event.source` MUST equal sender. The persisted line
-is the ABI's `inbox-message`, not a second hub-specific file format:
-`{index:uint64, id:correlation-id, sender:source-id, event:common.event}`.
-Runtime assigns the next contiguous index, journals the exact file JSON bytes,
+is `inbox-message` per [spec/abi.md (PR #8)](https://github.com/softmax-universe/coglet/pull/8),
+not a second hub-specific file format. The hub's `hub-inbox-delivery` schema is
+only an append request without the runtime-assigned index; it is never a persisted
+line. Runtime assigns the next contiguous index and serializes the ABI line
+(compact sorted-key JSON, unescaped Unicode and standard JSON escapes), journaling
+the exact file JSON bytes,
 appends UTF-8 JSON plus one LF at a boundary, and emits the ABI `runtime.inbox`
 wake `{index,id}`. Index exhaustion fails closed. Newlines inside strings are
 escaped; integers retain full precision. `sender` is authenticated hub identity

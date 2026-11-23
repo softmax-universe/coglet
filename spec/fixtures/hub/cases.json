@@ -1079,8 +1079,8 @@
     "cbor_hex": "a46473746570f6656572726f72f6657374617465667175657565646c6f7065726174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
-    "name": "hub-inbox-message",
-    "type": "hub-inbox-message",
+    "name": "hub-inbox-delivery",
+    "type": "hub-inbox-delivery",
     "valid": true,
     "value": {
       "id": "cccccccccccccccccccccccccccccccc",
@@ -1097,8 +1097,8 @@
     "cbor_hex": "a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a62626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262"
   },
   {
-    "name": "hub-inbox-message-unknown",
-    "type": "hub-inbox-message",
+    "name": "hub-inbox-delivery-unknown",
+    "type": "hub-inbox-delivery",
     "valid": false,
     "value": {
       "id": "cccccccccccccccccccccccccccccccc",
@@ -1115,8 +1115,8 @@
     }
   },
   {
-    "name": "hub-inbox-message-missing-id",
-    "type": "hub-inbox-message",
+    "name": "hub-inbox-delivery-missing-id",
+    "type": "hub-inbox-delivery",
     "valid": false,
     "value": {
       "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -1131,8 +1131,8 @@
     }
   },
   {
-    "name": "hub-inbox-message-missing-sender",
-    "type": "hub-inbox-message",
+    "name": "hub-inbox-delivery-missing-sender",
+    "type": "hub-inbox-delivery",
     "valid": false,
     "value": {
       "id": "cccccccccccccccccccccccccccccccc",
@@ -1147,8 +1147,8 @@
     }
   },
   {
-    "name": "hub-inbox-message-missing-event",
-    "type": "hub-inbox-message",
+    "name": "hub-inbox-delivery-missing-event",
+    "type": "hub-inbox-delivery",
     "valid": false,
     "value": {
       "id": "cccccccccccccccccccccccccccccccc",
@@ -2749,9 +2749,12 @@
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
       "timeout_ms": 1,
-      "params": {}
+      "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     },
-    "cbor_hex": "a5666d6574686f646a6875622e73746174757366706172616d73a0667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+    "cbor_hex": "a6666d6574686f646a6875622e73746174757366706172616d73a0667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
     "name": "hub-status-request-unknown",
@@ -2763,6 +2766,9 @@
       "correlation_id": "cccccccccccccccccccccccccccccccc",
       "timeout_ms": 1,
       "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
       "unknown": true
     }
   },
@@ -2774,7 +2780,10 @@
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
       "timeout_ms": 1,
-      "params": {}
+      "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     }
   },
   {
@@ -2785,7 +2794,10 @@
       "method": "hub.status",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
       "timeout_ms": 1,
-      "params": {}
+      "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     }
   },
   {
@@ -2796,7 +2808,10 @@
       "method": "hub.status",
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "timeout_ms": 1,
-      "params": {}
+      "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     }
   },
   {
@@ -2807,7 +2822,10 @@
       "method": "hub.status",
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
-      "params": {}
+      "params": {},
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
     }
   },
   {
@@ -2818,7 +2836,22 @@
       "method": "hub.status",
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
-      "timeout_ms": 1
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-status-request-missing-context",
+    "type": "hub-status-request",
+    "valid": false,
+    "value": {
+      "method": "hub.status",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {}
     }
   },
   {
@@ -3079,9 +3112,12 @@
       "timeout_ms": 1,
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     },
-    "cbor_hex": "a5666d6574686f646d6875622e6769742e666574636866706172616d73a16372656673726566732f7075626c69736865642f6d61696e667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+    "cbor_hex": "a6666d6574686f646d6875622e6769742e666574636866706172616d73a16372656673726566732f7075626c69736865642f6d61696e667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
     "name": "hub-git-fetch-request-unknown",
@@ -3094,6 +3130,9 @@
       "timeout_ms": 1,
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "unknown": true
     }
@@ -3108,6 +3147,9 @@
       "timeout_ms": 1,
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3121,6 +3163,9 @@
       "timeout_ms": 1,
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3134,6 +3179,9 @@
       "timeout_ms": 1,
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3147,6 +3195,9 @@
       "correlation_id": "cccccccccccccccccccccccccccccccc",
       "params": {
         "ref": "refs/published/main"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3158,7 +3209,24 @@
       "method": "hub.git.fetch",
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
-      "timeout_ms": 1
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-git-fetch-request-missing-context",
+    "type": "hub-git-fetch-request",
+    "valid": false,
+    "value": {
+      "method": "hub.git.fetch",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "ref": "refs/published/main"
+      }
     }
   },
   {
@@ -3519,9 +3587,12 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     },
-    "cbor_hex": "a5666d6574686f646a64656275672e7265616466706172616d73a36470617468702f646174612f73746174652e6a736f6e656c696d697401666f666673657400667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a36470617468702f646174612f73746174652e6a736f6e656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
     "name": "debug-read-request-unknown",
@@ -3536,6 +3607,9 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       },
       "unknown": true
     }
@@ -3552,6 +3626,9 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3567,6 +3644,9 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3582,6 +3662,9 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3597,6 +3680,9 @@
         "path": "/data/state.json",
         "offset": 0,
         "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   },
@@ -3608,7 +3694,26 @@
       "method": "debug.read",
       "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "correlation_id": "cccccccccccccccccccccccccccccccc",
-      "timeout_ms": 1
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "debug-read-request-missing-context",
+    "type": "debug-read-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "offset": 0,
+        "limit": 1
+      }
     }
   },
   {
@@ -5382,37 +5487,37 @@
     "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163302e3166696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
-    "name": "negative-359",
+    "name": "negative-362",
     "type": "hub-timeout",
     "valid": false,
     "value": 0
   },
   {
-    "name": "negative-360",
+    "name": "negative-363",
     "type": "hub-timeout",
     "valid": false,
     "value": 300001
   },
   {
-    "name": "negative-361",
+    "name": "negative-364",
     "type": "hub-chunk-hex",
     "valid": false,
     "value": "a"
   },
   {
-    "name": "negative-362",
+    "name": "negative-365",
     "type": "hub-signature",
     "valid": false,
     "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   },
   {
-    "name": "negative-363",
+    "name": "negative-366",
     "type": "hub-write-path",
     "valid": false,
     "value": "/code/main"
   },
   {
-    "name": "negative-364",
+    "name": "negative-367",
     "type": "hub-receipt-applied",
     "valid": false,
     "value": {
@@ -5423,7 +5528,7 @@
     }
   },
   {
-    "name": "negative-365",
+    "name": "negative-368",
     "type": "hub-event-batch",
     "valid": false,
     "value": [
@@ -5950,7 +6055,7 @@
     ]
   },
   {
-    "name": "negative-366",
+    "name": "negative-369",
     "type": "hub-ref",
     "valid": false,
     "value": "refs/heads/main"

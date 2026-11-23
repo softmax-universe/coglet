@@ -56,7 +56,7 @@ to these profiles before opening the connection:
   authority for traversal/inbox. `write-stale-snapshot` has write authority but
   current snapshot hash is not 64 `e` characters; reject before admission.
 - `pause-single-step`: a running counter guest, completed step zero; one empty
-  batch can commit step one. `single-step-requires-pause` starts running.
+  queue yields a recorded runtime.debug_step wake and can commit step one. `single-step-requires-pause` starts running.
 - Inbox cases use a stopped coglet whose idle boundary queue drains immediately.
   Exact retries return the persisted receipt, not another line. The suite's
   post-run oracle MUST parse inbox JSONL and assert exactly one ABI inbox-message,
@@ -80,6 +80,45 @@ to these profiles before opening the connection:
   The empty core Wasm fixture is a transfer artifact, not an ABI execution guest.
   Invalid-signature case must fail before credit; hash/offset failures leave
   no ref, private-state or installed-coglet changes. Quarantine is cleaned.
+
+## Observation regression fixtures
+
+`read-*`, `fetch-*` authorization cases and `status-*` use the same pinned hub
+transport identity; local scopes differ. For `actor-isolation`, ticket `77`
+repeated 16 bytes belongs only to the hub actor, not the coglet actor supplied
+by the request. For `ended-ticket`, that ticket belonged to the requesting
+coglet actor but has ended. For `missing-ticket`, only ticket-scoped authority
+exists; no non-ticket grant exists. All reject before any private data or fetch
+metadata. `scoped-allowed` grants the coglet actor ticket `66` repeated 16 bytes
+the exact method and path/ref, with `/data/test.txt` containing `original`.
+The fetch allowed control checks admission metadata only, not completed transfer;
+the fixture must cancel/clean its outstanding transfer after the assertion.
+
+`spec/fixtures/hub/fetch.json` contains actual Git bundles and coglet-key-signed
+A/B/C statements for both published and logs refs, plus a correctly signed
+competing generation-3 statement (same new tip, different old tip).
+`fetch-{published,logs}-{catch-up,identical,equal-conflict,older}` drive a hub
+observer. `catch-up` seeds durable generation 1/A; all other modes seed generation
+3/C. Provision the peer binding and fetch authority, then trigger one fetch after
+enrollment with correlation ID `aa` repeated 16 bytes. The harness receives that
+reverse-initiated request and maps its stream to tooling ID 100 (not QUIC's native
+stream number). `hub.reverse-fetch-observer` MUST be unsupported/SKIP until the
+adapter implements this mapping AND the following post-run oracle:
+
+- catch-up: accepted C, watermark 3, statement C, one accepted-observation audit;
+- identical: same C and watermark, no new accepted-observation audit;
+- equal-conflict: competing statement rejected as conflict, C unchanged;
+- older: generation 2 rejected as conflict, C unchanged.
+
+For the two negative cases, the hub MUST reject signed metadata before granting
+credit, reset the operation and record the local conflict result; the fixture
+oracle waits for that terminal result and asserts no transfer credit/disclosure
+or tracked-ref mutation. For positive cases grant the complete small bundle size
+as initial credit; the oracle waits for verified durable import after end/reply,
+not merely for the last harness send. Reopen the observer store before checking
+watermarks, and assert quarantine cleanup for rejected transfers. The current
+harness cannot exercise these reverse-stream/post-run hooks; shape CI and the
+fixture decision oracle are NOT a claim that these scenarios run on a hub.
 
 ## Required stateful observations
 

@@ -454,7 +454,7 @@
         }
       ]
     },
-    "hub-inbox-message": {
+    "hub-inbox-delivery": {
       "type": "object",
       "properties": {
         "id": {
@@ -643,7 +643,7 @@
       "type": "object",
       "properties": {
         "message": {
-          "$ref": "#/$defs/hub-inbox-message"
+          "$ref": "#/$defs/hub-inbox-delivery"
         },
         "actor": {
           "$ref": "common.schema.json#/$defs/source-id"
@@ -879,6 +879,9 @@
         },
         "params": {
           "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
         }
       },
       "required": [
@@ -886,7 +889,8 @@
         "target",
         "correlation_id",
         "timeout_ms",
-        "params"
+        "params",
+        "context"
       ],
       "additionalProperties": false
     },
@@ -949,6 +953,9 @@
         },
         "params": {
           "$ref": "#/$defs/hub-fetch-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
         }
       },
       "required": [
@@ -956,7 +963,8 @@
         "target",
         "correlation_id",
         "timeout_ms",
-        "params"
+        "params",
+        "context"
       ],
       "additionalProperties": false
     },
@@ -1052,6 +1060,9 @@
         },
         "params": {
           "$ref": "#/$defs/hub-read-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
         }
       },
       "required": [
@@ -1059,7 +1070,8 @@
         "target",
         "correlation_id",
         "timeout_ms",
-        "params"
+        "params",
+        "context"
       ],
       "additionalProperties": false
     },

@@ -30,6 +30,19 @@ are build-then-commit, hub-key signed and compare-and-swap; the coglet signs its
 published ref attestation with its own node key. Logs batch separately; private
 `/data` never enters git. Define signing domains and anti-replay generations.
 
+## Review revisions
+
+Require actor/ticket context on every hub-originated observation (including
+status, private debug reads and git exports), not only interventions. Local
+authorization uses the exact actor/ticket scope and rechecks before disclosure.
+Ticket absence cannot inherit ticket grants.
+
+Distinguish authoritative ref CAS from observer catch-up: a fully verified signed
+snapshot with a newer generation may skip intermediate observations. Equal but
+different statements and older generations conflict; persist observer watermarks
+atomically with the tracked ref. Requiring the observer's old tip to equal the
+publisher's previous tip would permanently strand disconnected observers.
+
 ## Alternatives
 
 - Multiple ALPNs duplicate authentication and negotiation; reject.
