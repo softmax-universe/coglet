@@ -25,7 +25,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
-      - uses: dtolnay/rust-toolchain@1.100.0
+      # rust-toolchain.toml pins 1.100.0 with rustfmt/clippy/wasm32-wasip1; let rustup
+      # install it once (as rust.yml does). A second installer made rustup hit
+      # "detected conflict: 'bin/cargo-clippy'" and fail the job before any build.
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
