@@ -11,4 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: swift build --package-path sdk/surface-swift
+      - run: swift test --package-path sdk/surface-swift
+      - uses: astral-sh/setup-uv@v5
+      - run: conformance/run --registry sdk/surface-swift/conformance.toml --junit target/swift-surface.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swift-surface-conformance
+          path: target/swift-surface.xml
       - run: swift test --package-path surfaces/face-mac
