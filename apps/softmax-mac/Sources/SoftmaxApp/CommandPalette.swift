@@ -51,6 +51,7 @@ struct CommandPaletteView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             TextField("Search commands and settings", text: $query)
+                .modifier(SoftmaxSearchFieldFrame())
                 .accessibilityLabel("Search commands and settings").focused($focused)
                 .onChange(of: query) { _ in selected = 0 }
                 .onSubmit { if matches.indices.contains(selected) { open(matches[selected]) } }
