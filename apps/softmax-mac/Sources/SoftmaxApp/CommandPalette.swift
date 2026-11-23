@@ -67,7 +67,7 @@ struct CommandPaletteView: View {
                 }
             }
         }.padding(20).frame(width: 460, height: 480)
-            .modifier(SoftmaxTheme()).onAppear { focused = true }
+            .modifier(SoftmaxTheme()).onAppear { DispatchQueue.main.async { focused = true } }
             .onExitCommand(perform: dismiss)
     }
 }
@@ -76,7 +76,7 @@ struct CommandPaletteView: View {
     private var panel: NSPanel?
     private weak var previous: NSWindow?
     func show(commands: [SoftmaxCommand]) {
-        if let panel, panel.isVisible { panel.makeKeyAndOrderFront(nil); return }
+        if let panel, panel.isVisible { NSApp.activate(ignoringOtherApps: true); panel.makeKeyAndOrderFront(nil); return }
         previous = NSApp.keyWindow
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 480),
                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -86,7 +86,7 @@ struct CommandPaletteView: View {
             CommandPaletteView(commands: commands, dismiss: { [weak self] in self?.close() })
         })
         self.panel = panel
-        panel.center(); panel.makeKeyAndOrderFront(nil)
+        panel.center(); NSApp.activate(ignoringOtherApps: true); panel.makeKeyAndOrderFront(nil)
     }
     func close() { panel?.close() }
     func windowWillClose(_ notification: Notification) {

@@ -68,11 +68,19 @@ struct SettingsView: View {
                         switch model.selectedTab {
                         case .general:
                             Text("Softmax lives in your menu bar. Close windows without quitting.")
-                            Picker("Appearance", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
-                                .pickerStyle(.radioGroup)
-                            Picker("Text size", selection: $textScale) {
-                                Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
-                            }.pickerStyle(.radioGroup)
+                            // Native radio-group titles use the 13 pt control font, which the OS contrast
+                            // audit rejects on this surface; draw the title with the 14 pt body token.
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Appearance").softmaxFont(SoftmaxDesignTokens.fontBody).accessibilityHidden(true)
+                                Picker("Appearance", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
+                                    .pickerStyle(.radioGroup).labelsHidden()
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Text size").softmaxFont(SoftmaxDesignTokens.fontBody).accessibilityHidden(true)
+                                Picker("Text size", selection: $textScale) {
+                                    Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
+                                }.pickerStyle(.radioGroup).labelsHidden()
+                            }
                             Toggle("Show floating orb", isOn: $model.orbEnabled).accessibilityIdentifier("floatingOrbToggle")
                             Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                             LoginItemControls(model: model)
