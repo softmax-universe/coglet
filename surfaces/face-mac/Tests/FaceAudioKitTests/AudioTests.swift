@@ -84,7 +84,8 @@ import Dispatch
     let converter = try CaptureConverter(format: format)
     var samples: [Int16] = []
     for _ in 0..<4 { samples.append(contentsOf: try converter.convert(buffer)) }
-    #expect(samples.count > 9000 && samples.count <= 9600)
+    #expect(samples.count > 9000)
+    #expect(samples.count <= 9600)
     #expect(samples.suffix(100).allSatisfy { abs(Int($0) - 8192) < 20 })
 }
 

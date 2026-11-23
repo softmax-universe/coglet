@@ -26,37 +26,56 @@ final class PCMQueue: @unchecked Sendable {
 // to that invocation and never crosses threads despite the SDK's @Sendable type.
 private final class ConversionFeed: @unchecked Sendable {
     var input: AVAudioPCMBuffer?
-    var supplied = false
+    var consumed: AVAudioFrameCount = 0
+    let staging: AVAudioPCMBuffer
+    init(staging: AVAudioPCMBuffer) { self.staging = staging }
+    func supply(_ requested: AVAudioPacketCount, status: UnsafeMutablePointer<AVAudioConverterInputStatus>) -> AVAudioBuffer? {
+        guard let input, consumed < input.frameLength else {
+            status.pointee = .noDataNow; return nil
+        }
+        let frames = min(requested, input.frameLength - consumed)
+        staging.frameLength = frames
+        let source = UnsafeMutableAudioBufferListPointer(input.mutableAudioBufferList)
+        let destination = UnsafeMutableAudioBufferListPointer(staging.mutableAudioBufferList)
+        let stride = Int(input.format.streamDescription.pointee.mBytesPerFrame)
+        for i in 0..<source.count {
+            memcpy(destination[i].mData!, source[i].mData!.advanced(by: Int(consumed) * stride), Int(frames) * stride)
+        }
+        consumed += frames
+        status.pointee = .haveData
+        return staging
+    }
 }
 final class CaptureConverter {
     let converter: AVAudioConverter
     let output: AVAudioPCMBuffer
-    private let feed = ConversionFeed()
+    private let feed: ConversionFeed
     init(format: AVAudioFormat, maximumFrames: AVAudioFrameCount = 16384) throws {
-        guard format.sampleRate > 0, format.channelCount > 0,
+        guard format.sampleRate >= 8000, format.sampleRate <= 192000,
+              format.channelCount > 0, format.channelCount <= 64,
               let pcm = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 24000,
                                       channels: 1, interleaved: false),
               let converter = AVAudioConverter(from: format, to: pcm),
+              let staging = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: maximumFrames),
               let output = AVAudioPCMBuffer(pcmFormat: pcm, frameCapacity:
                 AVAudioFrameCount(ceil(Double(maximumFrames) * 24000 / format.sampleRate)) + 256)
         else { throw FaceAudioError.invalidFormat }
         converter.primeMethod = .none
         self.converter = converter
         self.output = output
+        self.feed = ConversionFeed(staging: staging)
     }
     func convert(_ input: AVAudioPCMBuffer) throws -> UnsafeBufferPointer<Int16> {
-        guard input.frameLength <= 16384 else { throw FaceAudioError.invalidFormat }
+        guard input.frameLength <= feed.staging.frameCapacity,
+              input.format == converter.inputFormat else { throw FaceAudioError.invalidFormat }
         let feed = self.feed
         feed.input = input
-        feed.supplied = false
+        feed.consumed = 0
         defer { feed.input = nil }
         var error: NSError?
         output.frameLength = 0
-        let status = converter.convert(to: output, error: &error) { _, outStatus in
-            if feed.supplied { outStatus.pointee = .noDataNow; return nil }
-            feed.supplied = true
-            outStatus.pointee = .haveData
-            return feed.input
+        let status = converter.convert(to: output, error: &error) { requested, outStatus in
+            feed.supply(requested, status: outStatus)
         }
         guard status != .error, error == nil, let data = output.int16ChannelData else {
             throw FaceAudioError.conversion
