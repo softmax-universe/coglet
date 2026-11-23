@@ -51,6 +51,8 @@ jobs:
       - run: cargo test --locked --manifest-path conformance/iroh-driver/Cargo.toml
       - name: Harness self-test
         run: conformance/run --self-test --junit target/conformance-self-test.xml
+      - name: Build real engine conformance adapter
+        run: cargo build --locked -p coglet-engine-wamr --example wamr-conformance
       - name: Every registered implementation and claimed suite
         if: ${{ !cancelled() }}
         run: conformance/run --junit target/conformance-registered.xml

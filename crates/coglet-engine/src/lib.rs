@@ -93,6 +93,9 @@ impl StepBudget {
     pub fn compute_remaining(&self) -> u64 {
         self.compute - self.compute_used
     }
+    pub fn host_bytes_remaining(&self) -> u64 {
+        self.host_bytes - self.host_bytes_used
+    }
     pub fn host_bytes_used(&self) -> u64 {
         self.host_bytes_used
     }

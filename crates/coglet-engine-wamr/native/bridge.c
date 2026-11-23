@@ -1,0 +1,112 @@
+#include "wasm_export.h"
+#include "wasm_exec_env.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+typedef struct {
+    void *pool;
+    wasm_module_t module;
+    wasm_module_inst_t instance;
+    wasm_exec_env_t env;
+    int initialized;
+} Context;
+
+extern uint32_t ce_host_call(void *state, const char *module, const char *name,
+                             uint64_t *args, uint32_t argc);
+static void coglet_call(wasm_exec_env_t env, uint64_t *args) {
+    wasm_module_inst_t inst = wasm_runtime_get_module_inst(env);
+    void *state = wasm_runtime_get_custom_data(inst);
+    const char *name = wasm_runtime_get_function_attachment(env);
+    if (!state) { wasm_runtime_set_exception(inst, "missing coglet host"); return; }
+    args[0] = ce_host_call(state, "coglet_v0", name, args, 2);
+}
+static NativeSymbol coglet_symbols[] = {
+    {"timer", coglet_call, "(ii)i", "timer"},
+    {"emit", coglet_call, "(ii)i", "emit"},
+    {"llm", coglet_call, "(ii)i", "llm"},
+    {"log", coglet_call, "(ii)i", "log"},
+};
+typedef struct { const char *name; uint32_t argc; } WasiImport;
+#define IMPORT(name, sig, argc) static WasiImport wasi_##name = {#name, argc};
+#include "wasi.def"
+#undef IMPORT
+static void wasi_call(wasm_exec_env_t env, uint64_t *args) {
+    wasm_module_inst_t inst = wasm_runtime_get_module_inst(env);
+    void *state = wasm_runtime_get_custom_data(inst);
+    WasiImport *import = wasm_runtime_get_function_attachment(env);
+    if (!state) { wasm_runtime_set_exception(inst, "missing coglet host"); return; }
+    args[0] = ce_host_call(state, "wasi_snapshot_preview1", import->name, args, import->argc);
+}
+static NativeSymbol wasi_symbols[] = {
+#define IMPORT(name, sig, argc) {#name, wasi_call, sig, &wasi_##name},
+#include "wasi.def"
+#undef IMPORT
+};
+void ce_set_host(Context *c, void *state) {
+    wasm_runtime_set_custom_data(c->instance, state);
+}
+void ce_host_abort(Context *c) { wasm_runtime_set_exception(c->instance, "coglet host aborted"); }
+
+void ce_destroy(Context *c) {
+    if (!c) return;
+    if (c->env) wasm_runtime_destroy_exec_env(c->env);
+    if (c->instance) wasm_runtime_deinstantiate(c->instance);
+    if (c->module) wasm_runtime_unload(c->module);
+    if (c->initialized) wasm_runtime_destroy();
+    free(c->pool);
+    free(c);
+}
+Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
+                   uint32_t stack_size, uint32_t pages) {
+    Context *c = calloc(1, sizeof(*c));
+    if (!c) return NULL;
+    c->pool = malloc(pool_size);
+    if (!c->pool) { ce_destroy(c); return NULL; }
+    RuntimeInitArgs init = {0};
+    init.mem_alloc_type = Alloc_With_Pool;
+    init.mem_alloc_option.pool.heap_buf = c->pool;
+    init.mem_alloc_option.pool.heap_size = pool_size;
+    if (!wasm_runtime_full_init(&init)) { ce_destroy(c); return NULL; }
+    c->initialized = 1;
+    if (!wasm_runtime_register_natives_raw("coglet_v0", coglet_symbols, sizeof(coglet_symbols)/sizeof(coglet_symbols[0]))) { ce_destroy(c); return NULL; }
+    if (!wasm_runtime_register_natives_raw("wasi_snapshot_preview1", wasi_symbols, sizeof(wasi_symbols)/sizeof(wasi_symbols[0]))) { ce_destroy(c); return NULL; }
+    wasm_runtime_set_log_level(0);
+    char error[256] = {0};
+    c->module = wasm_runtime_load(bytes, len, error, sizeof(error));
+    if (!c->module) { fprintf(stderr, "WAMR load: %s\n", error); ce_destroy(c); return NULL; }
+    struct InstantiationArgs2 *args = NULL;
+    if (!wasm_runtime_instantiation_args_create(&args)) { ce_destroy(c); return NULL; }
+    wasm_runtime_instantiation_args_set_default_stack_size(args, stack_size);
+    wasm_runtime_instantiation_args_set_max_memory_pages(args, pages);
+    wasm_runtime_instantiation_args_set_host_managed_heap_size(args, 0);
+    c->instance = wasm_runtime_instantiate_ex2(c->module, args, error, sizeof(error));
+    wasm_runtime_instantiation_args_destroy(args);
+    if (!c->instance) { fprintf(stderr, "WAMR instantiate: %s\n", error); ce_destroy(c); return NULL; }
+    c->env = wasm_runtime_create_exec_env(c->instance, stack_size);
+    if (!c->env) { ce_destroy(c); return NULL; }
+    return c;
+}
+void ce_set_budget(Context *c, int budget) {
+    wasm_runtime_set_instruction_count_limit(c->env, budget);
+}
+int ce_remaining(Context *c) { return c->env->instructions_to_execute; }
+int ce_has(Context *c, const char *name) { return wasm_runtime_lookup_function(c->instance, name) != NULL; }
+int ce_call(Context *c, const char *name, uint32_t argc, uint32_t *argv) {
+    wasm_function_inst_t f = wasm_runtime_lookup_function(c->instance, name);
+    if (!f) return -1;
+    return wasm_runtime_call_wasm(c->env, f, argc, argv) ? 1 : 0;
+}
+void ce_terminate(Context *c) { wasm_runtime_terminate(c->instance); }
+int ce_valid(Context *c, uint32_t ptr, uint32_t len) { return wasm_runtime_validate_app_addr(c->instance, ptr, len); }
+const char *ce_exception(Context *c) { return wasm_runtime_get_exception(c->instance); }
+int ce_write(Context *c, uint32_t ptr, const uint8_t *bytes, uint32_t len) {
+    if (!wasm_runtime_validate_app_addr(c->instance, ptr, len)) return 0;
+    if (len) memcpy(wasm_runtime_addr_app_to_native(c->instance, ptr), bytes, len);
+    return 1;
+}
+int ce_read(Context *c, uint32_t ptr, uint8_t *bytes, uint32_t len) {
+    if (!wasm_runtime_validate_app_addr(c->instance, ptr, len)) return 0;
+    if (len) memcpy(bytes, wasm_runtime_addr_app_to_native(c->instance, ptr), len);
+    return 1;
+}

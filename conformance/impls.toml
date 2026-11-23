@@ -4,3 +4,9 @@ name = "loopback"
 suites = ["self-test"]
 transport = "stdio"
 command = ["python3", "conformance/loopback.py"]
+
+[[implementations]]
+name = "wamr-interpreter"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/wamr-conformance"]
