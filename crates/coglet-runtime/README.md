@@ -77,9 +77,21 @@ Remaining qualification is owned serially by board cards:
 
 The unimplemented boundaries remain explicit:
 
-- Full ABI profile adapters: module/manifest admission, trace/provenance validation,
-  terminal-receipt and heard archive corpus import/validation (the runtime seams
-  exist, but those language-neutral profiles have not been implemented).
+- All frozen ABI wire profile adapters are exercised by
+  `python3 crates/coglet-runtime/tools/check-abi.py`: 128 cases, zero failures/skips.
+  This is aggregate profile coverage, not one engine executing every program:
+  runtime scripted steps and archive checks, actual WAMR module admission, and
+  the SDK/shared native mock reference-guest route. The launcher builds the
+  `native-engine` feature; feature-free binaries refuse module admission. The
+  admission-only fixture mode explicitly maps `fixture.interpreter` to the pinned
+  WAMR interpreter; unsupported modes fail before instantiation. Manifest admission
+  uses the supplied trusted catalog and authorization snapshot, not transport
+  authentication or live lease freshness. Archive view selection is an explicit
+  process argument (`--trace-view state|validity`), never a case-name lookup.
+  Heard archive fixture setup is entirely supplied in each trace; registry labels
+  require no live provider. Recursive inventory and fresh JUnit checks fail closed
+  on new/unrouted files, failures or skips. All-profile independent replay remains
+  a separate gate; offline archive reconstruction does not satisfy it.
 - Native orchestration now attaches the durable service explicitly in both transports.
   The default probe modes remain negotiation-only. Linux native clock continuity uses
   BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
@@ -126,6 +138,8 @@ The unimplemented boundaries remain explicit:
   deltas and recomputes hashes. It is **not** independent guest re-execution,
   signature verification or proof of a producer's cutoff/completeness. Use
   `Runtime::replay` with an independently supplied program for re-execution.
+  `RuntimeService::export_trace` includes reopened journal history and seals any
+  staged applied boundary durably before export; imports retain all verified blobs.
   `Runtime::start_segment` carries in-memory host state from a sealed segment;
   durable coordinator segment/router/dispatch transfer remains unimplemented.
 - Engine admission/attempt-error contract and full recovery-invariant validation.

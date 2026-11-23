@@ -4,7 +4,7 @@ use coglet_runtime::{MockEngine, Runtime, cbor};
 use serde_json::Value;
 use std::io::{self, Read, Write};
 
-fn mock_stdio() -> Result<(), String> {
+fn mock_stdio(trace_state: bool) -> Result<(), String> {
     let mut runtime: Option<Runtime> = None;
     let mut input = io::stdin().lock();
     let mut output = io::stdout().lock();
@@ -28,22 +28,51 @@ fn mock_stdio() -> Result<(), String> {
         let request: Value = coglet_types::decode_profile(&raw)?
             .deserialized()
             .map_err(|e| e.to_string())?;
-        if request["operation"] != "abi.step" {
-            return Err(
-                "unsupported mock adapter operation (not a full ABI profile implementation)".into(),
-            );
-        }
-        if runtime.is_none() {
-            runtime = Some(Runtime::from_fixture(&request)?);
-        }
-        let result = runtime.as_mut().unwrap().step(
-            &request["inputs"],
-            &mut MockEngine::new(request["guest_script"].clone()),
-        )?;
-        for response in [
-            result.clone(),
-            serde_json::json!({"record_hash":result["record_hash"],"state_hash":result["state_hash"]}),
-        ] {
+        let responses = match request["operation"].as_str() {
+            Some("abi.step") => {
+                if runtime.is_none() {
+                    runtime = Some(Runtime::from_fixture(&request)?);
+                }
+                let result = runtime.as_mut().unwrap().step(
+                    &request["inputs"],
+                    &mut MockEngine::new(request["guest_script"].clone()),
+                )?;
+                vec![
+                    result.clone(),
+                    serde_json::json!({"record_hash":result["record_hash"],"state_hash":result["state_hash"]}),
+                ]
+            }
+            Some("abi.admit") => {
+                let response = coglet_runtime::admit_module(&request)?;
+                vec![
+                    response.clone(),
+                    serde_json::json!({"state_hash":response["state_hash"]}),
+                ]
+            }
+            Some("abi.manifest_admit") => {
+                let result = coglet_runtime::admit_manifest(
+                    &request["manifest"],
+                    &request["catalog"],
+                    &request["grant"],
+                );
+                vec![
+                    serde_json::json!({"admitted":result.is_ok(),"reason":result.err(),"instantiated":false}),
+                ]
+            }
+            Some("abi.validate_trace") => {
+                let result = Runtime::import_trace(&request["trace"]);
+                let mut response = serde_json::json!({"valid":result.is_ok(),"dispatched":false});
+                if trace_state {
+                    response["engine_invocations"] = serde_json::json!(0);
+                    if let Ok(runtime) = result {
+                        response["state"] = runtime.archive_state()?;
+                    }
+                }
+                vec![response]
+            }
+            _ => return Err("unsupported mock adapter operation".into()),
+        };
+        for response in responses {
             let bytes = cbor(&response)?;
             let len = u32::try_from(bytes.len()).map_err(|_| "response exceeds frame bound")?;
             output
@@ -57,8 +86,11 @@ fn mock_stdio() -> Result<(), String> {
 
 fn main() {
     match std::env::args().skip(1).collect::<Vec<_>>().as_slice() {
-        [flag] if flag == "--mock-stdio" => {
-            if let Err(error) = mock_stdio() {
+        args if matches!(args, [flag] if flag == "--mock-stdio")
+            || matches!(args, [flag, option, view] if flag == "--mock-stdio" && option == "--trace-view" && matches!(view.as_str(), "state" | "validity")) =>
+        {
+            let trace_state = !matches!(args, [_, _, view] if view == "validity");
+            if let Err(error) = mock_stdio(trace_state) {
                 eprintln!("cogletd mock adapter: {error}");
                 std::process::exit(1);
             }

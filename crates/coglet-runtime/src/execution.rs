@@ -16,6 +16,8 @@ mod live_heard;
 pub mod native_engine;
 #[path = "playback.rs"]
 mod playback;
+#[path = "recovery.rs"]
+mod recovery;
 #[path = "speech_temporal.rs"]
 mod speech_temporal;
 #[path = "surface_events.rs"]
@@ -117,6 +119,7 @@ impl RuntimeService {
                     return Err("recovered staged boundary state mismatch".into());
                 }
             }
+            Self::validate_queued_wakes(&state)?;
             state
         } else {
             let state = ServiceState {
@@ -439,6 +442,8 @@ impl Engine for MockEngine {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
     initial_setup: Value,
+    #[serde(default)]
+    retained_blobs: serde_json::Map<String, Value>,
     files: Snapshot,
     manifest: Value,
     step: u64,
@@ -564,6 +569,7 @@ impl Runtime {
                 "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
                 "initial_inbox_wakes":setup["initial_inbox_wakes"],"initial_timers":setup["initial_timers"],
                 "initial_llm_requests":setup["initial_llm_requests"]}),
+            retained_blobs: serde_json::Map::new(),
             files,
             manifest: setup["manifest"].clone(),
             step: 0,

@@ -58,6 +58,26 @@ impl Engine for ObservedTransition<'_> {
     }
 }
 
+impl RuntimeService {
+    /// Export all durable state through this serialized cutoff. Caller must
+    /// authorize private-data release and authenticate cutoff/completeness. Any
+    /// staged applied boundary is first sealed in the WAL, without a guest wake.
+    /// A resulting sealed trace cannot resume until explicitly segmented.
+    pub fn export_trace(&mut self, trace_id: &Value, logical_time: u64) -> Result<Value> {
+        if !self.store.is_healthy() {
+            return Err("runtime requires WAL recovery before export".into());
+        }
+        validate("correlation-id", trace_id)?;
+        if logical_time < self.state.runtime.time {
+            return Err("export cutoff clock rollback".into());
+        }
+        if self.state.staged_boundary.is_some() {
+            self.seal_boundary(trace_id, logical_time, &[])?;
+        }
+        self.state.runtime.export_trace(trace_id)
+    }
+}
+
 impl Runtime {
     pub(super) fn reconstruct(initial: &Value, records: &[Value]) -> Result<Self> {
         let mut runtime = Self::from_fixture(initial)?;
@@ -133,6 +153,7 @@ impl Runtime {
         {
             return Err("trace initial snapshot/pins mismatch".into());
         }
+        runtime.retained_blobs = blobs.clone();
         runtime.trace_id = Some(trace["trace_id"].clone());
         for record in trace["records"].as_array().ok_or("missing records")? {
             // step() independently computes host returns, ledgers, boundary
@@ -172,7 +193,7 @@ impl Runtime {
         let code_hash = digest(&hex::decode(code).map_err(|e| e.to_string())?);
         let manifest = cbor(&initial.manifest)?;
         let manifest_hash = digest(&manifest);
-        let mut blobs = serde_json::Map::new();
+        let mut blobs = self.retained_blobs.clone();
         blobs.insert(code_hash.clone(), json!(code));
         blobs.insert(manifest_hash.clone(), json!(hex::encode(manifest)));
         let records: Vec<_> = self

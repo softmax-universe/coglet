@@ -748,10 +748,19 @@ fn terminal_rejection_is_one_durable_append_and_zero_step_export_includes_it() {
     assert_eq!(service.queued(), 1);
     drop(service);
     let mut recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
-    let record = recovered
-        .seal_boundary(&setup["inputs"]["trace_id"], 200, &[])
+    let exported = recovered
+        .export_trace(&setup["inputs"]["trace_id"], 200)
         .unwrap();
+    let record = &exported["trailing_boundary"];
     assert_eq!(record["boundary"].as_array().unwrap().len(), 1);
+    assert!(exported["records"].as_array().unwrap().is_empty());
+    assert_eq!(
+        coglet_runtime::Runtime::import_trace(&exported)
+            .unwrap()
+            .export_trace(&exported["trace_id"])
+            .unwrap(),
+        exported
+    );
     assert_eq!(recovered.queued(), 1, "seal duplicated the staged wake");
     drop(recovered);
     let recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();

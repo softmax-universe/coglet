@@ -48,6 +48,106 @@ fn complete_frozen_archive_profiles_validate_without_guest_execution() {
 }
 
 #[test]
+fn imported_archives_retain_unreferenced_verified_blobs() {
+    use coglet_runtime::digest;
+    use serde_json::json;
+    let cases = corpus(include_str!("../../../conformance/abi/provenance.json"));
+    let mut trace = cases
+        .iter()
+        .map(|c| &c["steps"][0]["send"]["trace"])
+        .find(|t| Runtime::import_trace(t).is_ok())
+        .unwrap()
+        .clone();
+    let bytes = b"retained archive attachment";
+    trace["blobs"][digest(bytes)] = json!(hex::encode(bytes));
+    let imported = Runtime::import_trace(&trace).unwrap();
+    assert_eq!(imported.export_trace(&trace["trace_id"]).unwrap(), trace);
+}
+
+#[test]
+fn durable_service_export_includes_reopened_journal() {
+    use coglet_runtime::{MockEngine, RuntimeService};
+    let cases = corpus(include_str!("../../../conformance/abi/cases.json"));
+    let send = &cases.iter().find(|c| c["name"] == "timer").unwrap()["steps"][0]["send"];
+    let directory = std::env::temp_dir().join(format!("coglet-export-{}", std::process::id()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("runtime.wal");
+    let mut service = RuntimeService::open(&path, send, 8).unwrap();
+    service
+        .enqueue(send["inputs"]["events"][0].clone())
+        .unwrap();
+    service
+        .run_next(
+            &send["inputs"],
+            &mut MockEngine::new(send["guest_script"].clone()),
+        )
+        .unwrap();
+    drop(service);
+    let mut service = RuntimeService::open(&path, send, 8).unwrap();
+    let trace = service
+        .export_trace(&send["inputs"]["trace_id"], 10)
+        .unwrap();
+    assert_eq!(trace["records"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        Runtime::import_trace(&trace)
+            .unwrap()
+            .export_trace(&trace["trace_id"])
+            .unwrap(),
+        trace
+    );
+    drop(service);
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
+fn every_primary_script_reexecutes_independently_with_identical_step_hashes() {
+    use coglet_runtime::{Engine, EngineReport, MockEngine, StepHost};
+    struct Programs(Vec<Value>);
+    impl Engine for Programs {
+        fn execute(
+            &mut self,
+            inputs: &Value,
+            host: &mut StepHost,
+        ) -> coglet_runtime::Result<EngineReport> {
+            assert!(inputs.get("output_files").is_none());
+            assert!(inputs.get("calls").is_none());
+            assert!(inputs.get("usage").is_none());
+            let step = inputs["step"].as_u64().unwrap() as usize;
+            MockEngine::new(self.0[step].clone()).execute(inputs, host)
+        }
+    }
+    let cases = corpus(include_str!("../../../conformance/abi/cases.json"));
+    for case in cases {
+        let requests: Vec<_> = case["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|step| step.get("send"))
+            .collect();
+        let mut live = Runtime::from_fixture(requests[0]).unwrap();
+        let mut hashes = Vec::new();
+        let programs: Vec<_> = requests
+            .iter()
+            .map(|request| request["guest_script"].clone())
+            .collect();
+        for request in &requests {
+            let result = live
+                .step(
+                    &request["inputs"],
+                    &mut MockEngine::new(request["guest_script"].clone()),
+                )
+                .unwrap();
+            hashes.push(result["state_hash"].as_str().unwrap().to_owned());
+        }
+        let replayed = Runtime::from_fixture(requests[0])
+            .unwrap()
+            .replay(live.records(), &mut Programs(programs))
+            .unwrap();
+        assert_eq!(hashes, replayed, "{}", case["name"]);
+    }
+}
+
+#[test]
 fn independent_program_replay_and_segment_transfer_preserve_lifetime_state() {
     use coglet_runtime::MockEngine;
     use serde_json::json;

@@ -85,6 +85,43 @@ fn recovery_rejects_router_metadata_that_cannot_be_an_admitted_queue() {
 }
 
 #[test]
+fn recovery_rejects_schema_valid_forged_runtime_wakes() {
+    let send = setup();
+    let owner = &send["manifest"]["id"];
+    for (name, event) in [
+        (
+            "timer-without-request",
+            json!({"source":owner,"kind":"runtime.timer","seq":0,"logical_time":10,"payload":{"id":"a".repeat(32),"at":10},"correlation_id":"a".repeat(32)}),
+        ),
+        (
+            "inbox-without-line",
+            json!({"source":owner,"kind":"runtime.inbox","seq":0,"logical_time":10,"payload":{"index":0,"id":"a".repeat(32)},"correlation_id":"a".repeat(32)}),
+        ),
+        (
+            "direct-terminal",
+            json!({"source":send["inputs"]["events"][0]["source"],"kind":"action.outcome","seq":0,"logical_time":10,"payload":{},"correlation_id":"a".repeat(32)}),
+        ),
+    ] {
+        let directory =
+            std::env::temp_dir().join(format!("coglet-wake-{name}-{}", std::process::id()));
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("runtime.wal");
+        drop(RuntimeService::open(&path, &send, 4).unwrap());
+        let mut store = DurableStore::open(&path).unwrap();
+        let mut state = store.state().unwrap().clone();
+        state["router"] = json!({"capacity":4,"next_ordinal":1,"queue":[[0,event]]});
+        state["runtime"]["next_source_seq"] = json!(1);
+        store.commit(&state, None).unwrap();
+        drop(store);
+        assert!(
+            RuntimeService::open(&path, &send, 4).is_err(),
+            "forged {name} accepted"
+        );
+        fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[test]
 fn effect_ledger_requires_sorted_unique_ids_before_deserialization() {
     for ids in [
         json!(["b".repeat(32), "a".repeat(32)]),
