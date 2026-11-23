@@ -1,0 +1,6 @@
+*.xcodeproj/
+build/
+*.xcresult/
+*.app.zip
+.build/
+.swiftpm/
