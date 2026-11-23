@@ -47,10 +47,9 @@ struct CommandPaletteView: View {
                 .accessibilityLabel("Search commands and settings").focused($focused)
                 .onChange(of: query) { _ in selected = 0 }
                 .onSubmit { if matches.indices.contains(selected) { open(matches[selected]) } }
-                .onMoveCommand { direction in
-                    if direction == .down { selected = min(selected + 1, max(0, matches.count - 1)) }
-                    if direction == .up { selected = max(0, selected - 1) }
-                }
+                // A focused TextField consumes arrow keys before onMoveCommand sees them.
+                .onKeyPress(.downArrow) { selected = min(selected + 1, max(0, matches.count - 1)); return .handled }
+                .onKeyPress(.upArrow) { selected = max(0, selected - 1); return .handled }
             Text("\(matches.count) results · ↑ ↓ select · Return open · Esc cancel")
                 .softmaxFont(SoftmaxDesignTokens.fontCaption)
             ScrollView {
