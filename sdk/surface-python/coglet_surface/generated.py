@@ -4,7 +4,209 @@ import dataclasses as _coglet_dataclasses
 from typing import Any, ClassVar, Literal
 import json
 from .codec import Message
-SCHEMA = json.loads('{"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"}}')
+SCHEMA = json.loads('{"abi":{"items":[{"name":"abi::trace","op":"ref"},{"name":"abi::step-record","op":"ref"},{"name":"abi::inbox-message","op":"ref"},{"name":"abi::timer-request","op":"ref"},{"name":"abi::llm-request","op":"ref"},{"name":"abi::llm-reply","op":"ref"},{"name":"abi::log-entry","op":"ref"},{"name":"abi::manifest","op":"ref"}],"op":"union"},"abi::abi":{"items":[{"name":"abi::trace","op":"ref"},{"name":"abi::step-record","op":"ref"},{"name":"abi::inbox-message","op":"ref"},{"name":"abi::timer-request","op":"ref"},{"name":"abi::llm-request","op":"ref"},{"name":"abi::llm-reply","op":"ref"},{"name":"abi::log-entry","op":"ref"},{"name":"abi::manifest","op":"ref"}],"op":"union"},"abi::boundary-change":{"fields":[{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"audit_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ticket","optional":false,"type":{"items":[{"name":"common::correlation-id","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"method","optional":false,"type":{"name":"common::method-name","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"path","optional":false,"type":{"name":"abi::path","op":"ref"}},{"name":"before","optional":false,"type":{"items":[{"name":"abi::hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"after","optional":false,"type":{"items":[{"name":"abi::hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}}],"op":"record"},"abi::budgets":{"fields":[{"name":"compute","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"compute_mode","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"memory_pages","optional":false,"type":{"max":65536,"min":1,"op":"range"}},{"name":"wall_time_us","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"max_events","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"host_bytes","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}}],"op":"record"},"abi::call":{"items":[{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"timer"}},{"name":"argument","optional":false,"type":{"name":"abi::timer-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"emit"}},{"name":"argument","optional":false,"type":{"name":"common::action","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"llm"}},{"name":"argument","optional":false,"type":{"name":"abi::llm-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"log"}},{"name":"argument","optional":false,"type":{"name":"abi::log-entry","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"items":[{"op":"literal","value":"timer"},{"op":"literal","value":"emit"},{"op":"literal","value":"llm"},{"op":"literal","value":"log"}],"op":"union"}},{"name":"argument_hex","optional":false,"type":{"name":"abi::hex","op":"ref"}},{"name":"result","optional":false,"type":{"op":"literal","value":1}}],"op":"record"}],"op":"union"},"abi::effect-ledger":{"fields":[{"name":"actions","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}}],"op":"record"},"abi::engine":{"fields":[{"name":"build","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"policy","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}}],"op":"record"},"abi::failure":{"fields":[{"name":"kind","optional":false,"type":{"items":[{"op":"literal","value":"compute"},{"op":"literal","value":"memory"},{"op":"literal","value":"wall"},{"op":"literal","value":"host_bytes"},{"op":"literal","value":"trap"},{"op":"literal","value":"guest_return"},{"op":"literal","value":"invalid_argument"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"abi::hash":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"abi::hex":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^([0-9a-f]{2})*$"}],"op":"intersection"},"abi::inbox-message":{"fields":[{"name":"index","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"sender","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"event","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},"abi::llm-reply":{"items":[{"fields":[{"name":"request_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"output","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"request_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"failed"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"abi::llm-request":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"model","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"input","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"abi::log-entry":{"fields":[{"name":"level","optional":false,"type":{"items":[{"op":"literal","value":"debug"},{"op":"literal","value":"info"},{"op":"literal","value":"warn"},{"op":"literal","value":"error"}],"op":"union"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"fields","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"abi::manifest":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"id","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"subscriptions","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"required_capabilities","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"exclusive_outputs","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}}],"op":"record"},"abi::path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^/(code|data|logs)(/[^/]+)+$"}],"op":"intersection"},"abi::snapshot":{"item":{"name":"abi::hex","op":"ref"},"min":0,"op":"map"},"abi::step-record":{"items":[{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"abi::hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"abi::engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"common::event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"abi::boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"abi::call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"abi::log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"abi::usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"committed"}}],"op":"record"},{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"abi::hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"abi::engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"common::event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"abi::boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"abi::call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"abi::log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"abi::usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"aborted"}},{"name":"failure","optional":false,"type":{"name":"abi::failure","op":"ref"}}],"op":"record"}],"op":"union"},"abi::timer-request":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"at","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"abi::trace":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"initial_effect_ids","optional":false,"type":{"name":"abi::effect-ledger","op":"ref"}},{"name":"initial_inbox_wakes","optional":false,"type":{"item":{"name":"common::uint64","op":"ref"},"min":0,"op":"array"}},{"name":"initial_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"initial_timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"initial_llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"records","optional":false,"type":{"item":{"name":"abi::step-record","op":"ref"},"min":1,"op":"array"}},{"name":"blobs","optional":false,"type":{"item":{"name":"abi::hex","op":"ref"},"min":0,"op":"map"}}],"op":"record"},"abi::usage":{"fields":[{"name":"compute","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"memory_pages","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"wall_time_us","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"host_bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"boundary-change":{"fields":[{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"audit_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ticket","optional":false,"type":{"items":[{"name":"common::correlation-id","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"method","optional":false,"type":{"name":"common::method-name","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"path","optional":false,"type":{"name":"abi::path","op":"ref"}},{"name":"before","optional":false,"type":{"items":[{"name":"abi::hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"after","optional":false,"type":{"items":[{"name":"abi::hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}}],"op":"record"},"budgets":{"fields":[{"name":"compute","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"compute_mode","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"memory_pages","optional":false,"type":{"max":65536,"min":1,"op":"range"}},{"name":"wall_time_us","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"max_events","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"host_bytes","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}}],"op":"record"},"call":{"items":[{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"timer"}},{"name":"argument","optional":false,"type":{"name":"abi::timer-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"emit"}},{"name":"argument","optional":false,"type":{"name":"common::action","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"llm"}},{"name":"argument","optional":false,"type":{"name":"abi::llm-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"log"}},{"name":"argument","optional":false,"type":{"name":"abi::log-entry","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"items":[{"op":"literal","value":"timer"},{"op":"literal","value":"emit"},{"op":"literal","value":"llm"},{"op":"literal","value":"log"}],"op":"union"}},{"name":"argument_hex","optional":false,"type":{"name":"abi::hex","op":"ref"}},{"name":"result","optional":false,"type":{"op":"literal","value":1}}],"op":"record"}],"op":"union"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"effect-ledger":{"fields":[{"name":"actions","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"common::correlation-id","op":"ref"},"min":0,"op":"array"}}],"op":"record"},"engine":{"fields":[{"name":"build","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"policy","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}}],"op":"record"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"failure":{"fields":[{"name":"kind","optional":false,"type":{"items":[{"op":"literal","value":"compute"},{"op":"literal","value":"memory"},{"op":"literal","value":"wall"},{"op":"literal","value":"host_bytes"},{"op":"literal","value":"trap"},{"op":"literal","value":"guest_return"},{"op":"literal","value":"invalid_argument"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"hash":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"hex":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^([0-9a-f]{2})*$"}],"op":"intersection"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"inbox-message":{"fields":[{"name":"index","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"sender","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"event","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},"llm-reply":{"items":[{"fields":[{"name":"request_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"output","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"request_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"failed"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"llm-request":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"model","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"input","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"log-entry":{"fields":[{"name":"level","optional":false,"type":{"items":[{"op":"literal","value":"debug"},{"op":"literal","value":"info"},{"op":"literal","value":"warn"},{"op":"literal","value":"error"}],"op":"union"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"fields","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"manifest":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"id","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"subscriptions","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"required_capabilities","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"exclusive_outputs","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}}],"op":"record"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^/(code|data|logs)(/[^/]+)+$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"snapshot":{"item":{"name":"abi::hex","op":"ref"},"min":0,"op":"map"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"step-record":{"items":[{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"abi::hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"abi::engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"common::event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"abi::boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"abi::call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"abi::log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"abi::usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"committed"}}],"op":"record"},{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"abi::hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"abi::engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"abi::budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"common::event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"abi::boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"abi::call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"abi::log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"abi::snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"abi::usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"aborted"}},{"name":"failure","optional":false,"type":{"name":"abi::failure","op":"ref"}}],"op":"record"}],"op":"union"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"timer-request":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"at","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"trace":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"initial_effect_ids","optional":false,"type":{"name":"abi::effect-ledger","op":"ref"}},{"name":"initial_inbox_wakes","optional":false,"type":{"item":{"name":"common::uint64","op":"ref"},"min":0,"op":"array"}},{"name":"initial_hash","optional":false,"type":{"name":"abi::hash","op":"ref"}},{"name":"initial_timers","optional":false,"type":{"item":{"name":"abi::timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"initial_llm_requests","optional":false,"type":{"item":{"name":"abi::llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"records","optional":false,"type":{"item":{"name":"abi::step-record","op":"ref"},"min":1,"op":"array"}},{"name":"blobs","optional":false,"type":{"item":{"name":"abi::hex","op":"ref"},"min":0,"op":"map"}}],"op":"record"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"usage":{"fields":[{"name":"compute","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"memory_pages","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"wall_time_us","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"host_bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"}}')
+AbiAbi = Any
+AbiHash = Any
+AbiHex = Any
+AbiPath = Any
+AbiSnapshot = dict[str, Any]
+@_coglet_dataclasses.dataclass
+class AbiBudgets(Message):
+    _rule: ClassVar[str] = 'abi::budgets'
+    compute: int = _coglet_dataclasses.field(metadata={"wire": 'compute'})
+    compute_mode: str = _coglet_dataclasses.field(metadata={"wire": 'compute_mode'})
+    memory_pages: int = _coglet_dataclasses.field(metadata={"wire": 'memory_pages'})
+    wall_time_us: int = _coglet_dataclasses.field(metadata={"wire": 'wall_time_us'})
+    max_events: int = _coglet_dataclasses.field(metadata={"wire": 'max_events'})
+    host_bytes: int = _coglet_dataclasses.field(metadata={"wire": 'host_bytes'})
+@_coglet_dataclasses.dataclass
+class AbiTimerRequest(Message):
+    _rule: ClassVar[str] = 'abi::timer-request'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    at: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'at'})
+@_coglet_dataclasses.dataclass
+class AbiLlmRequest(Message):
+    _rule: ClassVar[str] = 'abi::llm-request'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    capability: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'capability'})
+    model: str = _coglet_dataclasses.field(metadata={"wire": 'model'})
+    input: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'input'})
+@_coglet_dataclasses.dataclass
+class AbiLogEntry(Message):
+    _rule: ClassVar[str] = 'abi::log-entry'
+    level: Any = _coglet_dataclasses.field(metadata={"wire": 'level'})
+    message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
+    fields: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'fields'})
+@_coglet_dataclasses.dataclass
+class AbiLlmReply1(Message):
+    _rule: ClassVar[str] = 'abi::llm-reply'
+    request_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'request_id'})
+    status: Literal['succeeded'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    output: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'output'})
+@_coglet_dataclasses.dataclass
+class AbiLlmReply2(Message):
+    _rule: ClassVar[str] = 'abi::llm-reply'
+    request_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'request_id'})
+    status: Literal['failed'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+AbiLlmReply = AbiLlmReply1 | AbiLlmReply2
+@_coglet_dataclasses.dataclass
+class AbiInboxMessage(Message):
+    _rule: ClassVar[str] = 'abi::inbox-message'
+    index: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'index'})
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    sender: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'sender'})
+    event: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'event'})
+@_coglet_dataclasses.dataclass
+class AbiCall1(Message):
+    _rule: ClassVar[str] = 'abi::call'
+    op: Literal['timer'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiTimerRequest = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class AbiCall2(Message):
+    _rule: ClassVar[str] = 'abi::call'
+    op: Literal['emit'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class AbiCall3(Message):
+    _rule: ClassVar[str] = 'abi::call'
+    op: Literal['llm'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiLlmRequest = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class AbiCall4(Message):
+    _rule: ClassVar[str] = 'abi::call'
+    op: Literal['log'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiLogEntry = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class AbiCall5(Message):
+    _rule: ClassVar[str] = 'abi::call'
+    op: Any = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument_hex: AbiHex = _coglet_dataclasses.field(metadata={"wire": 'argument_hex'})
+    result: Literal[1] = _coglet_dataclasses.field(metadata={"wire": 'result'})
+AbiCall = AbiCall1 | AbiCall2 | AbiCall3 | AbiCall4 | AbiCall5
+@_coglet_dataclasses.dataclass
+class AbiBoundaryChange(Message):
+    _rule: ClassVar[str] = 'abi::boundary-change'
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    audit_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'audit_id'})
+    ticket: Any = _coglet_dataclasses.field(metadata={"wire": 'ticket'})
+    method: CommonMethodName = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    path: AbiPath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    before: Any = _coglet_dataclasses.field(metadata={"wire": 'before'})
+    after: Any = _coglet_dataclasses.field(metadata={"wire": 'after'})
+@_coglet_dataclasses.dataclass
+class AbiEngine(Message):
+    _rule: ClassVar[str] = 'abi::engine'
+    build: str = _coglet_dataclasses.field(metadata={"wire": 'build'})
+    policy: str = _coglet_dataclasses.field(metadata={"wire": 'policy'})
+@_coglet_dataclasses.dataclass
+class AbiUsage(Message):
+    _rule: ClassVar[str] = 'abi::usage'
+    compute: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'compute'})
+    memory_pages: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'memory_pages'})
+    wall_time_us: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'wall_time_us'})
+    host_bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'host_bytes'})
+@_coglet_dataclasses.dataclass
+class AbiFailure(Message):
+    _rule: ClassVar[str] = 'abi::failure'
+    kind: Any = _coglet_dataclasses.field(metadata={"wire": 'kind'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+@_coglet_dataclasses.dataclass
+class AbiStepRecord1(Message):
+    _rule: ClassVar[str] = 'abi::step-record'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    logical_time: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'logical_time'})
+    seed: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'seed'})
+    previous: Any = _coglet_dataclasses.field(metadata={"wire": 'previous'})
+    code_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'code_hash'})
+    manifest_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'manifest_hash'})
+    before_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'before_hash'})
+    input_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'input_hash'})
+    output_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'output_hash'})
+    record_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'record_hash'})
+    engine: AbiEngine = _coglet_dataclasses.field(metadata={"wire": 'engine'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
+    grants: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'grants'})
+    events: list[CommonEvent] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    boundary: list[AbiBoundaryChange] = _coglet_dataclasses.field(metadata={"wire": 'boundary'})
+    calls: list[AbiCall] = _coglet_dataclasses.field(metadata={"wire": 'calls'})
+    actions: list[CommonAction] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+    logs: list[AbiLogEntry] = _coglet_dataclasses.field(metadata={"wire": 'logs'})
+    input_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'input_files'})
+    output_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'output_files'})
+    usage: AbiUsage = _coglet_dataclasses.field(metadata={"wire": 'usage'})
+    status: Literal['committed'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+@_coglet_dataclasses.dataclass
+class AbiStepRecord2(Message):
+    _rule: ClassVar[str] = 'abi::step-record'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    logical_time: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'logical_time'})
+    seed: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'seed'})
+    previous: Any = _coglet_dataclasses.field(metadata={"wire": 'previous'})
+    code_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'code_hash'})
+    manifest_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'manifest_hash'})
+    before_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'before_hash'})
+    input_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'input_hash'})
+    output_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'output_hash'})
+    record_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'record_hash'})
+    engine: AbiEngine = _coglet_dataclasses.field(metadata={"wire": 'engine'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
+    grants: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'grants'})
+    events: list[CommonEvent] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    boundary: list[AbiBoundaryChange] = _coglet_dataclasses.field(metadata={"wire": 'boundary'})
+    calls: list[AbiCall] = _coglet_dataclasses.field(metadata={"wire": 'calls'})
+    actions: list[CommonAction] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+    logs: list[AbiLogEntry] = _coglet_dataclasses.field(metadata={"wire": 'logs'})
+    input_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'input_files'})
+    output_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'output_files'})
+    usage: AbiUsage = _coglet_dataclasses.field(metadata={"wire": 'usage'})
+    status: Literal['aborted'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    failure: AbiFailure = _coglet_dataclasses.field(metadata={"wire": 'failure'})
+AbiStepRecord = AbiStepRecord1 | AbiStepRecord2
+@_coglet_dataclasses.dataclass
+class AbiEffectLedger(Message):
+    _rule: ClassVar[str] = 'abi::effect-ledger'
+    actions: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+@_coglet_dataclasses.dataclass
+class AbiTrace(Message):
+    _rule: ClassVar[str] = 'abi::trace'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    initial_effect_ids: AbiEffectLedger = _coglet_dataclasses.field(metadata={"wire": 'initial_effect_ids'})
+    initial_inbox_wakes: list[CommonUint64] = _coglet_dataclasses.field(metadata={"wire": 'initial_inbox_wakes'})
+    initial_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'initial_hash'})
+    initial_timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'initial_timers'})
+    initial_llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'initial_llm_requests'})
+    records: list[AbiStepRecord] = _coglet_dataclasses.field(metadata={"wire": 'records'})
+    blobs: dict[str, Any] = _coglet_dataclasses.field(metadata={"wire": 'blobs'})
+@_coglet_dataclasses.dataclass
+class AbiManifest(Message):
+    _rule: ClassVar[str] = 'abi::manifest'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    id: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    subscriptions: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'subscriptions'})
+    required_capabilities: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'required_capabilities'})
+    exclusive_outputs: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'exclusive_outputs'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
 CommonCommon = Any
 CommonUint64 = int
 CommonProfileInt = Any
@@ -83,6 +285,208 @@ class CommonError(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
+Abi = Any
+Hash = Any
+Hex = Any
+Path = Any
+Snapshot = dict[str, Any]
+@_coglet_dataclasses.dataclass
+class Budgets(Message):
+    _rule: ClassVar[str] = 'budgets'
+    compute: int = _coglet_dataclasses.field(metadata={"wire": 'compute'})
+    compute_mode: str = _coglet_dataclasses.field(metadata={"wire": 'compute_mode'})
+    memory_pages: int = _coglet_dataclasses.field(metadata={"wire": 'memory_pages'})
+    wall_time_us: int = _coglet_dataclasses.field(metadata={"wire": 'wall_time_us'})
+    max_events: int = _coglet_dataclasses.field(metadata={"wire": 'max_events'})
+    host_bytes: int = _coglet_dataclasses.field(metadata={"wire": 'host_bytes'})
+@_coglet_dataclasses.dataclass
+class TimerRequest(Message):
+    _rule: ClassVar[str] = 'timer-request'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    at: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'at'})
+@_coglet_dataclasses.dataclass
+class LlmRequest(Message):
+    _rule: ClassVar[str] = 'llm-request'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    capability: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'capability'})
+    model: str = _coglet_dataclasses.field(metadata={"wire": 'model'})
+    input: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'input'})
+@_coglet_dataclasses.dataclass
+class LogEntry(Message):
+    _rule: ClassVar[str] = 'log-entry'
+    level: Any = _coglet_dataclasses.field(metadata={"wire": 'level'})
+    message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
+    fields: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'fields'})
+@_coglet_dataclasses.dataclass
+class LlmReply1(Message):
+    _rule: ClassVar[str] = 'llm-reply'
+    request_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'request_id'})
+    status: Literal['succeeded'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    output: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'output'})
+@_coglet_dataclasses.dataclass
+class LlmReply2(Message):
+    _rule: ClassVar[str] = 'llm-reply'
+    request_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'request_id'})
+    status: Literal['failed'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+LlmReply = LlmReply1 | LlmReply2
+@_coglet_dataclasses.dataclass
+class InboxMessage(Message):
+    _rule: ClassVar[str] = 'inbox-message'
+    index: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'index'})
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    sender: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'sender'})
+    event: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'event'})
+@_coglet_dataclasses.dataclass
+class Call1(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['timer'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiTimerRequest = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class Call2(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['emit'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class Call3(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['llm'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiLlmRequest = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class Call4(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['log'] = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument: AbiLogEntry = _coglet_dataclasses.field(metadata={"wire": 'argument'})
+    result: int = _coglet_dataclasses.field(metadata={"wire": 'result'})
+@_coglet_dataclasses.dataclass
+class Call5(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Any = _coglet_dataclasses.field(metadata={"wire": 'op'})
+    argument_hex: AbiHex = _coglet_dataclasses.field(metadata={"wire": 'argument_hex'})
+    result: Literal[1] = _coglet_dataclasses.field(metadata={"wire": 'result'})
+Call = Call1 | Call2 | Call3 | Call4 | Call5
+@_coglet_dataclasses.dataclass
+class BoundaryChange(Message):
+    _rule: ClassVar[str] = 'boundary-change'
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    audit_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'audit_id'})
+    ticket: Any = _coglet_dataclasses.field(metadata={"wire": 'ticket'})
+    method: CommonMethodName = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    path: AbiPath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    before: Any = _coglet_dataclasses.field(metadata={"wire": 'before'})
+    after: Any = _coglet_dataclasses.field(metadata={"wire": 'after'})
+@_coglet_dataclasses.dataclass
+class Engine(Message):
+    _rule: ClassVar[str] = 'engine'
+    build: str = _coglet_dataclasses.field(metadata={"wire": 'build'})
+    policy: str = _coglet_dataclasses.field(metadata={"wire": 'policy'})
+@_coglet_dataclasses.dataclass
+class Usage(Message):
+    _rule: ClassVar[str] = 'usage'
+    compute: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'compute'})
+    memory_pages: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'memory_pages'})
+    wall_time_us: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'wall_time_us'})
+    host_bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'host_bytes'})
+@_coglet_dataclasses.dataclass
+class Failure(Message):
+    _rule: ClassVar[str] = 'failure'
+    kind: Any = _coglet_dataclasses.field(metadata={"wire": 'kind'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+@_coglet_dataclasses.dataclass
+class StepRecord1(Message):
+    _rule: ClassVar[str] = 'step-record'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    logical_time: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'logical_time'})
+    seed: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'seed'})
+    previous: Any = _coglet_dataclasses.field(metadata={"wire": 'previous'})
+    code_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'code_hash'})
+    manifest_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'manifest_hash'})
+    before_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'before_hash'})
+    input_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'input_hash'})
+    output_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'output_hash'})
+    record_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'record_hash'})
+    engine: AbiEngine = _coglet_dataclasses.field(metadata={"wire": 'engine'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
+    grants: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'grants'})
+    events: list[CommonEvent] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    boundary: list[AbiBoundaryChange] = _coglet_dataclasses.field(metadata={"wire": 'boundary'})
+    calls: list[AbiCall] = _coglet_dataclasses.field(metadata={"wire": 'calls'})
+    actions: list[CommonAction] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+    logs: list[AbiLogEntry] = _coglet_dataclasses.field(metadata={"wire": 'logs'})
+    input_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'input_files'})
+    output_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'output_files'})
+    usage: AbiUsage = _coglet_dataclasses.field(metadata={"wire": 'usage'})
+    status: Literal['committed'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+@_coglet_dataclasses.dataclass
+class StepRecord2(Message):
+    _rule: ClassVar[str] = 'step-record'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    logical_time: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'logical_time'})
+    seed: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'seed'})
+    previous: Any = _coglet_dataclasses.field(metadata={"wire": 'previous'})
+    code_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'code_hash'})
+    manifest_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'manifest_hash'})
+    before_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'before_hash'})
+    input_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'input_hash'})
+    output_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'output_hash'})
+    record_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'record_hash'})
+    engine: AbiEngine = _coglet_dataclasses.field(metadata={"wire": 'engine'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
+    grants: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'grants'})
+    events: list[CommonEvent] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    boundary: list[AbiBoundaryChange] = _coglet_dataclasses.field(metadata={"wire": 'boundary'})
+    calls: list[AbiCall] = _coglet_dataclasses.field(metadata={"wire": 'calls'})
+    actions: list[CommonAction] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+    logs: list[AbiLogEntry] = _coglet_dataclasses.field(metadata={"wire": 'logs'})
+    input_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'input_files'})
+    output_files: AbiSnapshot = _coglet_dataclasses.field(metadata={"wire": 'output_files'})
+    usage: AbiUsage = _coglet_dataclasses.field(metadata={"wire": 'usage'})
+    status: Literal['aborted'] = _coglet_dataclasses.field(metadata={"wire": 'status'})
+    failure: AbiFailure = _coglet_dataclasses.field(metadata={"wire": 'failure'})
+StepRecord = StepRecord1 | StepRecord2
+@_coglet_dataclasses.dataclass
+class EffectLedger(Message):
+    _rule: ClassVar[str] = 'effect-ledger'
+    actions: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    timers: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'timers'})
+    llm_requests: list[CommonCorrelationId] = _coglet_dataclasses.field(metadata={"wire": 'llm_requests'})
+@_coglet_dataclasses.dataclass
+class Trace(Message):
+    _rule: ClassVar[str] = 'trace'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    trace_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'trace_id'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    initial_effect_ids: AbiEffectLedger = _coglet_dataclasses.field(metadata={"wire": 'initial_effect_ids'})
+    initial_inbox_wakes: list[CommonUint64] = _coglet_dataclasses.field(metadata={"wire": 'initial_inbox_wakes'})
+    initial_hash: AbiHash = _coglet_dataclasses.field(metadata={"wire": 'initial_hash'})
+    initial_timers: list[AbiTimerRequest] = _coglet_dataclasses.field(metadata={"wire": 'initial_timers'})
+    initial_llm_requests: list[AbiLlmRequest] = _coglet_dataclasses.field(metadata={"wire": 'initial_llm_requests'})
+    records: list[AbiStepRecord] = _coglet_dataclasses.field(metadata={"wire": 'records'})
+    blobs: dict[str, Any] = _coglet_dataclasses.field(metadata={"wire": 'blobs'})
+@_coglet_dataclasses.dataclass
+class Manifest(Message):
+    _rule: ClassVar[str] = 'manifest'
+    version: Literal['0.1'] = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    id: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    subscriptions: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'subscriptions'})
+    required_capabilities: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'required_capabilities'})
+    exclusive_outputs: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'exclusive_outputs'})
+    budgets: AbiBudgets = _coglet_dataclasses.field(metadata={"wire": 'budgets'})
 Common = Any
 Uint64 = int
 ProfileInt = Any
@@ -161,4 +565,4 @@ class Error(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
-RECORDS = {'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}
+RECORDS = {'abi::budgets': [AbiBudgets], 'abi::timer-request': [AbiTimerRequest], 'abi::llm-request': [AbiLlmRequest], 'abi::log-entry': [AbiLogEntry], 'abi::llm-reply': [AbiLlmReply1, AbiLlmReply2], 'abi::inbox-message': [AbiInboxMessage], 'abi::call': [AbiCall1, AbiCall2, AbiCall3, AbiCall4, AbiCall5], 'abi::boundary-change': [AbiBoundaryChange], 'abi::engine': [AbiEngine], 'abi::usage': [AbiUsage], 'abi::failure': [AbiFailure], 'abi::step-record': [AbiStepRecord1, AbiStepRecord2], 'abi::effect-ledger': [AbiEffectLedger], 'abi::trace': [AbiTrace], 'abi::manifest': [AbiManifest], 'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'budgets': [Budgets], 'timer-request': [TimerRequest], 'llm-request': [LlmRequest], 'log-entry': [LogEntry], 'llm-reply': [LlmReply1, LlmReply2], 'inbox-message': [InboxMessage], 'call': [Call1, Call2, Call3, Call4, Call5], 'boundary-change': [BoundaryChange], 'engine': [Engine], 'usage': [Usage], 'failure': [Failure], 'step-record': [StepRecord1, StepRecord2], 'effect-ledger': [EffectLedger], 'trace': [Trace], 'manifest': [Manifest], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}
