@@ -11,6 +11,16 @@ fn restart_preserves_arrival_order_and_consumes_durable_attempt_only_once() {
     fs::create_dir_all(&directory).unwrap();
     let path = directory.join("runtime.wal");
     let mut service = RuntimeService::open(&path, send, 4).unwrap();
+    assert!(
+        service
+            .enqueue(serde_json::json!({
+                "source":send["manifest"]["id"], "kind":"runtime.timer", "seq":0,
+                "logical_time":10, "payload":{"id":"a".repeat(32), "at":10},
+                "correlation_id":"a".repeat(32)
+            }))
+            .is_err(),
+        "external injection of runtime wakes accepted"
+    );
     service
         .enqueue(send["inputs"]["events"][0].clone())
         .unwrap();

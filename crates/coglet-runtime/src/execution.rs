@@ -65,6 +65,11 @@ impl RuntimeService {
     /// The authenticated surface/router must have authorized external events
     /// before calling this internal coordinator seam.
     pub fn enqueue(&mut self, event: Value) -> Result<u64> {
+        if event["kind"].as_str().is_some_and(|kind| {
+            kind.starts_with("runtime.") || kind == "action.outcome" || kind == "llm.reply"
+        }) {
+            return Err("reserved runtime/inbox event cannot enter external event router".into());
+        }
         let mut next = self.state.clone();
         let ordinal = next.router.enqueue(event)?;
         self.store.commit(
@@ -165,6 +170,9 @@ pub struct Runtime {
     step: u64,
     time: u64,
     previous: Value,
+    // The WAL owns journal history. Repeating it inside every state frame would
+    // make durable storage quadratic and eventually exceed transaction bounds.
+    #[serde(skip)]
     records: Vec<Value>,
     ledger: EffectLedger,
     inbox_wakes: VecDeque<u64>,
@@ -384,6 +392,7 @@ impl Runtime {
     /// inputs are passed to the engine, NEVER output files or recorded returns.
     /// This has no dispatch or live-provider/surface callback path.
     pub fn replay(&mut self, records: &[Value], engine: &mut impl Engine) -> Result<Vec<String>> {
+        let mut candidate = self.clone();
         let mut hashes = Vec::new();
         for record in records {
             validate("step-record", record)?;
@@ -408,7 +417,7 @@ impl Runtime {
             ] {
                 inputs.insert(key.into(), record[key].clone());
             }
-            let result = self.step(&Value::Object(inputs), engine)?;
+            let result = candidate.step(&Value::Object(inputs), engine)?;
             if result["journal"] != *record {
                 return Err(format!("replay mismatch at step {}", record["step"]));
             }
