@@ -43,7 +43,7 @@ Draft evolution still follows common negotiated version compatibility rules.
 ## Verification
 
 `python3 -m unittest discover -s spec/tests -v` validates positive/negative policy,
-promotion and ticket fixtures, golden deterministic CBOR, and scripted lifecycle
+promotion and ticket fixtures, golden deterministic CBOR, and local cross-field
 invariants. Existing conformance CI discovers these tests without workflow edits.
 
 ## Approval
