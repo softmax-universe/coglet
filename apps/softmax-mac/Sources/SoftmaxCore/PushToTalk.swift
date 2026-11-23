@@ -1,0 +1,127 @@
+import Foundation
+import FaceMac
+
+public enum PushToTalkKeyEvent: Sendable { case press, release, cancelled, permissionDenied }
+@MainActor public protocol PushToTalkKeySource: AnyObject {
+    var onEvent: ((PushToTalkKeyEvent) -> Void)? { get set }
+    func start() -> Bool
+    func stop()
+}
+public enum TalkMode: String, Sendable { case hold, toggle }
+public enum SpeechInput: Sendable, Equatable {
+    case utterance(Utterance)
+    case bargeIn(timestamp: TimeInterval)
+}
+public struct Utterance: Sendable, Equatable {
+    public let frames: [PCMFrame]
+    public let startedAt: TimeInterval
+    public let endedAt: TimeInterval
+}
+
+/// Hardware-independent, main-actor serialized controller. All times are monotonic.
+@MainActor public final class PushToTalk {
+    public let speechInput: AsyncStream<SpeechInput>
+    private let output: AsyncStream<SpeechInput>.Continuation
+    private let keys: any PushToTalkKeySource
+    private let audio: any AudioCapture
+    private let now: () -> TimeInterval
+    public var mode: TalkMode = .hold { didSet { cancel() } }
+    public var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown) {
+        didSet { if !permissions.canUseGlobalPushToTalk { cancel() } }
+    }
+    public private(set) var state: AppState = .idle
+    public private(set) var elapsed: TimeInterval = 0
+    public var inputLevel: Float { state == .listening ? audio.inputLevel : 0 }
+    public var onChange: (() -> Void)?
+    public var routeToPermissions: (() -> Void)?
+    public var stopPlayback: (() -> Void)?
+    public var playStartSound: (() -> Void)?
+    private var startedAt: TimeInterval?
+    private var keyDown = false
+    private var enabled = false
+    private var timer: Task<Void, Never>?
+
+    public init(keys: any PushToTalkKeySource, audio: any AudioCapture,
+                now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.keys = keys; self.audio = audio; self.now = now
+        (speechInput, output) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(4))
+    }
+    public func start() {
+        keys.onEvent = { [weak self] in self?.handle($0) }
+        enabled = keys.start()
+        if !enabled { routeToPermissions?() }
+    }
+    public func shutdown() {
+        enabled = false; cancel(); keys.stop(); keys.onEvent = nil
+    }
+    /// Runtime/Face sets speaking before playback starts. Leaving listening cancels capture.
+    public func setState(_ state: AppState) {
+        if state != .listening { cancel() }
+        self.state = state; onChange?()
+    }
+    public func handle(_ event: PushToTalkKeyEvent) {
+        switch event {
+        case .permissionDenied:
+            enabled = false; cancel(); routeToPermissions?()
+        case .cancelled: cancel()
+        case .release:
+            keyDown = false
+            if mode == .hold { finish() }
+        case .press:
+            guard enabled, !keyDown else { return }
+            keyDown = true
+            if mode == .toggle && startedAt != nil { finish(); return }
+            guard startedAt == nil else { return }
+            guard permissions.canUseGlobalPushToTalk else { routeToPermissions?(); return }
+            guard state != .onboarding else { routeToPermissions?(); return }
+            if state == .speaking {
+                stopPlayback?()
+                output.yield(.bargeIn(timestamp: now()))
+            }
+            do { try audio.start() }
+            catch {
+                _ = audio.stop(); state = .error; onChange?(); return
+            }
+            startedAt = now(); elapsed = 0; state = .listening
+            playStartSound?(); onChange?()
+            timer?.cancel()
+            timer = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(50))
+                    guard !Task.isCancelled else { return }
+                    self?.tick()
+                }
+            }
+        }
+    }
+    public func tick() {
+        guard let startedAt else { return }
+        elapsed = min(120, max(0, now() - startedAt))
+        if elapsed >= 120 { finish() } else { onChange?() }
+    }
+    public func cancel() {
+        timer?.cancel(); timer = nil
+        if startedAt != nil { _ = audio.stop(); state = .idle }
+        startedAt = nil; elapsed = 0; keyDown = false; onChange?()
+    }
+    private func finish() {
+        guard let start = startedAt else { return }
+        timer?.cancel(); timer = nil; startedAt = nil
+        let end = min(now(), start + 120)
+        let captured = audio.stop()
+        elapsed = max(0, end - start)
+        guard elapsed >= 0.250 else { state = .idle; onChange?(); return }
+        // Trim any device callback that crosses the hard deadline.
+        let frames = captured.compactMap { frame -> PCMFrame? in
+            guard frame.sampleRate.isFinite, frame.sampleRate > 0, frame.timestamp < end else { return nil }
+            let count = min(frame.samples.count, Int(max(0, (end - frame.timestamp) * frame.sampleRate)))
+            return PCMFrame(samples: Array(frame.samples.prefix(count)), sampleRate: frame.sampleRate, timestamp: frame.timestamp)
+        }
+        guard frames.contains(where: { !$0.samples.isEmpty }) else {
+            state = .idle; onChange?(); return
+        }
+        state = .thinking
+        output.yield(.utterance(Utterance(frames: frames, startedAt: start, endedAt: end)))
+        onChange?()
+    }
+}

@@ -13,7 +13,7 @@ struct SoftmaxApp: App {
     var body: some Scene {
         MenuBarExtra {
             Button("Open Face") { delegate.showFace() }
-            Text("Push-to-talk: not configured")
+            Text("Push-to-talk: \(delegate.model.hotkeyName)")
             Text("Hub: offline (not connected)")
             Divider()
             Button("Settings…") { delegate.showSettings() }.keyboardShortcut(",")
@@ -29,7 +29,7 @@ struct SoftmaxApp: App {
 struct StatusLabel: View {
     @ObservedObject var model: ShellModel
     var body: some View {
-        Label("Softmax: \(model.machine.state.rawValue)", systemImage: model.machine.state.symbolName)
+        Label("Softmax: \(model.state.rawValue)", systemImage: model.state.symbolName)
     }
 }
 
@@ -41,6 +41,64 @@ final class ShellModel: ObservableObject {
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
     @Published var selectedTab: SettingsTab = .general
+    @Published var talkState: AppState = .idle
+    @Published var level: Float = 0
+    @Published var elapsed: TimeInterval = 0
+    @Published var recordingKey = false
+    @Published var hotkeyName = "Right Option"
+    @Published var toggleMode = UserDefaults.standard.bool(forKey: "talkToggle") {
+        didSet { ptt.mode = toggleMode ? .toggle : .hold; UserDefaults.standard.set(toggleMode, forKey: "talkToggle") }
+    }
+    @Published var startSound = UserDefaults.standard.bool(forKey: "talkStartSound") {
+        didSet { UserDefaults.standard.set(startSound, forKey: "talkStartSound") }
+    }
+    let keySource = GlobalTalkKey()
+    lazy var ptt = PushToTalk(keys: keySource, audio: EngineAudioCapture())
+    var onTalkChange: (() -> Void)?
+    var routePermissions: (() -> Void)?
+    var state: AppState {
+        talkState == .idle ? machine.state : talkState
+    }
+
+    func configureTalk() {
+        guard !testing else { return }
+        if UserDefaults.standard.object(forKey: "talkKeyCode") != nil {
+            keySource.keyCode = UserDefaults.standard.integer(forKey: "talkKeyCode")
+            keySource.modifiers = UInt64(UserDefaults.standard.integer(forKey: "talkModifiers"))
+        }
+        updateHotkeyName()
+        keySource.onRecorded = { [weak self] code, modifiers in
+            guard let self else { return }
+            keySource.keyCode = code; keySource.modifiers = modifiers
+            UserDefaults.standard.set(code, forKey: "talkKeyCode")
+            UserDefaults.standard.set(Int(modifiers), forKey: "talkModifiers")
+            recordingKey = false; updateHotkeyName()
+        }
+        ptt.mode = toggleMode ? .toggle : .hold
+        ptt.routeToPermissions = { [weak self] in self?.routePermissions?() }
+        ptt.playStartSound = { [weak self] in if self?.startSound == true { NSSound(named: "Tink")?.play() } }
+        ptt.onChange = { [weak self] in
+            guard let self else { return }
+            talkState = ptt.state; level = ptt.inputLevel; elapsed = ptt.elapsed
+            onTalkChange?()
+        }
+        ptt.permissions = permissions
+        ptt.start()
+    }
+    func recordHotkey() {
+        recordingKey.toggle(); keySource.recording = recordingKey
+    }
+    func resetHotkey() {
+        keySource.recording = false; recordingKey = false
+        ptt.cancel(); keySource.keyCode = 61; keySource.modifiers = 0
+        UserDefaults.standard.removeObject(forKey: "talkKeyCode")
+        UserDefaults.standard.removeObject(forKey: "talkModifiers")
+        updateHotkeyName()
+    }
+    private func updateHotkeyName() {
+        hotkeyName = keySource.keyCode == 61 && keySource.modifiers == 0 ? "Right Option" :
+            "Key \(keySource.keyCode) · modifiers \(keySource.modifiers)"
+    }
 
     init() {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
@@ -54,6 +112,7 @@ final class ShellModel: ObservableObject {
             microphone: .microphone(rawValue: AVCaptureDevice.authorizationStatus(for: .audio).rawValue),
             inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
         loginItem = LoginItemStatus(serviceRawValue: SMAppService.mainApp.status.rawValue)
+        ptt.permissions = permissions
     }
 
     func requestMicrophone() async {
@@ -83,6 +142,7 @@ final class ShellModel: ObservableObject {
     func finishOnboarding() {
         if !testing { UserDefaults.standard.set(true, forKey: "onboardingComplete") }
         machine.send(.finishOnboarding)
+        configureTalk()
     }
 
     func openPrivacy(_ pane: String) {
@@ -97,13 +157,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var facePanel: NSPanel?
+    private let talkHUD = TalkHUD()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        if model.machine.state == .onboarding { showOnboarding() }
+        model.onTalkChange = { [weak self] in
+            guard let self else { return }
+            talkHUD.update(model: model)
+        }
+        model.routePermissions = { [weak self] in self?.showSettings(tab: .privacy) }
+        if model.state == .onboarding { showOnboarding() }
+        else { model.configureTalk() }
     }
 
-    func applicationDidBecomeActive(_ notification: Notification) { model.refreshPermissions() }
+    func applicationDidBecomeActive(_ notification: Notification) {
+        model.refreshPermissions()
+        if !model.testing && model.machine.state != .onboarding && model.permissions.canUseGlobalPushToTalk {
+            model.ptt.start()
+        }
+    }
+    func applicationWillTerminate(_ notification: Notification) { model.ptt.shutdown() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showSettings(tab: SettingsTab? = nil) {
@@ -159,8 +232,8 @@ struct FacePlaceholder: View {
     var close: () -> Void
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: model.machine.state.symbolName).font(.system(size: 56))
-            Text("Face · \(model.machine.state.rawValue)")
+            Image(systemName: model.state.symbolName).font(.system(size: 56))
+            Text("Face · \(model.state.rawValue)")
             Button("Hide Face", action: close)
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.regularMaterial)
     }
