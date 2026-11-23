@@ -25,12 +25,13 @@ class GeneratorTests(unittest.TestCase):
             root = Path(temp)
             (root / 'codegen').mkdir()
             shutil.copy(ROOT / 'codegen/generate.py', root / 'codegen/generate.py')
+            shutil.copy(ROOT / 'codegen/swift.py', root / 'codegen/swift.py')
             (root / 'spec/messages').mkdir(parents=True)
             (root / 'spec/messages/test.cddl').write_text('thing = {name: tstr}')
             cmd = [sys.executable, str(root / 'codegen/generate.py')]
             subprocess.run(cmd, check=True, capture_output=True)
             subprocess.run(cmd + ['--check'], check=True, capture_output=True)
-            out = root / 'sdk/surface-python/coglet_surface/generated.py'
+            out = root / 'sdk/surface-swift/Sources/CogletTypes/Generated/Types.swift'
             out.write_text(out.read_text() + '# stale\n')
             result = subprocess.run(cmd + ['--check'], capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)

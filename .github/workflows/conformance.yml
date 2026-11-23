@@ -6,7 +6,16 @@ on:
 permissions:
   contents: read
 jobs:
+  swift-codegen:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift emitter keyword and collision regressions
+        run: python3 -m unittest discover -s codegen -p test_swift.py -v
+      - name: Strict Swift codec and recursive schema fixtures
+        run: swift test --package-path sdk/surface-swift
   conformance:
+    needs: [swift-codegen]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
