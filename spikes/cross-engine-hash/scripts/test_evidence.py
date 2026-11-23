@@ -86,7 +86,7 @@ if kind == "x" and "relaxed-simd" in name:
     if fault == "reject-output": print("0 0000000000000000 0000000000000000")
     print("wrong failure" if fault == "reject-wrong" else
           "load failed: WASM module load failed: invalid opcode 0xfd 105.", file=sys.stderr)
-    sys.exit(1)
+    sys.exit(3)
 value = 0
 if "conforming.wasm" in name or "conforming.aot" in name:
     value = int("--nan-canon on" in name or name.endswith(".aot"))

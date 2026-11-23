@@ -100,7 +100,7 @@ cmp_ --expect equal --label "relaxed-simd: Wasmtime completed" \
   first="$R/ce-relaxed-simd.wt" second="$R/ce-relaxed-simd.wt"
 rc=0
 "$X" "$src" >"$R/ce-relaxed-simd.wi" 2>"$R/ce-relaxed-simd.wi.err" || rc=$?
-[ "$rc" -eq 1 ] || fail "relaxed-simd expected load rejection exit 1, got $rc"
+[ "$rc" -eq 3 ] || fail "relaxed-simd expected load rejection exit 3, got $rc"
 [ ! -s "$R/ce-relaxed-simd.wi" ] || fail "relaxed-simd unexpectedly executed steps"
 grep -Fxq 'load failed: WASM module load failed: invalid opcode 0xfd 105.' "$R/ce-relaxed-simd.wi.err" \
   || fail "relaxed-simd failed for an unexpected reason"
