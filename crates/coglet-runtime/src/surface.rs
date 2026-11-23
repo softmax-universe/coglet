@@ -1,9 +1,12 @@
-//! Shared surface-message boundary. Negotiation/health only for now; operational
-//! messages fail closed until catalog, grant and durable dispatch integration.
+//! Shared surface-message boundary. Catalog/grants and durable receipt authority
+//! are implemented; native endpoint orchestration and event/read routing remain.
 use crate::{Result, cbor, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+
+#[path = "surface_authority.rs"]
+mod authority;
 
 pub const SURFACE_MAX_FRAME: usize = 1_048_576;
 pub const SURFACE_QUEUE: usize = 128;
@@ -50,6 +53,14 @@ pub struct SurfaceSession {
     last_received: u64,
     last_health: u64,
     output: VecDeque<Vec<u8>>,
+    revision: u64,
+    epoch: u64,
+    operations: BTreeMap<String, String>,
+    resources: BTreeSet<String>,
+    grants: BTreeMap<String, Value>,
+    mapping: Option<(u64, u64)>,
+    killed: bool,
+    service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
 }
 impl SurfaceSession {
     pub fn new(binding: SurfaceBinding) -> Self {
@@ -63,6 +74,14 @@ impl SurfaceSession {
             last_received: 0,
             last_health: 0,
             output: VecDeque::new(),
+            revision: 0,
+            epoch: 0,
+            operations: BTreeMap::new(),
+            resources: BTreeSet::new(),
+            grants: BTreeMap::new(),
+            mapping: None,
+            killed: false,
+            service: None,
         }
     }
     pub fn is_closed(&self) -> bool {
@@ -80,6 +99,8 @@ impl SurfaceSession {
         self.negotiated = false;
         self.peer_clock = None;
         self.output.clear();
+        self.grants.clear();
+        self.mapping = None;
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         validate("surface-message", &message)?;
@@ -194,16 +215,39 @@ impl SurfaceSession {
                         return Err("surface clock rollback".into());
                     }
                     self.peer_clock = Some(clock);
+                    self.mapping = Some((now, clock));
                     self.last_health = now;
                     self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
                 }
                 "kill" => {
+                    self.killed = true;
+                    self.grants.clear();
                     self.stopped = true;
                     self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
                 }
-                "capabilities" | "grants" | "event" | "read_reply" | "accept" => {
-                    // Never accept unimplemented operations while claiming the
-                    // socket/ABI shell constitutes a working runtime server.
+                "capabilities" => self.install_capabilities(body, now)?,
+                "grants" => self.install_grants(body, now)?,
+                "accept" => {
+                    let service = self
+                        .service
+                        .clone()
+                        .ok_or("no durable receipt coordinator")?;
+                    service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_accept(self, body, now)?;
+                }
+                "event" if body["kind"] == "action.outcome" => {
+                    let service = self
+                        .service
+                        .clone()
+                        .ok_or("no durable receipt coordinator")?;
+                    service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_outcome(self, body, now)?;
+                }
+                "event" | "read_reply" => {
                     return self.error("unavailable", &body["correlation_id"]);
                 }
                 "error" => {

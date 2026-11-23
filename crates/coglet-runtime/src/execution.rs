@@ -5,6 +5,9 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
+#[path = "dispatch.rs"]
+mod dispatch;
+
 /// Engine implementations must start a fresh instance for every attempt. This
 /// runtime-owned seam is temporary while coglet-engine's public API is empty.
 pub trait Engine {
@@ -20,6 +23,18 @@ pub struct EngineReport {
 struct ServiceState {
     runtime: Runtime,
     router: Router,
+    #[serde(default)]
+    dispatches: BTreeMap<String, dispatch::Dispatch>,
+    #[serde(default)]
+    surface_epochs: BTreeMap<String, u64>,
+    #[serde(default)]
+    staged_boundary: Option<StagedBoundary>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct StagedBoundary {
+    changes: Vec<Value>,
+    runtime: Runtime,
 }
 
 /// Serial durable coordinator. Admission and consumption commit host metadata
@@ -50,11 +65,26 @@ impl RuntimeService {
                 return Err("recovery code/manifest pins differ from configuration".into());
             }
             state.runtime.validate_recovered(store.records())?;
+            Self::validate_dispatches(&state)?;
+            if let Some(staged) = &state.staged_boundary {
+                let mut derived = state.runtime.clone();
+                derived.apply_boundary_changes(&staged.changes)?;
+                // Router sequences may already have been reserved after apply.
+                derived.next_source_seq = staged.runtime.next_source_seq;
+                if serde_json::to_value(&derived).map_err(|e| e.to_string())?
+                    != serde_json::to_value(&staged.runtime).map_err(|e| e.to_string())?
+                {
+                    return Err("recovered staged boundary state mismatch".into());
+                }
+            }
             state
         } else {
             let state = ServiceState {
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
+                dispatches: BTreeMap::new(),
+                surface_epochs: BTreeMap::new(),
+                staged_boundary: None,
             };
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
@@ -101,6 +131,17 @@ impl RuntimeService {
         }
         let mut next = self.state.clone();
         let mut inputs = context.clone();
+        if let Some(staged) = next.staged_boundary.take() {
+            let mut changes = staged.changes;
+            changes.extend(
+                inputs["boundary"]
+                    .as_array()
+                    .ok_or("missing boundary")?
+                    .iter()
+                    .cloned(),
+            );
+            inputs["boundary"] = json!(changes);
+        }
         inputs["coglet"] = next.runtime.manifest["id"].clone();
         inputs["step"] = json!(next.runtime.step);
         inputs["previous"] = next.runtime.previous.clone();
@@ -156,6 +197,10 @@ impl RuntimeService {
         }
         if changed {
             next.runtime.time = now;
+            if let Some(staged) = &mut next.staged_boundary {
+                staged.runtime.time = now;
+                staged.runtime.next_source_seq = next.runtime.next_source_seq;
+            }
             self.store.commit(
                 &serde_json::to_value(&next).map_err(|e| e.to_string())?,
                 None,
@@ -175,11 +220,27 @@ impl RuntimeService {
     ) -> Result<Value> {
         let old_count = crate::boundary::inbox(&self.state.runtime.files)?.len();
         let mut next = self.state.clone();
+        let staged_count = next
+            .staged_boundary
+            .as_ref()
+            .map(|s| {
+                s.changes
+                    .iter()
+                    .filter(|c| c["method"] == "runtime.receipt")
+                    .count()
+            })
+            .unwrap_or(0);
+        let mut all_changes = next
+            .staged_boundary
+            .take()
+            .map(|s| s.changes)
+            .unwrap_or_default();
+        all_changes.extend_from_slice(changes);
         let record = next
             .runtime
-            .seal_boundary(trace_id, logical_time, changes)?;
+            .seal_boundary(trace_id, logical_time, &all_changes)?;
         let messages = crate::boundary::inbox(&next.runtime.files)?;
-        for message in &messages[old_count..] {
+        for message in &messages[old_count + staged_count..] {
             let seq = next.runtime.next_source_seq;
             next.runtime.next_source_seq =
                 seq.checked_add(1).ok_or("runtime source seq exhausted")?;

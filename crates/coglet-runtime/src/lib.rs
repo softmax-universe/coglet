@@ -1,5 +1,6 @@
 //! Product-neutral runtime. Guest code never receives native surface handles.
 mod boundary;
+mod catalog;
 mod execution;
 pub mod ffi;
 mod filesystem;
