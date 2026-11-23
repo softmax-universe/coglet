@@ -36,6 +36,7 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
                 TextField("Filter settings  /", text: $query).focused($searchFocused)
+                    .modifier(SoftmaxSearchFieldFrame())
                     .accessibilityLabel("Search settings").onSubmit {
                         if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
                     }
