@@ -7,6 +7,7 @@ sanitization fails closed: any ambiguity raises ValueError.
 """
 import json
 import re
+from target_ir import require_v1
 
 GO_TYPES_PATH = 'sdk/surface-go/types/generated.go'
 CODEC_IMPORT = 'github.com/softmax-universe/coglet/sdk/surface-go/codec'
@@ -303,4 +304,5 @@ class Emitter:
 
 def generate(rules):
     """Return {repo-relative path: content} for the Go target."""
+    require_v1(rules)
     return {GO_TYPES_PATH: Emitter(rules).generate()}

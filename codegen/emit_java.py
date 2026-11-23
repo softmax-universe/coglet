@@ -1,6 +1,7 @@
 """Generate Java 21 records and sealed record unions from the shared CDDL IR."""
 import json
 import re
+from target_ir import require_v1
 
 KEYWORDS = set(('abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while true false null record sealed permits yield var _ clone finalize getClass hashCode notify notifyAll toString wait').split())
 
@@ -14,6 +15,7 @@ def ident(name):
     return result
 
 def generate(rules):
+    require_v1(rules)
     names = [title(n) for n in rules]
     if len(set(names)) != len(names) or any(n in {'Generated','Codec','Message','Presence','Object','String','Boolean','BigInteger','List','Map','LinkedHashMap'} for n in names):
         raise ValueError('ambiguous Java rule names')

@@ -24,7 +24,7 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
             root = Path(temp)
             (root / 'codegen').mkdir()
-            for source in ('generate.py', 'emit_go.py', 'emit_java.py'):
+            for source in ('generate.py', 'emit_go.py', 'emit_java.py', 'target_ir.py'):
                 shutil.copy(ROOT / 'codegen' / source, root / 'codegen' / source)
             (root / 'spec/messages').mkdir(parents=True)
             (root / 'spec/messages/test.cddl').write_text('thing = {name: tstr}')

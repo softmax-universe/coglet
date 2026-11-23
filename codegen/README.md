@@ -53,7 +53,11 @@ for record unions, and `Presence<T>` for optional fields (null means absent).
 Records expose `toCbor` / `fromCbor`; `Codec.encode` / `decode` handle every rule.
 Integers use `BigInteger`; Jackson reads JSON schemas/fixtures, never CBOR.
 Both emitters escape keywords and reject ambiguous sanitized identifiers.
-See each SDK README for the typed API and presence semantics.
+See each SDK README for the typed API and presence semantics. Go/Java currently
+consume the original (v1) IR and fail generation on new operations or additive
+constraints, including bounded/keyed maps, bounded arrays and open-record rest.
+Compiler IR extensions must update the native codecs and this guard together;
+unsupported constraints must never be silently discarded.
 
 All four runtimes enforce the `spec/conventions.md` CBOR profile before shape
 validation: no bytes/tags/floats, no duplicate/non-text keys, no indefinite or
