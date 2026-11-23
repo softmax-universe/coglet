@@ -71,9 +71,24 @@ pub fn apply(files: &Snapshot, change: &Value, coglet: &Value) -> Result<Snapsho
     }
     let method = change["method"].as_str().unwrap();
     match method {
-        "hub.inbox" if path == "/data/inbox.jsonl" => {
-            if !change["actor"].as_str().unwrap().starts_with("hub:") {
-                return Err("inbox requires authenticated hub actor".into());
+        "runtime.heard" if path == crate::heard::PATH => {
+            if &change["actor"] != coglet || !change["ticket"].is_null() {
+                return Err("runtime heard actor/ticket mismatch".into());
+            }
+            crate::heard::transition(
+                before.as_str(),
+                change["after"]
+                    .as_str()
+                    .ok_or("heard history cannot be removed")?,
+            )?;
+        }
+        "hub.inbox" | "runtime.receipt" if path == "/data/inbox.jsonl" => {
+            if method == "hub.inbox" {
+                if !change["actor"].as_str().unwrap().starts_with("hub:") {
+                    return Err("inbox requires authenticated hub actor".into());
+                }
+            } else if &change["actor"] != coglet || !change["ticket"].is_null() {
+                return Err("runtime receipt actor/ticket mismatch".into());
             }
             let old = before.as_str().unwrap_or("");
             let new = change["after"].as_str().ok_or("inbox cannot be removed")?;
@@ -98,17 +113,18 @@ pub fn apply(files: &Snapshot, change: &Value, coglet: &Value) -> Result<Snapsho
         next.remove(path);
     }
     let next = Snapshot::new(next)?;
-    if method == "hub.inbox" {
+    if matches!(method, "hub.inbox" | "runtime.receipt") {
         let old_count = inbox(files)?.len();
         let messages = inbox(&next)?;
         if messages.len() != old_count + 1 {
             return Err("one inbox append required per boundary".into());
         }
-        if matches!(
+        let terminal = matches!(
             messages.last().unwrap()["event"]["kind"].as_str(),
             Some("action.outcome" | "runtime.action_rejected")
-        ) {
-            return Err("terminal messages require runtime.receipt".into());
+        );
+        if terminal != (method == "runtime.receipt") {
+            return Err("terminal messages require runtime.receipt exclusively".into());
         }
     }
     Ok(next)

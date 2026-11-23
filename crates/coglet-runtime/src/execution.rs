@@ -35,18 +35,21 @@ impl RuntimeService {
         let state: ServiceState = if let Some(saved) = store.state() {
             let state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
-            if state.runtime.manifest != configured.manifest
-                || state.runtime.files.files().get("/code/bin/step.wasm")
-                    != configured.files.files().get("/code/bin/step.wasm")
-                || state
-                    .runtime
+            let code_files = |runtime: &Runtime| {
+                runtime
                     .files
                     .files()
-                    .get("/code/build/provenance.cbor")
-                    != configured.files.files().get("/code/build/provenance.cbor")
+                    .iter()
+                    .filter(|(path, _)| path.starts_with("/code/"))
+                    .map(|(p, b)| (p.clone(), b.clone()))
+                    .collect::<BTreeMap<_, _>>()
+            };
+            if state.runtime.manifest != configured.manifest
+                || code_files(&state.runtime) != code_files(&configured)
             {
                 return Err("recovery code/manifest pins differ from configuration".into());
             }
+            state.runtime.validate_recovered(store.records())?;
             state
         } else {
             let state = ServiceState {
@@ -81,6 +84,11 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        self.queue_due_timers(
+            context["logical_time"]
+                .as_u64()
+                .ok_or("missing logical_time")?,
+        )?;
         let max_events = context["budgets"]["max_events"]
             .as_u64()
             .ok_or("missing max_events")?;
@@ -105,6 +113,86 @@ impl RuntimeService {
         )?;
         self.state = next;
         Ok(Some(result))
+    }
+
+    /// Atomically retain timer wake and shared source sequence before execution.
+    /// A full router defers firing without discarding or reordering admitted input.
+    pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
+        if now < self.state.runtime.time {
+            return Err("runtime clock rollback".into());
+        }
+        let mut next = self.state.clone();
+        let mut due: Vec<_> = next
+            .runtime
+            .pending_timers
+            .values()
+            .filter(|timer| timer["at"].as_u64().unwrap() <= now)
+            .cloned()
+            .collect();
+        due.sort_by_key(|timer| {
+            (
+                timer["at"].as_u64().unwrap(),
+                timer["id"].as_str().unwrap().to_owned(),
+            )
+        });
+        let mut changed = false;
+        for timer in due {
+            if next.router.events().any(|event| {
+                event["kind"] == "runtime.timer" && event["payload"]["id"] == timer["id"]
+            }) {
+                continue;
+            }
+            if next.router.is_full() {
+                break;
+            }
+            let seq = next.runtime.next_source_seq;
+            next.runtime.next_source_seq =
+                seq.checked_add(1).ok_or("runtime source seq exhausted")?;
+            next.router
+                .enqueue(json!({"source":next.runtime.manifest["id"],
+                "kind":"runtime.timer","seq":seq,"logical_time":now,
+                "payload":{"id":timer["id"],"at":timer["at"]},"correlation_id":timer["id"]}))?;
+            changed = true;
+        }
+        if changed {
+            next.runtime.time = now;
+            self.store.commit(
+                &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+                None,
+            )?;
+            self.state = next;
+        }
+        Ok(())
+    }
+
+    /// Persist a trailing boundary and any new inbox wakes in one transaction.
+    /// Seals this trace segment: promotion/new recording must carry host state.
+    pub fn seal_boundary(
+        &mut self,
+        trace_id: &Value,
+        logical_time: u64,
+        changes: &[Value],
+    ) -> Result<Value> {
+        let old_count = crate::boundary::inbox(&self.state.runtime.files)?.len();
+        let mut next = self.state.clone();
+        let record = next
+            .runtime
+            .seal_boundary(trace_id, logical_time, changes)?;
+        let messages = crate::boundary::inbox(&next.runtime.files)?;
+        for message in &messages[old_count..] {
+            let seq = next.runtime.next_source_seq;
+            next.runtime.next_source_seq =
+                seq.checked_add(1).ok_or("runtime source seq exhausted")?;
+            next.router.enqueue(json!({"source":next.runtime.manifest["id"],"kind":"runtime.inbox",
+                "seq":seq,"logical_time":logical_time,"payload":{"index":message["index"],"id":message["id"]},
+                "correlation_id":message["event"]["correlation_id"]}))?;
+        }
+        self.store.commit(
+            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+            Some(&record),
+        )?;
+        self.state = next;
+        Ok(record)
     }
 
     pub fn queued(&self) -> usize {
@@ -177,6 +265,11 @@ pub struct Runtime {
     ledger: EffectLedger,
     inbox_wakes: VecDeque<u64>,
     pending_llm: BTreeMap<String, Value>,
+    pending_timers: BTreeMap<String, Value>,
+    pending_actions: BTreeMap<String, Value>,
+    next_source_seq: u64,
+    sealed: bool,
+    trace_id: Option<Value>,
 }
 impl Runtime {
     pub fn from_fixture(setup: &Value) -> Result<Self> {
@@ -205,6 +298,15 @@ impl Runtime {
             return Err("provenance code mismatch".into());
         }
         validate("effect-ledger", &setup["initial_effect_ids"])?;
+        for kind in ["actions", "timers", "llm_requests"] {
+            let ids = setup["initial_effect_ids"][kind].as_array().unwrap();
+            if ids
+                .windows(2)
+                .any(|pair| pair[0].as_str().unwrap() >= pair[1].as_str().unwrap())
+            {
+                return Err("effect ledger must be sorted and duplicate-free".into());
+            }
+        }
         let ledger: EffectLedger = serde_json::from_value(setup["initial_effect_ids"].clone())
             .map_err(|e| e.to_string())?;
         let mut pending_llm = BTreeMap::new();
@@ -233,6 +335,44 @@ impl Runtime {
             }
             previous_index = Some(*index);
         }
+        let mut pending_timers = BTreeMap::new();
+        for timer in setup["initial_timers"]
+            .as_array()
+            .ok_or("missing initial_timers")?
+        {
+            validate("timer-request", timer)?;
+            let id = timer["id"].as_str().unwrap();
+            if !ledger["timers"].contains(id)
+                || pending_timers.insert(id.into(), timer.clone()).is_some()
+            {
+                return Err("invalid initial timer ledger".into());
+            }
+        }
+        let mut pending_actions = BTreeMap::new();
+        // abi.step fixture setup predates trace headers and omits this field.
+        // Trace import must require it explicitly before using this setup seam.
+        let empty_actions = json!([]);
+        for action in setup
+            .get("initial_actions")
+            .unwrap_or(&empty_actions)
+            .as_array()
+            .ok_or("invalid initial_actions")?
+        {
+            validate("action", action)?;
+            let id = action["id"].as_str().unwrap();
+            if action["coglet"] != setup["manifest"]["id"]
+                || !ledger["actions"].contains(id)
+                || pending_actions.insert(id.into(), action.clone()).is_some()
+                || inbox.iter().any(|message| {
+                    matches!(
+                        message["event"]["kind"].as_str(),
+                        Some("action.outcome" | "runtime.action_rejected")
+                    ) && message["event"]["payload"]["id"] == id
+                })
+            {
+                return Err("invalid initial pending action ledger".into());
+            }
+        }
         Ok(Self {
             files,
             manifest: setup["manifest"].clone(),
@@ -243,12 +383,28 @@ impl Runtime {
             ledger,
             inbox_wakes,
             pending_llm,
+            pending_timers,
+            pending_actions,
+            next_source_seq: 0,
+            sealed: false,
+            trace_id: None,
         })
     }
 
     /// Compute an attempted step. No dispatch occurs here. Integration with the
     /// durable store must commit returned state + record before external effects.
     pub fn step(&mut self, inputs: &Value, engine: &mut impl Engine) -> Result<Value> {
+        if self.sealed {
+            return Err("trace is sealed; start a new segment".into());
+        }
+        validate("correlation-id", &inputs["trace_id"])?;
+        if self
+            .trace_id
+            .as_ref()
+            .is_some_and(|id| id != &inputs["trace_id"])
+        {
+            return Err("trace identity changed".into());
+        }
         if inputs["coglet"] != self.manifest["id"]
             || inputs["step"] != self.step
             || inputs["previous"] != self.previous
@@ -285,29 +441,40 @@ impl Runtime {
             validate("event", event)?;
         }
         let before_hash = self.files.tree_hash()?;
-        let mut input = self.files.clone();
-        let mut inbox_wakes = self.inbox_wakes.clone();
-        let mut pending_llm = self.pending_llm.clone();
-        for change in inputs["boundary"].as_array().ok_or("missing boundary")? {
-            let old_count = crate::boundary::inbox(&input)?.len();
-            input = crate::boundary::apply(&input, change, &inputs["coglet"])?;
-            let messages = crate::boundary::inbox(&input)?;
-            let new_count = messages.len();
-            for message in &messages[old_count..] {
-                if message["event"]["kind"] == "llm.reply" {
-                    let id = message["event"]["payload"]["request_id"].as_str().unwrap();
-                    let request = pending_llm
-                        .remove(id)
-                        .ok_or("LLM reply has no committed pending request")?;
-                    if request["correlation_id"] != message["event"]["correlation_id"] {
-                        return Err("LLM reply correlation mismatch".into());
-                    }
+        let mut boundary_state = self.clone();
+        boundary_state
+            .apply_boundary_changes(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
+        let input = boundary_state.files;
+        let mut inbox_wakes = boundary_state.inbox_wakes;
+        let mut pending_llm = boundary_state.pending_llm;
+        let mut pending_actions = boundary_state.pending_actions;
+        let inbox = crate::boundary::inbox(&input)?;
+        let mut pending_timers = self.pending_timers.clone();
+        let mut next_source_seq = boundary_state.next_source_seq;
+        for event in events {
+            if event["source"] == inputs["coglet"] {
+                next_source_seq = next_source_seq.max(
+                    event["seq"]
+                        .as_u64()
+                        .unwrap()
+                        .checked_add(1)
+                        .ok_or("runtime source seq exhausted")?,
+                );
+            }
+            if event["kind"] == "runtime.timer" {
+                let id = event["payload"]["id"].as_str().ok_or("missing timer ID")?;
+                let timer = pending_timers
+                    .remove(id)
+                    .ok_or("timer wake has no committed pending request")?;
+                if event["source"] != inputs["coglet"]
+                    || event["correlation_id"] != timer["id"]
+                    || event["payload"] != json!({"id":timer["id"],"at":timer["at"]})
+                    || timer["at"].as_u64().unwrap() > time
+                    || event["logical_time"].as_u64().unwrap() > time
+                {
+                    return Err("timer wake mismatch or not due".into());
                 }
             }
-            inbox_wakes.extend((old_count as u64)..(new_count as u64));
-        }
-        let inbox = crate::boundary::inbox(&input)?;
-        for event in events {
             if event["kind"] == "runtime.inbox" {
                 let index = event["payload"]["index"]
                     .as_u64()
@@ -369,6 +536,7 @@ impl Runtime {
         validate("step-record", &record)?;
         let result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
         self.previous = record["record_hash"].clone();
+        self.trace_id = Some(inputs["trace_id"].clone());
         self.files = output;
         self.inbox_wakes = inbox_wakes;
         if committed {
@@ -376,12 +544,158 @@ impl Runtime {
             for request in host.llm_requests {
                 pending_llm.insert(request["id"].as_str().unwrap().into(), request);
             }
+            for timer in host.timers {
+                pending_timers.insert(timer["id"].as_str().unwrap().into(), timer);
+            }
+            for action in host.actions {
+                pending_actions.insert(action["id"].as_str().unwrap().into(), action);
+            }
         }
+        self.pending_actions = pending_actions;
+        self.pending_timers = pending_timers;
+        self.next_source_seq = next_source_seq;
         self.pending_llm = pending_llm;
         self.time = time;
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
         self.records.push(record);
         Ok(result)
+    }
+
+    fn validate_recovered(&self, records: &[Value]) -> Result<()> {
+        // Revalidate semantic host-state constraints; a valid WAL checksum does
+        // not establish that decoded pending work or pins are self-consistent.
+        Self::from_fixture(
+            &json!({"manifest":self.manifest,"initial_files":self.files.files(),
+            "initial_effect_ids":self.ledger,"initial_inbox_wakes":self.inbox_wakes,
+            "initial_timers":self.pending_timers.values().collect::<Vec<_>>(),
+            "initial_actions":self.pending_actions.values().collect::<Vec<_>>(),
+            "initial_llm_requests":self.pending_llm.values().collect::<Vec<_>>() }),
+        )?;
+        let mut previous = Value::Null;
+        let mut count = 0u64;
+        let mut output_hash = None;
+        let mut time = 0;
+        let mut sealed = false;
+        for record in records {
+            if self.trace_id.as_ref() != Some(&record["trace_id"]) {
+                return Err("recovered trace identity mismatch".into());
+            }
+            if sealed
+                || record["coglet"] != self.manifest["id"]
+                || record["previous"] != previous
+                || record["logical_time"].as_u64().unwrap() < time
+                || output_hash
+                    .as_ref()
+                    .is_some_and(|hash| hash != &record["before_hash"])
+            {
+                return Err("recovered journal chain mismatch".into());
+            }
+            time = record["logical_time"].as_u64().unwrap();
+            output_hash = Some(record["output_hash"].clone());
+            if record.get("step").is_some() {
+                if record["step"] != count {
+                    return Err("recovered step counter mismatch".into());
+                }
+                count = count.checked_add(1).ok_or("step counter exhausted")?;
+                previous = record["record_hash"].clone();
+            } else {
+                sealed = true;
+            }
+        }
+        if self.step != count
+            || self.previous != previous
+            || self.time < time
+            || self.sealed != sealed
+            || output_hash.is_some_and(|hash| hash != self.files.tree_hash().unwrap_or_default())
+        {
+            return Err("recovered runtime/journal head mismatch".into());
+        }
+        Ok(())
+    }
+
+    // Apply only to a private candidate; callers publish it after validation and
+    // persistence. This seam assumes authenticated hub/surface admission.
+    fn apply_boundary_changes(&mut self, changes: &[Value]) -> Result<()> {
+        for change in changes {
+            let old_count = crate::boundary::inbox(&self.files)?.len();
+            self.files = crate::boundary::apply(&self.files, change, &self.manifest["id"])?;
+            let messages = crate::boundary::inbox(&self.files)?;
+            for message in &messages[old_count..] {
+                let event = &message["event"];
+                if event["source"] == self.manifest["id"] {
+                    self.next_source_seq = self.next_source_seq.max(
+                        event["seq"]
+                            .as_u64()
+                            .unwrap()
+                            .checked_add(1)
+                            .ok_or("runtime source seq exhausted")?,
+                    );
+                }
+                if matches!(
+                    event["kind"].as_str(),
+                    Some("runtime.action_rejected" | "action.outcome")
+                ) {
+                    let id = event["payload"]["id"].as_str().unwrap();
+                    let action = self
+                        .pending_actions
+                        .remove(id)
+                        .ok_or("terminal message has no pending action")?;
+                    if event["correlation_id"] != action["correlation_id"]
+                        || event["payload"]["correlation_id"] != action["correlation_id"]
+                        || (event["kind"] == "runtime.action_rejected"
+                            && event["source"] != self.manifest["id"])
+                        || (event["kind"] == "action.outcome"
+                            && event["source"] != self.manifest["id"]
+                            && !event["source"].as_str().unwrap().starts_with("surface:"))
+                    {
+                        return Err("terminal message correlation/source mismatch".into());
+                    }
+                }
+                if event["kind"] == "llm.reply" {
+                    let id = event["payload"]["request_id"].as_str().unwrap();
+                    let request = self
+                        .pending_llm
+                        .remove(id)
+                        .ok_or("LLM reply has no committed pending request")?;
+                    if request["correlation_id"] != event["correlation_id"] {
+                        return Err("LLM reply correlation mismatch".into());
+                    }
+                }
+            }
+            self.inbox_wakes
+                .extend((old_count as u64)..(messages.len() as u64));
+        }
+        Ok(())
+    }
+
+    /// Seal an archive segment with durable mutations but NO guest attempt. The
+    /// coordinator must commit this returned state and record before ack/export.
+    pub fn seal_boundary(
+        &mut self,
+        trace_id: &Value,
+        logical_time: u64,
+        changes: &[Value],
+    ) -> Result<Value> {
+        validate("correlation-id", trace_id)?;
+        if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
+            return Err("trace identity changed".into());
+        }
+        if self.sealed || changes.is_empty() || logical_time < self.time {
+            return Err("sealed/empty/nonmonotonic trailing boundary".into());
+        }
+        let mut next = self.clone();
+        next.apply_boundary_changes(changes)?;
+        let mut record = json!({"version":"0.1","trace_id":trace_id,"coglet":self.manifest["id"],
+            "previous":self.previous,"logical_time":logical_time,"boundary":changes,
+            "before_hash":self.files.tree_hash()?,"output_hash":next.files.tree_hash()?,"output_files":next.files.files()});
+        record["record_hash"] = json!(digest(&cbor(&record)?));
+        validate("boundary-record", &record)?;
+        next.sealed = true;
+        next.trace_id = Some(trace_id.clone());
+        next.time = logical_time;
+        next.records.push(record.clone());
+        *self = next;
+        Ok(record)
     }
 
     pub fn records(&self) -> &[Value] {
@@ -395,11 +709,31 @@ impl Runtime {
         let mut candidate = self.clone();
         let mut hashes = Vec::new();
         for record in records {
-            validate("step-record", record)?;
+            let is_step = record.get("step").is_some();
+            validate(
+                if is_step {
+                    "step-record"
+                } else {
+                    "boundary-record"
+                },
+                record,
+            )?;
             let mut unhashed = record.clone();
             unhashed.as_object_mut().unwrap().remove("record_hash");
             if record["record_hash"] != digest(&cbor(&unhashed)?) {
                 return Err("replay record checksum mismatch".into());
+            }
+            if !is_step {
+                let actual = candidate.seal_boundary(
+                    &record["trace_id"],
+                    record["logical_time"].as_u64().unwrap(),
+                    record["boundary"].as_array().unwrap(),
+                )?;
+                if actual != *record {
+                    return Err("replay boundary mismatch".into());
+                }
+                hashes.push(actual["output_hash"].as_str().unwrap().into());
+                continue;
             }
             let mut inputs = serde_json::Map::new();
             for key in [
