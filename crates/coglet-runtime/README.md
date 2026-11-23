@@ -20,6 +20,9 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - durable bound-surface admission/outcomes, terminal dedup and staged inbox boundary mutations.
 - lease-scoped private event routing with durable shared surface sequence/clock highwaters;
 - bounded caller-scoped native reads, timeout/late-reply fencing and revocation purging.
+- Linux boot-identity/BOOTTIME anchored runtime clock persisted in the WAL;
+- service-backed socket and C ABI dispatch pumps, ordered by committed calls;
+- automatic same-envelope reconciliation after native reconnect and WAL reopen.
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
@@ -65,12 +68,15 @@ The unimplemented boundaries remain explicit:
 - Full ABI profile adapters: module/manifest admission, trace/provenance validation,
   terminal-receipt and heard archive corpus import/validation (the runtime seams
   exist, but those language-neutral profiles have not been implemented).
-- Native endpoint dispatch orchestration: the library has a durable translated outbox
-  and bound-source receipt materialization, but transports still create probe-only sessions.
-  Both native endpoint modes must attach the durable service, dispatch committed actions
-  in call order, reconcile retained IDs on reconnect and use one runtime clock epoch.
+- Native orchestration now attaches the durable service explicitly in both transports.
+  The default probe modes remain negotiation-only. Linux native clock continuity uses
+  BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
+  guesses. A changed boot identity, old unanchored dispatch ledger or poisoned WAL
+  fails closed. Non-Linux supervised clocks (including iOS) remain unimplemented.
+  Dispatch order is retained/checked against initial intent order and committed action
+  arrays, not sorted IDs. Expired undispatched intents receive durable local rejections.
 - Operational private events and reads exist in the shared library session, but
-  native endpoints still need to attach it. Private event admission intersects
+  service-backed native endpoints attach it. Private event admission intersects
   manifest subscriptions with current grants/resources; grant replacement, expiry,
   disconnect and restart purge old-lease queued input while retaining sequence
   highwaters. Provider tool calls require a retained successful owner session.
@@ -79,11 +85,12 @@ The unimplemented boundaries remain explicit:
   epochs purge read replies/results. Heard reads require a retained accepted speaker
   item and current speaker lease; provider-native items without retained ownership
   currently fail closed. Heard-state construction from reads remains to be wired.
-- Close/disconnect with pending real native I/O: native pointer/buffer/backpressure
-  and heartbeat probes exist, but no operational native I/O can be admitted yet.
-- `cogletd` production server mode. Only --version, --mock-stdio and the explicit
-  --surface-probe-socket negotiation shell exist. No arguments prints the version
-  and exits (workspace packaging smoke contract); unsupported arguments fail closed.
+- Close/disconnect with real device I/O and complete speech temporal normalization
+  remain unqualified. The native operational test backend is a deterministic receipt
+  ledger, not a physical device/provider or production surface SDK qualification.
+- Production guest scheduling/admission in `cogletd`. Its new explicit
+  --surface-service-socket mode serves committed intent/receipts from pinned setup and
+  WAL, but does not execute a guest. No arguments still prints the version and exits.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
   Recovery checks all code files, pending-ledger membership, inbox wake indices,
   trace identity and journal head/chain, but not a full reconstruction of all host
@@ -114,24 +121,46 @@ The shared source sequence persists in service state and advances for committed
 runtime-source events and receipt appends. Fresh fixture setup starts at zero;
 production restart/segment transfer must retain the full lifetime source metadata.
 
-## Native surface boundary (negotiation gate only)
+## Native surface boundary (partial operational qualification)
 
 `tests/operational_surface.rs` separately exercises the library authority and WAL
 seams (not native operational qualification). Named tests cover byte-identical
 retry after clock advance, reconnect recovery without a new action, authenticated
 source/admission binding, one terminal append across restart, zero-step trailing
 export, persistent grant-epoch fencing and deadline-relative retention. Production
-clock/lifecycle wiring, full private-event temporal normalization, transport dispatch and native
+non-Linux clock/lifecycle wiring, full private-event temporal normalization and real native
 pending-I/O shutdown remain required before this card is complete.
+
+`tests/native_operational.rs` exercises the actual C pointer boundary and an actual
+`cogletd` Unix-socket subprocess. Both paths check reverse-lexical invocation order,
+byte-identical automatic retries after clock advance and WAL reopen without fresh
+grants, accepted-action health counts, authenticated outcomes and duplicate terminal
+delivery, and kill. Reopened WALs contain exactly one terminal mutation/wake per
+action. Separate regressions inject a real OS WAL-write failure and check clock and
+retained-dispatch fencing, and reject an expired outbox head without starving later
+actions. These do not constitute complete speech/read/device qualification.
 
 `cargo build -p coglet-runtime --lib` produces static and shared libraries.
 `include/coglet_runtime.h` exposes the frozen coglet_surface_open/send/recv/close
-signatures plus runtime-owned `coglet_runtime_configure(config,n)`. Before open,
+signatures plus runtime-owned configure/start/stop. Before open,
 trusted application code configures UTF-8 JSON with `surface` and
 `permitted_coglets`. Configuration is immutable per process, identical retries
 are idempotent, and hello supplies no authentication. Handle calls must be
 serialized and recv polled at least once per second on the non-audio control
 queue. No calls after close. Unsupported operations cannot acquire authority.
+
+To attach the durable service, call `coglet_runtime_start` with UTF-8 JSON
+`{"wal":"/absolute/private/state.wal","setup":{...}}` before opening links.
+`setup` is the current runtime configuration shape (code/manifest/files/pending
+ledgers); this is not yet a production signed archive admission API. Stop returns
+would-block while any service-backed link remains live; close links before restart.
+Without start, open remains the existing negotiation probe. Linux only until other
+platforms provide verified supervisor clock continuity.
+
+The equivalent Linux daemon transport is:
+`cogletd --surface-service-socket SOCKET BINDING_JSON PEER_UID WAL SETUP_JSON`.
+This mode explicitly serves the coordinator, not an inert probe, but still has no
+production guest engine/scheduler. Supply a supervisor-owned persistent WAL directory.
 
 On Linux, `cogletd --surface-probe-socket ABSOLUTE_PATH BINDING_JSON PEER_UID`
 serves the same negotiation shell. The parent directory must be owned mode0700

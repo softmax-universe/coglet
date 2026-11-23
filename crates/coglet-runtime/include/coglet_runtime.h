@@ -10,6 +10,14 @@ extern "C" {
  * No authority comes from hello. This configuration API is runtime-owned,
  * not a new surface wire message. Returns 0 or -1. */
 int32_t coglet_runtime_configure(const uint8_t *config, size_t n);
+/* Start/recover the durable service before opening surface links. UTF-8 JSON
+ * {"wal":"/absolute/private/state.wal","setup":{...}} pins initial runtime
+ * configuration. Linux BOOTTIME continuity only; other hosts fail closed.
+ * 0 success, -1 invalid config/already started, -2 recovery/clock failure.
+ * Without start, surface_open retains the negotiation-only probe behavior. */
+int32_t coglet_runtime_start(const uint8_t *config, size_t n);
+/* 0 stopped, 1 live links (close them first), -2 poisoned state. */
+int32_t coglet_runtime_stop(void);
 typedef struct coglet_surface_link coglet_surface_link;
 int32_t coglet_surface_open(uint32_t abi_version, coglet_surface_link **out);
 int32_t coglet_surface_send(coglet_surface_link *, const uint8_t *cbor, size_t n);

@@ -77,6 +77,81 @@ impl Dispatch {
     }
 }
 impl RuntimeService {
+    pub(crate) fn admitted_pending(&self, surface: &str) -> usize {
+        self.state
+            .dispatches
+            .values()
+            .filter(|d| {
+                d.surface == surface
+                    && d.accept.as_ref().is_some_and(|a| a["accepted"] == true)
+                    && d.terminal_at.is_none()
+            })
+            .count()
+    }
+    /// Retained IDs reconcile before current authority checks. New intents
+    /// without authority block later intents rather than reordering call order.
+    pub(crate) fn next_dispatch(
+        &mut self,
+        session: &SurfaceSession,
+        sent: &std::collections::BTreeSet<String>,
+        now: u64,
+    ) -> Result<Option<(String, Vec<u8>)>> {
+        if !self.store.is_healthy() {
+            return Err("runtime requires WAL recovery".into());
+        }
+        for id in self.state.dispatch_order.clone() {
+            if sent.contains(&id) {
+                continue;
+            }
+            if let Some(saved) = self.state.dispatches.get(&id) {
+                if saved.terminal_at.is_some() || saved.surface != session.surface() {
+                    continue;
+                }
+            } else {
+                let pending = self
+                    .state
+                    .staged_boundary
+                    .as_ref()
+                    .map(|s| &s.runtime)
+                    .unwrap_or(&self.state.runtime);
+                let Some(action) = pending.pending_actions.get(&id).cloned() else {
+                    continue;
+                };
+                if action["deadline"].as_u64().is_some_and(|d| d <= now) {
+                    self.reject_undispatched(&action, now, "deadline_exceeded")?;
+                    continue;
+                }
+                if session
+                    .authorize(
+                        action["coglet"].as_str().unwrap(),
+                        action["capability"].as_str().unwrap(),
+                        "action",
+                        now,
+                    )
+                    .is_err()
+                {
+                    return Ok(None);
+                }
+                if session.translate_action(&action, now).is_err() {
+                    self.reject_undispatched(&action, now, "invalid_argument")?;
+                    continue;
+                }
+            }
+            let bytes = self.prepare_dispatch(session, &id, now)?;
+            return Ok(Some((id, bytes)));
+        }
+        Ok(None)
+    }
+    fn reject_undispatched(&mut self, action: &Value, now: u64, code: &str) -> Result<()> {
+        let mut next = self.state.clone();
+        let payload = json!({"id":action["id"],"correlation_id":action["correlation_id"],"accepted":false,
+            "error":{"code":code,"message":"Runtime dispatch refused","retryable":false}});
+        let event = json!({"source":action["coglet"],"kind":"runtime.action_rejected",
+            "seq":next.runtime.next_source_seq,"logical_time":now,"payload":payload,
+            "correlation_id":action["correlation_id"]});
+        Self::stage_terminal(&mut next, event, now)?;
+        self.commit_dispatch(next)
+    }
     fn stage_terminal(next: &mut ServiceState, event: Value, now: u64) -> Result<()> {
         if next.runtime.sealed || now < next.runtime.time {
             return Err("cannot materialize terminal in sealed/past segment".into());
@@ -135,6 +210,9 @@ impl RuntimeService {
         id: &str,
         now: u64,
     ) -> Result<Vec<u8>> {
+        if !self.store.is_healthy() {
+            return Err("runtime requires WAL recovery".into());
+        }
         session.check_reconciliation_binding(
             self.state.runtime.manifest["id"].as_str().unwrap(),
             now,

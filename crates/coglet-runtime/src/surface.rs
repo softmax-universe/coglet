@@ -1,5 +1,5 @@
-//! Shared surface-message boundary. Catalog/grants and durable receipt authority
-//! are implemented; native endpoint orchestration and event/read routing remain.
+//! Shared surface-message boundary: catalog/grants, private events/reads,
+//! durable receipt authority and native committed-dispatch pumping.
 use crate::{Result, cbor, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -67,8 +67,20 @@ pub struct SurfaceSession {
     read_results: VecDeque<(String, Value)>,
     read_result_authority: BTreeMap<String, reads::PendingRead>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
+    sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
+    pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
+        if let Some(service) = &self.service {
+            service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .supervised_now()
+        } else {
+            u64::try_from(probe_clock.elapsed().as_micros())
+                .map_err(|_| "runtime clock overflow".into())
+        }
+    }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
             binding,
@@ -92,10 +104,52 @@ impl SurfaceSession {
             read_results: VecDeque::new(),
             read_result_authority: BTreeMap::new(),
             service: None,
+            sent_dispatches: BTreeSet::new(),
         }
     }
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+    /// Native transport pump. Reconnect automatically reconciles saved IDs.
+    pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
+        if !self.negotiated || self.closed {
+            return Ok(());
+        }
+        let Some(service) = self.service.clone() else {
+            return Ok(());
+        };
+        while self.output.len() < SURFACE_QUEUE {
+            let next = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .next_dispatch(self, &self.sent_dispatches, now)?;
+            let Some((id, bytes)) = next else {
+                break;
+            };
+            self.output.push_back(bytes);
+            self.sent_dispatches.insert(id);
+        }
+        Ok(())
+    }
+    fn health(&self, now: u64, correlation: &Value) -> Result<Value> {
+        let (state, pending) = if let Some(service) = &self.service {
+            let pending = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .admitted_pending(self.surface());
+            let ready = !self.stopped
+                && !self.killed
+                && self.grants.values().any(|g| {
+                    self.surface_now(now)
+                        .is_ok_and(|clock| g["expires"].as_u64().is_some_and(|e| e > clock))
+                });
+            (if ready { "ready" } else { "stopped" }, pending)
+        } else {
+            ("stopped", 0)
+        };
+        Ok(
+            json!({"type":"health","body":{"state":state,"clock":now,"pending":pending,"correlation_id":correlation}}),
+        )
     }
     pub fn front(&self) -> Option<&[u8]> {
         self.output.front().map(Vec::as_slice)
@@ -168,8 +222,14 @@ impl SurfaceSession {
             let random_ok = unsafe { libc::getentropy(id.as_mut_ptr().cast(), id.len()) } == 0;
             #[cfg(not(unix))]
             let random_ok = false;
-            if !random_ok || self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":hex::encode(id)}})).is_err() {
-                self.disconnect(); return;
+            if !random_ok
+                || self
+                    .health(now, &json!(hex::encode(id)))
+                    .and_then(|h| self.enqueue(h))
+                    .is_err()
+            {
+                self.disconnect();
+                return;
             }
             self.last_health = now;
         }
@@ -236,7 +296,7 @@ impl SurfaceSession {
                     self.peer_clock = Some(clock);
                     self.mapping = Some((now, clock));
                     self.last_health = now;
-                    self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
+                    self.enqueue(self.health(now, &body["correlation_id"])?)?;
                 }
                 "kill" => {
                     if let Some(service) = &self.service {

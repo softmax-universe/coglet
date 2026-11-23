@@ -1,8 +1,67 @@
 //! Trusted application embedding API. Handles are owned/serialized by the caller.
 use crate::{SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
-use std::{ptr, slice, sync::OnceLock, time::Instant};
+use std::{
+    ptr, slice,
+    sync::{Arc, Mutex, OnceLock},
+    time::Instant,
+};
 
 static BINDING: OnceLock<SurfaceBinding> = OnceLock::new();
+static RUNTIME: Mutex<Option<Arc<Mutex<crate::RuntimeService>>>> = Mutex::new(None);
+
+/// Start/recover the durable coordinator from trusted JSON {wal, setup}.
+/// Call before opening links. Non-Linux clocks currently fail closed.
+/// # Safety
+/// `config` references `n` readable immutable bytes for this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i32 {
+    if config.is_null() || n == 0 || n > SURFACE_MAX_FRAME || BINDING.get().is_none() {
+        return -1;
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Config {
+        wal: std::path::PathBuf,
+        setup: serde_json::Value,
+    }
+    let Ok(config) = serde_json::from_slice::<Config>(unsafe { slice::from_raw_parts(config, n) })
+    else {
+        return -1;
+    };
+    if !config.wal.is_absolute() {
+        return -1;
+    }
+    let Ok(mut runtime) = RUNTIME.lock() else {
+        return -2;
+    };
+    if runtime.is_some() {
+        return -1;
+    }
+    let result =
+        crate::RuntimeService::open(&config.wal, &config.setup, 128).and_then(|mut service| {
+            service.supervised_now()?;
+            Ok(service)
+        });
+    match result {
+        Ok(service) => {
+            *runtime = Some(Arc::new(Mutex::new(service)));
+            0
+        }
+        Err(_) => -2,
+    }
+}
+/// Stop only after all links close. Returns 1 while links hold the runtime.
+#[unsafe(no_mangle)]
+pub extern "C" fn coglet_runtime_stop() -> i32 {
+    let Ok(mut runtime) = RUNTIME.lock() else {
+        return -2;
+    };
+    if runtime.as_ref().is_some_and(|r| Arc::strong_count(r) != 1) {
+        return 1;
+    }
+    *runtime = None;
+    0
+}
 
 #[repr(C)]
 pub struct CogletSurfaceLink {
@@ -53,8 +112,19 @@ pub unsafe extern "C" fn coglet_surface_open(
     let Some(binding) = BINDING.get() else {
         return -1;
     };
+    let Ok(runtime) = RUNTIME.lock() else {
+        return -2;
+    };
+    let session = if let Some(service) = &*runtime {
+        match SurfaceSession::with_service(binding.clone(), service.clone()) {
+            Ok(session) => session,
+            Err(_) => return -2,
+        }
+    } else {
+        SurfaceSession::new(binding.clone())
+    };
     let link = Box::new(CogletSurfaceLink {
-        session: SurfaceSession::new(binding.clone()),
+        session,
         clock: Instant::now(),
     });
     // SAFETY: caller supplies writable pointer storage; ownership transfers.
@@ -79,12 +149,18 @@ pub unsafe extern "C" fn coglet_surface_send(
     }
     // SAFETY: handle and readable input are guaranteed by caller.
     let link = unsafe { &mut *link };
-    let Ok(now) = u64::try_from(link.clock.elapsed().as_micros()) else {
+    let Ok(now) = link.session.transport_now(link.clock) else {
         link.session.disconnect();
         return -2;
     };
-    link.session
-        .send(unsafe { slice::from_raw_parts(cbor, n) }, now)
+    let status = link
+        .session
+        .send(unsafe { slice::from_raw_parts(cbor, n) }, now);
+    if status == 0 && link.session.pump_dispatch(now).is_err() {
+        link.session.disconnect();
+        return -2;
+    }
+    status
 }
 
 /// Poll one response; short buffers and size queries do not dequeue it.
@@ -107,11 +183,15 @@ pub unsafe extern "C" fn coglet_surface_recv(
         n.write(0);
     }
     let link = unsafe { &mut *link };
-    let Ok(now) = u64::try_from(link.clock.elapsed().as_micros()) else {
+    let Ok(now) = link.session.transport_now(link.clock) else {
         link.session.disconnect();
         return -2;
     };
     link.session.tick(now);
+    if link.session.pump_dispatch(now).is_err() {
+        link.session.disconnect();
+        return -2;
+    }
     let Some(bytes) = link.session.front() else {
         return if link.session.is_closed() { -2 } else { 1 };
     };

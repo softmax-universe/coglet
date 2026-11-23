@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
+#[path = "clock.rs"]
+mod clock;
 #[path = "dispatch.rs"]
 mod dispatch;
 #[path = "surface_events.rs"]
@@ -25,6 +27,10 @@ pub struct EngineReport {
 struct ServiceState {
     runtime: Runtime,
     router: Router,
+    #[serde(default)]
+    clock_anchor: Option<clock::ClockAnchor>,
+    #[serde(default)]
+    dispatch_order: Vec<String>,
     #[serde(default)]
     dispatches: BTreeMap<String, dispatch::Dispatch>,
     #[serde(default)]
@@ -88,6 +94,8 @@ impl RuntimeService {
             let state = ServiceState {
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
+                clock_anchor: None,
+                dispatch_order: Vec::new(),
                 dispatches: BTreeMap::new(),
                 surface_epochs: BTreeMap::new(),
                 staged_boundary: None,
@@ -100,6 +108,46 @@ impl RuntimeService {
             )?;
             state
         };
+        // Reconstruct from immutable initial intent order and committed call
+        // order, never BTreeMap key order. Upgrade pre-order WALs atomically.
+        let mut order = Vec::new();
+        for action in setup["initial_actions"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .chain(
+                store
+                    .records()
+                    .iter()
+                    .flat_map(|r| r["actions"].as_array().into_iter().flatten()),
+            )
+        {
+            let id = action["id"]
+                .as_str()
+                .ok_or("missing ordered action id")?
+                .to_owned();
+            if order.contains(&id) {
+                return Err("duplicate ordered action id".into());
+            }
+            order.push(id);
+        }
+        if state
+            .runtime
+            .pending_actions
+            .keys()
+            .any(|id| !order.contains(id))
+            || state.dispatches.keys().any(|id| !order.contains(id))
+            || (!state.dispatch_order.is_empty() && state.dispatch_order != order)
+        {
+            return Err("durable dispatch call order mismatch".into());
+        }
+        if state.dispatch_order != order {
+            state.dispatch_order = order;
+            store.commit(
+                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
         // Restart has no live authenticated leases. Keep source highwaters but
         // never deliver queued old-owner observations into a fresh connection.
         if !state.private_events.is_empty() {
@@ -175,6 +223,13 @@ impl RuntimeService {
         inputs["previous"] = next.runtime.previous.clone();
         inputs["events"] = json!(events);
         let result = next.runtime.step(&inputs, engine)?;
+        for action in result["journal"]["actions"]
+            .as_array()
+            .ok_or("missing committed actions")?
+        {
+            next.dispatch_order
+                .push(action["id"].as_str().ok_or("missing action id")?.to_owned());
+        }
         next.router.consume(events.len())?;
         next.private_events
             .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
