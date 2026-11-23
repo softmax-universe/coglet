@@ -54,30 +54,50 @@ impl GitStore {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        child.stdin.take().unwrap().write_all(input)?;
+        let written = child.stdin.take().unwrap().write_all(input);
         let out = child.wait_with_output()?;
         if !out.status.success() {
             return Err(io::Error::other(
                 String::from_utf8_lossy(&out.stderr).into_owned(),
             ));
         }
+        written?;
         Ok(String::from_utf8_lossy(&out.stdout).trim().to_owned())
     }
+    fn ensure_repository_root(&self) -> io::Result<()> {
+        let root = self.repo.canonicalize()?;
+        let git_dir =
+            PathBuf::from(self.run(&["rev-parse", "--absolute-git-dir"], &[])?).canonicalize()?;
+        if git_dir == root {
+            return Ok(());
+        }
+        let top =
+            PathBuf::from(self.run(&["rev-parse", "--show-toplevel"], &[])?).canonicalize()?;
+        if top != root {
+            return Err(io::Error::other("GitStore path is not the repository root"));
+        }
+        Ok(())
+    }
     pub fn logs_head(&self) -> io::Result<Option<String>> {
+        self.ensure_repository_root()?;
         // show-ref --verify returns 1 only for absent ref, but use for-each-ref
         // to retain genuine repository/permission errors.
         let s = self.run(
             &[
                 "for-each-ref",
-                "--format=%(objectname) %(symref)",
+                "--format=%(refname) %(objectname) %(symref)",
                 "refs/heads/logs",
             ],
             &[],
         )?;
-        if s.is_empty() {
+        let exact = s
+            .lines()
+            .find_map(|line| line.strip_prefix("refs/heads/logs "))
+            .map(str::trim);
+        if exact.is_none() {
             Ok(None)
-        } else if valid_oid(&s) {
-            Ok(Some(s))
+        } else if exact.is_some_and(valid_oid) {
+            Ok(exact.map(str::to_owned))
         } else {
             Err(io::Error::other("invalid logs ref"))
         }
@@ -103,6 +123,16 @@ impl GitStore {
             .files()
             .filter_map(|(p, b)| p.strip_prefix("/logs/").map(|p| (p, b)))
             .collect();
+        // Keep the ABI namespace unchanged. Never silently drop a valid guest
+        // file or publish a tree which Git cannot safely transfer/check out.
+        if files
+            .iter()
+            .any(|(p, _)| p.split('/').any(|part| part.eq_ignore_ascii_case(".git")))
+        {
+            return Err(io::Error::other(
+                "log path cannot be safely projected into Git",
+            ));
+        }
         let tree = self.tree(&files, &mut hook)?;
         let mut args = vec!["commit-tree", &tree];
         if let Some(parent) = expected {

@@ -19,6 +19,9 @@ Clean implementation of `spec/abi.md` filesystem primitives. No legacy code.
 - `/code` is read-only; `/logs` allows create and append only, except
   `/logs/events.jsonl`, which is guest read-only. `/data` is private read/write,
   except guest-read-only `/data/inbox.jsonl` and `/data/runtime/heard.cbor`.
+  Ancestor/descendant file aliases of reserved paths are also forbidden, so a
+  guest cannot block a later host write by creating an implicit directory as a
+  file. Other files under `/data/runtime/` remain writable.
 - Trusted boundary methods are distinct: `debug_write`, `host_append_inbox`,
   `host_replace_heard`, `host_append_log`. The runtime must authenticate/serialize
   boundaries, validate **typed schemas and semantic transitions** (including
@@ -63,6 +66,11 @@ and a deterministic commit, then atomically CAS-updates `refs/heads/logs`. It
 never touches the index or worktree. Private `/data` and `/code` are filtered
 **before writing any objects**, even unreachable ones. No network operation is
 performed. Logs should be batch-checkpointed by runtime policy, not per step.
+The configured path must be the repository root, never an uninitialized nested
+directory (parent-repository discovery is refused). ABI-valid log names with a
+case-insensitive `.git` component remain valid in-memory/local state, but Git
+projection fails before writing any objects rather than publishing an unsafe
+tree or silently dropping files. A failed Git export never loses local state.
 
 Disk and Git checkpoints are separate operations, not one cross-store atomic
 transaction; local durability is authoritative. Git-ref publication failure is
@@ -75,7 +83,7 @@ cargo test -p coglet-fs --locked -- --nocapture
 cargo clippy -p coglet-fs --all-targets --locked -- -D warnings
 ```
 
-The suite has 24 passing tests plus one ignored subprocess entry point (executed
+The suite has 28 passing tests plus one ignored subprocess entry point (executed
 by the crash tests). Named acceptance tests include:
 
 - `stable_hash_across_independent_processes_and_insertion_order`;
@@ -97,6 +105,11 @@ by the crash tests). Named acceptance tests include:
   `runtime_heard_boundary_is_readable_hashed_and_survives_guest_abort`.
 - CAS contention, corruption/missing blobs, I/O errors, private Git object
   exclusion and symbolic-ref isolation have additional tests.
+- `review_regressions` covers reserved-path alias denial, unallocatable truncate
+  returning `ResourceExhausted` without mutation, parent-repository isolation and
+  Git-incompatible name projection refusal. Runtime host-byte admission must
+  still bound ordinary allocations before guest mutations; this crate is not a
+  substitute for the runtime's per-step resource accounting.
 
 Process-crash injection verifies publication boundaries with the OS cache still
 present; it is **not** a claim of physical power-loss or hardware qualification.

@@ -79,11 +79,25 @@ fn guest_writable(path: &str, append: bool) -> Result<()> {
     validate_path(path)?;
     if path.starts_with("/code/")
         || matches!(path, INBOX | HEARD | EVENTS)
+        || reserved_alias(path)
         || (path.starts_with("/logs/") && !append)
     {
         return Err(Error::PermissionDenied);
     }
     Ok(())
+}
+
+// Protect implicit reserved directories even before the first host write.
+fn reserved_alias(path: &str) -> bool {
+    [INBOX, HEARD, EVENTS].iter().any(|reserved| {
+        path != *reserved
+            && (path
+                .strip_prefix(reserved)
+                .is_some_and(|s| s.starts_with('/'))
+                || reserved
+                    .strip_prefix(path)
+                    .is_some_and(|s| s.starts_with('/')))
+    })
 }
 
 #[derive(Clone, Debug)]
@@ -160,12 +174,20 @@ impl Snapshot {
     }
     fn put(&mut self, path: &str, bytes: &[u8]) -> Result<()> {
         validate_path(path)?;
+        if reserved_alias(path) {
+            return Err(Error::PermissionDenied);
+        }
         // Only regular files and implicit directories; no file/dir aliasing.
-        if self.files.keys().any(|p| {
-            p != path
-                && (p.strip_prefix(path).is_some_and(|s| s.starts_with('/'))
-                    || path.strip_prefix(p).is_some_and(|s| s.starts_with('/')))
-        }) {
+        let prefix = format!("{path}/");
+        let descendant = self
+            .files
+            .range(prefix.clone()..)
+            .next()
+            .is_some_and(|(p, _)| p.starts_with(&prefix));
+        let ancestor = path
+            .match_indices('/')
+            .any(|(i, _)| self.files.contains_key(&path[..i]));
+        if ancestor || descendant {
             return Err(Error::Conflict);
         }
         Arc::make_mut(&mut self.files).insert(path.to_owned(), Blob::new(bytes));
@@ -243,6 +265,9 @@ impl Transaction {
     pub fn truncate(&mut self, path: &str, len: usize) -> Result<()> {
         guest_writable(path, false)?;
         let mut bytes = self.view.read(path)?.to_vec();
+        bytes
+            .try_reserve(len.saturating_sub(bytes.len()))
+            .map_err(|_| Error::ResourceExhausted)?;
         bytes.resize(len, 0);
         self.view.put(path, &bytes)
     }
