@@ -9,7 +9,7 @@ import struct
 import sys
 import time
 
-from .surface import MAX_FRAME, ProtocolError, private_frame, WIRE
+from .surface import MAX_FRAME, ProtocolError, private_frame, authority_frame, WIRE
 from .codec import decode
 
 
@@ -62,19 +62,27 @@ class Output:
     def append(self, raw, generation):
         if len(self.frames) >= 128:
             raise ProtocolError('resource_exhausted: transport queue overflow')
-        item = (frame(raw), generation, private_frame(raw))
-        if decode(WIRE, raw)['type'] == 'kill':
+        item = (frame(raw), generation, private_frame(raw), authority_frame(raw))
+        message = decode(WIRE, raw)
+        if message['type'] == 'kill':
             # Never interrupt a partially transmitted frame. Kill/health are
             # notifications; native stop has already happened independently.
             index = 1 if self.offset else 0
             self.frames.insert(index, item)
+        elif message['type'] == 'health' and message['body']['state'] == 'stopped':
+            index = 1 if self.offset else 0
+            if len(self.frames) > index and decode(WIRE, self.frames[index][0][4:])['type'] == 'kill':
+                index += 1
+            self.frames.insert(index, item)
         else:
             self.frames.append(item)
 
-    def revoke(self, generation):
-        if self.frames and self.offset and self.frames[0][2] and self.frames[0][1] != generation:
+    def revoke(self, generation, *, killed=False):
+        def revoked(item):
+            return (item[2] and item[1] != generation) or (killed and item[3])
+        if self.frames and self.offset and revoked(self.frames[0]):
             raise ProtocolError('revoked partial private frame')
-        self.frames = deque(item for item in self.frames if not item[2] or item[1] == generation)
+        self.frames = deque(item for item in self.frames if not revoked(item))
 
     def peek(self):
         return memoryview(self.frames[0][0])[self.offset:]
@@ -159,7 +167,7 @@ def serve(surface, read_fd, write_fd, *, hello_id=None, configured=None, poll=No
             if poll:
                 poll()
             surface.tick()
-            pending.revoke(surface.revocation)
+            pending.revoke(surface.revocation, killed=bool(surface._get('killed')))
             for raw in surface.drain():
                 pending.append(raw, surface.revocation)
             if pending:

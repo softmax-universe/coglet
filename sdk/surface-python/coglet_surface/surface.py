@@ -78,6 +78,7 @@ class Operation:
 class Surface:
     def __init__(self, identity, coglets, ledger, *, create=False, clock=None, stop,
                  extensions=None, schemas=None):
+        stop()  # Uncertain native work must stop even if ledger/config opening fails.
         self.catalog = dict(CATALOG)
         for name, binding in (extensions or {}).items():
             if name in CATALOG or name.startswith(('runtime.', 'llm.', 'action.')):
@@ -113,7 +114,6 @@ class Surface:
 
     def _recover(self):
         # Uncertain work must be physically stopped before recovery receipts exist.
-        self.stop()
         for coglet, aid, envelope in self.db.execute(
                 'SELECT coglet,id,envelope FROM actions WHERE outcome IS NULL').fetchall():
             receipt = self.db.execute('SELECT receipt FROM actions WHERE coglet=? AND id=?',
@@ -275,7 +275,7 @@ class Surface:
         else:
             raise ProtocolError('invalid direction or lifecycle')
 
-    def _admit(self, request, epoch, direction):
+    def _admit(self, request, epoch, direction, *, prepare=True):
         if request['coglet'] not in self.coglets:
             raise Rejection('permission_denied')
         if self._get('killed'):
@@ -299,7 +299,10 @@ class Surface:
             validate(op.input, request['args'], self.schemas)
         except ValueError as exc:
             raise Rejection('invalid_argument') from exc
-        op.prepare(request['args'], RequestContext.from_request(request, epoch))
+        if prepare:
+            op.prepare(request['args'], RequestContext.from_request(request, epoch))
+            # Preparation may have consumed the last part of the lease/deadline.
+            return self._admit(request, epoch, direction, prepare=False)
         return op
 
     def _act(self, raw, body):
@@ -330,6 +333,15 @@ class Surface:
                             (*key, raw, encode_profile(receipt)))
         self._emit('accept', receipt)
         if receipt['accepted']:
+            try:
+                # SQLite durability and output serialization also consume time.
+                # A committed admission may expire, but must never start an effect.
+                op = self._admit(action, body['grant_epoch'], 'action', prepare=False)
+            except Rejection as exc:
+                self.stop()
+                status = 'expired' if exc.error['code'] == 'deadline_exceeded' else 'cancelled'
+                self.complete(*key, status=status, error=exc.error)
+                return
             try:
                 result = op.execute(action['args'], RequestContext.from_request(action, body['grant_epoch']))
                 if result is not None:
@@ -476,7 +488,7 @@ class Surface:
         self.grants.clear()
         self._set('epoch', self._get('epoch') + 1)
         self.revocation += 1
-        self.queue = deque(raw for raw in self.queue if not private_frame(raw))
+        self.queue = deque(raw for raw in self.queue if not private_frame(raw) and not authority_frame(raw))
         self._cancel('cancelled', 'cancelled')
         terminal = self.drain()
         self._emit('kill', dict(reason=reason, correlation_id=correlation_id()))
@@ -524,3 +536,7 @@ def private_frame(raw):
     message = decode(WIRE, raw)
     return message['type'] == 'read_reply' or (message['type'] == 'event'
         and message['body']['kind'] != 'action.outcome')
+
+
+def authority_frame(raw):
+    return decode(WIRE, raw)['type'] in ('grants', 'capabilities')
