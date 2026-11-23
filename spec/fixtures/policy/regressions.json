@@ -1,0 +1,36 @@
+[
+  {
+    "name": "identical-gates-semantic",
+    "type": "policy",
+    "value": {
+      "version": "0.1",
+      "status": "DRAFT",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "revision": "11111111111111111111111111111111",
+      "control_role": "application",
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        },
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "max_age_ms": 60000
+        }
+      ],
+      "human_approval": false,
+      "probation": {
+        "window_ms": 60000,
+        "health_interval_ms": 1000,
+        "health_timeout_ms": 5000,
+        "max_consecutive_failures": 3,
+        "max_step_failures": 1,
+        "max_budget_violations": 1
+      }
+    },
+    "valid": false,
+    "semantic": true
+  }
+]

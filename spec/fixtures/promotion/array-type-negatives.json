@@ -1,0 +1,11 @@
+[
+  {
+    "name": "result.state=[1]", "type": "response", "valid": false,
+    "value": {
+      "version": "0.1", "correlation_id": "11111111111111111111111111111111",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "op": "propose", "ok": true,
+      "result": {"proposal_id": "11111111111111111111111111111111", "state": [1]}
+    }
+  }
+]
