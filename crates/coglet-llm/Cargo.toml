@@ -1,0 +1,5 @@
+[package]
+name = "coglet-llm"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
