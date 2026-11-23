@@ -148,10 +148,15 @@ impl Link {
     fn send(&mut self, kind: &str, body: Value) {
         let raw = cbor(&json!({"type":kind,"body":body})).unwrap();
         match self {
-            Self::Ffi(l) => assert_eq!(
-                unsafe { coglet_surface_send(*l, raw.as_ptr(), raw.len()) },
-                0
-            ),
+            Self::Ffi(l) => {
+                let started = std::time::Instant::now();
+                let status = unsafe { coglet_surface_send(*l, raw.as_ptr(), raw.len()) };
+                eprintln!(
+                    "C ABI send {kind}: status={status}, elapsed={:?}",
+                    started.elapsed()
+                );
+                assert_eq!(status, 0, "C ABI send {kind}");
+            }
             Self::Socket(s) => {
                 s.write_all(&(raw.len() as u32).to_be_bytes()).unwrap();
                 s.write_all(&raw).unwrap();
