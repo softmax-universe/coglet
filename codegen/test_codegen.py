@@ -24,7 +24,8 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
             root = Path(temp)
             (root / 'codegen').mkdir()
-            shutil.copy(ROOT / 'codegen/generate.py', root / 'codegen/generate.py')
+            for filename in ('generate.py', 'cddl.py'):
+                shutil.copy(ROOT / 'codegen' / filename, root / 'codegen' / filename)
             (root / 'spec/messages').mkdir(parents=True)
             (root / 'spec/messages/test.cddl').write_text('thing = {name: tstr}')
             cmd = [sys.executable, str(root / 'codegen/generate.py')]

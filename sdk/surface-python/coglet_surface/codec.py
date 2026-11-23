@@ -94,8 +94,11 @@ def decode_profile(raw):
         raise ValueError('invalid CBOR') from exc
 
 
-def validate(rule, value):
-    from .generated import SCHEMA
+def validate(rule, value, schema=None):
+    if schema is None:
+        from .generated import SCHEMA
+    else:
+        SCHEMA = schema
 
     def check(node, val, depth=0):
         if depth > 128:
@@ -113,6 +116,34 @@ def validate(rule, value):
                 except ValueError:
                     pass
             raise ValueError('no union branch matched')
+        if op == 'intersection':
+            for item in node['items']:
+                check(item, val, depth + 1)
+            return
+        if op == 'default':
+            # Metadata only: never insert a missing key or relax validation.
+            return check(node['item'], val, depth + 1)
+        if op == 'tuple':
+            if type(val) is not list:
+                raise ValueError('expected tuple array')
+            positions = {0}
+            for item in node['items']:
+                next_positions = set()
+                for start in positions:
+                    limit = min(item.get('max', len(val)), len(val) - start)
+                    for count in range(limit + 1):
+                        if count >= item['min']:
+                            next_positions.add(start + count)
+                        if count == limit:
+                            break
+                        try:
+                            check(item['type'], val[start + count], depth + 1)
+                        except ValueError:
+                            break
+                positions = next_positions
+            if len(val) not in positions:
+                raise ValueError('tuple mismatch')
+            return
         good = False
         if op == 'literal':
             good = type(val) is type(node['value']) and val == node['value']
@@ -125,20 +156,30 @@ def validate(rule, value):
         elif op == 'size':
             good = type(val) is str and node['min'] <= len(val.encode('utf-8')) <= node['max']
         elif op == 'array':
-            good = type(val) is list and len(val) >= node['min']
+            good = type(val) is list and node['min'] <= len(val) <= node.get('max', len(val))
             if good:
                 for item in val:
                     check(node['item'], item, depth + 1)
         elif op == 'map':
-            good = type(val) is dict and all(type(k) is str for k in val)
+            good = type(val) is dict and all(type(k) is str for k in val) and node.get('min', 0) <= len(val) <= node.get('max', len(val))
             if good:
-                for item in val.values():
+                for key, item in val.items():
+                    if 'key' in node:
+                        check(node['key'], key, depth + 1)
                     check(node['item'], item, depth + 1)
         elif op == 'record':
             good = type(val) is dict
             if good:
                 allowed = {field['name'] for field in node['fields']}
-                good = not val.keys() - allowed
+                extra = val.keys() - allowed
+                rest = node.get('rest')
+                good = not extra
+                if rest is not None:
+                    good = rest['min'] <= len(extra) <= rest.get('max', len(extra))
+                    for key in extra:
+                        if 'key' in rest:
+                            check(rest['key'], key, depth + 1)
+                        check(rest['item'], val[key], depth + 1)
                 for field in node['fields']:
                     if field['name'] in val:
                         check(field['type'], val[field['name']], depth + 1)
@@ -156,7 +197,7 @@ def validate(rule, value):
 def _plain(value):
     if is_dataclass(value):
         # Only absent optional fields are omitted; required null remains present.
-        return {f.name: _plain(getattr(value, f.name)) for f in fields(value)
+        return {f.metadata.get('wire', f.name): _plain(getattr(value, f.name)) for f in fields(value)
                 if getattr(value, f.name) is not None or f.default is not None}
     if isinstance(value, list):
         return [_plain(v) for v in value]
@@ -180,7 +221,8 @@ def decode(rule, raw):
 def _construct(annotation, value):
     if isinstance(annotation, type) and issubclass(annotation, Message):
         hints = get_type_hints(annotation)
-        return annotation(**{k: _construct(hints[k], v) for k, v in value.items()})
+        wire = {f.metadata.get('wire', f.name): f.name for f in fields(annotation)}
+        return annotation(**{wire[k]: _construct(hints[wire[k]], v) for k, v in value.items()})
     if get_origin(annotation) is list:
         return [_construct(get_args(annotation)[0], v) for v in value]
     if get_origin(annotation) is types.UnionType:
