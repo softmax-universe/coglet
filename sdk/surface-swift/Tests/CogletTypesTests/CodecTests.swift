@@ -116,6 +116,8 @@ final class CodecTests: XCTestCase {
         for _ in 0..<64 { value = .array([value]) }
         let raw = try CBORCodec.encodeProfile(value)
         XCTAssertEqual(try CBORCodec.encodeProfile(CBORCodec.decodeProfile(raw)), raw)
+        XCTAssertEqual(try CBORCodec.encode(rule: "profile-value", value: CBORCodec.decode(rule: "profile-value", bytes: raw)), raw)
+        XCTAssertEqual(try ProfileValue.fromCBOR(raw).toCBOR(), raw)
         XCTAssertThrowsError(try CBORCodec.encodeProfile(.array([value])))
         XCTAssertThrowsError(try CBORCodec.decodeProfile([0x81] + raw))
         XCTAssertThrowsError(try CBORCodec.decodeProfile(Array(repeating: 0x81, count: 100_000) + [0xf6]))

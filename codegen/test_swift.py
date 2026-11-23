@@ -15,6 +15,7 @@ class SwiftEmitterTests(unittest.TestCase):
     def test_type_identifier_collisions_fail_closed(self):
         for cddl in ('a-b = tstr\na_b = bool',
                      'CBORValue = tstr',
+                     'swift = tstr', 'any = tstr',
                      'thing = {choice: tstr / bool}\nthing-choice = tstr',
                      'thing = {name: tstr} / {name: bool}\nthing-variant1 = bool'):
             with self.subTest(cddl=cddl), self.assertRaisesRegex(ValueError, 'collision'):

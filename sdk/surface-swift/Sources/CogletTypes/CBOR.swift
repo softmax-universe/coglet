@@ -195,7 +195,10 @@ public enum CBORCodec {
         try validateNode(node, value)
     }
     internal static func validateNode(_ node: SchemaNode, _ value: CBORValue, depth: Swift.Int = 0) throws {
-        guard depth <= 128 else { throw CBORFailure.invalid("schema recursion limit") }
+        // This is an expression-evaluation budget, not wire nesting. A profile
+        // array level traverses a union, a reference and an array expression.
+        // Leave room for all 64 wire levels while bounding cyclic aliases.
+        guard depth <= 512 else { throw CBORFailure.invalid("schema recursion limit") }
         func check(_ child: SchemaNode, _ v: CBORValue) throws {
             try validateNode(child, v, depth: depth + 1)
         }
