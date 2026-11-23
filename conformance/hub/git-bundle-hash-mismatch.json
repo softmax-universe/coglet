@@ -1,0 +1,72 @@
+{
+  "name": "git-bundle-hash-mismatch",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.git-bundle-hash-mismatch",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.git.push",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000018",
+        "timeout_ms": 2000,
+        "params": {
+          "update": {
+            "statement": {
+              "purpose": "hub-ref",
+              "hub": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+              "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+              "generation": 1,
+              "ref": "refs/heads/hub",
+              "old": null,
+              "new": "28ba716def1f95f7561b30d76e9fc17edb36a4c6",
+              "archive_sha256": "527bba17b27c41282427fed04441612ee38df655fb4ce04a4ad5f8a36b7b94fa"
+            },
+            "signer": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+            "signature": "28840597ef1238e0f1761462fc9b930671b332a5f5e5926d0152647a389387c26cd0a621616689911d046aba446e9a106f31b1678b82d023757b5b054c7de90c"
+          },
+          "size": 384,
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      },
+      "stream": 24,
+      "finish": false
+    },
+    {
+      "match": {
+        "type": "credit"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "type": "chunk",
+        "correlation_id": "00000000000000000000000000000018",
+        "offset": 0,
+        "hex": "23207632206769742062756e646c650a3238626137313664656631663935663735363162333064373665396663313765646233366134633620726566732f68656164732f6875620a0a5041434b00000002000000059c0b789c9dcb410ac2301040d17d4e317b4126e924a920e2aaf79826530c3446c2547a7c0be205fcabbf79da4500c7010567226b89280b257231fbe0838c310e170a8c764631bce9a37598caae5b17b82edfb9cbcef5b5cab93cdfbc967c031b4374ce074438e19149add6a22a7f61f333a96501ee5a164e6a3e39d43aa3a204789c3331000285a4cc3c86ab0913ce9e603df1bf5725e1aacb045e1fa6ec2b570d0d0ccc4c4c147213f332d3528b4b1838d3df3b799f4b9fd869372b7cf754fd86bfc1799301551c1afda502789c33343030333151282e492dd02b4f2cce65b8f167d205a5df5f2eb2eb2eac3ef1a0852164abec1d0010b8108838789c63482cce6564606000000786014333789cabaee50200027801031a3dc29a604acf86802396bed0c7d0041266f24e"
+      },
+      "stream": 24,
+      "finish": false
+    },
+    {
+      "send": {
+        "type": "end",
+        "correlation_id": "00000000000000000000000000000018"
+      },
+      "stream": 24,
+      "finish": true
+    },
+    {
+      "match": {
+        "type": "error",
+        "error.code": "invalid_argument"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

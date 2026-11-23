@@ -359,7 +359,7 @@ Run `python3 -m unittest discover -s spec/tests -v` with
 `spec/tests/requirements.txt` installed (Python 3.12 matches CI).
 `test_hub.py` validates every request/result/transfer/signing shape against both
 schemas, exact golden CBOR, framing negatives and test-key signatures.
-[Case data](../conformance/hub/cases.json) defines black-box temporal scenarios;
+[Case data](../conformance/hub/) defines black-box temporal scenarios;
 [the suite contract](../conformance/hub/README.md) specifies observable assertions.
 Case data/schema checks are NOT a claim that a hub/runtime or mock already passes
 wire conformance. The harness owner must execute the same cases against both.

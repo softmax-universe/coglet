@@ -69,7 +69,7 @@ class HubFixtures(unittest.TestCase):
                     read_frame(bytes.fromhex(case['hex']))
 
     def test_case_data_is_wire_shaped(self):
-        cases = json.loads((SPEC.parent / 'conformance/hub/cases.json').read_text())
+        cases = [json.loads(p.read_text()) for p in sorted((SPEC.parent / 'conformance/hub').glob('*.json'))]
         self.assertTrue(cases)
         self.assertEqual(len(cases), len({c['name'] for c in cases}))
         request = dict(self.root, **{'$ref': '#/$defs/hub-frame'})

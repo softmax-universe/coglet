@@ -1,0 +1,39 @@
+{
+  "name": "action-expired",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.action-expired",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.actions",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000015",
+        "timeout_ms": 2000,
+        "params": {
+          "action": {
+            "id": "22222222222222222222222222222222",
+            "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+            "capability": "test.move",
+            "args": {},
+            "deadline": 0,
+            "correlation_id": "22222222222222222222222222222222"
+          }
+        },
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000015",
+        "result.accepted": false,
+        "result.error.code": "deadline_exceeded"
+      },
+      "within_ms": 2000
+    }
+  ]
+}

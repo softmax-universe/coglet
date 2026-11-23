@@ -1,6 +1,6 @@
 # Hub wire conformance cases
 
-`cases.json` uses the shared harness interface: `{name, steps:[...]}` with
+Each `*.json` file is one shared harness case: `{name, steps:[...]}` with
 `send`, `match` (dot-path equality) and `within_ms`. No mock implementation is
 provided or registered by this spec change. `spec/tests/test_hub.py` verifies
 case names, frame shapes and schemas; that is fixture validation, **not** a

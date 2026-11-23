@@ -192,5 +192,6 @@ case('inbox-boundary-queued', exchange(queued, {'result.state': 'queued'}) +
      exchange(request('hub.cancel', {'operation_id': queued['correlation_id']}), {'result.state': 'cancelled'}))
 case('single-step-requires-pause', err(request('debug.step'), 'conflict'))
 case('start-missing-capability', err(request('hub.start'), 'permission_denied'))
-(SPEC.parent / 'conformance/hub/cases.json').write_text(json.dumps(cases, indent=2) + '\n')
+for item in cases:
+    (SPEC.parent / 'conformance/hub' / (item['name'] + '.json')).write_text(json.dumps(item, indent=2) + '\n')
 print(f'Generated {len(vectors)} signing vectors, {len(framing)} framing negatives, {len(cases)} harness cases')

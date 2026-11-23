@@ -1,0 +1,66 @@
+{
+  "name": "pause-single-step",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.pause-single-step",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "debug.pause",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000c",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000c",
+        "result.state": "applied"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "debug.step",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000d",
+        "timeout_ms": 2000,
+        "params": {},
+        "context": {
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000d",
+        "result.step": 1,
+        "result.receipt.state": "applied"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.status",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000e",
+        "timeout_ms": 2000,
+        "params": {}
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000e",
+        "result.state": "paused",
+        "result.step": 1
+      },
+      "within_ms": 2000
+    }
+  ]
+}

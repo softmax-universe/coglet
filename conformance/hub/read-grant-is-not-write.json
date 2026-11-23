@@ -1,0 +1,52 @@
+{
+  "name": "read-grant-is-not-write",
+  "peer_role": "hub",
+  "fixtures": [
+    "hub.read-grant-is-not-write",
+    "hub.reverse-stream"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "debug.write",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000a",
+        "timeout_ms": 2000,
+        "params": {
+          "path": "/data/test.txt",
+          "text": "intervention",
+          "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "actor": "hub:8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394"
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000a",
+        "type": "error",
+        "error.code": "permission_denied"
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "debug.read",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "0000000000000000000000000000000b",
+        "timeout_ms": 2000,
+        "params": {
+          "path": "/data/test.txt",
+          "offset": 0,
+          "limit": 64
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "0000000000000000000000000000000b",
+        "result.text": "original"
+      },
+      "within_ms": 2000
+    }
+  ]
+}
