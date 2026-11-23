@@ -110,6 +110,13 @@ coverage and fail-closed missing witnesses.
 negatives with 20 nesting controls, legitimate array choices and mixed nested
 profile maps, byte/text distinction, malformed-tool errors and bounded-memory
 stress. The common recursive audit runs in the normal spec test suite.
+Additional CDDL imports are explicit (`--include promotion` for tickets); they
+are appended after the owning entry rule and before common, without rewriting
+any document. A parser/tool failure aborts rather than yielding a negative pass.
+The draft promotion snapshot at 9c4ca108 uses direct `.and []`, which the pinned
+Ruby grammar does not parse (its old type2 excludes bare arrays/maps). That
+snapshot audit is a reported tool failure, not zero-mismatch evidence; no draft
+rule is rewritten here. Frozen common/ABI/surface/hub audits do not need it.
 
 ```sh
 python3 spec/tests/cddl_differential.py --family common
