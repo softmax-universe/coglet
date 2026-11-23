@@ -25,10 +25,13 @@ import SoftmaxCore
         let root = URL(fileURLWithPath: directory, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var manifest: [String] = []
+        var geometryLog: [String] = []
+        var predecessor = "none"
+        defer { geometryLog.forEach { print($0) } }
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
-                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V, diagnosticOnly: Bool = false) throws {
+                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
                     let key = "\(theme)-\(name)"
                     let hosting = NSHostingView(rootView: view
                         .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -50,11 +53,13 @@ import SoftmaxCore
                     var previous: Data?
                     var identicalFrames = 0
                     var stable: Data?
-                    // Diagnostic only: retain the original accepted raster, but observe
-                    // search controls through the full deadline to expose late geometry.
+                    // Preserve original close-after-accept cadence. Prolonging every
+                    // fixture changes the lifetime of preceding SwiftUI hosting graphs.
+                    // Only a captured anomaly enables the same-window intervention.
                     let traceGeometry = name.hasPrefix("commands") || name.hasPrefix("settings-")
                     var lastGeometry = ""
                     var finalBytes: Data?
+                    var probeMismatch = false
                     var invalidatedGeometry = false
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
@@ -72,7 +77,7 @@ import SoftmaxCore
                         // Controlled probe, not a repair: keep the earliest accepted image
                         // unchanged and test whether invalidating native intrinsic sizing
                         // repairs the frame/intrinsic mismatch observed in the trace.
-                        if traceGeometry, stable != nil, !invalidatedGeometry {
+                        if probeMismatch, stable != nil, !invalidatedGeometry {
                             func invalidateFields(_ view: NSView) {
                                 if let field = view as? NSTextField {
                                     field.invalidateIntrinsicContentSize()
@@ -83,7 +88,7 @@ import SoftmaxCore
                             hosting.invalidateIntrinsicContentSize()
                             hosting.needsLayout = true
                             invalidatedGeometry = true
-                            print("SNAPSHOT-GEOMETRY \(key) invalidated intrinsic sizing")
+                            geometryLog.append("SNAPSHOT-GEOMETRY \(key) invalidated intrinsic sizing")
                         }
                         hosting.layoutSubtreeIfNeeded()
                         if let editor = window.firstResponder as? NSTextView {
@@ -96,45 +101,46 @@ import SoftmaxCore
                         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
                         guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
                         finalBytes = bytes
-                        if traceGeometry {
+                        identicalFrames = bytes == previous ? identicalFrames + 1 : 1
+                        previous = bytes
+                        let accepting = stable == nil && identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2
+                        if accepting { stable = bytes }
+                        // Intrinsic-size queries themselves can populate caches. Do not
+                        // query or log until the original accepted raster is frozen.
+                        if traceGeometry, stable != nil {
                             func fields(_ view: NSView) -> [String] {
                                 var rows: [String] = []
-                                if let field = view as? NSTextField {
-                                    rows.append("type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil) heightMismatch=\(abs(field.frame.height - field.intrinsicContentSize.height) > 0.5)")
+                                if let field = view as? NSTextField, field.isEditable {
+                                    let mismatch = abs(field.frame.height - field.intrinsicContentSize.height) > 0.5
+                                    if accepting { probeMismatch = probeMismatch || mismatch }
+                                    rows.append("id=\(ObjectIdentifier(field)) type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil) heightMismatch=\(mismatch)")
                                 }
                                 return rows + view.subviews.flatMap { fields($0) }
                             }
                             let geometry = "keyWindow=\(window.isKeyWindow) responder=\(String(describing: window.firstResponder)) fields=\(fields(hosting))"
                             if geometry != lastGeometry {
-                                print("SNAPSHOT-GEOMETRY \(key) elapsed=\(Date().timeIntervalSince(started)) \(geometry)")
+                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) predecessor=\(predecessor) elapsed=\(Date().timeIntervalSince(started)) \(geometry)")
                                 lastGeometry = geometry
                             }
                         }
-                        identicalFrames = bytes == previous ? identicalFrames + 1 : 1
-                        previous = bytes
-                        if stable == nil && identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
-                            stable = bytes
-                            if !traceGeometry { break }
-                            print("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started))")
+                        if accepting {
+                            if traceGeometry { geometryLog.append("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started)) probeMismatch=\(probeMismatch)") }
+                            if !probeMismatch { break }
                         }
                     }
-                    if traceGeometry, let finalBytes {
+                    if probeMismatch, let finalBytes {
                         let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
                         try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
                         try finalBytes.write(to: diagnostics.appendingPathComponent(key + ".png"))
-                        print("SNAPSHOT-GEOMETRY \(key) acceptedEqualsFinal=\(stable == finalBytes)")
+                        geometryLog.append("SNAPSHOT-GEOMETRY \(key) acceptedEqualsFinal=\(stable == finalBytes)")
                     }
                     guard let bytes = stable else {
                         throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
                     }
-                    if diagnosticOnly {
-                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
-                        try bytes.write(to: diagnostics.appendingPathComponent(key + "-accepted.png"))
-                    } else {
-                        try bytes.write(to: root.appendingPathComponent(key + ".png"))
-                        manifest.append(key)
-                    }
+                    try bytes.write(to: root.appendingPathComponent(key + ".png"))
+                    manifest.append(key)
                     window.close()
+                    predecessor = key
                 }
                 let model = ShellModel()
                 let commands = SoftmaxCommand.catalog(settings: { _ in }, face: {}, chat: { _ in }, about: {})
@@ -187,17 +193,7 @@ import SoftmaxCore
                 try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
                 try capture("about-large", NSSize(width: 420, height: 420), AboutView().environment(\.softmaxTextScale, 1.6))
                 try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
-                // Diagnostic stress, outside the strict 360-image manifest. Alternate
-                // text scales to test whether the wrong height belongs to a preceding
-                // capture. The intrinsic-invalidation probe still preserves both rasters.
-                // No baseline, production layout or acceptance tolerance changes.
-                for iteration in 0..<12 {
-                    for scale in [1.0, 1.6] {
-                        let suffix = "probe-\(iteration)-scale-\(scale)"
-                        try capture("commands-\(suffix)", NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: "no-such-command").environment(\.softmaxTextScale, scale), diagnosticOnly: true)
-                        try capture("settings-\(suffix)", NSSize(width: 760, height: 540), SettingsView(model: model).environment(\.softmaxTextScale, scale), diagnosticOnly: true)
-                    }
-                }
+
             }
         }
         try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))
