@@ -23,6 +23,31 @@ fn input() -> StepInput {
     }
 }
 struct Empty;
+#[test]
+fn failed_growth_does_not_charge_a_later_valid_growth() {
+    for (extra, body) in [
+        (
+            "(memory (export \"memory\") 1 2)",
+            "i32.const 15 memory.grow i32.const -1 i32.ne if unreachable end i32.const 1 memory.grow i32.const 1 i32.ne",
+        ),
+        (
+            "(memory (export \"memory\") 1 2) (table 1 2 funcref)",
+            "ref.null func i32.const 61439 table.grow i32.const -1 i32.ne if unreachable end ref.null func i32.const 1 table.grow i32.const 1 i32.ne",
+        ),
+    ] {
+        let b=wat::parse_str(format!(r#"(module {extra} (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) {body}))"#)).unwrap();
+        let l = limits();
+        let m = Wasmtime.load(&b, &l).unwrap();
+        assert_eq!(
+            Wasmtime
+                .instantiate(&m, l)
+                .unwrap()
+                .handle(input(), &mut Empty)
+                .result,
+            Ok(())
+        );
+    }
+}
 impl Host for Empty {
     fn call(
         &mut self,

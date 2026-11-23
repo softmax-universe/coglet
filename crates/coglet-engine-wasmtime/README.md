@@ -25,7 +25,10 @@ restriction does not require Wasmtime to interpret. No spec change is made here.
   conservative accounted bytes per table element). `stack_bytes` sets Wasmtime's
   maximum guest stack. Module input is bounded by the shared admission rule.
   **These do not cap process RSS, compilation allocations, executable code or
-  Wasmtime's virtual-address reservations**. Unlike WAMR's allocator-pool field,
+  Wasmtime's virtual-address reservations**. Failed growth above a declared
+  maximum returns -1 without charging; permitted allocations which subsequently
+  fail roll back their provisional charge and abort with MemoryExhausted (never
+  reuse an ambiguous failed-allocation store). Unlike WAMR's allocator-pool field,
   `runtime_bytes` is an accounted store-resource bound, not an allocator arena.
 - Only copying `GuestMemory` access reaches the supplied pinned-state host. Byte
   accounting is cumulative, errors cannot be swallowed by a callback, proc_exit

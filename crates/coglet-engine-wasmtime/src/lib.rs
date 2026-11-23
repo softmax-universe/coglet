@@ -11,6 +11,32 @@ use std::{
 use wasmtime::{Caller, Config, Extern, Linker, Memory, ResourceLimiter, Store, Val};
 pub const COMPUTE_MODE: &str = "wasmtime-51.0.0-cranelift-fuel-v1";
 pub const BUILD: &str = "wasmtime-51.0.0-cranelift-fuel-v1";
+#[cfg(test)]
+mod growth_tests {
+    use super::*;
+    #[test]
+    fn permitted_allocation_failure_rolls_back_and_aborts() {
+        let mut b = Bound {
+            pages: 32,
+            bytes: 1024 * 1024,
+            used: 65536,
+            memory_charge: 0,
+            table_charge: 0,
+        };
+        assert!(b.memory_growing(65536, 131072, Some(131072)).unwrap());
+        let e = b
+            .memory_grow_failed(Error::MemoryExhausted.into())
+            .unwrap_err();
+        assert_eq!(map_error(e), Error::MemoryExhausted);
+        assert_eq!(b.used, 65536);
+        assert!(b.table_growing(0, 100, Some(100)).unwrap());
+        let e = b
+            .table_grow_failed(Error::MemoryExhausted.into())
+            .unwrap_err();
+        assert_eq!(map_error(e), Error::MemoryExhausted);
+        assert_eq!(b.used, 65536);
+    }
+}
 #[derive(Default, Clone, Copy)]
 pub struct Wasmtime;
 #[derive(Clone)]
@@ -93,38 +119,61 @@ struct Bound {
     pages: usize,
     bytes: usize,
     used: usize,
+    memory_charge: usize,
+    table_charge: usize,
 }
 impl ResourceLimiter for Bound {
     fn memory_growing(
         &mut self,
         current: usize,
         desired: usize,
-        _: Option<usize>,
+        maximum: Option<usize>,
     ) -> wasmtime::Result<bool> {
-        if desired > self.pages * 65536 {
+        self.memory_charge = 0;
+        if desired > self.pages * 65536 || maximum.is_some_and(|m| desired > m) {
             return Ok(false);
         }
-        let next = self.used.saturating_add(desired - current);
+        let delta = desired - current;
+        let next = self.used.saturating_add(delta);
         if next > self.bytes {
             return Ok(false);
         }
         self.used = next;
+        self.memory_charge = delta;
         Ok(true)
     }
     fn table_growing(
         &mut self,
         current: usize,
         desired: usize,
-        _: Option<usize>,
+        maximum: Option<usize>,
     ) -> wasmtime::Result<bool> {
-        let next = self
-            .used
-            .saturating_add((desired - current).saturating_mul(16));
+        self.table_charge = 0;
+        if maximum.is_some_and(|m| desired > m) {
+            return Ok(false);
+        }
+        let delta = (desired - current).saturating_mul(16);
+        let next = self.used.saturating_add(delta);
         if next > self.bytes {
             return Ok(false);
         }
         self.used = next;
+        self.table_charge = delta;
         Ok(true)
+    }
+    fn memory_grow_failed(&mut self, _: wasmtime::Error) -> wasmtime::Result<()> {
+        self.used = self
+            .used
+            .saturating_sub(std::mem::take(&mut self.memory_charge));
+        // Wasmtime can report invalid-size failure without a preceding callback.
+        // Abort the store; never continue with an ambiguous provisional charge.
+        Err(Error::MemoryExhausted.into())
+    }
+    fn table_grow_failed(&mut self, _: wasmtime::Error) -> wasmtime::Result<()> {
+        self.used = self
+            .used
+            .saturating_sub(std::mem::take(&mut self.table_charge));
+        Err(Error::MemoryExhausted.into())
     }
     fn instances(&self) -> usize {
         1
@@ -334,6 +383,8 @@ impl Instance for WasmtimeInstance {
                         pages: l.memory_pages as usize,
                         bytes: l.runtime_bytes as usize,
                         used: 0,
+                        memory_charge: 0,
+                        table_charge: 0,
                     },
                 },
             );
