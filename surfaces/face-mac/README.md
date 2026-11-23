@@ -1,0 +1,73 @@
+# FaceAudioKit
+
+A reusable macOS 14+ duplex audio library, independent of the surface protocol.
+`FaceMac` remains available; clients import `FaceAudioKit` for audio.
+
+```swift
+import FaceAudioKit
+
+// Run on MainActor. The containing app supplies NSMicrophoneUsageDescription
+// and the audio-input entitlement if sandboxed.
+let audio = FaceAudioKit()
+guard await MicrophonePermission.request() else { return }
+try audio.startCapture()
+try audio.enqueuePlayback(pcm16) // [Int16], mono 24 kHz
+let captured = audio.readCapture()
+let playedMilliseconds = audio.playbackPosition * 1000
+audio.flushPlayback() // surface-layer barge-in
+audio.stopCapture()
+```
+
+## Contract
+
+- All public lifecycle/enqueue/read calls are main-actor serialized. One
+  AVAudioEngine runs both directions; PCM16 queues hold 4 s capture and 30 s
+  playback. Enqueue is all-or-nothing and throws on overflow. Capture drops an
+  overflowing block and latches `captureFailed`; restart to clear it.
+- UID selection (`AudioDevices.list`, `selectDevices`) is freshly implemented
+  CoreAudio code. Set `AudioConfiguration.echoCancellation` to enable/disable AEC.
+  Selection precedes VoiceProcessingIO activation. Enabled AEC must be reported
+  active on both nodes with identical I/O client formats or start throws.
+- Capture is converted from the processed device format to mono PCM16/24 kHz
+  by a stateful AVAudioConverter, with preallocated output and bounded input.
+  Callbacks never block on control-thread locks. Converter internals are Apple's;
+  this is not a claim that AVAudioConverter itself is allocation-free.
+- Flush advances discard and playback-generation cursors. A render overlapping
+  a flush is muted if the generation changes before its final check. Already
+  submitted hardware/engine buffers cannot be retracted: "instant" means the
+  next render boundary, not zero acoustic latency.
+- Configuration-change recovery stops the old graph and creates fresh queues,
+  converter and engine. Generation-stamped notifications from old graphs are
+  ignored. Queued playback/capture is deliberately dropped on rebuild; recovery
+  failures leave `isRunning == false` and `lastError` set. No infinite retry loop.
+- `playbackPosition` is cumulative rendered non-silence-queue frames / 24000,
+  excluding underruns and flushed queue contents. It is not latency-compensated
+  acoustic playback position. Input/output meters are latest-block normalized
+  peaks, not accumulating maxima. Frames rendered with gain zero still count.
+- `EnergyVAD` is a simple RMS energy gate with frame-based hangover, **not** a
+  speech classifier. `readCapture` drives it and calls `onVoiceActivity` on the
+  main actor; poll frequently to prevent overflow and timely ducking. Set
+  `duckingEnabled` for gain reduction while active, or use the hook externally.
+  No arbitrary user closure runs on the realtime thread.
+
+## Tests and remaining proof
+
+`swift test --package-path surfaces/face-mac` runs on GitHub macOS runners:
+ring wrap/overflow/discard, concurrent SPSC sample ordering, playback flush /
+generation / position / gain, 48 kHz stereo conversion, energy hangover, and
+fake-engine configuration rebuild/stale-notification/failure/permission paths.
+The production render/tap callbacks are constructed on MainActor and invoked
+from a detached task with synthetic buffers, verifying actor-independent execution,
+playback/underrun output, capture conversion and meters without hardware.
+
+No hardware device is opened by these tests. Real MacBook Pro acoustic AEC
+attenuation, route switching, capture/output latency, barge-in audible tail,
+and hot-unplug recovery remain **untested** and belong to the later Face acoustic
+proof card. Unit CI is not acoustic proof.
+
+## Provenance
+
+The queue/discard/generation and duplex graph design follows the MIT original
+`softmax-universe/polyworld`, `experiments/voice/duplex.m` at
+`1d1e7629eab74e0e88c2f83bbba34e3d9984e887`. See [MIT notice](NOTICE).
+No Companion GPL `devices.m` or `permissions.m` code was used.

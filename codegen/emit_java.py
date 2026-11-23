@@ -149,8 +149,8 @@ def generate(rules):
             if rest: args.append('Map<String, ' + typ(rest['item']) + '> rest$')
             out += [f'public record {cls}('+', '.join(args)+f') implements {base if len(vs)>1 else "Message"} {{', f'public String rule() {{ return {json.dumps(name)}; }}', 'public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();']
             for f,i in zip(fs,ids):
-                val=f'{i}.value()' if f['optional'] else i
-                prefix=f'if ({i} != null) ' if f['optional'] else ''
+                val=f'this.{i}.value()' if f['optional'] else f'this.{i}'
+                prefix=f'if (this.{i} != null) ' if f['optional'] else ''
                 out += [prefix+f'm.put({json.dumps(f["name"])}, {val});']
             if rest: out += ['if (rest$ != null) for (var e : rest$.entrySet()) { if (m.containsKey(e.getKey())) throw new IllegalArgumentException("rest key collides with field"); m.put(e.getKey(), e.getValue()); }']
             out += ['return m; }', f'public static {cls} fromCbor(byte[] raw) {{ return Codec.decodeRecord({json.dumps(name)}, raw, {cls}.class); }}', '}']

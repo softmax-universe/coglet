@@ -9,38 +9,38 @@ public record Presence<T>(T value) {}
 public record VersionOffer(List<String> versions) implements Message {
 public String rule() { return "version-offer"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("versions", versions);
+m.put("versions", this.versions);
 return m; }
 public static VersionOffer fromCbor(byte[] raw) { return Codec.decodeRecord("version-offer", raw, VersionOffer.class); }
 }
 public record VersionSelection(String version) implements Message {
 public String rule() { return "version-selection"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("version", version);
+m.put("version", this.version);
 return m; }
 public static VersionSelection fromCbor(byte[] raw) { return Codec.decodeRecord("version-selection", raw, VersionSelection.class); }
 }
 public record Event(String source, String kind, BigInteger seq, BigInteger logical_time, Map<String, Object> payload, String correlation_id) implements Message {
 public String rule() { return "event"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("source", source);
-m.put("kind", kind);
-m.put("seq", seq);
-m.put("logical_time", logical_time);
-m.put("payload", payload);
-m.put("correlation_id", correlation_id);
+m.put("source", this.source);
+m.put("kind", this.kind);
+m.put("seq", this.seq);
+m.put("logical_time", this.logical_time);
+m.put("payload", this.payload);
+m.put("correlation_id", this.correlation_id);
 return m; }
 public static Event fromCbor(byte[] raw) { return Codec.decodeRecord("event", raw, Event.class); }
 }
 public record Action(String id, String coglet, String capability, Map<String, Object> args, BigInteger deadline, String correlation_id) implements Message {
 public String rule() { return "action"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("id", id);
-m.put("coglet", coglet);
-m.put("capability", capability);
-m.put("args", args);
-m.put("deadline", deadline);
-m.put("correlation_id", correlation_id);
+m.put("id", this.id);
+m.put("coglet", this.coglet);
+m.put("capability", this.capability);
+m.put("args", this.args);
+m.put("deadline", this.deadline);
+m.put("correlation_id", this.correlation_id);
 return m; }
 public static Action fromCbor(byte[] raw) { return Codec.decodeRecord("action", raw, Action.class); }
 }
@@ -50,19 +50,19 @@ static ActionAccept fromCbor(byte[] raw) { return (ActionAccept) Codec.decodeTyp
 public record ActionAccept1(String id, String correlation_id, Boolean accepted) implements ActionAccept {
 public String rule() { return "action-accept"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("id", id);
-m.put("correlation_id", correlation_id);
-m.put("accepted", accepted);
+m.put("id", this.id);
+m.put("correlation_id", this.correlation_id);
+m.put("accepted", this.accepted);
 return m; }
 public static ActionAccept1 fromCbor(byte[] raw) { return Codec.decodeRecord("action-accept", raw, ActionAccept1.class); }
 }
 public record ActionAccept2(String id, String correlation_id, Boolean accepted, Error error) implements ActionAccept {
 public String rule() { return "action-accept"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("id", id);
-m.put("correlation_id", correlation_id);
-m.put("accepted", accepted);
-m.put("error", error);
+m.put("id", this.id);
+m.put("correlation_id", this.correlation_id);
+m.put("accepted", this.accepted);
+m.put("error", this.error);
 return m; }
 public static ActionAccept2 fromCbor(byte[] raw) { return Codec.decodeRecord("action-accept", raw, ActionAccept2.class); }
 }
@@ -72,30 +72,30 @@ static ActionOutcome fromCbor(byte[] raw) { return (ActionOutcome) Codec.decodeT
 public record ActionOutcome1(String id, String correlation_id, String status, Map<String, Object> result) implements ActionOutcome {
 public String rule() { return "action-outcome"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("id", id);
-m.put("correlation_id", correlation_id);
-m.put("status", status);
-m.put("result", result);
+m.put("id", this.id);
+m.put("correlation_id", this.correlation_id);
+m.put("status", this.status);
+m.put("result", this.result);
 return m; }
 public static ActionOutcome1 fromCbor(byte[] raw) { return Codec.decodeRecord("action-outcome", raw, ActionOutcome1.class); }
 }
 public record ActionOutcome2(String id, String correlation_id, String status, Error error) implements ActionOutcome {
 public String rule() { return "action-outcome"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("id", id);
-m.put("correlation_id", correlation_id);
-m.put("status", status);
-m.put("error", error);
+m.put("id", this.id);
+m.put("correlation_id", this.correlation_id);
+m.put("status", this.status);
+m.put("error", this.error);
 return m; }
 public static ActionOutcome2 fromCbor(byte[] raw) { return Codec.decodeRecord("action-outcome", raw, ActionOutcome2.class); }
 }
 public record Error(String code, String message, Boolean retryable, Presence<Map<String, Object>> details) implements Message {
 public String rule() { return "error"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("code", code);
-m.put("message", message);
-m.put("retryable", retryable);
-if (details != null) m.put("details", details.value());
+m.put("code", this.code);
+m.put("message", this.message);
+m.put("retryable", this.retryable);
+if (this.details != null) m.put("details", this.details.value());
 return m; }
 public static Error fromCbor(byte[] raw) { return Codec.decodeRecord("error", raw, Error.class); }
 }

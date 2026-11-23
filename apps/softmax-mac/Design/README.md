@@ -32,6 +32,10 @@ The generator rebuilds all exports from its vector definitions and the JSON toke
 
 Screenshot parameters: `?view=menu&state=listening&theme=dark&dir=companion&still=1`. `view` and `state` correspond to the visible selectors. Settings adds `scenario=denied` or another available scenario. `still=1` freezes menu frame playback. The capture harness asserts every modeled state in both themes was visited; it checks narrow overview layouts and real typing/shortcuts, not merely synthetic events.
 
+The Settings Hub scenarios have mutually exclusive connection copy and actions. Connect opens a simulated identity-confirmation state with Cancel; confirmation returns to the connected sample, and Disconnect requires a separate confirmation. Coglets loading/error/empty replace the sample lifecycle rows rather than presenting unknown lifecycle as current. Retry enters loading; **Complete sample load** deterministically returns to the labeled sample rows (not a real runtime result).
+
+The verifier asserts these semantic invariants for all four Hub and four Coglets scenarios in both themes, exercises the complete control round trips, and saves scenario-specific screenshots. The strengthened verifier rejects the pre-fix prototype. It still covers 94 surface/theme cases and 50 Settings scenarios; scenario selection/overflow alone is not sufficient evidence of state fidelity.
+
 ## Native integration boundary
 
 SVGs are editable sources, not a promise that `NSImage` can directly decode SVG. Compile template vectors to PDF or raster resources, set `isTemplate=true`, and test in native light/dark menu bars. The HTML proofs show the exact alpha masks on two backgrounds but are **not AppKit screenshots**. `AppIcon.appiconset` validates structurally on Linux; Xcode `actool`, Swift compilation, Finder DMG placement, VoiceOver, TCC and real capture/playback require macOS CI/device testing. No signing/notarization/update-binary claim is made by this design package.

@@ -90,15 +90,7 @@ public class Main {
 
 class JavaEmitterTests(unittest.TestCase):
     def generate_v2(self, emit, rules):
-        """Emit v2 rules. The shared target_ir guard is owned elsewhere; stand in for it only
-        while it still rejects additive v2 IR, so this suite does not depend on its rollout."""
-        try:
-            return emit.generate(rules)
-        except ValueError as e:
-            if 'unsupported native target IR' not in str(e): raise
-            real, emit.require_v1 = emit.require_v1, lambda r: None
-            try: return emit.generate(rules)
-            finally: emit.require_v1 = real
+        return emit.generate(rules)
 
     def emitter(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -154,6 +146,7 @@ public class Codec {
 }''')
             subprocess.run(['javac','--release','21','-d',tmp,str(path/'Generated.java'),str(path/'Codec.java')],check=True,capture_output=True,text=True)
 
+
     def test_v2_types_aliases_and_rest(self):
         emit = self.emitter()
         out = self.generate_v2(emit, v2_rules())
@@ -202,6 +195,61 @@ public class Codec {
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn('native v2 ok', r.stdout)
 
+
+
+    @unittest.skipUnless(__import__('shutil').which('mvn'), 'Maven not installed')
+    def test_component_m_roundtrips_with_real_codec(self):
+        import shutil
+        import subprocess
+        import tempfile
+        from generate import parse
+        root = Path(__file__).resolve().parents[1]
+        # Separate projects let required-m runtime failures surface even when
+        # optional-m generation fails javac before any tests can execute.
+        for optional in (False, True):
+            with self.subTest(optional=optional), tempfile.TemporaryDirectory(dir=root) as tmp:
+                project = Path(tmp)
+                shutil.copy(root/'sdk/surface-java/pom.xml', project/'pom.xml')
+                package = project/'src/main/java/org/coglet/surface'
+                package.mkdir(parents=True)
+                shutil.copy(root/'sdk/surface-java/src/main/java/org/coglet/surface/Codec.java', package/'Codec.java')
+                rules = parse('sample = {' + ('? ' if optional else '') + 'm: tstr}')
+                for name, content in self.emitter().generate(rules).items():
+                    target = project/Path(name).relative_to('sdk/surface-java')
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content)
+                test = project/'src/test/java/org/coglet/surface/CaptureTest.java'
+                test.parent.mkdir(parents=True)
+                constructor = 'new Generated.Presence<>("ok")' if optional else '"ok"'
+                absent = '''
+        var absent = new Generated.Sample(null);
+        assertEquals(Map.of(), absent.toValue());
+        byte[] empty = HexFormat.of().parseHex("a0");
+        assertArrayEquals(empty, absent.toCbor());
+        var decoded = Generated.Sample.fromCbor(empty);
+        assertNull(decoded.m());
+        assertArrayEquals(empty, decoded.toCbor());
+''' if optional else ''
+                test.write_text('''package org.coglet.surface;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+class CaptureTest {
+    @Test void preservesComponentAndWireBytes() {
+        var sample = new Generated.Sample(''' + constructor + ''');
+        assertEquals(Map.of("m", "ok"), sample.toValue());
+        byte[] expected = HexFormat.of().parseHex("a1616d626f6b");
+        assertArrayEquals(expected, sample.toCbor());
+        var decodedPresent = Generated.Sample.fromCbor(expected);
+        assertEquals(sample, decodedPresent);
+        assertArrayEquals(expected, decodedPresent.toCbor());
+''' + absent + '''
+    }
+}
+''')
+                result = subprocess.run(['mvn', '--batch-mode', '--no-transfer-progress', 'test'],
+                                        cwd=project, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == '__main__': unittest.main()
