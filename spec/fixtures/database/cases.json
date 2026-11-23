@@ -1,0 +1,1434 @@
+[
+  {
+    "name": "bounded-result",
+    "type": "db-page",
+    "valid": true,
+    "value": {
+      "status": "page",
+      "columns": [
+        "id",
+        "type"
+      ],
+      "rows": [
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "b",
+          "goal"
+        ]
+      ],
+      "affected": 0,
+      "revision": 7,
+      "next_cursor": "opaque-owner-revision7-key-b"
+    },
+    "cbor_hex": "a664726f77738282616164676f616c82616264676f616c66737461747573647061676567636f6c756d6e7382626964647479706568616666656374656400687265766973696f6e076b6e6578745f637572736f72781c6f70617175652d6f776e65722d7265766973696f6e372d6b65792d62"
+  },
+  {
+    "name": "paging-cursor",
+    "type": "db-statement",
+    "valid": true,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024,
+      "cursor": "opaque-owner-revision7-key-b"
+    },
+    "cbor_hex": "a7646d6f6465647265616466637572736f72781c6f70617175652d6f776e65722d7265766973696f6e372d6b65792d6266706172616d738164676f616c686d61785f726f777302696d61785f6279746573190400696f7065726174696f6e6973746174656d656e746973746174656d656e746c6f626a656374735f70616765"
+  },
+  {
+    "name": "query",
+    "type": "db-statement",
+    "valid": true,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024
+    },
+    "cbor_hex": "a6646d6f6465647265616466706172616d738164676f616c686d61785f726f777302696d61785f6279746573190400696f7065726174696f6e6973746174656d656e746973746174656d656e746c6f626a656374735f70616765"
+  },
+  {
+    "name": "enqueue",
+    "type": "db-enqueue",
+    "valid": true,
+    "value": {
+      "operation": "enqueue",
+      "intent_id": "11111111111111111111111111111111",
+      "idempotency_key": "22222222222222222222222222222222",
+      "kind": "worker.dispatch",
+      "payload": {
+        "task": "a"
+      },
+      "correlation_id": "33333333333333333333333333333333"
+    },
+    "cbor_hex": "a6646b696e646f776f726b65722e6469737061746368677061796c6f6164a1647461736b616169696e74656e745f696478203131313131313131313131313131313131313131313131313131313131313131696f7065726174696f6e67656e71756575656e636f7272656c6174696f6e5f6964782033333333333333333333333333333333333333333333333333333333333333336f6964656d706f74656e63795f6b657978203232323232323232323232323232323232323232323232323232323232323232"
+  },
+  {
+    "name": "enqueue-first",
+    "type": "db-enqueued",
+    "valid": true,
+    "value": {
+      "status": "enqueued",
+      "intent_id": "11111111111111111111111111111111",
+      "duplicate": false
+    },
+    "cbor_hex": "a36673746174757368656e717565756564696475706c6963617465f469696e74656e745f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "duplicate-idempotency-key",
+    "type": "db-enqueued",
+    "valid": true,
+    "value": {
+      "status": "enqueued",
+      "intent_id": "11111111111111111111111111111111",
+      "duplicate": true
+    },
+    "cbor_hex": "a36673746174757368656e717565756564696475706c6963617465f569696e74656e745f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "transaction-abort",
+    "type": "db-failed",
+    "valid": true,
+    "value": {
+      "status": "failed",
+      "error": {
+        "code": "conflict",
+        "message": "Unit aborted",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a2656572726f72a364636f646568636f6e666c696374676d6573736167656c556e69742061626f7274656469726574727961626c65f466737461747573666661696c6564"
+  },
+  {
+    "name": "recorded-query",
+    "type": "db-host-call",
+    "valid": true,
+    "value": {
+      "op": "db",
+      "argument": {
+        "operation": "statement",
+        "statement": "objects_page",
+        "mode": "read",
+        "params": [
+          "goal"
+        ],
+        "max_rows": 2,
+        "max_bytes": 1024
+      },
+      "result": 0,
+      "response": {
+        "status": "page",
+        "columns": [
+          "id",
+          "type"
+        ],
+        "rows": [
+          [
+            "a",
+            "goal"
+          ],
+          [
+            "b",
+            "goal"
+          ]
+        ],
+        "affected": 0,
+        "revision": 7,
+        "next_cursor": "opaque-owner-revision7-key-b"
+      }
+    },
+    "cbor_hex": "a4626f7062646266726573756c740068617267756d656e74a6646d6f6465647265616466706172616d738164676f616c686d61785f726f777302696d61785f6279746573190400696f7065726174696f6e6973746174656d656e746973746174656d656e746c6f626a656374735f7061676568726573706f6e7365a664726f77738282616164676f616c82616264676f616c66737461747573647061676567636f6c756d6e7382626964647479706568616666656374656400687265766973696f6e076b6e6578745f637572736f72781c6f70617175652d6f776e65722d7265766973696f6e372d6b65792d62"
+  },
+  {
+    "name": "invalid-argument-record",
+    "type": "db-host-call",
+    "valid": true,
+    "value": {
+      "op": "db",
+      "argument_hex": "ff",
+      "result": 1
+    },
+    "cbor_hex": "a3626f7062646266726573756c74016c617267756d656e745f686578626666"
+  },
+  {
+    "name": "outcome",
+    "type": "db-outcome",
+    "valid": true,
+    "value": {
+      "intent_id": "11111111111111111111111111111111",
+      "idempotency_key": "22222222222222222222222222222222",
+      "correlation_id": "33333333333333333333333333333333",
+      "status": "succeeded",
+      "result": {}
+    },
+    "cbor_hex": "a566726573756c74a0667374617475736973756363656564656469696e74656e745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f6964782033333333333333333333333333333333333333333333333333333333333333336f6964656d706f74656e63795f6b657978203232323232323232323232323232323232323232323232323232323232323232"
+  },
+  {
+    "name": "unbounded-query",
+    "type": "db-statement",
+    "valid": false,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 65,
+      "max_bytes": 1024
+    }
+  },
+  {
+    "name": "raw-sql",
+    "type": "db-statement",
+    "valid": false,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024,
+      "sql": "SELECT 1"
+    }
+  },
+  {
+    "name": "foreign-owner",
+    "type": "db-statement",
+    "valid": false,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024,
+      "owner": "other"
+    }
+  },
+  {
+    "name": "empty-cursor",
+    "type": "db-statement",
+    "valid": false,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024,
+      "cursor": ""
+    }
+  },
+  {
+    "name": "long-cursor",
+    "type": "db-statement",
+    "valid": false,
+    "value": {
+      "operation": "statement",
+      "statement": "objects_page",
+      "mode": "read",
+      "params": [
+        "goal"
+      ],
+      "max_rows": 2,
+      "max_bytes": 1024,
+      "cursor": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "semantic": true
+  },
+  {
+    "name": "too-many-rows",
+    "type": "db-page",
+    "valid": false,
+    "value": {
+      "status": "page",
+      "columns": [
+        "id",
+        "type"
+      ],
+      "rows": [
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "a",
+          "goal"
+        ]
+      ],
+      "affected": 0,
+      "revision": 7,
+      "next_cursor": "opaque-owner-revision7-key-b"
+    }
+  },
+  {
+    "name": "floating-cell",
+    "type": "db-page",
+    "valid": false,
+    "value": {
+      "status": "page",
+      "columns": [
+        "id",
+        "type"
+      ],
+      "rows": [
+        [
+          1.5,
+          "goal"
+        ]
+      ],
+      "affected": 0,
+      "revision": 7,
+      "next_cursor": "opaque-owner-revision7-key-b"
+    }
+  },
+  {
+    "name": "oversize-cell",
+    "type": "db-page",
+    "valid": false,
+    "value": {
+      "status": "page",
+      "columns": [
+        "id",
+        "type"
+      ],
+      "rows": [
+        [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "goal"
+        ]
+      ],
+      "affected": 0,
+      "revision": 7,
+      "next_cursor": "opaque-owner-revision7-key-b"
+    },
+    "semantic": true
+  },
+  {
+    "name": "unknown-reply-key",
+    "type": "db-page",
+    "valid": false,
+    "value": {
+      "status": "page",
+      "columns": [
+        "id",
+        "type"
+      ],
+      "rows": [
+        [
+          "a",
+          "goal"
+        ],
+        [
+          "b",
+          "goal"
+        ]
+      ],
+      "affected": 0,
+      "revision": 7,
+      "next_cursor": "opaque-owner-revision7-key-b",
+      "extra": true
+    }
+  },
+  {
+    "name": "missing-result",
+    "type": "db-host-call",
+    "valid": false,
+    "value": {
+      "op": "db",
+      "argument": {
+        "operation": "statement",
+        "statement": "objects_page",
+        "mode": "read",
+        "params": [
+          "goal"
+        ],
+        "max_rows": 2,
+        "max_bytes": 1024
+      },
+      "response": {
+        "status": "page",
+        "columns": [
+          "id",
+          "type"
+        ],
+        "rows": [
+          [
+            "a",
+            "goal"
+          ],
+          [
+            "b",
+            "goal"
+          ]
+        ],
+        "affected": 0,
+        "revision": 7,
+        "next_cursor": "opaque-owner-revision7-key-b"
+      }
+    }
+  },
+  {
+    "name": "response-on-rejection",
+    "type": "db-host-call",
+    "valid": false,
+    "value": {
+      "op": "db",
+      "argument": {
+        "operation": "statement",
+        "statement": "objects_page",
+        "mode": "read",
+        "params": [
+          "goal"
+        ],
+        "max_rows": 2,
+        "max_bytes": 1024
+      },
+      "result": 2,
+      "response": {
+        "status": "page",
+        "columns": [
+          "id",
+          "type"
+        ],
+        "rows": [
+          [
+            "a",
+            "goal"
+          ],
+          [
+            "b",
+            "goal"
+          ]
+        ],
+        "affected": 0,
+        "revision": 7,
+        "next_cursor": "opaque-owner-revision7-key-b"
+      }
+    }
+  },
+  {
+    "name": "bad-intent-key",
+    "type": "db-enqueue",
+    "valid": false,
+    "value": {
+      "operation": "enqueue",
+      "intent_id": "11111111111111111111111111111111",
+      "idempotency_key": "bad",
+      "kind": "worker.dispatch",
+      "payload": {
+        "task": "a"
+      },
+      "correlation_id": "33333333333333333333333333333333"
+    }
+  },
+  {
+    "name": "db-manifest",
+    "type": "db-manifest",
+    "valid": true,
+    "value": {
+      "version": "0.2",
+      "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "subscriptions": [
+        "sensor.tick"
+      ],
+      "required_capabilities": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "exclusive_outputs": [
+        "motor.move"
+      ],
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "database": {
+        "schema_min": 1,
+        "schema_max": 2,
+        "catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "cbor_hex": "a76269647847636f676c65743a313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131316762756467657473a667636f6d707574651927106a686f73745f62797465731a000100006a6d61785f6576656e7473106c636f6d707574655f6d6f646573666978747572652e696e7465727072657465726c6d656d6f72795f7061676573026c77616c6c5f74696d655f75731a000186a06776657273696f6e63302e32686461746162617365a36a736368656d615f6d6178026a736368656d615f6d696e016c636174616c6f675f686173687840616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616d737562736372697074696f6e73816b73656e736f722e7469636b716578636c75736976655f6f757470757473816a6d6f746f722e6d6f76657572657175697265645f6361706162696c6974696573826a6d6f746f722e6d6f76656c6c6c6d2e636f6d706c657465"
+  },
+  {
+    "name": "db-step-record",
+    "type": "db-step-record",
+    "valid": true,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "committed",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "cbor_hex": "b81f646c6f6773806473656564076473746570006563616c6c7381a4626f7062646266726573756c740068617267756d656e74a6646d6f6465647265616466706172616d738164676f616c686d61785f726f777302696d61785f6279746573190400696f7065726174696f6e6973746174656d656e746973746174656d656e746c6f626a656374735f7061676568726573706f6e7365a664726f77738282616164676f616c82616264676f616c66737461747573647061676567636f6c756d6e7382626964647479706568616666656374656400687265766973696f6e076b6e6578745f637572736f72781c6f70617175652d6f776e65722d7265766973696f6e372d6b65792d62657573616765a467636f6d707574650a6a686f73745f6279746573006c6d656d6f72795f7061676573016c77616c6c5f74696d655f75731466636f676c65747847636f676c65743a3131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166656e67696e65a2656275696c646a666978747572652d763166706f6c6963796f5442442d62792d4144522d30303033666576656e747381a66373657100646b696e646b73656e736f722e7469636b66736f757263657848737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232677061796c6f6164a06c6c6f676963616c5f74696d650a6e636f7272656c6174696f6e5f696478203434343434343434343434343434343434343434343434343434343434343434666772616e7473826a6d6f746f722e6d6f76656c6c6c6d2e636f6d706c6574656673746174757369636f6d6d69747465646674696d6572738067616374696f6e73806762756467657473a667636f6d707574651927106a686f73745f62797465731a000100006a6d61785f6576656e7473106c636f6d707574655f6d6f646573666978747572652e696e7465727072657465726c6d656d6f72795f7061676573026c77616c6c5f74696d655f75731a000186a06776657273696f6e63302e3268626f756e64617279806864625f6166746572076870726576696f7573f66874726163655f69647820353535353535353535353535353535353535353535353535353535353535353569636f64655f686173687840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437366964625f6265666f7265076a696e7075745f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b6265666f72655f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b696e7075745f66696c6573a36b2f646174612f636f756e74623330732f636f64652f62696e2f737465702e7761736d7030303631373336643031303030303030781b2f636f64652f6275696c642f70726f76656e616e63652e63626f727903ba6137363737363635373237333639366636653633333032653331366437303666366336393633373935663733363836313332333533363738343033383636333533333632363533383331333633343633363633313330333333353334333336313332333036313332333336323636333933303633363136323634363633353633333733353636363433303338333836313337333336343331333836353339363233363331363336343331333436313336363636313337363533323664373236353633363937303635356637333638363133323335333637383430333133313337363133343635363433323635333133323636333033353631363133353635333336363332333833393633333836363331333233323633333836343339333333333337363633313635333033343634333036343339333933343634363633303332333133303330363433313333363436363635333436323335333236643733366637353732363336353566363336663664366436393734373832383631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631366636663732363936373639366536313663356637333638363133323335333637383430333933333631333433343632363236323339333636333337333533313332333133383635333436333330333036343334333733393635333436333331333433333335333833313332333236313333333833393631363336333631333133363332333033353632333136353334363433303634363333353636333933343337333637303732363537373732363937343734363536653566373336383631333233353336373834303339333336313334333436323632363233393336363333373335333133323331333836353334363333303330363433343337333936353334363333313334333333353338333133323332363133333338333936313633363336313331333633323330333536323331363533343634333036343633333536363339333433373336373037343732363136653733363636663732366435663733363836313332333533363738343033333634363333323336363236313337363433303634363236323636333436343333333633323633363136333631333733363330363433303334333733333635333733393335333136323339363433363333363336333337363133373332333933373335363236353631333033383335363436323333333733393332333433316b6f75747075745f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b7265636f72645f686173687840623636653661313265373230643538656564306137383561623263323131616132313730376530646232353233303733343338376435333464643536366162336c6c6c6d5f7265717565737473806c6c6f676963616c5f74696d650a6c6f75747075745f66696c6573a36b2f646174612f636f756e74623330732f636f64652f62696e2f737465702e7761736d7030303631373336643031303030303030781b2f636f64652f6275696c642f70726f76656e616e63652e63626f727903ba6137363737363635373237333639366636653633333032653331366437303666366336393633373935663733363836313332333533363738343033383636333533333632363533383331333633343633363633313330333333353334333336313332333036313332333336323636333933303633363136323634363633353633333733353636363433303338333836313337333336343331333836353339363233363331363336343331333436313336363636313337363533323664373236353633363937303635356637333638363133323335333637383430333133313337363133343635363433323635333133323636333033353631363133353635333336363332333833393633333836363331333233323633333836343339333333333337363633313635333033343634333036343339333933343634363633303332333133303330363433313333363436363635333436323335333236643733366637353732363336353566363336663664366436393734373832383631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631366636663732363936373639366536313663356637333638363133323335333637383430333933333631333433343632363236323339333636333337333533313332333133383635333436333330333036343334333733393635333436333331333433333335333833313332333236313333333833393631363336333631333133363332333033353632333136353334363433303634363333353636333933343337333637303732363537373732363937343734363536653566373336383631333233353336373834303339333336313334333436323632363233393336363333373335333133323331333836353334363333303330363433343337333936353334363333313334333333353338333133323332363133333338333936313633363336313331333633323330333536323331363533343634333036343633333536363339333433373336373037343732363136653733363636663732366435663733363836313332333533363738343033333634363333323336363236313337363433303634363236323636333436343333333633323633363136333631333733363330363433303334333733333635333733393335333136323339363433363333363336333337363133373332333933373335363236353631333033383335363436323333333733393332333433316d6d616e69666573745f686173687840656631666565346661373038356430643866653863656338626435363034333237313761623832383230306433386632646166363938363931363636363834386f64625f636174616c6f675f686173687840616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161617164625f736368656d615f76657273696f6e01"
+  },
+  {
+    "name": "recovery-abort",
+    "type": "db-step-record",
+    "valid": true,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "aborted",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "failure": {
+        "kind": "db_recovery_abort",
+        "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "b820646c6f6773806473656564076473746570006563616c6c7381a4626f7062646266726573756c740068617267756d656e74a6646d6f6465647265616466706172616d738164676f616c686d61785f726f777302696d61785f6279746573190400696f7065726174696f6e6973746174656d656e746973746174656d656e746c6f626a656374735f7061676568726573706f6e7365a664726f77738282616164676f616c82616264676f616c66737461747573647061676567636f6c756d6e7382626964647479706568616666656374656400687265766973696f6e076b6e6578745f637572736f72781c6f70617175652d6f776e65722d7265766973696f6e372d6b65792d62657573616765a467636f6d707574650a6a686f73745f6279746573006c6d656d6f72795f7061676573016c77616c6c5f74696d655f75731466636f676c65747847636f676c65743a3131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166656e67696e65a2656275696c646a666978747572652d763166706f6c6963796f5442442d62792d4144522d30303033666576656e747381a66373657100646b696e646b73656e736f722e7469636b66736f757263657848737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232677061796c6f6164a06c6c6f676963616c5f74696d650a6e636f7272656c6174696f6e5f696478203434343434343434343434343434343434343434343434343434343434343434666772616e7473826a6d6f746f722e6d6f76656c6c6c6d2e636f6d706c657465667374617475736761626f727465646674696d6572738067616374696f6e73806762756467657473a667636f6d707574651927106a686f73745f62797465731a000100006a6d61785f6576656e7473106c636f6d707574655f6d6f646573666978747572652e696e7465727072657465726c6d656d6f72795f7061676573026c77616c6c5f74696d655f75731a000186a0676661696c757265a2646b696e647164625f7265636f766572795f61626f72747470726570617265645f7265636f72645f686173687840626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626776657273696f6e63302e3268626f756e64617279806864625f6166746572076870726576696f7573f66874726163655f69647820353535353535353535353535353535353535353535353535353535353535353569636f64655f686173687840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437366964625f6265666f7265076a696e7075745f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b6265666f72655f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b696e7075745f66696c6573a36b2f646174612f636f756e74623330732f636f64652f62696e2f737465702e7761736d7030303631373336643031303030303030781b2f636f64652f6275696c642f70726f76656e616e63652e63626f727903ba6137363737363635373237333639366636653633333032653331366437303666366336393633373935663733363836313332333533363738343033383636333533333632363533383331333633343633363633313330333333353334333336313332333036313332333336323636333933303633363136323634363633353633333733353636363433303338333836313337333336343331333836353339363233363331363336343331333436313336363636313337363533323664373236353633363937303635356637333638363133323335333637383430333133313337363133343635363433323635333133323636333033353631363133353635333336363332333833393633333836363331333233323633333836343339333333333337363633313635333033343634333036343339333933343634363633303332333133303330363433313333363436363635333436323335333236643733366637353732363336353566363336663664366436393734373832383631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631366636663732363936373639366536313663356637333638363133323335333637383430333933333631333433343632363236323339333636333337333533313332333133383635333436333330333036343334333733393635333436333331333433333335333833313332333236313333333833393631363336333631333133363332333033353632333136353334363433303634363333353636333933343337333637303732363537373732363937343734363536653566373336383631333233353336373834303339333336313334333436323632363233393336363333373335333133323331333836353334363333303330363433343337333936353334363333313334333333353338333133323332363133333338333936313633363336313331333633323330333536323331363533343634333036343633333536363339333433373336373037343732363136653733363636663732366435663733363836313332333533363738343033333634363333323336363236313337363433303634363236323636333436343333333633323633363136333631333733363330363433303334333733333635333733393335333136323339363433363333363336333337363133373332333933373335363236353631333033383335363436323333333733393332333433316b6f75747075745f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366b7265636f72645f686173687840623636653661313265373230643538656564306137383561623263323131616132313730376530646232353233303733343338376435333464643536366162336c6c6c6d5f7265717565737473806c6c6f676963616c5f74696d650a6c6f75747075745f66696c6573a36b2f646174612f636f756e74623330732f636f64652f62696e2f737465702e7761736d7030303631373336643031303030303030781b2f636f64652f6275696c642f70726f76656e616e63652e63626f727903ba6137363737363635373237333639366636653633333032653331366437303666366336393633373935663733363836313332333533363738343033383636333533333632363533383331333633343633363633313330333333353334333336313332333036313332333336323636333933303633363136323634363633353633333733353636363433303338333836313337333336343331333836353339363233363331363336343331333436313336363636313337363533323664373236353633363937303635356637333638363133323335333637383430333133313337363133343635363433323635333133323636333033353631363133353635333336363332333833393633333836363331333233323633333836343339333333333337363633313635333033343634333036343339333933343634363633303332333133303330363433313333363436363635333436323335333236643733366637353732363336353566363336663664366436393734373832383631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631366636663732363936373639366536313663356637333638363133323335333637383430333933333631333433343632363236323339333636333337333533313332333133383635333436333330333036343334333733393635333436333331333433333335333833313332333236313333333833393631363336333631333133363332333033353632333136353334363433303634363333353636333933343337333637303732363537373732363937343734363536653566373336383631333233353336373834303339333336313334333436323632363233393336363333373335333133323331333836353334363333303330363433343337333936353334363333313334333333353338333133323332363133333338333936313633363336313331333633323330333536323331363533343634333036343633333536363339333433373336373037343732363136653733363636663732366435663733363836313332333533363738343033333634363333323336363236313337363433303634363236323636333436343333333633323633363136333631333733363330363433303334333733333635333733393335333136323339363433363333363336333337363133373332333933373335363236353631333033383335363436323333333733393332333433316d6d616e69666573745f686173687840656631666565346661373038356430643866653863656338626435363034333237313761623832383230306433386632646166363938363931363636363834386f64625f636174616c6f675f686173687840616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161617164625f736368656d615f76657273696f6e01"
+  },
+  {
+    "name": "recovery-abort-missing-prepare",
+    "type": "db-step-record",
+    "valid": false,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "aborted",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "failure": {
+        "kind": "db_recovery_abort"
+      }
+    }
+  },
+  {
+    "name": "recovery-abort-bad-prepare",
+    "type": "db-step-record",
+    "valid": false,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "aborted",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "failure": {
+        "kind": "db_recovery_abort",
+        "prepared_record_hash": "bad"
+      }
+    }
+  },
+  {
+    "name": "committed-with-recovery-failure",
+    "type": "db-step-record",
+    "valid": false,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "committed",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "failure": {
+        "kind": "db_recovery_abort",
+        "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "frozen-rejects-recovery-abort",
+    "type": "db-step-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+          "kind": "sensor.tick",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [
+        {
+          "op": "db",
+          "argument": {
+            "operation": "statement",
+            "statement": "objects_page",
+            "mode": "read",
+            "params": [
+              "goal"
+            ],
+            "max_rows": 2,
+            "max_bytes": 1024
+          },
+          "result": 0,
+          "response": {
+            "status": "page",
+            "columns": [
+              "id",
+              "type"
+            ],
+            "rows": [
+              [
+                "a",
+                "goal"
+              ],
+              [
+                "b",
+                "goal"
+              ]
+            ],
+            "affected": 0,
+            "revision": 7,
+            "next_cursor": "opaque-owner-revision7-key-b"
+          }
+        }
+      ],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "aborted",
+      "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
+      "db_before": 7,
+      "db_after": 7,
+      "db_schema_version": 1,
+      "db_catalog_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "failure": {
+        "kind": "db_recovery_abort",
+        "prepared_record_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "db-trace",
+    "type": "db-trace",
+    "valid": true,
+    "value": {
+      "version": "0.2",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "initial_effect_ids": {
+        "actions": [],
+        "timers": [],
+        "llm_requests": []
+      },
+      "initial_actions": [],
+      "initial_inbox_wakes": [],
+      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30",
+        "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+      },
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "trailing_boundary": null,
+      "initial_timers": [],
+      "initial_llm_requests": [],
+      "records": [],
+      "blobs": {
+        "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476": "0061736d01000000",
+        "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848": "a66269647847636f676c65743a313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131316762756467657473a667636f6d707574651927106a686f73745f62797465731a000100006a6d61785f6576656e7473106c636f6d707574655f6d6f646573666978747572652e696e7465727072657465726c6d656d6f72795f7061676573026c77616c6c5f74696d655f75731a000186a06776657273696f6e63302e316d737562736372697074696f6e73816b73656e736f722e7469636b716578636c75736976655f6f757470757473816a6d6f746f722e6d6f76657572657175697265645f6361706162696c6974696573826a6d6f746f722e6d6f76656c6c6c6d2e636f6d706c657465"
+      },
+      "initial_db_revision": 7,
+      "final_db_revision": 7
+    },
+    "cbor_hex": "b265626c6f6273a2784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736703030363137333664303130303030303078406566316665653466613730383564306438666538636563386264353630343332373137616238323832303064333866326461663639383639313636363638343879026461363632363936343738343736333666363736633635373433613331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331333133313331363736323735363436373635373437336136363736333666366437303735373436353139323731303661363836663733373435663632373937343635373331613030303130303030366136643631373835663635373636353665373437333130366336333666366437303735373436353566366436663634363537333636363937383734373537323635326536393665373436353732373037323635373436353732366336643635366436663732373935663730363136373635373330323663373736313663366335663734363936643635356637353733316130303031383661303637373636353732373336393666366536333330326533313664373337353632373336333732363937303734363936663665373338313662373336353665373336663732326537343639363336623731363537383633366337353733363937363635356636663735373437303735373437333831366136643666373436663732326536643666373636353735373236353731373536393732363536343566363336313730363136323639366336393734363936353733383236613664366637343666373232653664366637363635366336633663366432653633366636643730366336353734363566636f676c65747847636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131677265636f726473806776657273696f6e63302e326874726163655f69647820353535353535353535353535353535353535353535353535353535353535353569636f64655f686173687840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437366a66696e616c5f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366c696e697469616c5f686173687840353539653331393234303663393139636466306236376263346164366662366538613834303337343030383865613730366364303530633634393136313231366d696e697469616c5f66696c6573a36b2f646174612f636f756e74623330732f636f64652f62696e2f737465702e7761736d7030303631373336643031303030303030781b2f636f64652f6275696c642f70726f76656e616e63652e63626f727903ba6137363737363635373237333639366636653633333032653331366437303666366336393633373935663733363836313332333533363738343033383636333533333632363533383331333633343633363633313330333333353334333336313332333036313332333336323636333933303633363136323634363633353633333733353636363433303338333836313337333336343331333836353339363233363331363336343331333436313336363636313337363533323664373236353633363937303635356637333638363133323335333637383430333133313337363133343635363433323635333133323636333033353631363133353635333336363332333833393633333836363331333233323633333836343339333333333337363633313635333033343634333036343339333933343634363633303332333133303330363433313333363436363635333436323335333236643733366637353732363336353566363336663664366436393734373832383631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631363136313631366636663732363936373639366536313663356637333638363133323335333637383430333933333631333433343632363236323339333636333337333533313332333133383635333436333330333036343334333733393635333436333331333433333335333833313332333236313333333833393631363336333631333133363332333033353632333136353334363433303634363333353636333933343337333637303732363537373732363937343734363536653566373336383631333233353336373834303339333336313334333436323632363233393336363333373335333133323331333836353334363333303330363433343337333936353334363333313334333333353338333133323332363133333338333936313633363336313331333633323330333536323331363533343634333036343633333536363339333433373336373037343732363136653733363636663732366435663733363836313332333533363738343033333634363333323336363236313337363433303634363236323636333436343333333633323633363136333631333733363330363433303334333733333635333733393335333136323339363433363333363336333337363133373332333933373335363236353631333033383335363436323333333733393332333433316d6d616e69666573745f686173687840656631666565346661373038356430643866653863656338626435363034333237313761623832383230306433386632646166363938363931363636363834386e696e697469616c5f74696d657273806f696e697469616c5f616374696f6e73807166696e616c5f64625f7265766973696f6e0771747261696c696e675f626f756e64617279f672696e697469616c5f6566666563745f696473a36674696d6572738067616374696f6e73806c6c6c6d5f72657175657374738073696e697469616c5f64625f7265766973696f6e0773696e697469616c5f696e626f785f77616b65738074696e697469616c5f6c6c6d5f726571756573747380"
+  }
+]
