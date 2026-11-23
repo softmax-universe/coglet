@@ -13,27 +13,35 @@ struct SoftmaxApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Button("Open Face") { delegate.showFace() }
-            Button("Open Chat") { delegate.showConversation() }
-            Button("Open Voice") { delegate.showConversation(voice: true) }
-            Text("Push-to-talk: \(delegate.model.hotkeyName)")
-            Text("Hub: offline (not connected)")
-            Divider()
-            Button("Settings…") { delegate.showSettings() }.keyboardShortcut(",")
-            Button("Check for Updates…") { delegate.model.updates.checkForUpdates() }
-                .disabled(!delegate.model.updates.enabled)
-            Divider()
-            Button("Quit Softmax") { NSApp.terminate(nil) }.keyboardShortcut("q")
+            SoftmaxWindowRoot {
+                SoftmaxMenuView(model: delegate.model, showFace: { delegate.showFace() },
+                    showChat: { delegate.showConversation(voice: $0) }, settings: { delegate.showSettings() },
+                    about: { delegate.showAbout() }, quit: { delegate.quit() }, searchCommands: { delegate.showCommands() })
+            }
         } label: {
             StatusLabel(model: delegate.model)
-        }
+        }.menuBarExtraStyle(.window)
     }
 }
 
 struct StatusLabel: View {
     @ObservedObject var model: ShellModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var frame = 0
+    private var animated: Bool { !reduceMotion && [.listening, .speaking].contains(model.menuPresentation) }
     var body: some View {
-        Label("Softmax: \(model.state.rawValue)", systemImage: model.state.symbolName)
+        Image("menu-\(model.menuPresentation.rawValue)\(animated ? "-\(frame)" : "")").renderingMode(.template)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Softmax, \(model.menuPresentation.label), hub disconnected")
+            .help("Softmax, \(model.menuPresentation.label), hub disconnected")
+            .task(id: model.menuPresentation.rawValue + String(reduceMotion)) {
+                frame = 0
+                while animated && !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(Int(SoftmaxDesignTokens.motionMenuFrameMs)))
+                    guard !Task.isCancelled else { return }
+                    frame = (frame + 1) % 4
+                }
+            }
     }
 }
 
@@ -63,6 +71,7 @@ final class ShellModel: ObservableObject {
         didSet { UserDefaults.standard.set(startSound, forKey: "talkStartSound") }
     }
     let keySource = GlobalTalkKey()
+    private let cues = SoundCues()
     lazy var ptt = PushToTalk(keys: keySource, audio: EngineAudioCapture())
     var onTalkChange: (() -> Void)?
     var routePermissions: (() -> Void)?
@@ -104,9 +113,13 @@ final class ShellModel: ObservableObject {
                 inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
         }
         ptt.stopPlayback = { [weak self] in self?.stopFacePlayback?(); self?.stopFacePlayback = nil }
-        ptt.playStartSound = { [weak self] in if self?.startSound == true { NSSound(named: "Tink")?.play() } }
+        ptt.playStartSound = { [weak self] in if self?.startSound == true { self?.cues.play(.start) } }
         ptt.onChange = { [weak self] in
             guard let self else { return }
+            if startSound && ptt.state != talkState {
+                if ptt.state == .thinking && talkState == .listening { cues.play(.submit) }
+                if ptt.state == .error { cues.play(.error) }
+            }
             talkState = ptt.state; level = ptt.inputLevel; elapsed = ptt.elapsed
             onTalkChange?()
         }
@@ -132,12 +145,14 @@ final class ShellModel: ObservableObject {
         didSet { if !testing { orbPreferences.isEnabled = orbEnabled } }
     }
     private let orbPreferences = OrbPreferences()
+    private var updateSubscription: AnyCancellable?
 
     init() {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
         machine = AppStateMachine(onboardingComplete: !testing && UserDefaults.standard.bool(forKey: "onboardingComplete"))
         refreshPermissions()
         orbEnabled = !testing && orbPreferences.isEnabled
+        updateSubscription = updates.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     func refreshPermissions() {
@@ -188,17 +203,51 @@ final class ShellModel: ObservableObject {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = ShellModel()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var aboutWindow: NSWindow?
     private lazy var face = FacePanelController(shell: model)
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
     private var orbSubscription: AnyCancellable?
+    private let commands = CommandPaletteController()
+    private var commandMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let arguments = ProcessInfo.processInfo.arguments
+        if model.testing, let index = arguments.firstIndex(of: "--design-snapshots"), arguments.count > index + 1 {
+            do { try DesignSnapshots.run(to: arguments[index + 1]); exit(0) }
+            catch { print("Native snapshot render failed: \(error)"); exit(1) }
+        }
+        if model.testing && arguments.contains("--contrast-calibration") {
+            let probe = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 760, height: 540), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            probe.title = "Contrast calibration"
+            probe.isReleasedWhenClosed = false
+            probe.contentView = NSHostingView(rootView: ContrastCalibrationView())
+            settingsWindow = probe
+            NSApp.activate(ignoringOtherApps: true)
+            probe.makeKeyAndOrderFront(nil)
+            return
+        }
         NSApp.setActivationPolicy(.accessory)
+        commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if modifiers == .command && event.charactersIgnoringModifiers == "k" {
+                self.showCommands(); return nil
+            }
+            // Type-ahead belongs only to the key Settings window and must never
+            // steal input from an editor or observe another application's keys.
+            guard self.settingsWindow?.isKeyWindow == true,
+                  !(self.settingsWindow?.firstResponder is NSTextView),
+                  modifiers.isEmpty || modifiers == .shift,
+                  let characters = event.characters, !characters.isEmpty,
+                  characters == "/" || characters.allSatisfy({ $0.isLetter || $0.isNumber }) else { return event }
+            NotificationCenter.default.post(name: .softmaxFilterInput, object: characters == "/" ? "" : characters)
+            return nil
+        }
         orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
             self?.orbOverlay.setVisible(enabled)
         }
@@ -219,21 +268,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.ptt.start()
         }
     }
-    func applicationWillTerminate(_ notification: Notification) { face.hide(); model.ptt.shutdown() }
+    func applicationWillTerminate(_ notification: Notification) {
+        if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
+        face.hide(); model.ptt.shutdown()
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showSettings(tab: SettingsTab? = nil) {
+        // Preserve the unfinished chapter, but never leave it occluded behind Settings.
+        onboardingWindow?.orderOut(nil)
         if let tab { model.selectedTab = tab }
         if settingsWindow == nil {
-            settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 680, height: 420),
+            settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 760, height: 540),
                                     view: SettingsView(model: model))
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
+    func windowWillClose(_ notification: Notification) {
+        if let closed = notification.object as? NSWindow, closed === settingsWindow,
+           model.state == .onboarding {
+            onboardingWindow?.makeKeyAndOrderFront(nil)
+        }
+    }
+
     func showOnboarding() {
-        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 560, height: 400),
+        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 620, height: 600),
             view: OnboardingView(model: model, openSettings: { [weak self] in self?.showSettings() },
                 finish: { [weak self] in
                     self?.model.finishOnboarding()
@@ -249,12 +310,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
 
+    func showCommands() {
+        commands.show(commands: SoftmaxCommand.catalog(
+            settings: { [weak self] in self?.showSettings(tab: $0) },
+            face: { [weak self] in self?.showFace() },
+            chat: { [weak self] in self?.showConversation(voice: $0) },
+            about: { [weak self] in self?.showAbout() }))
+    }
+
+    func showAbout() {
+        if aboutWindow == nil { aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView()) }
+        NSApp.activate(ignoringOtherApps: true)
+        aboutWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    func quit() {
+        if [.listening, .thinking, .speaking].contains(model.state) {
+            let alert = NSAlert()
+            alert.messageText = "Quit and stop this conversation?"
+            alert.informativeText = "Unsent audio will be discarded and speech will stop."
+            alert.addButton(withTitle: "Quit Softmax"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        model.ptt.cancel(); NSApp.terminate(nil)
+    }
+
     private func window<V: View>(title: String, size: NSSize, view: V) -> NSWindow {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = title
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: view)
+        window.contentMinSize = size
+        window.delegate = self
+        let host = SoftmaxHostingView(rootView: SoftmaxWindowRoot { view }
+            .accessibilityElement(children: .contain).accessibilityLabel(title))
+        host.setAccessibilityLabel(title)
+        window.contentView = host
         window.center()
         return window
     }
