@@ -415,6 +415,256 @@ if (this.details != null) m.put("details", this.details.value());
 return m; }
 public static Error fromCbor(byte[] raw) { return Codec.decodeRecord("error", raw, Error.class); }
 }
+public record DbStatement(String operation, String statement, String mode, List<Object> params, BigInteger max_rows, BigInteger max_bytes, Presence<String> cursor) implements Message {
+public String rule() { return "db-statement"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("operation", this.operation);
+m.put("statement", this.statement);
+m.put("mode", this.mode);
+m.put("params", this.params);
+m.put("max_rows", this.max_rows);
+m.put("max_bytes", this.max_bytes);
+if (this.cursor != null) m.put("cursor", this.cursor.value());
+return m; }
+public static DbStatement fromCbor(byte[] raw) { return Codec.decodeRecord("db-statement", raw, DbStatement.class); }
+}
+public record DbEnqueue(String operation, String intent_id, String idempotency_key, String kind, Map<String, Object> payload, String correlation_id) implements Message {
+public String rule() { return "db-enqueue"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("operation", this.operation);
+m.put("intent_id", this.intent_id);
+m.put("idempotency_key", this.idempotency_key);
+m.put("kind", this.kind);
+m.put("payload", this.payload);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static DbEnqueue fromCbor(byte[] raw) { return Codec.decodeRecord("db-enqueue", raw, DbEnqueue.class); }
+}
+public record DbPage(String status, List<String> columns, List<List<Object>> rows, BigInteger affected, BigInteger revision, Object next_cursor) implements Message {
+public String rule() { return "db-page"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("status", this.status);
+m.put("columns", this.columns);
+m.put("rows", this.rows);
+m.put("affected", this.affected);
+m.put("revision", this.revision);
+m.put("next_cursor", this.next_cursor);
+return m; }
+public static DbPage fromCbor(byte[] raw) { return Codec.decodeRecord("db-page", raw, DbPage.class); }
+}
+public record DbEnqueued(String status, String intent_id, Boolean duplicate) implements Message {
+public String rule() { return "db-enqueued"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("status", this.status);
+m.put("intent_id", this.intent_id);
+m.put("duplicate", this.duplicate);
+return m; }
+public static DbEnqueued fromCbor(byte[] raw) { return Codec.decodeRecord("db-enqueued", raw, DbEnqueued.class); }
+}
+public record DbFailed(String status, Error error) implements Message {
+public String rule() { return "db-failed"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("status", this.status);
+m.put("error", this.error);
+return m; }
+public static DbFailed fromCbor(byte[] raw) { return Codec.decodeRecord("db-failed", raw, DbFailed.class); }
+}
+public sealed interface DbOutcome extends Message permits DbOutcome1, DbOutcome2 {
+static DbOutcome fromCbor(byte[] raw) { return (DbOutcome) Codec.decodeTyped("db-outcome", raw); }
+}
+public record DbOutcome1(String intent_id, String idempotency_key, String correlation_id, String status, Map<String, Object> result) implements DbOutcome {
+public String rule() { return "db-outcome"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("intent_id", this.intent_id);
+m.put("idempotency_key", this.idempotency_key);
+m.put("correlation_id", this.correlation_id);
+m.put("status", this.status);
+m.put("result", this.result);
+return m; }
+public static DbOutcome1 fromCbor(byte[] raw) { return Codec.decodeRecord("db-outcome", raw, DbOutcome1.class); }
+}
+public record DbOutcome2(String intent_id, String idempotency_key, String correlation_id, String status, Error error) implements DbOutcome {
+public String rule() { return "db-outcome"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("intent_id", this.intent_id);
+m.put("idempotency_key", this.idempotency_key);
+m.put("correlation_id", this.correlation_id);
+m.put("status", this.status);
+m.put("error", this.error);
+return m; }
+public static DbOutcome2 fromCbor(byte[] raw) { return Codec.decodeRecord("db-outcome", raw, DbOutcome2.class); }
+}
+public sealed interface DbHostCall extends Message permits DbHostCall1, DbHostCall2, DbHostCall3 {
+static DbHostCall fromCbor(byte[] raw) { return (DbHostCall) Codec.decodeTyped("db-host-call", raw); }
+}
+public record DbHostCall1(String op, Object argument, BigInteger result, Object response) implements DbHostCall {
+public String rule() { return "db-host-call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+m.put("response", this.response);
+return m; }
+public static DbHostCall1 fromCbor(byte[] raw) { return Codec.decodeRecord("db-host-call", raw, DbHostCall1.class); }
+}
+public record DbHostCall2(String op, Object argument, BigInteger result) implements DbHostCall {
+public String rule() { return "db-host-call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument", this.argument);
+m.put("result", this.result);
+return m; }
+public static DbHostCall2 fromCbor(byte[] raw) { return Codec.decodeRecord("db-host-call", raw, DbHostCall2.class); }
+}
+public record DbHostCall3(String op, String argument_hex, BigInteger result) implements DbHostCall {
+public String rule() { return "db-host-call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("op", this.op);
+m.put("argument_hex", this.argument_hex);
+m.put("result", this.result);
+return m; }
+public static DbHostCall3 fromCbor(byte[] raw) { return Codec.decodeRecord("db-host-call", raw, DbHostCall3.class); }
+}
+public record DbConfig(BigInteger schema_min, BigInteger schema_max, String catalog_hash) implements Message {
+public String rule() { return "db-config"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("schema_min", this.schema_min);
+m.put("schema_max", this.schema_max);
+m.put("catalog_hash", this.catalog_hash);
+return m; }
+public static DbConfig fromCbor(byte[] raw) { return Codec.decodeRecord("db-config", raw, DbConfig.class); }
+}
+public record DbManifest(String version, String id, List<String> subscriptions, List<String> required_capabilities, List<String> exclusive_outputs, Budgets budgets, DbConfig database) implements Message {
+public String rule() { return "db-manifest"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("id", this.id);
+m.put("subscriptions", this.subscriptions);
+m.put("required_capabilities", this.required_capabilities);
+m.put("exclusive_outputs", this.exclusive_outputs);
+m.put("budgets", this.budgets);
+m.put("database", this.database);
+return m; }
+public static DbManifest fromCbor(byte[] raw) { return Codec.decodeRecord("db-manifest", raw, DbManifest.class); }
+}
+public sealed interface DbStepRecord extends Message permits DbStepRecord1, DbStepRecord2 {
+static DbStepRecord fromCbor(byte[] raw) { return (DbStepRecord) Codec.decodeTyped("db-step-record", raw); }
+}
+public record DbStepRecord1(String version, String trace_id, String coglet, BigInteger step, BigInteger logical_time, BigInteger seed, Object previous, String code_hash, String manifest_hash, String before_hash, String input_hash, String output_hash, String record_hash, BigInteger db_before, BigInteger db_after, BigInteger db_schema_version, String db_catalog_hash, Engine engine, Budgets budgets, List<String> grants, List<Event> events, List<BoundaryChange> boundary, List<Object> calls, List<Action> actions, List<TimerRequest> timers, List<LlmRequest> llm_requests, List<LogEntry> logs, Map<String, String> input_files, Map<String, String> output_files, Usage usage, String status) implements DbStepRecord {
+public String rule() { return "db-step-record"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("step", this.step);
+m.put("logical_time", this.logical_time);
+m.put("seed", this.seed);
+m.put("previous", this.previous);
+m.put("code_hash", this.code_hash);
+m.put("manifest_hash", this.manifest_hash);
+m.put("before_hash", this.before_hash);
+m.put("input_hash", this.input_hash);
+m.put("output_hash", this.output_hash);
+m.put("record_hash", this.record_hash);
+m.put("db_before", this.db_before);
+m.put("db_after", this.db_after);
+m.put("db_schema_version", this.db_schema_version);
+m.put("db_catalog_hash", this.db_catalog_hash);
+m.put("engine", this.engine);
+m.put("budgets", this.budgets);
+m.put("grants", this.grants);
+m.put("events", this.events);
+m.put("boundary", this.boundary);
+m.put("calls", this.calls);
+m.put("actions", this.actions);
+m.put("timers", this.timers);
+m.put("llm_requests", this.llm_requests);
+m.put("logs", this.logs);
+m.put("input_files", this.input_files);
+m.put("output_files", this.output_files);
+m.put("usage", this.usage);
+m.put("status", this.status);
+return m; }
+public static DbStepRecord1 fromCbor(byte[] raw) { return Codec.decodeRecord("db-step-record", raw, DbStepRecord1.class); }
+}
+public record DbStepRecord2(String version, String trace_id, String coglet, BigInteger step, BigInteger logical_time, BigInteger seed, Object previous, String code_hash, String manifest_hash, String before_hash, String input_hash, String output_hash, String record_hash, BigInteger db_before, BigInteger db_after, BigInteger db_schema_version, String db_catalog_hash, Engine engine, Budgets budgets, List<String> grants, List<Event> events, List<BoundaryChange> boundary, List<Object> calls, List<Action> actions, List<TimerRequest> timers, List<LlmRequest> llm_requests, List<LogEntry> logs, Map<String, String> input_files, Map<String, String> output_files, Usage usage, String status, Failure failure) implements DbStepRecord {
+public String rule() { return "db-step-record"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("step", this.step);
+m.put("logical_time", this.logical_time);
+m.put("seed", this.seed);
+m.put("previous", this.previous);
+m.put("code_hash", this.code_hash);
+m.put("manifest_hash", this.manifest_hash);
+m.put("before_hash", this.before_hash);
+m.put("input_hash", this.input_hash);
+m.put("output_hash", this.output_hash);
+m.put("record_hash", this.record_hash);
+m.put("db_before", this.db_before);
+m.put("db_after", this.db_after);
+m.put("db_schema_version", this.db_schema_version);
+m.put("db_catalog_hash", this.db_catalog_hash);
+m.put("engine", this.engine);
+m.put("budgets", this.budgets);
+m.put("grants", this.grants);
+m.put("events", this.events);
+m.put("boundary", this.boundary);
+m.put("calls", this.calls);
+m.put("actions", this.actions);
+m.put("timers", this.timers);
+m.put("llm_requests", this.llm_requests);
+m.put("logs", this.logs);
+m.put("input_files", this.input_files);
+m.put("output_files", this.output_files);
+m.put("usage", this.usage);
+m.put("status", this.status);
+m.put("failure", this.failure);
+return m; }
+public static DbStepRecord2 fromCbor(byte[] raw) { return Codec.decodeRecord("db-step-record", raw, DbStepRecord2.class); }
+}
+public record DbTrace(String version, String trace_id, String coglet, EffectLedger initial_effect_ids, List<Action> initial_actions, List<BigInteger> initial_inbox_wakes, String initial_hash, Map<String, String> initial_files, String code_hash, String manifest_hash, String final_hash, Object trailing_boundary, List<TimerRequest> initial_timers, List<LlmRequest> initial_llm_requests, List<DbStepRecord> records, Map<String, String> blobs, BigInteger initial_db_revision, BigInteger final_db_revision) implements Message {
+public String rule() { return "db-trace"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("initial_effect_ids", this.initial_effect_ids);
+m.put("initial_actions", this.initial_actions);
+m.put("initial_inbox_wakes", this.initial_inbox_wakes);
+m.put("initial_hash", this.initial_hash);
+m.put("initial_files", this.initial_files);
+m.put("code_hash", this.code_hash);
+m.put("manifest_hash", this.manifest_hash);
+m.put("final_hash", this.final_hash);
+m.put("trailing_boundary", this.trailing_boundary);
+m.put("initial_timers", this.initial_timers);
+m.put("initial_llm_requests", this.initial_llm_requests);
+m.put("records", this.records);
+m.put("blobs", this.blobs);
+m.put("initial_db_revision", this.initial_db_revision);
+m.put("final_db_revision", this.final_db_revision);
+return m; }
+public static DbTrace fromCbor(byte[] raw) { return Codec.decodeRecord("db-trace", raw, DbTrace.class); }
+}
+public record DbBoundaryRecord(String version, String trace_id, String coglet, BigInteger logical_time, Object previous, String before_hash, String output_hash, String record_hash, List<BoundaryChange> boundary, Map<String, String> output_files) implements Message {
+public String rule() { return "db-boundary-record"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("version", this.version);
+m.put("trace_id", this.trace_id);
+m.put("coglet", this.coglet);
+m.put("logical_time", this.logical_time);
+m.put("previous", this.previous);
+m.put("before_hash", this.before_hash);
+m.put("output_hash", this.output_hash);
+m.put("record_hash", this.record_hash);
+m.put("boundary", this.boundary);
+m.put("output_files", this.output_files);
+return m; }
+public static DbBoundaryRecord fromCbor(byte[] raw) { return Codec.decodeRecord("db-boundary-record", raw, DbBoundaryRecord.class); }
+}
 public record SetExpression(String expression, BigInteger intensity, BigInteger duration_ms) implements Message {
 public String rule() { return "set-expression"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
@@ -1431,6 +1681,22 @@ Codec.register("action-accept", ActionAccept2.class, "{\"op\":\"record\",\"field
 Codec.register("action-outcome", ActionOutcome1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"id","correlation_id","status","result"});
 Codec.register("action-outcome", ActionOutcome2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}]}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"id","correlation_id","status","error"});
 Codec.register("error", Error.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error-code\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"code","message","retryable","details"});
+Codec.register("db-statement", DbStatement.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"operation\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"statement\"}},{\"name\":\"statement\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,63}$\"}]}},{\"name\":\"mode\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"read\"},{\"op\":\"literal\",\"value\":\"write\"}]}},{\"name\":\"params\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"database::db-cell\"},\"min\":0,\"max\":32}},{\"name\":\"max_rows\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":64}},{\"name\":\"max_bytes\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":256,\"max\":65536}},{\"name\":\"cursor\",\"optional\":true,\"type\":{\"op\":\"ref\",\"name\":\"database::db-cursor\"}}]}", new String[]{"operation","statement","mode","params","max_rows","max_bytes","cursor"});
+Codec.register("db-enqueue", DbEnqueue.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"operation\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"enqueue\"}},{\"name\":\"intent_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"idempotency_key\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"operation","intent_id","idempotency_key","kind","payload","correlation_id"});
+Codec.register("db-page", DbPage.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"page\"}},{\"name\":\"columns\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]},\"min\":0,\"max\":16}},{\"name\":\"rows\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"database::db-cell\"},\"min\":0,\"max\":16},\"min\":0,\"max\":64}},{\"name\":\"affected\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"next_cursor\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"database::db-cursor\"},{\"op\":\"literal\",\"value\":null}]}}]}", new String[]{"status","columns","rows","affected","revision","next_cursor"});
+Codec.register("db-enqueued", DbEnqueued.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"enqueued\"}},{\"name\":\"intent_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"duplicate\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}}]}", new String[]{"status","intent_id","duplicate"});
+Codec.register("db-failed", DbFailed.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"failed\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"status","error"});
+Codec.register("db-outcome", DbOutcome1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"intent_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"idempotency_key\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"intent_id","idempotency_key","correlation_id","status","result"});
+Codec.register("db-outcome", DbOutcome2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"intent_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"idempotency_key\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"}]}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"intent_id","idempotency_key","correlation_id","status","error"});
+Codec.register("db-host-call", DbHostCall1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"db\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"database::db-request\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":0}},{\"name\":\"response\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"database::db-reply\"}}]}", new String[]{"op","argument","result","response"});
+Codec.register("db-host-call", DbHostCall2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"db\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"database::db-request\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":4}}]}", new String[]{"op","argument","result"});
+Codec.register("db-host-call", DbHostCall3.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"db\"}},{\"name\":\"argument_hex\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hex\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":1}}]}", new String[]{"op","argument_hex","result"});
+Codec.register("db-config", DbConfig.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"schema_min\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"schema_max\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"catalog_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}}]}", new String[]{"schema_min","schema_max","catalog_hash"});
+Codec.register("db-manifest", DbManifest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.2\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"subscriptions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"required_capabilities\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"exclusive_outputs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}},{\"name\":\"database\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"database::db-config\"}}]}", new String[]{"version","id","subscriptions","required_capabilities","exclusive_outputs","budgets","database"});
+Codec.register("db-step-record", DbStepRecord1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.2\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hash\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"db_before\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_after\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_schema_version\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_catalog_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::engine\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::event\"},\"min\":1}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::boundary-change\"},\"min\":0}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::call\"},{\"op\":\"ref\",\"name\":\"database::db-host-call\"}]},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::action\"},\"min\":0}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::log-entry\"},\"min\":0}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::usage\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"committed\"}}]}", new String[]{"version","trace_id","coglet","step","logical_time","seed","previous","code_hash","manifest_hash","before_hash","input_hash","output_hash","record_hash","db_before","db_after","db_schema_version","db_catalog_hash","engine","budgets","grants","events","boundary","calls","actions","timers","llm_requests","logs","input_files","output_files","usage","status"});
+Codec.register("db-step-record", DbStepRecord2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.2\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hash\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"db_before\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_after\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_schema_version\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"db_catalog_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::engine\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::budgets\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::event\"},\"min\":1}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::boundary-change\"},\"min\":0}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::call\"},{\"op\":\"ref\",\"name\":\"database::db-host-call\"}]},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::action\"},\"min\":0}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::log-entry\"},\"min\":0}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::usage\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"aborted\"}},{\"name\":\"failure\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::failure\"}}]}", new String[]{"version","trace_id","coglet","step","logical_time","seed","previous","code_hash","manifest_hash","before_hash","input_hash","output_hash","record_hash","db_before","db_after","db_schema_version","db_catalog_hash","engine","budgets","grants","events","boundary","calls","actions","timers","llm_requests","logs","input_files","output_files","usage","status","failure"});
+Codec.register("db-trace", DbTrace.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.2\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"initial_effect_ids\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::effect-ledger\"}},{\"name\":\"initial_actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::action\"},\"min\":0}},{\"name\":\"initial_inbox_wakes\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::uint64\"},\"min\":0}},{\"name\":\"initial_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"initial_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"final_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"trailing_boundary\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"database::db-boundary-record\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"initial_timers\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::timer-request\"},\"min\":0}},{\"name\":\"initial_llm_requests\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::llm-request\"},\"min\":0}},{\"name\":\"records\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"database::db-step-record\"},\"min\":0}},{\"name\":\"blobs\",\"optional\":false,\"type\":{\"op\":\"map\",\"item\":{\"op\":\"ref\",\"name\":\"abi::hex\"},\"min\":0}},{\"name\":\"initial_db_revision\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"final_db_revision\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"version","trace_id","coglet","initial_effect_ids","initial_actions","initial_inbox_wakes","initial_hash","initial_files","code_hash","manifest_hash","final_hash","trailing_boundary","initial_timers","initial_llm_requests","records","blobs","initial_db_revision","final_db_revision"});
+Codec.register("db-boundary-record", DbBoundaryRecord.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.2\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"ref\",\"name\":\"abi::hash\"},{\"op\":\"literal\",\"value\":null}]}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::hash\"}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::boundary-change\"},\"min\":1}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"abi::snapshot\"}}]}", new String[]{"version","trace_id","coglet","logical_time","previous","before_hash","output_hash","record_hash","boundary","output_files"});
 Codec.register("set-expression", SetExpression.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}]}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":1000}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":60000}}]}", new String[]{"expression","intensity","duration_ms"});
 Codec.register("expression-state", ExpressionState.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}]}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":1000}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":60000}}]}", new String[]{"expression","intensity","remaining_ms"});
 Codec.register("hub-build-record", HubBuildRecord.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-build-version\"}},{\"name\":\"source_commit\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-oid\"}},{\"name\":\"recipe_sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"policy_sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"transform_sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"original_sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"rewritten_sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}}]}", new String[]{"version","source_commit","recipe_sha256","policy_sha256","transform_sha256","original_sha256","rewritten_sha256"});
@@ -1558,6 +1824,18 @@ Codec.alias("common::error", "error");
 Codec.alias("common::event", "event");
 Codec.alias("common::version-offer", "version-offer");
 Codec.alias("common::version-selection", "version-selection");
+Codec.alias("database::db-boundary-record", "db-boundary-record");
+Codec.alias("database::db-config", "db-config");
+Codec.alias("database::db-enqueue", "db-enqueue");
+Codec.alias("database::db-enqueued", "db-enqueued");
+Codec.alias("database::db-failed", "db-failed");
+Codec.alias("database::db-host-call", "db-host-call");
+Codec.alias("database::db-manifest", "db-manifest");
+Codec.alias("database::db-outcome", "db-outcome");
+Codec.alias("database::db-page", "db-page");
+Codec.alias("database::db-statement", "db-statement");
+Codec.alias("database::db-step-record", "db-step-record");
+Codec.alias("database::db-trace", "db-trace");
 Codec.alias("expression::expression-state", "expression-state");
 Codec.alias("expression::set-expression", "set-expression");
 Codec.alias("hub::debug-pause-request", "debug-pause-request");

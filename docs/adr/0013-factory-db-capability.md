@@ -1,9 +1,9 @@
-# ADR-0011: Factory database capability and recovery boundary
+# ADR-0013: Factory database capability and recovery boundary
 
 - Status: Proposed
 - Date: 2026-11-23
 - Authors: Coglet contributors
-- Related PR: pending publication
+- Related PR: [#41](https://github.com/softmax-universe/coglet/pull/41) (published before spec edits)
 - Supersedes / superseded by: extends ADR-0006; does not change spec-v0
 
 ## Context

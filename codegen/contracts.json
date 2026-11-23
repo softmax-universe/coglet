@@ -4,5 +4,6 @@
   "abi": "generated",
   "surface": "generated",
   "speech": "generated",
-  "expression": "generated"
+  "expression": "generated",
+  "database": "generated"
 }
