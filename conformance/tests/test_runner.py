@@ -7,12 +7,13 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 import xml.etree.ElementTree as ET
 
 CONF = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CONF))
-from harness import run_case, validate_case, validate_impl  # noqa: E402
+from harness import cases_for, run_case, validate_case, validate_impl  # noqa: E402
 from wire import decode, encode  # noqa: E402
 
 RUN = CONF / 'run'
@@ -79,7 +80,14 @@ class RunnerTests(unittest.TestCase):
     def test_default_registry_runs_claimed_suites(self):
         result, report = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(report.get('tests'), '4')
+        registry = tomllib.loads((CONF / 'impls.toml').read_text())
+        expected = sum(len(cases_for(CONF, suite))
+                       for impl in registry['implementations'] for suite in impl['suites'])
+        self.assertGreater(expected, 0)
+        self.assertEqual(report.get('tests'), str(expected))
+        self.assertEqual(len(report.findall('testcase')), expected)
+        self.assertEqual(report.get('failures'), '0')
+        self.assertEqual(report.get('skipped'), '0')
 
     def test_empty_registry_no_claims(self):
         registry = self.root / 'impls.toml'
