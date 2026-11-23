@@ -1,0 +1,3 @@
+mode=aot-negative-control bytes=198196 load_ns=45843
+negative_control: terminate sent after 10ms; awaiting runaway return
+external_kill_exit=137
