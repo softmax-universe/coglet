@@ -1,0 +1,471 @@
+[
+  {
+    "name": "heard-1200-of-3000",
+    "valid": true,
+    "steps": [
+      {
+        "op": "item",
+        "item": "11111111111111111111111111111111",
+        "duration_ms": 3000,
+        "spans": [
+          {
+            "end_ms": 1000,
+            "text": "Hello"
+          },
+          {
+            "end_ms": 3000,
+            "text": " world"
+          }
+        ]
+      },
+      {
+        "op": "position",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 0
+      },
+      {
+        "op": "barge",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 1200,
+        "reflex": "stopped"
+      },
+      {
+        "op": "heard",
+        "record": {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello"
+        }
+      }
+    ],
+    "expected": {
+      "heard": [
+        {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello"
+        }
+      ],
+      "epoch": 2,
+      "dispatches": 0,
+      "done": []
+    }
+  },
+  {
+    "name": "unheard-suffix-in-record",
+    "valid": false,
+    "steps": [
+      {
+        "op": "item",
+        "item": "11111111111111111111111111111111",
+        "duration_ms": 3000,
+        "spans": [
+          {
+            "end_ms": 1000,
+            "text": "Hello"
+          },
+          {
+            "end_ms": 3000,
+            "text": " world"
+          }
+        ]
+      },
+      {
+        "op": "position",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 0
+      },
+      {
+        "op": "barge",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 1200,
+        "reflex": "stopped"
+      },
+      {
+        "op": "heard",
+        "record": {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello world"
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "synthesized-duration-is-not-played",
+    "valid": false,
+    "steps": [
+      {
+        "op": "item",
+        "item": "11111111111111111111111111111111",
+        "duration_ms": 3000,
+        "spans": [
+          {
+            "end_ms": 1000,
+            "text": "Hello"
+          },
+          {
+            "end_ms": 3000,
+            "text": " world"
+          }
+        ]
+      },
+      {
+        "op": "position",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 0
+      },
+      {
+        "op": "barge",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 1200,
+        "reflex": "stopped"
+      },
+      {
+        "op": "heard",
+        "record": {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 3000,
+          "text": "Hello"
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "work-cancelled-by-barge",
+    "valid": true,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "item",
+        "item": "11111111111111111111111111111111",
+        "duration_ms": 3000,
+        "spans": [
+          {
+            "end_ms": 1000,
+            "text": "Hello"
+          },
+          {
+            "end_ms": 3000,
+            "text": " world"
+          }
+        ]
+      },
+      {
+        "op": "position",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 0
+      },
+      {
+        "op": "barge",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 1200,
+        "reflex": "stopped"
+      },
+      {
+        "op": "heard",
+        "record": {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello"
+        }
+      },
+      {
+        "op": "result",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        },
+        "reject": "not_found"
+      }
+    ],
+    "expected": {
+      "heard": [
+        {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello"
+        }
+      ],
+      "epoch": 2,
+      "dispatches": 1,
+      "done": [
+        {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "cancelled",
+          "value": {
+            "code": "cancelled",
+            "message": "No grant",
+            "retryable": false
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "duplicate-call-ignored",
+    "valid": true,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "result",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      },
+      {
+        "op": "claim",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      }
+    ],
+    "expected": {
+      "heard": [],
+      "epoch": 1,
+      "dispatches": 1,
+      "done": [
+        {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "speak-before-result",
+    "valid": false,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "claim",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "invented-outcome",
+    "valid": false,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "result",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      },
+      {
+        "op": "claim",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Invented success"
+          }
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "cancelled-work-cannot-speak-success",
+    "valid": false,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "item",
+        "item": "11111111111111111111111111111111",
+        "duration_ms": 3000,
+        "spans": [
+          {
+            "end_ms": 1000,
+            "text": "Hello"
+          },
+          {
+            "end_ms": 3000,
+            "text": " world"
+          }
+        ]
+      },
+      {
+        "op": "position",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 0
+      },
+      {
+        "op": "barge",
+        "item": "11111111111111111111111111111111",
+        "played_ms": 1200,
+        "reflex": "stopped"
+      },
+      {
+        "op": "heard",
+        "record": {
+          "item": "11111111111111111111111111111111",
+          "played_ms": 1200,
+          "text": "Hello"
+        }
+      },
+      {
+        "op": "claim",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "status": "succeeded",
+          "value": {
+            "summary": "Inspected"
+          }
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "conflicting-call",
+    "valid": true,
+    "steps": [
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Inspect"
+          }
+        }
+      },
+      {
+        "op": "intent",
+        "value": {
+          "turn": "44444444444444444444444444444444",
+          "call": "33333333333333333333333333333333",
+          "epoch": 1,
+          "name": "game.inspect",
+          "arguments": {
+            "request": "Different"
+          }
+        },
+        "reject": "conflict"
+      }
+    ],
+    "expected": {
+      "heard": [],
+      "epoch": 1,
+      "dispatches": 1,
+      "done": []
+    }
+  }
+]
