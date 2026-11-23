@@ -34,14 +34,23 @@ it contains no Mindister/legacy implementation code or third-party transport.
 5. On ANY dispatch/transport failure call `disconnect` and close the transport.
    No grants or effects survive reconnect. Session construction advances the durable
    epoch and fails uncertain admitted actions rather than replaying physical work.
+   It commits a running marker before returning any authority. An unclean restart
+   (including an old ledger with no marker) latches stopped until local reset, even
+   if the last kill save failed. `disconnect` and deinit leave this marker armed.
+6. For an orderly shutdown, fence external callbacks and call throwing `close()`.
+   It durably marks the ledger clean but **never clears kill**. Both `close()` and
+   operator reset retire the instance, even on error; never reuse it. Reopen after
+   failure to reconcile. Keep one exclusive supervisor/session per identity and
+   an external identity anchor: deleted state is not permission for a new ledger.
 
 All session and transport calls are serialized by the caller on one non-audio
 queue; they are intentionally not `Sendable`. A native off-switch FIRST stops I/O
 without waiting for that queue, then calls `kill` to persist the latch and notify.
-Only the explicit trusted `localOperatorResetForNextConnection` API, after close,
-can clear the latch. It does not reopen the connection or install new grants.
+Only the explicit trusted `localOperatorResetForNextConnection` API, after
+`disconnect()` (not terminal `close()`), can clear the latch. It does not reopen
+this connection or install new grants; construct and negotiate a new session.
 Never expose it as a coglet/provider/hub operation. iOS suspension follows the same
-stop, disconnect and close path; no background-execution promise is made.
+stop/revoke path; no background-execution promise is made.
 
 ### AF_UNIX
 
