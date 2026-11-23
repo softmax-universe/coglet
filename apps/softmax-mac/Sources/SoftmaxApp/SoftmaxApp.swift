@@ -21,9 +21,15 @@ struct SoftmaxApp: App {
             Divider()
             Button("Quit Softmax") { NSApp.terminate(nil) }.keyboardShortcut("q")
         } label: {
-            Label("Softmax: \(delegate.model.machine.state.rawValue)",
-                  systemImage: delegate.model.machine.state.symbolName)
+            StatusLabel(model: delegate.model)
         }
+    }
+}
+
+struct StatusLabel: View {
+    @ObservedObject var model: ShellModel
+    var body: some View {
+        Label("Softmax: \(model.machine.state.rawValue)", systemImage: model.machine.state.symbolName)
     }
 }
 
