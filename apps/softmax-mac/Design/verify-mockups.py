@@ -29,6 +29,32 @@ def load(page, **params):
 def overflow(page):
     return page.evaluate('document.documentElement.scrollWidth > innerWidth')
 
+def settings_semantics(page, section, scenario):
+    panel = page.locator('.settings-main')
+    text = panel.inner_text()
+    def action(name):
+        return panel.locator(f'[data-action="{name}"]').count()
+    if section == 'hub-account':
+        assert action('disconnect') == (scenario == 'default'), (scenario, text)
+        assert action('connect') == (scenario in ['disconnected', 'error']), (scenario, text)
+        assert action('settings-cancel-connect') == (scenario == 'connecting')
+        assert action('settings-confirm-hub') == (scenario == 'connecting')
+        assert ('Example connection: connected' in text) == (scenario == 'default')
+        assert ('No account is connected.' in text) == (scenario in ['disconnected', 'error'])
+        assert 'Could not load.' not in text
+        expected = {'default': 'Example connection: connected', 'disconnected': 'Hub disconnected.', 'connecting': 'Connecting…', 'error': 'Could not verify this hub.'}
+        assert expected[scenario] in text
+    if section == 'coglets':
+        assert panel.locator('.fi').count() == (2 if scenario == 'default' else 0)
+        assert ('Sample · running' in text) == (scenario == 'default')
+        assert ('Sample · paused' in text) == (scenario == 'default')
+        assert action('retry-coglets') == (scenario == 'error')
+        assert action('coglets-loaded') == (scenario == 'loading')
+        if scenario in ['loading', 'error']:
+            assert 'Lifecycle is unknown' in text
+        expected = {'default': 'Sample · running', 'empty': 'No installed coglets.', 'loading': 'Loading coglets…', 'error': 'Could not load coglets.'}
+        assert expected[scenario] in text
+
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     page=browser.new_page(viewport={'width':1280,'height':1050},device_scale_factor=1)
@@ -62,7 +88,33 @@ with sync_playwright() as p:
                 page.select_option('#scenario',scenario)
                 assert page.locator('#scenario').input_value()==scenario
                 assert not overflow(page)
-                report['scenarios'].append({'section':section,'scenario':scenario,'theme':theme})
+                settings_semantics(page, section, scenario)
+                if section in ['hub-account', 'coglets']:
+                    page.locator('#desktop').screenshot(path=str(OUT/f'{theme}-settings-{section}-{scenario}.jpg'),type='jpeg',quality=80,animations='disabled')
+                report['scenarios'].append({'section':section,'scenario':scenario,'theme':theme,'semanticAssertions':section in ['hub-account', 'coglets']})
+        # Exercise real controls, not just the scenario selector, in both themes.
+        load(page,view='settings',state='hub-account',scenario='disconnected',theme=theme,still=1)
+        for control, result in [('connect','connecting'), ('settings-cancel-connect','disconnected'), ('connect','connecting'), ('settings-confirm-hub','default')]:
+            page.locator(f'[data-action="{control}"]').click()
+            assert page.locator('#scenario').input_value() == result
+            settings_semantics(page,'hub-account',result)
+        page.locator('[data-action="disconnect"]').click()
+        page.locator('[data-action="settings-keep-connected"]').click()
+        settings_semantics(page,'hub-account','default')
+        page.locator('[data-action="disconnect"]').click()
+        page.locator('[data-action="settings-confirm-disconnect"]').click()
+        settings_semantics(page,'hub-account','disconnected')
+        load(page,view='settings',state='hub-account',scenario='error',theme=theme,still=1)
+        page.locator('[data-action="connect"]').click()
+        settings_semantics(page,'hub-account','connecting')
+        page.locator('[data-action="settings-cancel-connect"]').click()
+        settings_semantics(page,'hub-account','disconnected')
+        load(page,view='settings',state='coglets',scenario='error',theme=theme,still=1)
+        page.locator('[data-action="retry-coglets"]').click()
+        settings_semantics(page,'coglets','loading')
+        page.locator('[data-action="coglets-loaded"]').click()
+        settings_semantics(page,'coglets','default')
+        report['keyboard'].append(f'{theme}: Hub connect/cancel/confirm, disconnect keep/confirm, error retry/cancel; Coglets error/retry/loading/sample completion')
     assert {(r['view'],r['state'],r['theme']) for r in report['states']}==expected
     # Native page input, never OS-level keyboard injection.
     load(page,view='menu',state='idle',theme='light')
