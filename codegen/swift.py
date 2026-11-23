@@ -24,6 +24,8 @@ def field_name(value):
 
 
 def generate_swift(rules):
+    from target_ir import require_v1
+    require_v1(rules)
     definitions = dict(rules)
     names = {}
     reserved = {'Swift', 'Any', 'CBORValue', 'CBORMapEntry', 'CBORCodec', 'CBORConvertible', 'CBORMessage', 'CBORFailure', 'SchemaNode', 'SchemaField', 'SchemaTupleItem', 'GeneratedSchema', 'NSRegularExpression', 'NSRange'}
@@ -88,7 +90,7 @@ def generate_swift(rules):
         if op in ('regexp', 'size') or op == 'primitive' and node['name'] == 'tstr':
             return 'Swift.String'
         if op == 'primitive':
-            return 'Swift.Bool'
+            return 'CBORValue' if node['name'] == 'null' else 'Swift.Bool'
         if op == 'range':
             return 'Swift.UInt64' if node['min'] >= 0 else 'Swift.Int64' if node['max'] <= 2**63 - 1 else 'CBORValue'
         if op == 'literal':
@@ -128,7 +130,7 @@ def generate_swift(rules):
         if op == 'literal':
             return '.literal(' + literal(n['value']) + ')'
         if op == 'primitive':
-            return '.text' if n['name'] == 'tstr' else '.boolean'
+            return '.text' if n['name'] == 'tstr' else '.literal(.null)' if n['name'] == 'null' else '.boolean'
         if op == 'range':
             return '.range(' + literal(n['min']) + ', ' + literal(n['max']) + ')'
         if op == 'regexp':

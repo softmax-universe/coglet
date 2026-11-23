@@ -24,7 +24,7 @@ class SwiftEmitterTests(unittest.TestCase):
     def test_field_identifier_collisions_fail_closed(self):
         for fields in ('a-b: tstr, a_b: bool', 'self: tstr, self_: bool',
                        'class: tstr, class: bool', 'cborValue: tstr, cborValue_: bool'):
-            with self.subTest(fields=fields), self.assertRaisesRegex(ValueError, 'collision'):
+            with self.subTest(fields=fields), self.assertRaisesRegex(ValueError, 'collision|duplicate field'):
                 generate_swift(parse('thing = {' + fields + '}'))
         for key in ('"123"', '"a b"', '"_"', '"a`b"'):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'identifier'):
@@ -41,6 +41,8 @@ class SwiftEmitterTests(unittest.TestCase):
     def test_unknown_ir_fails_closed(self):
         with self.assertRaises(ValueError):
             generate_swift({'thing': {'op': 'future-node'}})
+        with self.assertRaises(ValueError):
+            generate_swift({'thing': {'op': 'primitive', 'name': 'tstr', 'future': 1}})
 
     @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
     def test_expanded_ir_compiles_and_enforces_constraints(self):

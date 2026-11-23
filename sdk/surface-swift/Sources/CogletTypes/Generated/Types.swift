@@ -3,39 +3,90 @@ import Foundation
 
 internal enum GeneratedSchema {
     static let rules: [Swift.String: SchemaNode] = [
-        "common": .union([.reference("event"), .reference("action"), .reference("action-accept"), .reference("action-outcome"), .reference("error"), .reference("version-offer"), .reference("version-selection")]),
+        "common::common": .union([.reference("common::event"), .reference("common::action"), .reference("common::action-accept"), .reference("common::action-outcome"), .reference("common::error"), .reference("common::version-offer"), .reference("common::version-selection")]),
+        "common::uint64": .range(.unsigned(0), .unsigned(18446744073709551615)),
+        "common::profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("common::uint64")]),
+        "common::profile-value": .union([.reference("common::profile-int"), .text, .boolean, .literal(.null), .boundedArray(0, nil, .reference("common::profile-value")), .reference("common::profile-map")]),
+        "common::profile-map": .boundedMap(0, nil, .text, .reference("common::profile-value")),
+        "common::node-id": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "common::coglet-id": .intersection([.text, .regexp("^coglet:[0-9a-f]{64}$")]),
+        "common::surface-id": .intersection([.text, .regexp("^surface:[0-9a-f]{64}$")]),
+        "common::hub-id": .intersection([.text, .regexp("^hub:[0-9a-f]{64}$")]),
+        "common::source-id": .union([.reference("common::coglet-id"), .reference("common::surface-id"), .reference("common::hub-id")]),
+        "common::capability-name": .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$")]),
+        "common::method-name": .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,31}(\\.[a-z][a-z0-9_]{0,31}){1,3}$")]),
+        "common::correlation-id": .intersection([.text, .regexp("^[0-9a-f]{32}$")]),
+        "common::action-id": .reference("common::correlation-id"),
+        "common::spec-version": .intersection([.text, .regexp("^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$")]),
+        "common::version-offer": .record([.init(name: "versions", optional: false, node: .boundedArray(1, nil, .reference("common::spec-version")))]),
+        "common::version-selection": .record([.init(name: "version", optional: false, node: .reference("common::spec-version"))]),
+        "common::event": .record([.init(name: "source", optional: false, node: .reference("common::source-id")), .init(name: "kind", optional: false, node: .reference("common::capability-name")), .init(name: "seq", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "common::action": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "common::action-accept": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "common::action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "common::error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
+        "common::error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "common": .union([.reference("common::event"), .reference("common::action"), .reference("common::action-accept"), .reference("common::action-outcome"), .reference("common::error"), .reference("common::version-offer"), .reference("common::version-selection")]),
         "uint64": .range(.unsigned(0), .unsigned(18446744073709551615)),
-        "profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("uint64")]),
-        "profile-value": .union([.reference("profile-int"), .text, .boolean, .literal(.null), .boundedArray(0, nil, .reference("profile-value")), .reference("profile-map")]),
-        "profile-map": .boundedMap(0, nil, .text, .reference("profile-value")),
-        "node-id": .regexp("^[0-9a-f]{64}$"),
-        "coglet-id": .regexp("^coglet:[0-9a-f]{64}$"),
-        "surface-id": .regexp("^surface:[0-9a-f]{64}$"),
-        "hub-id": .regexp("^hub:[0-9a-f]{64}$"),
-        "source-id": .union([.reference("coglet-id"), .reference("surface-id"), .reference("hub-id")]),
-        "capability-name": .regexp("^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$"),
-        "method-name": .regexp("^[a-z][a-z0-9_]{0,31}(\\.[a-z][a-z0-9_]{0,31}){1,3}$"),
-        "correlation-id": .regexp("^[0-9a-f]{32}$"),
-        "action-id": .reference("correlation-id"),
-        "spec-version": .regexp("^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$"),
-        "version-offer": .record([.init(name: "versions", optional: false, node: .boundedArray(1, nil, .reference("spec-version")))]),
-        "version-selection": .record([.init(name: "version", optional: false, node: .reference("spec-version"))]),
-        "event": .record([.init(name: "source", optional: false, node: .reference("source-id")), .init(name: "kind", optional: false, node: .reference("capability-name")), .init(name: "seq", optional: false, node: .reference("uint64")), .init(name: "logical_time", optional: false, node: .reference("uint64")), .init(name: "payload", optional: false, node: .reference("profile-map")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id"))]),
-        "action": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "coglet", optional: false, node: .reference("coglet-id")), .init(name: "capability", optional: false, node: .reference("capability-name")), .init(name: "args", optional: false, node: .reference("profile-map")), .init(name: "deadline", optional: false, node: .reference("uint64")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id"))]),
-        "action-accept": .union([.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))])]),
-        "action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))])]),
+        "profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("common::uint64")]),
+        "profile-value": .union([.reference("common::profile-int"), .text, .boolean, .literal(.null), .boundedArray(0, nil, .reference("common::profile-value")), .reference("common::profile-map")]),
+        "profile-map": .boundedMap(0, nil, .text, .reference("common::profile-value")),
+        "node-id": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "coglet-id": .intersection([.text, .regexp("^coglet:[0-9a-f]{64}$")]),
+        "surface-id": .intersection([.text, .regexp("^surface:[0-9a-f]{64}$")]),
+        "hub-id": .intersection([.text, .regexp("^hub:[0-9a-f]{64}$")]),
+        "source-id": .union([.reference("common::coglet-id"), .reference("common::surface-id"), .reference("common::hub-id")]),
+        "capability-name": .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$")]),
+        "method-name": .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,31}(\\.[a-z][a-z0-9_]{0,31}){1,3}$")]),
+        "correlation-id": .intersection([.text, .regexp("^[0-9a-f]{32}$")]),
+        "action-id": .reference("common::correlation-id"),
+        "spec-version": .intersection([.text, .regexp("^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$")]),
+        "version-offer": .record([.init(name: "versions", optional: false, node: .boundedArray(1, nil, .reference("common::spec-version")))]),
+        "version-selection": .record([.init(name: "version", optional: false, node: .reference("common::spec-version"))]),
+        "event": .record([.init(name: "source", optional: false, node: .reference("common::source-id")), .init(name: "kind", optional: false, node: .reference("common::capability-name")), .init(name: "seq", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "action": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "action-accept": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
         "error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
-        "error": .record([.init(name: "code", optional: false, node: .reference("error-code")), .init(name: "message", optional: false, node: .size(1, 18446744073709551615)), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("profile-map"))]),
-        "@ActionAcceptVariant1": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]),
-        "@ActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))]),
-        "@ActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]),
-        "@ActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))]),
+        "error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "@CommonActionAcceptVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]),
+        "@CommonActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@CommonActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
+        "@CommonActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@ActionAcceptVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]),
+        "@ActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@ActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
+        "@ActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@CommonActionOutcomeVariant2Status": .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))]),
         "@ActionOutcomeVariant2Status": .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))]),
     ]
     static func typedRoundTrip(rule: Swift.String, bytes: [Swift.UInt8]) throws -> [Swift.UInt8] {
         let value = try CBORCodec.decode(rule: rule, bytes: bytes)
         let typed: CBORValue
         switch rule {
+        case "common::common": typed = try CommonCommon.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::uint64": typed = try CommonUint64.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::profile-int": typed = try CommonProfileInt.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::profile-value": typed = try CommonProfileValue.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::profile-map": typed = try CommonProfileMap.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::node-id": typed = try CommonNodeId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::coglet-id": typed = try CommonCogletId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::surface-id": typed = try CommonSurfaceId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::hub-id": typed = try CommonHubId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::source-id": typed = try CommonSourceId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::capability-name": typed = try CommonCapabilityName.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::method-name": typed = try CommonMethodName.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::correlation-id": typed = try CommonCorrelationId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::action-id": typed = try CommonActionId.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::spec-version": typed = try CommonSpecVersion.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::version-offer": typed = try CommonVersionOffer.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::version-selection": typed = try CommonVersionSelection.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::event": typed = try CommonEvent.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::action": typed = try CommonAction.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::action-accept": typed = try CommonActionAccept.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::action-outcome": typed = try CommonActionOutcome.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::error-code": typed = try CommonErrorCode.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "common::error": typed = try CommonError.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common": typed = try Common.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "uint64": typed = try Uint64.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "profile-int": typed = try ProfileInt.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -65,43 +116,43 @@ internal enum GeneratedSchema {
     }
 }
 
-public indirect enum Common: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "common"
-    case variant1(Event)
-    case variant2(Action)
-    case variant3(ActionAccept)
-    case variant4(ActionOutcome)
-    case variant5(Error)
-    case variant6(VersionOffer)
-    case variant7(VersionSelection)
+public indirect enum CommonCommon: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::common"
+    case variant1(CommonEvent)
+    case variant2(CommonAction)
+    case variant3(CommonActionAccept)
+    case variant4(CommonActionOutcome)
+    case variant5(CommonError)
+    case variant6(CommonVersionOffer)
+    case variant7(CommonVersionSelection)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.reference("event"), cborValue)) != nil {
-            self = .variant1(try Event.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::event"), cborValue)) != nil {
+            self = .variant1(try CommonEvent.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("action"), cborValue)) != nil {
-            self = .variant2(try Action.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::action"), cborValue)) != nil {
+            self = .variant2(try CommonAction.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("action-accept"), cborValue)) != nil {
-            self = .variant3(try ActionAccept.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::action-accept"), cborValue)) != nil {
+            self = .variant3(try CommonActionAccept.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("action-outcome"), cborValue)) != nil {
-            self = .variant4(try ActionOutcome.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::action-outcome"), cborValue)) != nil {
+            self = .variant4(try CommonActionOutcome.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("error"), cborValue)) != nil {
-            self = .variant5(try Error.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::error"), cborValue)) != nil {
+            self = .variant5(try CommonError.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("version-offer"), cborValue)) != nil {
-            self = .variant6(try VersionOffer.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::version-offer"), cborValue)) != nil {
+            self = .variant6(try CommonVersionOffer.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("version-selection"), cborValue)) != nil {
-            self = .variant7(try VersionSelection.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::version-selection"), cborValue)) != nil {
+            self = .variant7(try CommonVersionSelection.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -112,45 +163,45 @@ public indirect enum Common: CBORMessage, Equatable, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("event"), value)
+            try CBORCodec.validateNode(.reference("common::event"), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("action"), value)
+            try CBORCodec.validateNode(.reference("common::action"), value)
         case .variant3(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("action-accept"), value)
+            try CBORCodec.validateNode(.reference("common::action-accept"), value)
         case .variant4(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("action-outcome"), value)
+            try CBORCodec.validateNode(.reference("common::action-outcome"), value)
         case .variant5(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("error"), value)
+            try CBORCodec.validateNode(.reference("common::error"), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("version-offer"), value)
+            try CBORCodec.validateNode(.reference("common::version-offer"), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("version-selection"), value)
+            try CBORCodec.validateNode(.reference("common::version-selection"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
     }
 }
 
-public typealias Uint64 = Swift.UInt64
+public typealias CommonUint64 = Swift.UInt64
 
-public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "profile-int"
+public indirect enum CommonProfileInt: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::profile-int"
     case variant1(Swift.Int64)
-    case variant2(Uint64)
+    case variant2(CommonUint64)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), cborValue)) != nil {
             self = .variant1(try Swift.Int64.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("uint64"), cborValue)) != nil {
-            self = .variant2(try Uint64.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant2(try CommonUint64.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -164,25 +215,25 @@ public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
             try CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("uint64"), value)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
     }
 }
 
-public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "profile-value"
-    case variant1(ProfileInt)
+public indirect enum CommonProfileValue: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::profile-value"
+    case variant1(CommonProfileInt)
     case variant2(Swift.String)
     case variant3(Swift.Bool)
     case variant4(CBORValue)
-    case variant5([ProfileValue])
-    case variant6(ProfileMap)
+    case variant5([CommonProfileValue])
+    case variant6(CommonProfileMap)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.reference("profile-int"), cborValue)) != nil {
-            self = .variant1(try ProfileInt.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::profile-int"), cborValue)) != nil {
+            self = .variant1(try CommonProfileInt.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.text, cborValue)) != nil {
@@ -197,12 +248,12 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
             self = .variant4(try CBORValue.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.boundedArray(0, nil, .reference("profile-value")), cborValue)) != nil {
-            self = .variant5(try [ProfileValue].init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.boundedArray(0, nil, .reference("common::profile-value")), cborValue)) != nil {
+            self = .variant5(try [CommonProfileValue].init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("profile-map"), cborValue)) != nil {
-            self = .variant6(try ProfileMap.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::profile-map"), cborValue)) != nil {
+            self = .variant6(try CommonProfileMap.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -213,7 +264,7 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("profile-int"), value)
+            try CBORCodec.validateNode(.reference("common::profile-int"), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.text, value)
@@ -225,43 +276,43 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
             try CBORCodec.validateNode(.literal(.null), value)
         case .variant5(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.boundedArray(0, nil, .reference("profile-value")), value)
+            try CBORCodec.validateNode(.boundedArray(0, nil, .reference("common::profile-value")), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("profile-map"), value)
+            try CBORCodec.validateNode(.reference("common::profile-map"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
     }
 }
 
-public typealias ProfileMap = [CBORMapEntry]
+public typealias CommonProfileMap = [CBORMapEntry]
 
-public typealias NodeId = Swift.String
+public typealias CommonNodeId = CBORValue
 
-public typealias CogletId = Swift.String
+public typealias CommonCogletId = CBORValue
 
-public typealias SurfaceId = Swift.String
+public typealias CommonSurfaceId = CBORValue
 
-public typealias HubId = Swift.String
+public typealias CommonHubId = CBORValue
 
-public indirect enum SourceId: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "source-id"
-    case variant1(CogletId)
-    case variant2(SurfaceId)
-    case variant3(HubId)
+public indirect enum CommonSourceId: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::source-id"
+    case variant1(CommonCogletId)
+    case variant2(CommonSurfaceId)
+    case variant3(CommonHubId)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.reference("coglet-id"), cborValue)) != nil {
-            self = .variant1(try CogletId.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::coglet-id"), cborValue)) != nil {
+            self = .variant1(try CommonCogletId.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("surface-id"), cborValue)) != nil {
-            self = .variant2(try SurfaceId.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::surface-id"), cborValue)) != nil {
+            self = .variant2(try CommonSurfaceId.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub-id"), cborValue)) != nil {
-            self = .variant3(try HubId.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("common::hub-id"), cborValue)) != nil {
+            self = .variant3(try CommonHubId.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -272,40 +323,600 @@ public indirect enum SourceId: CBORMessage, Equatable, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("coglet-id"), value)
+            try CBORCodec.validateNode(.reference("common::coglet-id"), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("surface-id"), value)
+            try CBORCodec.validateNode(.reference("common::surface-id"), value)
         case .variant3(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub-id"), value)
+            try CBORCodec.validateNode(.reference("common::hub-id"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
     }
 }
 
-public typealias CapabilityName = Swift.String
+public typealias CommonCapabilityName = CBORValue
 
-public typealias MethodName = Swift.String
+public typealias CommonMethodName = CBORValue
 
-public typealias CorrelationId = Swift.String
+public typealias CommonCorrelationId = CBORValue
 
-public typealias ActionId = CorrelationId
+public typealias CommonActionId = CommonCorrelationId
 
-public typealias SpecVersion = Swift.String
+public typealias CommonSpecVersion = CBORValue
 
-public struct VersionOffer: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "version-offer"
-    public var `versions`: [SpecVersion]
-    public init(`versions`: [SpecVersion]) {
+public struct CommonVersionOffer: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::version-offer"
+    public var `versions`: [CommonSpecVersion]
+    public init(`versions`: [CommonSpecVersion]) {
         self.`versions` = `versions`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`versions` = try [SpecVersion].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "versions")), depth: depth + 1)
+        self.`versions` = try [CommonSpecVersion].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "versions")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("versions", try self.`versions`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonVersionSelection: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::version-selection"
+    public var `version`: CommonSpecVersion
+    public init(`version`: CommonSpecVersion) {
+        self.`version` = `version`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try CommonSpecVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonEvent: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::event"
+    public var `source`: CommonSourceId
+    public var `kind`: CommonCapabilityName
+    public var `seq`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`source`: CommonSourceId, `kind`: CommonCapabilityName, `seq`: CommonUint64, `logical_time`: CommonUint64, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
+        self.`source` = `source`
+        self.`kind` = `kind`
+        self.`seq` = `seq`
+        self.`logical_time` = `logical_time`
+        self.`payload` = `payload`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`source` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source")), depth: depth + 1)
+        self.`kind` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seq")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("source", try self.`source`.cborValue(depth: depth + 1)))
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("seq", try self.`seq`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("payload", try self.`payload`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonAction: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::action"
+    public var `id`: CommonActionId
+    public var `coglet`: CommonCogletId
+    public var `capability`: CommonCapabilityName
+    public var `args`: CommonProfileMap
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`id`: CommonActionId, `coglet`: CommonCogletId, `capability`: CommonCapabilityName, `args`: CommonProfileMap, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`id` = `id`
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CommonActionAccept: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::action-accept"
+    case variant1(CommonActionAcceptVariant1)
+    case variant2(CommonActionAcceptVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), cborValue)) != nil {
+            self = .variant1(try CommonActionAcceptVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try CommonActionAcceptVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CommonActionOutcome: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::action-outcome"
+    case variant1(CommonActionOutcomeVariant1)
+    case variant2(CommonActionOutcomeVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try CommonActionOutcomeVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try CommonActionOutcomeVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CommonErrorCode: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::error-code"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    case variant7(Swift.String)
+    case variant8(Swift.String)
+    case variant9(Swift.String)
+    case variant10(Swift.String)
+    case variant11(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("invalid_argument")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("unsupported_version")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("unauthenticated")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("permission_denied")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("not_found")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("conflict")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("resource_exhausted")), cborValue)) != nil {
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("deadline_exceeded")), cborValue)) != nil {
+            self = .variant8(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("cancelled")), cborValue)) != nil {
+            self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("unavailable")), cborValue)) != nil {
+            self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("internal")), cborValue)) != nil {
+            self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("invalid_argument")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("unsupported_version")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("unauthenticated")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("permission_denied")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("not_found")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("conflict")), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("resource_exhausted")), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("deadline_exceeded")), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("cancelled")), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("unavailable")), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("internal")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonError: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common::error"
+    public var `code`: CommonErrorCode
+    public var `message`: CBORValue
+    public var `retryable`: Swift.Bool
+    public var `details`: CommonProfileMap?
+    public init(`code`: CommonErrorCode, `message`: CBORValue, `retryable`: Swift.Bool, `details`: CommonProfileMap? = nil) {
+        self.`code` = `code`
+        self.`message` = `message`
+        self.`retryable` = `retryable`
+        self.`details` = `details`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`code` = try CommonErrorCode.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code")), depth: depth + 1)
+        self.`message` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`retryable` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "retryable")), depth: depth + 1)
+        self.`details` = try CBORCodec.field(entries, "details").map { try CommonProfileMap.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("code", try self.`code`.cborValue(depth: depth + 1)))
+        entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
+        entries.append(.init("retryable", try self.`retryable`.cborValue(depth: depth + 1)))
+        if let v = self.`details` { entries.append(.init("details", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Common: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "common"
+    case variant1(CommonEvent)
+    case variant2(CommonAction)
+    case variant3(CommonActionAccept)
+    case variant4(CommonActionOutcome)
+    case variant5(CommonError)
+    case variant6(CommonVersionOffer)
+    case variant7(CommonVersionSelection)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::event"), cborValue)) != nil {
+            self = .variant1(try CommonEvent.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::action"), cborValue)) != nil {
+            self = .variant2(try CommonAction.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::action-accept"), cborValue)) != nil {
+            self = .variant3(try CommonActionAccept.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::action-outcome"), cborValue)) != nil {
+            self = .variant4(try CommonActionOutcome.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::error"), cborValue)) != nil {
+            self = .variant5(try CommonError.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::version-offer"), cborValue)) != nil {
+            self = .variant6(try CommonVersionOffer.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::version-selection"), cborValue)) != nil {
+            self = .variant7(try CommonVersionSelection.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::event"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::action"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::action-accept"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::action-outcome"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::error"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::version-offer"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::version-selection"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias Uint64 = Swift.UInt64
+
+public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "profile-int"
+    case variant1(Swift.Int64)
+    case variant2(CommonUint64)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), cborValue)) != nil {
+            self = .variant1(try Swift.Int64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant2(try CommonUint64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "profile-value"
+    case variant1(CommonProfileInt)
+    case variant2(Swift.String)
+    case variant3(Swift.Bool)
+    case variant4(CBORValue)
+    case variant5([CommonProfileValue])
+    case variant6(CommonProfileMap)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::profile-int"), cborValue)) != nil {
+            self = .variant1(try CommonProfileInt.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.text, cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.boolean, cborValue)) != nil {
+            self = .variant3(try Swift.Bool.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant4(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.boundedArray(0, nil, .reference("common::profile-value")), cborValue)) != nil {
+            self = .variant5(try [CommonProfileValue].init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::profile-map"), cborValue)) != nil {
+            self = .variant6(try CommonProfileMap.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::profile-int"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.text, value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.boolean, value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.boundedArray(0, nil, .reference("common::profile-value")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::profile-map"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias ProfileMap = [CBORMapEntry]
+
+public typealias NodeId = CBORValue
+
+public typealias CogletId = CBORValue
+
+public typealias SurfaceId = CBORValue
+
+public typealias HubId = CBORValue
+
+public indirect enum SourceId: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "source-id"
+    case variant1(CommonCogletId)
+    case variant2(CommonSurfaceId)
+    case variant3(CommonHubId)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::coglet-id"), cborValue)) != nil {
+            self = .variant1(try CommonCogletId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::surface-id"), cborValue)) != nil {
+            self = .variant2(try CommonSurfaceId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("common::hub-id"), cborValue)) != nil {
+            self = .variant3(try CommonHubId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::coglet-id"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::surface-id"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::hub-id"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias CapabilityName = CBORValue
+
+public typealias MethodName = CBORValue
+
+public typealias CorrelationId = CBORValue
+
+public typealias ActionId = CommonCorrelationId
+
+public typealias SpecVersion = CBORValue
+
+public struct VersionOffer: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "version-offer"
+    public var `versions`: [CommonSpecVersion]
+    public init(`versions`: [CommonSpecVersion]) {
+        self.`versions` = `versions`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`versions` = try [CommonSpecVersion].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "versions")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -319,15 +930,15 @@ public struct VersionOffer: CBORMessage, Equatable, Sendable {
 
 public struct VersionSelection: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "version-selection"
-    public var `version`: SpecVersion
-    public init(`version`: SpecVersion) {
+    public var `version`: CommonSpecVersion
+    public init(`version`: CommonSpecVersion) {
         self.`version` = `version`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`version` = try SpecVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`version` = try CommonSpecVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -341,13 +952,13 @@ public struct VersionSelection: CBORMessage, Equatable, Sendable {
 
 public struct Event: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "event"
-    public var `source`: SourceId
-    public var `kind`: CapabilityName
-    public var `seq`: Uint64
-    public var `logical_time`: Uint64
-    public var `payload`: ProfileMap
-    public var `correlation_id`: CorrelationId
-    public init(`source`: SourceId, `kind`: CapabilityName, `seq`: Uint64, `logical_time`: Uint64, `payload`: ProfileMap, `correlation_id`: CorrelationId) {
+    public var `source`: CommonSourceId
+    public var `kind`: CommonCapabilityName
+    public var `seq`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`source`: CommonSourceId, `kind`: CommonCapabilityName, `seq`: CommonUint64, `logical_time`: CommonUint64, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
         self.`source` = `source`
         self.`kind` = `kind`
         self.`seq` = `seq`
@@ -359,12 +970,12 @@ public struct Event: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`source` = try SourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source")), depth: depth + 1)
-        self.`kind` = try CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
-        self.`seq` = try Uint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seq")), depth: depth + 1)
-        self.`logical_time` = try Uint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
-        self.`payload` = try ProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`source` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source")), depth: depth + 1)
+        self.`kind` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seq")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -383,13 +994,13 @@ public struct Event: CBORMessage, Equatable, Sendable {
 
 public struct Action: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "action"
-    public var `id`: ActionId
-    public var `coglet`: CogletId
-    public var `capability`: CapabilityName
-    public var `args`: ProfileMap
-    public var `deadline`: Uint64
-    public var `correlation_id`: CorrelationId
-    public init(`id`: ActionId, `coglet`: CogletId, `capability`: CapabilityName, `args`: ProfileMap, `deadline`: Uint64, `correlation_id`: CorrelationId) {
+    public var `id`: CommonActionId
+    public var `coglet`: CommonCogletId
+    public var `capability`: CommonCapabilityName
+    public var `args`: CommonProfileMap
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`id`: CommonActionId, `coglet`: CommonCogletId, `capability`: CommonCapabilityName, `args`: CommonProfileMap, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
         self.`id` = `id`
         self.`coglet` = `coglet`
         self.`capability` = `capability`
@@ -401,12 +1012,12 @@ public struct Action: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`id` = try ActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
-        self.`coglet` = try CogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
-        self.`capability` = try CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
-        self.`args` = try ProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
-        self.`deadline` = try Uint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -429,11 +1040,11 @@ public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
     case variant2(ActionAcceptVariant2)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), cborValue)) != nil {
             self = .variant1(try ActionAcceptVariant1.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))]), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
             self = .variant2(try ActionAcceptVariant2.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -445,10 +1056,10 @@ public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), value)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))]), value)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -461,11 +1072,11 @@ public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
     case variant2(ActionOutcomeVariant2)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
             self = .variant1(try ActionOutcomeVariant1.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))]), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
             self = .variant2(try ActionOutcomeVariant2.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -477,10 +1088,10 @@ public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]), value)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))]), value)
+            try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -593,11 +1204,11 @@ public indirect enum ErrorCode: CBORMessage, Equatable, Sendable {
 
 public struct Error: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "error"
-    public var `code`: ErrorCode
-    public var `message`: Swift.String
+    public var `code`: CommonErrorCode
+    public var `message`: CBORValue
     public var `retryable`: Swift.Bool
-    public var `details`: ProfileMap?
-    public init(`code`: ErrorCode, `message`: Swift.String, `retryable`: Swift.Bool, `details`: ProfileMap? = nil) {
+    public var `details`: CommonProfileMap?
+    public init(`code`: CommonErrorCode, `message`: CBORValue, `retryable`: Swift.Bool, `details`: CommonProfileMap? = nil) {
         self.`code` = `code`
         self.`message` = `message`
         self.`retryable` = `retryable`
@@ -607,10 +1218,10 @@ public struct Error: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`code` = try ErrorCode.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code")), depth: depth + 1)
-        self.`message` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`code` = try CommonErrorCode.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code")), depth: depth + 1)
+        self.`message` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
         self.`retryable` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "retryable")), depth: depth + 1)
-        self.`details` = try CBORCodec.field(entries, "details").map { try ProfileMap.init(cborValue: $0, depth: depth + 1) }
+        self.`details` = try CBORCodec.field(entries, "details").map { try CommonProfileMap.init(cborValue: $0, depth: depth + 1) }
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -625,12 +1236,12 @@ public struct Error: CBORMessage, Equatable, Sendable {
     }
 }
 
-public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
-    public static let schemaRule = "@ActionAcceptVariant1"
-    public var `id`: ActionId
-    public var `correlation_id`: CorrelationId
+public struct CommonActionAcceptVariant1: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@CommonActionAcceptVariant1"
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
     public var `accepted`: Swift.Bool
-    public init(`id`: ActionId, `correlation_id`: CorrelationId, `accepted`: Swift.Bool) {
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `accepted`: Swift.Bool) {
         self.`id` = `id`
         self.`correlation_id` = `correlation_id`
         self.`accepted` = `accepted`
@@ -639,8 +1250,140 @@ public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`id` = try ActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`accepted` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "accepted")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("accepted", try self.`accepted`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonActionAcceptVariant2: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@CommonActionAcceptVariant2"
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
+    public var `accepted`: Swift.Bool
+    public var `error`: CommonError
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `accepted`: Swift.Bool, `error`: CommonError) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`accepted` = `accepted`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`accepted` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "accepted")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("accepted", try self.`accepted`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@CommonActionOutcomeVariant1"
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
+    public var `status`: Swift.String
+    public var `result`: CommonProfileMap
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `status`: Swift.String, `result`: CommonProfileMap) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`status` = `status`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`result` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CommonActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@CommonActionOutcomeVariant2"
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
+    public var `status`: CommonActionOutcomeVariant2Status
+    public var `error`: CommonError
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `status`: CommonActionOutcomeVariant2Status, `error`: CommonError) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`status` = `status`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`status` = try CommonActionOutcomeVariant2Status.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@ActionAcceptVariant1"
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
+    public var `accepted`: Swift.Bool
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `accepted`: Swift.Bool) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`accepted` = `accepted`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`accepted` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "accepted")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -657,11 +1400,11 @@ public struct ActionAcceptVariant1: CBORMessage, Equatable, Sendable {
 
 public struct ActionAcceptVariant2: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "@ActionAcceptVariant2"
-    public var `id`: ActionId
-    public var `correlation_id`: CorrelationId
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
     public var `accepted`: Swift.Bool
-    public var `error`: Error
-    public init(`id`: ActionId, `correlation_id`: CorrelationId, `accepted`: Swift.Bool, `error`: Error) {
+    public var `error`: CommonError
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `accepted`: Swift.Bool, `error`: CommonError) {
         self.`id` = `id`
         self.`correlation_id` = `correlation_id`
         self.`accepted` = `accepted`
@@ -671,10 +1414,10 @@ public struct ActionAcceptVariant2: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`id` = try ActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`accepted` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "accepted")), depth: depth + 1)
-        self.`error` = try Error.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -691,11 +1434,11 @@ public struct ActionAcceptVariant2: CBORMessage, Equatable, Sendable {
 
 public struct ActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "@ActionOutcomeVariant1"
-    public var `id`: ActionId
-    public var `correlation_id`: CorrelationId
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
     public var `status`: Swift.String
-    public var `result`: ProfileMap
-    public init(`id`: ActionId, `correlation_id`: CorrelationId, `status`: Swift.String, `result`: ProfileMap) {
+    public var `result`: CommonProfileMap
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `status`: Swift.String, `result`: CommonProfileMap) {
         self.`id` = `id`
         self.`correlation_id` = `correlation_id`
         self.`status` = `status`
@@ -705,10 +1448,10 @@ public struct ActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`id` = try ActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
-        self.`result` = try ProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+        self.`result` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -725,11 +1468,11 @@ public struct ActionOutcomeVariant1: CBORMessage, Equatable, Sendable {
 
 public struct ActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
     public static let schemaRule = "@ActionOutcomeVariant2"
-    public var `id`: ActionId
-    public var `correlation_id`: CorrelationId
+    public var `id`: CommonActionId
+    public var `correlation_id`: CommonCorrelationId
     public var `status`: ActionOutcomeVariant2Status
-    public var `error`: Error
-    public init(`id`: ActionId, `correlation_id`: CorrelationId, `status`: ActionOutcomeVariant2Status, `error`: Error) {
+    public var `error`: CommonError
+    public init(`id`: CommonActionId, `correlation_id`: CommonCorrelationId, `status`: ActionOutcomeVariant2Status, `error`: CommonError) {
         self.`id` = `id`
         self.`correlation_id` = `correlation_id`
         self.`status` = `status`
@@ -739,10 +1482,10 @@ public struct ActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`id` = try ActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
-        self.`correlation_id` = try CorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`status` = try ActionOutcomeVariant2Status.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
-        self.`error` = try Error.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -752,6 +1495,46 @@ public struct ActionOutcomeVariant2: CBORMessage, Equatable, Sendable {
         entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
         entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Equatable, Sendable {
+    public static let schemaRule = "@CommonActionOutcomeVariant2Status"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("failed")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("cancelled")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("expired")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("failed")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("cancelled")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("expired")), value)
+        }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
     }

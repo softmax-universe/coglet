@@ -45,6 +45,36 @@ private func isVectorFile(_ file: URL) throws -> Swift.Bool {
     return true
 }
 
+// Consume the sole registry; do not infer generation support from fixture shape.
+private func fixtureContracts(_ root: URL) throws -> [String: String] {
+    let fm = FileManager.default
+    let contracts = try JSONDecoder().decode([String: String].self,
+        from: Data(contentsOf: root.appendingPathComponent("codegen/contracts.json")))
+    guard !contracts.isEmpty, contracts.values.allSatisfy({ ["generated", "draft-validated"].contains($0) }) else {
+        throw CBORFailure.invalid("unknown contract classification")
+    }
+    let fixtureRoot = root.appendingPathComponent("spec/fixtures")
+    let children = try fm.contentsOfDirectory(at: fixtureRoot, includingPropertiesForKeys: [.isDirectoryKey])
+    let families = try children.filter { try $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true }
+    var schemas: [String] = []
+    for path in ["spec", "spec/messages"] {
+        schemas += try fm.contentsOfDirectory(at: root.appendingPathComponent(path), includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "cddl" }.map { $0.deletingPathExtension().lastPathComponent }
+    }
+    guard Set(families.map(\.lastPathComponent)) == Set(contracts.keys),
+          Set(schemas) == Set(contracts.keys), Set(schemas).count == schemas.count,
+          !children.contains(where: { $0.pathExtension == "json" }) else {
+        throw CBORFailure.invalid("unclassified or stale schema/fixture family")
+    }
+    for family in families {
+        let entries = fm.enumerator(at: family, includingPropertiesForKeys: nil)
+        guard entries?.contains(where: { ($0 as? URL)?.pathExtension == "json" }) == true else {
+            throw CBORFailure.invalid("empty fixture family")
+        }
+    }
+    return contracts
+}
+
 final class CodecTests: XCTestCase {
     private func hex(_ text: Swift.String) throws -> [Swift.UInt8] {
         let chars = Array(text)
@@ -60,6 +90,7 @@ final class CodecTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let dir = root.appendingPathComponent("spec/fixtures")
+        let contracts = try fixtureContracts(root)
         let enumerator = try XCTUnwrap(FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil))
         let files = enumerator.compactMap { $0 as? URL }.filter { $0.pathExtension == "json" }.sorted { $0.path < $1.path }
         XCTAssertFalse(files.isEmpty)
@@ -67,8 +98,15 @@ final class CodecTests: XCTestCase {
         var vectorFiles = 0
         var semanticCases = 0
         var nongoldenShapes = 0
+        var draftFiles = 0
         for file in files {
-            if try isVectorFile(file) {
+            let family = file.path.dropFirst(dir.path.count + 1).split(separator: "/").first.map(String.init) ?? ""
+            guard let mode = contracts[family] else { throw CBORFailure.invalid("unclassified fixture") }
+            // Even skipped protocol vectors/drafts must contain valid JSON and known metadata.
+            _ = try JSONSerialization.jsonObject(with: Data(contentsOf: file), options: [.fragmentsAllowed])
+            let vector = try isVectorFile(file)
+            if mode == "draft-validated" { draftFiles += 1; continue }
+            if vector {
                 vectorFiles += 1
                 continue
             }
@@ -112,7 +150,7 @@ final class CodecTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(counts[0], 33)
         XCTAssertGreaterThanOrEqual(counts[1], 43)
         XCTAssertGreaterThanOrEqual(counts[2], 17)
-        print("Swift fixtures: \(counts[0]) golden, \(counts[1]) semantic-invalid, \(counts[2]) wire-invalid; \(semanticCases) protocol-semantic cases, \(nongoldenShapes) nongolden shapes, \(vectorFiles) marked vector files skipped (protocol-owned)")
+        print("Swift fixtures: \(counts[0]) golden, \(counts[1]) semantic-invalid, \(counts[2]) wire-invalid; \(semanticCases) protocol-semantic cases, \(nongoldenShapes) nongolden shapes, \(vectorFiles) marked vector files skipped (protocol-owned), \(draftFiles) draft-family files excluded")
     }
 
     func testFixtureMetadataIsExplicit() throws {
@@ -137,6 +175,38 @@ final class CodecTests: XCTestCase {
         XCTAssertEqual(fixture.semantic, true)
         let value = try XCTUnwrap(fixture.value).wireValue()
         XCTAssertEqual(try CBORCodec.encode(rule: "uint64", value: value), [0])
+    }
+
+    func testContractRegistryFailsClosed() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("coglet-contracts-" + UUID().uuidString)
+        defer { try? fm.removeItem(at: root) }
+        for path in ["codegen", "spec/messages", "spec/fixtures/common/nested", "spec/fixtures/draft"] {
+            try fm.createDirectory(at: root.appendingPathComponent(path), withIntermediateDirectories: true)
+        }
+        func write(_ path: String, _ text: String) throws {
+            try Data(text.utf8).write(to: root.appendingPathComponent(path))
+        }
+        try write("spec/messages/common.cddl", "value = tstr")
+        try write("spec/draft.cddl", "value = bool")
+        try write("spec/fixtures/common/nested/cases.json", "[]")
+        try write("spec/fixtures/draft/cases.json", "[]")
+        let registry = "{\"common\":\"generated\",\"draft\":\"draft-validated\"}"
+        try write("codegen/contracts.json", registry)
+        XCTAssertEqual(try fixtureContracts(root), ["common": "generated", "draft": "draft-validated"])
+        for bad in ["{}", "{\"common\":\"unknown\",\"draft\":\"draft-validated\"}", "{\"common\":\"generated\"}"] {
+            try write("codegen/contracts.json", bad)
+            XCTAssertThrowsError(try fixtureContracts(root))
+        }
+        try write("codegen/contracts.json", registry)
+        try write("spec/fixtures/root.json", "[]")
+        XCTAssertThrowsError(try fixtureContracts(root))
+        try fm.removeItem(at: root.appendingPathComponent("spec/fixtures/root.json"))
+        try write("spec/messages/unknown.cddl", "value = bool")
+        XCTAssertThrowsError(try fixtureContracts(root))
+        try fm.removeItem(at: root.appendingPathComponent("spec/messages/unknown.cddl"))
+        try fm.removeItem(at: root.appendingPathComponent("spec/fixtures/draft/cases.json"))
+        XCTAssertThrowsError(try fixtureContracts(root))
     }
 
     func testWireBoundsAndUnicodeIdentity() throws {
@@ -169,7 +239,7 @@ final class CodecTests: XCTestCase {
     }
 
     func testTypedBranchesAndValidation() throws {
-        let id = Swift.String(repeating: "a", count: 32)
+        let id = CBORValue.text(Swift.String(repeating: "a", count: 32))
         let accepted = ActionAccept.variant1(.init(id: id, correlation_id: id, accepted: true))
         let raw = try accepted.toCBOR()
         XCTAssertEqual(try ActionAccept.fromCBOR(raw).toCBOR(), raw)
