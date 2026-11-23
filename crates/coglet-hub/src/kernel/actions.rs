@@ -1,12 +1,34 @@
 use super::*;
 use coglet_proto::transport::Session;
 
+struct ActiveDispatch {
+    boundary: Arc<Mutex<DispatchFence>>,
+    key: (String, String),
+}
+impl Drop for ActiveDispatch {
+    fn drop(&mut self) {
+        if let Ok(mut fence) = self.boundary.lock() {
+            fence.active.remove(&self.key);
+        }
+    }
+}
+
 impl State {
     fn action_authority(&self, target: &str, request: &Value) -> Result<Registration> {
         let r = self.registration(target)?;
         let peer = r.device.parse().map_err(|_| Error::Denied)?;
         self.authorize(peer, target, "hub.actions")?;
         let c = &request["context"];
+        if let (Some(actor), Some(ticket)) = (c["actor"].as_str(), c["ticket"].as_str()) {
+            let ended: bool = self.store.db.query_row(
+                "SELECT EXISTS(SELECT 1 FROM ended_tickets WHERE actor=?1 AND ticket=?2)",
+                params![actor, ticket],
+                |r| r.get(0),
+            )?;
+            if ended {
+                return Err(Error::Denied);
+            }
+        }
         if !r.actions.iter().any(|g| {
             Some(g.actor.as_str()) == c["actor"].as_str()
                 && g.ticket.as_deref() == c["ticket"].as_str()
@@ -18,6 +40,39 @@ impl State {
     }
 }
 impl Kernel {
+    /// Trusted local operator only. A ticket tombstone is permanent for this identity.
+    /// Pending sends are fenced immediately; sent actions cannot be physically undone.
+    pub async fn end_ticket(&self, actor: &str, ticket: &str) -> Result<()> {
+        if !valid("source-id", &json!(actor)) || !valid("correlation-id", &json!(ticket)) {
+            return Err(Error::Invalid);
+        }
+        let actor = actor.to_owned();
+        let ticket = ticket.to_owned();
+        let boundary = self.boundary.clone();
+        let changed = self.changed.clone();
+        self.work(move |s| {
+            let mut fence=boundary.lock().map_err(|_| Error::Denied)?;
+            let tx=s.store.db.transaction()?;
+            tx.execute("INSERT OR IGNORE INTO ended_tickets VALUES(?1,?2)",params![actor,ticket])?;
+            let pending={
+                let mut q=tx.prepare("SELECT target,id,request,attempted FROM deliveries WHERE reply IS NULL")?;
+                q.query_map([],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,i64>(3)?)))?.collect::<std::result::Result<Vec<_>,_>>()?
+            };
+            for (target,id,text,attempted) in pending {
+                let request:Value=serde_json::from_str(&text)?;
+                if request["context"]["actor"]!=actor || request["context"]["ticket"]!=ticket {continue;}
+                let mut reply=failure(json!(id),Error::Denied);
+                reply["error"]["details"]=json!({"unknown_effect":attempted!=0,"ticket_ended":true});
+                tx.execute("UPDATE deliveries SET reply=?3 WHERE target=?1 AND id=?2",params![target,id,serde_json::to_string(&reply)?])?;
+                audit(&tx,json!({"method":"hub.actions.cancel","operation_id":id,"target":target,"actor":actor,"ticket":ticket,"outcome":if attempted==0 {"cancelled"} else {"unknown_effect"}}))?;
+            }
+            audit(&tx,json!({"method":"operator.end_ticket","actor":actor,"ticket":ticket,"outcome":"ended"}))?;
+            tx.commit()?;
+            fence.ended.insert((actor,ticket));
+            changed.send_modify(|v| *v=v.wrapping_add(1));
+            Ok(())
+        }).await
+    }
     /// Local trusted hub-coglet adapter only. `runtime_offset` is an explicitly
     /// established signed offset from hub to receiving runtime logical epoch.
     /// Clock discovery is not part of ALPN 0.1. No established map => no first send.
@@ -59,35 +114,106 @@ impl Kernel {
     /// fences replay, including after process restart. Recovery must reconcile the
     /// receiver receipt; it must never manufacture a new action ID or deadline.
     pub async fn dispatch_action(&self, target: &str, id: &str, session: Session) -> Result<Value> {
-        let _boundary = self.boundary.lock().await;
+        let key = (target.to_owned(), id.to_owned());
+        {
+            let mut fence = self.boundary.lock().map_err(|_| Error::Denied)?;
+            if !fence.active.insert(key.clone()) {
+                return Err(Error::Full);
+            }
+        }
+        let _active = ActiveDispatch {
+            boundary: self.boundary.clone(),
+            key,
+        };
         let target = target.to_owned();
         let id = id.to_owned();
         let t = target.clone();
         let i = id.clone();
         let peer = session.peer();
-        let (request,reply)=self.work(move|s| {
+        let (request,reply,attempted)=self.work(move|s| {
             let row=s.store.db.query_row("SELECT request,attempted,reply FROM deliveries WHERE target=?1 AND id=?2",params![t,i],|r|Ok((r.get::<_,String>(0)?,r.get::<_,i64>(1)?,r.get::<_,Option<String>>(2)?))).optional()?.ok_or(Error::Denied)?;
             let request:Value=serde_json::from_str(&row.0)?;
             let r=s.action_authority(&t,&request)?;
             if r.device!=peer.to_string() {return Err(Error::Denied);}
-            if let Some(reply)=row.2 {return Ok((request,Some(serde_json::from_str(&reply)?)));}
-            if row.1!=0 {return Err(Error::Denied);}
+            if let Some(reply)=row.2 {return Ok((request,Some(serde_json::from_str(&reply)?),row.1!=0));}
+            if row.1!=0 {return Ok((request,None,true));}
             let tx=s.store.db.transaction()?;
             tx.execute("UPDATE deliveries SET attempted=1 WHERE target=?1 AND id=?2",params![t,i])?;
             audit(&tx,json!({"method":"hub.actions.dispatch","operation_id":i,"target":t,"actor":request["context"]["actor"],"ticket":request["context"]["ticket"],"outcome":"attempted"}))?;
-            tx.commit()?; Ok((request,None))
+            tx.commit()?; Ok((request,None,false))
         }).await?;
         if let Some(reply) = reply {
             return Ok(reply);
         }
-        let result = session.request(request).await.map_err(|_| Error::Denied)?;
-        let returned = result.clone();
+        let mut result = if attempted {
+            None
+        } else {
+            self.request_fenced(&session, request.clone()).await.ok()
+        };
+        if result.is_none() {
+            // An ambiguous attempt is never resent. Query the original operation
+            // under the original actor/ticket, with a fresh observation correlation.
+            let receipt = json!({"method":"hub.receipt","target":target,"correlation_id":hex::encode(&iroh::SecretKey::generate().to_bytes()[..16]),"timeout_ms":5000,"params":{"operation_id":id},"context":request["context"]});
+            result = self
+                .request_fenced(&session, receipt)
+                .await
+                .ok()
+                .filter(|v| v["type"] == "reply" && v["result"]["operation_id"] == id);
+        }
+        let mut result=result.unwrap_or_else(|| {
+            let mut v=failure(json!(id),Error::Denied);
+            v["error"]=json!({"code":"unavailable","message":"action effect is unknown; not replayed","retryable":false,"details":{"unknown_effect":true}});v
+        });
+        // The local adapter always gets the original dispatch identity; preserve
+        // the receiver's authoritative receipt rather than inventing action-accept.
+        result["correlation_id"] = json!(id);
         self.work(move|s| {
             let tx=s.store.db.transaction()?;
-            tx.execute("UPDATE deliveries SET reply=?3 WHERE target=?1 AND id=?2",params![target,id,serde_json::to_string(&result)?])?;
-            audit(&tx,json!({"method":"hub.actions.dispatch","operation_id":id,"target":target,"outcome":"replied"}))?;
-            tx.commit()?; Ok(())
-        }).await?;
-        Ok(returned)
+            if result["result"]["state"]=="queued" {
+                audit(&tx,json!({"method":"hub.actions.reconcile","operation_id":id,"target":target,"outcome":"queued"}))?;
+                tx.commit()?;return Ok(result);
+            }
+            if result["error"]["details"]["unknown_effect"]==true {
+                let known:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM outcomes WHERE target=?1 AND action_id=?2)",params![target,id],|r|r.get(0))?;
+                if known { result["error"]["details"]=json!({"unknown_effect":false,"outcome_observed":true});result["error"]["message"]=json!("dispatch reply unavailable; durable action outcome observed"); }
+            }
+            let changed=tx.execute("UPDATE deliveries SET reply=?3 WHERE target=?1 AND id=?2 AND reply IS NULL",params![target,id,serde_json::to_string(&result)?])?;
+            if changed>0 {audit(&tx,json!({"method":"hub.actions.dispatch","operation_id":id,"target":target,"outcome":if result["error"]["details"]["unknown_effect"]==true {"unknown_effect"} else {"replied"}}))?;}
+            let saved:String=tx.query_row("SELECT reply FROM deliveries WHERE target=?1 AND id=?2",params![target,id],|r|r.get(0))?;
+            tx.commit()?; Ok(serde_json::from_str(&saved)?)
+        }).await
+    }
+    async fn request_fenced(&self, session: &Session, request: Value) -> Result<Value> {
+        let peer = session.peer();
+        let mut changed = self.changed.subscribe();
+        let scope = request["context"]["ticket"].as_str().map(|ticket| {
+            (
+                request["context"]["actor"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+                ticket.to_owned(),
+            )
+        });
+        let mut sending = Box::pin(session.request(request));
+        loop {
+            let guarded = std::future::poll_fn(|cx| {
+                let fence = self.boundary.lock().map_err(|_| Error::Denied)?;
+                if fence.revoked.contains(&peer)
+                    || scope.as_ref().is_some_and(|s| fence.ended.contains(s))
+                {
+                    return std::task::Poll::Ready(Err(Error::Denied));
+                }
+                sending
+                    .as_mut()
+                    .poll(cx)
+                    .map(|r| r.map_err(|_| Error::Denied))
+            });
+            tokio::select! {
+                biased;
+                _ = changed.changed() => continue,
+                result = guarded => return result,
+            }
+        }
     }
 }

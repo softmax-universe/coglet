@@ -77,6 +77,13 @@ async fn registered_binding_exact_source_policy_and_revocation_fence_events() {
     let status = kernel.status().await.unwrap();
     assert_eq!(status["coglets"].as_array().unwrap().len(), 1);
     assert_eq!(kernel.events(&coglet).await.unwrap().len(), 1);
+    let deliveries = kernel.event_deliveries(&coglet).await.unwrap();
+    let foreign = format!("coglet:{}", SecretKey::generate().public());
+    assert!(kernel.event_deliveries(&foreign).await.unwrap().is_empty());
+    kernel.ack_events(&foreign, deliveries[0].0).await.unwrap();
+    assert_eq!(kernel.event_deliveries(&coglet).await.unwrap(), deliveries);
+    kernel.ack_events(&coglet, deliveries[0].0).await.unwrap();
+    assert!(kernel.events(&coglet).await.unwrap().is_empty());
     let audit = kernel.audit().await.unwrap();
     assert!(audit.iter().any(|a| a["method"] == "hub.enroll"));
     assert!(!serde_json::to_string(&audit).unwrap().contains(&invite));

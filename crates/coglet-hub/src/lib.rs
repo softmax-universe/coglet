@@ -47,6 +47,7 @@ impl Store {
           CREATE TABLE IF NOT EXISTS batches(peer TEXT, target TEXT, offset TEXT, input BLOB NOT NULL, next TEXT NOT NULL, PRIMARY KEY(peer,target,offset));
           CREATE TABLE IF NOT EXISTS watermarks(target TEXT, source TEXT, seq TEXT NOT NULL, PRIMARY KEY(target,source));
           CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, target TEXT NOT NULL, event TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS outcomes(target TEXT, action_id TEXT, event TEXT NOT NULL, PRIMARY KEY(target,action_id));
           CREATE TABLE IF NOT EXISTS actions(target TEXT, id TEXT, peer TEXT NOT NULL, request TEXT NOT NULL, PRIMARY KEY(target,id));
           CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, record TEXT NOT NULL);
           CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
@@ -111,6 +112,21 @@ impl Store {
             return Err(Error::Full);
         }
         for event in events {
+            if event["kind"] == "action.outcome" {
+                let action_id = event["payload"]["id"].as_str().ok_or(Error::Invalid)?;
+                let exists: bool = tx.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM outcomes WHERE target=?1 AND action_id=?2)",
+                    params![target, action_id],
+                    |r| r.get(0),
+                )?;
+                if exists {
+                    return Err(Error::Conflict(expected));
+                }
+                tx.execute(
+                    "INSERT INTO outcomes VALUES(?1,?2,?3)",
+                    params![target, action_id, serde_json::to_string(event)?],
+                )?;
+            }
             let source = event["source"].as_str().ok_or(Error::Invalid)?;
             let seq = event["seq"].as_u64().ok_or(Error::Invalid)?;
             let watermark = tx
