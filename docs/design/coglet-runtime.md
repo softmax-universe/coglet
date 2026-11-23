@@ -88,11 +88,30 @@ Audio cannot go through the step loop (frames arrive every 20 ms or so).
 - **The coglet owns decisions**, waking on events: speech start, partial transcript, end of utterance, playback position. It emits speak-chunk, stop and backchannel intents.
 - **Barge-in has two layers**: the surface stops instantly, then the coglet decides whether to drop or resume.
 - Speech-to-text and text-to-speech location stays agnostic: both are capabilities, so we can A/B on-device and hub-side.
+- **The record keeps only what was heard.** On barge-in the surface reports how many milliseconds of each speak item actually played. The transcript and journal store the item truncated to that point, so the coglet never reasons about words the user didn't hear (prior art: Companion, below).
+- **Speech can hand work off.** A speech turn can start long-running work (an agent, a game action) as an explicit intent with an id, an epoch and size caps. Barge-in cancels it. The voice reports only outcomes the work's result event actually contains.
+- **Hands-free and push-to-talk** are surface modes advertised in caps, not coglet logic.
 
 ## Mindustry avatar
 
 - Mindister's game surface already exposes `/dev/game/{state,events,act,results,pointer,ctl}` to a supervised runtime over SP/1. These become WIT imports.
 - Acts never execute locally. They relay through the hub's motor and back as fenced acts (unchanged).
+- **The avatar's knowledge is data, not code.** It lives as files in the coglet's `/code` (read-only, versioned with the coglet) and `/data` (learned):
+  - a **content index** generated from the pinned Mindustry engine source: blocks, units, items and liquids with cost, size, health, inputs, outputs and the defining source line;
+  - **recipes**: request patterns mapped to the device calls that satisfy them, each with the source symbols involved, checked by tests against the pinned engine;
+  - **activity ideas** for "what should we do?", offered as choices that fit the current game;
+  - an **action library** learned from play: the hub groups journal entries of what the player asked and what was done into examples. Promotion treats it like any other `/data` change.
+- **Richer read devices** beyond raw state, each bounded and paged with a cursor, never full-map snapshots:
+  - map find (blocks, ore, terrain, units; fog-respecting);
+  - objectives and waves;
+  - resources, keeping core inventory, carried items and campaign research pools apart;
+  - the tech tree with partial funding;
+  - logistics diagnosis (blocked or slow belts, with evidence and its strength);
+  - navigation (menus, saves, destinations).
+- **Write devices that don't touch the world**: highlights (labelled, expiring map markers, cleared on world change). Acts that do change the world (move, mine, build ranges, research, helper spawn and stop) go through the motor as usual.
+- **The player's controls stay theirs.** A helper unit assists the player's own build plans and never replaces their ship. Avatar acts never clear human build queues.
+- **Live engine edits** (inspecting or setting engine fields, hot-reloading Java) are a debug capability behind hub policy, never a default grant.
+- **Strategy is the gap.** None of the prior art covers build orders, wave defense or production scaling. The avatar learns those through the factory loop and records them in recipes, rather than hard-coding them.
 
 ## Game adapter: thin adapter plus local runtime process
 
@@ -291,6 +310,30 @@ From the repo docs, not a code-level audit of each pod.
 
 **Realtime voice:** Baby Bear's pods run a provider speech-to-speech session where the model drives the conversation. Treat that session as a surface capability: the coglet configures it, and its tool calls arrive as events.
 
+## Prior art: Companion
+
+`softmax-universe/companion` (studied at `d67f962`) is a Nim/Objective-C Mac app:
+- a floating orb opens chat (on click) or voice (on right-click);
+- chat goes to an agent over ACP;
+- voice runs on a realtime speech model that hands app requests to that agent;
+- each app plugs in through `apps/<id>/control.py` (`start`/`status`/`stop` plus typed actions, JSON in and out) and an in-app mod, extension or add-on (Mindustry, Chrome, Blender).
+
+It has no runtime, hub, sandbox or specs: it is an all-in-one prototype of the Face and the desktop app, not of Coglet. We take its solved problems, not its architecture.
+
+**The repo is GPLv3** (it vendors Mindustry). Port ideas only. The exception is the duplex audio code, which says it was adapted from Polyworld's MIT voice experiments; port that from the MIT original, with attribution.
+
+| Companion piece | Where it lands in Coglet |
+|---|---|
+| `realtimes.nim` `interrupt(playedMs)`: truncate the spoken item to what played | speech capability (Face section above) |
+| `realtimes.nim` `processWork`: staged, capped, deduped, cancellable voice-to-agent work | speech capability work hand-off |
+| `duplex.m`, `devices.m`: one AVAudioEngine, VoiceProcessingIO echo cancellation that fails loudly, lock-free rings, playback generation flush, device change recovery | `surfaces/face-mac` audio kit |
+| orb overlay, stable signing identity so mic permission survives rebuilds, first-run permission check, OFL fonts | Softmax desktop app shell |
+| Mindustry mod hooks (`HookServer`: loopback, bearer token, bounded queue, game-thread dispatch, expiring requests) | game adapter's device server; the same shape suits any in-app adapter |
+| `knowledges.nim`, `GAME_RECIPES.md`, `FUN_THINGS.md`, `PLAYER_REQUESTS.md` | avatar coglet knowledge files (Mindustry avatar section above) |
+| `ActionJournal`, `PlayerRecorder`: bounded off-thread semantic recording, loss counters, attribution of requests to later acts | game surface events, journal and trace store; training export |
+| `ContextHooks`, `MapFindHooks`, `LogisticsHooks`, `ResearchHooks`, `HighlightHooks`, `HelperHooks`, `NavigationHooks` | the richer `/dev/game` devices above |
+| `apps/<id>/control.py` + `LOOKUP.md` per app; Chrome native-messaging bridge; Blender add-on | candidate future surfaces (open question) |
+
 ## Relation to caos
 
 Inspiration now, substrate later. Matching ideas: git trees as values, content-addressed cached steps, compare-and-swap refs (`std/actor`), resident workers as a loop, and iroh tickets. Eventually each step can be a caos actor message: (code, data, snapshot, inbox) in, (data', intents, logs) out.
@@ -314,3 +357,4 @@ Inspiration now, substrate later. Matching ideas: git trees as values, content-a
 - Fuel and deadline budgets per step for each surface.
 - Flush interval and size cap for the in-memory filesystem.
 - Whether steps default to event-driven or fixed rate per surface.
+- Desktop-app surfaces (Chrome via native messaging, Blender via an add-on) on the Companion pattern: a product decision for after the Mindister lane, not yet scoped.
