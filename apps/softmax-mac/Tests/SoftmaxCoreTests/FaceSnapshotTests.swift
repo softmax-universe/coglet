@@ -43,7 +43,21 @@ final class FaceSnapshotTests: XCTestCase, @unchecked Sendable {
                     let b = try XCTUnwrap(expected.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
                     difference += abs(a.redComponent-b.redComponent) + abs(a.greenComponent-b.greenComponent) + abs(a.blueComponent-b.blueComponent)
                 } }
-                XCTAssertLessThan(difference / (280 * 280 * 3), 0.005, "Visual regression: \(filename)")
+                let tolerance = 0.0005
+                XCTAssertLessThan(difference / (280 * 280 * 3), tolerance, "Visual regression: \(filename)")
+                // A neutral renderer must not pass a semantic-state snapshot.
+                // Listening intentionally matches idle when Reduce Motion removes scale.
+                if name != "idle" && name != "listening" {
+                    let idleURL = goldens.appendingPathComponent("\(dark ? "dark" : "light")-idle.png")
+                    let idle = try XCTUnwrap(NSBitmapImageRep(data: Data(contentsOf: idleURL)))
+                    var neutralDifference = 0.0
+                    for y in 0..<280 { for x in 0..<280 {
+                        let a = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                        let b = try XCTUnwrap(idle.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                        neutralDifference += abs(a.redComponent-b.redComponent) + abs(a.greenComponent-b.greenComponent) + abs(a.blueComponent-b.blueComponent)
+                    } }
+                    XCTAssertGreaterThan(neutralDifference / (280 * 280 * 3), tolerance, "Neutral renderer cannot represent \(name)")
+                }
             }
         }
     }
