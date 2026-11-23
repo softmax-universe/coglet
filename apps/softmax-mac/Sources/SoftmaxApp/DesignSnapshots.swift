@@ -50,6 +50,11 @@ import SoftmaxCore
                     var previous: Data?
                     var identicalFrames = 0
                     var stable: Data?
+                    // Diagnostic only: retain the original accepted raster, but observe
+                    // search controls through the full deadline to expose late geometry.
+                    let traceGeometry = name.hasPrefix("commands") || name == "settings-hub"
+                    var lastGeometry = ""
+                    var finalBytes: Data?
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
                         // AppKit can initially reserve a legacy scroller gutter before
@@ -73,12 +78,34 @@ import SoftmaxCore
                         }
                         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
                         guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+                        finalBytes = bytes
+                        if traceGeometry {
+                            func fields(_ view: NSView) -> [String] {
+                                var rows: [String] = []
+                                if let field = view as? NSTextField {
+                                    rows.append("type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil)")
+                                }
+                                return rows + view.subviews.flatMap { fields($0) }
+                            }
+                            let geometry = "keyWindow=\(window.isKeyWindow) responder=\(String(describing: window.firstResponder)) fields=\(fields(hosting))"
+                            if geometry != lastGeometry {
+                                print("SNAPSHOT-GEOMETRY \(key) elapsed=\(Date().timeIntervalSince(started)) \(geometry)")
+                                lastGeometry = geometry
+                            }
+                        }
                         identicalFrames = bytes == previous ? identicalFrames + 1 : 1
                         previous = bytes
-                        if identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
+                        if stable == nil && identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
                             stable = bytes
-                            break
+                            if !traceGeometry { break }
+                            print("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started))")
                         }
+                    }
+                    if traceGeometry, let finalBytes {
+                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
+                        try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
+                        try finalBytes.write(to: diagnostics.appendingPathComponent(key + ".png"))
+                        print("SNAPSHOT-GEOMETRY \(key) acceptedEqualsFinal=\(stable == finalBytes)")
                     }
                     guard let bytes = stable else {
                         throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
