@@ -25,6 +25,10 @@ class GeneratorTests(unittest.TestCase):
             root = Path(temp)
             (root / 'codegen').mkdir()
             shutil.copy(ROOT / 'codegen/generate.py', root / 'codegen/generate.py')
+            shutil.copy(ROOT / 'codegen/contracts.py', root / 'codegen/contracts.py')
+            (root / 'codegen/contracts.json').write_text('{"test":"generated"}')
+            (root / 'spec/fixtures/test').mkdir(parents=True)
+            (root / 'spec/fixtures/test/cases.json').write_text('[]')
             (root / 'spec/messages').mkdir(parents=True)
             (root / 'spec/messages/test.cddl').write_text('thing = {name: tstr}')
             cmd = [sys.executable, str(root / 'codegen/generate.py')]

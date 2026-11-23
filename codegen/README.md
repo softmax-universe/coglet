@@ -4,12 +4,28 @@ Run `codegen/run` from any directory; commit its Rust and Python outputs.
 `codegen/run --check` is read-only and exits nonzero if either output is stale
 or missing. The conformance CI job enforces this, exercises the generator and
 cross-checks the generated validator against actual CDDL and JSON Schema on
-all semantic fixtures. Generation requires Python >=3.11 and the repository's
+all generated-contract semantic fixtures. Generation requires Python >=3.11 and the repository's
 pinned Rust toolchain (`rustfmt`); no Python generation dependencies are needed.
 
 ## Source and supported subset
 
-All `spec/messages/*.cddl` files are compiled together, sorted by path, into
+`contracts.json` explicitly classifies each contract as `generated` or
+`draft-validated`. Keys are unique CDDL file stems and matching top-level
+fixture directory names. Every `spec/messages/*.cddl`, `spec/*.cddl` and
+`spec/fixtures/*/` directory must be classified; stale entries, unknown modes,
+duplicate keys/stems, empty fixture families and root-level JSON fixtures fail
+`codegen/run --check`. New nested JSON fixtures are discovered recursively.
+
+Common stays `generated`; policy, promotion and tickets are `draft-validated`
+until M3 (not part of the v0 freeze). Drafts remain subject to real CDDL and
+JSON Schema validation, semantic checks and golden CBOR round-trips in
+`spec/tests/test_control.py`, run by conformance CI. Its registry coverage test
+requires every draft family to have both validators registered. The Rust
+schema-independent golden/profile test also continues to check draft goldens.
+Promoting a contract to `generated` requires compiler support and cross-checks
+in the same PR; changing the registry alone must not waive unsupported syntax.
+
+Only CDDL files classified `generated` are compiled together, sorted by path, into
 one validation IR and language records. The current CDDL subset includes named
 rules/references, inclusive integer ranges, text regex/byte-size constraints,
 literals, unions, closed records with optional fields, open text-key maps and
@@ -61,10 +77,12 @@ uv run --project sdk/surface-python --locked pytest sdk/surface-python/tests -s
 uv run --python 3.12 --with-requirements spec/tests/requirements.txt python codegen/cross_check.py
 ```
 
-Rust and Python fixture tests recursively discover `spec/fixtures/**/*.json`.
+Rust and Python generated-schema fixture tests recursively discover JSON files
+under the registry's `generated` fixture families.
 Fixture files currently contain arrays of semantic cases (`name`, `type`,
 `valid`, `value`, and `cbor_hex` for valid cases) or wire-negative cases
-(`name`, `cbor_hex`). New files are picked up without updating a manifest.
+(`name`, `cbor_hex`). New files within classified families are picked up without
+updating the registry; new families require explicit classification.
 Nonconforming fixture formats fail rather than being silently skipped.
 At introduction: **33 valid golden**, **43 semantic-invalid**, and **17
 wire-invalid** fixtures per language. These are schema/profile tests, not a

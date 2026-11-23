@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from contracts import schema_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 TOKEN = re.compile(r'\s+|;[^\n]*|"(?:[^"\\]|\\.)*"|-?[0-9]+|[A-Za-z_][A-Za-z0-9_-]*|\.regexp|\.size|\.\.|=>|[{}\[\](),:?+*/=]')
@@ -232,7 +233,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
-    texts = [p.read_text() for p in sorted((ROOT / 'spec/messages').glob('*.cddl'))]
+    texts = [p.read_text() for p in schema_paths(ROOT)]
     rules = parse('\n'.join(texts))
     stale = []
     for path, content in generate(rules).items():

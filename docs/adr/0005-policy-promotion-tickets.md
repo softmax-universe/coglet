@@ -25,6 +25,14 @@ only after the step-boundary acknowledgment. Factory results are candidates,
 never permission to promote. Tickets expose generic submit/update/answer/amend/
 cancel/result operations with revision fencing, budgets and scoped grants.
 
+Classify every CDDL contract and fixture family in `codegen/contracts.json`.
+Common is `generated`; these three control drafts are `draft-validated` until
+M3. Exhaustive registry checks reject missing/stale classifications, while CI
+still dual-validates every draft fixture. Generated-code fixture consumers use
+only generated families; schema-independent profile tests retain draft goldens.
+Promotion to generated requires compiler support and tests in the same PR.
+No emitter or runtime changes are part of this integration.
+
 ## Alternatives
 
 - Freeze policy with v0: premature before M3 operational evidence.

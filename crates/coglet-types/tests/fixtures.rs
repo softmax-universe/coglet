@@ -69,7 +69,16 @@ fn spec_fixtures() {
     walk(&root, &mut files);
     assert!(!files.is_empty(), "no fixtures found");
     let (mut sem, mut valid, mut wire) = (0, 0, 0);
+    let registry: serde_json::Value =
+        serde_json::from_str(include_str!("../../../codegen/contracts.json")).unwrap();
     for f in &files {
+        let family = f.strip_prefix(&root).unwrap().components().next().unwrap();
+        let family = family.as_os_str().to_str().unwrap();
+        match registry[family].as_str() {
+            Some("generated") => (),
+            Some("draft-validated") => continue,
+            _ => panic!("unclassified fixture family: {family}"),
+        }
         let j: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap();
         let cases = j

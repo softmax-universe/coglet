@@ -2,8 +2,11 @@ import importlib.util
 import json
 from pathlib import Path
 import unittest
+import sys
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'codegen'))
+from contracts import fixture_paths
 
 
 class CodecTests(unittest.TestCase):
@@ -11,7 +14,7 @@ class CodecTests(unittest.TestCase):
         self.assertIsNotNone(importlib.util.find_spec('coglet_surface.codec'), 'missing codec')
         from coglet_surface.codec import decode, encode, decode_profile
         valid = invalid = wire = 0
-        for path in sorted((ROOT / 'spec/fixtures').rglob('*.json')):
+        for path in fixture_paths(ROOT):
             cases = json.loads(path.read_text())
             self.assertIsInstance(cases, list, str(path))
             for case in cases:

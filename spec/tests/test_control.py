@@ -7,6 +7,7 @@ import json
 from copy import deepcopy
 from pathlib import Path
 import unittest
+import sys
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
@@ -16,6 +17,8 @@ from pycddl import Schema, ValidationError
 from test_common import decode, encode
 
 SPEC = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SPEC.parent / 'codegen'))
+from contracts import load
 SCHEMAS = {
     'policy': SPEC / 'policy.schema.json',
     'promotion': SPEC / 'messages/promotion.schema.json',
@@ -90,6 +93,11 @@ def semantic_valid(group, rule, value):
 
 
 class ControlFixtures(unittest.TestCase):
+    def test_registry_drafts_have_dual_validation(self):
+        drafts = {name for name, mode in load().items() if mode == 'draft-validated'}
+        self.assertEqual(drafts, set(SCHEMAS))
+        self.assertEqual(drafts, set(CDDL))
+
     @classmethod
     def setUpClass(cls):
         all_paths = [SPEC / 'messages/common.schema.json', *SCHEMAS.values()]
@@ -103,7 +111,7 @@ class ControlFixtures(unittest.TestCase):
         all_cases = []
         for group, path in SCHEMAS.items():
             schema = self.schemas[path]
-            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).glob('*.json'))
+            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).rglob('*.json'))
                      for case in json.loads(fixture.read_text())]
             self.assertTrue(cases)
             self.assertEqual(len(cases), len({c['name'] for c in cases}))
@@ -146,7 +154,7 @@ class ControlFixtures(unittest.TestCase):
     def test_schema_roots_accept_all_valid_messages(self):
         for group, path in SCHEMAS.items():
             validator = Draft202012Validator(self.schemas[path], registry=self.registry)
-            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).glob('*.json'))
+            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).rglob('*.json'))
                      for case in json.loads(fixture.read_text())]
             for case in cases:
                 if case['valid'] and case['type'] not in ('status', 'gate-report', 'ticket', 'receipt'):
@@ -157,7 +165,7 @@ class ControlFixtures(unittest.TestCase):
     def test_every_operation_has_positive_fixture(self):
         for group, required in [('promotion', {'propose', 'promote', 'rollback', 'status'}),
                                 ('tickets', {'submit', 'update', 'answer', 'amend', 'cancel', 'result'})]:
-            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).glob('*.json'))
+            cases = [case for fixture in sorted((SPEC / 'fixtures' / group).rglob('*.json'))
                      for case in json.loads(fixture.read_text())]
             ops = {c['value'].get('op') for c in cases if c['valid']}
             self.assertTrue(required <= ops)

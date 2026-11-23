@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sys
+from contracts import schema_paths, fixture_paths
 
 import cbor2
 from jsonschema import Draft202012Validator
@@ -14,8 +15,9 @@ from coglet_surface.codec import validate
 
 
 def main():
-    cddl = '\n'.join(p.read_text() for p in sorted((ROOT / 'spec/messages').glob('*.cddl')))
-    schemas = [json.loads(p.read_text()) for p in sorted((ROOT / 'spec/messages').glob('*.schema.json'))]
+    paths = schema_paths(ROOT)
+    cddl = '\n'.join(p.read_text() for p in paths)
+    schemas = [json.loads(p.with_suffix('.schema.json').read_text()) for p in paths]
     registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in schemas)
     definitions = {}
     for schema in schemas:
@@ -25,7 +27,7 @@ def main():
                 raise ValueError('ambiguous JSON Schema definition: ' + name)
             definitions[name] = schema
     count = 0
-    for path in sorted((ROOT / 'spec/fixtures').rglob('*.json')):
+    for path in fixture_paths(ROOT):
         for case in json.loads(path.read_text()):
             if 'valid' not in case:
                 continue
