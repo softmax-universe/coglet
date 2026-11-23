@@ -6,8 +6,8 @@ internal enum GeneratedSchema {
         "common": .union([.reference("event"), .reference("action"), .reference("action-accept"), .reference("action-outcome"), .reference("error"), .reference("version-offer"), .reference("version-selection")]),
         "uint64": .range(.unsigned(0), .unsigned(18446744073709551615)),
         "profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("uint64")]),
-        "profile-value": .union([.reference("profile-int"), .text, .boolean, .literal(.null), .array(0, .reference("profile-value")), .reference("profile-map")]),
-        "profile-map": .map(.reference("profile-value")),
+        "profile-value": .union([.reference("profile-int"), .text, .boolean, .literal(.null), .boundedArray(0, nil, .reference("profile-value")), .reference("profile-map")]),
+        "profile-map": .boundedMap(0, nil, .text, .reference("profile-value")),
         "node-id": .regexp("^[0-9a-f]{64}$"),
         "coglet-id": .regexp("^coglet:[0-9a-f]{64}$"),
         "surface-id": .regexp("^surface:[0-9a-f]{64}$"),
@@ -18,7 +18,7 @@ internal enum GeneratedSchema {
         "correlation-id": .regexp("^[0-9a-f]{32}$"),
         "action-id": .reference("correlation-id"),
         "spec-version": .regexp("^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$"),
-        "version-offer": .record([.init(name: "versions", optional: false, node: .array(1, .reference("spec-version")))]),
+        "version-offer": .record([.init(name: "versions", optional: false, node: .boundedArray(1, nil, .reference("spec-version")))]),
         "version-selection": .record([.init(name: "version", optional: false, node: .reference("spec-version"))]),
         "event": .record([.init(name: "source", optional: false, node: .reference("source-id")), .init(name: "kind", optional: false, node: .reference("capability-name")), .init(name: "seq", optional: false, node: .reference("uint64")), .init(name: "logical_time", optional: false, node: .reference("uint64")), .init(name: "payload", optional: false, node: .reference("profile-map")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id"))]),
         "action": .record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "coglet", optional: false, node: .reference("coglet-id")), .init(name: "capability", optional: false, node: .reference("capability-name")), .init(name: "args", optional: false, node: .reference("profile-map")), .init(name: "deadline", optional: false, node: .reference("uint64")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id"))]),
@@ -197,7 +197,7 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
             self = .variant4(try CBORValue.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.array(0, .reference("profile-value")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.boundedArray(0, nil, .reference("profile-value")), cborValue)) != nil {
             self = .variant5(try [ProfileValue].init(cborValue: cborValue, depth: depth))
             return
         }
@@ -225,7 +225,7 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
             try CBORCodec.validateNode(.literal(.null), value)
         case .variant5(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.array(0, .reference("profile-value")), value)
+            try CBORCodec.validateNode(.boundedArray(0, nil, .reference("profile-value")), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("profile-map"), value)

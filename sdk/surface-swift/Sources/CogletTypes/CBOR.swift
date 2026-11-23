@@ -159,11 +159,20 @@ internal struct SchemaField: Sendable {
     let optional: Swift.Bool
     let node: SchemaNode
 }
+internal struct SchemaTupleItem: Sendable {
+    let min: Swift.UInt64
+    let max: Swift.UInt64?
+    let node: SchemaNode
+}
 internal indirect enum SchemaNode: Sendable {
     case reference(Swift.String), union([SchemaNode]), literal(CBORValue)
+    case intersection([SchemaNode]), defaultValue(SchemaNode), tuple([SchemaTupleItem])
     case text, boolean
     case range(CBORValue, CBORValue), regexp(Swift.String), size(Swift.UInt64, Swift.UInt64)
-    case array(Swift.Int, SchemaNode), map(SchemaNode), record([SchemaField])
+    case boundedArray(Swift.UInt64, Swift.UInt64?, SchemaNode)
+    case boundedMap(Swift.UInt64, Swift.UInt64?, SchemaNode, SchemaNode)
+    case record([SchemaField])
+    case openRecord([SchemaField], Swift.UInt64, Swift.UInt64?, SchemaNode, SchemaNode)
 }
 
 public enum CBORCodec {
@@ -202,7 +211,39 @@ public enum CBORCodec {
         func check(_ child: SchemaNode, _ v: CBORValue) throws {
             try validateNode(child, v, depth: depth + 1)
         }
+        func countValid(_ count: Swift.Int, _ min: Swift.UInt64, _ max: Swift.UInt64?) -> Swift.Bool {
+            Swift.UInt64(count) >= min && (max == nil || Swift.UInt64(count) <= max!)
+        }
         switch node {
+        case .intersection(let children):
+            for child in children { try check(child, value) }
+        case .defaultValue(let child):
+            try check(child, value)
+        case .tuple(let shape):
+            guard case .array(let items) = value else { throw CBORFailure.invalid("expected tuple") }
+            // Dynamic programming retains every legal position, rather than
+            // greedily consuming optional/repeated entries. Bound work too.
+            var positions: Set<Swift.Int> = [0]
+            var work = 0
+            for slot in shape {
+                var next: Set<Swift.Int> = []
+                for start in positions {
+                    let available = Swift.UInt64(items.count - start)
+                    let maximum = Swift.Int(Swift.min(slot.max ?? available, available))
+                    if slot.min == 0 { next.insert(start) }
+                    if maximum > 0 {
+                        for consumed in 1...maximum {
+                            work += 1
+                            guard work <= 100_000 else { throw CBORFailure.invalid("tuple work limit") }
+                            guard (try? check(slot.node, items[start + consumed - 1])) != nil else { break }
+                            if Swift.UInt64(consumed) >= slot.min { next.insert(start + consumed) }
+                        }
+                    }
+                }
+                positions = next
+                if positions.isEmpty { break }
+            }
+            guard positions.contains(items.count) else { throw CBORFailure.invalid("tuple shape") }
         case .reference(let rule):
             guard let child = GeneratedSchema.rules[rule] else { throw CBORFailure.invalid("unknown reference") }
             try check(child, value)
@@ -232,11 +273,29 @@ public enum CBORCodec {
             guard regex.firstMatch(in: text, range: range)?.range == range else { throw CBORFailure.invalid("text grammar") }
         case .size(let low, let high):
             guard case .text(let text) = value, Swift.UInt64(text.utf8.count) >= low, Swift.UInt64(text.utf8.count) <= high else { throw CBORFailure.invalid("text byte size") }
-        case .array(let min, let child):
-            guard case .array(let items) = value, items.count >= min else { throw CBORFailure.invalid("array shape") }
+        case .boundedArray(let min, let max, let child):
+            guard case .array(let items) = value, countValid(items.count, min, max) else { throw CBORFailure.invalid("array shape") }
             for v in items { try check(child, v) }
-        case .map(let child):
-            for entry in try value.requireMap() { try check(child, entry.value) }
+        case .boundedMap(let min, let max, let key, let child):
+            let entries = try value.requireMap()
+            guard countValid(entries.count, min, max) else { throw CBORFailure.invalid("map bounds") }
+            for entry in entries { try check(key, .text(entry.key)); try check(child, entry.value) }
+        case .openRecord(let fields, let min, let max, let key, let child):
+            let entries = try value.requireMap()
+            var rest = 0
+            for entry in entries {
+                if let f = fields.first(where: { $0.name.utf8.elementsEqual(entry.key.utf8) }) {
+                    try check(f.node, entry.value)
+                } else {
+                    rest += 1
+                    try check(key, .text(entry.key))
+                    try check(child, entry.value)
+                }
+            }
+            guard countValid(rest, min, max) else { throw CBORFailure.invalid("record rest bounds") }
+            for f in fields where !f.optional {
+                guard field(entries, f.name) != nil else { throw CBORFailure.invalid("missing required field") }
+            }
         case .record(let fields):
             let entries = try value.requireMap()
             for entry in entries {
