@@ -475,255 +475,307 @@
     {
       "section": "general",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "general",
       "scenario": "login-denied",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "conflict",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "denied",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "testing",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "missing-device",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "denied",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "hub-account",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "disconnected",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "connecting",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "error",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "empty",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "loading",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "error",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": true
     },
     {
       "section": "updates",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "checking",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "available",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "installing",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "error",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "default",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "confirmation",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "export-error",
-      "theme": "light"
+      "theme": "light",
+      "semanticAssertions": false
     },
     {
       "section": "general",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "general",
       "scenario": "login-denied",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "conflict",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "hotkey",
       "scenario": "denied",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "testing",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "missing-device",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "audio",
       "scenario": "denied",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "hub-account",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "disconnected",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "connecting",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "hub-account",
       "scenario": "error",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "empty",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "loading",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "coglets",
       "scenario": "error",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": true
     },
     {
       "section": "updates",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "checking",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "available",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "installing",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "updates",
       "scenario": "error",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "default",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "confirmation",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     },
     {
       "section": "privacy",
       "scenario": "export-error",
-      "theme": "dark"
+      "theme": "dark",
+      "semanticAssertions": false
     }
   ],
   "keyboard": [
+    "light: Hub connect/cancel/confirm, disconnect keep/confirm, error retry/cancel; Coglets error/retry/loading/sample completion",
+    "dark: Hub connect/cancel/confirm, disconnect keep/confirm, error retry/cancel; Coglets error/retry/loading/sample completion",
     "palette: real typing, synonym search, arrows, Return activation",
     "type-anywhere settings filter, highlighted match, count, Return, menu Back round trip",
     "native select ArrowDown and Enter preserved; sidebar does not steal form input",
