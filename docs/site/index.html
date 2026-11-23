@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coglet architecture: one agent brain, many bodies</title>
+<meta name="description" content="How Coglet works: surfaces, sandboxed Wasm coglets and the hub. Event-driven runtime, git control plane, one iroh protocol, hub promotion, Face barge-in, and the build plan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <a class="brand" href="#top">COGLET<i>/</i>architecture</a>
+  <nav aria-label="Links">
+    <a href="../slides/">Slides</a>
+    <a data-spec="design" data-nobadge>Design doc</a>
+    <a data-spec="plan" data-nobadge class="opt">Plan</a>
+    <a href="https://github.com/softmax-universe/coglet" class="opt">GitHub</a>
+    <span class="kbd opt" title="Keyboard shortcuts">?</span>
+  </nav>
+</header>
+
+<div class="hero" id="top">
+  <div>
+    <p class="eyebrow">softmax-universe/coglet · architecture</p>
+    <h1>One agent brain,<br><span>many bodies.</span></h1>
+    <p class="lede"><b>Coglet</b> is how one agent drives a Mac face, a Mindustry avatar, Baby Bear's home pods and toy robots: sandboxed Wasm <b>coglets</b>, the <b>surfaces</b> that host them, and the <b>hub</b> that controls them.</p>
+    <dl class="meta">
+      <dt>source</dt><dd><a data-spec="design"></a></dd>
+      <dt>plan</dt><dd><a data-spec="plan"></a> · v1, 2026-11-23</dd>
+      <dt>status</dt><dd>P0 skeleton merged; specs being written (links marked <span class="badge badge-progress" style="margin:0">in progress</span>)</dd>
+    </dl>
+  </div>
+  <img src="assets/art/hero.jpg" width="1376" height="768" alt="Illustration: one glowing core wired to a laptop face, a game mech, a picture frame, a smart speaker and a toy robot">
+</div>
+
+<div class="wrap">
+  <aside class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#problem"><span>01</span>The problem</a></li>
+      <li><a href="#roles"><span>02</span>Three roles</a></li>
+      <li><a href="#repo"><span>03</span>A coglet is a repo</a></li>
+      <li><a href="#runtime"><span>04</span>The runtime</a></li>
+      <li><a href="#protocol"><span>05</span>One protocol</a></li>
+      <li><a href="#hub"><span>06</span>The hub</a></li>
+      <li><a href="#face"><span>07</span>Face</a></li>
+      <li><a href="#bodies"><span>08</span>Product bodies</a></li>
+      <li><a href="#specs"><span>09</span>Specs + conformance</a></li>
+      <li><a href="#plan"><span>10</span>Layout + plan</a></li>
+      <li><a href="#open"><span>··</span>Open questions</a></li>
+    </ol>
+    <div class="hint">j / k  next · prev section<br>← →  step a focused diagram<br>space  play / pause<br>?  all shortcuts</div>
+  </aside>
+
+<main id="main">
+
+<!-- 01 -->
+<section class="s" id="problem">
+  <p class="eyebrow">01 · The problem</p>
+  <h2>One brain has to drive bodies it doesn't control.</h2>
+  <div class="prose">
+    <p>The first test is two bodies at once: a <b>Face</b> on the Mac (hold to talk, it talks back) and a <b>Mindustry avatar</b>. You talk to the face, the hub decides, and the hub drives the avatar. Behind those come Baby Bear's pods (EO1 frame, Echo Dot, Linux, iOS, the Mac pod) and toy robots in a simulator.</p>
+    <p>Those bodies share almost nothing:</p>
+    <ul>
+      <li><b>Different hosts and languages.</b> Swift on the Mac, the JVM inside Mindustry, Go on the Echo Dot, a 32-bit ARM frame, an iPhone that forbids loading new machine code.</li>
+      <li><b>Different clocks.</b> Audio frames every ~20 ms, game ticks, a picture frame that changes once an hour.</li>
+      <li><b>Code that changes all the time.</b> An agent (the factory) writes and rewrites behaviour while the bodies are live, so every change must be gated, replayable and reversible.</li>
+    </ul>
+    <p>The design answer: keep the body-specific, real-time parts in a native <b>surface</b>; move every decision into small, deterministic, sandboxed <b>coglets</b> that run the same everywhere; and let a <b>hub</b> route, promote and roll them back.</p>
+  </div>
+  <div class="art"><img src="assets/art/bodies.jpg" width="1376" height="768" alt="Illustration: a factory-game mech, home devices and a toy robot on plinths, each wired up to one point"></div>
+</section>
+
+<!-- 02 -->
+<section class="s" id="roles">
+  <p class="eyebrow">02 · Vocabulary</p>
+  <h2>Three roles: Surface, Coglet, Hub.</h2>
+  <div class="roles3">
+    <div class="r-srf"><h4>SURFACE</h4><p>An adapter embedded in host software.</p>
+      <ul><li>owns real-time I/O</li><li>grants capabilities</li><li>supervises the runtime, owns the kill switch</li></ul>
+      <div class="never">e.g. <code>surfaces/face-mac</code>, the Mindustry game adapter, a Baby Bear pod</div></div>
+    <div class="r-cog"><h4>COGLET</h4><p>Semi-autonomous code in a Wasm sandbox inside a surface.</p>
+      <ul><li>reads and writes only through granted capabilities</li><li>one repo, one identity, its own files</li><li>runs only when woken by events</li></ul>
+      <div class="never">never talks to another coglet directly</div></div>
+    <div class="r-hub"><h4>HUB</h4><p>Runs anywhere. Coglets dial in, register and are controlled.</p>
+      <ul><li>routes all traffic</li><li>builds, promotes and rolls back code</li><li>is itself built from coglets on a fixed kernel</li></ul>
+      <div class="never">e.g. fast loop, factory, kernel</div></div>
+  </div>
+  <figure class="dg" data-diagram="roles"><figcaption class="dg-cap">One runtime (<code>cogletd</code>) per device hosts many coglets, each with its own Wasm instance, repo, filesystem, grants and identity. Every link is the same iroh protocol. The animated dots are events going up and actions coming down.</figcaption></figure>
+  <div class="prose">
+    <p>One device can host many coglets. The surface offers everything it has, and each coglet's <b>manifest</b> is checked against its own share before it starts. Reads are shared; <b>exclusive outputs</b> (a speaker, a screen) belong to one coglet at a time, assigned by hub policy. Old names you may see in Mindister: <i>Appendage</i>, <i>Part</i>. They are retired.</p>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="design"></a><a data-spec="manifest"></a><a data-spec="conventions"></a></div>
+</section>
+
+<!-- 03 -->
+<section class="s" id="repo">
+  <p class="eyebrow">03 · Git control plane</p>
+  <h2>A coglet is a git repo.</h2>
+  <div class="two">
+    <pre class="tree" aria-label="Coglet repository layout"><span class="o">coglet repo</span>
+├── src/          <span class="c"># any language that compiles to Wasm</span>
+├── bin/step.wasm <span class="c"># built AND committed by the hub</span>
+├── prompts/      <span class="c"># for coglets with LLM access</span>
+└── manifest      <span class="c"># capabilities it expects</span>
+
+<span class="o">refs</span>
+refs/heads/hub          <span class="c"># hub pushes code here</span>
+refs/published/main     <span class="c"># signed published state</span>
+refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
+    <div class="prose">
+      <p>Code, prompts and manifest are versioned like any other code, so the factory edits prompts exactly as it edits source.</p>
+      <p><b>The hub builds <code>bin/step.wasm</code> and commits it.</b> The runtime never compiles, so a phone or a picture frame only has to load bytes.</p>
+      <p><b>One writer per ref</b>: the hub writes <code>hub</code>, the coglet's published state goes to <code>published/main</code>, and logs go to <code>logs</code>, so log commits never conflict with code pushes. <code>/data</code> is private and is never synced through git.</p>
+    </div>
+  </div>
+  <figure class="dg" data-diagram="gitrefs"><figcaption class="dg-cap"></figcaption></figure>
+  <div class="specs"><span>spec</span><a data-spec="hub"></a><a data-spec="abi"></a></div>
+</section>
+
+<!-- 04 -->
+<section class="s" id="runtime">
+  <p class="eyebrow">04 · The runtime</p>
+  <h2>Event in, fresh instance, files as state, action out.</h2>
+  <div class="prose">
+    <p><code>cogletd</code> is one Rust runtime, the same on the Mac, next to the game and on a pod. It ships as a sidecar binary and as a library with a C ABI, for hosts that cannot spawn a process (iOS). A coglet runs only when there is something to handle. Wake sources: <b>surface events</b>, <b>inbox appends</b> from the hub, <b>LLM responses</b> and <b>timers</b> the coglet asked for. Periodic work, such as game ticks, is just an event source subscribed at the rate the coglet wants.</p>
+  </div>
+  <figure class="dg" data-diagram="eventflow"><figcaption class="dg-cap"></figcaption></figure>
+
+  <h3>The contract is small: plain core Wasm, one export</h3>
+  <div class="two">
+    <div class="prose">
+      <ul>
+        <li><b>Export</b> <code>handle(events, step, logical_time, seed)</code>.</li>
+        <li><b>Imports</b>: read state, emit action, set timer, LLM request (the answer is a later event), log. Bytes in CBOR across a few host functions; no component model. Wire values use the <b>core deterministic CBOR</b> profile from <a data-spec="conventions"></a> (sorted keys, no floats), so equal values encode, and hash, equal.</li>
+        <li><b>Files</b>: <code>/code</code> read-only at the pinned commit, <code>/data</code> private (including <code>inbox.jsonl</code>), <code>/logs</code> append-only.</li>
+        <li><b>Manifest</b>: id, event subscriptions, required capabilities, exclusive outputs, budget. The runtime refuses to start a coglet whose manifest asks for more than the surface granted.</li>
+      </ul>
+    </div>
+    <div class="prose">
+      <ul>
+        <li><b>Deterministic.</b> No wall clock or randomness except <code>logical_time</code> and <code>seed</code>. Replay records event batches in and actions out, and LLM responses are recorded with their step, so replay never calls a model.</li>
+        <li><b>Bounded.</b> A compute cap (fuel) per step and an interrupt at the deadline.</li>
+        <li><b>Copy-on-write, content-addressed</b> in-memory filesystem: each step's state is a tree hash, flushed to disk periodically for crash safety. It maps directly onto git (and onto caos later).</li>
+      </ul>
+    </div>
+  </div>
+  <div class="art"><img src="assets/art/runtime.jpg" width="1376" height="768" alt="Illustration: glass cubes instantiated on a conveyor while a stack of filesystem layers grows one sheet per step"></div>
+
+  <h3>WAMR first, behind an <code>Engine</code> trait</h3>
+  <figure class="dg" data-diagram="engine"></figure>
+  <div class="prose">
+    <p>WAMR runs where Wasmtime can't: iOS forbids generating machine code at runtime (interpreter only), and the EO1 is 32-bit ARM. Wasmtime comes later for the hub and Macs. Running the same coglet on both engines and comparing state hashes is a conformance test for free. Floating-point determinism across engines is being pinned down by a spike before the v0 freeze.</p>
+    <p><b>Inbox as a file.</b> The hub never injects messages into a running step: it appends to <code>/data/inbox.jsonl</code> between steps and never rewrites it; the coglet keeps its own read cursor in <code>/data</code>. Steering messages, async LLM answers and factory notes all use this one primitive.</p>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="abi"></a><a data-spec="manifest"></a><a data-spec="adrPlatforms"></a><a data-spec="adrCap"></a><a data-spec="adrDeterm"></a></div>
+</section>
+
+<!-- 05 -->
+<section class="s" id="protocol">
+  <p class="eyebrow">05 · Networking</p>
+  <h2>One iroh protocol. A stream per method. Grants per method.</h2>
+  <div class="prose">
+    <p>Mindister used three ALPNs (<code>enroll/0</code>, <code>appendage/0</code>, <code>git/1</code>). Coglet collapses them into <b>one protocol</b>: one handshake, one auth path, one versioned schema, with each operation on its own QUIC stream.</p>
+  </div>
+  <figure class="dg" data-diagram="proto"><figcaption class="dg-cap"></figcaption></figure>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>Method</th><th>What it carries</th><th>Grant</th></tr></thead>
+    <tbody>
+      <tr><td><code>enroll</code></td><td>node key → allowlist; manifest of capabilities the surface granted</td><td>enrolment</td></tr>
+      <tr><td><code>lifecycle</code></td><td>start, stop, status per coglet</td><td>hub</td></tr>
+      <tr><td><code>git</code></td><td>refs <code>hub</code> / <code>logs</code> / <code>published/main</code>; signing; build-then-commit</td><td>per coglet</td></tr>
+      <tr><td><code>events</code> / <code>actions</code></td><td>surface events up, routed actions down (world acts via the hub motor)</td><td>per coglet</td></tr>
+      <tr><td><code>inbox.append</code></td><td>append to <code>/data/inbox.jsonl</code> between steps</td><td>hub</td></tr>
+      <tr><td><code>debug.read</code></td><td>tail logs, read <code>/data</code>, inspect a step's inputs/outputs, pause, single-step</td><td>per ticket</td></tr>
+      <tr><td><code>debug.write</code></td><td>queued writes to <code>/data</code>, applied between steps, audited</td><td>per ticket, separate</td></tr>
+      <tr><td><code>health</code></td><td>signals for probation and rollback</td><td>hub</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p><b>Debugging goes through the hub, never direct.</b> The hub already holds the connection and enforces grants; it opens streams for a ticket and closes them when the ticket ends. Debug writes are allowed on live games, to steer a coglet through a hard situation, and every one lands in the audit log, so traces separate coglet decisions from hub intervention (which matters for training data).</p>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="hub"></a><a data-spec="messages"></a><a data-spec="conventions"></a></div>
+</section>
+
+<!-- 06 -->
+<section class="s" id="hub">
+  <p class="eyebrow">06 · Hub control</p>
+  <h2>The hub is made of coglets, on a small fixed kernel.</h2>
+  <figure class="dg" data-diagram="hubmap"></figure>
+  <div class="prose">
+    <p>The <b>fast loop</b> is a small fast model, always on: it keeps the conversation going, routes quick actions to the avatar and decides when a request needs new code. The <b>factory</b> writes or changes code for any coglet, including the fast loop and itself. It starts as a thin coglet over Hermes gateway and Kanban; tickets, worker profiles, prompts and review rules are files in its repo, and Hermes stays outside the self-editing loop.</p>
+  </div>
+  <h3>Ticket: fast loop → factory</h3>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>Field</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td>Target</td><td>coglet repo and base commit</td></tr>
+      <tr><td>Goal</td><td>the request in plain words, plus acceptance criteria written by the fast loop</td></tr>
+      <tr><td>Context</td><td>references to a world snapshot slice, recent transcript, relevant traces</td></tr>
+      <tr><td>Capabilities</td><td>what the work may touch (source, prompts, manifest) and debug grants (read, write)</td></tr>
+      <tr><td>Gate</td><td>required checks: replay tests, headless game fork, human approval</td></tr>
+      <tr><td>Budget</td><td>time and spend caps</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose" style="color:var(--ink-2)">Operations: <b>submit</b> (ID back immediately), <b>update</b> (streamed progress), <b>answer</b>, <b>amend / cancel</b>, <b>result</b> (done · needs input · failed · abandoned).</p>
+  <h3>Promotion: propose → promote → probation → rollback</h3>
+  <figure class="dg" data-diagram="promotion"><figcaption class="dg-cap"></figcaption></figure>
+  <div class="art"><img src="assets/art/hub.jpg" width="1376" height="768" alt="Illustration: a bolted kernel vault, a spinning gyroscope and robot arms assembling modules, one placed under a bell jar"></div>
+  <div class="specs"><span>spec</span><a data-spec="policy"></a><a data-spec="hub"></a><a data-spec="design"></a></div>
+</section>
+
+<!-- 07 -->
+<section class="s" id="face">
+  <p class="eyebrow">07 · Face: full-duplex conversation</p>
+  <h2>Real-time audio stays in the surface. Decisions go to the coglet.</h2>
+  <div class="two">
+    <div class="callout srf"><b>Surface owns (real time)</b><br>mic capture · echo cancellation · voice activity detection · streaming speech-to-text · text-to-speech playback · the reflex: duck or stop playback when the user speaks.</div>
+    <div class="callout cog"><b>Coglet owns (decisions)</b><br>wakes on speech start, partial transcript, end of utterance, playback position · emits speak-chunk, stop, backchannel · decides whether to drop or resume after a barge-in.</div>
+  </div>
+  <figure class="dg" data-diagram="bargein"><figcaption class="dg-cap"></figcaption></figure>
+  <div class="prose">
+    <p><b>Barge-in has two layers</b>: the surface stops instantly, then the coglet decides. STT and TTS are capabilities, so where they run (on device or hub-side) is configuration and can be A/B tested. Because bodies differ only behind the speech capability contract, <code>coglets/face</code> runs unchanged on the Mac, the Echo Dot (LED ring instead of expressions) and the EO1. The <code>sim/worlds/duplex-audio</code> world is the speech mock: scripted audio-event timelines, no real audio in CI.</p>
+    <p>Lives in coglet: <a data-repo="surfaces/face-mac/">surfaces/face-mac/</a> (Swift audio kit + hold-to-talk app) and <a data-repo="coglets/face/">coglets/face/</a>. Persona and voice config stay in product repos.</p>
+  </div>
+  <div class="art"><img src="assets/art/face.jpg" width="1376" height="768" alt="Illustration: a laptop face whose orange speech waveform is cut cleanly where the user's cyan waveform arrives"></div>
+  <div class="specs"><span>spec</span><a data-spec="speech"></a><a data-spec="expression"></a><a data-spec="surface"></a></div>
+</section>
+
+<!-- 08 -->
+<section class="s" id="bodies">
+  <p class="eyebrow">08 · Product bodies</p>
+  <h2>Mindustry and Baby Bear plug in as surfaces.</h2>
+  <h3>Mindustry avatar: a thin adapter plus the shared runtime</h3>
+  <div class="prose">
+    <p>The coglet does <b>not</b> run inside Mindustry's JVM. A thin in-game adapter (Java, on <a data-repo="sdk/surface-java/">sdk/surface-java</a>, owned by mindister) talks over a local socket to the same <code>cogletd</code> the Face uses.</p>
+    <ul>
+      <li><b>One runtime everywhere</b>: a Java coglet runtime would mean every capability built twice.</li>
+      <li><b>Crash isolation</b>: a hung coglet never takes down the game; the runtime restarts without touching the JVM.</li>
+      <li><b>Native iroh and git</b>, no JNI.</li>
+      <li>The adapter projects filtered game state (diffs, not full snapshots), serves the <code>/dev/game/{state,events,act,results,pointer,ctl}</code> device nodes as capabilities, and enforces grants and fencing. It holds no coglet logic.</li>
+      <li><b>Acts never execute locally</b>: they relay through the hub's motor queue (pacing, player-wins) and come back as fenced acts.</li>
+    </ul>
+  </div>
+  <h3>Baby Bear: pods become surfaces</h3>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>Pod</th><th>Kind</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>EO1</td><td>surface · pilot</td><td>split into surface (screen, sensors, signed updates) + runtime + a display coglet the factory can rewrite without an EO1 release; 32-bit ARM, WAMR</td></tr>
+      <tr><td>Echo Dot</td><td>surface</td><td>Go pod library shared with Linux; another body for the Face coglet (LED ring)</td></tr>
+      <tr><td>Linux</td><td>surface</td><td>via the Go library</td></tr>
+      <tr><td>iOS</td><td>surface</td><td>embedded runtime, interpreter only; coglets run on the hub when the app is suspended</td></tr>
+      <tr><td>Mac</td><td>surface</td><td>most work: delegation and job logic move into coglets; audio overlap with face-mac decided by ADR</td></tr>
+      <tr><td>EchoEar, Z04 badge</td><td>peripherals</td><td>capabilities of the Mac surface (USB, Bluetooth)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="prose">
+    <p>Pods speak coglet's own hub protocol on its own ALPN, served next to <code>babybear/rpc/1</code> while they move over (this overrides the design doc's "extend rpc/1"). Each pod cuts over after a side-by-side check. Baby Bear's provider speech-to-speech session becomes a surface capability: the coglet configures it and its tool calls arrive as events.</p>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="surface"></a><a data-spec="plan"></a></div>
+</section>
+
+<!-- 09 -->
+<section class="s" id="specs">
+  <p class="eyebrow">09 · Specs first</p>
+  <h2>Every protocol has a spec, fixtures, and a mock that passes the same suite.</h2>
+  <figure class="dg" data-diagram="conformance"></figure>
+  <div class="prose"><p>The harness is language-neutral and black-box: it drives an implementation over the wire with golden fixtures. It is not a set of Rust unit tests. Spec changes go through an ADR (<a data-spec="adrTemplate"></a>).</p></div>
+  <div class="tablewrap"><table class="t" id="spec-table">
+    <thead><tr><th>Spec</th><th>Covers</th></tr></thead>
+    <tbody>
+      <tr><td><a data-spec="conventions"></a></td><td>deterministic CBOR profile, id and capability-name grammar, event/action envelope, error codes, versioning</td></tr>
+      <tr><td><a data-spec="abi"></a></td><td><code>handle(events, step, logical_time, seed)</code>, host fns, <code>/code /data /logs</code>, inbox format, journal and trace format</td></tr>
+      <tr><td><a data-spec="surface"></a></td><td>hello/caps, event, read/reply, act (accept → outcome), grants, health, kill switch; local socket and in-process transports</td></tr>
+      <tr><td><a data-spec="speech"></a></td><td>speech-start, partial, end-of-utterance, playback position, barge-in; speak-chunk, stop, backchannel; STT/TTS placement; s2s sessions</td></tr>
+      <tr><td><a data-spec="expression"></a></td><td>set-expression for screens, LED rings</td></tr>
+      <tr><td><a data-spec="hub"></a></td><td>one ALPN, a stream per op: enroll, lifecycle, git control plane, events/actions, debug, inbox, health; per-method grants</td></tr>
+      <tr><td><a data-spec="manifest"></a></td><td>id, subscriptions, required caps, exclusive outputs, budgets</td></tr>
+      <tr><td><a data-spec="policy"></a></td><td>gates, approval, probation (frozen at M3, not v0)</td></tr>
+      <tr><td><a data-spec="messages"></a></td><td>CDDL + JSON Schema for every message</td></tr>
+      <tr><td><a data-spec="fixtures"></a></td><td>golden valid/invalid frames, scripted audio-event timelines</td></tr>
+      <tr><td><a data-spec="conformance"></a></td><td>harness + suites <code>abi/ surface/ hub/ engine/ speech/</code></td></tr>
+      <tr><td><a data-spec="adrFreeze"></a></td><td>the v0 freeze: conventions, ABI, surface, speech, minimal hub protocol</td></tr>
+      <tr><td><a data-spec="adrConv"></a></td><td>decision record for the conventions spec</td></tr>
+      <tr><td><a data-spec="adrPlatforms"></a></td><td>spike: WAMR interpreter on ARMv7 (QEMU), iOS SDK boundary</td></tr>
+      <tr><td><a data-spec="adrCap"></a></td><td>spike: WAMR compute caps, deadline safe points, fresh-wake cost</td></tr>
+      <tr><td><a data-spec="adrDeterm"></a></td><td>spike: cross-engine deterministic state hash, determinism rules</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 10 -->
+<section class="s" id="plan">
+  <p class="eyebrow">10 · Where it lives and how it gets built</p>
+  <h2>Repo layout and the parallel build.</h2>
+  <pre class="tree" aria-label="softmax-universe/coglet layout"><a data-repo="spec/">spec/</a>              <span class="c">conventions · abi · surface-protocol · capabilities/ · hub-protocol · schemas · messages/ · fixtures/</span>
+<a data-repo="conformance/">conformance/</a>       <span class="c">language-neutral black-box harness + suites: abi/ surface/ hub/ engine/ speech/</span>
+<a data-repo="codegen/">codegen/</a>           <span class="c">schema → Rust / Python / Swift / Go / Java types</span>
+<a data-repo="crates/">crates/</a>
+  <a data-repo="crates/coglet-types/">coglet-types</a>         <span class="c">generated</span>
+  <a data-repo="crates/coglet-engine/">coglet-engine</a>        <span class="c">Engine trait (load, cap, deadline, wire, call)</span>
+  <a data-repo="crates/coglet-engine-wamr/">coglet-engine-wamr</a>   <span class="c">interpreter + AOT; interpreter-only on iOS and the EO1</span>
+  <a data-repo="crates/coglet-engine-wasmtime/">coglet-engine-wasmtime</a> <span class="c">later</span>
+  <a data-repo="crates/coglet-fs/">coglet-fs</a>            <span class="c">copy-on-write, content-addressed FS, tree hashes, flush</span>
+  <a data-repo="crates/coglet-runtime/">coglet-runtime</a>       <span class="c">library (C ABI) + bin cogletd: router, timers, batching, budgets, journal/replay, git sync, hub link, debug agent</span>
+  <a data-repo="crates/coglet-proto/">coglet-proto</a>         <span class="c">hub protocol over iroh</span>
+  <a data-repo="crates/coglet-hub/">coglet-hub</a>           <span class="c">kernel: identity/enroll, registry, routing, promotion, policy, probation, arbitration, audit</span>
+  <a data-repo="crates/coglet-llm/">coglet-llm</a>           <span class="c">LLM gateway: routing, spend ledger, recordings</span>
+  <a data-repo="crates/coglet-gate/">coglet-gate</a>          <span class="c">journal replay gates, headless forks</span>
+  <a data-repo="crates/coglet-trace/">coglet-trace</a>         <span class="c">trace store + training export</span>
+  <a data-repo="crates/coglet-mock/">coglet-mock</a>          <span class="c">mock engine / surface / hub / LLM</span>
+  <a data-repo="crates/coglet-cli/">coglet-cli</a>           <span class="c">coglet new|build|run|replay|attach|push</span>
+<a data-repo="sdk/">sdk/</a>               <span class="c">guest-rust (→ wasm32-wasip1) · surface-rust · -python · -swift · -go · -java</span>
+<a data-repo="surfaces/face-mac/">surfaces/face-mac/</a> <span class="c">Swift audio kit + hold-to-talk app</span>
+<a data-repo="sim/">sim/</a>               <span class="c">worlds: gridbot cartpole arm2d duplex-audio paint · scenarios/</span>
+<a data-repo="apps/visualizer/">apps/visualizer/</a>   <span class="c">web: live view (hub debug client) + simulated mode</span>
+<a data-repo="coglets/">coglets/</a>           <span class="c">echo counter gridbot-pilot face fast-loop factory</span>
+<a data-repo="release/">release/</a>           <span class="c">cogletd binaries, SDK packages, harness, face-mac build; products pin versions</span></pre>
+  <div class="prose">
+    <p><b>Boundary rule:</b> product-neutral pieces used by two or more products live in coglet (Face, all SDKs, simulator, visualizer). Anything tied to one product's world stays there: <b>mindister</b> owns the game adapter, the avatar coglet and its hub config; <b>babybear</b> owns the pod bodies. Every path above exists on main as a P0 scaffold; implementations land card by card.</p>
+  </div>
+  <figure class="dg" data-diagram="phases"></figure>
+  <div class="prose">
+    <p>The <b>v0 freeze</b> (ADR-0001) is the one serial gate. Everything in P2 runs in parallel because each piece talks to its neighbours through a narrow spec and is tested against that spec's mock. The runtime core is built on the mock engine, so it does not wait for WAMR. Work runs as Kanban cards (<code>coglet:</code> prefix, tenant <code>coglet</code>) across the Coglet sessions (Orchestrator, Core, Hub, Tools, Face, Baby Bear Coglet) plus the existing Mindister sessions.</p>
+  </div>
+  <div class="specs"><span>source</span><a data-spec="plan"></a><a data-spec="review"></a></div>
+</section>
+
+<section class="s" id="open">
+  <p class="eyebrow">·· Open questions</p>
+  <h2>Still to decide.</h2>
+  <div class="prose">
+    <ul>
+      <li>Keep or cut the hub's ledger and motor journal? Pacing and player-wins for acts are likely still needed.</li>
+      <li>Fuel and deadline budgets per step for each surface.</li>
+      <li>Flush interval and size cap for the in-memory filesystem.</li>
+      <li>Whether steps default to event-driven or fixed rate per surface.</li>
+    </ul>
+    <p><b>Relation to caos:</b> inspiration now, substrate later. Each step can eventually be a caos actor message: (code, data, snapshot, inbox) in, (data′, intents, logs) out.</p>
+  </div>
+</section>
+</main>
+</div>
+
+<footer>
+  Coglet architecture · generated from <a data-spec="design" data-nobadge></a> and <a data-spec="plan" data-nobadge></a> on 2026-11-23 · source <a data-repo="docs/site/">docs/site/</a> · <a href="../slides/">slides</a><br>
+  Diagrams are hand-drawn SVG from the specs. Illustrations were generated with Gemini and are decorative only.
+</footer>
+
+<div class="help" id="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div>
+  <h4>KEYBOARD</h4>
+  j / k ········· next / previous section<br>
+  g / G ········· top / bottom<br>
+  tab ··········· focus a diagram<br>
+  ← / → ········· step the focused diagram<br>
+  space ········· play / pause it<br>
+  s ············· open the slides<br>
+  ? / esc ······· this sheet
+</div></div>
+
+<script src="assets/specs.js"></script>
+<script src="assets/diagrams.js"></script>
+<script>
+(function () {
+  COGLET.decorateSpecs(document);
+  COGLET.initDiagrams(document);
+  var secs = [].slice.call(document.querySelectorAll('section.s'));
+  var links = [].slice.call(document.querySelectorAll('.toc a'));
+  function current() {
+    var y = window.scrollY + 120, idx = 0;
+    secs.forEach(function (s, i) { if (s.offsetTop <= y) idx = i; });
+    return idx;
+  }
+  function mark() {
+    var id = secs[current()].id;
+    links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + id); });
+  }
+  window.addEventListener('scroll', mark, { passive: true }); mark();
+  var help = document.getElementById('help');
+  document.querySelector('.top .kbd').addEventListener('click', function () { help.classList.add('on'); });
+  help.addEventListener('click', function () { help.classList.remove('on'); });
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target; if (t && /INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
+    if (e.key === '?') { help.classList.toggle('on'); e.preventDefault(); return; }
+    if (e.key === 'Escape') { help.classList.remove('on'); return; }
+    if (t && t.closest && t.closest('figure.dg') && /Arrow|^ $/.test(e.key)) return;
+    var i = current();
+    if (e.key === 'j') secs[Math.min(secs.length - 1, i + 1)].scrollIntoView();
+    else if (e.key === 'k') secs[Math.max(0, i - (window.scrollY + 120 > secs[i].offsetTop + 40 ? 0 : 1))].scrollIntoView();
+    else if (e.key === 'g') window.scrollTo(0, 0);
+    else if (e.key === 'G') window.scrollTo(0, document.body.scrollHeight);
+    else if (e.key === 's') location.href = '../slides/';
+  });
+})();
+</script>
+</body>
+</html>
