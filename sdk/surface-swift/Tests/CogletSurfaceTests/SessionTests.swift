@@ -53,7 +53,7 @@ private func action(epoch: UInt64 = 1, id: String = requestID, deadline: UInt64 
         ("id", .text(id)), ("coglet", .text(coglet)), ("capability", .text("expression.set_expression")),
         ("args", args), ("deadline", .unsigned(deadline)), ("correlation_id", .text(requestID))]))])), from: .runtime)
 }
-private func values(_ session: SurfaceSession) throws -> [CBORValue] {
+private func drainedSurfaceMessages(_ session: SurfaceSession) throws -> [CBORValue] {
     try session.drain().map { try SurfaceWire.decode($0, from: .surface) }
 }
 
@@ -73,7 +73,7 @@ final class SessionTests: XCTestCase {
         XCTAssertFalse(try session.publishObservation(token, kind: "speech.partial", payload: .record([
             ("utterance", .text(requestID)), ("revision", .unsigned(2)), ("text", .text("late"))])))
         try session.receive(action())
-        let events = try values(session).filter { $0["type"] == .text("event") }
+        let events = try drainedSurfaceMessages(session).filter { $0["type"] == .text("event") }
         XCTAssertEqual(events.map { $0["body"]!["seq"]! }, [.unsigned(0), .unsigned(1), .unsigned(2)])
         let replacement = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
         XCTAssertFalse(try session.publishObservation(token, kind: "speech.start", payload: start))
@@ -112,19 +112,19 @@ final class SessionTests: XCTestCase {
         }
         let bytes = try action()
         try session.receive(bytes)
-        let first = try values(session)
+        let first = try drainedSurfaceMessages(session)
         XCTAssertEqual(first.count, 2)
         XCTAssertEqual(first[1]["body"]?["payload"]?["status"], .text("succeeded"))
         try session.installGrants([]); _ = session.drain()
         clock.now = 2_000_000
         try session.receive(bytes)
-        let retried = try values(session)
+        let retried = try drainedSurfaceMessages(session)
         XCTAssertEqual(retried[0], first[0])
         XCTAssertEqual(retried[1]["body"]?["payload"], first[1]["body"]?["payload"])
         XCTAssertNotEqual(retried[1]["body"]?["seq"], first[1]["body"]?["seq"])
         XCTAssertEqual(backend.begins, 1)
         try session.receive(action(epoch: session.grantEpoch))
-        XCTAssertEqual(try values(session).first?["body"]?["error"]?["code"], .text("conflict"))
+        XCTAssertEqual(try drainedSurfaceMessages(session).first?["body"]?["error"]?["code"], .text("conflict"))
     }
     func testPendingDuplicateAndCapturedEpochFence() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
@@ -138,7 +138,7 @@ final class SessionTests: XCTestCase {
         try session.complete(owner: owner, id: requestID, epoch: 1, result: .succeeded(.map([])))
         XCTAssertTrue(session.drain().isEmpty)
         try session.receive(action())
-        let historical = try values(session)
+        let historical = try drainedSurfaceMessages(session)
         XCTAssertEqual(historical.count, 2)
         XCTAssertEqual(historical[1]["body"]?["payload"]?["status"], .text("cancelled"))
     }
@@ -157,14 +157,14 @@ final class SessionTests: XCTestCase {
         try negotiate(recovered)
         XCTAssertEqual(recovered.grantEpoch, 2)
         try recovered.receive(action())
-        let replay = try values(recovered)
+        let replay = try drainedSurfaceMessages(recovered)
         XCTAssertEqual(replay[1]["body"]?["payload"]?["status"], .text("failed"))
         XCTAssertEqual(replay[1]["body"]?["payload"]?["error"]?["code"], .text("unavailable"))
         XCTAssertEqual(backend.begins, 1)
         let recoveredAgain = try make(store, backend, clock)
         try negotiate(recoveredAgain)
         try recoveredAgain.receive(action())
-        XCTAssertEqual(try values(recoveredAgain)[1]["body"]?["seq"], .unsigned(1))
+        XCTAssertEqual(try drainedSurfaceMessages(recoveredAgain)[1]["body"]?["seq"], .unsigned(1))
     }
     func testDeadlineEqualityStaleEpochMissingOwnerAndTypedArguments() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
@@ -178,7 +178,7 @@ final class SessionTests: XCTestCase {
             (1, 100, "coglet:" + String(repeating: "c", count: 64), expression, "permission_denied")]
         for (index, row) in cases.enumerated() {
             try session.receive(action(epoch: row.0, id: String(format: "%032x", index + 2), deadline: row.1, coglet: row.2, args: row.3))
-            let response = try values(session)
+            let response = try drainedSurfaceMessages(session)
             XCTAssertEqual(response.count, 1)
             XCTAssertEqual(response[0]["body"]?["error"]?["code"], .text(row.4))
         }
@@ -191,7 +191,7 @@ final class SessionTests: XCTestCase {
         XCTAssertThrowsError(try session.installGrants([grant(), grant()]))
         XCTAssertEqual(session.grantEpoch, 1)
         try session.receive(action())
-        XCTAssertEqual(try values(session).first?["body"]?["accepted"], .boolean(true))
+        XCTAssertEqual(try drainedSurfaceMessages(session).first?["body"]?["accepted"], .boolean(true))
     }
     func testNativeDeadlineStopsAndOneTerminal() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
@@ -202,7 +202,7 @@ final class SessionTests: XCTestCase {
         _ = session.drain()
         clock.now = 100
         try session.tick()
-        let terminal = try values(session)
+        let terminal = try drainedSurfaceMessages(session)
         XCTAssertEqual(terminal.count, 1)
         XCTAssertEqual(terminal[0]["body"]?["payload"]?["status"], .text("expired"))
         try session.complete(owner: owner, id: requestID, epoch: 1, result: .succeeded(.map([])))
@@ -214,11 +214,11 @@ final class SessionTests: XCTestCase {
         let session = try make(store, backend, clock)
         try negotiate(session)
         try session.kill(reason: "local operator")
-        let notices = try values(session)
+        let notices = try drainedSurfaceMessages(session)
         XCTAssertEqual(notices.map { $0["type"]! }, [.text("kill"), .text("health")])
         XCTAssertEqual(notices[1]["body"]?["state"], .text("stopped"))
         try session.receive(action())
-        XCTAssertEqual(try values(session)[0]["body"]?["error"]?["code"], .text("permission_denied"))
+        XCTAssertEqual(try drainedSurfaceMessages(session)[0]["body"]?["error"]?["code"], .text("permission_denied"))
         let reopened = try make(store, backend, clock)
         XCTAssertTrue(reopened.isKilled)
         XCTAssertEqual(backend.begins, 0)
@@ -242,7 +242,7 @@ final class SessionTests: XCTestCase {
         try negotiate(session)
         clock.now = 1_000_000
         try session.tick()
-        XCTAssertEqual(try values(session)[0]["type"], .text("health"))
+        XCTAssertEqual(try drainedSurfaceMessages(session)[0]["type"], .text("health"))
         clock.now = 3_000_000
         XCTAssertThrowsError(try session.tick())
         let fresh = try make(MemoryLedger(), backend, clock)
