@@ -283,10 +283,11 @@ as a premerge gate.
 
 The first postmerge conformance attempt (run `45153891816`) failed when rustfmt
 exited 1 during codegen freshness; its diagnostic was hidden by stderr capture.
-The fix-forward PR explicitly installs rustfmt/clippy and preserves formatter
-stderr without weakening failure or freshness checks. Required CI and independent
-review still gate that fix's merge. No production protocol implementation was
-qualified by the harness loopback tests.
+Attempt 2 succeeded on the identical tree, closing red main without a code fix;
+the original failure's cause is unproven. The follow-up PR preserves formatter
+stderr without weakening failure or freshness checks, so a future failure is
+diagnosable. Required CI and independent review still gate that PR's merge.
+No production protocol implementation was qualified by the harness loopback tests.
 
 ADRs 0001/0008 remain bounded spike evidence and ADR-0003's amended R4 remains
 the recorded-input policy, not proof of production transform qualification.
