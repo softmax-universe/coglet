@@ -26,12 +26,6 @@ jobs:
         with:
           enable-cache: false
       - uses: dtolnay/rust-toolchain@1.100.0
-        with:
-          components: rustfmt, clippy
-      - name: Verify required Rust tools
-        run: |
-          rustfmt --version
-          cargo clippy --version
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
