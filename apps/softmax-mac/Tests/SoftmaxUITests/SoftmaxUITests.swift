@@ -145,6 +145,80 @@ final class SoftmaxUITests: XCTestCase {
     }
 
     @MainActor
+    func testCommandSelectionStaysVisible() {
+        for scale in ["1.0", "1.6"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", scale]
+            app.launch()
+            let onboarding = app.windows["Welcome to Softmax"]
+            XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+            onboarding.typeKey("k", modifierFlags: .command)
+            let palette = app.descendants(matching: .any).matching(identifier: "Softmax Commands").firstMatch
+            XCTAssertTrue(palette.waitForExistence(timeout: 5))
+            let scroll = palette.scrollViews.firstMatch
+            // Keyboard input only: clicking a row would auto-scroll and hide the regression.
+            for _ in 0..<10 { palette.typeKey(.downArrow, modifierFlags: []) }
+            let last = palette.buttons["About Softmax"]
+            XCTAssertTrue(scroll.frame.contains(last.frame), "Last keyboard selection must be fully visible at scale \(scale)")
+            XCTAssertTrue(last.isHittable)
+            let image = XCTAttachment(screenshot: palette.screenshot())
+            image.name = "commands-last-selected-\(scale)"; image.lifetime = .keepAlways; add(image)
+            palette.typeKey(.upArrow, modifierFlags: [])
+            XCTAssertTrue(scroll.frame.contains(palette.buttons["Open Voice"].frame))
+            palette.typeKey(.downArrow, modifierFlags: [])
+            palette.typeKey(.return, modifierFlags: [])
+            let about = app.windows["About Softmax"]
+            XCTAssertTrue(about.waitForExistence(timeout: 5), "Return must open the selected last command")
+            about.typeKey("k", modifierFlags: .command)
+            XCTAssertTrue(palette.waitForExistence(timeout: 5))
+            for _ in 0..<10 { palette.typeKey(.downArrow, modifierFlags: []) }
+            palette.typeText("privacy")
+            let filtered = palette.buttons["Settings → Privacy"]
+            XCTAssertTrue(filtered.exists)
+            XCTAssertTrue(scroll.frame.contains(filtered.frame), "Filtering from the bottom must reveal the first match")
+            palette.typeKey(.return, modifierFlags: [])
+            XCTAssertTrue(app.windows["Softmax Settings"].buttons["Refresh Permissions"].waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testSettingsFocusedSearchArrowNavigation() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+        app.launch()
+        defer { app.terminate() }
+        let onboarding = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+        onboarding.buttons["Open Settings…"].click()
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.typeText("/")
+        settings.typeText("o") // Multiple matches including General, Hotkey and Audio.
+        XCTAssertTrue(settings.buttons["General"].exists)
+        XCTAssertTrue(settings.buttons["Hotkey"].exists)
+        XCTAssertTrue(settings.buttons["Audio"].exists)
+        settings.typeKey(.downArrow, modifierFlags: [])
+        settings.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Focused search Down must select Hotkey")
+        settings.typeKey(.downArrow, modifierFlags: [])
+        settings.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(settings.checkBoxes["Play sound cues"].exists, "Second Down must select Audio")
+        settings.typeKey(.upArrow, modifierFlags: [])
+        settings.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Up must return to Hotkey")
+        settings.typeKey("a", modifierFlags: .command)
+        settings.typeText("zz-no-matches")
+        XCTAssertTrue(settings.staticTexts["No matching settings"].exists)
+        settings.typeKey(.downArrow, modifierFlags: [])
+        settings.typeKey(.upArrow, modifierFlags: [])
+        settings.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Empty search must retain the current section")
+        settings.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["General"].exists)
+    }
+
+    @MainActor
     func testContrastCalibration() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--contrast-calibration"]
