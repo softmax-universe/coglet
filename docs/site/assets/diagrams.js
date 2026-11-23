@@ -294,7 +294,7 @@
       { cap: 'The surface sends an <code>event</code> message over the <b>surface protocol</b> (local socket, or in-process when the runtime is embedded, e.g. iOS). <a data-spec="surface"></a>', pk: ab('srf', 'rt', 100), pkc: 'srf-f' },
       { cap: 'The <b>event router</b> fans the event out to every coglet subscribed to it. Events that arrive while a step runs are batched into the next one, with a cap.' },
       { cap: 'The batch is <b>journaled before the step runs</b>. Replay records event batches, not ticks. Journal format: <a data-spec="abi"></a>.' },
-      { cap: 'The engine loads <code>bin/step.wasm</code> from the pinned commit into a <b>fresh instance</b>, sets the compute cap (fuel) and the deadline (interrupt), and wires the host functions.', pk: ab('rt', 'wasm', 236), pkc: 'cog-f' },
+      { cap: 'The engine loads <code>bin/step.wasm</code> from the pinned commit into a <b>fresh instance</b>, sets the compute cap (fuel) and the deadline (interrupt), and wires the host functions. Proven route today: the pinned WAMR <b>interpreter</b>; AOT metering and interrupt safe points still need qualification (<a data-spec="adrCap"></a>).', pk: ab('rt', 'wasm', 236), pkc: 'cog-f' },
       { cap: 'It calls the one export: <code>handle(events, step, logical_time, seed)</code>. No wall clock and no randomness except these inputs, so the step is deterministic.', pk: ab('rt', 'wasm', 278), pkc: 'cog-f' },
       { cap: 'Reads go through host functions against <b>one pinned snapshot</b> of the surface state, granted per capability in the manifest (<a data-spec="manifest"></a>).', pk: [ab('wasm', 'rt', 318), ab('rt', 'wasm', 340)] },
       { cap: 'State lives in files, not in the instance: <code>/code</code> read-only at the pinned commit, <code>/data</code> private (incl. <code>/data/inbox.jsonl</code>), <code>/logs</code> append-only. All copy-on-write and content-addressed.', pk: ab('wasm', 'fs', 382) },
@@ -643,7 +643,7 @@
     svg.appendChild(T(240, 150, 'load · set compute cap · set deadline · wire host fns · call handle', 'mono small'));
     svg.appendChild(T(760, 122, 'crates/coglet-engine', 'small dim', { 'text-anchor': 'end' }));
     var impls = [
-      [40, 'coglet-engine-wamr', ['interpreter + AOT', 'interpreter-only on iOS, EO1', 'built first'], 'c'],
+      [40, 'coglet-engine-wamr', ['interpreter first (cap + deadline proven)', 'AOT: metering not yet qualified', 'interpreter-only on iOS, EO1'], 'c'],
       [370, 'coglet-engine-wasmtime', ['later: hub and Macs', 'heavier fuzzing/audit'], 's'],
       [700, 'coglet-mock (engine)', ['native fn stands in for a coglet', 'tests runtime without Wasm'], 'g']
     ];
@@ -745,7 +745,7 @@
   function phases(fig) {
     var W = 1000, H = 420, svg = svgRoot(W, H, 'Build phases: P0 skeleton and specs, v0 freeze, P2 parallel components, P3 milestones, P4 product lanes'), M = defs(svg);
     var cols = [
-      [16, 'P0 · P1', 'specs + spikes', ['skeleton ✓', 'conventions ✓', 'ABI + journal', 'surface + speech', 'hub protocol', 'policy draft', 'conformance harness', 'codegen', 'spikes: WAMR cap ✓ armv7 ✓', '  iOS ✓, float hash']],
+      [16, 'P0 · P1', 'specs + spikes', ['skeleton ✓', 'conventions ✓', 'ABI + journal', 'surface + speech', 'hub protocol', 'policy draft', 'conformance harness', 'codegen', 'spikes: WAMR cap ✓ armv7 ✓', '  iOS build pending, float hash']],
       [222, 'gate', 'v0 freeze', ['ADR-0001', 'conventions · ABI', 'surface · speech', 'minimal hub protocol', '', 'the one serial gate']],
       [388, 'P2', 'all parallel', ['engine-wamr', 'mock engine', 'fs (CoW)', 'runtime core + C ABI', 'guest SDK, echo, counter', 'surface SDKs rust py swift', 'hub proto + mock hub', 'kernel part 1', 'mock LLM + gateway', 'release pipeline']],
       [606, 'P3', 'milestones', ['M1 hello coglet', 'M2 sandbox: gridbot,', '  cartpole, CLI, visualizer', 'M2b Face on Mac', 'M3 self-editing loop', '  (policy freeze)', 'parallel: Wasmtime + hash,', '  trace, fault injection']],

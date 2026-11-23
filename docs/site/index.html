@@ -143,7 +143,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
     <div class="prose">
       <ul>
         <li><b>Deterministic.</b> No wall clock or randomness except <code>logical_time</code> and <code>seed</code>. Replay records event batches in and actions out, and LLM responses are recorded with their step, so replay never calls a model.</li>
-        <li><b>Bounded.</b> A compute cap (fuel) per step and an interrupt at the deadline.</li>
+        <li><b>Bounded.</b> A compute cap (fuel) per step and an interrupt at the deadline. The cap spike proved both on the pinned WAMR <b>interpreter</b>; plain AOT ignores the fuel setter and cannot be interrupted in-process, so AOT needs qualified instrumentation or process isolation first (<a data-spec="adrCap"></a>).</li>
         <li><b>Copy-on-write, content-addressed</b> in-memory filesystem: each step's state is a tree hash, flushed to disk periodically for crash safety. It maps directly onto git (and onto caos later).</li>
       </ul>
     </div>
@@ -302,7 +302,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
 <a data-repo="crates/">crates/</a>
   <a data-repo="crates/coglet-types/">coglet-types</a>         <span class="c">generated</span>
   <a data-repo="crates/coglet-engine/">coglet-engine</a>        <span class="c">Engine trait (load, cap, deadline, wire, call)</span>
-  <a data-repo="crates/coglet-engine-wamr/">coglet-engine-wamr</a>   <span class="c">interpreter + AOT; interpreter-only on iOS and the EO1</span>
+  <a data-repo="crates/coglet-engine-wamr/">coglet-engine-wamr</a>   <span class="c">interpreter first; AOT once metering is qualified; interpreter-only on iOS and the EO1</span>
   <a data-repo="crates/coglet-engine-wasmtime/">coglet-engine-wasmtime</a> <span class="c">later</span>
   <a data-repo="crates/coglet-fs/">coglet-fs</a>            <span class="c">copy-on-write, content-addressed FS, tree hashes, flush</span>
   <a data-repo="crates/coglet-runtime/">coglet-runtime</a>       <span class="c">library (C ABI) + bin cogletd: router, timers, batching, budgets, journal/replay, git sync, hub link, debug agent</span>

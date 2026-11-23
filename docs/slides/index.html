@@ -164,7 +164,7 @@ refs/heads/logs</pre>
   <ul class="narrow">
     <li><code>cogletd</code>: one Rust runtime; sidecar binary or C ABI library (iOS).</li>
     <li>Wakes on <b>surface events</b>, <b>inbox appends</b>, <b>LLM responses</b>, <b>timers</b>. Idle costs nothing.</li>
-    <li>Fresh Wasm instance per wake: <b>fuel</b> cap + <b>deadline</b> interrupt.</li>
+    <li>Fresh Wasm instance per wake: <b>fuel</b> cap + <b>deadline</b> interrupt (proven on the WAMR interpreter; AOT pending).</li>
     <li>State = files: copy-on-write, content-addressed, a <b>tree hash</b> per step.</li>
     <li><b>Deterministic replay</b> from journaled event batches + recorded LLM answers.</li>
   </ul>
