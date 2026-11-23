@@ -47,6 +47,8 @@ jobs:
       - run: python3 -m unittest discover -s spec/tests -v
       - name: Build real engine conformance adapter
         run: cargo build --locked -p coglet-engine-wamr --example wamr-conformance
+      - name: Build Wasmtime conformance adapter
+        run: cargo build --locked -p coglet-engine-wasmtime --example wasmtime-conformance
       - name: Build surface adapters
         run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
       - run: python3 -m unittest discover -s conformance/tests -v
