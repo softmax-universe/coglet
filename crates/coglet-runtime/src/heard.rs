@@ -1,9 +1,74 @@
-//! Archive-only heard history: deterministic journal bytes, never a live read.
+//! Heard history: authenticated live construction and archive-only validation.
 use crate::{Result, cbor, validate};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
 pub const PATH: &str = "/data/runtime/heard.cbor";
+
+/// Construct M-D alignment only from an already authenticated owner read.
+/// The caller supplies the stop fence from trusted playback/control state.
+pub(crate) fn collect(
+    before: Option<&str>,
+    surface: &str,
+    read: &Value,
+    stopped: bool,
+) -> Result<String> {
+    crate::catalog::check(
+        &crate::catalog::operation("speech.heard", "read")?["output"],
+        read,
+    )?;
+    let mut state = decode(before)?;
+    let items = state["items"].as_array_mut().unwrap();
+    let index = if let Some(i) = items
+        .iter()
+        .position(|v| v["surface"] == surface && v["item"] == read["item"])
+    {
+        i
+    } else {
+        if items.len() >= 4096 {
+            return Err("resource_exhausted: heard item lifetime cap".into());
+        }
+        items.push(json!({"surface":surface,"item":read["item"],"duration_ms":0,"played_ms":0,"stopped":false,"spans":[],"heard":""}));
+        items.len() - 1
+    };
+    let item = &mut items[index];
+    let played = read["played_ms"].as_u64().unwrap();
+    let text = read["text"].as_str().unwrap();
+    if text.len() > 16_384 {
+        return Err("heard text exceeds UTF-8 byte limit".into());
+    }
+    if played < item["played_ms"].as_u64().unwrap() {
+        return Err("heard position regressed".into());
+    }
+    if item["stopped"] == true {
+        if played != item["played_ms"].as_u64().unwrap() || !stopped {
+            return Err("stopped heard item advanced or resumed".into());
+        }
+        return Ok(hex::encode(cbor(&state)?));
+    }
+    let spans = item["spans"].as_array_mut().unwrap();
+    let prefix: String = spans.iter().map(|v| v["text"].as_str().unwrap()).collect();
+    let end = spans.last().and_then(|v| v["end_ms"].as_u64()).unwrap_or(0);
+    if played > end && text.len() > prefix.len() && text.starts_with(&prefix) {
+        spans.push(json!({"end_ms":played,"text":&text[prefix.len()..]}));
+    }
+    let heard: String = spans
+        .iter()
+        .filter(|v| v["end_ms"].as_u64().unwrap() <= played)
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    item["heard"] = json!(heard);
+    item["played_ms"] = json!(played);
+    item["duration_ms"] = json!(played.max(item["duration_ms"].as_u64().unwrap()));
+    item["stopped"] = json!(stopped);
+    items.sort_by(|a, b| {
+        (a["surface"].as_str(), a["item"].as_str())
+            .cmp(&(b["surface"].as_str(), b["item"].as_str()))
+    });
+    let encoded = hex::encode(cbor(&state)?);
+    transition(before, &encoded)?;
+    Ok(encoded)
+}
 
 pub fn decode(encoded: Option<&str>) -> Result<Value> {
     let Some(encoded) = encoded else {
@@ -100,10 +165,40 @@ pub fn transition(before: Option<&str>, after: &str) -> Result<()> {
             || new["played_ms"].as_u64() < old["played_ms"].as_u64()
             || (old["stopped"] == true
                 && (new["stopped"] != true || new["played_ms"] != old["played_ms"]))
+            || (old["stopped"] == true && **new != *old)
             || !new_spans.starts_with(old_spans)
         {
             return Err("heard history regressed or rewrote alignment".into());
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn owner_reads_append_exact_prefix_and_freeze_entire_stopped_item() {
+        let surface = format!("surface:{}", "b".repeat(64));
+        let item = "4".repeat(32);
+        let read = |played, text: &str| json!({"item":item,"played_ms":played,"text":text});
+        let a = collect(None, &surface, &read(10, "hé"), false).unwrap();
+        let b = collect(Some(&a), &surface, &read(20, "revised"), false).unwrap();
+        let c = collect(Some(&b), &surface, &read(30, "héllo"), true).unwrap();
+        let state = decode(Some(&c)).unwrap();
+        assert_eq!(
+            state["items"][0]["spans"],
+            json!([{"end_ms":10,"text":"hé"},{"end_ms":30,"text":"llo"}])
+        );
+        assert_eq!(state["items"][0]["heard"], "héllo");
+        assert_eq!(
+            collect(Some(&c), &surface, &read(30, "héllo"), true).unwrap(),
+            c
+        );
+        assert!(collect(Some(&c), &surface, &read(31, "héllo!"), true).is_err());
+        assert!(collect(Some(&b), &surface, &read(19, "hé"), false).is_err());
+        let mut extended = state.clone();
+        extended["items"][0]["duration_ms"] = json!(31);
+        assert!(transition(Some(&c), &hex::encode(cbor(&extended).unwrap())).is_err());
+    }
 }
