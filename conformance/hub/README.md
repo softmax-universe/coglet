@@ -11,7 +11,12 @@ claim of wire behavioral conformance.
 Use iroh ALPN `coglet/hub/0` and u32-big-endian framed deterministic CBOR,
 maximum frame body 1048576 bytes. Open one bidi stream when a `send` is a
 request (`method` field). Subsequent `send` transfer frames with the same
-correlation ID go to that **same stream**, not a new stream. Read credit/chunk/
+correlation ID go to that **same stream**, not a new stream. Git sends carry
+explicit numeric `stream` IDs outside `send`; `finish:false` keeps request/chunk
+sends open, and `finish:true` on the end frame sends FIN. Case-level `peer_role`
+is `hub` or `device`; `fixtures` names the isolated `hub.<case-name>` setup.
+Unknown fixture labels MUST produce SKIP/incomplete, never PASS.
+Read credit/chunk/
 end/reply frames in order. Finish after terminal reply; no stream reuse. This
 requires the helper to retain operation-to-stream routing, not merely open a
 stream for every JSON line. Invalid framing vectors live separately in

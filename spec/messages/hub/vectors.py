@@ -98,7 +98,16 @@ def exchange(req, match):
 
 
 def case(name, steps):
-    cases.append({'name': name, 'steps': steps})
+    first = steps[0]['send']['method']
+    role = 'device' if first in ['hub.enroll', 'hub.events', 'hub.health'] else 'hub'
+    # Driver metadata is outside send and is never emitted onto the wire.
+    if any('type' in step.get('send', {}) for step in steps):
+        for step in steps:
+            frame = step.get('send')
+            if frame and (frame.get('method') == 'hub.git.push' or 'type' in frame):
+                step['stream'] = int(frame['correlation_id'], 16)
+                step['finish'] = frame.get('type') == 'end'
+    cases.append({'name': name, 'peer_role': role, 'fixtures': ['hub.' + name], 'steps': steps})
 
 
 def err(req, code):

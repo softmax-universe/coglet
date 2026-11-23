@@ -171,7 +171,9 @@ Only the requested ref may be imported. A transfer SHA-256 binds the complete
 raw bundle; a signed SHA-256 digest of `git archive --format=tar <commit>` bytes
 (with no user tar configuration) additionally binds the exact code archive.
 Untrusted trees MUST reject symlinks, gitlinks, absolute paths, traversal, `.git`
-entries and any `data` or `/data` subtree, including logs transfers. Imports MUST
+entries, `.gitattributes` and `.gitmodules` at any depth, and any `data` or `/data`
+subtree, including logs transfers. Rejecting attributes prevents archive export
+rules from omitting code from the signed SHA-256 archive. Imports MUST
 NOT overwrite working state or private data. Reject mismatching artifact digest,
 missing `bin/step.wasm`, or invalid Wasm before activation for code refs. Logs
 refs instead require a logs-only path allowlist and never require Wasm. No ref fallback.
