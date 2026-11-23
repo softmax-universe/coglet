@@ -1,0 +1,68 @@
+name: spike-cross-engine-hash
+
+# Scoped to the spike's own directory. The skeleton card owns the repo-wide CI workflows.
+on:
+  pull_request:
+    paths:
+      - "spikes/cross-engine-hash/**"
+      - ".github/workflows/spike-cross-engine-hash.yml"
+  push:
+    branches: [main]
+    paths:
+      - "spikes/cross-engine-hash/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-22.04 # wamrc is only published as a prebuilt for this runner image
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        working-directory: spikes/cross-engine-hash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain (pinned by rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            spikes/cross-engine-hash/host-wasmtime/target
+          key: xhash-cargo-${{ hashFiles('spikes/cross-engine-hash/host-wasmtime/Cargo.lock', 'spikes/cross-engine-hash/rust-toolchain.toml') }}
+
+      - name: Fetch WAMR source and wamrc (tag pinned in versions.env)
+        run: |
+          . ./versions.env
+          git clone --depth 1 --branch "$WAMR_TAG" https://github.com/bytecodealliance/wasm-micro-runtime "$RUNNER_TEMP/wamr"
+          gh release download "$WAMR_TAG" -R bytecodealliance/wasm-micro-runtime -p 'wamrc-*-x86_64-ubuntu-22.04.tar.gz' -D "$RUNNER_TEMP/wamrc"
+          tar -xzf "$RUNNER_TEMP"/wamrc/*.tar.gz -C "$RUNNER_TEMP/wamrc"
+          "$RUNNER_TEMP/wamrc/wamrc" --version
+
+      - name: Build hosts (Wasmtime, WAMR)
+        run: |
+          (cd host-wasmtime && cargo build --release --locked)
+          cmake -S host-wamr -B host-wamr/build -DCMAKE_BUILD_TYPE=Release -DWAMR_ROOT="$RUNNER_TEMP/wamr"
+          cmake --build host-wamr/build -j"$(nproc)"
+
+      - name: Build guests (conforming + one counterexample per rule)
+        run: scripts/build-guests.sh
+
+      - name: Run matrix and check every expectation
+        env:
+          WC: ${{ runner.temp }}/wamrc/wamrc
+        run: scripts/run-matrix.sh
+
+      - name: Upload per-step hash logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xhash-results
+          path: spikes/cross-engine-hash/results/
