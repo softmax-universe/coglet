@@ -1,0 +1,795 @@
+{
+  "states": [
+    {
+      "view": "menu",
+      "state": "idle",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "listening",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "thinking",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "speaking",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "offline",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "update",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "error",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "idle",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "listening",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "thinking",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "speaking",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "happy",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "concerned",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "sleeping",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "offline",
+      "theme": "light"
+    },
+    {
+      "view": "face",
+      "state": "error",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "idle",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "listening",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "thinking",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "speaking",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "cancelled",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "microphone-denied",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "offline",
+      "theme": "light"
+    },
+    {
+      "view": "hud",
+      "state": "error",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "general",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "hotkey",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "audio",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "hub-account",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "coglets",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "updates",
+      "theme": "light"
+    },
+    {
+      "view": "settings",
+      "state": "privacy",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "welcome",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone-denied",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone-granted",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-denied",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-granted",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "login-item",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "connecting",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub-error",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub-connected",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "ready",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "voice-not-set-up",
+      "theme": "light"
+    },
+    {
+      "view": "about",
+      "state": "default",
+      "theme": "light"
+    },
+    {
+      "view": "about",
+      "state": "licenses",
+      "theme": "light"
+    },
+    {
+      "view": "menu",
+      "state": "idle",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "listening",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "thinking",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "speaking",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "offline",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "update",
+      "theme": "dark"
+    },
+    {
+      "view": "menu",
+      "state": "error",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "idle",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "listening",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "thinking",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "speaking",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "happy",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "concerned",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "sleeping",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "offline",
+      "theme": "dark"
+    },
+    {
+      "view": "face",
+      "state": "error",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "idle",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "listening",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "thinking",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "speaking",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "cancelled",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "microphone-denied",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "offline",
+      "theme": "dark"
+    },
+    {
+      "view": "hud",
+      "state": "error",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "general",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "hotkey",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "audio",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "hub-account",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "coglets",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "updates",
+      "theme": "dark"
+    },
+    {
+      "view": "settings",
+      "state": "privacy",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "welcome",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone-denied",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "microphone-granted",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-denied",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-granted",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "login-item",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "connecting",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub-error",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hub-connected",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "ready",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "voice-not-set-up",
+      "theme": "dark"
+    },
+    {
+      "view": "about",
+      "state": "default",
+      "theme": "dark"
+    },
+    {
+      "view": "about",
+      "state": "licenses",
+      "theme": "dark"
+    }
+  ],
+  "scenarios": [
+    {
+      "section": "general",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "general",
+      "scenario": "login-denied",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "conflict",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "denied",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "testing",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "missing-device",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "denied",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hub-account",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "disconnected",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "connecting",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "error",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "empty",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "loading",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "error",
+      "theme": "light",
+      "semanticAssertions": true
+    },
+    {
+      "section": "updates",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "checking",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "available",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "installing",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "error",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "default",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "confirmation",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "export-error",
+      "theme": "light",
+      "semanticAssertions": false
+    },
+    {
+      "section": "general",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "general",
+      "scenario": "login-denied",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "conflict",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hotkey",
+      "scenario": "denied",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "testing",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "missing-device",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "audio",
+      "scenario": "denied",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "hub-account",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "disconnected",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "connecting",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "hub-account",
+      "scenario": "error",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "empty",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "loading",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "coglets",
+      "scenario": "error",
+      "theme": "dark",
+      "semanticAssertions": true
+    },
+    {
+      "section": "updates",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "checking",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "available",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "installing",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "updates",
+      "scenario": "error",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "default",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "confirmation",
+      "theme": "dark",
+      "semanticAssertions": false
+    },
+    {
+      "section": "privacy",
+      "scenario": "export-error",
+      "theme": "dark",
+      "semanticAssertions": false
+    }
+  ],
+  "keyboard": [
+    "light: Hub connect/cancel/confirm, disconnect keep/confirm, error retry/cancel; Coglets error/retry/loading/sample completion",
+    "dark: Hub connect/cancel/confirm, disconnect keep/confirm, error retry/cancel; Coglets error/retry/loading/sample completion",
+    "palette: real typing, synonym search, arrows, Return activation",
+    "type-anywhere settings filter, highlighted match, count, Return, menu Back round trip",
+    "native select ArrowDown and Enter preserved; sidebar does not steal form input",
+    "coglet filter clear, help focus restoration, PTT hold/release/cancel",
+    "denied/skipped setup is not ready; login choice retained across Back",
+    "first-run path: denied permission recovery, skip, connect/cancel, ready, Face",
+    "simulated microphone test exposes Stop and returns to idle",
+    "menu frame playback and reduced-motion static fallback"
+  ],
+  "errors": [],
+  "negativeChecks": [
+    "missing icon rejected",
+    "wrong-dimension icon rejected"
+  ],
+  "stateCount": 94,
+  "scenarioCount": 50
+}

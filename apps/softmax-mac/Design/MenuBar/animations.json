@@ -1,0 +1,58 @@
+{
+  "frameDurationMs": 160,
+  "reduceMotion": "use static state icon",
+  "states": {
+    "listening": [
+      [
+        "MenuBar/animated/listening-0-16@1x.svg",
+        "MenuBar/animated/listening-0-16@2x.svg",
+        "MenuBar/animated/listening-0-18@1x.svg",
+        "MenuBar/animated/listening-0-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/listening-1-16@1x.svg",
+        "MenuBar/animated/listening-1-16@2x.svg",
+        "MenuBar/animated/listening-1-18@1x.svg",
+        "MenuBar/animated/listening-1-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/listening-2-16@1x.svg",
+        "MenuBar/animated/listening-2-16@2x.svg",
+        "MenuBar/animated/listening-2-18@1x.svg",
+        "MenuBar/animated/listening-2-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/listening-3-16@1x.svg",
+        "MenuBar/animated/listening-3-16@2x.svg",
+        "MenuBar/animated/listening-3-18@1x.svg",
+        "MenuBar/animated/listening-3-18@2x.svg"
+      ]
+    ],
+    "speaking": [
+      [
+        "MenuBar/animated/speaking-0-16@1x.svg",
+        "MenuBar/animated/speaking-0-16@2x.svg",
+        "MenuBar/animated/speaking-0-18@1x.svg",
+        "MenuBar/animated/speaking-0-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/speaking-1-16@1x.svg",
+        "MenuBar/animated/speaking-1-16@2x.svg",
+        "MenuBar/animated/speaking-1-18@1x.svg",
+        "MenuBar/animated/speaking-1-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/speaking-2-16@1x.svg",
+        "MenuBar/animated/speaking-2-16@2x.svg",
+        "MenuBar/animated/speaking-2-18@1x.svg",
+        "MenuBar/animated/speaking-2-18@2x.svg"
+      ],
+      [
+        "MenuBar/animated/speaking-3-16@1x.svg",
+        "MenuBar/animated/speaking-3-16@2x.svg",
+        "MenuBar/animated/speaking-3-18@1x.svg",
+        "MenuBar/animated/speaking-3-18@2x.svg"
+      ]
+    ]
+  }
+}
