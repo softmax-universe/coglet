@@ -39,11 +39,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: maven
+          cache-dependency-path: sdk/surface-java/pom.xml
       - run: python3 -m pip install -r spec/tests/requirements.txt
       - name: Generated types are current
         run: codegen/run --check
       - name: Resolve Jackson before Python test collection
-        run: mvn --batch-mode --no-transfer-progress -f sdk/surface-java/pom.xml dependency:resolve
+        # Maven Central transfer errors are transient, and Maven caches a failed lookup
+        # in ~/.m2 for the rest of the job. Retry with -U (recheck) and pre-fetch plugins too.
+        run: |
+          for i in 1 2 3; do
+            mvn --batch-mode --no-transfer-progress -U -f sdk/surface-java/pom.xml dependency:go-offline && exit 0
+            echo "Maven resolve attempt $i failed; retrying"; sleep $((i * 15))
+          done
+          exit 1
       - name: Generator regression tests
         run: python3 -m unittest discover -s codegen -v
       - name: Generated validator agrees with CDDL and JSON Schema
