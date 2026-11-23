@@ -29,6 +29,26 @@ server, mock hub and registry claims are not yet implemented.
   **not** authorization. The handler owns method/target/actor/ticket/delegation
   checks, durable receipts and operation effects. Handler output is schema- and
   method-result-checked before transmission.
+- `authority::{Authority, Grant, Scope}` provides a SQLite WAL/FULL enrollment
+  transaction and exact-grant intersection layer. Open once per hub and clone
+  across sessions (including all enrollment rate counters); do not open a fresh
+  authority per connection. Operator calls open/close monotonic windows, generate
+  256-bit one-use invites, and provision explicit grants. Only the invite hash is
+  stored. `enroll(authenticated_peer, invite)` commits allowlist, grants and secret
+  consumption together. Null invite recovers a committed success. Restart closes
+  the window and invalidates outstanding unconsumed invites; enrolled peers and
+  grants survive. Default attempt limits are 8/peer/minute and 256/hub/minute.
+  `authorize` checks exact peer/method/target, trusted Unix expiry and generation.
+  `provision_scope` and `authorize_scope` additionally bind exact actor and optional
+  ticket, without treating absent ticket as a union. `end_ticket` persists a
+  terminal marker; `revoke_peer` removes all peer/scoped grants and invalidates
+  outstanding invites. Authorization is a check, **not** a lease or atomic kernel
+  boundary application; callers repeat it at every disclosure/transfer/effect.
+  This does not yet implement persistent monotonic delegation-generation fences,
+  delegation signatures/bindings, per-grant replacement/revocation, kernel policy,
+  path/ref/surface limits, or atomic cancellation of kernel-owned pending writes.
+  Those remain mandatory integration work. All provisioning is local operator
+  configuration, never a new remotely self-authorizing method.
 - `transfer::Receiver` tracks cumulative credit, contiguous offsets, correlation,
   bounded hex chunks and complete transfer SHA-256. Call `consumed()` only after
   all accepted bytes have reached durable bounded quarantine storage. This is
@@ -46,7 +66,10 @@ cargo test -j 2 -p coglet-proto
 cargo clippy -j 2 -p coglet-proto --all-targets -- -D warnings
 ```
 
-The ten tests exercise frozen common/hub golden CBOR, frozen invalid profile
+The component tests exercise atomic SQLite rollback, concurrent one-use invite
+redemption, expiry after transaction-lock contention, restart/closed-window
+fencing, exact grants, ticket omission/ending, and live revocation on real iroh,
+as well as frozen common/hub golden CBOR, frozen invalid profile
 and framing vectors, uint64/int64 limits, oversize rejection before reading a
 body, frozen signing preimages/signatures and tampering, raw-byte transfer
 credit/durability/hash accounting, real encrypted iroh enrollment gating and
