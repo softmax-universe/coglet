@@ -120,6 +120,14 @@ final class PushToTalkTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(ptt.state, .idle)
         XCTAssertEqual(audio.stops, 1)
     }
+    func testAudioFailureDuringCaptureCancelsRatherThanEmitting() async {
+        let (ptt, keys, audio, _) = fixture()
+        keys.send(.press); audio.captureFailed = true; ptt.tick()
+        XCTAssertEqual(ptt.state, .error)
+        XCTAssertEqual(audio.stops, 1)
+        keys.send(.release)
+        XCTAssertEqual(audio.stops, 1)
+    }
     func testHoldReleaseEmitsTimestampedPCM() async {
         let keys = FakeKeys()
         let audio = FakeAudio()
@@ -160,6 +168,7 @@ private final class FakeAudio: AudioCapture {
     var stops = 0
     var starts = 0
     var fail = false
+    var captureFailed = false
     var result = [PCMFrame(samples: [0.5, -0.5], sampleRate: 16000, timestamp: 10)]
     func start() throws { starts += 1; if fail { throw CocoaError(.fileReadUnknown) } }
     func stop() -> [PCMFrame] {

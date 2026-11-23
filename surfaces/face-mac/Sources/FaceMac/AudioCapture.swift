@@ -16,6 +16,8 @@ public struct PCMFrame: Sendable, Equatable {
 public protocol AudioCapture: AnyObject {
     var frames: AsyncStream<PCMFrame> { get }
     var inputLevel: Float { get }
+    var captureFailed: Bool { get }
     func start() throws
     func stop() -> [PCMFrame]
 }
+public extension AudioCapture { var captureFailed: Bool { false } }

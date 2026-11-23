@@ -96,7 +96,7 @@ public struct Utterance: Sendable, Equatable {
             timer = Task { [weak self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(50))
-                    guard !Task.isCancelled else { return }
+                    guard !Task.isCancelled, self != nil else { return }
                     self?.tick()
                 }
             }
@@ -105,6 +105,7 @@ public struct Utterance: Sendable, Equatable {
     public func tick() {
         if let permissionProvider { permissions = permissionProvider() }
         guard let startedAt else { return }
+        if audio.captureFailed { cancel(); state = .error; onChange?(); return }
         elapsed = min(120, max(0, now() - startedAt))
         if elapsed >= 120 { finish() } else { onChange?() }
     }
@@ -118,6 +119,7 @@ public struct Utterance: Sendable, Equatable {
         timer?.cancel(); timer = nil; startedAt = nil
         let end = min(timestamp ?? now(), start + 120)
         let captured = audio.stop()
+        if audio.captureFailed { state = .error; onChange?(); return }
         elapsed = max(0, end - start)
         guard elapsed >= 0.250 else { state = .idle; onChange?(); return }
         // Trim any device callback that crosses the hard deadline.

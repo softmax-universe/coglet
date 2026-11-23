@@ -81,8 +81,11 @@ reconnection, error recovery, and permission mappings including unknown values.
 - `project.yml`: XcodeGen app, framework and test targets; `Package.swift` exposes
   only the pure core for fast non-UI tests.
 
-FaceMac now supplies the small `AudioCapture` interface and an AVAudioEngine
-voice-processing implementation. No connectivity or speech-provider result is fabricated.
+FaceMac supplies the small `AudioCapture` interface and a buffering adapter over the
+Face lane's `FaceAudioKit` (mono PCM16 at 24 kHz, VoiceProcessingIO/AEC). There is no
+second AVAudioEngine implementation. Queue failures and graph/device rebuilds cancel
+the utterance instead of silently switching microphones. No connectivity or
+speech-provider result is fabricated.
 
 ## Push-to-talk and runtime seam
 

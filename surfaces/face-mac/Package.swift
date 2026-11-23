@@ -9,7 +9,7 @@ let package = Package(
         .library(name: "FaceAudioKit", targets: ["FaceAudioKit"])
     ],
     targets: [
-        .target(name: "FaceMac"),
+        .target(name: "FaceMac", dependencies: [.target(name: "FaceAudioKit", condition: .when(platforms: [.macOS]))]),
         .target(name: "CAudioRing", publicHeadersPath: "include"),
         .target(name: "FaceAudioKit", dependencies: ["CAudioRing"]),
         .testTarget(name: "FaceAudioKitTests", dependencies: ["FaceAudioKit", "CAudioRing"])
