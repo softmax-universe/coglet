@@ -1,0 +1,66 @@
+use crate::{Result, validate};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::VecDeque;
+
+/// Arrival ordinals belong to the host, never the source's clock. Persist this
+/// value together with consumption when committing a runtime transaction.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Router {
+    capacity: usize,
+    next_ordinal: u64,
+    queue: VecDeque<(u64, Value)>,
+}
+
+impl Router {
+    pub fn new(capacity: usize) -> Result<Self> {
+        if capacity == 0 {
+            return Err("queue capacity must be positive".into());
+        }
+        Ok(Self {
+            capacity,
+            next_ordinal: 0,
+            queue: VecDeque::new(),
+        })
+    }
+
+    pub fn enqueue(&mut self, event: Value) -> Result<u64> {
+        validate("event", &event)?;
+        if self.queue.len() == self.capacity {
+            return Err("resource_exhausted: router full".into());
+        }
+        let ordinal = self.next_ordinal;
+        let next = ordinal.checked_add(1).ok_or("arrival ordinal exhausted")?;
+        self.queue.push_back((ordinal, event));
+        self.next_ordinal = next;
+        Ok(ordinal)
+    }
+
+    /// Pin a prefix by copying. It is consumed only after a durable attempt.
+    pub fn batch(&self, max_events: usize) -> Result<Vec<Value>> {
+        if max_events == 0 {
+            return Err("max_events must be positive".into());
+        }
+        Ok(self
+            .queue
+            .iter()
+            .take(max_events)
+            .map(|(_, e)| e.clone())
+            .collect())
+    }
+
+    pub fn consume(&mut self, count: usize) -> Result<()> {
+        if count > self.queue.len() {
+            return Err("cannot consume absent events".into());
+        }
+        self.queue.drain(..count);
+        Ok(())
+    }
+
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+}
