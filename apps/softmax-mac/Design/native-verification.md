@@ -46,6 +46,25 @@ report and labelled native/HTML side-by-sides. HTML screenshots retain their
 whole desktop context and are review context only, never pixel-equality goldens.
 Attach the reviewed side-by-sides to the PR and cite the exact successful run.
 
+## Review log (not baseline approval)
+
+Run `45117496532` at `a2d19b0` produced all 232 manifest-matched native PNGs.
+All ten contact sheets were visually inspected, plus full-size light/dark General
+and the labelled General native/HTML comparison. No blank surface was found.
+The palette and overall Companion hierarchy are present, but this is **not**
+acceptance of the matrix: onboarding Voice content extends below its viewport,
+General needs scrolling at largest text, explicit title/caption fonts did not
+scale with body copy, and the live accessibility audit still failed contrast.
+The native fixture renderer sets both AppKit appearance and SwiftUI scheme;
+its cached-display rasters do not establish live-window audit contrast.
+
+The next CI exports `Softmax-live-window-audit-evidence` using xcresulttool,
+including pre-audit screenshots, to diagnose actual compositor pixels. Contrast
+findings remain failures; no new audit exemption was introduced. Local surface
+ink pairing is an experiment pending native confirmation. Explicit token fonts
+now follow the text-size preference, and selected Settings rows use the designed
+accent with an increased-contrast outline; these changes need new native review.
+
 ## Intentional differences from the design study
 
 - Keep Right Option and near-menu-bar HUD from the more-specific PTT acceptance.
