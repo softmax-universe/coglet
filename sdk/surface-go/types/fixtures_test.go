@@ -66,8 +66,28 @@ func convertJSON(v any) any {
 
 func TestFixtures(t *testing.T) {
 	var files []string
-	err := filepath.WalkDir(fixtureRoot, func(p string, d fs.DirEntry, err error) error {
+	registryBytes, err := os.ReadFile("../../../codegen/contracts.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var registry map[string]string
+	if err := json.Unmarshal(registryBytes, &registry); err != nil {
+		t.Fatal(err)
+	}
+	err = filepath.WalkDir(fixtureRoot, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() && strings.HasSuffix(p, ".json") {
+			rel, err := filepath.Rel(fixtureRoot, p)
+			if err != nil {
+				return err
+			}
+			family := strings.Split(filepath.ToSlash(rel), "/")[0]
+			switch registry[family] {
+			case "draft-validated":
+				return nil // Actual CDDL/JSON validation remains in spec/tests.
+			case "generated":
+			default:
+				t.Fatalf("unclassified fixture family %q", family)
+			}
 			files = append(files, p)
 		}
 		return err

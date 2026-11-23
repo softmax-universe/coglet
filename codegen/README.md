@@ -95,9 +95,10 @@ uv run --python 3.12 --with-requirements spec/tests/requirements.txt python code
 (cd sdk/surface-java && mvn --batch-mode test) # JDK 21
 ```
 
-Rust and Python generated-schema fixture tests recursively discover JSON files
-under the registry's `generated` fixture families. Go and Java fixture selection
-must use the same registry before draft families enter their native tests.
+All four languages' generated-schema fixture tests recursively discover JSON
+files under the registry's `generated` fixture families. Unknown families fail;
+`draft-validated` families remain covered by actual CDDL/JSON validation in
+`spec/tests`.
 Fixture files currently contain arrays of semantic cases (`name`, `type`,
 `valid`, `value`, and `cbor_hex` for valid cases) or wire-negative cases
 (`name`, `cbor_hex`). New files within classified families are picked up without

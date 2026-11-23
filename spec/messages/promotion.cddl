@@ -118,7 +118,9 @@ promotion-response = {
 ; Revalidate array elements after failed root alternatives consumed traversal
 ; state. Both intersections are semantically redundant; keep scalar guards out
 ; of array elements because [] resets the enclosing array cursor in pycddl.
-promotion-evidence-refs = ([* tstr .size (1..18446744073709551615)] .and [* tstr .and (tstr / {})]) .and [* tstr]
+promotion-evidence-elements = [* tstr .size (1..18446744073709551615)]
+promotion-evidence-maps = promotion-evidence-elements .and [* tstr .and (tstr / {})]
+promotion-evidence-refs = promotion-evidence-maps .and [* tstr]
 promotion-audit = {
   version: promotion-version, audit_id: promotion-id, correlation_id: promotion-id,
   coglet: promotion-coglet, actor: ("kernel" / coglet-id / hub-id / surface-id) .and (tstr / []),

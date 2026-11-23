@@ -21,7 +21,7 @@ emit_go = load('emit_go')
 
 
 def spec_rules():
-    return generate.parse('\n'.join(p.read_text() for p in sorted((ROOT / 'spec/messages').glob('*.cddl'))))
+    return generate.parse('\n'.join(p.read_text() for p in generate.schema_paths(ROOT)))
 
 
 def find_go():

@@ -11,8 +11,15 @@ class CodecTest {
     static final ObjectMapper JSON = new ObjectMapper().enable(DeserializationFeature.USE_BIG_INTEGER_FOR_INTS);
     @Test void recursiveFixtures() throws Exception {
         int valid=0, invalid=0, wire=0, typed=0;
-        try (var paths = Files.walk(Path.of("../../spec/fixtures"))) {
+        JsonNode registry=JSON.readTree(Path.of("../../codegen/contracts.json").toFile());
+        Path fixtureRoot=Path.of("../../spec/fixtures");
+        try (var paths = Files.walk(fixtureRoot)) {
             for (Path p : paths.filter(x -> x.toString().endsWith(".json")).sorted().toList()) {
+                String family=fixtureRoot.relativize(p).getName(0).toString();
+                assertTrue(registry.has(family), "unclassified fixture family: "+family);
+                String mode=registry.get(family).asText();
+                if(mode.equals("draft-validated")) continue; // Dual-validated in spec/tests.
+                assertEquals("generated",mode,"unknown contract mode: "+family);
                 JsonNode cases=JSON.readTree(p.toFile());
                 assertTrue(cases.isArray(), "fixture file must be an array: "+p);
                 for (JsonNode c : cases) {
