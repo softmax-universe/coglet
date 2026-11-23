@@ -68,8 +68,8 @@ def generate(rules):
                 args.append(t+' '+i)
             out += [f'public record {cls}('+', '.join(args)+f') implements {base if len(vs)>1 else "Message"} {{', f'public String rule() {{ return {json.dumps(name)}; }}', 'public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();']
             for f,i in zip(fs,ids):
-                val=f'{i}.value()' if f['optional'] else i
-                prefix=f'if ({i} != null) ' if f['optional'] else ''
+                val=f'this.{i}.value()' if f['optional'] else f'this.{i}'
+                prefix=f'if (this.{i} != null) ' if f['optional'] else ''
                 out += [prefix+f'm.put({json.dumps(f["name"])}, {val});']
             out += ['return m; }', f'public static {cls} fromCbor(byte[] raw) {{ return Codec.decodeRecord({json.dumps(name)}, raw, {cls}.class); }}', '}']
             registrations.append(f'Codec.register({json.dumps(name)}, {cls}.class, {json.dumps(json.dumps(v,separators=(",",":")))}, new String[]{{'+','.join(json.dumps(f['name']) for f in fs)+'});')
