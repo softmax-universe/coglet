@@ -192,7 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = ShellModel()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
-    private var facePanel: NSPanel?
+    private lazy var face = FacePanelController(shell: model)
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
     private var orbSubscription: AnyCancellable?
@@ -205,10 +205,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.onTalkChange = { [weak self] in
             guard let self else { return }
             talkHUD.update(model: model)
+            face.host.updateFromShell()
         }
         model.routePermissions = { [weak self] in self?.showSettings(tab: .privacy) }
         if model.state == .onboarding { showOnboarding() }
         else { model.configureTalk() }
+        if ProcessInfo.processInfo.arguments.contains("--show-face") { showFace() }
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -217,7 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.ptt.start()
         }
     }
-    func applicationWillTerminate(_ notification: Notification) { model.ptt.shutdown() }
+    func applicationWillTerminate(_ notification: Notification) { face.hide(); model.ptt.shutdown() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showSettings(tab: SettingsTab? = nil) {
@@ -242,19 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showFace() {
-        if facePanel == nil {
-            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 220, height: 220),
-                                styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            panel.level = .floating
-            panel.isReleasedWhenClosed = false
-            panel.isMovableByWindowBackground = true
-            panel.hidesOnDeactivate = false
-            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-            panel.contentView = NSHostingView(rootView: FacePlaceholder(model: model, close: { [weak panel] in panel?.orderOut(nil) }))
-            panel.center()
-            facePanel = panel
-        }
-        facePanel?.orderFrontRegardless()
+        face.show()
     }
 
     func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
@@ -267,17 +257,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = NSHostingView(rootView: view)
         window.center()
         return window
-    }
-}
-
-struct FacePlaceholder: View {
-    @ObservedObject var model: ShellModel
-    var close: () -> Void
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: model.state.symbolName).font(.system(size: 56))
-            Text("Face · \(model.state.rawValue)")
-            Button("Hide Face", action: close)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(.regularMaterial)
     }
 }

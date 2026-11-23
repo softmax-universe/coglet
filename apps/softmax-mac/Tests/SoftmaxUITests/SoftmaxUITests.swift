@@ -2,6 +2,26 @@ import XCTest
 
 final class SoftmaxUITests: XCTestCase {
     @MainActor
+    func testFacePanelExpandDemoAndEscape() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--show-face"]
+        app.launch()
+        let face = app.dialogs["Softmax Face"]
+        XCTAssertTrue(face.waitForExistence(timeout: 10))
+        XCTAssertTrue(face.buttons["Compact Face"].exists)
+        face.buttons["Compact Face"].click()
+        XCTAssertTrue(face.buttons["Expand Face"].exists)
+        face.buttons["Expand Face"].click()
+        face.buttons["Start simulated demo"].click()
+        XCTAssertTrue(face.staticTexts["Simulated demo · no audio"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "native-face-panel"; screenshot.lifetime = .keepAlways; add(screenshot)
+        face.buttons["Hide Face"].click()
+        XCTAssertFalse(face.exists)
+        app.terminate()
+    }
+
+    @MainActor
     func testOrbToggleChatVoiceAndHide() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
