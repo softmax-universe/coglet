@@ -44,6 +44,12 @@ import SoftmaxCore
                     window.orderBack(nil)
                     RunLoop.current.run(until: Date().addingTimeInterval(0.04))
                     hosting.layoutSubtreeIfNeeded()
+                    // TextField's deferred autofocus can select its initial query. That
+                    // transient field-editor selection is not a fixture state: normalize
+                    // it before rasterization, without changing production focus behavior.
+                    if let editor = window.firstResponder as? NSTextView {
+                        editor.setSelectedRange(NSRange(location: 0, length: 0))
+                    }
                     window.display()
                     guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
                         throw CocoaError(.fileWriteUnknown)
