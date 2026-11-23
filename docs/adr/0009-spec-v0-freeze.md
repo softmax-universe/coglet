@@ -88,6 +88,44 @@ See [the review ledger](../reviews/spec-v0-cross-spec.md) for current evidence a
 items requiring further adjudication. This proposed ADR does not silently change
 any existing wire schema.
 
+### M-A amendment to ADR-0006 / PR #8: boundary export and terminal delivery
+
+The step-only trace contract is amended before the v0 freeze. Preserve existing
+pre-step `boundary` changes, but require explicit `initial_files`, `code_hash`,
+`manifest_hash`, and `final_hash` in the trace header. Permit zero step records.
+A nullable `trailing_boundary` is a separate hashed `boundary-record` with exact
+output snapshot, before/output hashes, logical time, audit changes and `previous`
+(last step hash or null). It records durable changes after the last step, including
+an entirely standalone stopped/paused trace. It has no events, calls, usage or
+step number and MUST NOT invoke an engine. Never hide durable changes pending a
+future step. Initial writes preceding a first step remain in that step's boundary;
+standalone exports use the boundary record. A continuation starts a new trace
+from the preceding final snapshot and complete pending-work state. The archive
+receipt authenticates the whole header, including the trailing record and ledgers.
+
+Guest terminal notifications use only the durable inbox path. A rejection is a
+`runtime.action_rejected` event with common `action-accept` payload restricted
+to `accepted=false`; a completion is `action.outcome` with common `action-outcome`.
+Both retain action ID/correlation and produce one ordinary `runtime.inbox` wake,
+not a duplicate direct event. No `accepted=true` guest terminal receipt exists.
+Runtime-generated rejection source is the target coglet; original surface outcome
+source is retained, with runtime-generated outcomes permitted only under the
+surface/hub authority rules. Runtime materialization uses boundary method
+`runtime.receipt`, actor=target coglet, ticket=null; this is structural runtime
+origin, not a hub RPC or permission granted by a payload string.
+
+`initial_actions` contains complete committed actions still awaiting terminal
+append, each present in lifetime `initial_effect_ids.actions`. New committed
+emits enter the pending set; aborts do not. A terminal append consumes the pending
+action atomically with inbox bytes and wake admission, not when the wake runs.
+Duplicate/conflicting terminal delivery never appends twice, even with a new
+source sequence or inbox ID; durable upstream retry receipts reconcile it.
+Already-appended terminal messages are not pending actions. Replay validates
+payload, identity/correlation, source binding and exact transition without live
+dispatch. Finite exports may retain pending actions/wakes; no fake completion or
+step drains them. This is a pre-freeze repair, not a backwards-compatible minor
+version claim for the earlier 0.1 draft.
+
 ## Alternatives
 
 - Tag the independently tested individual specs immediately: rejected because
