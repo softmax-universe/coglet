@@ -3,3 +3,20 @@ name = "coglet-proto"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+coglet-types = { path = "../coglet-types" }
+ciborium = "0.2"
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
+thiserror = "2"
+hex = "0.4"
+ed25519-dalek = "2"
+sha2 = "0.10"
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time", "sync"] }
+
+[dev-dependencies]
+# Keep the workspace-unified numeric serialization regression active in focused tests.
+serde_json = { version = "1", features = ["arbitrary_precision"] }
