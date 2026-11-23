@@ -41,12 +41,29 @@ jobs:
           -destination 'platform=macOS' -derivedDataPath build
           -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Package app artifact
+        if: always()
         working-directory: apps/softmax-mac
         run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug/Softmax.app Softmax.app.zip
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: Softmax-macOS
           path: apps/softmax-mac/Softmax.app.zip
+          if-no-files-found: error
+      - name: Render native design matrix (isolated, no hardware or network)
+        working-directory: apps/softmax-mac
+        run: build/Build/Products/Debug/Softmax.app/Contents/MacOS/Softmax --ui-testing --design-snapshots "$PWD/build/DesignSnapshots"
+      - uses: astral-sh/setup-uv@v6
+      - name: Compare reviewed native snapshots and build HTML side-by-sides
+        working-directory: apps/softmax-mac
+        run: uv run --with pillow==12.0.0 python scripts/check-design-snapshots.py --actual build/DesignSnapshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Softmax-native-design-and-comparisons
+          path: |
+            apps/softmax-mac/build/DesignSnapshots
+            apps/softmax-mac/build/DesignComparisons
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()

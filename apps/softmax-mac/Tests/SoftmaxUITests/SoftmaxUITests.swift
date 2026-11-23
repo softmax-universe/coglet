@@ -2,6 +2,41 @@ import XCTest
 
 final class SoftmaxUITests: XCTestCase {
     @MainActor
+    func testOnboardingAndEverySettingsSectionAccessibilityAudit() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-appearance", "System"]
+        app.launch()
+        defer { app.terminate() }
+        let onboarding = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+        for step in 0..<3 {
+            try app.performAccessibilityAudit()
+            let image = XCTAttachment(screenshot: onboarding.screenshot())
+            image.name = "onboarding-step-\(step)"; image.lifetime = .keepAlways; add(image)
+            if step < 2 { onboarding.buttons["Continue"].click() }
+        }
+        onboarding.buttons["Back"].click()
+        XCTAssertTrue(onboarding.buttons["Request Input Monitoring"].exists)
+        onboarding.buttons["Open Settings…"].click()
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        for section in ["General", "Hotkey", "Audio", "Hub", "Coglets", "Updates", "Privacy"] {
+            settings.buttons[section].click()
+            try app.performAccessibilityAudit()
+            let image = XCTAttachment(screenshot: settings.screenshot())
+            image.name = "settings-\(section)"; image.lifetime = .keepAlways; add(image)
+        }
+        settings.typeKey("k", modifierFlags: .command)
+        settings.typeText("microphone")
+        XCTAssertTrue(settings.buttons["Audio"].exists)
+        XCTAssertFalse(settings.buttons["General"].exists)
+        settings.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["Microphone Settings"].exists)
+        settings.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(settings.buttons["General"].exists)
+    }
+
+    @MainActor
     func testFacePanelExpandDemoAndEscape() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--show-face"]

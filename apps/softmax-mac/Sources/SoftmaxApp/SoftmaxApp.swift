@@ -13,27 +13,24 @@ struct SoftmaxApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            Button("Open Face") { delegate.showFace() }
-            Button("Open Chat") { delegate.showConversation() }
-            Button("Open Voice") { delegate.showConversation(voice: true) }
-            Text("Push-to-talk: \(delegate.model.hotkeyName)")
-            Text("Hub: offline (not connected)")
-            Divider()
-            Button("Settings…") { delegate.showSettings() }.keyboardShortcut(",")
-            Button("Check for Updates…") { delegate.model.updates.checkForUpdates() }
-                .disabled(!delegate.model.updates.enabled)
-            Divider()
-            Button("Quit Softmax") { NSApp.terminate(nil) }.keyboardShortcut("q")
+            SoftmaxWindowRoot {
+                SoftmaxMenuView(model: delegate.model, showFace: { delegate.showFace() },
+                    showChat: { delegate.showConversation(voice: $0) }, settings: { delegate.showSettings() },
+                    about: { delegate.showAbout() }, quit: { delegate.quit() })
+            }
         } label: {
             StatusLabel(model: delegate.model)
-        }
+        }.menuBarExtraStyle(.window)
     }
 }
 
 struct StatusLabel: View {
     @ObservedObject var model: ShellModel
     var body: some View {
-        Label("Softmax: \(model.state.rawValue)", systemImage: model.state.symbolName)
+        MenuTemplate(state: model.menuPresentation)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Softmax, \(model.menuPresentation.label), hub disconnected")
+            .help("Softmax, \(model.menuPresentation.label), hub disconnected")
     }
 }
 
@@ -63,6 +60,7 @@ final class ShellModel: ObservableObject {
         didSet { UserDefaults.standard.set(startSound, forKey: "talkStartSound") }
     }
     let keySource = GlobalTalkKey()
+    private let cues = SoundCues()
     lazy var ptt = PushToTalk(keys: keySource, audio: EngineAudioCapture())
     var onTalkChange: (() -> Void)?
     var routePermissions: (() -> Void)?
@@ -104,9 +102,13 @@ final class ShellModel: ObservableObject {
                 inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
         }
         ptt.stopPlayback = { [weak self] in self?.stopFacePlayback?(); self?.stopFacePlayback = nil }
-        ptt.playStartSound = { [weak self] in if self?.startSound == true { NSSound(named: "Tink")?.play() } }
+        ptt.playStartSound = { [weak self] in if self?.startSound == true { self?.cues.play(.start) } }
         ptt.onChange = { [weak self] in
             guard let self else { return }
+            if startSound && ptt.state != talkState {
+                if ptt.state == .thinking && talkState == .listening { cues.play(.submit) }
+                if ptt.state == .error { cues.play(.error) }
+            }
             talkState = ptt.state; level = ptt.inputLevel; elapsed = ptt.elapsed
             onTalkChange?()
         }
@@ -192,12 +194,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = ShellModel()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var aboutWindow: NSWindow?
     private lazy var face = FacePanelController(shell: model)
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
     private var orbSubscription: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let arguments = ProcessInfo.processInfo.arguments
+        if model.testing, let index = arguments.firstIndex(of: "--design-snapshots"), arguments.count > index + 1 {
+            do { try DesignSnapshots.run(to: arguments[index + 1]); exit(0) }
+            catch { print("Native snapshot render failed: \(error)"); exit(1) }
+        }
         NSApp.setActivationPolicy(.accessory)
         orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
             self?.orbOverlay.setVisible(enabled)
@@ -225,7 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showSettings(tab: SettingsTab? = nil) {
         if let tab { model.selectedTab = tab }
         if settingsWindow == nil {
-            settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 680, height: 420),
+            settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 760, height: 540),
                                     view: SettingsView(model: model))
         }
         NSApp.activate(ignoringOtherApps: true)
@@ -233,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showOnboarding() {
-        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 560, height: 400),
+        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 620, height: 500),
             view: OnboardingView(model: model, openSettings: { [weak self] in self?.showSettings() },
                 finish: { [weak self] in
                     self?.model.finishOnboarding()
@@ -249,12 +257,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
 
+    func showAbout() {
+        if aboutWindow == nil { aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView()) }
+        NSApp.activate(ignoringOtherApps: true)
+        aboutWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    func quit() {
+        if [.listening, .thinking, .speaking].contains(model.state) {
+            let alert = NSAlert()
+            alert.messageText = "Quit and stop this conversation?"
+            alert.informativeText = "Unsent audio will be discarded and speech will stop."
+            alert.addButton(withTitle: "Quit Softmax"); alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+        model.ptt.cancel(); NSApp.terminate(nil)
+    }
+
     private func window<V: View>(title: String, size: NSSize, view: V) -> NSWindow {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
-                              styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = title
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: view)
+        window.contentMinSize = size
+        window.contentView = NSHostingView(rootView: SoftmaxWindowRoot { view })
         window.center()
         return window
     }

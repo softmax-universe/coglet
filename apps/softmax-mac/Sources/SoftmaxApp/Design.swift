@@ -1,0 +1,71 @@
+import SwiftUI
+import AppKit
+
+/// JSON-generated values are compiled directly from Design/DesignTokens.swift.
+/// Increased contrast uses native semantic foregrounds and explicit group outlines.
+struct SoftmaxTheme: ViewModifier {
+    @ScaledMetric(relativeTo: .body) private var bodySize = SoftmaxDesignTokens.fontBody
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: bodySize))
+            .foregroundStyle(contrast == .increased ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.ink : SoftmaxDesignTokens.Light.ink))
+            .tint(scheme == .dark ? SoftmaxDesignTokens.Dark.accent : SoftmaxDesignTokens.Light.accent)
+            .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
+    }
+}
+
+struct DesignGroup<Content: View>: View {
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(SoftmaxDesignTokens.spacing[3])
+            .background(scheme == .dark ? SoftmaxDesignTokens.Dark.surface : SoftmaxDesignTokens.Light.surface,
+                        in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup))
+            .overlay(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup)
+                .strokeBorder(contrast == .increased ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.border : SoftmaxDesignTokens.Light.border), lineWidth: contrast == .increased ? 2 : 1))
+    }
+}
+
+struct SoftmaxWindowRoot<Content: View>: View {
+    @AppStorage("appearance") private var appearance = "System"
+    @ViewBuilder var content: Content
+    var body: some View {
+        content.modifier(SoftmaxTheme())
+            .preferredColorScheme(appearance == "Dark" ? .dark : appearance == "Light" ? .light : nil)
+    }
+}
+
+struct AboutView: View {
+    @State private var licenses = false
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development" }
+    private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unversioned" }
+    private var information: String { "Softmax \(version) (\(build)) · \(Bundle.main.object(forInfoDictionaryKey: "SoftmaxReleaseChannel") as? String ?? "development")\nRuntime: not connected" }
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
+                Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 72, height: 72).accessibilityHidden(true)
+                Text("Softmax for Mac").font(.system(size: SoftmaxDesignTokens.fontTitle, weight: .semibold))
+                Text(information).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                Button("Copy version information") {
+                    NSPasteboard.general.clearContents(); NSPasteboard.general.setString(information, forType: .string)
+                }
+                HStack {
+                    Link("Support", destination: URL(string: "https://github.com/softmax-universe/coglet/issues")!)
+                    Link("Source", destination: URL(string: "https://github.com/softmax-universe/coglet")!)
+                }
+                DisclosureGroup("Licences and acknowledgements", isExpanded: $licenses) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Softmax and Coglet — see the repository licence. Sparkle — MIT licence. Full licence texts ship with this app.")
+                        Link("Sparkle licence", destination: URL(string: "https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE")!)
+                        if let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt") { Link("Read bundled licences", destination: url) }
+                    }.padding(.top, 8)
+                }
+            }.padding(SoftmaxDesignTokens.spacing[4])
+        }.frame(minWidth: 420, minHeight: 380).modifier(SoftmaxTheme())
+    }
+}
