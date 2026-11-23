@@ -2,6 +2,12 @@ use coglet_runtime::Snapshot;
 use std::collections::BTreeMap;
 
 #[test]
+fn deserialization_cannot_bypass_snapshot_path_validation() {
+    let invalid = serde_json::json!({"/data/../escape":"00"});
+    assert!(serde_json::from_value::<Snapshot>(invalid).is_err());
+}
+
+#[test]
 fn filesystem_overlay_enforces_mounts_and_abort_isolation() {
     let base = Snapshot::new(BTreeMap::from([
         ("/code/bin/step.wasm".into(), "0061736d".into()),

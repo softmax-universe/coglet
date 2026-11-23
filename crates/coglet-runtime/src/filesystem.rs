@@ -5,9 +5,18 @@ use std::collections::BTreeMap;
 
 /// A filesystem seam independent of the eventual coglet-fs storage backend.
 /// Snapshots use the ABI's exact path -> lowercase hex representation.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
 pub struct Snapshot(BTreeMap<String, String>);
+
+impl<'de> Deserialize<'de> for Snapshot {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        Self::new(BTreeMap::<String, String>::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
+    }
+}
 
 pub fn valid_path(path: &str) -> bool {
     let mut components = path.split('/');

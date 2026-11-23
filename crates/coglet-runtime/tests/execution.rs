@@ -1,6 +1,24 @@
 use coglet_runtime::{MockEngine, Runtime};
 use serde_json::{Value, json};
 
+#[test]
+fn every_primary_abi_case_is_executed() {
+    let cases: Value =
+        serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+    let cases = cases.as_array().unwrap();
+    assert_eq!(
+        cases.len(),
+        21,
+        "update the corpus inventory when fixtures change"
+    );
+    let mut names = std::collections::BTreeSet::new();
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        assert!(names.insert(name));
+        run_case(name);
+    }
+}
+
 fn run_case(name: &str) {
     let cases: Value =
         serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
@@ -16,6 +34,13 @@ fn run_case(name: &str) {
         if let Some(send) = step.get("send") {
             let mut engine = MockEngine::new(send["guest_script"].clone());
             actual = runtime.step(&send["inputs"], &mut engine).unwrap();
+            assert!(
+                serde_json::to_value(&runtime)
+                    .unwrap()
+                    .get("records")
+                    .is_none(),
+                "persisted state duplicates the growing journal history"
+            );
         } else if let Some(expected) = step.get("expect") {
             assert_eq!(&actual, expected, "case: {name}");
         }
@@ -165,13 +190,17 @@ fn replay_reexecutes_engine_and_detects_changed_guest_program() {
             .unwrap(),
         expected_hashes
     );
-    let mut changed_program = program;
+    let mut changed_program = program.clone();
     changed_program[0]["writes"] = json!({"/data/count":"39"});
     let mut replay = Runtime::from_fixture(sends[0]).unwrap();
     assert!(
         replay
             .replay(&records, &mut Program(changed_program))
             .is_err()
+    );
+    assert_eq!(
+        replay.replay(&records, &mut Program(program)).unwrap(),
+        expected_hashes
     );
 }
 
