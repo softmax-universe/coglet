@@ -32,6 +32,7 @@ impl From<rusqlite::Error> for AuthorityError {
     }
 }
 type Result<T> = std::result::Result<T, AuthorityError>;
+mod delegation;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Grant {
@@ -82,6 +83,7 @@ impl Authority {
         db.busy_timeout(Duration::from_secs(5))?;
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
           CREATE TABLE IF NOT EXISTS proto_peers(peer TEXT PRIMARY KEY);
+          CREATE TABLE IF NOT EXISTS proto_delegations(hub TEXT NOT NULL, coglet TEXT NOT NULL, purpose TEXT NOT NULL CHECK(purpose='delegation'), device TEXT NOT NULL, generation TEXT NOT NULL, signed TEXT NOT NULL, active INTEGER NOT NULL, PRIMARY KEY(hub,coglet,purpose));
           CREATE TABLE IF NOT EXISTS proto_invites(hash TEXT PRIMARY KEY, peer TEXT NOT NULL, grants TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0);
           CREATE TABLE IF NOT EXISTS proto_scopes(peer TEXT NOT NULL, actor TEXT NOT NULL, ticket TEXT NOT NULL, method TEXT NOT NULL, target TEXT NOT NULL, expires TEXT NOT NULL, generation TEXT NOT NULL, PRIMARY KEY(peer,actor,ticket,method,target));
           CREATE TABLE IF NOT EXISTS proto_ended_tickets(actor TEXT NOT NULL, ticket TEXT NOT NULL, PRIMARY KEY(actor,ticket));
@@ -337,6 +339,10 @@ impl Authority {
         tx.execute("DELETE FROM proto_peers WHERE peer=?1", [peer.to_string()])?;
         tx.execute("DELETE FROM proto_grants WHERE peer=?1", [peer.to_string()])?;
         tx.execute("DELETE FROM proto_scopes WHERE peer=?1", [peer.to_string()])?;
+        tx.execute(
+            "UPDATE proto_delegations SET active=0 WHERE device=?1",
+            [peer.to_string()],
+        )?;
         // Revocation also fences every outstanding invite for that identity.
         tx.execute(
             "UPDATE proto_invites SET used=1 WHERE peer=?1",
