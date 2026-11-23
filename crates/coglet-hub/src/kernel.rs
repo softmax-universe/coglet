@@ -396,6 +396,15 @@ impl Kernel {
             coglet_proto::signing::verify(&r.delegation,"delegation",&r.coglet[7..]).map_err(|_|Error::Denied)?;
             let statement=&r.delegation["statement"];
             if statement["hub"]!=s.hub.to_string() || statement["device"]!=r.device || statement["coglet"]!=r.coglet || !(s.clock)().zip(statement["expires"].as_u64()).is_some_and(|(now,expiry)|now<expiry) {return Err(Error::Denied);}
+            // Initial local speech ownership is exclusive, not a subscription.
+            // Pending intents reserve it too, so a failed registration cannot
+            // race another coglet into widening private owner-unicast visibility.
+            let mut q=s.store.db.prepare("SELECT config FROM registry UNION ALL SELECT config FROM provisioning")?;
+            for config in q.query_map([],|row|row.get::<_,String>(0))? {
+                let other:Registration=serde_json::from_str(&config?)?;
+                if other.coglet != r.coglet && other.events.iter().any(|g|g.kind.starts_with("speech.") && r.events.iter().any(|wanted|wanted.kind.starts_with("speech.") && wanted.source==g.source)) {return Err(Error::Denied);}
+            }
+            drop(q);
             let previous=s.store.db.query_row("SELECT config FROM registry WHERE target=?1",[&r.coglet],|row|row.get::<_,String>(0)).optional()?;
             if let Some(previous)=previous { return if serde_json::from_str::<Registration>(&previous)?==r { Ok(()) } else { Err(Error::Conflict(0)) }; }
             // Cross-database provisioning is a recoverable two-phase local operation.

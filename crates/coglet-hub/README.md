@@ -67,7 +67,21 @@ Revocation/provisioning are local Kernel APIs. Restart closes old invite windows
   transactionally with audit. Already attempted effects cannot be undone.
 - Registry provisioning first commits an audited exact intent. Registry/audit
   failure is fail-closed and repaired by an identical retry after restart; malformed
-  initial proofs cannot poison an identity. Authority remains the binding owner.
+  initial proofs cannot poison an identity. `recover_registration` is an explicit
+  local operator API for a strictly higher signed delegation generation when the
+  pending proof expires. It cannot change device/policy, audits approval before
+  Authority changes, and survives repeated crash/expiry gaps. It is never automatic.
+  Authority remains the binding owner.
+- Shared Authority and exact actor/ticket policy are rechecked before every
+  transport poll on a separate bounded blocking executor (no SQLite on the reactor).
+  Expiry/clock loss also wakes stalled dispatch through a bounded 25ms check;
+  revocation/control retain independent executor capacity. Buffered stream reset
+  still requires the scheduler producer's Session guard (PR57), not this fence alone.
+- A late matching authenticated outcome remains admissible after a locally
+  persisted unknown-effect observation; uncertainty never becomes a fake runtime
+  rejection. Original observation bytes remain stable and outcomes dedupe normally.
+- Initial private speech sources are exclusive to one registered/pending coglet;
+  another registration/subscription cannot widen owner-only visibility.
 - Accepted health uses a hub-local monotonic timestamp, not peer uptime. Status
   degrades after 30 seconds, disconnects on final transport loss, and boots
   disconnected. Tokens distinguish concurrent/replacement connections. Cleanup
@@ -84,14 +98,15 @@ Revocation/provisioning are local Kernel APIs. Restart closes old invite windows
 The early independent review and focused WIP review are **not ship approval**.
 Remaining same-card acceptance work:
 
-1. Explicit operator recovery for a pending provisioning intent whose delegation
-   expires during a crash gap. Identical nonexpired recovery is covered, but a
-   corrected higher-generation delegation currently conflicts. Do not silently
-   replace authority; use Authority's operator-only strict-generation API.
-2. Additional hardening: first-write/expiry/revocation races, scoped ticket ending
-   during an in-flight action, queued/failed/cancelled receipt recovery and restart,
-   late outcomes after unknown-effect termination, audit-atomic cancellation,
-   unmapped/overflowed deadlines, and private speech cross-target negatives.
+1. Integrate the existing scheduler producer's Session reset-on-drop guard (PR57,
+   owner `t_01a2083fe588e786`) after its normal merge gates; do not modify its files
+   here. Verify blocked opening/write cancellation against that real transport.
+2. Additional hardening: first-write/expiry/revocation races and caller abort,
+   scoped ticket ending during an in-flight action, queued/failed/cancelled receipt
+   recovery and restart, audit-atomic cancellation, unmapped/overflowed deadlines.
+   In particular, a queued receipt racing ticket cancellation needs its final
+   local terminal-state recheck before returning. Receiving-runtime action-deadline
+   checks are not proven by Unix delegation-expiry tests; do not conflate epochs.
 3. Review ambiguous-action receipt semantics against the frozen protocol before
    claiming full action conformance. Current conformance claim remains only the
    10 unchanged event-kernel cases above; no scheduler/Git/runtime/mock claim.

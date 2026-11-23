@@ -197,6 +197,31 @@ async fn expired_pending_registration_requires_explicit_recovery_and_survives_an
 }
 
 #[tokio::test]
+async fn private_speech_owner_cannot_be_widened_by_another_registration() {
+    use coglet_hub::EventGrant;
+    let dir = tempfile::tempdir().unwrap();
+    let hub = SecretKey::generate().public();
+    let kernel = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
+    let source = format!("surface:{}", SecretKey::generate().public());
+    let mut owner = registration(hub);
+    owner.events = vec![EventGrant {
+        source: source.clone(),
+        kind: "speech.start".into(),
+    }];
+    kernel.register(owner.clone()).await.unwrap();
+    let mut other = registration(hub);
+    other.events = vec![EventGrant {
+        source,
+        kind: "speech.partial".into(),
+    }];
+    assert!(
+        kernel.register(other).await.is_err(),
+        "another coglet acquired a private speech source"
+    );
+    assert!(kernel.events(&owner.coglet).await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn malformed_delegation_does_not_reserve_provisioning_identity() {
     let dir = tempfile::tempdir().unwrap();
     let hub = SecretKey::generate().public();
