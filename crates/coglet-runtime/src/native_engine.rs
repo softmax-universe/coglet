@@ -1,0 +1,202 @@
+//! Opt-in, qualified interpreter route. No ambient WASI or native I/O.
+use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
+use coglet_engine::{
+    Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,
+};
+use coglet_engine_wamr::Wamr;
+use serde_json::{Value, json};
+use std::time::{Duration, Instant};
+
+pub struct NativeEngine {
+    code: Vec<u8>,
+    runtime_bytes: u32,
+    stack_bytes: u32,
+}
+impl NativeEngine {
+    pub fn new(
+        code: Vec<u8>,
+        budgets: &Value,
+        runtime_bytes: u32,
+        stack_bytes: u32,
+    ) -> Result<Self> {
+        // Reject the unavailable WASI route at admission, not halfway through a
+        // guest. The engine still validates all Wasm/signatures/memory limits.
+        for payload in wasmparser::Parser::new(0).parse_all(&code) {
+            if let wasmparser::Payload::ImportSection(imports) =
+                payload.map_err(|e| e.to_string())?
+            {
+                for import in imports.into_imports() {
+                    if import.map_err(|e| e.to_string())?.module != "coglet_v0" {
+                        return Err("native runtime WASI host is not qualified".into());
+                    }
+                }
+            }
+        }
+        let engine = Self {
+            code,
+            runtime_bytes,
+            stack_bytes,
+        };
+        Wamr::interpreter()
+            .load(&engine.code, &engine.limits(budgets, Instant::now())?)
+            .map_err(|e| e.to_string())?;
+        Ok(engine)
+    }
+    fn limits(&self, budgets: &Value, started: Instant) -> Result<Limits> {
+        validate("budgets", budgets)?;
+        Ok(Limits {
+            compute_mode: budgets["compute_mode"]
+                .as_str()
+                .ok_or("compute mode")?
+                .into(),
+            compute: budgets["compute"].as_u64().ok_or("compute")?,
+            memory_pages: u32::try_from(budgets["memory_pages"].as_u64().ok_or("memory pages")?)
+                .map_err(|_| "memory pages overflow")?,
+            host_bytes: budgets["host_bytes"].as_u64().ok_or("host bytes")?,
+            runtime_bytes: self.runtime_bytes,
+            stack_bytes: self.stack_bytes,
+            deadline: started
+                .checked_add(Duration::from_micros(
+                    budgets["wall_time_us"].as_u64().ok_or("wall time")?,
+                ))
+                .ok_or("deadline overflow")?,
+        })
+    }
+}
+struct TransactionHost<'a>(&'a mut StepHost);
+impl Host for TransactionHost<'_> {
+    fn call(
+        &mut self,
+        module: &str,
+        name: &str,
+        args: &[u64],
+        memory: &mut dyn GuestMemory,
+        budget: &mut StepBudget,
+    ) -> coglet_engine::Result<u32> {
+        budget.check_deadline()?;
+        if module != "coglet_v0"
+            || !["emit", "timer", "llm", "log"].contains(&name)
+            || args.len() != 2
+        {
+            return Err(coglet_engine::Error::UnqualifiedModule);
+        }
+        let ptr = u32::try_from(args[0]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
+        let len = u32::try_from(args[1]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
+        let raw = memory.read(ptr, len)?;
+        let result = self
+            .0
+            .import(name, &raw)
+            .map_err(coglet_engine::Error::Trap)?;
+        budget.check_deadline()?;
+        Ok(result as u32)
+    }
+}
+impl Engine for NativeEngine {
+    fn metadata(&self) -> Option<Value> {
+        let metadata = Wamr::interpreter().metadata();
+        Some(json!({"build":metadata.build,"policy":metadata.compute_mode}))
+    }
+    fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
+        let started = Instant::now();
+        if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
+            return Err("native engine code pin mismatch".into());
+        }
+        let limits = self.limits(&inputs["budgets"], started)?;
+        let memory_pages = limits.memory_pages;
+        let engine = Wamr::interpreter();
+        // Admission failures return before any guest attempt/batch consumption.
+        let module = engine
+            .load(&self.code, &limits)
+            .map_err(|e| e.to_string())?;
+        let instance = engine
+            .instantiate(&module, limits)
+            .map_err(|e| e.to_string())?;
+        let outcome = instance.handle(
+            StepInput {
+                events: cbor(&inputs["events"])?,
+                step: inputs["step"].as_u64().ok_or("step")?,
+                logical_time: inputs["logical_time"].as_u64().ok_or("logical time")?,
+                seed: inputs["seed"].as_u64().ok_or("seed")?,
+            },
+            &mut TransactionHost(host),
+        );
+        let failure = outcome.result.err().map(|error| {
+            use coglet_engine::Error::*;
+            let (kind, code) = match &error {
+                ComputeExhausted => ("compute", "resource_exhausted"),
+                MemoryExhausted => ("memory", "resource_exhausted"),
+                HostBytesExhausted => ("host_bytes", "resource_exhausted"),
+                DeadlineExceeded => ("wall", "deadline_exceeded"),
+                InvalidPointer | InvalidArgument => ("invalid_argument", "invalid_argument"),
+                GuestReturn(_) => ("guest_return", "invalid_argument"),
+                _ => ("trap", "unavailable"),
+            };
+            json!({"kind":kind,"error":{"code":code,"message":error.to_string(),"retryable":false}})
+        });
+        Ok(EngineReport {
+            // Engine API exposes copied bytes/compute, not peak linear pages.
+            // Report the conservative admitted page bound, never invented RSS.
+            usage: json!({"compute":outcome.compute_used,"host_bytes":outcome.host_bytes_used,
+                "memory_pages":memory_pages,"wall_time_us":u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX)}),
+            failure,
+        })
+    }
+}
+
+#[derive(Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativeSchedule {
+    pub trace_id: String,
+    pub seed: u64,
+    pub runtime_bytes: u32,
+    pub stack_bytes: u32,
+}
+impl crate::RuntimeService {
+    pub(crate) fn native_enabled(&self) -> bool {
+        self.native.is_some()
+    }
+    pub fn enable_native(&mut self, config: NativeSchedule) -> Result<()> {
+        validate("correlation-id", &json!(config.trace_id))?;
+        if self
+            .state
+            .runtime
+            .trace_id
+            .as_ref()
+            .is_some_and(|id| id != &config.trace_id)
+        {
+            return Err("native schedule trace identity mismatch".into());
+        }
+        let code = hex::decode(&self.state.runtime.files.files()["/code/bin/step.wasm"])
+            .map_err(|e| e.to_string())?;
+        let engine = NativeEngine::new(
+            code,
+            &self.state.runtime.manifest["budgets"],
+            config.runtime_bytes,
+            config.stack_bytes,
+        )?;
+        self.native = Some((config, engine));
+        Ok(())
+    }
+    pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
+        if self.native.is_none() || self.surface_epoch(session.surface()) != session.grant_epoch() {
+            return Ok(());
+        }
+        let manifest = &self.state.runtime.manifest;
+        let Some(grants) = session.execution_grants(manifest, now)? else {
+            return Ok(());
+        };
+        let Some((config, mut engine)) = self.native.take() else {
+            return Ok(());
+        };
+        // Derive seeds from supervisor seed + durable step. Restart never resets
+        // step identity. No OS randomness enters the guest or replay path.
+        let seed_bytes = cbor(&json!([config.seed, self.state.runtime.step]))?;
+        let hash = digest(&seed_bytes);
+        let seed = u64::from_str_radix(&hash[..16], 16).map_err(|e| e.to_string())?;
+        let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
+            "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
+        let result = self.run_next(&context, &mut engine);
+        self.native = Some((config, engine));
+        result.map(|_| ())
+    }
+}

@@ -1,4 +1,4 @@
-# Runtime core (implementation in progress)
+# Runtime core and native surface service
 
 This crate is **not yet an M1-qualified runtime**. The current library provides:
 
@@ -15,14 +15,30 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - trailing boundary seals (including zero-step exports) and offline boundary replay.
 - shared binding-checked surface negotiation, bounded replies and health/inactivity;
 - real embedded C ABI and Linux UID-authenticated private Unix socket framing.
+- pinned operation-schema selection, capability replacement and grant/resource checks;
+- one-time clock translation and complete deterministic act bytes fsynced before exposure;
+- durable bound-surface admission/outcomes, terminal dedup and staged inbox boundary mutations.
+- lease-scoped private event routing with durable shared surface sequence/clock highwaters;
+- bounded caller-scoped native reads, timeout/late-reply fencing and revocation purging.
+- Linux boot-identity/BOOTTIME anchored runtime clock persisted in the WAL;
+- service-backed socket and C ABI dispatch pumps, ordered by committed calls;
+- automatic same-envelope reconciliation after native reconnect and WAL reopen.
+- durable speech capture start/revision/end fencing and provider call deduplication.
+- native runtime-issued owner heard reads with durable pre-reasoning barriers,
+  conservative M-D spans and journaled runtime.heard boundaries (see [live-heard.md](live-heard.md)).
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
-The crate currently owns its `Engine` and snapshot seams because the shared
-`coglet-engine` and `coglet-fs` APIs were empty at implementation start. Those
-seams must be integrated when their owning lanes publish the real APIs.
+The mock seam remains for fixture execution. Opt-in `native-engine` connects
+the shared `coglet-engine` API to transactional `StepHost` imports and the
+qualified WAMR interpreter. It is a bounded, real-Wasm route, not full ABI
+qualification: WASI-importing modules are refused before input consumption.
+The snapshot filesystem seam is still separate from `coglet-fs`.
 
 ## Verification
+
+See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
+trusted supervisor configuration and its remaining qualification limits.
 
 ```sh
 cargo test -p coglet-runtime
@@ -47,12 +63,16 @@ fails. No recorded output files or return values are fed into guest execution.
 
 ## Baseline milestone and follow-up boundaries
 
-This component-level baseline intentionally does not qualify full ABI or operational
-surface behavior. `every_primary_abi_case_is_executed` also independently replays
+The primary ABI baseline does not qualify full ABI. Operational Linux surface
+qualification is documented separately in [qualification.md](qualification.md),
+with exact native test names, ownership and supported bounds. The small frozen
+negotiation corpus alone is not operational evidence.
+`every_primary_abi_case_is_executed` also independently replays
 all 21 primary cases and compares every per-step state hash.
 
 Remaining qualification is owned serially by board cards:
-- `t_01a2085c6e546405`: operational surface, production daemon and durable outbox.
+- `t_01a2085c6e546405`: operational surface, production daemon and durable outbox
+  (implemented; independent review/CI/landing recorded on PR #53).
 - `t_01a2085cca051179`: full ABI profiles, engine recovery and trace import/export.
 
 The unimplemented boundaries remain explicit:
@@ -60,16 +80,45 @@ The unimplemented boundaries remain explicit:
 - Full ABI profile adapters: module/manifest admission, trace/provenance validation,
   terminal-receipt and heard archive corpus import/validation (the runtime seams
   exist, but those language-neutral profiles have not been implemented).
-- Complete pending-action/outbox lifecycle, including surface-specific source binding,
-  crash-durable byte-identical mapped dispatch/reconnect reconciliation.
-- Operational surface state machine: trusted catalog/grant enforcement, private
-  events, reads, receipts and clock mapping. Negotiation and stopped health are
-  implemented; all operational input currently fails closed with unavailable.
-- Close/disconnect with pending real native I/O: native pointer/buffer/backpressure
-  and heartbeat probes exist, but no operational native I/O can be admitted yet.
-- `cogletd` production server mode. Only --version, --mock-stdio and the explicit
-  --surface-probe-socket negotiation shell exist. No arguments prints the version
-  and exits (workspace packaging smoke contract); unsupported arguments fail closed.
+- Native orchestration now attaches the durable service explicitly in both transports.
+  The default probe modes remain negotiation-only. Linux native clock continuity uses
+  BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
+  guesses. A changed boot identity, old unanchored dispatch ledger or poisoned WAL
+  fails closed. Non-Linux supervised clocks (including iOS) remain unimplemented.
+  Dispatch order is retained/checked against initial intent order and committed action
+  arrays, not sorted IDs. Expired undispatched intents receive durable local rejections.
+- Operational private events and reads use the shared library session attached
+  by both service-backed native endpoints. Private event admission intersects
+  manifest subscriptions with current grants/resources; grant replacement, expiry,
+  disconnect and restart purge old-lease queued input while retaining sequence
+  highwaters. Capture identities are never reopened across epochs/reconnects;
+  partial/end revisions must increase, and late/equal revisions are counted without
+  forwarding private text or queueing a wake. Source highwater, revision/end fence
+  and enqueue are one WAL transaction. Provider tool calls require a retained
+  successful owner session and identical repeated calls do not queue another event.
+  Tombstones are non-evicting and capped at 4096 utterances plus 4096 provider calls
+  per service; exhaustion fails closed, requiring explicit supervisor lifecycle
+  reconciliation, not silent eviction/reuse. This is a bounded qualification route,
+  not an indefinitely running speech service.
+  Native reads never invent guest events; pending+completed observations are bounded
+  to 128 with 4096 non-evicting correlation tombstones per connection. Stale durable
+  epochs purge read replies/results. Heard reads require a retained accepted speaker
+  item and current speaker lease; provider-native items bind conservatively to an
+  unambiguous retained live session (see live-heard.md for lifecycle restrictions).
+  Both native transports initiate heard reads from authenticated
+  position/barge observations when speech.history is advertised. An atomic durable
+  barrier prevents reasoning until the corresponding runtime.heard boundary is
+  committed; revoke, expiry, disconnect and restart purge abandoned barriers with
+  private input. This is a runtime policy, not a new guest import or surface RPC.
+- Close/disconnect with real device I/O and complete speech temporal normalization
+  remain unqualified. The native operational test backend is a deterministic receipt
+  ledger, not a physical device/provider or production surface SDK qualification.
+- Opt-in native scheduling is operational over socket and C ABI, with real Wasm
+  tests for commit-before-dispatch call order, trap rollback, one-time batch
+  consumption and byte-identical reconciliation after WAL reopen. The default
+  feature-free service mode only hosts the outbox. Native execution currently
+  refuses all WASI imports; full transactional WASI is the serial ABI qualification
+  gate. No arguments still prints the version and exits.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
   Recovery checks all code files, pending-ledger membership, inbox wake indices,
   trace identity and journal head/chain, but not a full reconstruction of all host
@@ -77,8 +126,9 @@ The unimplemented boundaries remain explicit:
 - Trace header/blob import/export and host-state transfer to a new segment after
   sealing. `seal_boundary` forbids later steps in that segment. The coordinator
   atomically persists the seal, inbox append/pending removal and newly queued
-  inbox wakes; heard-only seals queue no wake. Surface delivery acknowledgement
-  dedup/reconciliation is not implemented by this seam.
+  inbox wakes; heard-only seals queue no wake. Terminal surface receipt/outcome methods
+  now persist dedup with exact staged inbox bytes, pending removal and one wake. Staged
+  changes enter the next real step or a trailing seal, including zero-step exports.
 - Independent exact-head review, green CI, merge, and board review handoff.
 
 The internal WAL format is not the exported ABI journal. Each internal commit
@@ -99,16 +149,55 @@ The shared source sequence persists in service state and advances for committed
 runtime-source events and receipt appends. Fresh fixture setup starts at zero;
 production restart/segment transfer must retain the full lifetime source metadata.
 
-## Native surface boundary (negotiation gate only)
+## Native surface boundary
+
+`tests/operational_surface.rs` separately exercises the library authority and WAL
+seams (not native operational qualification). Named tests cover byte-identical
+retry after clock advance, reconnect recovery without a new action, authenticated
+source/admission binding, one terminal append across restart, zero-step trailing
+export, persistent grant-epoch fencing and deadline-relative retention. Native
+transport evidence and the distinction between runtime pending work and actual
+device-I/O shutdown are explicit in [qualification.md](qualification.md).
+
+`tests/native_operational.rs` exercises the actual C pointer boundary and an actual
+`cogletd` Unix-socket subprocess. Both paths check reverse-lexical invocation order,
+byte-identical automatic retries after clock advance and WAL reopen without fresh
+grants, accepted-action health counts, authenticated outcomes and duplicate terminal
+delivery, and kill. Reopened WALs contain exactly one terminal mutation/wake per
+action. Separate regressions inject a real OS WAL-write failure and check clock and
+retained-dispatch fencing, and reject an expired outbox head without starving later
+actions. Two further actual native-path tests send start/partial/end and stale
+revisions, read back durable end fences/discard counts, and prove disconnected
+private input is not revived. Library tests prove source-order guest delivery and
+that router-full does not commit a revision/highwater. Playback tests additionally
+cover item/stream owner/epoch/chunk bindings, exact barge pairing, terminal freeze,
+provider-native item ownership and durable recovery (see live-heard.md for the
+conservative provider lifecycle restrictions). Heard regressions cover
+native socket/C reads, conservative prefix construction, revoked late replies and
+runtime-clock barrier expiry. With native-engine, those same native paths execute
+real Wasm and verify runtime.heard precedes each position-consuming step.
 
 `cargo build -p coglet-runtime --lib` produces static and shared libraries.
 `include/coglet_runtime.h` exposes the frozen coglet_surface_open/send/recv/close
-signatures plus runtime-owned `coglet_runtime_configure(config,n)`. Before open,
+signatures plus runtime-owned configure/start/stop. Before open,
 trusted application code configures UTF-8 JSON with `surface` and
 `permitted_coglets`. Configuration is immutable per process, identical retries
 are idempotent, and hello supplies no authentication. Handle calls must be
 serialized and recv polled at least once per second on the non-audio control
 queue. No calls after close. Unsupported operations cannot acquire authority.
+
+To attach the durable service, call `coglet_runtime_start` with UTF-8 JSON
+`{"wal":"/absolute/private/state.wal","setup":{...}}` before opening links.
+`setup` is the current runtime configuration shape (code/manifest/files/pending
+ledgers); this is not yet a production signed archive admission API. Stop returns
+would-block while any service-backed link remains live; close links before restart.
+Without start, open remains the existing negotiation probe. Linux only until other
+platforms provide verified supervisor clock continuity.
+
+The equivalent Linux daemon transport is:
+`cogletd --surface-service-socket SOCKET BINDING_JSON PEER_UID WAL SETUP_JSON`.
+This mode serves the coordinator and optionally the qualified native-engine scheduler
+described above. Supply a supervisor-owned persistent WAL directory.
 
 On Linux, `cogletd --surface-probe-socket ABSOLUTE_PATH BINDING_JSON PEER_UID`
 serves the same negotiation shell. The parent directory must be owned mode0700
@@ -125,5 +214,5 @@ cover null/unsupported open, copied input lifetime, size query, short-buffer
 nondequeue, exact read, would-block/n=0, bounded-send no-effect, malformed input,
 close, unsolicited heartbeat and stale-link timeout. Rust tests cover hostile
 binding/lifecycle/profile, framing, UID denial, path permissions and idle socket
-heartbeats. These tests do not qualify unimplemented grant/private-event/dispatch
-semantics merely because the present two-case runtime-side corpus passes.
+heartbeats. These tests alone do not qualify grant/private-event/dispatch
+semantics; the separate operational/native targets supply that evidence.
