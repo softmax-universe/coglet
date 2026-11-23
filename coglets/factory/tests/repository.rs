@@ -232,6 +232,33 @@ fn repository_outbox_uses_dedicated_operation_not_sql() {
 }
 
 #[test]
+fn repository_refuses_zero_affected_optimistic_update_even_if_host_returns_page() {
+    struct ZeroAffected;
+    impl DbHost for ZeroAffected {
+        fn db(&mut self, _: &[u8], output: &mut [u8]) -> i32 {
+            let reply = DatabaseDbPage {
+                status: "page".into(),
+                columns: vec![],
+                rows: vec![],
+                affected: 0,
+                revision: 0,
+                next_cursor: Value::Null,
+            }
+            .to_cbor()
+            .unwrap();
+            output[..4].copy_from_slice(&(reply.len() as u32).to_be_bytes());
+            output[4..4 + reply.len()].copy_from_slice(&reply);
+            0
+        }
+    }
+    assert!(
+        Repository::new(&mut ZeroAffected)
+            .update_object(&object(ID))
+            .is_err()
+    );
+}
+
+#[test]
 fn factory_object_roundtrip_uses_sdk_buffer_and_portable_sql() {
     let mut host = SqliteHost::new();
     let mut repo = Repository::new(&mut host);

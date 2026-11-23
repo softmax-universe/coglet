@@ -114,6 +114,37 @@ fn enqueue_binds_first_insert_id_but_accepts_original_duplicate_id() {
     }
 }
 #[test]
+fn schema_validation_refuses_invalid_request_shapes_before_import() {
+    let mut requests = vec![];
+    let mut r = request();
+    r.max_rows = 65;
+    requests.push(r);
+    let mut r = request();
+    r.max_bytes = 65537;
+    requests.push(r);
+    let mut r = request();
+    r.params = vec![Value::Null; 33];
+    requests.push(r);
+    let mut r = request();
+    r.statement = "UPPER".into();
+    requests.push(r);
+    let mut r = request();
+    r.mode = "READ".into();
+    requests.push(r);
+    let mut r = request();
+    r.operation = "sql".into();
+    requests.push(r);
+    for req in requests {
+        let mut host = Transport {
+            result: 0,
+            raw: page().to_cbor().unwrap(),
+            calls: 0,
+        };
+        assert!(Client::new(&mut host).statement(&req).is_err());
+        assert_eq!(host.calls, 0);
+    }
+}
+#[test]
 fn invalid_request_is_refused_before_import() {
     let mut host = Transport {
         result: 0,

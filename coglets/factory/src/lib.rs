@@ -176,7 +176,7 @@ impl<'a, H: DbHost> Repository<'a, H> {
             .iter()
             .find(|s| s.id == id)
             .ok_or_else(invalid)?;
-        self.client.statement(&DatabaseDbStatement {
+        let page = self.client.statement(&DatabaseDbStatement {
             operation: "statement".into(),
             statement: id.into(),
             mode: definition.mode.into(),
@@ -184,7 +184,14 @@ impl<'a, H: DbHost> Repository<'a, H> {
             max_rows: 64,
             max_bytes: 65536,
             cursor: None,
-        })
+        })?;
+        if definition
+            .expected_affected
+            .is_some_and(|expected| expected != page.affected)
+        {
+            return Err(DbError::Host(coglet_guest_rust::HostError::Conflict));
+        }
+        Ok(page)
     }
     pub fn query_objects(
         &mut self,
