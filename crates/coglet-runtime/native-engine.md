@@ -71,12 +71,18 @@ JIT and AOT remain disabled in CMake; Apple support does not weaken that rule.
 | ARMv7 Linux | [Same run / armv7-qemu job 138082473860](https://github.com/softmax-universe/coglet/actions/runs/45286035005/job/138082473860) passed the spike and real engine suites under QEMU; not physical EO1 evidence. |
 
 This is a source-head evidence snapshot; final PR-head checks are recorded on
-[PR #62](https://github.com/softmax-universe/coglet/pull/62). The earlier
-[run 45282117394](https://github.com/softmax-universe/coglet/actions/runs/45282117394)
-passed the package suites but failed the echo smoke with C-ABI send `-2`.
-It did not reproduce in the run above after adding per-message status/timing
-diagnostics; no runtime timeout or authorization policy was weakened, and the
-cause of that earlier failure is not established.
+[PR #62](https://github.com/softmax-universe/coglet/pull/62). Earlier echo smoke
+failures in [run 45282117394](https://github.com/softmax-universe/coglet/actions/runs/45282117394)
+and [run 45287359414](https://github.com/softmax-universe/coglet/actions/runs/45287359414)
+exposed an invalid test assumption: the latter logged a successful synchronous
+grants call taking 3.691 seconds, followed by health send `-2` after the frozen
+three-second surface inactivity limit. A deterministic 3.1-second post-grants
+pause reproduced that refusal locally; removing only the redundant health
+exchange preserved the committed-WAL execution proof with the same pause.
+The smoke now closes the link after synchronous execution and checks the WAL,
+not uninterrupted surface liveness. No runtime timeout or authorization policy
+changed. The source of the slow grants call (guest/setup/WAL/scheduling) is not
+isolated, and long-call surface liveness remains outside this qualification.
 
 The same recovery policy runs on Linux and Apple. Linux samples boot_id and
 CLOCK_BOOTTIME; Apple samples `kern.bootsessionuuid` and
