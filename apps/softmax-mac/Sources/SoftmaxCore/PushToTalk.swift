@@ -15,6 +15,7 @@ public enum SpeechInput: Sendable, Equatable {
     case bargeIn(timestamp: TimeInterval)
 }
 public struct Utterance: Sendable, Equatable {
+    public let operationID: UInt64
     public let frames: [PCMFrame]
     public let startedAt: TimeInterval
     public let endedAt: TimeInterval
@@ -32,6 +33,7 @@ public struct Utterance: Sendable, Equatable {
         didSet { if !permissions.canUseGlobalPushToTalk { cancel() } }
     }
     public private(set) var state: AppState = .idle
+    public private(set) var operationID: UInt64 = 0
     public private(set) var elapsed: TimeInterval = 0
     public var inputLevel: Float { state == .listening ? audio.inputLevel : 0 }
     public var onChange: (() -> Void)?
@@ -65,6 +67,14 @@ public struct Utterance: Sendable, Equatable {
         if state != .listening { cancel() }
         self.state = state; onChange?()
     }
+    /// A delayed completion may only close the operation and phase that created it.
+    @discardableResult
+    public func complete(operation: UInt64, state expectedState: AppState) -> Bool {
+        guard operation == operationID, state == expectedState,
+              expectedState == .thinking || expectedState == .speaking else { return false }
+        setState(.idle)
+        return true
+    }
     public func handle(_ event: PushToTalkKeyEvent, at timestamp: TimeInterval? = nil) {
         if case .press = event, let permissionProvider { permissions = permissionProvider() }
         switch event {
@@ -82,6 +92,7 @@ public struct Utterance: Sendable, Equatable {
             guard permissions.canUseGlobalPushToTalk else { routeToPermissions?(); return }
             guard state != .onboarding else { routeToPermissions?(); return }
             let pressTime = timestamp ?? now()
+            operationID &+= 1
             if state == .speaking {
                 stopPlayback?()
                 output.yield(.bargeIn(timestamp: now()))
@@ -110,8 +121,10 @@ public struct Utterance: Sendable, Equatable {
         if elapsed >= 120 { finish() } else { onChange?() }
     }
     public func cancel() {
+        operationID &+= 1
         timer?.cancel(); timer = nil
-        if startedAt != nil { _ = audio.stop(); state = .idle }
+        if startedAt != nil { _ = audio.stop() }
+        if state == .listening || state == .thinking { state = .idle }
         startedAt = nil; elapsed = 0; keyDown = false; onChange?()
     }
     private func finish(at timestamp: TimeInterval? = nil) {
@@ -132,7 +145,7 @@ public struct Utterance: Sendable, Equatable {
             state = .idle; onChange?(); return
         }
         state = .thinking
-        output.yield(.utterance(Utterance(frames: frames, startedAt: start, endedAt: end)))
+        output.yield(.utterance(Utterance(operationID: operationID, frames: frames, startedAt: start, endedAt: end)))
         onChange?()
     }
 }

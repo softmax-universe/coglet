@@ -63,15 +63,16 @@ final class ShellModel: ObservableObject {
     var routePermissions: (() -> Void)?
     /// Runtime/Face installs the actual synchronous playback stop before speaking.
     var stopFacePlayback: (() -> Void)?
-    func beginFacePlayback(stop: @escaping () -> Void) {
+    @discardableResult
+    func beginFacePlayback(stop: @escaping () -> Void) -> UInt64 {
         stopFacePlayback = stop
         ptt.setState(.speaking)
+        return ptt.operationID
     }
-    func finishFacePlayback() {
-        stopFacePlayback = nil
-        ptt.setState(.idle)
+    func finishFacePlayback(operation: UInt64) {
+        if ptt.complete(operation: operation, state: .speaking) { stopFacePlayback = nil }
     }
-    func finishSpeechInput() { ptt.setState(.idle) }
+    func finishSpeechInput(operation: UInt64) { ptt.complete(operation: operation, state: .thinking) }
     var state: AppState {
         talkState == .idle ? machine.state : talkState
     }

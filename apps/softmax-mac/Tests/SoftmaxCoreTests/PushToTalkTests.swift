@@ -128,6 +128,32 @@ final class PushToTalkTests: XCTestCase, @unchecked Sendable {
         keys.send(.release)
         XCTAssertEqual(audio.stops, 1)
     }
+    func testOldPlaybackCompletionCannotCancelBargeInCapture() async {
+        let (ptt, keys, audio, _) = fixture()
+        ptt.setState(.speaking)
+        let playbackID = ptt.operationID
+        keys.send(.press)
+        XCTAssertFalse(ptt.complete(operation: playbackID, state: .speaking))
+        XCTAssertEqual(ptt.state, .listening)
+        XCTAssertEqual(audio.stops, 0)
+        ptt.shutdown()
+    }
+    func testOldSpeechCompletionCannotCancelNewCapture() async {
+        let (ptt, keys, audio, clock) = fixture()
+        keys.send(.press); clock.time = 11; keys.send(.release)
+        let firstID = ptt.operationID
+        keys.send(.press)
+        XCTAssertFalse(ptt.complete(operation: firstID, state: .thinking))
+        XCTAssertEqual(ptt.state, .listening)
+        XCTAssertEqual(audio.stops, 1)
+        ptt.shutdown()
+    }
+    func testCurrentOperationCompletionReturnsToIdle() async {
+        let (ptt, keys, _, clock) = fixture()
+        keys.send(.press); clock.time = 11; keys.send(.release)
+        XCTAssertTrue(ptt.complete(operation: ptt.operationID, state: .thinking))
+        XCTAssertEqual(ptt.state, .idle)
+    }
     func testHoldReleaseEmitsTimestampedPCM() async {
         let keys = FakeKeys()
         let audio = FakeAudio()

@@ -106,12 +106,14 @@ seconds); `startedAt` and `endedAt` use the same timebase. Audio is buffered in 
 not written to disk. `AudioCapture.stop()` synchronously drains the authoritative
 session buffer; its bounded `frames` stream is for live observers only.
 
-The runtime card must consume that stream and call `finishSpeechInput()` on delivery
-completion/failure. **Until that integration exists, thinking intentionally means an
+The runtime card must consume that stream and call
+`finishSpeechInput(operation: utterance.operationID)` on delivery completion/failure.
+**Until that integration exists, thinking intentionally means an
 utterance is awaiting the runtime, not that transcription was performed.** No speech
 provider request is made here. Before Face playback starts, runtime calls
-`beginFacePlayback(stop:)` with its synchronous stop closure; when playback ends,
-call `finishFacePlayback()`. A press during that interval invokes stop before capture
+`beginFacePlayback(stop:)` with its synchronous stop closure and retain the returned
+operation ID; when playback ends, call `finishFacePlayback(operation: id)`. Stale
+completions are ignored and cannot cancel a newer capture. A press during that interval invokes stop before capture
 and emits bargeIn. `machine` external state changes also synchronize the controller.
 This is the playback seam, not a new TTS implementation.
 
