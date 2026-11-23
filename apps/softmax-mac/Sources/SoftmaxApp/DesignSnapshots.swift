@@ -52,9 +52,10 @@ import SoftmaxCore
                     var stable: Data?
                     // Diagnostic only: retain the original accepted raster, but observe
                     // search controls through the full deadline to expose late geometry.
-                    let traceGeometry = name.hasPrefix("commands") || name == "settings-hub"
+                    let traceGeometry = name.hasPrefix("commands") || name.hasPrefix("settings-")
                     var lastGeometry = ""
                     var finalBytes: Data?
+                    var invalidatedGeometry = false
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
                         // AppKit can initially reserve a legacy scroller gutter before
@@ -68,6 +69,22 @@ import SoftmaxCore
                             for child in view.subviews { normalizeScrollers(child) }
                         }
                         normalizeScrollers(hosting)
+                        // Controlled probe, not a repair: keep the earliest accepted image
+                        // unchanged and test whether invalidating native intrinsic sizing
+                        // repairs the frame/intrinsic mismatch observed in the trace.
+                        if traceGeometry, stable != nil, !invalidatedGeometry {
+                            func invalidateFields(_ view: NSView) {
+                                if let field = view as? NSTextField {
+                                    field.invalidateIntrinsicContentSize()
+                                }
+                                for child in view.subviews { invalidateFields(child) }
+                            }
+                            invalidateFields(hosting)
+                            hosting.invalidateIntrinsicContentSize()
+                            hosting.needsLayout = true
+                            invalidatedGeometry = true
+                            print("SNAPSHOT-GEOMETRY \(key) invalidated intrinsic sizing")
+                        }
                         hosting.layoutSubtreeIfNeeded()
                         if let editor = window.firstResponder as? NSTextView {
                             editor.setSelectedRange(NSRange(location: 0, length: 0))
