@@ -1,0 +1,6 @@
+# Only self-test claims exist until real/mock protocol implementations register.
+[[implementations]]
+name = "loopback"
+suites = ["self-test"]
+transport = "stdio"
+command = ["python3", "conformance/loopback.py"]
