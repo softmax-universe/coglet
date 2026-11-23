@@ -1,0 +1,9 @@
+mode=aot bytes=198196 load_ns=64740
+limit_1_finite_call_traps=false
+undersized_cap_4_CLAMPED_UP initial_pages=5 growth_denied=true
+memory initial_pages=5 cap_pages=8 grow_past_cap=-1
+deadline_skipped: ordinary AOT negative control must be killed externally
+instantiate_call_1000_table_reads_drop: n=10000 p50_ns=67347 p99_ns=95861 max_ns=167818
+mean_ns=68554.9 duty_at_10hz_pct=0.06855
+paced_10hz events=100 elapsed_ns=9900391644 busy_ns=18111801 missed_100ms_slots=0
+[10:27:48:655 - 72055ED6FC40]: Cannot override max memory with value lower than module initial memory

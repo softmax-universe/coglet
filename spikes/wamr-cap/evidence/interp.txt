@@ -1,0 +1,14 @@
+mode=interp bytes=196974 load_ns=37575
+limit_1_finite_call_traps=true
+fuel budget=1000 repeats=20 identical_progress=250 reset_ok=true
+fuel budget=10000 repeats=20 identical_progress=2500 reset_ok=true
+fuel budget=100000 repeats=20 identical_progress=25000 reset_ok=true
+undersized_cap_4_CLAMPED_UP initial_pages=5 growth_denied=true
+memory initial_pages=5 cap_pages=8 grow_past_cap=-1
+deadline_10ms_including_watchdog_start: n=50 p50_ns=10070879 p99_ns=10374962 max_ns=10374962
+terminate_to_return: n=50 p50_ns=3258 p99_ns=4979 max_ns=4979
+fresh_recovery_after_terminate=50/50
+instantiate_call_1000_table_reads_drop: n=10000 p50_ns=74946 p99_ns=122434 max_ns=284408
+mean_ns=78085.9 duty_at_10hz_pct=0.07809
+paced_10hz events=100 elapsed_ns=9900260358 busy_ns=19385011 missed_100ms_slots=0
+[10:27:37:434 - 7DE689377C40]: Cannot override max memory with value lower than module initial memory
