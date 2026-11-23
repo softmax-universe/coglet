@@ -1,0 +1,48 @@
+; Coglet 0.1, RFC 8949 core deterministic profile. Import rules unchanged.
+common = event / action / action-accept / action-outcome / error / version-offer / version-selection
+uint64 = 0..18446744073709551615
+profile-int = (-9223372036854775808..-1) / uint64
+profile-value = profile-int / tstr / bool / null / [* profile-value] / profile-map
+profile-map = {* tstr => profile-value}
+node-id = tstr .regexp "^[0-9a-f]{64}$"
+coglet-id = tstr .regexp "^coglet:[0-9a-f]{64}$"
+surface-id = tstr .regexp "^surface:[0-9a-f]{64}$"
+hub-id = tstr .regexp "^hub:[0-9a-f]{64}$"
+source-id = coglet-id / surface-id / hub-id
+capability-name = tstr .regexp "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}$"
+method-name = tstr .regexp "^[a-z][a-z0-9_]{0,31}(\\.[a-z][a-z0-9_]{0,31}){1,3}$"
+correlation-id = tstr .regexp "^[0-9a-f]{32}$"
+action-id = correlation-id
+spec-version = tstr .regexp "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})$"
+; Duplicate offered versions have no effect on negotiation.
+version-offer = {versions: [+ spec-version]}
+version-selection = {version: spec-version}
+event = {
+  source: source-id, kind: capability-name, seq: uint64,
+  logical_time: uint64, payload: profile-map, correlation_id: correlation-id
+}
+action = {
+  id: action-id, coglet: coglet-id, capability: capability-name,
+  args: profile-map, deadline: uint64, correlation_id: correlation-id
+}
+action-accept = {
+  id: action-id, correlation_id: correlation-id,
+  accepted: true
+} / {
+  id: action-id, correlation_id: correlation-id,
+  accepted: false, error: error
+}
+action-outcome = {
+  id: action-id, correlation_id: correlation-id,
+  status: "succeeded", result: profile-map
+} / {
+  id: action-id, correlation_id: correlation-id,
+  status: "failed" / "cancelled" / "expired", error: error
+}
+error-code = "invalid_argument" / "unsupported_version" / "unauthenticated" /
+  "permission_denied" / "not_found" / "conflict" / "resource_exhausted" /
+  "deadline_exceeded" / "cancelled" / "unavailable" / "internal"
+error = {
+  code: error-code, message: tstr .size (1..18446744073709551615),
+  retryable: bool, ? details: profile-map
+}
