@@ -99,7 +99,9 @@
       "match": {
         "type": "event",
         "body.kind": "speech.barge_in",
-        "body.payload.reflex": "ducked"
+        "body.payload.reflex": "ducked",
+        "body.payload.item": "11111111111111111111111111111111",
+        "body.payload.played_ms": 100
       },
       "within_ms": 200
     },

@@ -44,8 +44,8 @@ and playback `position_ms` refer to their own media timeline, not logical_time.
 | speech.start | `{utterance, position_ms}` | native VAD/hold-to-talk starts one utterance |
 | speech.partial | `{utterance, revision, text}` | replacement full hypothesis, not a text delta |
 | speech.end | `{utterance, revision, text, position_ms}` | terminal full transcript, possibly empty |
-| speech.position | `{stream, chunk, position_ms, state}` | actual rendered playback; state playing/ducked/stopped/finished |
-| speech.barge_in | `{utterance, stream, position_ms, reflex}` | already-applied stop/duck; reflex stopped/ducked |
+| speech.position | `{stream, chunk, item, played_ms, position_ms, state}` | actual rendered playback; state playing/ducked/stopped/finished |
+| speech.barge_in | `{utterance, stream, item, played_ms, position_ms, reflex}` | already-applied stop/duck; reflex stopped/ducked |
 | speech.tool_call | `{session, call, name, arguments}` | provider request, NOT executed tool |
 
 Utterance IDs are unique across capture restarts. Revisions start at 1 and strictly
@@ -57,7 +57,15 @@ forwarding private text. An event already in the runtime queue when end arrives
 is processed in source-seq order, with the same closed/revision filter on replay.
 Text is UTF-8, unnormalized, at most 16,384 bytes per transcript. Limits in schemas
 are Unicode code points where noted; the UTF-8 byte limit is an additional check.
-Duplicate playback reports are harmless; positions never decrease within a stream.
+Duplicate playback reports are harmless; position_ms never decreases within a
+stream. `item` identifies the speak item: it equals its speak_chunk/backchannel
+action ID. Provider-originated items use a fresh native 32-hex ID (not an invented
+action admission). `played_ms` is actual rendered media duration WITHIN that
+item, starting at zero and nondecreasing per item; it excludes synthesized/queued
+but unheard audio. On barge-in both events carry the same current item and final
+stop/duck played_ms. This is independent of cumulative stream position_ms. A
+transcript can therefore truncate the interrupted item without counting queued
+text as heard. Work-intent and hands-free/PTT mode extensions are out of scope.
 
 ## Actions down
 

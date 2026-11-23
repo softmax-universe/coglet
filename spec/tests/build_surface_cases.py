@@ -86,7 +86,8 @@ def outputs():
         steps=[{'send':a,'at_ms':0},accept(a),
                {'match':{'type':'event','body.kind':'speech.position','body.payload.state':'playing'},'within_ms':200},
                {'match':{'type':'event','body.kind':'speech.start','body.payload.utterance':cid},'within_ms':200,'at_ms':100},
-               {'match':{'type':'event','body.kind':'speech.barge_in','body.payload.reflex':barge},'within_ms':200},
+               {'match':{'type':'event','body.kind':'speech.barge_in','body.payload.reflex':barge,
+                         'body.payload.item':cid,'body.payload.played_ms':100},'within_ms':200},
                {'match':{'type':'event','body.kind':'speech.position','body.payload.state':barge},'within_ms':200}]
         if barge=='stopped': steps.append(outcome(a,'cancelled'))
         steps.extend([{'match':{'type':'event','body.kind':'speech.partial'},'within_ms':200},

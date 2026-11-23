@@ -163,7 +163,8 @@ class ProfileFixtures(unittest.TestCase):
                         self.assertEqual(step['stream'],stream); self.assertIn(step['utterance'],utterances)
                         output='stopped' if timeline['config']['barge']=='stop' else 'ducked'
                         normalized=[('speech.barge_in',dict(payload,reflex=output)),
-                                    ('speech.position',{'stream':stream,'chunk':0,'position_ms':step['position_ms'],'state':output})]
+                                    ('speech.position',{'stream':stream,'chunk':0,'item':step['item'],'played_ms':step['played_ms'],
+                                                        'position_ms':step['position_ms'],'state':output})]
                         if output=='stopped': terminal='cancelled'
                     else: self.fail(kind)
                     for name,body in normalized:

@@ -3,9 +3,9 @@
     "name": "barge-in-stop",
     "config": {"barge": "stop"},
     "steps": [
-      {"at_ms": 0, "input": "play", "stream": "22222222222222222222222222222222", "chunk": 0},
+      {"at_ms": 0, "input": "play", "stream": "22222222222222222222222222222222", "chunk": 0, "item": "11111111111111111111111111111111", "played_ms": 0},
       {"at_ms": 100, "input": "start", "utterance": "11111111111111111111111111111111", "position_ms": 0},
-      {"at_ms": 100, "input": "barge_in", "utterance": "11111111111111111111111111111111", "stream": "22222222222222222222222222222222", "position_ms": 100},
+      {"at_ms": 100, "input": "barge_in", "utterance": "11111111111111111111111111111111", "stream": "22222222222222222222222222222222", "item": "11111111111111111111111111111111", "played_ms": 100, "position_ms": 100},
       {"at_ms": 120, "input": "partial", "utterance": "11111111111111111111111111111111", "revision": 1, "text": "wait"},
       {"at_ms": 300, "input": "end", "utterance": "11111111111111111111111111111111", "revision": 2, "text": "wait please", "position_ms": 200}
     ],
@@ -15,12 +15,12 @@
     "name": "over-talk-duck",
     "config": {"barge": "duck"},
     "steps": [
-      {"at_ms": 0, "input": "play", "stream": "22222222222222222222222222222222", "chunk": 0},
+      {"at_ms": 0, "input": "play", "stream": "22222222222222222222222222222222", "chunk": 0, "item": "11111111111111111111111111111111", "played_ms": 0},
       {"at_ms": 100, "input": "start", "utterance": "11111111111111111111111111111111", "position_ms": 0},
-      {"at_ms": 100, "input": "barge_in", "utterance": "11111111111111111111111111111111", "stream": "22222222222222222222222222222222", "position_ms": 100},
+      {"at_ms": 100, "input": "barge_in", "utterance": "11111111111111111111111111111111", "stream": "22222222222222222222222222222222", "item": "11111111111111111111111111111111", "played_ms": 100, "position_ms": 100},
       {"at_ms": 200, "input": "partial", "utterance": "11111111111111111111111111111111", "revision": 1, "text": "yes"},
       {"at_ms": 400, "input": "end", "utterance": "11111111111111111111111111111111", "revision": 2, "text": "yes go on", "position_ms": 300},
-      {"at_ms": 500, "input": "finish", "stream": "22222222222222222222222222222222", "chunk": 0, "position_ms": 500}
+      {"at_ms": 500, "input": "finish", "stream": "22222222222222222222222222222222", "chunk": 0, "item": "11111111111111111111111111111111", "played_ms": 500, "position_ms": 500}
     ],
     "expected": {"events": ["speech.position", "speech.start", "speech.barge_in", "speech.position", "speech.partial", "speech.end", "speech.position", "action.outcome"], "discarded": 0, "output": "finished", "terminal": "succeeded"}
   },
