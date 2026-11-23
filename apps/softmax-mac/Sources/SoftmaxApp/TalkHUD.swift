@@ -22,6 +22,8 @@ enum HUDPresentation: String, CaseIterable {
     private var panel: NSPanel?
     private var last: AppState = .idle
     private var hideTask: Task<Void, Never>?
+    private var cancelledUntil = 0.0
+    private let presentation = HUDModel()
     func update(model: ShellModel) {
         let state: HUDPresentation
         switch model.talkState {
@@ -32,7 +34,10 @@ enum HUDPresentation: String, CaseIterable {
         case .offline: state = .offline
         default:
             if last == .listening { state = .cancelled }
-            else { panel?.orderOut(nil); last = model.talkState; return }
+            else {
+                if ProcessInfo.processInfo.systemUptime < cancelledUntil { return }
+                panel?.orderOut(nil); last = model.talkState; return
+            }
         }
         let changed = last != model.talkState
         last = model.talkState
@@ -43,11 +48,11 @@ enum HUDPresentation: String, CaseIterable {
             panel.level = .statusBar; panel.hidesOnDeactivate = false
             panel.isReleasedWhenClosed = false; panel.ignoresMouseEvents = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot { LiveTalkHUDView(model: presentation) })
             self.panel = panel
         }
-        panel?.contentView = NSHostingView(rootView: SoftmaxWindowRoot {
-            TalkHUDView(state: state, level: model.level, elapsed: model.elapsed, hotkey: model.hotkeyName)
-        })
+        presentation.state = state; presentation.level = model.level
+        presentation.elapsed = model.elapsed; presentation.hotkey = model.hotkeyName
         if let screen = NSScreen.main ?? NSScreen.screens.first {
             let area = screen.visibleFrame
             panel?.setFrameOrigin(NSPoint(x: area.maxX - 344, y: area.maxY - 104))
@@ -60,6 +65,7 @@ enum HUDPresentation: String, CaseIterable {
             }
         } else { panel?.alphaValue = 1; panel?.orderFrontRegardless() }
         if state == .cancelled {
+            cancelledUntil = ProcessInfo.processInfo.systemUptime + 1.5
             hideTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(1.5))
                 guard !Task.isCancelled else { return }
@@ -71,6 +77,17 @@ enum HUDPresentation: String, CaseIterable {
                 userInfo: [.announcement: state.title, .priority: NSAccessibilityPriorityLevel.medium.rawValue])
         }
     }
+}
+
+@MainActor private final class HUDModel: ObservableObject {
+    @Published var state: HUDPresentation = .idle
+    @Published var level: Float = 0
+    @Published var elapsed: TimeInterval = 0
+    @Published var hotkey = "Right Option"
+}
+private struct LiveTalkHUDView: View {
+    @ObservedObject var model: HUDModel
+    var body: some View { TalkHUDView(state: model.state, level: model.level, elapsed: model.elapsed, hotkey: model.hotkey) }
 }
 
 struct TalkHUDView: View {

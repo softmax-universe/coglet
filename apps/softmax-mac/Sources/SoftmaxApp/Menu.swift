@@ -34,11 +34,12 @@ struct MenuTemplate: View {
     var state: MenuPresentation
     var animate = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.softmaxFreezeMotion) private var freezeMotion
     var body: some View {
         TimelineView(.animation(minimumInterval: Double(SoftmaxDesignTokens.motionMenuFrameMs) / 1000,
-                                paused: reduceMotion || !animate || (state != .listening && state != .speaking))) { context in
-            let frame = Int(context.date.timeIntervalSinceReferenceDate / 0.16) % 4
-            let suffix = !reduceMotion && animate && (state == .listening || state == .speaking) ? "-\(frame)" : ""
+                                paused: reduceMotion || freezeMotion || !animate || (state != .listening && state != .speaking))) { context in
+            let frame = Int(context.date.timeIntervalSinceReferenceDate / (Double(SoftmaxDesignTokens.motionMenuFrameMs) / 1000)) % 4
+            let suffix = !reduceMotion && !freezeMotion && animate && (state == .listening || state == .speaking) ? "-\(frame)" : ""
             Image("menu-\(state.rawValue)\(suffix)").renderingMode(.template)
                 .resizable().frame(width: 18, height: 18)
         }.accessibilityHidden(true)

@@ -15,21 +15,25 @@ import SoftmaxCore
                 func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
                     let key = "\(theme)-\(name)"
                     let hosting = NSHostingView(rootView: view
+                        .frame(width: size.width, height: size.height, alignment: .topLeading)
+                        .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
                         .environment(\.colorScheme, scheme)
-                        .environment(\.colorSchemeContrast, contrast)
-                        .environment(\.accessibilityReduceMotion, true))
+                        .environment(\.softmaxHighContrast, contrast == .increased)
+                        .environment(\.softmaxFreezeMotion, true))
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
-                    window.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                    window.appearance = NSAppearance(named: contrast == .increased ? (scheme == .dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua) : (scheme == .dark ? .darkAqua : .aqua))
                     window.isReleasedWhenClosed = false
                     window.contentView = hosting
                     hosting.frame = NSRect(origin: .zero, size: size)
+                    window.orderBack(nil)
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.04))
                     hosting.layoutSubtreeIfNeeded()
                     window.display()
                     guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
                         throw CocoaError(.fileWriteUnknown)
                     }
                     hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-                    guard let bytes = bitmap.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+                    guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
                     try bytes.write(to: root.appendingPathComponent(key + ".png"))
                     manifest.append(key)
                     window.close()
@@ -45,14 +49,14 @@ import SoftmaxCore
                 for tab in SettingsTab.allCases {
                     model.selectedTab = tab
                     try capture("settings-\(tab.rawValue.lowercased())", NSSize(width: 760, height: 540), SettingsView(model: model))
-                    try capture("settings-\(tab.rawValue.lowercased())-large", NSSize(width: 920, height: 720), SettingsView(model: model).environment(\.dynamicTypeSize, .accessibility5))
+                    try capture("settings-\(tab.rawValue.lowercased())-large", NSSize(width: 760, height: 540), SettingsView(model: model).environment(\.softmaxTextScale, 1.6))
                 }
                 for state in HUDPresentation.allCases {
                     try capture("hud-\(state.rawValue)", NSSize(width: 320, height: 88), TalkHUDView(state: state, level: 0.4, elapsed: 8, hotkey: "Right Option"))
                 }
                 for state in MenuPresentation.allCases {
                     try capture("menu-\(state.rawValue)", NSSize(width: 322, height: 440), SoftmaxMenuView(model: model, showFace: {}, showChat: { _ in }, settings: {}, about: {}, quit: {}, presentation: state))
-                    try capture("template-\(state.rawValue)", NSSize(width: 36, height: 36), MenuTemplate(state: state, animate: false).padding(9))
+                    try capture("template-\(state.rawValue)", NSSize(width: 36, height: 36), MenuTemplate(state: state, animate: false).padding(9).modifier(SoftmaxTheme()))
                 }
                 let host = FaceHost(shell: model)
                 try capture("face-idle", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))

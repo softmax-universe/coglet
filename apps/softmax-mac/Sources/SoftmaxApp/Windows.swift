@@ -21,6 +21,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var model: ShellModel
     @AppStorage("appearance") private var appearance = "System"
+    @AppStorage("textScale") private var textScale = 1.0
     @State private var query = ""
     @FocusState private var searchFocused: Bool
     @State private var shortcuts = false
@@ -31,7 +32,7 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
                 TextField("Search settings  ⌘K", text: $query).focused($searchFocused)
-                    .accessibilityLabel("Search settings").onSubmit { if let tab = tabs.first { model.selectedTab = tab; searchFocused = false } }
+                    .accessibilityLabel("Search settings").onSubmit { if let tab = tabs.first { model.selectedTab = tab } }
                     .onMoveCommand { direction in
                         guard !tabs.isEmpty else { return }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
@@ -59,6 +60,9 @@ struct SettingsView: View {
                         case .general:
                             Text("Softmax lives in your menu bar. Close windows without quitting.")
                             Picker("Appearance", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
+                            Picker("Text size", selection: $textScale) {
+                                Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
+                            }
                             Toggle("Show floating orb", isOn: $model.orbEnabled).accessibilityIdentifier("floatingOrbToggle")
                             Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                             LoginItemControls(model: model)

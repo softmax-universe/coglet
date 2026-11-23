@@ -1,16 +1,27 @@
 import SwiftUI
 import AppKit
 
+private struct SoftmaxTextScaleKey: EnvironmentKey { static let defaultValue = 1.0 }
+private struct SoftmaxHighContrastKey: EnvironmentKey { static let defaultValue = false }
+private struct SoftmaxFreezeMotionKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    var softmaxTextScale: Double { get { self[SoftmaxTextScaleKey.self] } set { self[SoftmaxTextScaleKey.self] = newValue } }
+    var softmaxHighContrast: Bool { get { self[SoftmaxHighContrastKey.self] } set { self[SoftmaxHighContrastKey.self] = newValue } }
+    var softmaxFreezeMotion: Bool { get { self[SoftmaxFreezeMotionKey.self] } set { self[SoftmaxFreezeMotionKey.self] = newValue } }
+}
+
 /// JSON-generated values are compiled directly from Design/DesignTokens.swift.
 /// Increased contrast uses native semantic foregrounds and explicit group outlines.
 struct SoftmaxTheme: ViewModifier {
     @ScaledMetric(relativeTo: .body) private var bodySize = SoftmaxDesignTokens.fontBody
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.softmaxTextScale) private var scale
+    @Environment(\.softmaxHighContrast) private var forceContrast
     func body(content: Content) -> some View {
         content
-            .font(.system(size: bodySize))
-            .foregroundStyle(contrast == .increased ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.ink : SoftmaxDesignTokens.Light.ink))
+            .font(.system(size: bodySize * scale))
+            .foregroundStyle(contrast == .increased || forceContrast ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.ink : SoftmaxDesignTokens.Light.ink))
             .tint(scheme == .dark ? SoftmaxDesignTokens.Dark.accent : SoftmaxDesignTokens.Light.accent)
             .background(scheme == .dark ? SoftmaxDesignTokens.Dark.background : SoftmaxDesignTokens.Light.background)
     }
@@ -19,6 +30,7 @@ struct SoftmaxTheme: ViewModifier {
 struct DesignGroup<Content: View>: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.softmaxHighContrast) private var forceContrast
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) { content }
@@ -27,15 +39,17 @@ struct DesignGroup<Content: View>: View {
             .background(scheme == .dark ? SoftmaxDesignTokens.Dark.surface : SoftmaxDesignTokens.Light.surface,
                         in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup))
             .overlay(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusGroup)
-                .strokeBorder(contrast == .increased ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.border : SoftmaxDesignTokens.Light.border), lineWidth: contrast == .increased ? 2 : 1))
+                .strokeBorder(contrast == .increased || forceContrast ? Color.primary : (scheme == .dark ? SoftmaxDesignTokens.Dark.border : SoftmaxDesignTokens.Light.border), lineWidth: contrast == .increased || forceContrast ? 2 : 1))
     }
 }
 
 struct SoftmaxWindowRoot<Content: View>: View {
     @AppStorage("appearance") private var appearance = "System"
+    @AppStorage("textScale") private var textScale = 1.0
     @ViewBuilder var content: Content
     var body: some View {
         content.modifier(SoftmaxTheme())
+            .environment(\.softmaxTextScale, textScale)
             .preferredColorScheme(appearance == "Dark" ? .dark : appearance == "Light" ? .light : nil)
     }
 }

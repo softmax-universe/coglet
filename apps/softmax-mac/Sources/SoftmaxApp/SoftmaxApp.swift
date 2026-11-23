@@ -26,11 +26,22 @@ struct SoftmaxApp: App {
 
 struct StatusLabel: View {
     @ObservedObject var model: ShellModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var frame = 0
+    private var animated: Bool { !reduceMotion && [.listening, .speaking].contains(model.menuPresentation) }
     var body: some View {
-        MenuTemplate(state: model.menuPresentation)
+        Image("menu-\(model.menuPresentation.rawValue)\(animated ? "-\(frame)" : "")").renderingMode(.template)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Softmax, \(model.menuPresentation.label), hub disconnected")
             .help("Softmax, \(model.menuPresentation.label), hub disconnected")
+            .task(id: model.menuPresentation.rawValue + String(reduceMotion)) {
+                frame = 0
+                while animated && !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(Int(SoftmaxDesignTokens.motionMenuFrameMs)))
+                    guard !Task.isCancelled else { return }
+                    frame = (frame + 1) % 4
+                }
+            }
     }
 }
 

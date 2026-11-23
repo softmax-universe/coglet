@@ -132,12 +132,13 @@ private final class FacePanel: NSPanel {
 struct FacePanelView: View {
     @ObservedObject var host: FaceHost
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.softmaxFreezeMotion) private var freezeMotion
     var hide: () -> Void
     var resize: () -> Void
     var body: some View {
         VStack(spacing: SoftmaxDesignTokens.spacing[0]) {
-            FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion))
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.07), value: host.revision)
+            FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion || freezeMotion))
+                .animation(reduceMotion || freezeMotion ? nil : .easeOut(duration: 0.07), value: host.revision)
                 .accessibilityElement().accessibilityLabel("Face, \(host.driver.state.label)")
             if !host.compact {
                 Text(host.demo ? "Simulated demo · no audio" : host.driver.state.label)
