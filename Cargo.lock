@@ -353,6 +353,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-db"
+version = "0.1.0"
+dependencies = [
+ "coglet-types",
+ "fs2",
+ "hex",
+ "rusqlite",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "coglet-echo"
 version = "0.1.0"
 dependencies = [
