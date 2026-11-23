@@ -24,7 +24,7 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=ROOT) as temp:
             root = Path(temp)
             (root / 'codegen').mkdir()
-            for filename in ('generate.py', 'cddl.py', 'contracts.py', 'emit_go.py', 'emit_java.py', 'target_ir.py'):
+            for filename in ('generate.py', 'cddl.py', 'contracts.py', 'emit_go.py', 'emit_java.py', 'target_ir.py', 'swift.py'):
                 shutil.copy(ROOT / 'codegen' / filename, root / 'codegen' / filename)
             (root / 'codegen/contracts.json').write_text('{"test":"generated"}')
             (root / 'spec/fixtures/test').mkdir(parents=True)
