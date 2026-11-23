@@ -33,11 +33,21 @@ class SwiftEmitterTests(unittest.TestCase):
 
     def test_nonproductive_and_struct_only_recursion_fail_closed(self):
         for cddl in ('cycle = cycle', 'a = b\nb = a',
-                     'cycle = cycle / null', 'cycle = { ? next: cycle }'):
+                     'cycle = cycle / null', 'cycle = { ? next: cycle }',
+                     'tree = [* tree]', 'a = [* b]\nb = [* a]'):
             with self.subTest(cddl=cddl), self.assertRaisesRegex(ValueError, 'recursive type cycle'):
                 generate_swift(parse(cddl))
         # Recursive containers behind an indirect enum are productive.
         self.assertIn('indirect enum Tree', generate_swift(parse('tree = null / [* tree]')))
+        self.assertIn('struct Tree', generate_swift(parse('tree = {children: [* tree]}')))
+
+    def test_field_shadowing_all_generated_types_fails_closed(self):
+        for cddl in ('child = {value: tstr}\nthing = {Child: child}',
+                     'thing = {ThingChoice: tstr, choice: tstr / bool}',
+                     'thing = {Thing: tstr}',
+                     'thing = {ThingChoice: tstr}\nother = {choice: tstr / bool}\nthing-choice = bool'):
+            with self.subTest(cddl=cddl), self.assertRaisesRegex(ValueError, 'collision'):
+                generate_swift(parse(cddl))
 
     def test_unknown_ir_fails_closed(self):
         with self.assertRaises(ValueError):
@@ -139,6 +149,7 @@ class SwiftEmitterTests(unittest.TestCase):
         text = tstr
         integer = -8..8
         number = 0..18446744073709551615
+        branch = {children: [* branch]}
         '''
         rules = parse(cddl)
         fields = rules['thing']['fields']
@@ -152,6 +163,10 @@ class SwiftEmitterTests(unittest.TestCase):
             .init("optional", .null), .init("nested", .map([.init("default", .boolean(true))])),
             .init("choice", .text("one"))])
         let bytes = try CBORCodec.encode(rule: "thing", value: value)
+        let branch = Branch(children: [Branch(children: [])])
+        let branchBytes = try branch.toCBOR()
+        let branchRoundTrip = try Branch.fromCBOR(branchBytes).toCBOR()
+        precondition(branchRoundTrip == branchBytes)
         let typed = try Thing.fromCBOR(bytes)
         precondition(typed.`class` == "ok")
         precondition(typed.`self_` == "ok")

@@ -71,6 +71,28 @@ def generate_swift(rules):
         for key in rules:
             visit(key)
 
+    # Collection aliases do not introduce a nominal Swift type. Recursion must
+    # cross a struct/indirect enum, not just Array's indirection in its storage.
+    def alias_references(node):
+        if node['op'] == 'ref':
+            return {node['name']}
+        if node['op'] in ('array', 'default'):
+            return alias_references(node['item'])
+        return set()
+    active, done = set(), set()
+    def visit_alias(key):
+        if key in active:
+            raise ValueError('unsupported Swift recursive type cycle: ' + key)
+        if key in done:
+            return
+        active.add(key)
+        for ref in alias_references(rules[key]):
+            visit_alias(ref)
+        active.remove(key)
+        done.add(key)
+    for key in rules:
+        visit_alias(key)
+
     def typ(node, hint):
         op = node['op']
         if op in ('intersection', 'tuple'):
@@ -202,6 +224,14 @@ def generate_swift(rules):
                 out += [f'        case .variant{i+1}(let v):', '            value = try v.cborValue(depth: depth)', f'            try CBORCodec.validateNode({schema(branch)}, value)']
             out += ['        }', '        try CBORCodec.validate(Self.schemaRule, value)', '        return value', '    }']
         out += ['}', '']
+    # All inline types are now known, including those emitted after the record
+    # that contains a shadowing field. Backticks cannot disambiguate expression
+    # constructors such as Child.init from a stored property named Child.
+    for key, node in definitions.items():
+        if node['op'] == 'record' and 'rest' not in node:
+            for field in node['fields']:
+                if field_name(field['name']).strip('`') in names.values():
+                    raise ValueError('Swift field/type identifier collision in ' + key + ': ' + field['name'])
     # Include inline record/union rules in the same schema table.
     start = out.index('    ]')
     out[start:start] = ['        ' + quote(k) + ': ' + schema(v) + ',' for k, v in definitions.items() if k.startswith('@')]
