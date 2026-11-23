@@ -1,6 +1,6 @@
 //! Validate the exact R3 rewrite, rather than trusting a custom section or
 //! trusting that publication ran a transform. No byte/hash normalization.
-use coglet_engine::{Error, Result};
+use crate::{Error, Result};
 use wasmparser::{Operator, OperatorsReader};
 pub(super) fn validate(mut ops: OperatorsReader<'_>) -> Result<()> {
     use Operator::*;

@@ -1,5 +1,7 @@
 //! Product-neutral fresh-step execution boundary. No ambient WASI implementation.
 use std::time::Instant;
+pub mod admission;
+mod nan;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {

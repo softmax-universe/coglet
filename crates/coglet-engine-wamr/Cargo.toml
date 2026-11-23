@@ -11,7 +11,7 @@ aot = []
 
 [dependencies]
 coglet-engine = { path = "../coglet-engine" }
-wasmparser = "=0.245.1"
+
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
