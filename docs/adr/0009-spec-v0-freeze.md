@@ -167,6 +167,41 @@ amendment) is the proposed publication policy, not a qualified implementation.
 Their formal status transition and final freeze acceptance remain the freeze
 owner's responsibility. No new ADR number or production acceptance is implied.
 
+### M-C amendment: retry retention, clock domains and heard archive
+
+This pre-freeze amendment supersedes the obsolete latest-batch-only paragraph
+of the hub receipt section: retain EVERY admitted nonempty relay batch's digest,
+offset and original next_offset for the device identity lifetime. A succeeds,
+B succeeds, retry A returns A's original success, with no second routing.
+
+Clarify ADR-0002's common deadline wording and extend the M-B boundary rule:
+ABI guest intent is immutable runtime-epoch time; surface act is surface-epoch
+time translated once before first dispatch. hub.actions is in the RECEIVING
+runtime epoch. The sender must establish an authenticated/configured mapping
+before sending and retain that mapped hub request; the receiver separately
+retains its once-translated surface act. No new clock RPC is introduced: absent
+mapping fails closed rather than interpreting a foreign clock numerically.
+New samples/reconnects cannot change either retained envelope for an old ID.
+These are contract vectors only; real crash/durable dispatch remains R-retry M1.
+
+For heard history choose option (a), NOT the surface-retained narrowing (b).
+Amend ADR-0006's ABI boundary-origin restriction and ADR-0010's unspecified private
+recording: `runtime.heard` is one runtime-authored boundary-change at reserved
+`/data/runtime/heard.cbor`, actor=target coglet, ticket=null. Its deterministic
+CBOR `heard-state` records item/surface identity, duration, played position,
+stopped state, aligned text spans and the checked derived heard prefix. The file
+is guest-read-only, runtime-write-only, and not an inbox or synthetic guest event.
+It fits ABI 86–104's closed applied-mutation record without new envelope fields;
+its exact bytes participate in the existing snapshot and journal hash chain,
+including initial and trailing/zero-step exports. Replay derives history solely
+from exported journal state; no read response becomes a guest event and no live
+surface/TTS/oracle can supply missing alignment. Private archive access follows
+transcript privacy; live revocation does not rewrite historical audit bytes.
+
+The ABI generator, rehashed positive/negative traces and actual harness timeline
+regressions exercise these rules. No ADR status, engine/speech qualification or
+existing M1 gate is accepted or changed by this amendment.
+
 ## Alternatives
 
 - Tag the independently tested individual specs immediately: rejected because

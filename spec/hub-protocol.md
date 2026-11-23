@@ -353,9 +353,15 @@ No direct coglet-to-coglet connection, including siblings on the same device.
 The hub applies routing/policy and creates target inbox entries/events as needed,
 subject to the capability's ownership restrictions.
 
-`hub.actions` carries one common action. Its coglet must match target. Runtime
-checks hub authority, local capability and exclusive output ownership, maps the
-executing surface clock, and returns common action-accept in the result.
+`hub.actions` carries one common action. Its coglet must match target. Its deadline
+is in the receiving runtime epoch, NOT the sending hub epoch. The sender MUST
+establish that mapping before first send and durably retain the mapped request;
+no mapping means no new dispatch. The receiver preserves this intent and maps
+the deadline once into the surface epoch before first surface dispatch, retaining
+the complete act envelope. Retries/reconnects reuse the retained envelopes at
+both boundaries, never a new sample/translation for an old ID (conventions,
+ADR-0009 M-C). Runtime checks hub authority, local capability and exclusive
+output ownership and returns common action-accept in the result.
 An immediate rejection is terminal, never an outcome. Admission is not completion;
 one eventual common action-outcome is returned as an `action.outcome` event via
 `hub.events` (correlation IDs match). Persist `(coglet,id)` envelope and admission
@@ -408,8 +414,13 @@ special atomic invite transaction, not a queued mutation.
 
 Durable mutation/action receipts and input digests are kept for the coglet's
 provisioning lifetime, with no time-based ID reuse; storage pressure refuses new
-admission before side effects. Event dedupe keeps source watermark and digest of
-the most recent accepted batch: older batches return conflict, not re-delivery.
+admission before side effects. Event dedupe retains source watermarks AND every
+admitted nonempty batch's offset, digest and original next_offset for the device
+identity lifetime. Even after later batches succeed, an identical older retry
+returns its original success without re-delivery; changed bytes at that offset
+return conflict. Check retained batch receipts before source watermarks. Empty
+cursor probes reserve nothing; storage pressure refuses new admission, never
+evicts an old receipt to admit work.
 `not_found` on receipt means never admitted for that caller/target, not permission
 to retry someone else's ID. An authorized caller can retry its original mutation
 unchanged. Fetch/status/read/health are observation operations and may be retried

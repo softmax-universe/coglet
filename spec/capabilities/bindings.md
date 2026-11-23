@@ -60,8 +60,10 @@ surface operations, minted by an external producer or accepted merely because a
 payload claims runtime origin. Defined event names are `runtime.inbox`,
 `runtime.timer`, `runtime.debug_step`, and terminal inbox
 `runtime.action_rejected`. Their source is the target coglet; the ABI defines
-their exact payloads and authorized triggers. `runtime.receipt` is an audit
-method, NOT an event, capability or remotely callable RPC. Unknown runtime names
+their exact payloads and authorized triggers. `runtime.receipt` and `runtime.heard`
+are audit methods, NOT events, capabilities or remotely callable RPCs. The latter
+records aligned heard history at a reserved runtime-owned file boundary; it does
+not turn a surface read into a guest event. Unknown runtime names
 are invalid at v0. `action.outcome` is the common terminal action event, not a
 capability grant: bind it to the admitted action and authenticated surface (or
 separately retained synthesis authority). `llm.reply` is gateway terminal inbox

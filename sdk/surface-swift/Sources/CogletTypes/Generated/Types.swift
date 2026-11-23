@@ -9,6 +9,9 @@ internal enum GeneratedSchema {
         "abi::path": .intersection([.text, .regexp("^/(code|data|logs)(/[^/\\x00-\\x1f\\x7f\\\\]+)+$")]),
         "abi::snapshot": .boundedMap(0, nil, .text, .reference("abi::hex")),
         "abi::budgets": .record([.init(name: "compute", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "compute_mode", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "memory_pages", optional: false, node: .range(.unsigned(1), .unsigned(65536))), .init(name: "wall_time_us", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "max_events", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "host_bytes", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615)))]),
+        "abi::heard-span": .record([.init(name: "end_ms", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .text)]),
+        "abi::heard-item": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "duration_ms", optional: false, node: .reference("common::uint64")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "stopped", optional: false, node: .boolean), .init(name: "spans", optional: false, node: .boundedArray(0, nil, .reference("abi::heard-span"))), .init(name: "heard", optional: false, node: .text)]),
+        "abi::heard-state": .record([.init(name: "items", optional: false, node: .boundedArray(0, nil, .reference("abi::heard-item")))]),
         "abi::timer-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "at", optional: false, node: .reference("common::uint64"))]),
         "abi::llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
         "abi::log-entry": .record([.init(name: "level", optional: false, node: .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))])), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "fields", optional: false, node: .reference("common::profile-map"))]),
@@ -210,6 +213,9 @@ internal enum GeneratedSchema {
         "path": .intersection([.text, .regexp("^/(code|data|logs)(/[^/\\x00-\\x1f\\x7f\\\\]+)+$")]),
         "snapshot": .boundedMap(0, nil, .text, .reference("abi::hex")),
         "budgets": .record([.init(name: "compute", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "compute_mode", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "memory_pages", optional: false, node: .range(.unsigned(1), .unsigned(65536))), .init(name: "wall_time_us", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "max_events", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "host_bytes", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615)))]),
+        "heard-span": .record([.init(name: "end_ms", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .text)]),
+        "heard-item": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "item", optional: false, node: .reference("common::correlation-id")), .init(name: "duration_ms", optional: false, node: .reference("common::uint64")), .init(name: "played_ms", optional: false, node: .reference("common::uint64")), .init(name: "stopped", optional: false, node: .boolean), .init(name: "spans", optional: false, node: .boundedArray(0, nil, .reference("abi::heard-span"))), .init(name: "heard", optional: false, node: .text)]),
+        "heard-state": .record([.init(name: "items", optional: false, node: .boundedArray(0, nil, .reference("abi::heard-item")))]),
         "timer-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "at", optional: false, node: .reference("common::uint64"))]),
         "llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
         "log-entry": .record([.init(name: "level", optional: false, node: .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))])), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "fields", optional: false, node: .reference("common::profile-map"))]),
@@ -518,6 +524,9 @@ internal enum GeneratedSchema {
         case "abi::path": typed = try AbiPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi::snapshot": typed = try AbiSnapshot.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi::budgets": typed = try AbiBudgets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::heard-span": typed = try AbiHeardSpan.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::heard-item": typed = try AbiHeardItem.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::heard-state": typed = try AbiHeardState.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi::timer-request": typed = try AbiTimerRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi::llm-request": typed = try AbiLlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi::log-entry": typed = try AbiLogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -719,6 +728,9 @@ internal enum GeneratedSchema {
         case "path": typed = try Path.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "snapshot": typed = try Snapshot.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "budgets": typed = try Budgets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "heard-span": typed = try HeardSpan.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "heard-item": typed = try HeardItem.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "heard-state": typed = try HeardState.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "timer-request": typed = try TimerRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "llm-request": typed = try LlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "log-entry": typed = try LogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1052,6 +1064,100 @@ public struct AbiBudgets: CBORMessage, Sendable {
         entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
         entries.append(.init("max_events", try self.`max_events`.cborValue(depth: depth + 1)))
         entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiHeardSpan: CBORMessage, Sendable {
+    public static let schemaRule = "abi::heard-span"
+    public var `end_ms`: Swift.UInt64
+    public var `text`: Swift.String
+    public init(`end_ms`: Swift.UInt64, `text`: Swift.String) {
+        self.`end_ms` = `end_ms`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`end_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "end_ms")), depth: depth + 1)
+        self.`text` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("end_ms", try self.`end_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiHeardItem: CBORMessage, Sendable {
+    public static let schemaRule = "abi::heard-item"
+    public var `surface`: CommonSurfaceId
+    public var `item`: CommonCorrelationId
+    public var `duration_ms`: CommonUint64
+    public var `played_ms`: CommonUint64
+    public var `stopped`: Swift.Bool
+    public var `spans`: [AbiHeardSpan]
+    public var `heard`: Swift.String
+    public init(`surface`: CommonSurfaceId, `item`: CommonCorrelationId, `duration_ms`: CommonUint64, `played_ms`: CommonUint64, `stopped`: Swift.Bool, `spans`: [AbiHeardSpan], `heard`: Swift.String) {
+        self.`surface` = `surface`
+        self.`item` = `item`
+        self.`duration_ms` = `duration_ms`
+        self.`played_ms` = `played_ms`
+        self.`stopped` = `stopped`
+        self.`spans` = `spans`
+        self.`heard` = `heard`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`surface` = try CommonSurfaceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "surface")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`duration_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "duration_ms")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`stopped` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stopped")), depth: depth + 1)
+        self.`spans` = try [AbiHeardSpan].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "spans")), depth: depth + 1)
+        self.`heard` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "heard")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("surface", try self.`surface`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("duration_ms", try self.`duration_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("stopped", try self.`stopped`.cborValue(depth: depth + 1)))
+        entries.append(.init("spans", try self.`spans`.cborValue(depth: depth + 1)))
+        entries.append(.init("heard", try self.`heard`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiHeardState: CBORMessage, Sendable {
+    public static let schemaRule = "abi::heard-state"
+    public var `items`: [AbiHeardItem]
+    public init(`items`: [AbiHeardItem]) {
+        self.`items` = `items`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`items` = try [AbiHeardItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "items")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("items", try self.`items`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -6482,6 +6588,100 @@ public struct Budgets: CBORMessage, Sendable {
         entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
         entries.append(.init("max_events", try self.`max_events`.cborValue(depth: depth + 1)))
         entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HeardSpan: CBORMessage, Sendable {
+    public static let schemaRule = "heard-span"
+    public var `end_ms`: Swift.UInt64
+    public var `text`: Swift.String
+    public init(`end_ms`: Swift.UInt64, `text`: Swift.String) {
+        self.`end_ms` = `end_ms`
+        self.`text` = `text`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`end_ms` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "end_ms")), depth: depth + 1)
+        self.`text` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "text")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("end_ms", try self.`end_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("text", try self.`text`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HeardItem: CBORMessage, Sendable {
+    public static let schemaRule = "heard-item"
+    public var `surface`: CommonSurfaceId
+    public var `item`: CommonCorrelationId
+    public var `duration_ms`: CommonUint64
+    public var `played_ms`: CommonUint64
+    public var `stopped`: Swift.Bool
+    public var `spans`: [AbiHeardSpan]
+    public var `heard`: Swift.String
+    public init(`surface`: CommonSurfaceId, `item`: CommonCorrelationId, `duration_ms`: CommonUint64, `played_ms`: CommonUint64, `stopped`: Swift.Bool, `spans`: [AbiHeardSpan], `heard`: Swift.String) {
+        self.`surface` = `surface`
+        self.`item` = `item`
+        self.`duration_ms` = `duration_ms`
+        self.`played_ms` = `played_ms`
+        self.`stopped` = `stopped`
+        self.`spans` = `spans`
+        self.`heard` = `heard`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`surface` = try CommonSurfaceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "surface")), depth: depth + 1)
+        self.`item` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "item")), depth: depth + 1)
+        self.`duration_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "duration_ms")), depth: depth + 1)
+        self.`played_ms` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "played_ms")), depth: depth + 1)
+        self.`stopped` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "stopped")), depth: depth + 1)
+        self.`spans` = try [AbiHeardSpan].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "spans")), depth: depth + 1)
+        self.`heard` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "heard")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("surface", try self.`surface`.cborValue(depth: depth + 1)))
+        entries.append(.init("item", try self.`item`.cborValue(depth: depth + 1)))
+        entries.append(.init("duration_ms", try self.`duration_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("played_ms", try self.`played_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("stopped", try self.`stopped`.cborValue(depth: depth + 1)))
+        entries.append(.init("spans", try self.`spans`.cborValue(depth: depth + 1)))
+        entries.append(.init("heard", try self.`heard`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HeardState: CBORMessage, Sendable {
+    public static let schemaRule = "heard-state"
+    public var `items`: [AbiHeardItem]
+    public init(`items`: [AbiHeardItem]) {
+        self.`items` = `items`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`items` = try [AbiHeardItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "items")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("items", try self.`items`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value

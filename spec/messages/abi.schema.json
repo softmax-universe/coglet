@@ -92,6 +92,80 @@
       ],
       "additionalProperties": false
     },
+    "heard-span": {
+      "type": "object",
+      "properties": {
+        "end_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "end_ms",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "heard-item": {
+      "type": "object",
+      "properties": {
+        "surface": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/surface-id"
+        },
+        "item": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "duration_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "played_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "stopped": {
+          "type": "boolean"
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/heard-span"
+          },
+          "minItems": 0
+        },
+        "heard": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "surface",
+        "item",
+        "duration_ms",
+        "played_ms",
+        "stopped",
+        "spans",
+        "heard"
+      ],
+      "additionalProperties": false
+    },
+    "heard-state": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/heard-item"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
     "timer-request": {
       "type": "object",
       "properties": {

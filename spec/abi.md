@@ -96,12 +96,15 @@ match hub wire methods: hub.inbox for inbox appends and debug.write for debug
 writes. Runtime terminal receipt materialization uses `runtime.receipt` (not a hub
 RPC): actor=target coglet, ticket=null, path=/data/inbox.jsonl. It may only append
 terminal action messages. Journal origin is structural: this method is origin
-`runtime`; other boundary changes are origin `hub` (including hub-relayed provider
+`runtime`; `runtime.heard` is also runtime-origin as defined below; other boundary
+changes are origin `hub` (including hub-relayed provider
 replies); guest input-to-output writes and calls
 are origin `coglet`. Exporters MUST preserve or explicitly materialize that origin,
 never flatten both into unattributed state deltas. The boundary audit_id equals
 the hub operation_id for hub-origin changes; runtime.receipt allocates a stable
 materialization audit ID retained across retries. Actor/ticket/target are unchanged.
+The M-C amendment also defines `runtime.heard` below as a runtime-origin boundary
+mutation, not a hub method or guest event. All other origin rules remain unchanged.
 The enclosing record and its before/after hashes identify the boundary; only applied
 mutations appear here, with failed/queued outcomes retained in hub receipts/audit.
 
@@ -193,6 +196,44 @@ this does not promise exactly-once physical effects. Aborted emits never become
 pending and cannot receive terminals. A later failed guest wake consumes its
 wake but does not restore the pending action or erase the immutable inbox line.
 Replay checks all these transitions and never dispatches or synthesizes results.
+
+## Runtime-authored heard-history journal record (ADR-0009 M-C)
+
+`runtime.heard` is one boundary-change at the reserved path
+`/data/runtime/heard.cbor`, actor=target coglet, ticket=null, with a stable audit_id
+retained across retries. Its before/after hex bytes encode core-deterministic CBOR
+`heard-state` (ABI schema), a complete private snapshot of per-item alignment and
+heard projection. Absence means empty history; after MUST NOT be null. This file
+is guest-read-only and cannot be changed by debug.write/hub.inbox/guest writes;
+only the runtime may replace it at a boundary. It is not an inbox append and
+queues NO wake, guest event or engine invocation. An ordinary later step can read
+it; it must be durable before that step consumes conversation history. It may
+also occur in trailing_boundary, including zero-step exports. Thus it fits the
+closed applied-mutation format above without adding an event or untyped header.
+
+`heard-state` contains `items`, ordered by (surface,item), unique per pair. Each
+`heard-item` carries surface, item, duration_ms, played_ms, stopped, ordered spans
+`{end_ms,text}` and the derived `heard` text. Span ends strictly increase within
+duration; played_ms cannot exceed duration. Concatenated span text is alignment
+evidence, NOT conversation history. The heard text is exactly the concatenation
+of spans ending at/before played_ms, capped to 16,384 UTF-8 bytes without splitting
+a character. Missing alignment is an empty spans array and empty heard text.
+Duration is the known media extent at that recording, not a prediction of final
+stream length. For a retained item duration cannot decrease and alignment is
+append-only (existing spans never change); later measured alignment may extend
+an empty/partial list. Positions never regress,
+and stopped items cannot advance or become live again. A duck snapshot remains
+live and may later advance; queued items have played_ms=0 and no heard prefix
+(span ends are positive). Previously finished items remain independent. Items
+are not removed from the journal snapshot; revocation denies future live access
+and archive access follows transcript privacy, never rewriting prior audit bytes.
+
+Validate decoded state shape and these semantic invariants at initial_files and
+every mutation, including its runtime origin and read-only mount. Export includes
+the exact initial file and each before/after state in ordinary hashed records.
+Replay rebuilds history solely from those journal bytes, with no TTS, surface
+read, oracle-injected projection or rewritten intent. This establishes an archive
+contract, not authenticated/native alignment or persistence qualification (M1).
 
 ## Budgets and engine qualification
 

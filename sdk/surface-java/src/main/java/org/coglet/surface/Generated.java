@@ -18,6 +18,34 @@ m.put("host_bytes", this.host_bytes);
 return m; }
 public static Budgets fromCbor(byte[] raw) { return Codec.decodeRecord("budgets", raw, Budgets.class); }
 }
+public record HeardSpan(BigInteger end_ms, String text) implements Message {
+public String rule() { return "heard-span"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("end_ms", this.end_ms);
+m.put("text", this.text);
+return m; }
+public static HeardSpan fromCbor(byte[] raw) { return Codec.decodeRecord("heard-span", raw, HeardSpan.class); }
+}
+public record HeardItem(String surface, String item, BigInteger duration_ms, BigInteger played_ms, Boolean stopped, List<HeardSpan> spans, String heard) implements Message {
+public String rule() { return "heard-item"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("surface", this.surface);
+m.put("item", this.item);
+m.put("duration_ms", this.duration_ms);
+m.put("played_ms", this.played_ms);
+m.put("stopped", this.stopped);
+m.put("spans", this.spans);
+m.put("heard", this.heard);
+return m; }
+public static HeardItem fromCbor(byte[] raw) { return Codec.decodeRecord("heard-item", raw, HeardItem.class); }
+}
+public record HeardState(List<HeardItem> items) implements Message {
+public String rule() { return "heard-state"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("items", this.items);
+return m; }
+public static HeardState fromCbor(byte[] raw) { return Codec.decodeRecord("heard-state", raw, HeardState.class); }
+}
 public record TimerRequest(String id, BigInteger at) implements Message {
 public String rule() { return "timer-request"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
@@ -1370,6 +1398,9 @@ public static SurfaceMessage12 fromCbor(byte[] raw) { return Codec.decodeRecord(
 }
 static void registerAll() {
 Codec.register("budgets", Budgets.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"compute_mode\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":65536}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"max_events\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}}]}", new String[]{"compute","compute_mode","memory_pages","wall_time_us","max_events","host_bytes"});
+Codec.register("heard-span", HeardSpan.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"end_ms\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"tstr\"}}]}", new String[]{"end_ms","text"});
+Codec.register("heard-item", HeardItem.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::surface-id\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"stopped\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"spans\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::heard-span\"},\"min\":0}},{\"name\":\"heard\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"tstr\"}}]}", new String[]{"surface","item","duration_ms","played_ms","stopped","spans","heard"});
+Codec.register("heard-state", HeardState.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"items\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"abi::heard-item\"},\"min\":0}}]}", new String[]{"items"});
 Codec.register("timer-request", TimerRequest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"at\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"id","at"});
 Codec.register("llm-request", LlmRequest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"model\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"input\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"id","correlation_id","capability","model","input"});
 Codec.register("log-entry", LogEntry.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"level\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"debug\"},{\"op\":\"literal\",\"value\":\"info\"},{\"op\":\"literal\",\"value\":\"warn\"},{\"op\":\"literal\",\"value\":\"error\"}]}},{\"name\":\"message\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"fields\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"level","message","fields"});
@@ -1508,6 +1539,9 @@ Codec.alias("abi::call", "call");
 Codec.alias("abi::effect-ledger", "effect-ledger");
 Codec.alias("abi::engine", "engine");
 Codec.alias("abi::failure", "failure");
+Codec.alias("abi::heard-item", "heard-item");
+Codec.alias("abi::heard-span", "heard-span");
+Codec.alias("abi::heard-state", "heard-state");
 Codec.alias("abi::inbox-message", "inbox-message");
 Codec.alias("abi::llm-reply", "llm-reply");
 Codec.alias("abi::llm-request", "llm-request");

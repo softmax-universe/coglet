@@ -5,6 +5,9 @@ hex = tstr .regexp "^([0-9a-f]{2})*$"
 path = tstr .regexp "^/(code|data|logs)(/[^/\\x00-\\x1f\\x7f\\\\]+)+$"
 snapshot = {* tstr => hex}
 budgets = {"compute": 1..18446744073709551615, "compute_mode": tstr .size (1..18446744073709551615), "memory_pages": 1..65536, "wall_time_us": 1..18446744073709551615, "max_events": 1..18446744073709551615, "host_bytes": 1..18446744073709551615}
+heard-span = {"end_ms": 1..18446744073709551615, "text": tstr}
+heard-item = {"surface": surface-id, "item": correlation-id, "duration_ms": uint64, "played_ms": uint64, "stopped": bool, "spans": [* heard-span], "heard": tstr}
+heard-state = {"items": [* heard-item]}
 timer-request = {"id": correlation-id, "at": uint64}
 llm-request = {"id": correlation-id, "correlation_id": correlation-id, "capability": capability-name, "model": tstr .size (1..18446744073709551615), "input": profile-map}
 log-entry = {"level": "debug" / "info" / "warn" / "error", "message": tstr .size (1..18446744073709551615), "fields": profile-map}

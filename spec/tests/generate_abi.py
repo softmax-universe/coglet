@@ -98,6 +98,17 @@ record('budgets', [('compute', positive, '1..18446744073709551615'),
                    ('wall_time_us', positive, '1..18446744073709551615'),
                    ('max_events', positive, '1..18446744073709551615'),
                    ('host_bytes', positive, '1..18446744073709551615')])
+# Runtime-authored heard-state is embedded as deterministic CBOR in the reserved
+# boundary file, not admitted as a standalone ABI root or guest event.
+record('heard-span', [('end_ms', positive, '1..18446744073709551615'),
+                      ('text', {'type': 'string'}, 'tstr')])
+record('heard-item', [('surface', ref('surface-id'), 'surface-id'),
+                      ('item', ref('correlation-id'), 'correlation-id'),
+                      ('duration_ms', U, 'uint64'), ('played_ms', U, 'uint64'),
+                      ('stopped', {'type': 'boolean'}, 'bool'),
+                      ('spans', arr(local('heard-span')), '[* heard-span]'),
+                      ('heard', {'type': 'string'}, 'tstr')])
+record('heard-state', [('items', arr(local('heard-item')), '[* heard-item]')])
 record('timer-request', [('id', ref('correlation-id'), 'correlation-id'), ('at', U, 'uint64')])
 record('llm-request', [('id', ref('correlation-id'), 'correlation-id'),
                        ('correlation_id', ref('correlation-id'), 'correlation-id'),

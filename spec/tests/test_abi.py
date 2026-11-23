@@ -11,6 +11,7 @@ from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode
+from heard_archive import HEARD_PATH, read_state, check_transition
 
 BASE = 'https://coglet.dev/spec/'
 
@@ -137,11 +138,11 @@ def check_record(rec):
     # Enforce mount writes and append-only files independently of shape.
     for path, value in rec['input_files'].items():
         after = rec['output_files'].get(path)
-        if (path.startswith('/code/') or path == '/data/inbox.jsonl') and after != value:
+        if (path.startswith('/code/') or path in ('/data/inbox.jsonl', HEARD_PATH)) and after != value:
             raise ValueError('read-only write')
         if path.startswith('/logs/') and (after is None or not after.startswith(value)):
             raise ValueError('log rewrite')
-    if any(p.startswith('/code/') or p == '/data/inbox.jsonl' for p in rec['output_files'].keys() - rec['input_files'].keys()):
+    if any(p.startswith('/code/') or p in ('/data/inbox.jsonl', HEARD_PATH) for p in rec['output_files'].keys() - rec['input_files'].keys()):
         raise ValueError('read-only create')
     for side in ('input', 'output'):
         raw = bytes.fromhex(rec[side + '_files'].get('/data/inbox.jsonl', ''))
@@ -207,6 +208,11 @@ def check_boundary(before, after, changes, coglet):
         if change['target'] != coglet or current.get(path) != change['before']:
             raise ValueError('boundary target or before bytes')
         old, new = change['before'], change['after']
+        if path == HEARD_PATH or change['method'] == 'runtime.heard':
+            if (path != HEARD_PATH or change['method'] != 'runtime.heard' or
+                    change['actor'] != coglet or change['ticket'] is not None):
+                raise ValueError('heard runtime origin')
+            check_transition(old, new)
         if path.startswith('/logs/') and (new is None or not new.startswith(old or '')):
             raise ValueError('boundary log rewrite')
         if path == '/data/inbox.jsonl':
@@ -238,6 +244,7 @@ def check_boundary(before, after, changes, coglet):
 def check_trace(trace, manifest_validator=None):
     previous = None
     files = trace['initial_files']
+    read_state(files.get(HEARD_PATH))
     if digest(files) != trace['initial_hash']:
         raise ValueError('initial hash')
     for key in ('code_hash', 'manifest_hash'):

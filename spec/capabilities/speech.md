@@ -163,8 +163,12 @@ before the next reasoning step consumes conversation history. Its transcript and
 conversation/model-context projection MUST contain only the heard prefix. The
 immutable ABI journal still records proposed actions and received events for audit
 and replay: a speak intent's full text is a proposal, NOT evidence it was heard.
-No rewriting journal hashes or existing ABI records is required. Replay rebuilds
-the same heard projection using recorded positions/alignment, without calling TTS.
+The runtime writes the ABI `runtime.heard` boundary record and reserved
+`/data/runtime/heard.cbor` state, including per-item span alignment, played cutoff
+and derived heard text, before consumption. It is runtime-authored, not a guest
+event or an ordinary read converted into one. No rewriting existing ABI records
+is permitted. Export/replay rebuilds the projection from those hashed journal
+bytes alone, without calling TTS, reading a live surface or injecting oracle state.
 
 Optional `speech.history` advertises read `speech.heard` with args `heard-query
 {item}` and result `heard-record {item, played_ms, text}`. Only the item's speaker
@@ -175,8 +179,8 @@ only from aligned spans whose **end** is at or before played_ms. Do not estimate
 character counts by a duration ratio. If alignment is unavailable the prefix is
 empty, not the entire generated text. Limit the prefix to 16,384 UTF-8 bytes
 without splitting a character. Native alignment evidence belongs in the private
-replay recording, under the same privacy rules as transcript text, not raw audio
-in CBOR. An extension-aware runtime requiring history MUST refuse to run without
+ABI `heard-state` recording, under the same privacy rules as transcript text,
+not raw audio in CBOR. An extension-aware runtime requiring history MUST refuse to run without
 speech.history; it cannot treat an older peer's missing read as full playback.
 
 ## Bounded speech-to-agent work (ADR-0010)
