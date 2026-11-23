@@ -34,7 +34,7 @@ jobs:
         run: |
           rustup target add wasm32-unknown-unknown
           CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_OPT_LEVEL=z cargo rustc --locked --manifest-path coglets/echo/Cargo.toml --lib --release --target wasm32-unknown-unknown -- -C strip=symbols -C link-arg=--max-memory=16777216
-          cargo run --quiet --locked -p coglet-guest-rust --example qualify_guest -- coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm
+          cargo run --quiet --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm
       - name: C ABI production echo timer-wake smoke (real handle, no surface echo roundtrip)
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
       - name: Cross-build x86_64 Darwin (not an execution claim)

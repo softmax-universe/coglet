@@ -479,6 +479,7 @@ dependencies = [
 name = "coglet-runtime"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "coglet-engine",
  "coglet-engine-wamr",
  "coglet-types",
@@ -487,6 +488,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "wasm-encoder 0.245.1",
  "wasmparser 0.245.1",
  "wat",
 ]

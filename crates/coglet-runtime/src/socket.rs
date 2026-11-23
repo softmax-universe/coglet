@@ -1,4 +1,4 @@
-//! Linux authenticated local transport, optionally attached to the durable
+//! Linux/Apple authenticated local transport, optionally attached to the durable
 //! coordinator. Probe-only callers retain the same negotiation shell.
 use crate::{Result, SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
 use std::{

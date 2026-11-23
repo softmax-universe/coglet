@@ -1,6 +1,7 @@
 //! Runtime-epoch continuity, independent of transport connection lifetime.
-//! Linux BOOTTIME includes suspension and process downtime. A reboot changes
-//! the boot identity and fails closed; wall-clock guesses never renew retention.
+//! Linux BOOTTIME and Apple continuous time include suspension and downtime.
+//! Kernel boot identities change across reboot and fail closed; civil-clock
+//! guesses never renew retention.
 use crate::{Result, RuntimeService};
 use serde::{Deserialize, Serialize};
 
