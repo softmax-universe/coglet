@@ -81,10 +81,10 @@ final class FacePanelController: NSObject, NSWindowDelegate {
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: FacePanelView(host: host, hide: { [weak self] in self?.hide() }, resize: { [weak self] in self?.resize() }))
+        panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot { FacePanelView(host: host, hide: { [weak self] in self?.hide() }, resize: { [weak self] in self?.resize() }) })
         if !persist || !panel.setFrameUsingName("SoftmaxFace") {
             if let frame = NSScreen.main?.visibleFrame {
-                panel.setFrameOrigin(CGPoint(x: frame.maxX - 300, y: frame.maxY - 350))
+                panel.setFrameOrigin(CGPoint(x: frame.maxX - 300, y: frame.minY + 20))
             }
         }
         panel.setContentSize(NSSize(width: 280, height: 330))
@@ -132,12 +132,13 @@ private final class FacePanel: NSPanel {
 struct FacePanelView: View {
     @ObservedObject var host: FaceHost
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.softmaxFreezeMotion) private var freezeMotion
     var hide: () -> Void
     var resize: () -> Void
     var body: some View {
-        VStack(spacing: 4) {
-            FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion))
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.07), value: host.revision)
+        VStack(spacing: SoftmaxDesignTokens.spacing[0]) {
+            FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion || freezeMotion))
+                .animation(reduceMotion || freezeMotion ? nil : .easeOut(duration: 0.07), value: host.revision)
                 .accessibilityElement().accessibilityLabel("Face, \(host.driver.state.label)")
             if !host.compact {
                 Text(host.demo ? "Simulated demo · no audio" : host.driver.state.label)
@@ -151,7 +152,7 @@ struct FacePanelView: View {
             HStack {
                 Button(host.compact ? "Expand Face" : "Compact Face") { host.compact.toggle(); resize() }
                 Button("Hide Face", action: hide).keyboardShortcut(.escape, modifiers: [])
-            }.font(.caption)
-        }.padding(8).background(.regularMaterial)
+            }.softmaxFont(SoftmaxDesignTokens.fontCaption)
+        }.padding(SoftmaxDesignTokens.spacing[1]).modifier(SoftmaxTheme())
     }
 }

@@ -29,7 +29,9 @@ targets:
   SoftmaxApp:
     type: application
     platform: macOS
-    sources: [Sources/SoftmaxApp]
+    sources:
+      - path: Sources/SoftmaxApp
+      - path: Design/DesignTokens.swift
     dependencies:
       - target: SoftmaxCore
       - package: FaceMac
@@ -39,6 +41,7 @@ targets:
         PRODUCT_NAME: Softmax
         PRODUCT_BUNDLE_IDENTIFIER: com.softmax.app
         INFOPLIST_FILE: Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_APP_SANDBOX: NO
         LD_RUNPATH_SEARCH_PATHS: '$(inherited) @executable_path/../Frameworks'
   SoftmaxCoreTests:

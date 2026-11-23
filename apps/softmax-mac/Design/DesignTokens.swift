@@ -2,7 +2,7 @@
 import SwiftUI
 
 enum SoftmaxDesignTokens {
-    static let fontBody: CGFloat = 13
+    static let fontBody: CGFloat = 14
     static let fontCaption: CGFloat = 11
     static let fontTitle: CGFloat = 20
     static let fontDisplay: CGFloat = 28
