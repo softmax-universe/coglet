@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
+
 	"unicode/utf8"
 )
 
@@ -28,7 +28,7 @@ type node struct {
 	name     string // ref, primitive
 	lit      any    // literal: nil, bool, string or *big.Int
 	min, max *big.Int
-	pattern  *regexp.Regexp
+	pattern  patternMatcher
 	items    []*node // union
 	item     *node   // array, map
 	fields   []field
@@ -176,7 +176,7 @@ func buildNode(v any) (*node, error) {
 			return nil, errors.New("regexp without pattern")
 		}
 		// Anchor explicitly: RE2 has no implicit full-match.
-		if n.pattern, err = regexp.Compile(`\A(?:` + pat + `)\z`); err != nil {
+		if n.pattern, err = compilePattern(pat); err != nil {
 			return nil, err
 		}
 	case "union", "intersection":

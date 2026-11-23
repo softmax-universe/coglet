@@ -2,8 +2,19 @@ package codec
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
+
+func TestLargePortableRegexp(t *testing.T) {
+	s := MustParseSchema(`{"text":{"op":"regexp","pattern":"^[\\s\\S]{0,16384}$"},"hex":{"op":"regexp","pattern":"^([0-9a-f]{2}){1,32768}$"}}`)
+	assertShape(t, s, "text", strings.Repeat("é\n", 8192), true)
+	assertShape(t, s, "text", strings.Repeat("é", 16385), false)
+	assertShape(t, s, "hex", strings.Repeat("ff", 32768), true)
+	for _, value := range []string{"", "0", "FF", strings.Repeat("ff", 32769)} {
+		assertShape(t, s, "hex", value, false)
+	}
+}
 
 // Exercise both public paths: validation is never encode-only.
 func assertShape(t *testing.T, s *Schema, rule string, value any, valid bool) {
