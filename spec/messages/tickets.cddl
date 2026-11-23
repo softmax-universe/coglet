@@ -13,7 +13,8 @@
 ; admits the key's absence. Each alternative forbids its siblings' keys.
 tickets = ticket-request / ticket-response / ticket-update / ticket-result
 
-ticket-never = nil .and false
+; The second intersection also rejects arrays retained by a failed sibling.
+ticket-never = (nil .and false) .and []
 
 ; Positive subset of common uint64 (range controls on aliases are not portable).
 ticket-positive-uint64 = 1..18446744073709551615
@@ -49,6 +50,20 @@ ticket-question = {id: correlation-id, prompt: ticket-text}
 
 ; Groups share fields only; each alternative below is its own closed map.
 ticket-envelope = (version: "0.1", correlation_id: correlation-id)
+ticket-no-progress = (
+  ? revision: ticket-never, ? seq: ticket-never, ? summary: ticket-never,
+  ? state: ticket-never, ? question: ticket-never,
+  ? candidate: ticket-never, ? gates: ticket-never
+)
+ticket-request-closure = (
+  ticket-no-progress, ? ok: ticket-never, ? receipt: ticket-never,
+  ? error: ticket-never
+)
+ticket-no-request-payload = (
+  ? ticket: ticket-never, ? expected_revision: ticket-never,
+  ? after_seq: ticket-never, ? question_id: ticket-never,
+  ? answer: ticket-never, ? reason: ticket-never
+)
 ticket-mutation = (
   ticket_id: correlation-id, expected_revision: ticket-positive-uint64
 )
@@ -56,33 +71,33 @@ ticket-request = ticket-submit-request / ticket-update-request /
   ticket-answer-request / ticket-amend-request / ticket-cancel-request /
   ticket-result-request
 ticket-submit-request = {
-  ticket-envelope, op: "submit", ticket: ticket-ticket,
+  ticket-envelope, ticket-request-closure, op: "submit", ticket: ticket-ticket,
   ? ticket_id: ticket-never, ? expected_revision: ticket-never,
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-update-request = {
-  ticket-envelope, op: "update", ticket_id: correlation-id, after_seq: uint64,
+  ticket-envelope, ticket-request-closure, op: "update", ticket_id: correlation-id, after_seq: uint64,
   ? ticket: ticket-never, ? expected_revision: ticket-never,
   ? question_id: ticket-never, ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-answer-request = {
-  ticket-envelope, op: "answer", ticket-mutation,
+  ticket-envelope, ticket-request-closure, op: "answer", ticket-mutation,
   question_id: correlation-id, answer: ticket-text,
   ? ticket: ticket-never, ? after_seq: ticket-never, ? reason: ticket-never
 }
 ticket-amend-request = {
-  ticket-envelope, op: "amend", ticket-mutation, ticket: ticket-ticket,
+  ticket-envelope, ticket-request-closure, op: "amend", ticket-mutation, ticket: ticket-ticket,
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
 }
 ticket-cancel-request = {
-  ticket-envelope, op: "cancel", ticket-mutation, reason: ticket-text,
+  ticket-envelope, ticket-request-closure, op: "cancel", ticket-mutation, reason: ticket-text,
   ? ticket: ticket-never, ? after_seq: ticket-never,
   ? question_id: ticket-never, ? answer: ticket-never
 }
 ticket-result-request = {
-  ticket-envelope, op: "result", ticket_id: correlation-id,
+  ticket-envelope, ticket-request-closure, op: "result", ticket_id: correlation-id,
   ? ticket: ticket-never, ? expected_revision: ticket-never,
   ? after_seq: ticket-never, ? question_id: ticket-never,
   ? answer: ticket-never, ? reason: ticket-never
@@ -94,16 +109,19 @@ ticket-receipt = {
 }
 ticket-response = {
   ticket-envelope, op: "submit" / "answer" / "amend" / "cancel",
-  ok: true, receipt: ticket-receipt, ? error: ticket-never
+  ok: true, receipt: ticket-receipt, ? error: ticket-never,
+  ticket-no-progress, ticket-no-request-payload, ? ticket_id: ticket-never
 } / {
   ticket-envelope, op: ticket-op, ok: false, error: error,
-  ? receipt: ticket-never
+  ? receipt: ticket-never, ticket-no-progress, ticket-no-request-payload,
+  ? ticket_id: ticket-never
 }
 
 ticket-progress = (
   ticket-envelope, ticket_id: correlation-id,
   revision: ticket-positive-uint64, seq: ticket-positive-uint64,
-  summary: ticket-text
+  summary: ticket-text, ticket-no-request-payload,
+  ? op: ticket-never, ? ok: ticket-never, ? receipt: ticket-never
 )
 ticket-needs-input = {
   ticket-progress, state: "needs_input", question: ticket-question,
@@ -111,7 +129,8 @@ ticket-needs-input = {
 }
 ticket-update = {
   ticket-progress, state: ticket-progress-state,
-  ? question: ticket-never
+  ? question: ticket-never, ? candidate: ticket-never,
+  ? gates: ticket-never, ? error: ticket-never
 } / ticket-needs-input
 
 ticket-result = {

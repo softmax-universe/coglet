@@ -6,6 +6,30 @@ promotion = promotion-propose / promotion-promote / promotion-rollback /
 promotion-commit = tstr .regexp "^([0-9a-f]{40}|[0-9a-f]{64})$"
 promotion-text = tstr .size (1..18446744073709551615)
 promotion-op = "propose" / "promote" / "rollback" / "status"
+; Explicit absent-key constraints preserve closed choices in pycddl 0.6.4:
+; a failed sibling must not consume a key for the successful alternative.
+; The second intersection also rejects arrays retained by a failed sibling.
+promotion-never = (nil .and false) .and []
+promotion-no-audit = (
+  ? audit_id: promotion-never, ? actor: promotion-never,
+  ? operation: promotion-never, ? phase: promotion-never,
+  ? generation: promotion-never, ? observed_at_ms: promotion-never,
+  ? before_commit: promotion-never, ? after_commit: promotion-never,
+  ? evidence_refs: promotion-never
+)
+promotion-no-response = (
+  ? ok: promotion-never, ? result: promotion-never, ? error: promotion-never
+)
+promotion-no-propose = (
+  ? candidate: promotion-never, ? base: promotion-never,
+  ? policy_revision: promotion-never, ? gates: promotion-never,
+  ? approval_ref: promotion-never
+)
+promotion-response-closure = (
+  promotion-no-audit, promotion-no-propose,
+  ? proposal_id: promotion-never, ? expected_generation: promotion-never,
+  ? reason: promotion-never
+)
 promotion-envelope = (
   version: "0.1", correlation_id: correlation-id, coglet: coglet-id
 )
@@ -20,17 +44,23 @@ promotion-propose = {
   promotion-envelope, op: "propose", candidate: promotion-commit,
   base: promotion-commit / null, expected_generation: uint64,
   policy_revision: correlation-id, gates: [+ promotion-gate-report],
-  ? approval_ref: promotion-text
+  ? approval_ref: promotion-text, promotion-no-audit, promotion-no-response,
+  ? proposal_id: promotion-never, ? reason: promotion-never
 }
 promotion-promote = {
   promotion-envelope, op: "promote", proposal_id: correlation-id,
-  expected_generation: uint64
+  expected_generation: uint64, promotion-no-audit, promotion-no-response,
+  promotion-no-propose, ? reason: promotion-never
 }
 promotion-rollback = {
   promotion-envelope, op: "rollback", expected_generation: uint64,
-  reason: promotion-text
+  reason: promotion-text, promotion-no-audit, promotion-no-response,
+  promotion-no-propose, ? proposal_id: promotion-never
 }
-promotion-status-request = {promotion-envelope, op: "status"}
+promotion-status-request = {
+  promotion-envelope, op: "status", promotion-response-closure,
+  promotion-no-response
+}
 promotion-status = {
   generation: uint64, live_commit: promotion-commit / null,
   last_known_good: promotion-commit / null, candidate: promotion-commit / null,
@@ -49,16 +79,21 @@ promotion-health = {
 }
 promotion-response = {
   promotion-envelope, op: "propose", ok: true,
-  result: {proposal_id: correlation-id, state: "proposed"}
+  result: {proposal_id: correlation-id, state: "proposed"},
+  promotion-response-closure, ? error: promotion-never
 } / {
   promotion-envelope, op: "promote", ok: true,
-  result: {proposal_id: correlation-id, state: "activating"}
+  result: {proposal_id: correlation-id, state: "activating"},
+  promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: "rollback", ok: true, result: {state: "rolling_back"}
+  promotion-envelope, op: "rollback", ok: true, result: {state: "rolling_back"},
+  promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: "status", ok: true, result: promotion-status
+  promotion-envelope, op: "status", ok: true, result: promotion-status,
+  promotion-response-closure, ? error: promotion-never
 } / {
-  promotion-envelope, op: promotion-op, ok: false, error: error
+  promotion-envelope, op: promotion-op, ok: false, error: error,
+  promotion-response-closure, ? result: promotion-never
 }
 promotion-audit = {
   version: "0.1", audit_id: correlation-id, correlation_id: correlation-id,
@@ -69,5 +104,8 @@ promotion-audit = {
   generation: uint64, observed_at_ms: uint64, proposal_id: correlation-id / null,
   before_commit: promotion-commit / null, after_commit: promotion-commit / null,
   policy_revision: correlation-id, reason: promotion-text,
-  evidence_refs: [* promotion-text]
+  evidence_refs: [* promotion-text], promotion-no-response,
+  ? op: promotion-never, ? candidate: promotion-never, ? base: promotion-never,
+  ? expected_generation: promotion-never, ? gates: promotion-never,
+  ? approval_ref: promotion-never
 }

@@ -151,16 +151,55 @@ class ControlFixtures(unittest.TestCase):
         print(f'control total: {len(all_cases)} fixtures; '
               f'{sum(c["valid"] for c in all_cases)} golden round-trips')
 
-    def test_schema_roots_accept_all_valid_messages(self):
+    def test_schema_roots_and_sibling_field_mutations(self):
+        # A selected rule can be closed while a root choice leaks keys consumed
+        # by failed siblings. Exercise every root with all fixture shapes and
+        # borrowed sibling fields, not only unknown-field mutations.
+        count = 0
         for group, path in SCHEMAS.items():
             validator = Draft202012Validator(self.schemas[path], registry=self.registry)
+            cddl = cddl_schema(group)
             cases = [case for fixture in sorted((SPEC / 'fixtures' / group).rglob('*.json'))
                      for case in json.loads(fixture.read_text())]
-            for case in cases:
-                if case['valid'] and case['type'] not in ('status', 'gate-report', 'ticket', 'receipt'):
-                    with self.subTest(group=group, case=case['name']):
-                        validator.validate(case['value'])
-                        cddl_schema(group).validate_cbor(bytes.fromhex(case['cbor_hex']))
+            messages = [c for c in cases if c['type'] not in
+                        ('status', 'gate-report', 'ticket', 'receipt')]
+            siblings = {(key, json.dumps(value, sort_keys=True)): value
+                        for c in messages if c['valid']
+                        for key, value in c['value'].items()}
+            for case in messages:
+                if group != 'tickets':
+                    self.assertEqual(validator.is_valid(case['value']),
+                                     case['valid'] or case.get('semantic', False))
+                selected = dict(self.schemas[path])
+                if case['type'] != 'policy':
+                    selected.pop('oneOf', None)
+                    selected.pop('anyOf', None)
+                    selected['$ref'] = '#/$defs/' + case['type']
+                selected_validator = Draft202012Validator(selected, registry=self.registry)
+                selected_cddl = cddl_schema(group, case['type'])
+                variants = [('fixture', case['value'])]
+                if case['valid']:
+                    self.assertTrue(validator.is_valid(case['value']))
+                    variants += [(key, {**case['value'], key: value})
+                                 for (key, _), value in siblings.items()
+                                 if key not in case['value']]
+                for key, value in variants:
+                    with self.subTest(group=group, case=case['name'], added=key):
+                        # Some ticket result/update shapes overlap legitimately;
+                        # root acceptance is the union, not the selected rule.
+                        for scope, json_validator, cddl_validator in [
+                            ('root', validator, cddl),
+                            ('selected', selected_validator, selected_cddl),
+                        ]:
+                            expected = json_validator.is_valid(value)
+                            try:
+                                cddl_validator.validate_cbor(cbor2.dumps(value))
+                                actual = True
+                            except ValidationError:
+                                actual = False
+                            self.assertEqual(actual, expected, scope + ' CDDL / JSON Schema')
+                    count += 1
+        print(f'control: {count} root fixture/sibling-field checks')
 
     def test_every_operation_has_positive_fixture(self):
         for group, required in [('promotion', {'propose', 'promote', 'rollback', 'status'}),
@@ -206,6 +245,11 @@ class ControlFixtures(unittest.TestCase):
                         self.assertFalse(validator.is_valid(value), 'JSON Schema closure')
                         with self.assertRaises(ValidationError):
                             cddl.validate_cbor(cbor2.dumps(value))
+                        if case['type'] not in ('status', 'gate-report', 'ticket', 'receipt'):
+                            root = Draft202012Validator(self.schemas[path], registry=self.registry)
+                            self.assertFalse(root.is_valid(value), 'JSON Schema root closure')
+                            with self.assertRaises(ValidationError):
+                                cddl_schema(group).validate_cbor(cbor2.dumps(value))
                     count += 1
         print(f'control: {count} nested-map closure mutations checked by both schemas')
 
