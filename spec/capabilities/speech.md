@@ -38,6 +38,9 @@ reflex stopping remains local even if recognition/synthesis is remote.
 Every event is a common event sourced by the surface, with monotonically
 increasing seq. IDs below use the common 32-hex correlation-id grammar. Capture
 and playback `position_ms` refer to their own media timeline, not logical_time.
+These speech events are private owner-unicast observations. Hub relay preserves
+the surface envelope and payload unchanged and MUST retain the same owner-only
+visibility; delegation or subscription alone cannot widen their audience.
 
 | kind | payload | Meaning |
 |---|---|---|

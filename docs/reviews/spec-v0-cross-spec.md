@@ -103,6 +103,30 @@ No protocol implementation is registered in `conformance/impls.toml`.
   implemented or accepted fix. Guest receipts also need pending-action header
   state to verify exactly one terminal rejection/outcome across trace boundaries.
 
+## Repair batch 3 (PR #36, not freeze acceptance)
+
+- Hub relay now preserves the original common envelope/closed payload. Device
+  assertions are admission metadata, not surface key proof. Local runtime wakes
+  and foreign coglet sources are refused. Speech owner-only visibility is stated
+  explicitly through relay.
+- Added `hub-events-params.offset` and renamed result `next_seq` to `next_offset`:
+  durable relay positions are contiguous while source sequences may have gaps.
+  Retained batch receipts dedupe retries before checking source watermarks; empty
+  batches only probe the current cursor and reserve no position. These changes
+  are pre-freeze 0.1 repairs, not post-freeze minor-version compatibility claims.
+- Updated source generators, both schemas, fixtures, all five generated targets
+  and hub case data. Added seven relay cases (source gaps/repeats, conflicting
+  offsets, local wakes, foreign/forged coglet sources, empty cursor probe).
+  Generator allocation shifts subsequent correlation IDs but not their meanings.
+- `test_hub_relay` executes all event timelines against an independent test oracle
+  via the actual harness, including corrupted-response controls, exact payload
+  preservation and retry-no-redelivery. This is case-contract testing, NOT a hub
+  implementation; target grants/private-owner authorization and synthesized
+  action-outcome authority still need dedicated behavioral cases before freeze.
+- Owner ran 11 hub/relay tests, then the full 68-test spec suite successfully;
+  codegen freshness and whitespace checks passed. Final-head independent review,
+  CI, merge and tag are still pending.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.

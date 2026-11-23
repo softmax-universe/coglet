@@ -102,7 +102,7 @@ internal enum GeneratedSchema {
         "hub::hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
         "hub::hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
         "hub::hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
-        "hub::hub-events-params": .record([.init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
+        "hub::hub-events-params": .record([.init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
         "hub::hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
         "hub::hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
         "hub::hub-write-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-write-path")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "expected_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
@@ -147,7 +147,7 @@ internal enum GeneratedSchema {
         "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
         "hub::hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub::hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
-        "hub::hub-events-result": .record([.init(name: "next_seq", optional: false, node: .reference("common::uint64"))]),
+        "hub::hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
         "hub::hub-success-type": .literal(.text("reply")),
@@ -300,7 +300,7 @@ internal enum GeneratedSchema {
         "hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
         "hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
         "hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
-        "hub-events-params": .record([.init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
+        "hub-events-params": .record([.init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
         "hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
         "hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
         "hub-write-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-write-path")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "expected_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
@@ -345,7 +345,7 @@ internal enum GeneratedSchema {
         "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
         "hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
-        "hub-events-result": .record([.init(name: "next_seq", optional: false, node: .reference("common::uint64"))]),
+        "hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
         "hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
         "hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
         "hub-success-type": .literal(.text("reply")),
@@ -3310,19 +3310,23 @@ public struct HubHubFetchParams: CBORMessage, Sendable {
 
 public struct HubHubEventsParams: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-events-params"
+    public var `offset`: CommonUint64
     public var `events`: HubHubEventBatch
-    public init(`events`: HubHubEventBatch) {
+    public init(`offset`: CommonUint64, `events`: HubHubEventBatch) {
+        self.`offset` = `offset`
         self.`events` = `events`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
         self.`events` = try HubHubEventBatch.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
         entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
@@ -4486,20 +4490,20 @@ public struct HubHubReadResult: CBORMessage, Sendable {
 
 public struct HubHubEventsResult: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-events-result"
-    public var `next_seq`: CommonUint64
-    public init(`next_seq`: CommonUint64) {
-        self.`next_seq` = `next_seq`
+    public var `next_offset`: CommonUint64
+    public init(`next_offset`: CommonUint64) {
+        self.`next_offset` = `next_offset`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`next_seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_seq")), depth: depth + 1)
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("next_seq", try self.`next_seq`.cborValue(depth: depth + 1)))
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -8626,19 +8630,23 @@ public struct HubFetchParams: CBORMessage, Sendable {
 
 public struct HubEventsParams: CBORMessage, Sendable {
     public static let schemaRule = "hub-events-params"
+    public var `offset`: CommonUint64
     public var `events`: HubHubEventBatch
-    public init(`events`: HubHubEventBatch) {
+    public init(`offset`: CommonUint64, `events`: HubHubEventBatch) {
+        self.`offset` = `offset`
         self.`events` = `events`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
         self.`events` = try HubHubEventBatch.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
         entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
@@ -9802,20 +9810,20 @@ public struct HubReadResult: CBORMessage, Sendable {
 
 public struct HubEventsResult: CBORMessage, Sendable {
     public static let schemaRule = "hub-events-result"
-    public var `next_seq`: CommonUint64
-    public init(`next_seq`: CommonUint64) {
-        self.`next_seq` = `next_seq`
+    public var `next_offset`: CommonUint64
+    public init(`next_offset`: CommonUint64) {
+        self.`next_offset` = `next_offset`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`next_seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_seq")), depth: depth + 1)
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("next_seq", try self.`next_seq`.cborValue(depth: depth + 1)))
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value

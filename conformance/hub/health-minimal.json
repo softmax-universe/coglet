@@ -9,7 +9,7 @@
       "send": {
         "method": "hub.health",
         "target": null,
-        "correlation_id": "00000000000000000000000000000016",
+        "correlation_id": "0000000000000000000000000000001d",
         "timeout_ms": 2000,
         "params": {
           "device": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
@@ -22,7 +22,7 @@
     },
     {
       "match": {
-        "correlation_id": "00000000000000000000000000000016",
+        "correlation_id": "0000000000000000000000000000001d",
         "type": "reply",
         "result": {}
       },

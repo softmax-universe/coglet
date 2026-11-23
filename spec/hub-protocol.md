@@ -321,17 +321,37 @@ have no ref/data effects and quarantines are removed on timeout/cancellation.
 
 ## Event and action relay
 
-`hub.events` carries a bounded batch of common events from a hosted coglet.
-The source must match the target coglet; surface events are re-emitted with
-coglet source and recorded original provenance in payload by the local router.
-The hub derives device routing from enrollment/delegation, never payload paths.
-Sequences obey common durable monotonicity; a receiver persists its source
-watermark and batch digest with admission. An identical batch retry is deduped;
-conflicting reuse is `conflict`. A gap returns `conflict` with expected sequence;
-never silently omit an event. Saturation returns `resource_exhausted` before
-admission; upstream retains reliable events or explicitly records local loss.
+`hub.events` carries a bounded batch of unchanged common events observed for
+its target coglet. Preserve source, seq, logical_time, correlation_id and payload
+byte-for-byte; never inject provenance into a capability's closed payload. The
+hub records authenticated device, target and relay offset as admission metadata,
+not as event fields. A surface source is asserted by that enrolled device's local
+router, not independent proof of the surface key and never cross-device authority.
+A coglet source must equal target and may carry only a runtime-synthesized
+`action.outcome` for an admitted hub action. Foreign coglet sources and all
+`runtime.*` events are rejected with `permission_denied`; local wakes never relay.
+The router MUST enforce the target's event grants and capability ownership before
+relay. Private speech events remain owner-only at the hub: storage/routing MUST
+NOT expose them to another coglet. Merely naming a target grants no access.
+
+`params.offset` is a separate durable relay position per (device, target), starting
+at zero. Assign contiguous positions when events enter the durable relay outbox.
+The hub atomically records batch digest, offset and resulting `next_offset` with
+admission. New batches require offset equal to the stored next_offset; return
+`next_offset = offset + event count`. Check uint64 overflow before admission.
+An empty batch is a no-op cursor probe at the current offset and creates no
+batch receipt or position reservation. Identical admitted
+batch retries return their original result without rerouting; conflicting reuse
+or a missing position returns `conflict` with `details.expected_offset`. Retain
+batch receipts for the identity lifetime, independent of transport correlation IDs.
+Event seq is NOT a relay position: for each (target, source), new admitted events
+must increase strictly, but gaps are legal (subscriptions, private delivery and
+local wakes consume source seq). Check batch retries before source watermarks.
+Saturation returns `resource_exhausted` before admission; upstream retains reliable
+events or explicitly records local loss before assigning relay positions.
 No direct coglet-to-coglet connection, including siblings on the same device.
-The hub applies routing/policy and creates target inbox entries/events as needed.
+The hub applies routing/policy and creates target inbox entries/events as needed,
+subject to the capability's ownership restrictions.
 
 `hub.actions` carries one common action. Its coglet must match target. Runtime
 checks hub authority, local capability and exclusive output ownership, maps the

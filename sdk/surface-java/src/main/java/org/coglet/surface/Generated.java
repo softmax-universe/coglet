@@ -541,9 +541,10 @@ m.put("ref", this.ref);
 return m; }
 public static HubFetchParams fromCbor(byte[] raw) { return Codec.decodeRecord("hub-fetch-params", raw, HubFetchParams.class); }
 }
-public record HubEventsParams(List<Event> events) implements Message {
+public record HubEventsParams(BigInteger offset, List<Event> events) implements Message {
 public String rule() { return "hub-events-params"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("offset", this.offset);
 m.put("events", this.events);
 return m; }
 public static HubEventsParams fromCbor(byte[] raw) { return Codec.decodeRecord("hub-events-params", raw, HubEventsParams.class); }
@@ -829,10 +830,10 @@ m.put("eof", this.eof);
 return m; }
 public static HubReadResult fromCbor(byte[] raw) { return Codec.decodeRecord("hub-read-result", raw, HubReadResult.class); }
 }
-public record HubEventsResult(BigInteger next_seq) implements Message {
+public record HubEventsResult(BigInteger next_offset) implements Message {
 public String rule() { return "hub-events-result"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
-m.put("next_seq", this.next_seq);
+m.put("next_offset", this.next_offset);
 return m; }
 public static HubEventsResult fromCbor(byte[] raw) { return Codec.decodeRecord("hub-events-result", raw, HubEventsResult.class); }
 }
@@ -1388,7 +1389,7 @@ Codec.register("hub-enroll-params", HubEnrollParams.class, "{\"op\":\"record\",\
 Codec.register("hub-install-params", HubInstallParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"delegation\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-signed-delegation\"}},{\"name\":\"initial\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-signed-ref\"}}]}", new String[]{"delegation","initial"});
 Codec.register("hub-push-params", HubPushParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"update\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-signed-ref\"}},{\"name\":\"size\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-size\"}},{\"name\":\"sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}}]}", new String[]{"update","size","sha256"});
 Codec.register("hub-fetch-params", HubFetchParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"ref\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-fetch-ref\"}}]}", new String[]{"ref"});
-Codec.register("hub-events-params", HubEventsParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-event-batch\"}}]}", new String[]{"events"});
+Codec.register("hub-events-params", HubEventsParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"offset\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-event-batch\"}}]}", new String[]{"offset","events"});
 Codec.register("hub-actions-params", HubActionsParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"action\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action\"}}]}", new String[]{"action"});
 Codec.register("hub-read-params", HubReadParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"path\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-path\"}},{\"name\":\"offset\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"limit\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-read-size\"}}]}", new String[]{"path","offset","limit"});
 Codec.register("hub-write-params", HubWriteParams.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"path\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-write-path\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-text\"}},{\"name\":\"expected_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"actor\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::source-id\"}},{\"name\":\"ticket\",\"optional\":true,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"path","text","expected_hash","actor","ticket"});
@@ -1415,7 +1416,7 @@ Codec.register("hub-receipt-request", HubReceiptRequest.class, "{\"op\":\"record
 Codec.register("hub-cancel-request", HubCancelRequest.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"method\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-cancel-request-method\"}},{\"name\":\"target\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"timeout_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-timeout\"}},{\"name\":\"params\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-operation-params\"}},{\"name\":\"context\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-context\"}}]}", new String[]{"method","target","correlation_id","timeout_ms","params","context"});
 Codec.register("hub-enroll-result", HubEnrollResult.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::version-selection\"}},{\"name\":\"device\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::node-id\"}},{\"name\":\"hub\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::node-id\"}}]}", new String[]{"selection","device","hub"});
 Codec.register("hub-read-result", HubReadResult.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"snapshot_hash\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-text\"}},{\"name\":\"next_offset\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"eof\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-bool\"}}]}", new String[]{"step","snapshot_hash","text","next_offset","eof"});
-Codec.register("hub-events-result", HubEventsResult.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"next_seq\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"next_seq"});
+Codec.register("hub-events-result", HubEventsResult.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"next_offset\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"next_offset"});
 Codec.register("hub-step-result", HubStepResult.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"receipt\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-mutation-receipt\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"receipt","step"});
 Codec.register("hub-success", HubSuccess.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-success-type\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-result\"}}]}", new String[]{"type","correlation_id","result"});
 Codec.register("hub-failure", HubFailure.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-failure-type\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"type","correlation_id","error"});
