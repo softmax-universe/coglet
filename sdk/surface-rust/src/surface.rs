@@ -1003,6 +1003,43 @@ impl Surface {
         if self.kill.is_latched() && !self.kill_applied {
             self.apply_kill(now, out)?;
         }
+        // Expiry fences queued callbacks before they can commit a terminal success.
+        // Deadline overrun expires the action and stops its physical effect.
+        let due: Vec<String> = self
+            .pending
+            .iter()
+            .filter(|(_, p)| now >= p.deadline)
+            .map(|(k, _)| k.clone())
+            .collect();
+        for id in due {
+            self.backend.cancel(&id);
+            self.finish(
+                now,
+                &id,
+                "expired",
+                Some(ApiError::new(Code::DeadlineExceeded, "deadline reached")),
+                out,
+            )?;
+        }
+        if self.phase == Phase::Active {
+            let expired: Vec<String> = self
+                .grants
+                .entries
+                .iter()
+                .filter(|g| g.expires <= now)
+                .map(|g| g.coglet.clone())
+                .collect();
+            if !expired.is_empty() {
+                let entries = self
+                    .grants
+                    .entries
+                    .iter()
+                    .filter(|g| g.expires > now)
+                    .cloned()
+                    .collect();
+                self.replace_snapshot(now, entries, out)?;
+            }
+        }
         let (items, overflow) = self.sink.drain();
         if overflow {
             self.backend.stop_all();
@@ -1068,42 +1105,6 @@ impl Surface {
                         self.diag.native_discarded += 1;
                     }
                 }
-            }
-        }
-        // Deadline overrun expires the action and stops its physical effect.
-        let due: Vec<String> = self
-            .pending
-            .iter()
-            .filter(|(_, p)| now >= p.deadline)
-            .map(|(k, _)| k.clone())
-            .collect();
-        for id in due {
-            self.backend.cancel(&id);
-            self.finish(
-                now,
-                &id,
-                "expired",
-                Some(ApiError::new(Code::DeadlineExceeded, "deadline reached")),
-                out,
-            )?;
-        }
-        if self.phase == Phase::Active {
-            let expired: Vec<String> = self
-                .grants
-                .entries
-                .iter()
-                .filter(|g| g.expires <= now)
-                .map(|g| g.coglet.clone())
-                .collect();
-            if !expired.is_empty() {
-                let entries = self
-                    .grants
-                    .entries
-                    .iter()
-                    .filter(|g| g.expires > now)
-                    .cloned()
-                    .collect();
-                self.replace_snapshot(now, entries, out)?;
             }
         }
         for stream in self.speech.close_idle(now, self.cfg.limits.stream_idle_us) {
