@@ -225,6 +225,11 @@ def generate(rules):
                'sdk/surface-python/coglet_surface/generated.py': '\n'.join(py) + '\n'}
     formatted = subprocess.run(['rustfmt', '--edition', '2024'], input=outputs['crates/coglet-types/src/generated.rs'], text=True, capture_output=True, check=True)
     outputs['crates/coglet-types/src/generated.rs'] = formatted.stdout
+    # Target emitters consume the shared IR; parsing remains language-neutral.
+    from emit_go import generate as generate_go
+    from emit_java import generate as generate_java
+    outputs.update(generate_go(rules))
+    outputs.update(generate_java(rules))
     return outputs
 
 
@@ -244,7 +249,7 @@ def main():
                 path.write_text(content)
     if args.check and stale:
         sys.exit('stale generated files: ' + ', '.join(stale))
-    print(f'codegen: {len(rules)} CDDL rules; Rust/Python outputs ' + ('current' if args.check else 'written'))
+    print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Java outputs ' + ('current' if args.check else 'written'))
 
 
 if __name__ == '__main__':
