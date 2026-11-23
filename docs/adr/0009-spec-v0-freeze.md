@@ -126,6 +126,47 @@ dispatch. Finite exports may retain pending actions/wakes; no fake completion or
 step drains them. This is a pre-freeze repair, not a backwards-compatible minor
 version claim for the earlier 0.1 draft.
 
+### M-B amendment: closed bindings and bounded qualification
+
+This amendment resolves the remaining wire ambiguity without claiming runtime
+qualification. The normative operation catalog in `spec/capabilities/bindings.json`
+selects a schema rule for each direction, including closed empty read arguments
+and closed empty successful action results. It does not widen a root union into
+permission to use any sibling payload. `llm.complete` is an ABI/gateway operation,
+not a surface action or an undeclared hub RPC; its input/output use the ABI
+llm-request/llm-reply rules. Provider-specific input/output remain profile maps.
+Runtime wake/receipt names are reserved to their producing authority; illustrative
+fixture operations never become production capabilities merely by appearing in
+an envelope or passing its grammar.
+
+A guest emit deadline is interpreted in the runtime epoch at the ABI boundary.
+Before first surface dispatch translate it once, then durably retain the complete
+surface act envelope (including grant_epoch and translated deadline) before send.
+Retries use those identical bytes even after new clock samples; reconnect must
+reconcile the old request rather than translate/re-admit its ID. The original
+ABI intent remains immutable in its journal. This clarifies the clock boundary,
+not a new surface envelope or retry RPC.
+
+One admitted step has ONE compute allowance and ONE absolute wall deadline,
+covering initialization, abi_alloc and handle together. No second full allowance
+may be installed for handle. A qualified WAMR mode must demonstrate exact
+remaining-budget accounting across calls, positive signed-i32 FFI arguments and
+fail-closed exhaustion before a further call. Reject unsupported/unqualified
+modes before execution; the per-call spike setter does not prove this contract.
+Separate host memory/stack bounds remain required qualification, not a promise
+that linear pages bound total RSS.
+
+The freeze inventory `docs/reviews/spec-v0-m1-gates.md` gives each remaining row
+exactly one disposition. Real-engine metering, platform acceptance, transform
+qualification, native speech behavior and authenticated relay authority are M1
+qualification gates, NOT unspecified semantics or permission to run unqualified
+code. Existing MUSTs still apply, including owner-only speech, per-target grants,
+no synthesized success without authority, and no dispatch on an unqualified
+engine. ADRs 0001/0008 are bounded spike evidence; ADR-0003 R1–R5 (with the R4
+amendment) is the proposed publication policy, not a qualified implementation.
+Their formal status transition and final freeze acceptance remain the freeze
+owner's responsibility. No new ADR number or production acceptance is implied.
+
 ## Alternatives
 
 - Tag the independently tested individual specs immediately: rejected because
