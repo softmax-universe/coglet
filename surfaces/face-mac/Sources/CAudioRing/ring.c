@@ -58,9 +58,18 @@ void fa_flush(FARing *r) {
 }
 uint64_t fa_generation(FARing *r) { return atomic_load(&r->generation); }
 size_t fa_render(FARing *r, float *samples, size_t count, float gain) {
+    return fa_render_generation(r, samples, count, gain, fa_generation(r));
+}
+size_t fa_render_generation(FARing *r, float *samples, size_t count, float gain, uint64_t g) {
     gain *= atomic_load(&r->gain) / 32768.f;
-    uint64_t g = fa_generation(r), p = position(r);
+    uint64_t p = position(r);
     uint64_t w = atomic_load_explicit(&r->write, memory_order_acquire);
+    // Validate the epoch AFTER cursor snapshots, BEFORE committing consumption.
+    // A later flush can only discard through a write >= w. Thus p+n cannot
+    // advance past that boundary and eat a newly enqueued utterance.
+    if ((g & 1) || g != fa_generation(r)) {
+        memset(samples, 0, count*sizeof(float)); return 0;
+    }
     size_t n = count < w-p ? count : w-p;
     float peak = 0;
     for (size_t i = 0; i < n; i++) {

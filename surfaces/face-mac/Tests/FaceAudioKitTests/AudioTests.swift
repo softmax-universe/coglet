@@ -62,6 +62,20 @@ import Dispatch
     #expect(out[0] == 0.125)
 }
 
+@Test func overlappingFlushPreservesNewUtterance() throws {
+    let ring = try PCMQueue(capacity: 8)
+    let generation = fa_generation(ring.raw)
+    ring.flush()
+    #expect([Int16(16384)].withUnsafeBufferPointer { ring.write($0) })
+    var out = [Float](repeating: 99, count: 4)
+    #expect(out.withUnsafeMutableBufferPointer {
+        fa_render_generation(ring.raw, $0.baseAddress, 4, 1, generation)
+    } == 0)
+    #expect(out == [0, 0, 0, 0])
+    #expect(out.withUnsafeMutableBufferPointer { fa_render(ring.raw, $0.baseAddress, 4, 1) } == 1)
+    #expect(out[0] == 0.5)
+}
+
 @Test func conversion48kStereoTo24kMonoPCM16() throws {
     let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2))
     let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4800))
@@ -76,10 +90,11 @@ import Dispatch
 
 @Test func energyHangover() {
     var vad = EnergyVAD()
-    #expect(!vad.process([Int16](repeating: 0, count: 2400)))
-    #expect(vad.process([Int16](repeating: 5000, count: 2400)))
-    #expect(vad.process([Int16](repeating: 0, count: 2400)))
-    #expect(!vad.process([Int16](repeating: 0, count: 2400)))
+    let quiet = vad.process([Int16](repeating: 0, count: 2400))
+    let voice = vad.process([Int16](repeating: 5000, count: 2400))
+    let tail = vad.process([Int16](repeating: 0, count: 2400))
+    let expired = vad.process([Int16](repeating: 0, count: 2400))
+    #expect(!quiet && voice && tail && !expired)
 }
 
 @MainActor final class FakeEngine: DuplexEngine {
@@ -121,6 +136,18 @@ import Dispatch
     #expect(throws: (any Error).self) { try bad.startCapture() }
     #expect(!bad.isRunning)
     #expect(failed.stopped)
+    var rebuilds = 0
+    let initial = FakeEngine()
+    let recovery = FaceAudioKit(factory: {
+        rebuilds += 1
+        return rebuilds == 1 ? initial : failed
+    }, permission: { true })
+    try recovery.startCapture()
+    initial.changed?()
+    #expect(!recovery.isRunning)
+    #expect(recovery.lastError != nil)
+    initial.changed?()
+    #expect(rebuilds == 2)
     let denied = FaceAudioKit(factory: { FakeEngine() }, permission: { false })
     #expect(throws: (any Error).self) { try denied.startCapture() }
 }

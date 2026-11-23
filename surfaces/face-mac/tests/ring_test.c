@@ -26,6 +26,13 @@ int main(void) {
     assert(fa_played(r) == 0);
     assert(fa_write(r, a, 2)); assert(fa_render(r, out, 4, 1) == 2);
     assert(fa_played(r) == 2 && out[2] == 0);
+    // Pause render after its epoch snapshot; flush + enqueue a new utterance.
+    generation = fa_generation(r);
+    fa_flush(r);
+    assert(fa_write(r, a, 2));
+    assert(fa_render_generation(r, out, 4, 1, generation) == 0);
+    assert(fa_render(r, out, 4, 1) == 2);
+    assert(out[0] == 1/32768.f && out[1] == 2/32768.f);
     fa_destroy(r);
     r = fa_create(128);
     pthread_t thread; assert(pthread_create(&thread, NULL, produce, r) == 0);

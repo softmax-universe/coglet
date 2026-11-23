@@ -22,9 +22,16 @@ final class PCMQueue: @unchecked Sendable {
 }
 
 /// Stateful resampler. Use on one capture callback thread only.
+// AVAudioConverter invokes its input block synchronously. This box is confined
+// to that invocation and never crosses threads despite the SDK's @Sendable type.
+private final class ConversionFeed: @unchecked Sendable {
+    var input: AVAudioPCMBuffer?
+    var supplied = false
+}
 final class CaptureConverter {
     let converter: AVAudioConverter
     let output: AVAudioPCMBuffer
+    private let feed = ConversionFeed()
     init(format: AVAudioFormat, maximumFrames: AVAudioFrameCount = 16384) throws {
         guard format.sampleRate > 0, format.channelCount > 0,
               let pcm = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 24000,
@@ -39,14 +46,17 @@ final class CaptureConverter {
     }
     func convert(_ input: AVAudioPCMBuffer) throws -> UnsafeBufferPointer<Int16> {
         guard input.frameLength <= 16384 else { throw FaceAudioError.invalidFormat }
-        var supplied = false
+        let feed = self.feed
+        feed.input = input
+        feed.supplied = false
+        defer { feed.input = nil }
         var error: NSError?
         output.frameLength = 0
         let status = converter.convert(to: output, error: &error) { _, outStatus in
-            if supplied { outStatus.pointee = .noDataNow; return nil }
-            supplied = true
+            if feed.supplied { outStatus.pointee = .noDataNow; return nil }
+            feed.supplied = true
             outStatus.pointee = .haveData
-            return input
+            return feed.input
         }
         guard status != .error, error == nil, let data = output.int16ChannelData else {
             throw FaceAudioError.conversion

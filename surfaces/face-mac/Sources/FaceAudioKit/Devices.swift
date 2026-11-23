@@ -20,6 +20,7 @@ public enum AudioDevices {
         var a = address(kAudioHardwarePropertyDevices)
         var size: UInt32 = 0
         try check(AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &a, 0, nil, &size))
+        guard size > 0 else { return [] }
         var devices = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
         try devices.withUnsafeMutableBytes {
             try check(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &a, 0, nil, &size, $0.baseAddress!))
@@ -28,10 +29,11 @@ public enum AudioDevices {
     }
     private static func text(_ id: AudioDeviceID, _ selector: AudioObjectPropertySelector) throws -> String {
         var a = address(selector)
-        var result: CFString = "" as CFString
-        var size = UInt32(MemoryLayout<CFString>.size)
+        var result: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
         try check(AudioObjectGetPropertyData(id, &a, 0, nil, &size, &result))
-        return result as String
+        guard let result else { throw FaceAudioError.deviceUnavailable("missing device property") }
+        return result.takeRetainedValue() as String
     }
     private static func supports(_ id: AudioDeviceID, _ scope: AudioObjectPropertyScope) -> Bool {
         var a = address(kAudioDevicePropertyStreams, scope: scope)
