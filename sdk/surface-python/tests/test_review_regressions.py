@@ -13,7 +13,7 @@ def test_preparation_cannot_cross_admission_expiry_and_execute(tmp_path, crossin
     surface.operations[op.name] = Operation(op.name, op.entry, op.direction, op.input,
         op.output, op.resources, lambda args, ctx: now.__setitem__(0, 1000000 if crossing == 'deadline' else 2000000),
         lambda args, ctx: calls.append('effect') or {})
-    result = act(surface)
+    result = act(surface, deadline=3000000 if crossing == 'lease' else 1000000)
     assert not result[0]['body']['accepted']
     assert 'effect' not in calls
     surface.close()
@@ -35,6 +35,31 @@ def test_postcommit_expiry_cannot_execute_effect(tmp_path):
     assert result[0]['body']['accepted']
     assert result[1]['body']['payload']['status'] == 'expired'
     assert 'effect' not in calls
+    surface.close()
+
+
+@pytest.mark.parametrize('boundary', ['deadline', 'lease'])
+def test_clock_checkpoint_cannot_stale_final_execution_sample(tmp_path, boundary):
+    now = [0]
+    surface, _ = make_surface(tmp_path, clock=lambda: now[0])
+    op = surface.operations['expression.set_expression']
+    armed = [False]
+    times = []
+    surface.operations[op.name] = Operation(op.name, op.entry, op.direction, op.input,
+        op.output, op.resources, op.prepare, lambda args, ctx: times.append(now[0]) or {})
+    emit = surface._emit
+    original_set = surface._set
+    def arm_after_receipt(kind, body):
+        emit(kind, body)
+        if kind == 'accept':
+            armed[0] = True
+    def delayed_checkpoint(key, value):
+        original_set(key, value)
+        if key == 'clock' and armed[0]:
+            now[0] = 1000000 if boundary == 'deadline' else 2000000
+    surface._emit, surface._set = arm_after_receipt, delayed_checkpoint
+    act(surface, deadline=1000000 if boundary == 'deadline' else 3000000)
+    assert not times or times[0] < (1000000 if boundary == 'deadline' else 2000000)
     surface.close()
 
 

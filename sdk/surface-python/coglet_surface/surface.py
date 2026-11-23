@@ -105,6 +105,7 @@ class Surface:
         self.ledger = Ledger(ledger, identity, create)
         assert self.ledger.db is not None
         self.db = self.ledger.db
+        self.last_clock = self._get('clock')
         self.closed = False
         try:
             self._recover()
@@ -137,12 +138,18 @@ class Surface:
             self.db.execute('INSERT OR REPLACE INTO meta VALUES (?,?)', (key, str(value)))
 
     def now(self):
+        now = self._sample()
+        self._set('clock', now)
+        return now
+
+    def _sample(self):
+        """Fresh monotonic sample; absolutely no blocking storage on this path."""
         now = self.clock()
         validate('common::uint64', now)
-        if now < self._get('clock'):
+        if now < self.last_clock:
             self._abort()
             raise ProtocolError('clock rollback')
-        self._set('clock', now)
+        self.last_clock = now
         return now
 
     def _message(self, kind, body):
@@ -301,9 +308,20 @@ class Surface:
             raise Rejection('invalid_argument') from exc
         if prepare:
             op.prepare(request['args'], RequestContext.from_request(request, epoch))
-            # Preparation may have consumed the last part of the lease/deadline.
-            return self._admit(request, epoch, direction, prepare=False)
+        self._execution_window(request, epoch)
         return op
+
+    def _execution_window(self, request, epoch):
+        # Fetch all storage/state BEFORE sampling, never checkpoint a clock
+        # between this final sample and the adapter's native handoff.
+        current_epoch, killed = self._get('epoch'), self._get('killed')
+        grant = next((g for g in self.grants if g['coglet'] == request['coglet']), None)
+        now = self._sample()
+        if (self.state != 'ready' or killed or epoch != current_epoch or not grant
+                or grant['expires'] <= now or request['capability'] not in grant['operations']):
+            raise Rejection('permission_denied')
+        if request['deadline'] <= now:
+            raise Rejection('deadline_exceeded')
 
     def _act(self, raw, body):
         action = body['action']
@@ -336,7 +354,7 @@ class Surface:
             try:
                 # SQLite durability and output serialization also consume time.
                 # A committed admission may expire, but must never start an effect.
-                op = self._admit(action, body['grant_epoch'], 'action', prepare=False)
+                self._execution_window(action, body['grant_epoch'])
             except Rejection as exc:
                 self.stop()
                 status = 'expired' if exc.error['code'] == 'deadline_exceeded' else 'cancelled'
@@ -407,8 +425,7 @@ class Surface:
             op = self._admit(request, request['grant_epoch'], 'read')
             value = op.execute(request['args'], RequestContext.from_request(request, request['grant_epoch']))
             validate(op.output, value, self.schemas)
-            if self.now() >= request['deadline']:
-                raise Rejection('deadline_exceeded')
+            self._execution_window(request, request['grant_epoch'])
             if op.name == 'speech.heard' and value['item'] != request['args']['item']:
                 raise ValueError('heard item mismatch')
             revision = self._get('snapshot') + 1
