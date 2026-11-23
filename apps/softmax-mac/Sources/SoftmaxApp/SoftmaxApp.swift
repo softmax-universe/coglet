@@ -5,6 +5,7 @@ import CoreGraphics
 import ServiceManagement
 import SoftmaxCore
 import FaceMac
+import Combine
 
 @main
 struct SoftmaxApp: App {
@@ -13,6 +14,8 @@ struct SoftmaxApp: App {
     var body: some Scene {
         MenuBarExtra {
             Button("Open Face") { delegate.showFace() }
+            Button("Open Chat") { delegate.showConversation() }
+            Button("Open Voice") { delegate.showConversation(voice: true) }
             Text("Push-to-talk: not configured")
             Text("Hub: offline (not connected)")
             Divider()
@@ -41,11 +44,17 @@ final class ShellModel: ObservableObject {
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
     @Published var selectedTab: SettingsTab = .general
+    @Published var voicePanelSelected = false
+    @Published var orbEnabled: Bool = false {
+        didSet { if !testing { orbPreferences.isEnabled = orbEnabled } }
+    }
+    private let orbPreferences = OrbPreferences()
 
     init() {
         let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
         machine = AppStateMachine(onboardingComplete: !testing && UserDefaults.standard.bool(forKey: "onboardingComplete"))
         refreshPermissions()
+        orbEnabled = !testing && orbPreferences.isEnabled
     }
 
     func refreshPermissions() {
@@ -58,7 +67,9 @@ final class ShellModel: ObservableObject {
 
     func requestMicrophone() async {
         guard !testing else { return }
-        _ = await AVCaptureDevice.requestAccess(for: .audio)
+        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+        }
         refreshPermissions()
     }
 
@@ -97,9 +108,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var facePanel: NSPanel?
+    private lazy var orbOverlay = OrbOverlay(model: model)
+    private var orbSubscription: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
+            self?.orbOverlay.setVisible(enabled)
+        }
         if model.machine.state == .onboarding { showOnboarding() }
     }
 
@@ -142,6 +158,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         facePanel?.orderFrontRegardless()
     }
+
+    func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
 
     private func window<V: View>(title: String, size: NSSize, view: V) -> NSWindow {
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
