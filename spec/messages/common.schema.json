@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/common.schema.json",
+  "title": "Coglet common definitions 0.1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/event"
+    },
+    {
+      "$ref": "#/$defs/action"
+    },
+    {
+      "$ref": "#/$defs/action-accept"
+    },
+    {
+      "$ref": "#/$defs/action-outcome"
+    },
+    {
+      "$ref": "#/$defs/error"
+    },
+    {
+      "$ref": "#/$defs/version-offer"
+    },
+    {
+      "$ref": "#/$defs/version-selection"
+    }
+  ],
+  "$defs": {
+    "uint64": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "profile-int": {
+      "type": "integer",
+      "minimum": -9223372036854775808,
+      "maximum": 18446744073709551615
+    },
+    "profile-value": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/profile-int"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/profile-value"
+          }
+        },
+        {
+          "$ref": "#/$defs/profile-map"
+        }
+      ]
+    },
+    "profile-map": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/profile-value"
+      }
+    },
+    "node-id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "coglet-id": {
+      "type": "string",
+      "pattern": "^coglet:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "surface-id": {
+      "type": "string",
+      "pattern": "^surface:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "hub-id": {
+      "type": "string",
+      "pattern": "^hub:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "source-id": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/coglet-id"
+        },
+        {
+          "$ref": "#/$defs/surface-id"
+        },
+        {
+          "$ref": "#/$defs/hub-id"
+        }
+      ]
+    },
+    "capability-name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}(?![\\s\\S])"
+    },
+    "method-name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}(\\.[a-z][a-z0-9_]{0,31}){1,3}(?![\\s\\S])"
+    },
+    "correlation-id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}(?![\\s\\S])"
+    },
+    "action-id": {
+      "$ref": "#/$defs/correlation-id"
+    },
+    "spec-version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,3})\\.(0|[1-9][0-9]{0,3})(?![\\s\\S])"
+    },
+    "version-offer": {
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/spec-version"
+          }
+        }
+      },
+      "required": [
+        "versions"
+      ],
+      "additionalProperties": false
+    },
+    "version-selection": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/spec-version"
+        }
+      },
+      "required": [
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source-id"
+        },
+        "kind": {
+          "$ref": "#/$defs/capability-name"
+        },
+        "seq": {
+          "$ref": "#/$defs/uint64"
+        },
+        "logical_time": {
+          "$ref": "#/$defs/uint64"
+        },
+        "payload": {
+          "$ref": "#/$defs/profile-map"
+        },
+        "correlation_id": {
+          "$ref": "#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "source",
+        "kind",
+        "seq",
+        "logical_time",
+        "payload",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/action-id"
+        },
+        "coglet": {
+          "$ref": "#/$defs/coglet-id"
+        },
+        "capability": {
+          "$ref": "#/$defs/capability-name"
+        },
+        "args": {
+          "$ref": "#/$defs/profile-map"
+        },
+        "deadline": {
+          "$ref": "#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "id",
+        "coglet",
+        "capability",
+        "args",
+        "deadline",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "action-accept": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/action-id"
+            },
+            "correlation_id": {
+              "$ref": "#/$defs/correlation-id"
+            },
+            "accepted": {
+              "const": true
+            }
+          },
+          "required": [
+            "id",
+            "correlation_id",
+            "accepted"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/action-id"
+            },
+            "correlation_id": {
+              "$ref": "#/$defs/correlation-id"
+            },
+            "accepted": {
+              "const": false
+            },
+            "error": {
+              "$ref": "#/$defs/error"
+            }
+          },
+          "required": [
+            "id",
+            "correlation_id",
+            "accepted",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "action-outcome": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/action-id"
+            },
+            "correlation_id": {
+              "$ref": "#/$defs/correlation-id"
+            },
+            "status": {
+              "const": "succeeded"
+            },
+            "result": {
+              "$ref": "#/$defs/profile-map"
+            }
+          },
+          "required": [
+            "id",
+            "correlation_id",
+            "status",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/action-id"
+            },
+            "correlation_id": {
+              "$ref": "#/$defs/correlation-id"
+            },
+            "status": {
+              "enum": [
+                "failed",
+                "cancelled",
+                "expired"
+              ]
+            },
+            "error": {
+              "$ref": "#/$defs/error"
+            }
+          },
+          "required": [
+            "id",
+            "correlation_id",
+            "status",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "error-code": {
+      "enum": [
+        "invalid_argument",
+        "unsupported_version",
+        "unauthenticated",
+        "permission_denied",
+        "not_found",
+        "conflict",
+        "resource_exhausted",
+        "deadline_exceeded",
+        "cancelled",
+        "unavailable",
+        "internal"
+      ]
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/error-code"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "details": {
+          "$ref": "#/$defs/profile-map"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

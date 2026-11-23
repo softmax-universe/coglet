@@ -1,0 +1,961 @@
+[
+  {
+    "name": "event",
+    "type": "event",
+    "valid": true,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "cbor_hex": "a66373657100646b696e646e7370656563682e7061727469616c66736f757263657848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a264746578746868c3a96cd0bbd0be666e657374656484f5f620a2617a02626161016c6c6f676963616c5f74696d65182a6e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "event-hub",
+    "type": "event",
+    "valid": true,
+    "value": {
+      "source": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "cbor_hex": "a66373657100646b696e646e7370656563682e7061727469616c66736f7572636578446875623a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a264746578746868c3a96cd0bbd0be666e657374656484f5f620a2617a02626161016c6c6f676963616c5f74696d65182a6e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "event-coglet",
+    "type": "event",
+    "valid": true,
+    "value": {
+      "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "cbor_hex": "a66373657100646b696e646e7370656563682e7061727469616c66736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a264746578746868c3a96cd0bbd0be666e657374656484f5f620a2617a02626161016c6c6f676963616c5f74696d65182a6e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "action",
+    "type": "action",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capability": "speech.speak",
+      "args": {
+        "text": "hello"
+      },
+      "deadline": 18446744073709551615
+    },
+    "cbor_hex": "a6626964782063636363636363636363636363636363636363636363636363636363636363636461726773a164746578746568656c6c6f66636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616168646561646c696e651bffffffffffffffff6a6361706162696c6974796c7370656563682e737065616b6e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "accept",
+    "type": "action-accept",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accepted": true
+    },
+    "cbor_hex": "a362696478206363636363636363636363636363636363636363636363636363636363636363686163636570746564f56e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "reject",
+    "type": "action-accept",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accepted": false,
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a462696478206363636363636363636363636363636363636363636363636363636363636363656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4686163636570746564f46e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "success",
+    "type": "action-outcome",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "succeeded",
+      "result": {}
+    },
+    "cbor_hex": "a46269647820636363636363636363636363636363636363636363636363636363636363636366726573756c74a066737461747573697375636365656465646e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "failed",
+    "type": "action-outcome",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "failed",
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a462696478206363636363636363636363636363636363636363636363636363636363636363656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d6573736167656d4772616e74206d697373696e6769726574727961626c65f466737461747573666661696c65646e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "cancelled",
+    "type": "action-outcome",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "cancelled",
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a462696478206363636363636363636363636363636363636363636363636363636363636363656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4667374617475736963616e63656c6c65646e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "expired",
+    "type": "action-outcome",
+    "valid": true,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "expired",
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a462696478206363636363636363636363636363636363636363636363636363636363636363656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d6573736167656d4772616e74206d697373696e6769726574727961626c65f46673746174757367657870697265646e636f7272656c6174696f6e5f696478206262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "error-invalid_argument",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "invalid_argument",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f646570696e76616c69645f617267756d656e746764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-unsupported_version",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "unsupported_version",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f646573756e737570706f727465645f76657273696f6e6764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-unauthenticated",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "unauthenticated",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f64656f756e61757468656e746963617465646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-permission_denied",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "permission_denied",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f6465717065726d697373696f6e5f64656e6965646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-not_found",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "not_found",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f6465696e6f745f666f756e646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-conflict",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "conflict",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f646568636f6e666c6963746764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-resource_exhausted",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "resource_exhausted",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f6465727265736f757263655f6578686175737465646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-deadline_exceeded",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "deadline_exceeded",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f646571646561646c696e655f65786365656465646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-cancelled",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "cancelled",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f64656963616e63656c6c65646764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-unavailable",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "unavailable",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f64656b756e617661696c61626c656764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "error-internal",
+    "type": "error",
+    "valid": true,
+    "value": {
+      "code": "internal",
+      "message": "Grant missing",
+      "retryable": false,
+      "details": {
+        "remaining": 0
+      }
+    },
+    "cbor_hex": "a464636f646568696e7465726e616c6764657461696c73a16972656d61696e696e6700676d6573736167656d4772616e74206d697373696e6769726574727961626c65f4"
+  },
+  {
+    "name": "offer",
+    "type": "version-offer",
+    "valid": true,
+    "value": {
+      "versions": [
+        "0.1",
+        "1.10",
+        "1.2"
+      ]
+    },
+    "cbor_hex": "a16876657273696f6e738363302e3164312e313063312e32"
+  },
+  {
+    "name": "offer-duplicate",
+    "type": "version-offer",
+    "valid": true,
+    "value": {
+      "versions": [
+        "0.1",
+        "0.1"
+      ]
+    },
+    "cbor_hex": "a16876657273696f6e738263302e3163302e31"
+  },
+  {
+    "name": "selection",
+    "type": "version-selection",
+    "valid": true,
+    "value": {
+      "version": "0.1"
+    },
+    "cbor_hex": "a16776657273696f6e63302e31"
+  },
+  {
+    "name": "grammar-node-id-24",
+    "type": "node-id",
+    "valid": true,
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "cbor_hex": "784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "grammar-coglet-id-25",
+    "type": "coglet-id",
+    "valid": true,
+    "value": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "cbor_hex": "7847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "grammar-surface-id-26",
+    "type": "surface-id",
+    "valid": true,
+    "value": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "cbor_hex": "7848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "grammar-hub-id-27",
+    "type": "hub-id",
+    "valid": true,
+    "value": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "cbor_hex": "78446875623a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "grammar-capability-name-28",
+    "type": "capability-name",
+    "valid": true,
+    "value": "speech.speak",
+    "cbor_hex": "6c7370656563682e737065616b"
+  },
+  {
+    "name": "grammar-method-name-29",
+    "type": "method-name",
+    "valid": true,
+    "value": "debug.data.read",
+    "cbor_hex": "6f64656275672e646174612e72656164"
+  },
+  {
+    "name": "grammar-method-name-30",
+    "type": "method-name",
+    "valid": true,
+    "value": "hub.git.refs.read",
+    "cbor_hex": "716875622e6769742e726566732e72656164"
+  },
+  {
+    "name": "grammar-spec-version-31",
+    "type": "spec-version",
+    "valid": true,
+    "value": "9999.0",
+    "cbor_hex": "66393939392e30"
+  },
+  {
+    "name": "grammar-profile-value-32",
+    "type": "profile-value",
+    "valid": true,
+    "value": [
+      -9223372036854775808,
+      18446744073709551615
+    ],
+    "cbor_hex": "823b7fffffffffffffff1bffffffffffffffff"
+  },
+  {
+    "name": "missing-event-source",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "missing-event-kind",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "missing-event-seq",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "missing-event-logical_time",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "missing-event-payload",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "missing-event-correlation_id",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "missing-action-id",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capability": "speech.speak",
+      "args": {
+        "text": "hello"
+      },
+      "deadline": 18446744073709551615
+    }
+  },
+  {
+    "name": "missing-action-correlation_id",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capability": "speech.speak",
+      "args": {
+        "text": "hello"
+      },
+      "deadline": 18446744073709551615
+    }
+  },
+  {
+    "name": "missing-action-coglet",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "speech.speak",
+      "args": {
+        "text": "hello"
+      },
+      "deadline": 18446744073709551615
+    }
+  },
+  {
+    "name": "missing-action-capability",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "args": {
+        "text": "hello"
+      },
+      "deadline": 18446744073709551615
+    }
+  },
+  {
+    "name": "missing-action-args",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capability": "speech.speak",
+      "deadline": 18446744073709551615
+    }
+  },
+  {
+    "name": "missing-action-deadline",
+    "type": "action",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "capability": "speech.speak",
+      "args": {
+        "text": "hello"
+      }
+    }
+  },
+  {
+    "name": "unknown-field",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "unknown": true
+    }
+  },
+  {
+    "name": "negative-seq",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": -1,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "bool-seq",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": true,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "overflow",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 18446744073709551616,
+      "logical_time": 42,
+      "payload": {
+        "text": "hélло",
+        "nested": [
+          true,
+          null,
+          -1,
+          {
+            "aa": 1,
+            "z": 2
+          }
+        ]
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "float-payload",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": {
+        "bad": 1.5
+      },
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "non-map-payload",
+    "type": "event",
+    "valid": false,
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.partial",
+      "seq": 0,
+      "logical_time": 42,
+      "payload": [],
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  {
+    "name": "accept-error",
+    "type": "action-accept",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accepted": true,
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    }
+  },
+  {
+    "name": "reject-no-error",
+    "type": "action-accept",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "accepted": false
+    }
+  },
+  {
+    "name": "success-no-result",
+    "type": "action-outcome",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "succeeded"
+    }
+  },
+  {
+    "name": "failure-no-error",
+    "type": "action-outcome",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "failed"
+    }
+  },
+  {
+    "name": "unknown-status",
+    "type": "action-outcome",
+    "valid": false,
+    "value": {
+      "id": "cccccccccccccccccccccccccccccccc",
+      "correlation_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": "pending",
+      "error": {
+        "code": "permission_denied",
+        "message": "Grant missing",
+        "retryable": false
+      }
+    }
+  },
+  {
+    "name": "unknown-error",
+    "type": "error",
+    "valid": false,
+    "value": {
+      "code": "oops",
+      "message": "Grant missing",
+      "retryable": false
+    }
+  },
+  {
+    "name": "empty-error",
+    "type": "error",
+    "valid": false,
+    "value": {
+      "code": "permission_denied",
+      "message": "",
+      "retryable": false
+    }
+  },
+  {
+    "name": "missing-retry",
+    "type": "error",
+    "valid": false,
+    "value": {
+      "code": "internal",
+      "message": "bad"
+    }
+  },
+  {
+    "name": "empty-offer",
+    "type": "version-offer",
+    "valid": false,
+    "value": {
+      "versions": []
+    }
+  },
+  {
+    "name": "leading-zero-version",
+    "type": "spec-version",
+    "valid": false,
+    "value": "01.1"
+  },
+  {
+    "name": "patch-version",
+    "type": "spec-version",
+    "valid": false,
+    "value": "0.1.0"
+  },
+  {
+    "name": "large-version",
+    "type": "spec-version",
+    "valid": false,
+    "value": "10000.0"
+  },
+  {
+    "name": "short-id",
+    "type": "coglet-id",
+    "valid": false,
+    "value": "coglet:a"
+  },
+  {
+    "name": "upper-id",
+    "type": "surface-id",
+    "valid": false,
+    "value": "surface:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  },
+  {
+    "name": "raw-key",
+    "type": "hub-id",
+    "valid": false,
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "name": "newline-id",
+    "type": "node-id",
+    "valid": false,
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+  },
+  {
+    "name": "newline-cap",
+    "type": "capability-name",
+    "valid": false,
+    "value": "speech.speak\n"
+  },
+  {
+    "name": "cap-hyphen",
+    "type": "capability-name",
+    "valid": false,
+    "value": "speech.speak-now"
+  },
+  {
+    "name": "cap-three",
+    "type": "capability-name",
+    "valid": false,
+    "value": "speech.speak.chunk"
+  },
+  {
+    "name": "method-one",
+    "type": "method-name",
+    "valid": false,
+    "value": "read"
+  },
+  {
+    "name": "method-five",
+    "type": "method-name",
+    "valid": false,
+    "value": "a.b.c.d.e"
+  },
+  {
+    "name": "cap-uppercase",
+    "type": "capability-name",
+    "valid": false,
+    "value": "Speech.speak"
+  },
+  {
+    "name": "long-component",
+    "type": "capability-name",
+    "valid": false,
+    "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.read"
+  },
+  {
+    "name": "short-correlation",
+    "type": "correlation-id",
+    "valid": false,
+    "value": "ab"
+  },
+  {
+    "name": "below-profile-int",
+    "type": "profile-value",
+    "valid": false,
+    "value": -9223372036854775809
+  }
+]
