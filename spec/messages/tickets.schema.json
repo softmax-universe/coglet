@@ -83,10 +83,9 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*$"
+                "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*(?![\\s\\S])"
               },
-              "minItems": 0,
-              "uniqueItems": true
+              "minItems": 0
             },
             "debug_read": {
               "type": "boolean"
@@ -155,7 +154,7 @@
             },
             "currency": {
               "type": "string",
-              "pattern": "^[A-Z]{3}$"
+              "pattern": "^[A-Z]{3}(?![\\s\\S])"
             }
           },
           "required": [

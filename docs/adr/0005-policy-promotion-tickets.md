@@ -44,7 +44,19 @@ Draft evolution still follows common negotiated version compatibility rules.
 
 `python3 -m unittest discover -s spec/tests -v` validates positive/negative policy,
 promotion and ticket fixtures, golden deterministic CBOR, and local cross-field
-invariants. Existing conformance CI discovers these tests without workflow edits.
+invariants. Both actual CDDL and JSON Schema validators check every fixture's
+expected shape; semantic negatives pass both shapes and fail a separate local
+invariant check. Array uniqueness for policy gate kinds and ticket edit paths
+belongs to that semantic layer (standard CDDL has no generic unique-items
+operator); the normative rejection requirement is unchanged. Required ticket
+gate kinds are enumerable and remain a shape constraint in both schemas.
+CDDL imports common rules by concatenation; positive uint64 refinements use an
+explicit 1..uint64-max range because the pinned validator mishandles comparison
+controls on range aliases. Closed array maps and forbidden sibling-alternative
+keys use explicit empty types to avoid pinned-validator closure bugs without
+changing the standard CDDL meaning. Lexical newline regressions, positive controls
+and nested-map mutation tests exercise these paths.
+Existing conformance CI discovers these tests without workflow edits.
 
 ## Approval
 
