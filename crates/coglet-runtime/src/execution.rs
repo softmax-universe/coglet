@@ -5,9 +5,28 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
+#[path = "clock.rs"]
+mod clock;
+#[path = "dispatch.rs"]
+mod dispatch;
+#[path = "live_heard.rs"]
+mod live_heard;
+#[cfg(feature = "native-engine")]
+#[path = "native_engine.rs"]
+pub mod native_engine;
+#[path = "playback.rs"]
+mod playback;
+#[path = "speech_temporal.rs"]
+mod speech_temporal;
+#[path = "surface_events.rs"]
+mod surface_events;
+
 /// Engine implementations must start a fresh instance for every attempt. This
-/// runtime-owned seam is temporary while coglet-engine's public API is empty.
+/// fixture seam also adapts the shared Engine API through opt-in NativeEngine.
 pub trait Engine {
+    fn metadata(&self) -> Option<Value> {
+        None
+    }
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport>;
 }
 
@@ -20,6 +39,30 @@ pub struct EngineReport {
 struct ServiceState {
     runtime: Runtime,
     router: Router,
+    #[serde(default)]
+    clock_anchor: Option<clock::ClockAnchor>,
+    #[serde(default)]
+    dispatch_order: Vec<String>,
+    #[serde(default)]
+    dispatches: BTreeMap<String, dispatch::Dispatch>,
+    #[serde(default)]
+    surface_epochs: BTreeMap<String, u64>,
+    #[serde(default)]
+    staged_boundary: Option<StagedBoundary>,
+    #[serde(default)]
+    surface_sequences: BTreeMap<String, (u64, u64)>,
+    #[serde(default)]
+    private_events: BTreeMap<u64, surface_events::EventLease>,
+    #[serde(default)]
+    speech_temporal: speech_temporal::SpeechTemporal,
+    #[serde(default)]
+    heard_pending: BTreeMap<String, live_heard::HeardObservation>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct StagedBoundary {
+    changes: Vec<Value>,
+    runtime: Runtime,
 }
 
 /// Serial durable coordinator. Admission and consumption commit host metadata
@@ -27,12 +70,14 @@ struct ServiceState {
 pub struct RuntimeService {
     state: ServiceState,
     store: DurableStore,
+    #[cfg(feature = "native-engine")]
+    native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
-        let state: ServiceState = if let Some(saved) = store.state() {
+        let mut state: ServiceState = if let Some(saved) = store.state() {
             let state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
             let code_files = |runtime: &Runtime| {
@@ -50,11 +95,35 @@ impl RuntimeService {
                 return Err("recovery code/manifest pins differ from configuration".into());
             }
             state.runtime.validate_recovered(store.records())?;
+            Self::validate_dispatches(&state)?;
+            state
+                .speech_temporal
+                .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
+            if let Some(staged) = &state.staged_boundary {
+                let mut derived = state.runtime.clone();
+                derived.apply_boundary_changes(&staged.changes)?;
+                // Router sequences may already have been reserved after apply.
+                derived.next_source_seq = staged.runtime.next_source_seq;
+                if serde_json::to_value(&derived).map_err(|e| e.to_string())?
+                    != serde_json::to_value(&staged.runtime).map_err(|e| e.to_string())?
+                {
+                    return Err("recovered staged boundary state mismatch".into());
+                }
+            }
             state
         } else {
             let state = ServiceState {
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
+                clock_anchor: None,
+                dispatch_order: Vec::new(),
+                dispatches: BTreeMap::new(),
+                surface_epochs: BTreeMap::new(),
+                staged_boundary: None,
+                surface_sequences: BTreeMap::new(),
+                private_events: BTreeMap::new(),
+                speech_temporal: speech_temporal::SpeechTemporal::default(),
+                heard_pending: BTreeMap::new(),
             };
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
@@ -62,7 +131,65 @@ impl RuntimeService {
             )?;
             state
         };
-        Ok(Self { state, store })
+        // Reconstruct from immutable initial intent order and committed call
+        // order, never BTreeMap key order. Upgrade pre-order WALs atomically.
+        let mut order = Vec::new();
+        for action in setup["initial_actions"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .chain(
+                store
+                    .records()
+                    .iter()
+                    .flat_map(|r| r["actions"].as_array().into_iter().flatten()),
+            )
+        {
+            let id = action["id"]
+                .as_str()
+                .ok_or("missing ordered action id")?
+                .to_owned();
+            if order.contains(&id) {
+                return Err("duplicate ordered action id".into());
+            }
+            order.push(id);
+        }
+        if state
+            .runtime
+            .pending_actions
+            .keys()
+            .any(|id| !order.contains(id))
+            || state.dispatches.keys().any(|id| !order.contains(id))
+            || (!state.dispatch_order.is_empty() && state.dispatch_order != order)
+        {
+            return Err("durable dispatch call order mismatch".into());
+        }
+        if state.dispatch_order != order {
+            state.dispatch_order = order;
+            store.commit(
+                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
+        // Restart has no live authenticated leases. Keep source highwaters but
+        // never deliver queued old-owner observations into a fresh connection.
+        if !state.private_events.is_empty() || !state.heard_pending.is_empty() {
+            state.heard_pending.clear();
+            let revoked = std::mem::take(&mut state.private_events);
+            state
+                .router
+                .retain_ordinals(|ordinal| !revoked.contains_key(&ordinal));
+            store.commit(
+                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
+        Ok(Self {
+            state,
+            store,
+            #[cfg(feature = "native-engine")]
+            native: None,
+        })
     }
 
     /// The authenticated surface/router must have authorized external events
@@ -84,6 +211,17 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if !self.store.is_healthy() {
+            return Err("runtime requires recovery before guest delivery".into());
+        }
+        self.expire_private_events(
+            context["logical_time"]
+                .as_u64()
+                .ok_or("missing logical_time")?,
+        )?;
+        if !self.state.heard_pending.is_empty() {
+            return Ok(None);
+        }
         self.queue_due_timers(
             context["logical_time"]
                 .as_u64()
@@ -101,12 +239,32 @@ impl RuntimeService {
         }
         let mut next = self.state.clone();
         let mut inputs = context.clone();
+        if let Some(staged) = next.staged_boundary.take() {
+            let mut changes = staged.changes;
+            changes.extend(
+                inputs["boundary"]
+                    .as_array()
+                    .ok_or("missing boundary")?
+                    .iter()
+                    .cloned(),
+            );
+            inputs["boundary"] = json!(changes);
+        }
         inputs["coglet"] = next.runtime.manifest["id"].clone();
         inputs["step"] = json!(next.runtime.step);
         inputs["previous"] = next.runtime.previous.clone();
         inputs["events"] = json!(events);
         let result = next.runtime.step(&inputs, engine)?;
+        for action in result["journal"]["actions"]
+            .as_array()
+            .ok_or("missing committed actions")?
+        {
+            next.dispatch_order
+                .push(action["id"].as_str().ok_or("missing action id")?.to_owned());
+        }
         next.router.consume(events.len())?;
+        next.private_events
+            .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
         self.store.commit(
             &serde_json::to_value(&next).map_err(|e| e.to_string())?,
             Some(&result["journal"]),
@@ -156,6 +314,10 @@ impl RuntimeService {
         }
         if changed {
             next.runtime.time = now;
+            if let Some(staged) = &mut next.staged_boundary {
+                staged.runtime.time = now;
+                staged.runtime.next_source_seq = next.runtime.next_source_seq;
+            }
             self.store.commit(
                 &serde_json::to_value(&next).map_err(|e| e.to_string())?,
                 None,
@@ -175,11 +337,27 @@ impl RuntimeService {
     ) -> Result<Value> {
         let old_count = crate::boundary::inbox(&self.state.runtime.files)?.len();
         let mut next = self.state.clone();
+        let staged_count = next
+            .staged_boundary
+            .as_ref()
+            .map(|s| {
+                s.changes
+                    .iter()
+                    .filter(|c| c["method"] == "runtime.receipt")
+                    .count()
+            })
+            .unwrap_or(0);
+        let mut all_changes = next
+            .staged_boundary
+            .take()
+            .map(|s| s.changes)
+            .unwrap_or_default();
+        all_changes.extend_from_slice(changes);
         let record = next
             .runtime
-            .seal_boundary(trace_id, logical_time, changes)?;
+            .seal_boundary(trace_id, logical_time, &all_changes)?;
         let messages = crate::boundary::inbox(&next.runtime.files)?;
-        for message in &messages[old_count..] {
+        for message in &messages[old_count + staged_count..] {
             let seq = next.runtime.next_source_seq;
             next.runtime.next_source_seq =
                 seq.checked_add(1).ok_or("runtime source seq exhausted")?;
@@ -394,6 +572,11 @@ impl Runtime {
     /// Compute an attempted step. No dispatch occurs here. Integration with the
     /// durable store must commit returned state + record before external effects.
     pub fn step(&mut self, inputs: &Value, engine: &mut impl Engine) -> Result<Value> {
+        let mut pinned_inputs = inputs.clone();
+        if let Some(metadata) = engine.metadata() {
+            pinned_inputs["engine"] = metadata;
+        }
+        let inputs = &pinned_inputs;
         if self.sealed {
             return Err("trace is sealed; start a new segment".into());
         }

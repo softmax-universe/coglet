@@ -130,6 +130,9 @@ impl DurableStore {
     pub fn state(&self) -> Option<&Value> {
         self.state.as_ref()
     }
+    pub(crate) fn is_healthy(&self) -> bool {
+        !self.poisoned
+    }
     pub fn records(&self) -> &[Value] {
         &self.journal
     }

@@ -64,6 +64,49 @@ fn main() {
             }
         }
         #[cfg(target_os = "linux")]
+        [flag, path, binding, uid, wal, setup] if flag == "--surface-service-socket" => {
+            let result = (|| {
+                let binding = coglet_runtime::SurfaceBinding::from_config(
+                    &std::fs::read(binding).map_err(|e| e.to_string())?,
+                )?;
+                let setup: Value =
+                    serde_json::from_slice(&std::fs::read(setup).map_err(|e| e.to_string())?)
+                        .map_err(|e| e.to_string())?;
+                let mut service =
+                    coglet_runtime::RuntimeService::open(std::path::Path::new(wal), &setup, 128)?;
+                if let Some(schedule) = setup.get("native_schedule") {
+                    #[cfg(feature = "native-engine")]
+                    service.enable_native(
+                        serde_json::from_value(schedule.clone()).map_err(|e| e.to_string())?,
+                    )?;
+                    #[cfg(not(feature = "native-engine"))]
+                    {
+                        let _ = schedule;
+                        return Err("native-engine feature unavailable".to_string());
+                    }
+                }
+                // Activate the coherent clock even without an attached scheduler.
+                service.supervised_now()?;
+                let server = coglet_runtime::socket::SurfaceListener::bind(
+                    std::path::Path::new(path),
+                    uid.parse::<u32>().map_err(|e| e.to_string())?,
+                    binding,
+                )?
+                .with_service(std::sync::Arc::new(std::sync::Mutex::new(service)))?;
+                loop {
+                    if let Err(error) = server.serve_one() {
+                        eprintln!("surface connection: {error}");
+                    }
+                }
+                #[allow(unreachable_code)]
+                Ok::<(), String>(())
+            })();
+            if let Err(error) = result {
+                eprintln!("cogletd surface service: {error}");
+                std::process::exit(1);
+            }
+        }
+        #[cfg(target_os = "linux")]
         [flag, path, binding, uid] if flag == "--surface-probe-socket" => {
             let result = (|| {
                 let binding = coglet_runtime::SurfaceBinding::from_config(
@@ -94,7 +137,7 @@ fn main() {
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         _ => {
             eprintln!(
-                "usage: cogletd --version | --mock-stdio\nSurface server mode is not yet implemented; refusing to start an inert daemon."
+                "usage: cogletd --version | --mock-stdio | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON\nService mode hosts committed outbox/receipts; production guest scheduling is not yet implemented."
             );
             std::process::exit(2);
         }
