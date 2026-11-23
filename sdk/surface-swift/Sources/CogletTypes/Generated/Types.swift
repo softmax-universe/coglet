@@ -3,6 +3,26 @@ import Foundation
 
 internal enum GeneratedSchema {
     static let rules: [Swift.String: SchemaNode] = [
+        "abi::abi": .union([.reference("abi::trace"), .reference("abi::step-record"), .reference("abi::inbox-message"), .reference("abi::timer-request"), .reference("abi::llm-request"), .reference("abi::llm-reply"), .reference("abi::log-entry"), .reference("abi::manifest")]),
+        "abi::hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "abi::hex": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
+        "abi::path": .intersection([.text, .regexp("^/(code|data|logs)(/[^/]+)+$")]),
+        "abi::snapshot": .boundedMap(0, nil, .text, .reference("abi::hex")),
+        "abi::budgets": .record([.init(name: "compute", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "compute_mode", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "memory_pages", optional: false, node: .range(.unsigned(1), .unsigned(65536))), .init(name: "wall_time_us", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "max_events", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "host_bytes", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615)))]),
+        "abi::timer-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "at", optional: false, node: .reference("common::uint64"))]),
+        "abi::llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
+        "abi::log-entry": .record([.init(name: "level", optional: false, node: .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))])), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "fields", optional: false, node: .reference("common::profile-map"))]),
+        "abi::llm-reply": .union([.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "abi::inbox-message": .record([.init(name: "index", optional: false, node: .reference("common::uint64")), .init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("common::event"))]),
+        "abi::call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "abi::boundary-change": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "audit_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ticket", optional: false, node: .union([.reference("common::correlation-id"), .literal(.null)])), .init(name: "method", optional: false, node: .reference("common::method-name")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "path", optional: false, node: .reference("abi::path")), .init(name: "before", optional: false, node: .union([.reference("abi::hex"), .literal(.null)])), .init(name: "after", optional: false, node: .union([.reference("abi::hex"), .literal(.null)]))]),
+        "abi::engine": .record([.init(name: "build", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "policy", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)]))]),
+        "abi::usage": .record([.init(name: "compute", optional: false, node: .reference("common::uint64")), .init(name: "memory_pages", optional: false, node: .reference("common::uint64")), .init(name: "wall_time_us", optional: false, node: .reference("common::uint64")), .init(name: "host_bytes", optional: false, node: .reference("common::uint64"))]),
+        "abi::failure": .record([.init(name: "kind", optional: false, node: .union([.literal(.text("compute")), .literal(.text("memory")), .literal(.text("wall")), .literal(.text("host_bytes")), .literal(.text("trap")), .literal(.text("guest_return")), .literal(.text("invalid_argument"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "abi::step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))])]),
+        "abi::effect-ledger": .record([.init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id")))]),
+        "abi::trace": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "records", optional: false, node: .boundedArray(1, nil, .reference("abi::step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex")))]),
+        "abi::manifest": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets"))]),
         "common::common": .union([.reference("common::event"), .reference("common::action"), .reference("common::action-accept"), .reference("common::action-outcome"), .reference("common::error"), .reference("common::version-offer"), .reference("common::version-selection")]),
         "common::uint64": .range(.unsigned(0), .unsigned(18446744073709551615)),
         "common::profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("common::uint64")]),
@@ -26,6 +46,26 @@ internal enum GeneratedSchema {
         "common::action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
         "common::error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
         "common::error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "abi": .union([.reference("abi::trace"), .reference("abi::step-record"), .reference("abi::inbox-message"), .reference("abi::timer-request"), .reference("abi::llm-request"), .reference("abi::llm-reply"), .reference("abi::log-entry"), .reference("abi::manifest")]),
+        "hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
+        "hex": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
+        "path": .intersection([.text, .regexp("^/(code|data|logs)(/[^/]+)+$")]),
+        "snapshot": .boundedMap(0, nil, .text, .reference("abi::hex")),
+        "budgets": .record([.init(name: "compute", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "compute_mode", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "memory_pages", optional: false, node: .range(.unsigned(1), .unsigned(65536))), .init(name: "wall_time_us", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "max_events", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "host_bytes", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615)))]),
+        "timer-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "at", optional: false, node: .reference("common::uint64"))]),
+        "llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("common::capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
+        "log-entry": .record([.init(name: "level", optional: false, node: .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))])), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "fields", optional: false, node: .reference("common::profile-map"))]),
+        "llm-reply": .union([.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))])]),
+        "inbox-message": .record([.init(name: "index", optional: false, node: .reference("common::uint64")), .init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("common::event"))]),
+        "call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "boundary-change": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "audit_id", optional: false, node: .reference("common::correlation-id")), .init(name: "ticket", optional: false, node: .union([.reference("common::correlation-id"), .literal(.null)])), .init(name: "method", optional: false, node: .reference("common::method-name")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "path", optional: false, node: .reference("abi::path")), .init(name: "before", optional: false, node: .union([.reference("abi::hex"), .literal(.null)])), .init(name: "after", optional: false, node: .union([.reference("abi::hex"), .literal(.null)]))]),
+        "engine": .record([.init(name: "build", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "policy", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)]))]),
+        "usage": .record([.init(name: "compute", optional: false, node: .reference("common::uint64")), .init(name: "memory_pages", optional: false, node: .reference("common::uint64")), .init(name: "wall_time_us", optional: false, node: .reference("common::uint64")), .init(name: "host_bytes", optional: false, node: .reference("common::uint64"))]),
+        "failure": .record([.init(name: "kind", optional: false, node: .union([.literal(.text("compute")), .literal(.text("memory")), .literal(.text("wall")), .literal(.text("host_bytes")), .literal(.text("trap")), .literal(.text("guest_return")), .literal(.text("invalid_argument"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))])]),
+        "effect-ledger": .record([.init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("common::correlation-id")))]),
+        "trace": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "records", optional: false, node: .boundedArray(1, nil, .reference("abi::step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex")))]),
+        "manifest": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets"))]),
         "common": .union([.reference("common::event"), .reference("common::action"), .reference("common::action-accept"), .reference("common::action-outcome"), .reference("common::error"), .reference("common::version-offer"), .reference("common::version-selection")]),
         "uint64": .range(.unsigned(0), .unsigned(18446744073709551615)),
         "profile-int": .union([.range(.negative(-9223372036854775808), .negative(-1)), .reference("common::uint64")]),
@@ -49,21 +89,75 @@ internal enum GeneratedSchema {
         "action-outcome": .union([.record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]), .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))])]),
         "error-code": .union([.literal(.text("invalid_argument")), .literal(.text("unsupported_version")), .literal(.text("unauthenticated")), .literal(.text("permission_denied")), .literal(.text("not_found")), .literal(.text("conflict")), .literal(.text("resource_exhausted")), .literal(.text("deadline_exceeded")), .literal(.text("cancelled")), .literal(.text("unavailable")), .literal(.text("internal"))]),
         "error": .record([.init(name: "code", optional: false, node: .reference("common::error-code")), .init(name: "message", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "retryable", optional: false, node: .boolean), .init(name: "details", optional: true, node: .reference("common::profile-map"))]),
+        "@AbiLogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
+        "@AbiLlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
+        "@AbiLlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@AbiCallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@AbiCallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@AbiCallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@AbiCallVariant4": .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@AbiCallVariant5": .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@AbiBoundaryChangeTicket": .union([.reference("common::correlation-id"), .literal(.null)]),
+        "@AbiBoundaryChangeBefore": .union([.reference("abi::hex"), .literal(.null)]),
+        "@AbiBoundaryChangeAfter": .union([.reference("abi::hex"), .literal(.null)]),
+        "@AbiFailureKind": .union([.literal(.text("compute")), .literal(.text("memory")), .literal(.text("wall")), .literal(.text("host_bytes")), .literal(.text("trap")), .literal(.text("guest_return")), .literal(.text("invalid_argument"))]),
+        "@AbiStepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@AbiStepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]),
         "@CommonActionAcceptVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]),
         "@CommonActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@CommonActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
         "@CommonActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@LogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
+        "@LlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
+        "@LlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@CallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@CallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@CallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@CallVariant4": .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@CallVariant5": .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@BoundaryChangeTicket": .union([.reference("common::correlation-id"), .literal(.null)]),
+        "@BoundaryChangeBefore": .union([.reference("abi::hex"), .literal(.null)]),
+        "@BoundaryChangeAfter": .union([.reference("abi::hex"), .literal(.null)]),
+        "@FailureKind": .union([.literal(.text("compute")), .literal(.text("memory")), .literal(.text("wall")), .literal(.text("host_bytes")), .literal(.text("trap")), .literal(.text("guest_return")), .literal(.text("invalid_argument"))]),
+        "@StepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@StepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]),
         "@ActionAcceptVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]),
         "@ActionAcceptVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "@ActionOutcomeVariant1": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("common::profile-map"))]),
         "@ActionOutcomeVariant2": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("common::error"))]),
+        "@AbiCallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
+        "@AbiStepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@AbiStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@CommonActionOutcomeVariant2Status": .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))]),
+        "@CallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
+        "@StepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@StepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@ActionOutcomeVariant2Status": .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))]),
     ]
     static func typedRoundTrip(rule: Swift.String, bytes: [Swift.UInt8]) throws -> [Swift.UInt8] {
         let value = try CBORCodec.decode(rule: rule, bytes: bytes)
         let typed: CBORValue
         switch rule {
+        case "abi::abi": typed = try AbiAbi.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::hash": typed = try AbiHash.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::hex": typed = try AbiHex.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::path": typed = try AbiPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::snapshot": typed = try AbiSnapshot.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::budgets": typed = try AbiBudgets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::timer-request": typed = try AbiTimerRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::llm-request": typed = try AbiLlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::log-entry": typed = try AbiLogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::llm-reply": typed = try AbiLlmReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::inbox-message": typed = try AbiInboxMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::call": typed = try AbiCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::boundary-change": typed = try AbiBoundaryChange.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::engine": typed = try AbiEngine.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::usage": typed = try AbiUsage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::failure": typed = try AbiFailure.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::step-record": typed = try AbiStepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::effect-ledger": typed = try AbiEffectLedger.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::trace": typed = try AbiTrace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi::manifest": typed = try AbiManifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::common": typed = try CommonCommon.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::uint64": typed = try CommonUint64.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::profile-int": typed = try CommonProfileInt.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -87,6 +181,26 @@ internal enum GeneratedSchema {
         case "common::action-outcome": typed = try CommonActionOutcome.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::error-code": typed = try CommonErrorCode.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common::error": typed = try CommonError.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "abi": typed = try Abi.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hash": typed = try Hash.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hex": typed = try Hex.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "path": typed = try Path.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "snapshot": typed = try Snapshot.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "budgets": typed = try Budgets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "timer-request": typed = try TimerRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "llm-request": typed = try LlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "log-entry": typed = try LogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "llm-reply": typed = try LlmReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "inbox-message": typed = try InboxMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "call": typed = try Call.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "boundary-change": typed = try BoundaryChange.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "engine": typed = try Engine.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "usage": typed = try Usage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "failure": typed = try Failure.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "step-record": typed = try StepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "effect-ledger": typed = try EffectLedger.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "trace": typed = try Trace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manifest": typed = try Manifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "common": typed = try Common.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "uint64": typed = try Uint64.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "profile-int": typed = try ProfileInt.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -113,6 +227,650 @@ internal enum GeneratedSchema {
         default: throw CBORFailure.invalid("unknown typed rule")
         }
         return try CBORCodec.encode(rule: rule, value: typed)
+    }
+}
+
+public indirect enum AbiAbi: CBORMessage, Sendable {
+    public static let schemaRule = "abi::abi"
+    case variant1(AbiTrace)
+    case variant2(AbiStepRecord)
+    case variant3(AbiInboxMessage)
+    case variant4(AbiTimerRequest)
+    case variant5(AbiLlmRequest)
+    case variant6(AbiLlmReply)
+    case variant7(AbiLogEntry)
+    case variant8(AbiManifest)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::trace"), cborValue)) != nil {
+            self = .variant1(try AbiTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::step-record"), cborValue)) != nil {
+            self = .variant2(try AbiStepRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::inbox-message"), cborValue)) != nil {
+            self = .variant3(try AbiInboxMessage.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::timer-request"), cborValue)) != nil {
+            self = .variant4(try AbiTimerRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::llm-request"), cborValue)) != nil {
+            self = .variant5(try AbiLlmRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::llm-reply"), cborValue)) != nil {
+            self = .variant6(try AbiLlmReply.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::log-entry"), cborValue)) != nil {
+            self = .variant7(try AbiLogEntry.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::manifest"), cborValue)) != nil {
+            self = .variant8(try AbiManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::trace"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::step-record"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::inbox-message"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::timer-request"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::llm-request"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::llm-reply"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::log-entry"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::manifest"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias AbiHash = CBORValue
+
+public typealias AbiHex = CBORValue
+
+public typealias AbiPath = CBORValue
+
+public typealias AbiSnapshot = [CBORMapEntry]
+
+public struct AbiBudgets: CBORMessage, Sendable {
+    public static let schemaRule = "abi::budgets"
+    public var `compute`: Swift.UInt64
+    public var `compute_mode`: CBORValue
+    public var `memory_pages`: Swift.UInt64
+    public var `wall_time_us`: Swift.UInt64
+    public var `max_events`: Swift.UInt64
+    public var `host_bytes`: Swift.UInt64
+    public init(`compute`: Swift.UInt64, `compute_mode`: CBORValue, `memory_pages`: Swift.UInt64, `wall_time_us`: Swift.UInt64, `max_events`: Swift.UInt64, `host_bytes`: Swift.UInt64) {
+        self.`compute` = `compute`
+        self.`compute_mode` = `compute_mode`
+        self.`memory_pages` = `memory_pages`
+        self.`wall_time_us` = `wall_time_us`
+        self.`max_events` = `max_events`
+        self.`host_bytes` = `host_bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`compute` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute")), depth: depth + 1)
+        self.`compute_mode` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute_mode")), depth: depth + 1)
+        self.`memory_pages` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "memory_pages")), depth: depth + 1)
+        self.`wall_time_us` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "wall_time_us")), depth: depth + 1)
+        self.`max_events` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "max_events")), depth: depth + 1)
+        self.`host_bytes` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "host_bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("compute", try self.`compute`.cborValue(depth: depth + 1)))
+        entries.append(.init("compute_mode", try self.`compute_mode`.cborValue(depth: depth + 1)))
+        entries.append(.init("memory_pages", try self.`memory_pages`.cborValue(depth: depth + 1)))
+        entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
+        entries.append(.init("max_events", try self.`max_events`.cborValue(depth: depth + 1)))
+        entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiTimerRequest: CBORMessage, Sendable {
+    public static let schemaRule = "abi::timer-request"
+    public var `id`: CommonCorrelationId
+    public var `at`: CommonUint64
+    public init(`id`: CommonCorrelationId, `at`: CommonUint64) {
+        self.`id` = `id`
+        self.`at` = `at`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`at` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "at")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("at", try self.`at`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiLlmRequest: CBORMessage, Sendable {
+    public static let schemaRule = "abi::llm-request"
+    public var `id`: CommonCorrelationId
+    public var `correlation_id`: CommonCorrelationId
+    public var `capability`: CommonCapabilityName
+    public var `model`: CBORValue
+    public var `input`: CommonProfileMap
+    public init(`id`: CommonCorrelationId, `correlation_id`: CommonCorrelationId, `capability`: CommonCapabilityName, `model`: CBORValue, `input`: CommonProfileMap) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`capability` = `capability`
+        self.`model` = `model`
+        self.`input` = `input`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`model` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "model")), depth: depth + 1)
+        self.`input` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("model", try self.`model`.cborValue(depth: depth + 1)))
+        entries.append(.init("input", try self.`input`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiLogEntry: CBORMessage, Sendable {
+    public static let schemaRule = "abi::log-entry"
+    public var `level`: AbiLogEntryLevel
+    public var `message`: CBORValue
+    public var `fields`: CommonProfileMap
+    public init(`level`: AbiLogEntryLevel, `message`: CBORValue, `fields`: CommonProfileMap) {
+        self.`level` = `level`
+        self.`message` = `message`
+        self.`fields` = `fields`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`level` = try AbiLogEntryLevel.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "level")), depth: depth + 1)
+        self.`message` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`fields` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "fields")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("level", try self.`level`.cborValue(depth: depth + 1)))
+        entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
+        entries.append(.init("fields", try self.`fields`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiLlmReply: CBORMessage, Sendable {
+    public static let schemaRule = "abi::llm-reply"
+    case variant1(AbiLlmReplyVariant1)
+    case variant2(AbiLlmReplyVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try AbiLlmReplyVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try AbiLlmReplyVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiInboxMessage: CBORMessage, Sendable {
+    public static let schemaRule = "abi::inbox-message"
+    public var `index`: CommonUint64
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: CommonEvent
+    public init(`index`: CommonUint64, `id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: CommonEvent) {
+        self.`index` = `index`
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`index` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "index")), depth: depth + 1)
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("index", try self.`index`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiCall: CBORMessage, Sendable {
+    public static let schemaRule = "abi::call"
+    case variant1(AbiCallVariant1)
+    case variant2(AbiCallVariant2)
+    case variant3(AbiCallVariant3)
+    case variant4(AbiCallVariant4)
+    case variant5(AbiCallVariant5)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant1(try AbiCallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try AbiCallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant3(try AbiCallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant4(try AbiCallVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant5(try AbiCallVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiBoundaryChange: CBORMessage, Sendable {
+    public static let schemaRule = "abi::boundary-change"
+    public var `actor`: CommonSourceId
+    public var `audit_id`: CommonCorrelationId
+    public var `ticket`: AbiBoundaryChangeTicket
+    public var `method`: CommonMethodName
+    public var `target`: CommonCogletId
+    public var `path`: AbiPath
+    public var `before`: AbiBoundaryChangeBefore
+    public var `after`: AbiBoundaryChangeAfter
+    public init(`actor`: CommonSourceId, `audit_id`: CommonCorrelationId, `ticket`: AbiBoundaryChangeTicket, `method`: CommonMethodName, `target`: CommonCogletId, `path`: AbiPath, `before`: AbiBoundaryChangeBefore, `after`: AbiBoundaryChangeAfter) {
+        self.`actor` = `actor`
+        self.`audit_id` = `audit_id`
+        self.`ticket` = `ticket`
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`path` = `path`
+        self.`before` = `before`
+        self.`after` = `after`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`audit_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "audit_id")), depth: depth + 1)
+        self.`ticket` = try AbiBoundaryChangeTicket.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ticket")), depth: depth + 1)
+        self.`method` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`path` = try AbiPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`before` = try AbiBoundaryChangeBefore.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before")), depth: depth + 1)
+        self.`after` = try AbiBoundaryChangeAfter.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "after")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        entries.append(.init("audit_id", try self.`audit_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ticket", try self.`ticket`.cborValue(depth: depth + 1)))
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("before", try self.`before`.cborValue(depth: depth + 1)))
+        entries.append(.init("after", try self.`after`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiEngine: CBORMessage, Sendable {
+    public static let schemaRule = "abi::engine"
+    public var `build`: CBORValue
+    public var `policy`: CBORValue
+    public init(`build`: CBORValue, `policy`: CBORValue) {
+        self.`build` = `build`
+        self.`policy` = `policy`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`build` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "build")), depth: depth + 1)
+        self.`policy` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("build", try self.`build`.cborValue(depth: depth + 1)))
+        entries.append(.init("policy", try self.`policy`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiUsage: CBORMessage, Sendable {
+    public static let schemaRule = "abi::usage"
+    public var `compute`: CommonUint64
+    public var `memory_pages`: CommonUint64
+    public var `wall_time_us`: CommonUint64
+    public var `host_bytes`: CommonUint64
+    public init(`compute`: CommonUint64, `memory_pages`: CommonUint64, `wall_time_us`: CommonUint64, `host_bytes`: CommonUint64) {
+        self.`compute` = `compute`
+        self.`memory_pages` = `memory_pages`
+        self.`wall_time_us` = `wall_time_us`
+        self.`host_bytes` = `host_bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`compute` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute")), depth: depth + 1)
+        self.`memory_pages` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "memory_pages")), depth: depth + 1)
+        self.`wall_time_us` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "wall_time_us")), depth: depth + 1)
+        self.`host_bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "host_bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("compute", try self.`compute`.cborValue(depth: depth + 1)))
+        entries.append(.init("memory_pages", try self.`memory_pages`.cborValue(depth: depth + 1)))
+        entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
+        entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiFailure: CBORMessage, Sendable {
+    public static let schemaRule = "abi::failure"
+    public var `kind`: AbiFailureKind
+    public var `error`: CommonError
+    public init(`kind`: AbiFailureKind, `error`: CommonError) {
+        self.`kind` = `kind`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`kind` = try AbiFailureKind.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiStepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "abi::step-record"
+    case variant1(AbiStepRecordVariant1)
+    case variant2(AbiStepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try AbiStepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), cborValue)) != nil {
+            self = .variant2(try AbiStepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiEffectLedger: CBORMessage, Sendable {
+    public static let schemaRule = "abi::effect-ledger"
+    public var `actions`: [CommonCorrelationId]
+    public var `timers`: [CommonCorrelationId]
+    public var `llm_requests`: [CommonCorrelationId]
+    public init(`actions`: [CommonCorrelationId], `timers`: [CommonCorrelationId], `llm_requests`: [CommonCorrelationId]) {
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actions` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiTrace: CBORMessage, Sendable {
+    public static let schemaRule = "abi::trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [AbiLlmRequest]
+    public var `records`: [AbiStepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [AbiLlmRequest], `records`: [AbiStepRecord], `blobs`: [CBORMapEntry]) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [AbiStepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiManifest: CBORMessage, Sendable {
+    public static let schemaRule = "abi::manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [CommonCapabilityName]
+    public var `required_capabilities`: [CommonCapabilityName]
+    public var `exclusive_outputs`: [CommonCapabilityName]
+    public var `budgets`: AbiBudgets
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [CommonCapabilityName], `required_capabilities`: [CommonCapabilityName], `exclusive_outputs`: [CommonCapabilityName], `budgets`: AbiBudgets) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
     }
 }
 
@@ -670,6 +1428,650 @@ public struct CommonError: CBORMessage, Sendable {
         entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
         entries.append(.init("retryable", try self.`retryable`.cborValue(depth: depth + 1)))
         if let v = self.`details` { entries.append(.init("details", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Abi: CBORMessage, Sendable {
+    public static let schemaRule = "abi"
+    case variant1(AbiTrace)
+    case variant2(AbiStepRecord)
+    case variant3(AbiInboxMessage)
+    case variant4(AbiTimerRequest)
+    case variant5(AbiLlmRequest)
+    case variant6(AbiLlmReply)
+    case variant7(AbiLogEntry)
+    case variant8(AbiManifest)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::trace"), cborValue)) != nil {
+            self = .variant1(try AbiTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::step-record"), cborValue)) != nil {
+            self = .variant2(try AbiStepRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::inbox-message"), cborValue)) != nil {
+            self = .variant3(try AbiInboxMessage.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::timer-request"), cborValue)) != nil {
+            self = .variant4(try AbiTimerRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::llm-request"), cborValue)) != nil {
+            self = .variant5(try AbiLlmRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::llm-reply"), cborValue)) != nil {
+            self = .variant6(try AbiLlmReply.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::log-entry"), cborValue)) != nil {
+            self = .variant7(try AbiLogEntry.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("abi::manifest"), cborValue)) != nil {
+            self = .variant8(try AbiManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::trace"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::step-record"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::inbox-message"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::timer-request"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::llm-request"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::llm-reply"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::log-entry"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::manifest"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias Hash = CBORValue
+
+public typealias Hex = CBORValue
+
+public typealias Path = CBORValue
+
+public typealias Snapshot = [CBORMapEntry]
+
+public struct Budgets: CBORMessage, Sendable {
+    public static let schemaRule = "budgets"
+    public var `compute`: Swift.UInt64
+    public var `compute_mode`: CBORValue
+    public var `memory_pages`: Swift.UInt64
+    public var `wall_time_us`: Swift.UInt64
+    public var `max_events`: Swift.UInt64
+    public var `host_bytes`: Swift.UInt64
+    public init(`compute`: Swift.UInt64, `compute_mode`: CBORValue, `memory_pages`: Swift.UInt64, `wall_time_us`: Swift.UInt64, `max_events`: Swift.UInt64, `host_bytes`: Swift.UInt64) {
+        self.`compute` = `compute`
+        self.`compute_mode` = `compute_mode`
+        self.`memory_pages` = `memory_pages`
+        self.`wall_time_us` = `wall_time_us`
+        self.`max_events` = `max_events`
+        self.`host_bytes` = `host_bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`compute` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute")), depth: depth + 1)
+        self.`compute_mode` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute_mode")), depth: depth + 1)
+        self.`memory_pages` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "memory_pages")), depth: depth + 1)
+        self.`wall_time_us` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "wall_time_us")), depth: depth + 1)
+        self.`max_events` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "max_events")), depth: depth + 1)
+        self.`host_bytes` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "host_bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("compute", try self.`compute`.cborValue(depth: depth + 1)))
+        entries.append(.init("compute_mode", try self.`compute_mode`.cborValue(depth: depth + 1)))
+        entries.append(.init("memory_pages", try self.`memory_pages`.cborValue(depth: depth + 1)))
+        entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
+        entries.append(.init("max_events", try self.`max_events`.cborValue(depth: depth + 1)))
+        entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct TimerRequest: CBORMessage, Sendable {
+    public static let schemaRule = "timer-request"
+    public var `id`: CommonCorrelationId
+    public var `at`: CommonUint64
+    public init(`id`: CommonCorrelationId, `at`: CommonUint64) {
+        self.`id` = `id`
+        self.`at` = `at`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`at` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "at")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("at", try self.`at`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct LlmRequest: CBORMessage, Sendable {
+    public static let schemaRule = "llm-request"
+    public var `id`: CommonCorrelationId
+    public var `correlation_id`: CommonCorrelationId
+    public var `capability`: CommonCapabilityName
+    public var `model`: CBORValue
+    public var `input`: CommonProfileMap
+    public init(`id`: CommonCorrelationId, `correlation_id`: CommonCorrelationId, `capability`: CommonCapabilityName, `model`: CBORValue, `input`: CommonProfileMap) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`capability` = `capability`
+        self.`model` = `model`
+        self.`input` = `input`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`capability` = try CommonCapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`model` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "model")), depth: depth + 1)
+        self.`input` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("model", try self.`model`.cborValue(depth: depth + 1)))
+        entries.append(.init("input", try self.`input`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct LogEntry: CBORMessage, Sendable {
+    public static let schemaRule = "log-entry"
+    public var `level`: LogEntryLevel
+    public var `message`: CBORValue
+    public var `fields`: CommonProfileMap
+    public init(`level`: LogEntryLevel, `message`: CBORValue, `fields`: CommonProfileMap) {
+        self.`level` = `level`
+        self.`message` = `message`
+        self.`fields` = `fields`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`level` = try LogEntryLevel.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "level")), depth: depth + 1)
+        self.`message` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "message")), depth: depth + 1)
+        self.`fields` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "fields")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("level", try self.`level`.cborValue(depth: depth + 1)))
+        entries.append(.init("message", try self.`message`.cborValue(depth: depth + 1)))
+        entries.append(.init("fields", try self.`fields`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum LlmReply: CBORMessage, Sendable {
+    public static let schemaRule = "llm-reply"
+    case variant1(LlmReplyVariant1)
+    case variant2(LlmReplyVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), cborValue)) != nil {
+            self = .variant1(try LlmReplyVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]), cborValue)) != nil {
+            self = .variant2(try LlmReplyVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct InboxMessage: CBORMessage, Sendable {
+    public static let schemaRule = "inbox-message"
+    public var `index`: CommonUint64
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: CommonEvent
+    public init(`index`: CommonUint64, `id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: CommonEvent) {
+        self.`index` = `index`
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`index` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "index")), depth: depth + 1)
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try CommonEvent.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("index", try self.`index`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Call: CBORMessage, Sendable {
+    public static let schemaRule = "call"
+    case variant1(CallVariant1)
+    case variant2(CallVariant2)
+    case variant3(CallVariant3)
+    case variant4(CallVariant4)
+    case variant5(CallVariant5)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant1(try CallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try CallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant3(try CallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant4(try CallVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant5(try CallVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("common::action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("abi::llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct BoundaryChange: CBORMessage, Sendable {
+    public static let schemaRule = "boundary-change"
+    public var `actor`: CommonSourceId
+    public var `audit_id`: CommonCorrelationId
+    public var `ticket`: BoundaryChangeTicket
+    public var `method`: CommonMethodName
+    public var `target`: CommonCogletId
+    public var `path`: AbiPath
+    public var `before`: BoundaryChangeBefore
+    public var `after`: BoundaryChangeAfter
+    public init(`actor`: CommonSourceId, `audit_id`: CommonCorrelationId, `ticket`: BoundaryChangeTicket, `method`: CommonMethodName, `target`: CommonCogletId, `path`: AbiPath, `before`: BoundaryChangeBefore, `after`: BoundaryChangeAfter) {
+        self.`actor` = `actor`
+        self.`audit_id` = `audit_id`
+        self.`ticket` = `ticket`
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`path` = `path`
+        self.`before` = `before`
+        self.`after` = `after`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actor` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actor")), depth: depth + 1)
+        self.`audit_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "audit_id")), depth: depth + 1)
+        self.`ticket` = try BoundaryChangeTicket.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ticket")), depth: depth + 1)
+        self.`method` = try CommonMethodName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`path` = try AbiPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`before` = try BoundaryChangeBefore.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before")), depth: depth + 1)
+        self.`after` = try BoundaryChangeAfter.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "after")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actor", try self.`actor`.cborValue(depth: depth + 1)))
+        entries.append(.init("audit_id", try self.`audit_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("ticket", try self.`ticket`.cborValue(depth: depth + 1)))
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("before", try self.`before`.cborValue(depth: depth + 1)))
+        entries.append(.init("after", try self.`after`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Engine: CBORMessage, Sendable {
+    public static let schemaRule = "engine"
+    public var `build`: CBORValue
+    public var `policy`: CBORValue
+    public init(`build`: CBORValue, `policy`: CBORValue) {
+        self.`build` = `build`
+        self.`policy` = `policy`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`build` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "build")), depth: depth + 1)
+        self.`policy` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("build", try self.`build`.cborValue(depth: depth + 1)))
+        entries.append(.init("policy", try self.`policy`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Usage: CBORMessage, Sendable {
+    public static let schemaRule = "usage"
+    public var `compute`: CommonUint64
+    public var `memory_pages`: CommonUint64
+    public var `wall_time_us`: CommonUint64
+    public var `host_bytes`: CommonUint64
+    public init(`compute`: CommonUint64, `memory_pages`: CommonUint64, `wall_time_us`: CommonUint64, `host_bytes`: CommonUint64) {
+        self.`compute` = `compute`
+        self.`memory_pages` = `memory_pages`
+        self.`wall_time_us` = `wall_time_us`
+        self.`host_bytes` = `host_bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`compute` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "compute")), depth: depth + 1)
+        self.`memory_pages` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "memory_pages")), depth: depth + 1)
+        self.`wall_time_us` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "wall_time_us")), depth: depth + 1)
+        self.`host_bytes` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "host_bytes")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("compute", try self.`compute`.cborValue(depth: depth + 1)))
+        entries.append(.init("memory_pages", try self.`memory_pages`.cborValue(depth: depth + 1)))
+        entries.append(.init("wall_time_us", try self.`wall_time_us`.cborValue(depth: depth + 1)))
+        entries.append(.init("host_bytes", try self.`host_bytes`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Failure: CBORMessage, Sendable {
+    public static let schemaRule = "failure"
+    public var `kind`: FailureKind
+    public var `error`: CommonError
+    public init(`kind`: FailureKind, `error`: CommonError) {
+        self.`kind` = `kind`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`kind` = try FailureKind.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum StepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "step-record"
+    case variant1(StepRecordVariant1)
+    case variant2(StepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try StepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), cborValue)) != nil {
+            self = .variant2(try StepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("0.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("common::capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("common::event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("abi::call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("common::action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("abi::llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct EffectLedger: CBORMessage, Sendable {
+    public static let schemaRule = "effect-ledger"
+    public var `actions`: [CommonCorrelationId]
+    public var `timers`: [CommonCorrelationId]
+    public var `llm_requests`: [CommonCorrelationId]
+    public init(`actions`: [CommonCorrelationId], `timers`: [CommonCorrelationId], `llm_requests`: [CommonCorrelationId]) {
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`actions` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [CommonCorrelationId].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Trace: CBORMessage, Sendable {
+    public static let schemaRule = "trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [AbiLlmRequest]
+    public var `records`: [AbiStepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [AbiLlmRequest], `records`: [AbiStepRecord], `blobs`: [CBORMapEntry]) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [AbiStepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Manifest: CBORMessage, Sendable {
+    public static let schemaRule = "manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [CommonCapabilityName]
+    public var `required_capabilities`: [CommonCapabilityName]
+    public var `exclusive_outputs`: [CommonCapabilityName]
+    public var `budgets`: AbiBudgets
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [CommonCapabilityName], `required_capabilities`: [CommonCapabilityName], `exclusive_outputs`: [CommonCapabilityName], `budgets`: AbiBudgets) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -1236,6 +2638,688 @@ public struct Error: CBORMessage, Sendable {
     }
 }
 
+public indirect enum AbiLogEntryLevel: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiLogEntryLevel"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("debug")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("info")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("warn")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("error")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("info")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("warn")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("error")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiLlmReplyVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiLlmReplyVariant1"
+    public var `request_id`: CommonCorrelationId
+    public var `status`: Swift.String
+    public var `output`: CommonProfileMap
+    public init(`request_id`: CommonCorrelationId, `status`: Swift.String, `output`: CommonProfileMap) {
+        self.`request_id` = `request_id`
+        self.`status` = `status`
+        self.`output` = `output`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`request_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "request_id")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`output` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("request_id", try self.`request_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("output", try self.`output`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiLlmReplyVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiLlmReplyVariant2"
+    public var `request_id`: CommonCorrelationId
+    public var `status`: Swift.String
+    public var `error`: CommonError
+    public init(`request_id`: CommonCorrelationId, `status`: Swift.String, `error`: CommonError) {
+        self.`request_id` = `request_id`
+        self.`status` = `status`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`request_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "request_id")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("request_id", try self.`request_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiCallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: AbiTimerRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiTimerRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiTimerRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiCallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: CommonAction
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: CommonAction, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiCallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant3"
+    public var `op`: Swift.String
+    public var `argument`: AbiLlmRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLlmRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLlmRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiCallVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant4"
+    public var `op`: Swift.String
+    public var `argument`: AbiLogEntry
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLogEntry, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLogEntry.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiCallVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant5"
+    public var `op`: AbiCallVariant5Op
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: AbiCallVariant5Op, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try AbiCallVariant5Op.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiBoundaryChangeTicket: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiBoundaryChangeTicket"
+    case variant1(CommonCorrelationId)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::correlation-id"), cborValue)) != nil {
+            self = .variant1(try CommonCorrelationId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::correlation-id"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiBoundaryChangeBefore: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiBoundaryChangeBefore"
+    case variant1(AbiHex)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hex"), cborValue)) != nil {
+            self = .variant1(try AbiHex.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hex"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiBoundaryChangeAfter: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiBoundaryChangeAfter"
+    case variant1(AbiHex)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hex"), cborValue)) != nil {
+            self = .variant1(try AbiHex.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hex"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiFailureKind: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiFailureKind"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    case variant7(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("compute")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("memory")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("wall")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("host_bytes")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("trap")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("guest_return")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("invalid_argument")), cborValue)) != nil {
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("compute")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("memory")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("wall")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("host_bytes")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("trap")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("guest_return")), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("invalid_argument")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiStepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiStepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: AbiStepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [CommonCapabilityName]
+    public var `events`: [CommonEvent]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [AbiCall]
+    public var `actions`: [CommonAction]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [AbiLlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: AbiStepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [CommonCapabilityName], `events`: [CommonEvent], `boundary`: [AbiBoundaryChange], `calls`: [AbiCall], `actions`: [CommonAction], `timers`: [AbiTimerRequest], `llm_requests`: [AbiLlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try AbiStepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [CommonEvent].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [AbiCall].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [CommonAction].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct AbiStepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiStepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: AbiStepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [CommonCapabilityName]
+    public var `events`: [CommonEvent]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [AbiCall]
+    public var `actions`: [CommonAction]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [AbiLlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: AbiFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: AbiStepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [CommonCapabilityName], `events`: [CommonEvent], `boundary`: [AbiBoundaryChange], `calls`: [AbiCall], `actions`: [CommonAction], `timers`: [AbiTimerRequest], `llm_requests`: [AbiLlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: AbiFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try AbiStepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [CommonEvent].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [AbiCall].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [CommonAction].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try AbiFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public struct CommonActionAcceptVariant1: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionAcceptVariant1"
     public var `id`: CommonActionId
@@ -1362,6 +3446,688 @@ public struct CommonActionOutcomeVariant2: CBORMessage, Sendable {
         entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
         entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
         entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum LogEntryLevel: CBORMessage, Sendable {
+    public static let schemaRule = "@LogEntryLevel"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("debug")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("info")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("warn")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("error")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("debug")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("info")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("warn")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("error")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct LlmReplyVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@LlmReplyVariant1"
+    public var `request_id`: CommonCorrelationId
+    public var `status`: Swift.String
+    public var `output`: CommonProfileMap
+    public init(`request_id`: CommonCorrelationId, `status`: Swift.String, `output`: CommonProfileMap) {
+        self.`request_id` = `request_id`
+        self.`status` = `status`
+        self.`output` = `output`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`request_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "request_id")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`output` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("request_id", try self.`request_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("output", try self.`output`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct LlmReplyVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@LlmReplyVariant2"
+    public var `request_id`: CommonCorrelationId
+    public var `status`: Swift.String
+    public var `error`: CommonError
+    public init(`request_id`: CommonCorrelationId, `status`: Swift.String, `error`: CommonError) {
+        self.`request_id` = `request_id`
+        self.`status` = `status`
+        self.`error` = `error`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`request_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "request_id")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`error` = try CommonError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("request_id", try self.`request_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: AbiTimerRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiTimerRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiTimerRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: CommonAction
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: CommonAction, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try CommonAction.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant3"
+    public var `op`: Swift.String
+    public var `argument`: AbiLlmRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLlmRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLlmRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CallVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant4"
+    public var `op`: Swift.String
+    public var `argument`: AbiLogEntry
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLogEntry, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLogEntry.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CallVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant5"
+    public var `op`: CallVariant5Op
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: CallVariant5Op, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try CallVariant5Op.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum BoundaryChangeTicket: CBORMessage, Sendable {
+    public static let schemaRule = "@BoundaryChangeTicket"
+    case variant1(CommonCorrelationId)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::correlation-id"), cborValue)) != nil {
+            self = .variant1(try CommonCorrelationId.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::correlation-id"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum BoundaryChangeBefore: CBORMessage, Sendable {
+    public static let schemaRule = "@BoundaryChangeBefore"
+    case variant1(AbiHex)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hex"), cborValue)) != nil {
+            self = .variant1(try AbiHex.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hex"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum BoundaryChangeAfter: CBORMessage, Sendable {
+    public static let schemaRule = "@BoundaryChangeAfter"
+    case variant1(AbiHex)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hex"), cborValue)) != nil {
+            self = .variant1(try AbiHex.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hex"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum FailureKind: CBORMessage, Sendable {
+    public static let schemaRule = "@FailureKind"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    case variant5(Swift.String)
+    case variant6(Swift.String)
+    case variant7(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("compute")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("memory")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("wall")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("host_bytes")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("trap")), cborValue)) != nil {
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("guest_return")), cborValue)) != nil {
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("invalid_argument")), cborValue)) != nil {
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("compute")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("memory")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("wall")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("host_bytes")), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("trap")), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("guest_return")), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("invalid_argument")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct StepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@StepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: StepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [CommonCapabilityName]
+    public var `events`: [CommonEvent]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [AbiCall]
+    public var `actions`: [CommonAction]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [AbiLlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: StepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [CommonCapabilityName], `events`: [CommonEvent], `boundary`: [AbiBoundaryChange], `calls`: [AbiCall], `actions`: [CommonAction], `timers`: [AbiTimerRequest], `llm_requests`: [AbiLlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try StepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [CommonEvent].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [AbiCall].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [CommonAction].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct StepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@StepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: StepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [CommonCapabilityName]
+    public var `events`: [CommonEvent]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [AbiCall]
+    public var `actions`: [CommonAction]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [AbiLlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: AbiFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: StepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [CommonCapabilityName], `events`: [CommonEvent], `boundary`: [AbiBoundaryChange], `calls`: [AbiCall], `actions`: [CommonAction], `timers`: [AbiTimerRequest], `llm_requests`: [AbiLlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: AbiFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try StepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [CommonCapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [CommonEvent].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [AbiCall].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [CommonAction].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [AbiLlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try AbiFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -1500,6 +4266,118 @@ public struct ActionOutcomeVariant2: CBORMessage, Sendable {
     }
 }
 
+public indirect enum AbiCallVariant5Op: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiCallVariant5Op"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("timer")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("emit")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("llm")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("log")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("timer")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("emit")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("llm")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("log")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiStepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiStepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum AbiStepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@AbiStepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Sendable {
     public static let schemaRule = "@CommonActionOutcomeVariant2Status"
     case variant1(Swift.String)
@@ -1534,6 +4412,118 @@ public indirect enum CommonActionOutcomeVariant2Status: CBORMessage, Sendable {
         case .variant3(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("expired")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CallVariant5Op: CBORMessage, Sendable {
+    public static let schemaRule = "@CallVariant5Op"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("timer")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("emit")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("llm")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("log")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("timer")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("emit")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("llm")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("log")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum StepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@StepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum StepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@StepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
