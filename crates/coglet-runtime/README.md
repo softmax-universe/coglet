@@ -45,7 +45,17 @@ test supplies the same independent mock program twice, drives
 it with recorded inputs, compares every step, and checks that a changed program
 fails. No recorded output files or return values are fed into guest execution.
 
-## Remaining before this card can finish
+## Baseline milestone and follow-up boundaries
+
+This component-level baseline intentionally does not qualify full ABI or operational
+surface behavior. `every_primary_abi_case_is_executed` also independently replays
+all 21 primary cases and compares every per-step state hash.
+
+Remaining qualification is owned serially by board cards:
+- `t_01a2085c6e546405`: operational surface, production daemon and durable outbox.
+- `t_01a2085cca051179`: full ABI profiles, engine recovery and trace import/export.
+
+The unimplemented boundaries remain explicit:
 
 - Full ABI profile adapters: module/manifest admission, trace/provenance validation,
   terminal-receipt and heard archive corpus import/validation (the runtime seams

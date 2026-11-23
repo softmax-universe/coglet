@@ -29,6 +29,7 @@ fn run_case(name: &str) {
         .find(|c| c["name"] == name)
         .unwrap();
     let mut runtime = Runtime::from_fixture(&case["steps"][0]["send"]).unwrap();
+    let mut replay = runtime.clone();
     let mut actual = Value::Null;
     for step in case["steps"].as_array().unwrap() {
         if let Some(send) = step.get("send") {
@@ -45,6 +46,37 @@ fn run_case(name: &str) {
             assert_eq!(&actual, expected, "case: {name}");
         }
     }
+    struct CaseProgram(Vec<Value>);
+    impl coglet_runtime::Engine for CaseProgram {
+        fn execute(
+            &mut self,
+            inputs: &Value,
+            host: &mut coglet_runtime::StepHost,
+        ) -> coglet_runtime::Result<coglet_runtime::EngineReport> {
+            let script = self
+                .0
+                .get(inputs["step"].as_u64().ok_or("step")? as usize)
+                .ok_or("missing independently supplied program")?
+                .clone();
+            coglet_runtime::Engine::execute(&mut MockEngine::new(script), inputs, host)
+        }
+    }
+    let program = case["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|s| s.get("send"))
+        .map(|s| s["guest_script"].clone())
+        .collect();
+    let hashes = replay
+        .replay(runtime.records(), &mut CaseProgram(program))
+        .unwrap();
+    let expected: Vec<_> = runtime
+        .records()
+        .iter()
+        .map(|r| r["output_hash"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(hashes, expected, "per-step replay state hashes: {name}");
 }
 
 #[test]
