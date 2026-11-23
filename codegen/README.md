@@ -80,7 +80,9 @@ All three runtimes enforce the `spec/conventions.md` CBOR profile before shape
 validation: no bytes/tags/floats, no duplicate/non-text keys, no indefinite or
 non-shortest forms, no trailing data, and exact UTF-8/integer bounds. Map keys
 are ordered by their encoded bytes, recursively. Decoders/encoders bound CBOR
-nesting to 64; schema expression traversal is bounded separately to 128.
+nesting to 64; schema expression traversal is bounded separately (128 in
+Rust/Python, 512 in Swift, allowing transparent union/reference hops at all
+64 wire levels). Swift union branches do not consume wire nesting depth.
 Transport framing, temporal action lifecycle, negotiation and authentication
 are deliberately outside this codec.
 

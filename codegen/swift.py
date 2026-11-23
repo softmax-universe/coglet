@@ -26,7 +26,7 @@ def field_name(value):
 def generate_swift(rules):
     definitions = dict(rules)
     names = {}
-    reserved = {'CBORValue', 'CBORMapEntry', 'CBORCodec', 'CBORConvertible', 'CBORMessage', 'CBORFailure', 'SchemaNode', 'SchemaField', 'GeneratedSchema', 'NSRegularExpression', 'NSRange'}
+    reserved = {'Swift', 'Any', 'CBORValue', 'CBORMapEntry', 'CBORCodec', 'CBORConvertible', 'CBORMessage', 'CBORFailure', 'SchemaNode', 'SchemaField', 'GeneratedSchema', 'NSRegularExpression', 'NSRange'}
 
     def register(key, swift_name):
         if swift_name in reserved or swift_name in names.values():
@@ -143,10 +143,10 @@ def generate_swift(rules):
             out += [f'    case variant{i + 1}({t})' for i, t in enumerate(types)]
             out += ['    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {', '        try CBORCodec.checkDepth(depth)']
             for i, (v, t) in enumerate(zip(node['items'], types)):
-                out += [f'        if (try? CBORCodec.validateNode({schema(v)}, cborValue)) != nil {{', f'            self = .variant{i+1}(try {t}.init(cborValue: cborValue, depth: depth + 1))', '            return', '        }']
+                out += [f'        if (try? CBORCodec.validateNode({schema(v)}, cborValue)) != nil {{', f'            self = .variant{i+1}(try {t}.init(cborValue: cborValue, depth: depth))', '            return', '        }']
             out += ['        throw CBORFailure.invalid("no union branch matched")', '    }', '    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {', '        try CBORCodec.checkDepth(depth)', '        let value: CBORValue', '        switch self {']
             for i, branch in enumerate(node['items']):
-                out += [f'        case .variant{i+1}(let v):', '            value = try v.cborValue(depth: depth + 1)', f'            try CBORCodec.validateNode({schema(branch)}, value)']
+                out += [f'        case .variant{i+1}(let v):', '            value = try v.cborValue(depth: depth)', f'            try CBORCodec.validateNode({schema(branch)}, value)']
             out += ['        }', '        try CBORCodec.validate(Self.schemaRule, value)', '        return value', '    }']
         out += ['}', '']
     # Include inline record/union rules in the same schema table.

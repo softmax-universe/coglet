@@ -77,31 +77,31 @@ public indirect enum Common: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("event"), cborValue)) != nil {
-            self = .variant1(try Event.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try Event.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("action"), cborValue)) != nil {
-            self = .variant2(try Action.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try Action.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("action-accept"), cborValue)) != nil {
-            self = .variant3(try ActionAccept.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant3(try ActionAccept.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("action-outcome"), cborValue)) != nil {
-            self = .variant4(try ActionOutcome.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant4(try ActionOutcome.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("error"), cborValue)) != nil {
-            self = .variant5(try Error.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant5(try Error.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("version-offer"), cborValue)) != nil {
-            self = .variant6(try VersionOffer.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant6(try VersionOffer.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("version-selection"), cborValue)) != nil {
-            self = .variant7(try VersionSelection.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant7(try VersionSelection.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -111,25 +111,25 @@ public indirect enum Common: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("event"), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("action"), value)
         case .variant3(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("action-accept"), value)
         case .variant4(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("action-outcome"), value)
         case .variant5(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("error"), value)
         case .variant6(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("version-offer"), value)
         case .variant7(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("version-selection"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -146,11 +146,11 @@ public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), cborValue)) != nil {
-            self = .variant1(try Swift.Int64.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try Swift.Int64.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("uint64"), cborValue)) != nil {
-            self = .variant2(try Uint64.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try Uint64.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -160,10 +160,10 @@ public indirect enum ProfileInt: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.range(.negative(-9223372036854775808), .negative(-1)), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("uint64"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -182,27 +182,27 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("profile-int"), cborValue)) != nil {
-            self = .variant1(try ProfileInt.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try ProfileInt.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.text, cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.boolean, cborValue)) != nil {
-            self = .variant3(try Swift.Bool.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant3(try Swift.Bool.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
-            self = .variant4(try CBORValue.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant4(try CBORValue.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.array(0, .reference("profile-value")), cborValue)) != nil {
-            self = .variant5(try [ProfileValue].init(cborValue: cborValue, depth: depth + 1))
+            self = .variant5(try [ProfileValue].init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("profile-map"), cborValue)) != nil {
-            self = .variant6(try ProfileMap.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant6(try ProfileMap.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -212,22 +212,22 @@ public indirect enum ProfileValue: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("profile-int"), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.text, value)
         case .variant3(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.boolean, value)
         case .variant4(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.null), value)
         case .variant5(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.array(0, .reference("profile-value")), value)
         case .variant6(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("profile-map"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -253,15 +253,15 @@ public indirect enum SourceId: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("coglet-id"), cborValue)) != nil {
-            self = .variant1(try CogletId.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try CogletId.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("surface-id"), cborValue)) != nil {
-            self = .variant2(try SurfaceId.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try SurfaceId.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub-id"), cborValue)) != nil {
-            self = .variant3(try HubId.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant3(try HubId.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -271,13 +271,13 @@ public indirect enum SourceId: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("coglet-id"), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("surface-id"), value)
         case .variant3(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub-id"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -430,11 +430,11 @@ public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), cborValue)) != nil {
-            self = .variant1(try ActionAcceptVariant1.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try ActionAcceptVariant1.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))]), cborValue)) != nil {
-            self = .variant2(try ActionAcceptVariant2.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try ActionAcceptVariant2.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -444,10 +444,10 @@ public indirect enum ActionAccept: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(true)))]), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "accepted", optional: false, node: .literal(.boolean(false))), .init(name: "error", optional: false, node: .reference("error"))]), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -462,11 +462,11 @@ public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]), cborValue)) != nil {
-            self = .variant1(try ActionOutcomeVariant1.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try ActionOutcomeVariant1.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))]), cborValue)) != nil {
-            self = .variant2(try ActionOutcomeVariant2.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try ActionOutcomeVariant2.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -476,10 +476,10 @@ public indirect enum ActionOutcome: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "result", optional: false, node: .reference("profile-map"))]), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "id", optional: false, node: .reference("action-id")), .init(name: "correlation_id", optional: false, node: .reference("correlation-id")), .init(name: "status", optional: false, node: .union([.literal(.text("failed")), .literal(.text("cancelled")), .literal(.text("expired"))])), .init(name: "error", optional: false, node: .reference("error"))]), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -503,47 +503,47 @@ public indirect enum ErrorCode: CBORMessage, Equatable, Sendable {
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.literal(.text("invalid_argument")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("unsupported_version")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("unauthenticated")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("permission_denied")), cborValue)) != nil {
-            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("not_found")), cborValue)) != nil {
-            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("conflict")), cborValue)) != nil {
-            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("resource_exhausted")), cborValue)) != nil {
-            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("deadline_exceeded")), cborValue)) != nil {
-            self = .variant8(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant8(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("cancelled")), cborValue)) != nil {
-            self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("unavailable")), cborValue)) != nil {
-            self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("internal")), cborValue)) != nil {
-            self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -553,37 +553,37 @@ public indirect enum ErrorCode: CBORMessage, Equatable, Sendable {
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("invalid_argument")), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("unsupported_version")), value)
         case .variant3(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("unauthenticated")), value)
         case .variant4(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("permission_denied")), value)
         case .variant5(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("not_found")), value)
         case .variant6(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("conflict")), value)
         case .variant7(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("resource_exhausted")), value)
         case .variant8(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("deadline_exceeded")), value)
         case .variant9(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("cancelled")), value)
         case .variant10(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("unavailable")), value)
         case .variant11(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("internal")), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
@@ -765,15 +765,15 @@ public indirect enum ActionOutcomeVariant2Status: CBORMessage, Equatable, Sendab
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.literal(.text("failed")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("cancelled")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.literal(.text("expired")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth + 1))
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -783,13 +783,13 @@ public indirect enum ActionOutcomeVariant2Status: CBORMessage, Equatable, Sendab
         let value: CBORValue
         switch self {
         case .variant1(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("failed")), value)
         case .variant2(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("cancelled")), value)
         case .variant3(let v):
-            value = try v.cborValue(depth: depth + 1)
+            value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("expired")), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
