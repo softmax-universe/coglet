@@ -156,6 +156,7 @@ class SpeechHandoff(unittest.TestCase):
             with self.subTest(reason=reason):
                 oracle=Oracle(); oracle.apply({'op':'intent','value':build.INTENT})
                 oracle.apply({'op':'fence','reason':reason})
+                oracle.apply({'op':'intent','value':dict(build.INTENT,call='9'*32),'reject':'not_found'})
                 oracle.apply({'op':'result','value':build.RESULT,'reject':'not_found'})
                 self.assertEqual(oracle.done,[build.CANCEL])
 

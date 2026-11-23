@@ -190,7 +190,12 @@ IDs import correlation-id; epoch is positive uint64 and is separate from the
 grant epoch. `turn` is a normalized utterance ID or a fresh provider turn ID.
 The surface stamps epoch, and binds `(owner, turn, call, epoch)` before dispatch.
 The work epoch persists across restarts; loss of durable continuity requires a
-new surface identity, never reuse. `speech.work_state` and all events/results are
+new surface identity, never reuse. Native/provider callbacks MUST retain the work
+epoch and session/response identity captured when generation/request processing
+began. Fencing suppresses old response callbacks (including previously unseen call
+IDs); never stamp an old callback with the new current epoch on arrival. A
+provider reconnect starts a fresh fenced generation before accepting new work.
+`speech.work_state` and all events/results are
 owner-only, require the current audio.mic/audio.speaker leases and explicit
 operation grants, and never bypass hub policy for the requested `name`.
 The coglet forwards the explicit intent through its ordinary authorized hub work
