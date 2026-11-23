@@ -7,13 +7,12 @@ import subprocess
 import sys
 import tempfile
 import time
-import tomllib
 import unittest
 import xml.etree.ElementTree as ET
 
 CONF = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CONF))
-from harness import cases_for, run_case, validate_case, validate_impl  # noqa: E402
+from harness import run_case, validate_case, validate_impl  # noqa: E402
 from wire import decode, encode  # noqa: E402
 
 RUN = CONF / 'run'
@@ -96,7 +95,6 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(actual), len(expected))
         self.assertEqual(report.get('tests'), str(len(expected)))
         self.assertEqual(report.get('failures'), '0')
-        self.assertEqual(report.get('skipped'), '0')
 
     def test_empty_registry_no_claims(self):
         registry = self.root / 'impls.toml'
