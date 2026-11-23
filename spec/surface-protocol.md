@@ -148,7 +148,10 @@ a grant, nor does `ready` restart stopped devices. Surface kill is local and
 latched: immediately stop mic, speaker, display effects and provider sessions,
 revoke all grants, cancel accepted work, then best-effort send kill and stopped
 health. Kill works with a hung runtime or full queue. A kill message is a
-notification of an already-applied reflex, not a request needing an ack. No
+notification of an already-applied reflex, not a request needing an ack. Kill
+itself announces full grant revocation; a separate empty grants snapshot is not
+required. If emitted, that snapshot follows kill and stopped health, uses a
+higher epoch and MUST NOT restore authority. No
 message/coglet/hub operation clears it. A still-open link rejects new action IDs
 and reads with permission_denied; previously accepted work is cancelled. The
 surface MAY close after best-effort notification, so clients must also handle

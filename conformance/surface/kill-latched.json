@@ -55,6 +55,14 @@
       "at_ms": 100
     },
     {
+      "match": {
+        "type": "health",
+        "body.state": "stopped",
+        "body.pending": 0
+      },
+      "within_ms": 200
+    },
+    {
       "send": {
         "type": "act",
         "body": {

@@ -13,7 +13,10 @@ with harness PR #15. These are test inputs, not an implementation pass claim.
 - `peer_role=surface`: runtime-under-test; `runtime-binding` enrolls only the
   fixture surface and supports only protocol 0.1. It does not grant actions.
 - `kill-at-100ms`: additionally fires the local off-switch at case time 100 ms.
-  Emit kill before stopped health; no unsolicited periodic health before 1 s.
+  Keep the link open and emit kill followed by stopped health with pending=0;
+  this idle fixture has no admitted work to cancel. Kill itself announces full
+  grant revocation: do not emit a redundant grants snapshot in this fixture.
+  No unsolicited periodic health before 1 s.
   The fixture must not clear the latch in response to a wire action.
 
 Each case runs on an isolated fresh connection/state directory. IDs are synthetic

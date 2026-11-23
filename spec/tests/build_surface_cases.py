@@ -80,6 +80,7 @@ def outputs():
     case('surface','unknown-stream',[{'send':missing},accept(missing,False,'not_found')])
     # Fixture adapter triggers the local operator kill at virtual time 100 ms.
     case('surface','kill-latched',[{'match':{'type':'kill'},'within_ms':200,'at_ms':100},
+         {'match':{'type':'health','body.state':'stopped','body.pending':0},'within_ms':200},
          {'send':a,'at_ms':110},accept(a,False,'permission_denied')])
     for name,barge in [('barge-in-stop','stopped'),('over-talk-duck','ducked')]:
         a=action('speech.speak_chunk',{'stream':'2'*32,'chunk':0,'text':'Scripted output','final':True})

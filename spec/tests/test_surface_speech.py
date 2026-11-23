@@ -102,6 +102,20 @@ class ProfileFixtures(unittest.TestCase):
         for path,content in dict(build.outputs(), **case_build.outputs()).items():
             self.assertEqual((ROOT/path).read_text(),content,path)
 
+    def test_final_newline_rejected_in_names_and_overlong_text(self):
+        # These profiles import common regexes rather than defining patterns.
+        # Check the imported constraints through each actual profile definition.
+        for profile, rule, field in [
+                ('surface', 'hello', 'surface'),
+                ('speech', 'speak-chunk', 'stream'),
+                ('expression', 'set-expression', 'expression')]:
+            value = copy.deepcopy(build.values[profile][rule])
+            self.assertTrue(self.validate(profile, rule, value))
+            value[field] += '\n'
+            self.assertFalse(self.validate(profile, rule, value))
+        value = dict(build.values['speech']['speak-chunk'], text='a' * 4096 + '\n')
+        self.assertFalse(self.validate('speech', 'speak-chunk', value))
+
     def test_boundaries_and_unicode(self):
         for n,valid in [(0,False),(1,True),(4096,True),(4097,False)]:
             args=dict(build.values['speech']['speak-chunk'],text='a'*n)
