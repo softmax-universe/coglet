@@ -10,7 +10,7 @@ fn batches_dedupe_before_watermarks_and_survive_restart() {
         let mut store = Store::open(&path).unwrap();
         assert_eq!(
             store
-                .admit_events("device-a", "coglet-a", 0, &[event.clone()])
+                .admit_events("device-a", "coglet-a", 0, std::slice::from_ref(&event))
                 .unwrap(),
             1
         );
@@ -26,7 +26,7 @@ fn batches_dedupe_before_watermarks_and_survive_restart() {
     let mut store = Store::open(&path).unwrap();
     assert_eq!(
         store
-            .admit_events("device-a", "coglet-a", 0, &[event.clone()])
+            .admit_events("device-a", "coglet-a", 0, std::slice::from_ref(&event))
             .unwrap(),
         1
     );

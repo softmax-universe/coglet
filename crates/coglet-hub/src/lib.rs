@@ -3,6 +3,9 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
+pub mod kernel;
+pub use kernel::{ActionGrant, EventGrant, Kernel, Registration};
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("conflict (expected offset {0})")]
@@ -13,6 +16,8 @@ pub enum Error {
     Full,
     #[error("permission_denied")]
     Denied,
+    #[error("{0}")]
+    Authority(#[from] coglet_proto::authority::AuthorityError),
     #[error("storage unavailable")]
     Storage(#[from] rusqlite::Error),
     #[error("invalid stored encoding")]
@@ -41,7 +46,7 @@ impl Store {
           CREATE TABLE IF NOT EXISTS cursors(peer TEXT, target TEXT, next TEXT NOT NULL, PRIMARY KEY(peer,target));
           CREATE TABLE IF NOT EXISTS batches(peer TEXT, target TEXT, offset TEXT, input BLOB NOT NULL, next TEXT NOT NULL, PRIMARY KEY(peer,target,offset));
           CREATE TABLE IF NOT EXISTS watermarks(target TEXT, source TEXT, seq TEXT NOT NULL, PRIMARY KEY(target,source));
-          CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY, target TEXT NOT NULL, event TEXT NOT NULL);
+          CREATE TABLE IF NOT EXISTS events(id INTEGER PRIMARY KEY AUTOINCREMENT, target TEXT NOT NULL, event TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS actions(target TEXT, id TEXT, peer TEXT NOT NULL, request TEXT NOT NULL, PRIMARY KEY(target,id));
           CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, record TEXT NOT NULL);
           CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
@@ -137,6 +142,42 @@ impl Store {
         )?;
         tx.commit()?;
         Ok(next)
+    }
+    /// Stable local delivery tokens; never reused after acknowledgement/restart.
+    pub fn event_deliveries(&self, target: &str) -> Result<Vec<(i64, Value)>> {
+        let mut q = self
+            .db
+            .prepare("SELECT id,event FROM events WHERE target=?1 ORDER BY id")?;
+        q.query_map([target], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?))
+        })?
+        .map(|row| {
+            let (id, event) = row?;
+            Ok((id, serde_json::from_str(&event)?))
+        })
+        .collect()
+    }
+    /// Local adapter calls only after its consumer durably commits processing.
+    /// Batch receipts and source watermarks outlive payload consumption.
+    pub fn ack_events(&mut self, target: &str, through: i64) -> Result<()> {
+        if through < 1 {
+            return Err(Error::Invalid);
+        }
+        let tx = self
+            .db
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let count = tx.execute(
+            "DELETE FROM events WHERE target=?1 AND id<=?2",
+            params![target, through],
+        )?;
+        if count > 0 {
+            audit(
+                &tx,
+                json!({"method":"kernel.events.ack","target":target,"through":through,"count":count,"outcome":"consumed"}),
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
     }
     pub fn pending_events(&self, target: &str) -> Result<Vec<Value>> {
         let mut q = self

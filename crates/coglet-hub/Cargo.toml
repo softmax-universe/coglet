@@ -14,7 +14,7 @@ thiserror = "2"
 hex = "0.4"
 sha2 = "0.10"
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
-tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "time", "sync", "signal"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "time", "sync", "signal"] }
 
 [dev-dependencies]
 tempfile = "3"
