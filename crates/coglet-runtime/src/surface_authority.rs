@@ -35,7 +35,18 @@ impl SurfaceSession {
     pub fn grant_epoch(&self) -> u64 {
         self.epoch
     }
-    fn surface_now(&self, now: u64) -> Result<u64> {
+    pub(crate) fn event_lease(&self, coglet: &str, operation: &str, now: u64) -> Result<u64> {
+        self.authorize(coglet, operation, "event", now)?;
+        now.checked_add(
+            self.grants[coglet]["expires"]
+                .as_u64()
+                .unwrap()
+                .checked_sub(self.surface_now(now)?)
+                .ok_or("expired grant")?,
+        )
+        .ok_or("grant expiry overflow".into())
+    }
+    pub(super) fn surface_now(&self, now: u64) -> Result<u64> {
         if self.closed
             || !self.negotiated
             || now < self.runtime_clock
@@ -180,6 +191,7 @@ impl SurfaceSession {
         self.grants = if self.killed { BTreeMap::new() } else { grants };
         // Local readiness is authority, not the peer's health claim.
         self.stopped = self.killed || self.grants.is_empty();
+        self.expire_reads(now);
         Ok(())
     }
     pub(crate) fn authorize(

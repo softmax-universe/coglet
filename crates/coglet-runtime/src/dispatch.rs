@@ -122,6 +122,9 @@ impl RuntimeService {
         }
         let mut next = self.state.clone();
         next.surface_epochs.insert(surface.to_owned(), epoch);
+        self.purge_surface_events(surface, self.surface_epoch(surface))?;
+        next.router = self.state.router.clone();
+        next.private_events = self.state.private_events.clone();
         self.commit_dispatch(next)
     }
     /// Persist BEFORE returning bytes to a transport. An old ID is reconciled
@@ -243,6 +246,7 @@ impl RuntimeService {
         }
         let id = event["payload"]["id"].as_str().ok_or("missing action ID")?;
         let mut next = self.state.clone();
+        Self::advance_surface_sequence(&mut next, event)?;
         let dispatch = next
             .dispatches
             .get_mut(id)
@@ -252,11 +256,11 @@ impl RuntimeService {
         }
         dispatch.check_outcome(&event["payload"])?;
         if let Some(saved) = &dispatch.outcome {
-            return if saved == &event["payload"] {
-                Ok(false)
-            } else {
-                Err("conflicting terminal result".into())
-            };
+            if saved != &event["payload"] {
+                return Err("conflicting terminal result".into());
+            }
+            self.commit_dispatch(next)?;
+            return Ok(false);
         }
         dispatch.outcome = Some(event["payload"].clone());
         dispatch.terminal_at = Some(now);
@@ -272,7 +276,71 @@ impl RuntimeService {
         self.state = next;
         Ok(())
     }
+    pub(crate) fn check_heard_owner(
+        &self,
+        session: &SurfaceSession,
+        coglet: &str,
+        id: &str,
+    ) -> Result<()> {
+        let d = self
+            .state
+            .dispatches
+            .get(id)
+            .ok_or("not_found: no retained item owner")?;
+        if d.surface != session.surface()
+            || d.intent["coglet"] != coglet
+            || !matches!(
+                d.intent["capability"].as_str(),
+                Some("speech.speak_chunk" | "speech.backchannel")
+            )
+            || d.accept.as_ref().is_none_or(|v| v["accepted"] != true)
+        {
+            return Err("permission_denied: not the item's speaker owner".into());
+        }
+        let raw = hex::decode(&d.envelope_hex).map_err(|e| e.to_string())?;
+        let envelope: Value = coglet_types::decode("surface-message", &raw)?
+            .deserialized()
+            .map_err(|e| e.to_string())?;
+        if envelope["body"]["grant_epoch"] != session.grant_epoch() {
+            return Err("permission_denied: item owner revoked".into());
+        }
+        Ok(())
+    }
+    pub(super) fn check_provider_session(
+        &self,
+        session: &SurfaceSession,
+        coglet: &str,
+        id: &Value,
+    ) -> Result<()> {
+        let matching = |d: &&Dispatch| {
+            d.surface == session.surface()
+                && d.intent["coglet"] == coglet
+                && d.intent["args"]["session"] == *id
+        };
+        let opened = self.state.dispatches.values().filter(matching).any(|d| {
+            d.intent["capability"] == "speech.session_open"
+                && d.outcome
+                    .as_ref()
+                    .is_some_and(|v| v["status"] == "succeeded")
+                && hex::decode(&d.envelope_hex)
+                    .ok()
+                    .and_then(|raw| coglet_types::decode("surface-message", &raw).ok())
+                    .and_then(|v| v.deserialized::<Value>().ok())
+                    .is_some_and(|v| v["body"]["grant_epoch"] == session.grant_epoch())
+        });
+        let closed = self.state.dispatches.values().filter(matching).any(|d| {
+            d.intent["capability"] == "speech.session_close"
+                && d.accept.as_ref().is_some_and(|v| v["accepted"] == true)
+        });
+        if !opened || closed {
+            return Err("private provider event has no live owner session".into());
+        }
+        Ok(())
+    }
     pub(super) fn validate_dispatches(state: &ServiceState) -> Result<()> {
+        for surface in state.surface_sequences.keys() {
+            validate("surface-id", &json!(surface))?;
+        }
         for (surface, epoch) in &state.surface_epochs {
             validate("surface-id", &json!(surface))?;
             if *epoch == 0 {

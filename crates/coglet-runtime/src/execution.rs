@@ -7,6 +7,8 @@ use std::path::Path;
 
 #[path = "dispatch.rs"]
 mod dispatch;
+#[path = "surface_events.rs"]
+mod surface_events;
 
 /// Engine implementations must start a fresh instance for every attempt. This
 /// runtime-owned seam is temporary while coglet-engine's public API is empty.
@@ -29,6 +31,10 @@ struct ServiceState {
     surface_epochs: BTreeMap<String, u64>,
     #[serde(default)]
     staged_boundary: Option<StagedBoundary>,
+    #[serde(default)]
+    surface_sequences: BTreeMap<String, (u64, u64)>,
+    #[serde(default)]
+    private_events: BTreeMap<u64, surface_events::EventLease>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -47,7 +53,7 @@ impl RuntimeService {
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
-        let state: ServiceState = if let Some(saved) = store.state() {
+        let mut state: ServiceState = if let Some(saved) = store.state() {
             let state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
             let code_files = |runtime: &Runtime| {
@@ -85,6 +91,8 @@ impl RuntimeService {
                 dispatches: BTreeMap::new(),
                 surface_epochs: BTreeMap::new(),
                 staged_boundary: None,
+                surface_sequences: BTreeMap::new(),
+                private_events: BTreeMap::new(),
             };
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
@@ -92,6 +100,18 @@ impl RuntimeService {
             )?;
             state
         };
+        // Restart has no live authenticated leases. Keep source highwaters but
+        // never deliver queued old-owner observations into a fresh connection.
+        if !state.private_events.is_empty() {
+            let revoked = std::mem::take(&mut state.private_events);
+            state
+                .router
+                .retain_ordinals(|ordinal| !revoked.contains_key(&ordinal));
+            store.commit(
+                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
         Ok(Self { state, store })
     }
 
@@ -114,6 +134,14 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if !self.store.is_healthy() {
+            return Err("runtime requires recovery before guest delivery".into());
+        }
+        self.expire_private_events(
+            context["logical_time"]
+                .as_u64()
+                .ok_or("missing logical_time")?,
+        )?;
         self.queue_due_timers(
             context["logical_time"]
                 .as_u64()
@@ -148,6 +176,8 @@ impl RuntimeService {
         inputs["events"] = json!(events);
         let result = next.runtime.step(&inputs, engine)?;
         next.router.consume(events.len())?;
+        next.private_events
+            .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
         self.store.commit(
             &serde_json::to_value(&next).map_err(|e| e.to_string())?,
             Some(&result["journal"]),

@@ -39,9 +39,8 @@ pub(crate) fn uri(rule: &Value) -> Result<String> {
 pub(crate) fn resources(name: &str) -> &'static [&'static str] {
     match name {
         "expression.set_expression" => &["display.face"],
-        "speech.speak_chunk" | "speech.stop" | "speech.backchannel" | "speech.position" => {
-            &["audio.speaker"]
-        }
+        "speech.speak_chunk" | "speech.stop" | "speech.backchannel" | "speech.position"
+        | "speech.heard" => &["audio.speaker"],
         "speech.start" | "speech.partial" | "speech.end" => &["audio.mic"],
         "speech.barge_in"
         | "speech.session_open"

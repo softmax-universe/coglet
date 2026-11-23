@@ -18,6 +18,8 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - pinned operation-schema selection, capability replacement and grant/resource checks;
 - one-time clock translation and complete deterministic act bytes fsynced before exposure;
 - durable bound-surface admission/outcomes, terminal dedup and staged inbox boundary mutations.
+- lease-scoped private event routing with durable shared surface sequence/clock highwaters;
+- bounded caller-scoped native reads, timeout/late-reply fencing and revocation purging.
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
@@ -67,9 +69,16 @@ The unimplemented boundaries remain explicit:
   and bound-source receipt materialization, but transports still create probe-only sessions.
   Both native endpoint modes must attach the durable service, dispatch committed actions
   in call order, reconcile retained IDs on reconnect and use one runtime clock epoch.
-- Operational private event routing, reads/replies, source-sequence continuity and
-  queue purging on grant expiry/revocation remain. Catalog/grants and mapped deadlines
-  are checked by the shared session; production grant epochs require with_service().
+- Operational private events and reads exist in the shared library session, but
+  native endpoints still need to attach it. Private event admission intersects
+  manifest subscriptions with current grants/resources; grant replacement, expiry,
+  disconnect and restart purge old-lease queued input while retaining sequence
+  highwaters. Provider tool calls require a retained successful owner session.
+  Native reads never invent guest events; pending+completed observations are bounded
+  to 128 with 4096 non-evicting correlation tombstones per connection. Stale durable
+  epochs purge read replies/results. Heard reads require a retained accepted speaker
+  item and current speaker lease; provider-native items without retained ownership
+  currently fail closed. Heard-state construction from reads remains to be wired.
 - Close/disconnect with pending real native I/O: native pointer/buffer/backpressure
   and heartbeat probes exist, but no operational native I/O can be admitted yet.
 - `cogletd` production server mode. Only --version, --mock-stdio and the explicit
@@ -112,7 +121,7 @@ seams (not native operational qualification). Named tests cover byte-identical
 retry after clock advance, reconnect recovery without a new action, authenticated
 source/admission binding, one terminal append across restart, zero-step trailing
 export, persistent grant-epoch fencing and deadline-relative retention. Production
-clock/lifecycle wiring, private event/read paths, transport dispatch and native
+clock/lifecycle wiring, full private-event temporal normalization, transport dispatch and native
 pending-I/O shutdown remain required before this card is complete.
 
 `cargo build -p coglet-runtime --lib` produces static and shared libraries.

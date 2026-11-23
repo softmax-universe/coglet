@@ -66,6 +66,452 @@ fn wal(name: &str) -> std::path::PathBuf {
     dir.join("state.wal")
 }
 #[test]
+fn native_read_is_caller_scoped_and_timeout_discards_late_reply() {
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    let id = "a".repeat(32);
+    s.request_read(C, "expression.state", json!({}), &id, 500, 130)
+        .unwrap();
+    let raw = s.pop().unwrap();
+    let request: Value = coglet_types::decode("surface-message", &raw)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    assert_eq!(request["body"]["deadline"], 1490);
+    assert_eq!(request["body"]["grant_epoch"], 1);
+    assert!(
+        s.request_read(C, "expression.state", json!({}), &id, 500, 140)
+            .is_err()
+    );
+    let reply = json!({"correlation_id":id,"ok":true,"snapshot":1,"value":{"expression":"happy","intensity":500,"remaining_ms":10}});
+    assert_eq!(send(&mut s, "read_reply", reply.clone(), 150), 0);
+    assert!(
+        s.take_read_result(
+            "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            160
+        )
+        .is_none()
+    );
+    assert_eq!(s.take_read_result(C, 160).unwrap(), reply);
+    let late = "b".repeat(32);
+    s.request_read(C, "expression.state", json!({}), &late, 200, 170)
+        .unwrap();
+    s.tick(200);
+    assert!(s.pop().is_none(), "timed-out read remained queued");
+    assert_eq!(
+        s.take_read_result(C, 200).unwrap()["error"]["code"],
+        "deadline_exceeded"
+    );
+    let mut reply = reply;
+    reply["correlation_id"] = json!(late);
+    assert_eq!(send(&mut s, "read_reply", reply, 210), 0);
+    assert!(s.take_read_result(C, 220).is_none());
+}
+#[test]
+fn native_read_revocation_purges_pending_and_completed_private_values() {
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    let id = "a".repeat(32);
+    s.request_read(C, "expression.state", json!({}), &id, 500, 130)
+        .unwrap();
+    s.pop();
+    assert_eq!(
+        send(
+            &mut s,
+            "read_reply",
+            json!({"correlation_id":id,"ok":true,"snapshot":1,"value":{"expression":"happy","intensity":500,"remaining_ms":10}}),
+            140
+        ),
+        0
+    );
+    s.request_read(C, "expression.state", json!({}), &"b".repeat(32), 500, 150)
+        .unwrap();
+    assert_eq!(
+        send(
+            &mut s,
+            "grants",
+            json!({"epoch":2,"entries":[],"correlation_id":"c".repeat(32)}),
+            160
+        ),
+        0
+    );
+    assert!(s.pop().is_none());
+    let result = s.take_read_result(C, 170).unwrap();
+    assert_eq!(result["error"]["code"], "permission_denied");
+    assert!(s.take_read_result(C, 170).is_none());
+}
+#[test]
+fn native_read_invalid_selected_schema_and_unknown_reply_fail_closed() {
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    assert!(
+        s.request_read(
+            C,
+            "expression.state",
+            json!({"extra":true}),
+            &"a".repeat(32),
+            500,
+            130
+        )
+        .is_err()
+    );
+    assert!(s.pop().is_none());
+    s.request_read(C, "expression.state", json!({}), &"a".repeat(32), 500, 130)
+        .unwrap();
+    assert_eq!(
+        send(
+            &mut s,
+            "read_reply",
+            json!({"correlation_id":"a".repeat(32),"ok":true,"snapshot":1,"value":{}}),
+            140
+        ),
+        -2
+    );
+    assert!(s.take_read_result(C, 150).is_none());
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    assert_eq!(
+        send(
+            &mut s,
+            "read_reply",
+            json!({"correlation_id":"a".repeat(32),"ok":false,"error":{"code":"unavailable","message":"no","retryable":false}}),
+            130
+        ),
+        -2
+    );
+}
+fn live(
+    service: std::sync::Arc<std::sync::Mutex<coglet_runtime::RuntimeService>>,
+) -> SurfaceSession {
+    let mut s = SurfaceSession::with_service(
+        SurfaceBinding::new(S.into(), vec![C.into()]).unwrap(),
+        service,
+    )
+    .unwrap();
+    assert_eq!(
+        send(
+            &mut s,
+            "hello",
+            json!({"surface":S,"offer":{"versions":["0.1"]},"clock":1000,"correlation_id":"1".repeat(32)}),
+            10
+        ),
+        0
+    );
+    s.pop();
+    s
+}
+fn speech(s: &mut SurfaceSession, epoch: u64) {
+    if epoch == 1 {
+        assert_eq!(
+            send(
+                s,
+                "capabilities",
+                json!({"revision":1,"clock":1100,"entries":[{"name":"speech.control","events":["speech.start"],"reads":[],"actions":[],"exclusive":["audio.mic","audio.speaker"],"schemas":{"speech.start":"https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start"}}],"correlation_id":"2".repeat(32)}),
+                110
+            ),
+            0
+        );
+    }
+    assert_eq!(
+        send(
+            s,
+            "grants",
+            json!({"epoch":epoch,"entries":[{"coglet":C,"operations":["speech.start"],"resources":["audio.mic","audio.speaker"],"expires":500_000}],"correlation_id":"3".repeat(32)}),
+            if epoch == 2 { 135 } else { 120 + epoch }
+        ),
+        0
+    );
+}
+fn speech_event(seq: u64) -> Value {
+    json!({"source":S,"kind":"speech.start","seq":seq,"logical_time":1200,"payload":{"utterance":"d".repeat(32),"position_ms":0},"correlation_id":"e".repeat(32)})
+}
+#[test]
+fn private_event_revoke_disconnect_restart_and_source_highwater() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("private");
+    let mut setup = setup();
+    setup["manifest"]["subscriptions"] = json!(["speech.start"]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    speech(&mut s, 1);
+    assert_eq!(send(&mut s, "event", speech_event(1), 130), 0);
+    assert_eq!(service.lock().unwrap().queued(), 1);
+    speech(&mut s, 2);
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    assert_eq!(send(&mut s, "event", speech_event(2), 140), 0);
+    s.disconnect();
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    drop(s);
+    drop(service);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    assert_eq!(
+        send(
+            &mut s,
+            "capabilities",
+            json!({"revision":1,"clock":1100,"entries":[{"name":"speech.control","events":["speech.start"],"reads":[],"actions":[],"exclusive":["audio.mic","audio.speaker"],"schemas":{"speech.start":"https://coglet.dev/spec/messages/speech.schema.json#/$defs/speech-start"}}],"correlation_id":"2".repeat(32)}),
+            110
+        ),
+        0
+    );
+    speech(&mut s, 3);
+    assert_eq!(
+        send(&mut s, "event", speech_event(2), 140),
+        -2,
+        "source seq rollback survived restart"
+    );
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn private_event_expiry_purges_before_any_guest_step() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("expiry");
+    let mut setup = setup();
+    setup["manifest"]["subscriptions"] = json!(["speech.start"]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    speech(&mut s, 1);
+    assert_eq!(send(&mut s, "event", speech_event(1), 130), 0);
+    let mut inputs = setup["inputs"].clone();
+    inputs["logical_time"] = json!(500_000);
+    assert!(
+        service
+            .lock()
+            .unwrap()
+            .run_next(
+                &inputs,
+                &mut coglet_runtime::MockEngine::new(setup["guest_script"].clone())
+            )
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(service.lock().unwrap().queued(), 0);
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn concurrent_session_epoch_purges_old_read_reply_and_completed_result() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("read-epoch");
+    let setup = setup();
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut old = live(service.clone());
+    caps(&mut old);
+    grants(&mut old, 1);
+    let id = "a".repeat(32);
+    old.request_read(C, "expression.state", json!({}), &id, 500, 130)
+        .unwrap();
+    old.pop();
+    let mut fresh = live(service.clone());
+    caps(&mut fresh);
+    grants(&mut fresh, 2);
+    assert_eq!(
+        send(
+            &mut old,
+            "read_reply",
+            json!({"correlation_id":id,"ok":true,"snapshot":1,"value":{"expression":"happy","intensity":500,"remaining_ms":10}}),
+            140
+        ),
+        0
+    );
+    assert_eq!(
+        old.take_read_result(C, 150).unwrap()["error"]["code"],
+        "permission_denied"
+    );
+    assert!(old.take_read_result(C, 150).is_none());
+    drop(old);
+    drop(fresh);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn heard_reads_require_speaker_owned_retained_item_and_enforce_utf8_limit() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("heard-read");
+    let mut setup = setup();
+    let mut speak = action();
+    speak["capability"] = json!("speech.speak_chunk");
+    speak["args"] = json!({"stream":"6".repeat(32),"chunk":0,"text":"hello","final":true});
+    setup["initial_actions"] = json!([speak.clone()]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    assert_eq!(
+        send(
+            &mut s,
+            "capabilities",
+            json!({"revision":1,"clock":1100,"entries":[
+        {"name":"speech.control","events":[],"reads":[],"actions":["speech.speak_chunk"],"exclusive":["audio.speaker"],"schemas":{"speech.speak_chunk":"https://coglet.dev/spec/messages/speech.schema.json#/$defs/speak-chunk"}},
+        {"name":"speech.history","events":[],"reads":["speech.heard"],"actions":[],"exclusive":[],"schemas":{"speech.heard":"https://coglet.dev/spec/messages/speech.schema.json#/$defs/heard-record"}}
+    ],"correlation_id":"2".repeat(32)}),
+            110
+        ),
+        0
+    );
+    let grant = |epoch, resources| json!({"epoch":epoch,"entries":[{"coglet":C,"operations":["speech.heard","speech.speak_chunk"],"resources":resources,"expires":1_000_000}],"correlation_id":"3".repeat(32)});
+    assert_eq!(send(&mut s, "grants", grant(1, json!([])), 120), 0);
+    assert!(
+        s.request_read(
+            C,
+            "speech.heard",
+            json!({"item":speak["id"]}),
+            &"a".repeat(32),
+            1000,
+            130
+        )
+        .is_err()
+    );
+    assert_eq!(
+        send(&mut s, "grants", grant(2, json!(["audio.speaker"])), 140),
+        0
+    );
+    assert!(
+        s.request_read(
+            C,
+            "speech.heard",
+            json!({"item":speak["id"]}),
+            &"a".repeat(32),
+            1000,
+            150
+        )
+        .is_err()
+    );
+    service
+        .lock()
+        .unwrap()
+        .prepare_dispatch(&s, speak["id"].as_str().unwrap(), 150)
+        .unwrap();
+    service
+        .lock()
+        .unwrap()
+        .record_surface_accept(
+            &s,
+            &json!({"id":speak["id"],"correlation_id":speak["correlation_id"],"accepted":true}),
+            160,
+        )
+        .unwrap();
+    s.request_read(
+        C,
+        "speech.heard",
+        json!({"item":speak["id"]}),
+        &"a".repeat(32),
+        1000,
+        170,
+    )
+    .unwrap();
+    s.pop();
+    let mut reply = json!({"correlation_id":"a".repeat(32),"ok":true,"snapshot":1,"value":{"item":speak["id"],"played_ms":1,"text":"hello"}});
+    assert_eq!(send(&mut s, "read_reply", reply.clone(), 180), 0);
+    assert_eq!(s.take_read_result(C, 190).unwrap(), reply);
+    s.request_read(
+        C,
+        "speech.heard",
+        json!({"item":speak["id"]}),
+        &"b".repeat(32),
+        1000,
+        200,
+    )
+    .unwrap();
+    s.pop();
+    reply["correlation_id"] = json!("b".repeat(32));
+    reply["value"]["text"] = json!("é".repeat(16000));
+    assert_eq!(send(&mut s, "read_reply", reply, 210), -2);
+    assert!(s.take_read_result(C, 220).is_none());
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn private_queued_input_is_not_revived_on_wal_reopen() {
+    use std::sync::{Arc, Mutex};
+    let path = wal("private-crash");
+    let mut setup = setup();
+    setup["manifest"]["subscriptions"] = json!(["speech.start"]);
+    let service = Arc::new(Mutex::new(
+        coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    let mut s = live(service.clone());
+    speech(&mut s, 1);
+    assert_eq!(send(&mut s, "event", speech_event(1), 130), 0);
+    assert_eq!(service.lock().unwrap().queued(), 1);
+    // Abandon the connection object without the normal disconnect callback,
+    // modelling a process loss: recovery must still purge old private input.
+    drop(s);
+    drop(service);
+    let recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
+    assert_eq!(recovered.queued(), 0);
+    drop(recovered);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+#[test]
+fn native_read_pending_and_completed_share_one_bounded_queue() {
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    for n in 0..128 {
+        s.request_read(
+            C,
+            "expression.state",
+            json!({}),
+            &format!("{n:032x}"),
+            1000,
+            130,
+        )
+        .unwrap();
+        s.pop();
+    }
+    assert!(
+        s.request_read(C, "expression.state", json!({}), &"f".repeat(32), 1000, 140)
+            .is_err()
+    );
+    s.tick(1000);
+    assert!(
+        s.request_read(
+            C,
+            "expression.state",
+            json!({}),
+            &"f".repeat(32),
+            2000,
+            1000
+        )
+        .is_err()
+    );
+    assert_eq!(
+        s.take_read_result(C, 1000).unwrap()["error"]["code"],
+        "deadline_exceeded"
+    );
+    assert!(
+        s.request_read(
+            C,
+            "expression.state",
+            json!({}),
+            &"f".repeat(32),
+            2000,
+            1000
+        )
+        .is_ok()
+    );
+    s.disconnect();
+    assert!(s.take_read_result(C, 1001).is_none());
+}
+#[test]
 fn durable_grant_epoch_survives_reconnect_and_restart() {
     use std::sync::{Arc, Mutex};
     let path = wal("epoch");
@@ -318,6 +764,7 @@ fn outcome_requires_saved_admission_and_exact_authenticated_source() {
     drop(service);
     let mut recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
     event["payload"]["result"] = json!({});
+    event["seq"] = json!(3);
     assert!(!recovered.record_surface_outcome(&s, &event, 180).unwrap());
     let mut inputs = setup["inputs"].clone();
     inputs["logical_time"] = json!(200);

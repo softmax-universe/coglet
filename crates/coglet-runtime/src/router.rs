@@ -63,6 +63,9 @@ impl Router {
     pub fn is_full(&self) -> bool {
         self.queue.len() >= self.capacity
     }
+    pub(crate) fn retain_ordinals(&mut self, mut keep: impl FnMut(u64) -> bool) {
+        self.queue.retain(|(ordinal, _)| keep(*ordinal));
+    }
     pub fn len(&self) -> usize {
         self.queue.len()
     }

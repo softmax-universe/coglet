@@ -7,6 +7,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[path = "surface_authority.rs"]
 mod authority;
+#[path = "surface_reads.rs"]
+mod reads;
 
 pub const SURFACE_MAX_FRAME: usize = 1_048_576;
 pub const SURFACE_QUEUE: usize = 128;
@@ -60,6 +62,10 @@ pub struct SurfaceSession {
     grants: BTreeMap<String, Value>,
     mapping: Option<(u64, u64)>,
     killed: bool,
+    reads: BTreeMap<String, reads::PendingRead>,
+    read_ids: BTreeSet<String>,
+    read_results: VecDeque<(String, Value)>,
+    read_result_authority: BTreeMap<String, reads::PendingRead>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
 }
 impl SurfaceSession {
@@ -81,6 +87,10 @@ impl SurfaceSession {
             grants: BTreeMap::new(),
             mapping: None,
             killed: false,
+            reads: BTreeMap::new(),
+            read_ids: BTreeSet::new(),
+            read_results: VecDeque::new(),
+            read_result_authority: BTreeMap::new(),
             service: None,
         }
     }
@@ -94,6 +104,11 @@ impl SurfaceSession {
         self.output.pop_front()
     }
     pub fn disconnect(&mut self) {
+        if let Some(service) = &self.service
+            && let Ok(mut service) = service.lock()
+        {
+            let _ = service.purge_surface_events(self.surface(), self.epoch);
+        }
         self.closed = true;
         self.stopped = true;
         self.negotiated = false;
@@ -101,6 +116,9 @@ impl SurfaceSession {
         self.output.clear();
         self.grants.clear();
         self.mapping = None;
+        self.reads.clear();
+        self.read_results.clear();
+        self.read_result_authority.clear();
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         validate("surface-message", &message)?;
@@ -131,6 +149,7 @@ impl SurfaceSession {
             return;
         }
         self.runtime_clock = now;
+        self.expire_reads(now);
         if !self.negotiated {
             return;
         }
@@ -220,9 +239,16 @@ impl SurfaceSession {
                     self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
                 }
                 "kill" => {
+                    if let Some(service) = &self.service {
+                        service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .purge_surface_events(self.surface(), self.epoch)?;
+                    }
                     self.killed = true;
                     self.grants.clear();
                     self.stopped = true;
+                    self.expire_reads(now);
                     self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
                 }
                 "capabilities" => self.install_capabilities(body, now)?,
@@ -247,8 +273,13 @@ impl SurfaceSession {
                         .map_err(|_| "runtime service poisoned")?
                         .record_surface_outcome(self, body, now)?;
                 }
-                "event" | "read_reply" => {
-                    return self.error("unavailable", &body["correlation_id"]);
+                "read_reply" => self.receive_read_reply(body, now)?,
+                "event" => {
+                    let service = self.service.clone().ok_or("no durable event coordinator")?;
+                    service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_event(self, body, now)?;
                 }
                 "error" => {
                     self.disconnect();
