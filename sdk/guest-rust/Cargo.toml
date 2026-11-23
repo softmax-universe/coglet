@@ -3,3 +3,13 @@ name = "coglet-guest-rust"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+coglet-types = { path = "../../crates/coglet-types" }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+coglet-guest-macros = { path = "macros" }
+
+[[example]]
+name = "entry_probe"
+crate-type = ["cdylib"]

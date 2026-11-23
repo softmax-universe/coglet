@@ -17,5 +17,15 @@ jobs:
       - run: cargo build --workspace --locked
       - run: cargo test --workspace --locked
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked
+      - name: Build reference guest modules
+        run: bash sdk/guest-rust/build-guests.sh
+      - uses: astral-sh/setup-uv@v6
+      - name: Execute compiled guest ABI tests
+        run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reference-coglets-wasm
+          path: target/guests/wasm32-wasip1/release/coglet_*.wasm
+          if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
