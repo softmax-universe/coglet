@@ -52,6 +52,17 @@ import SoftmaxCore
                     var stable: Data?
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                        // AppKit can initially reserve a legacy scroller gutter before
+                        // adopting the runner's overlay preference. Pin fixture scroll
+                        // geometry explicitly; leave production/user preferences alone.
+                        func normalizeScrollers(_ view: NSView) {
+                            if let scroll = view as? NSScrollView, scroll.scrollerStyle != .overlay {
+                                print("Normalizing legacy scroller in native snapshot: \(key)")
+                                scroll.scrollerStyle = .overlay
+                            }
+                            for child in view.subviews { normalizeScrollers(child) }
+                        }
+                        normalizeScrollers(hosting)
                         hosting.layoutSubtreeIfNeeded()
                         if let editor = window.firstResponder as? NSTextView {
                             editor.setSelectedRange(NSRange(location: 0, length: 0))

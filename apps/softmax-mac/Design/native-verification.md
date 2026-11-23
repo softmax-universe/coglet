@@ -114,7 +114,16 @@ a 10 pt taller empty search field; its reference is deliberately unchanged.
 The renderer now requires three consecutive identical PNG frames after at least
 200 ms of run-loop/layout settling, with a two-second fail-closed deadline per
 fixture. This replaces the single 40 ms delay, not the pixel comparison gate.
-Native execution must still verify stability and strict 360-state equality.
+Run `45129426172` compiled this settling harness, rendered all 360 fixtures and
+passed all 39 unit plus 9 UI tests. Exactly one PNG differs from its reference:
+`light-commands`, with changed pixels confined to (415,83)–(440,116). Full-size
+old/new inspection shows only the selected row's right edge is 17 pt narrower;
+all other 359 images are byte-pixel identical, including the previously unstable
+Hub field. This is consistent with a legacy scroller gutter, not changed text.
+The capture harness now explicitly sets descendant NSScrollViews to overlay
+scrollers and logs each legacy-style conversion. This fixture-only hypothesis
+still requires native execution and strict 360-state comparison; no reference,
+production preference, comparator tolerance or accessibility waiver changed.
 
 ## Intentional differences from the design study
 
