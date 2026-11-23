@@ -62,35 +62,103 @@ fn validate_any(v: &Value) -> Result<(), String> {
     coglet_types::encode_profile(v).map(|_| ())
 }
 
+/// None means an explicitly declared protocol-owned vector, never a parse failure.
+fn generated_family(path: &Path) -> bool {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/fixtures");
+    let registry: serde_json::Value =
+        serde_json::from_str(include_str!("../../../codegen/contracts.json")).unwrap();
+    let family = path
+        .strip_prefix(root)
+        .unwrap()
+        .components()
+        .next()
+        .unwrap();
+    match registry[family.as_os_str().to_str().unwrap()].as_str() {
+        Some("generated") => true,
+        Some("draft-validated") => false,
+        _ => panic!("unclassified fixture family"),
+    }
+}
+
+fn codec_cases(path: &Path) -> Option<Vec<serde_json::Value>> {
+    let marker = path.with_file_name(format!(
+        "{}.format",
+        path.file_name().unwrap().to_str().unwrap()
+    ));
+    let j: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    if marker.exists() {
+        let format = std::fs::read_to_string(marker).unwrap();
+        assert!(
+            format == "semantic-vectors-v1" || format == "semantic-vectors-v1\n",
+            "unknown fixture format: {path:?}"
+        );
+        return None;
+    }
+    let cases = j
+        .as_array()
+        .unwrap_or_else(|| panic!("{path:?}: expected codec case array or .format marker"));
+    assert!(!cases.is_empty(), "empty codec case array: {path:?}");
+    let mut names = std::collections::BTreeSet::new();
+    for c in cases {
+        assert!(
+            names.insert(c["name"].as_str().expect("case name")),
+            "duplicate case name"
+        );
+        if c.get("valid").is_some() {
+            c["valid"].as_bool().expect("valid must be boolean");
+            c["type"].as_str().expect("shape case type");
+            assert!(c.get("value").is_some(), "shape case value");
+            if let Some(semantic) = c.get("semantic") {
+                semantic.as_bool().expect("semantic must be boolean");
+            }
+        } else {
+            assert!(
+                c.get("type").is_none() && c.get("semantic").is_none(),
+                "malformed wire case"
+            );
+            c["cbor_hex"].as_str().expect("wire hex");
+        }
+    }
+    Some(cases.clone())
+}
+
 #[test]
 fn spec_fixtures() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/fixtures");
     let mut files = vec![];
     walk(&root, &mut files);
     assert!(!files.is_empty(), "no fixtures found");
-    let (mut sem, mut valid, mut wire) = (0, 0, 0);
+    let (mut sem, mut valid, mut wire, mut skipped, mut semantic, mut draft) = (0, 0, 0, 0, 0, 0);
     for f in &files {
-        let j: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap();
-        let cases = j
-            .as_array()
-            .unwrap_or_else(|| panic!("{f:?}: not an array"));
-        for c in cases {
+        if !generated_family(f) {
+            draft += 1;
+            continue;
+        }
+        let Some(cases) = codec_cases(f) else {
+            skipped += 1;
+            continue;
+        };
+        for c in &cases {
             let name = format!("{}::{}", f.display(), c["name"].as_str().expect("name"));
             if let Some(ty) = c.get("type").and_then(|t| t.as_str()) {
                 sem += 1;
-                let is_valid = c["valid"].as_bool().expect("valid");
+                let protocol_semantic =
+                    c.get("semantic").and_then(|x| x.as_bool()).unwrap_or(false);
+                semantic += usize::from(protocol_semantic);
+                let is_valid = c["valid"].as_bool().expect("valid") || protocol_semantic;
                 let conv = json_to_cbor(&c["value"]);
                 if is_valid {
                     valid += 1;
                     let v = conv.unwrap_or_else(|e| panic!("{name}: {e}"));
                     validate(ty, &v).unwrap_or_else(|e| panic!("{name}: {e}"));
                     let raw = encode(ty, &v).unwrap_or_else(|e| panic!("{name}: {e}"));
-                    let h = c["cbor_hex"]
-                        .as_str()
-                        .unwrap_or_else(|| panic!("{name}: valid case lacks cbor_hex"));
-                    assert_eq!(raw, hex(h), "{name}: encode != golden");
-                    let d = decode(ty, &hex(h)).unwrap_or_else(|e| panic!("{name}: {e}"));
+                    if let Some(h) = c.get("cbor_hex").and_then(|x| x.as_str()) {
+                        assert_eq!(raw, hex(h), "{name}: encode != golden");
+                    } else {
+                        assert!(protocol_semantic, "{name}: golden missing");
+                    }
+                    let d = decode(ty, &raw).unwrap_or_else(|e| panic!("{name}: {e}"));
                     assert_eq!(encode(ty, &d).unwrap(), raw, "{name}: reencode");
                     validate(ty, &d).unwrap();
                 } else if let Ok(v) = conv {
@@ -115,7 +183,7 @@ fn spec_fixtures() {
         }
     }
     eprintln!(
-        "files={} semantic={sem} valid={valid} wire_invalid={wire}",
+        "files={} shape={sem} valid={valid} wire_invalid={wire} protocol_semantic={semantic} semantic-vectors-v1_skipped={skipped} draft_files_excluded={draft}",
         files.len()
     );
     assert!(sem > 0 && wire > 0);
@@ -127,11 +195,16 @@ fn goldens_are_profile_deterministic() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/fixtures");
     let mut files = vec![];
     walk(&root, &mut files);
-    let mut n = 0;
+    let (mut n, mut skipped) = (0, 0);
     for f in &files {
-        let j: serde_json::Value =
-            serde_json::from_str(&std::fs::read_to_string(f).unwrap()).unwrap();
-        for c in j.as_array().unwrap() {
+        if !generated_family(f) {
+            continue;
+        }
+        let Some(cases) = codec_cases(f) else {
+            skipped += 1;
+            continue;
+        };
+        for c in &cases {
             if c.get("valid").and_then(|v| v.as_bool()) != Some(true) {
                 continue;
             }
@@ -144,6 +217,6 @@ fn goldens_are_profile_deterministic() {
             n += 1;
         }
     }
-    eprintln!("goldens checked: {n}");
+    eprintln!("goldens checked: {n}; semantic-vectors-v1 files skipped: {skipped}");
     assert!(n > 0);
 }

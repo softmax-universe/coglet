@@ -5,7 +5,7 @@ import emit_java
 
 
 class NativeIRTests(unittest.TestCase):
-    def test_new_operations_and_constraints_fail_closed(self):
+    def test_additive_operations_are_enforced_and_future_constraints_fail_closed(self):
         text = {'op': 'primitive', 'name': 'tstr'}
         for emit in (emit_go, emit_java):
             cases = [
@@ -20,12 +20,14 @@ class NativeIRTests(unittest.TestCase):
             ]
             for node in cases:
                 with self.subTest(target=emit.__name__, node=node):
+                    self.assertTrue(emit.generate({'test': node}))
+                    unknown = dict(node, future_constraint=True)
                     with self.assertRaisesRegex(ValueError, 'unsupported native target IR'):
-                        emit.generate({'test': node})
+                        emit.generate({'test': unknown})
                     # Reject extensions nested in otherwise-supported nodes, too.
                     with self.assertRaisesRegex(ValueError, 'unsupported native target IR'):
                         emit.generate({'test': {'op': 'record', 'fields': [
-                            {'name': 'value', 'optional': False, 'type': node}]}})
+                            {'name': 'value', 'optional': False, 'type': unknown}]}})
 
     def test_op_is_a_legal_rule_name(self):
         for emit in (emit_go, emit_java):

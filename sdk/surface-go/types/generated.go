@@ -5,7 +5,7 @@ package types
 import "github.com/softmax-universe/coglet/sdk/surface-go/codec"
 
 // SchemaJSON is the validation IR compiled from spec/messages/*.cddl.
-const SchemaJSON = "{\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"capability-name\":{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"},\"coglet-id\":{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"},\"common\":{\"items\":[{\"name\":\"event\",\"op\":\"ref\"},{\"name\":\"action\",\"op\":\"ref\"},{\"name\":\"action-accept\",\"op\":\"ref\"},{\"name\":\"action-outcome\",\"op\":\"ref\"},{\"name\":\"error\",\"op\":\"ref\"},{\"name\":\"version-offer\",\"op\":\"ref\"},{\"name\":\"version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"correlation-id\":{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hub-id\":{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"},\"method-name\":{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"},\"node-id\":{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"profile-value\",\"op\":\"ref\"},\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"source-id\":{\"items\":[{\"name\":\"coglet-id\",\"op\":\"ref\"},{\"name\":\"surface-id\",\"op\":\"ref\"},{\"name\":\"hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"spec-version\":{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"},\"surface-id\":{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
+const SchemaJSON = "{\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"common::action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"common::coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"common::error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"common::event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"common::node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"common::profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"common::surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"common::version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"common::version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"},\"correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
 
 var schema = codec.MustParseSchema(SchemaJSON)
 
@@ -25,6 +25,167 @@ func Decode(rule string, raw []byte) (any, error) {
 // Validate checks v against the named rule without returning bytes.
 func Validate(rule string, v any) error {
 	return schema.Validate(rule, v)
+}
+
+// CommonCommon is CDDL rule 'common::common'; constraints are enforced by Encode/Decode.
+type CommonCommon = Common
+
+func asCommonCommon(x any) (CommonCommon, error) {
+	return asCommon(x)
+}
+
+// CommonUint64 is CDDL rule 'common::uint64'; constraints are enforced by Encode/Decode.
+type CommonUint64 = Uint64
+
+func asCommonUint64(x any) (CommonUint64, error) {
+	return asUint64(x)
+}
+
+// CommonProfileInt is CDDL rule 'common::profile-int'; constraints are enforced by Encode/Decode.
+type CommonProfileInt = ProfileInt
+
+func asCommonProfileInt(x any) (CommonProfileInt, error) {
+	return asProfileInt(x)
+}
+
+// CommonProfileValue is CDDL rule 'common::profile-value'; constraints are enforced by Encode/Decode.
+type CommonProfileValue = ProfileValue
+
+func asCommonProfileValue(x any) (CommonProfileValue, error) {
+	return asProfileValue(x)
+}
+
+// CommonProfileMap is CDDL rule 'common::profile-map'; constraints are enforced by Encode/Decode.
+type CommonProfileMap = ProfileMap
+
+func asCommonProfileMap(x any) (CommonProfileMap, error) {
+	return asProfileMap(x)
+}
+
+// CommonNodeId is CDDL rule 'common::node-id'; constraints are enforced by Encode/Decode.
+type CommonNodeId = NodeId
+
+func asCommonNodeId(x any) (CommonNodeId, error) {
+	return asNodeId(x)
+}
+
+// CommonCogletId is CDDL rule 'common::coglet-id'; constraints are enforced by Encode/Decode.
+type CommonCogletId = CogletId
+
+func asCommonCogletId(x any) (CommonCogletId, error) {
+	return asCogletId(x)
+}
+
+// CommonSurfaceId is CDDL rule 'common::surface-id'; constraints are enforced by Encode/Decode.
+type CommonSurfaceId = SurfaceId
+
+func asCommonSurfaceId(x any) (CommonSurfaceId, error) {
+	return asSurfaceId(x)
+}
+
+// CommonHubId is CDDL rule 'common::hub-id'; constraints are enforced by Encode/Decode.
+type CommonHubId = HubId
+
+func asCommonHubId(x any) (CommonHubId, error) {
+	return asHubId(x)
+}
+
+// CommonSourceId is CDDL rule 'common::source-id'; constraints are enforced by Encode/Decode.
+type CommonSourceId = SourceId
+
+func asCommonSourceId(x any) (CommonSourceId, error) {
+	return asSourceId(x)
+}
+
+// CommonCapabilityName is CDDL rule 'common::capability-name'; constraints are enforced by Encode/Decode.
+type CommonCapabilityName = CapabilityName
+
+func asCommonCapabilityName(x any) (CommonCapabilityName, error) {
+	return asCapabilityName(x)
+}
+
+// CommonMethodName is CDDL rule 'common::method-name'; constraints are enforced by Encode/Decode.
+type CommonMethodName = MethodName
+
+func asCommonMethodName(x any) (CommonMethodName, error) {
+	return asMethodName(x)
+}
+
+// CommonCorrelationId is CDDL rule 'common::correlation-id'; constraints are enforced by Encode/Decode.
+type CommonCorrelationId = CorrelationId
+
+func asCommonCorrelationId(x any) (CommonCorrelationId, error) {
+	return asCorrelationId(x)
+}
+
+// CommonActionId is CDDL rule 'common::action-id'; constraints are enforced by Encode/Decode.
+type CommonActionId = ActionId
+
+func asCommonActionId(x any) (CommonActionId, error) {
+	return asActionId(x)
+}
+
+// CommonSpecVersion is CDDL rule 'common::spec-version'; constraints are enforced by Encode/Decode.
+type CommonSpecVersion = SpecVersion
+
+func asCommonSpecVersion(x any) (CommonSpecVersion, error) {
+	return asSpecVersion(x)
+}
+
+// CommonVersionOffer is CDDL rule 'common::version-offer'; constraints are enforced by Encode/Decode.
+type CommonVersionOffer = VersionOffer
+
+func asCommonVersionOffer(x any) (CommonVersionOffer, error) {
+	return asVersionOffer(x)
+}
+
+// CommonVersionSelection is CDDL rule 'common::version-selection'; constraints are enforced by Encode/Decode.
+type CommonVersionSelection = VersionSelection
+
+func asCommonVersionSelection(x any) (CommonVersionSelection, error) {
+	return asVersionSelection(x)
+}
+
+// CommonEvent is CDDL rule 'common::event'; constraints are enforced by Encode/Decode.
+type CommonEvent = Event
+
+func asCommonEvent(x any) (CommonEvent, error) {
+	return asEvent(x)
+}
+
+// CommonAction is CDDL rule 'common::action'; constraints are enforced by Encode/Decode.
+type CommonAction = Action
+
+func asCommonAction(x any) (CommonAction, error) {
+	return asAction(x)
+}
+
+// CommonActionAccept is CDDL rule 'common::action-accept'; constraints are enforced by Encode/Decode.
+type CommonActionAccept = ActionAccept
+
+func asCommonActionAccept(x any) (CommonActionAccept, error) {
+	return asActionAccept(x)
+}
+
+// CommonActionOutcome is CDDL rule 'common::action-outcome'; constraints are enforced by Encode/Decode.
+type CommonActionOutcome = ActionOutcome
+
+func asCommonActionOutcome(x any) (CommonActionOutcome, error) {
+	return asActionOutcome(x)
+}
+
+// CommonErrorCode is CDDL rule 'common::error-code'; constraints are enforced by Encode/Decode.
+type CommonErrorCode = ErrorCode
+
+func asCommonErrorCode(x any) (CommonErrorCode, error) {
+	return asErrorCode(x)
+}
+
+// CommonError is CDDL rule 'common::error'; constraints are enforced by Encode/Decode.
+type CommonError = Error
+
+func asCommonError(x any) (CommonError, error) {
+	return asError(x)
 }
 
 // Common is CDDL rule 'common'; constraints are enforced by Encode/Decode.
@@ -56,10 +217,10 @@ func asProfileValue(x any) (ProfileValue, error) {
 }
 
 // ProfileMap is CDDL rule 'profile-map'; constraints are enforced by Encode/Decode.
-type ProfileMap = map[string]ProfileValue
+type ProfileMap = map[string]CommonProfileValue
 
 func asProfileMap(x any) (ProfileMap, error) {
-	return (func(x any) (map[string]ProfileValue, error) { return codec.AsMap(x, asProfileValue) })(x)
+	return (func(x any) (map[string]CommonProfileValue, error) { return codec.AsMap(x, asCommonProfileValue) })(x)
 }
 
 // NodeId is CDDL rule 'node-id'; constraints are enforced by Encode/Decode.
@@ -119,10 +280,10 @@ func asCorrelationId(x any) (CorrelationId, error) {
 }
 
 // ActionId is CDDL rule 'action-id'; constraints are enforced by Encode/Decode.
-type ActionId = CorrelationId
+type ActionId = CommonCorrelationId
 
 func asActionId(x any) (ActionId, error) {
-	return asCorrelationId(x)
+	return asCommonCorrelationId(x)
 }
 
 // SpecVersion is CDDL rule 'spec-version'; constraints are enforced by Encode/Decode.
@@ -134,7 +295,7 @@ func asSpecVersion(x any) (SpecVersion, error) {
 
 // VersionOffer is CDDL rule 'version-offer'. Optional fields are pointers; nil means absent.
 type VersionOffer struct {
-	Versions []SpecVersion
+	Versions []CommonSpecVersion
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -151,7 +312,7 @@ func asVersionOffer(x any) (VersionOffer, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Versions, err = (func(x any) ([]SpecVersion, error) { return codec.AsList(x, asSpecVersion) })(m["versions"]); err != nil {
+	if out.Versions, err = (func(x any) ([]CommonSpecVersion, error) { return codec.AsList(x, asCommonSpecVersion) })(m["versions"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -174,7 +335,7 @@ func DecodeVersionOffer(raw []byte) (VersionOffer, error) {
 
 // VersionSelection is CDDL rule 'version-selection'. Optional fields are pointers; nil means absent.
 type VersionSelection struct {
-	Version SpecVersion
+	Version CommonSpecVersion
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -191,7 +352,7 @@ func asVersionSelection(x any) (VersionSelection, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Version, err = asSpecVersion(m["version"]); err != nil {
+	if out.Version, err = asCommonSpecVersion(m["version"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -214,12 +375,12 @@ func DecodeVersionSelection(raw []byte) (VersionSelection, error) {
 
 // Event is CDDL rule 'event'. Optional fields are pointers; nil means absent.
 type Event struct {
-	Source        SourceId
-	Kind          CapabilityName
-	Seq           Uint64
-	LogicalTime   Uint64
-	Payload       ProfileMap
-	CorrelationId CorrelationId
+	Source        CommonSourceId
+	Kind          CommonCapabilityName
+	Seq           CommonUint64
+	LogicalTime   CommonUint64
+	Payload       CommonProfileMap
+	CorrelationId CommonCorrelationId
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -241,22 +402,22 @@ func asEvent(x any) (Event, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Source, err = asSourceId(m["source"]); err != nil {
+	if out.Source, err = asCommonSourceId(m["source"]); err != nil {
 		return out, err
 	}
-	if out.Kind, err = asCapabilityName(m["kind"]); err != nil {
+	if out.Kind, err = asCommonCapabilityName(m["kind"]); err != nil {
 		return out, err
 	}
-	if out.Seq, err = asUint64(m["seq"]); err != nil {
+	if out.Seq, err = asCommonUint64(m["seq"]); err != nil {
 		return out, err
 	}
-	if out.LogicalTime, err = asUint64(m["logical_time"]); err != nil {
+	if out.LogicalTime, err = asCommonUint64(m["logical_time"]); err != nil {
 		return out, err
 	}
-	if out.Payload, err = asProfileMap(m["payload"]); err != nil {
+	if out.Payload, err = asCommonProfileMap(m["payload"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -279,12 +440,12 @@ func DecodeEvent(raw []byte) (Event, error) {
 
 // Action is CDDL rule 'action'. Optional fields are pointers; nil means absent.
 type Action struct {
-	Id            ActionId
-	Coglet        CogletId
-	Capability    CapabilityName
-	Args          ProfileMap
-	Deadline      Uint64
-	CorrelationId CorrelationId
+	Id            CommonActionId
+	Coglet        CommonCogletId
+	Capability    CommonCapabilityName
+	Args          CommonProfileMap
+	Deadline      CommonUint64
+	CorrelationId CommonCorrelationId
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -306,22 +467,22 @@ func asAction(x any) (Action, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Id, err = asActionId(m["id"]); err != nil {
+	if out.Id, err = asCommonActionId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.Coglet, err = asCogletId(m["coglet"]); err != nil {
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
 		return out, err
 	}
-	if out.Capability, err = asCapabilityName(m["capability"]); err != nil {
+	if out.Capability, err = asCommonCapabilityName(m["capability"]); err != nil {
 		return out, err
 	}
-	if out.Args, err = asProfileMap(m["args"]); err != nil {
+	if out.Args, err = asCommonProfileMap(m["args"]); err != nil {
 		return out, err
 	}
-	if out.Deadline, err = asUint64(m["deadline"]); err != nil {
+	if out.Deadline, err = asCommonUint64(m["deadline"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -351,8 +512,8 @@ type ActionAccept interface {
 
 // ActionAccept1 is branch 1 of CDDL rule 'action-accept'. Optional fields are pointers; nil means absent.
 type ActionAccept1 struct {
-	Id            ActionId
-	CorrelationId CorrelationId
+	Id            CommonActionId
+	CorrelationId CommonCorrelationId
 	Accepted      bool
 }
 
@@ -372,10 +533,10 @@ func asActionAccept1(x any) (ActionAccept1, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Id, err = asActionId(m["id"]); err != nil {
+	if out.Id, err = asCommonActionId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	if out.Accepted, err = codec.AsBool(m["accepted"]); err != nil {
@@ -406,10 +567,10 @@ func DecodeActionAccept1(raw []byte) (ActionAccept1, error) {
 
 // ActionAccept2 is branch 2 of CDDL rule 'action-accept'. Optional fields are pointers; nil means absent.
 type ActionAccept2 struct {
-	Id            ActionId
-	CorrelationId CorrelationId
+	Id            CommonActionId
+	CorrelationId CommonCorrelationId
 	Accepted      bool
-	Error         Error
+	Error         CommonError
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -429,16 +590,16 @@ func asActionAccept2(x any) (ActionAccept2, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Id, err = asActionId(m["id"]); err != nil {
+	if out.Id, err = asCommonActionId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	if out.Accepted, err = codec.AsBool(m["accepted"]); err != nil {
 		return out, err
 	}
-	if out.Error, err = asError(m["error"]); err != nil {
+	if out.Error, err = asCommonError(m["error"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -500,10 +661,10 @@ type ActionOutcome interface {
 
 // ActionOutcome1 is branch 1 of CDDL rule 'action-outcome'. Optional fields are pointers; nil means absent.
 type ActionOutcome1 struct {
-	Id            ActionId
-	CorrelationId CorrelationId
+	Id            CommonActionId
+	CorrelationId CommonCorrelationId
 	Status        string
-	Result        ProfileMap
+	Result        CommonProfileMap
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -523,16 +684,16 @@ func asActionOutcome1(x any) (ActionOutcome1, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Id, err = asActionId(m["id"]); err != nil {
+	if out.Id, err = asCommonActionId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	if out.Status, err = codec.AsString(m["status"]); err != nil {
 		return out, err
 	}
-	if out.Result, err = asProfileMap(m["result"]); err != nil {
+	if out.Result, err = asCommonProfileMap(m["result"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -560,10 +721,10 @@ func DecodeActionOutcome1(raw []byte) (ActionOutcome1, error) {
 
 // ActionOutcome2 is branch 2 of CDDL rule 'action-outcome'. Optional fields are pointers; nil means absent.
 type ActionOutcome2 struct {
-	Id            ActionId
-	CorrelationId CorrelationId
+	Id            CommonActionId
+	CorrelationId CommonCorrelationId
 	Status        string
-	Error         Error
+	Error         CommonError
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -583,16 +744,16 @@ func asActionOutcome2(x any) (ActionOutcome2, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Id, err = asActionId(m["id"]); err != nil {
+	if out.Id, err = asCommonActionId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.CorrelationId, err = asCorrelationId(m["correlation_id"]); err != nil {
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
 		return out, err
 	}
 	if out.Status, err = codec.AsString(m["status"]); err != nil {
 		return out, err
 	}
-	if out.Error, err = asError(m["error"]); err != nil {
+	if out.Error, err = asCommonError(m["error"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -654,10 +815,10 @@ func asErrorCode(x any) (ErrorCode, error) {
 
 // Error is CDDL rule 'error'. Optional fields are pointers; nil means absent.
 type Error struct {
-	Code      ErrorCode
+	Code      CommonErrorCode
 	Message   string
 	Retryable bool
-	Details   *ProfileMap
+	Details   *CommonProfileMap
 }
 
 // ToValue returns the generic CBOR value model of the record.
@@ -679,7 +840,7 @@ func asError(x any) (Error, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Code, err = asErrorCode(m["code"]); err != nil {
+	if out.Code, err = asCommonErrorCode(m["code"]); err != nil {
 		return out, err
 	}
 	if out.Message, err = codec.AsString(m["message"]); err != nil {
@@ -689,7 +850,7 @@ func asError(x any) (Error, error) {
 		return out, err
 	}
 	if raw, ok := m["details"]; ok {
-		t, err := asProfileMap(raw)
+		t, err := asCommonProfileMap(raw)
 		if err != nil {
 			return out, err
 		}
