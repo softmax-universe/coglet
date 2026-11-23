@@ -16,6 +16,13 @@ explicit numeric `stream` IDs outside `send`; `finish:false` keeps request/chunk
 sends open, and `finish:true` on the end frame sends FIN. Case-level `peer_role`
 is `hub` or `device`; `fixtures` names the isolated `hub.<case-name>` setup.
 Unknown fixture labels MUST produce SKIP/incomplete, never PASS.
+`peer_role` is the harness's role: `device` drives a hub under test; `hub`
+drives a device under test. Hub-role cases also require `hub.reverse-stream`:
+the device dials its pinned hub, then the harness opens operation streams on
+that established connection. The initial dial-only iroh helper cannot run
+these cases until it gains explicit accept/reverse-stream support. They must
+SKIP until a registry implementation advertises this fixture; a direct inbound
+connection to a production device is not a substitute for the outbound contract.
 Read credit/chunk/
 end/reply frames in order. Finish after terminal reply; no stream reuse. This
 requires the helper to retain operation-to-stream routing, not merely open a

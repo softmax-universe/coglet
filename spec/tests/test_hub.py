@@ -76,10 +76,18 @@ class HubFixtures(unittest.TestCase):
         for case in cases:
             self.assertTrue(case['steps'])
             self.assertTrue(case['name'])
+            self.assertIn(case['peer_role'], ['hub', 'device'])
+            self.assertIn('hub.' + case['name'], case['fixtures'])
+            if case['peer_role'] == 'hub':
+                self.assertIn('hub.reverse-stream', case['fixtures'])
             for step in case['steps']:
                 self.assertEqual(len(set(step) & {'send', 'expect', 'match', 'journal_hash'}), 1)
                 if 'send' in step:
                     Draft202012Validator(request, registry=self.registry).validate(step['send'])
+                    frame = step['send']
+                    if 'type' in frame:
+                        self.assertEqual(step['stream'], int(frame['correlation_id'], 16))
+                        self.assertEqual(step['finish'], frame['type'] == 'end')
                 else:
                     self.assertGreater(step.get('within_ms', 200), 0)
 

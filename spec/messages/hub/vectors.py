@@ -107,7 +107,10 @@ def case(name, steps):
             if frame and (frame.get('method') == 'hub.git.push' or 'type' in frame):
                 step['stream'] = int(frame['correlation_id'], 16)
                 step['finish'] = frame.get('type') == 'end'
-    cases.append({'name': name, 'peer_role': role, 'fixtures': ['hub.' + name], 'steps': steps})
+    labels = ['hub.' + name]
+    if role == 'hub':
+        labels.append('hub.reverse-stream')
+    cases.append({'name': name, 'peer_role': role, 'fixtures': labels, 'steps': steps})
 
 
 def err(req, code):

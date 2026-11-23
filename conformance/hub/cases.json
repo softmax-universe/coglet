@@ -225,7 +225,8 @@
     "name": "start-before-enroll",
     "peer_role": "hub",
     "fixtures": [
-      "hub.start-before-enroll"
+      "hub.start-before-enroll",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -254,7 +255,8 @@
     "name": "lifecycle-start-stop",
     "peer_role": "hub",
     "fixtures": [
-      "hub.lifecycle-start-stop"
+      "hub.lifecycle-start-stop",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -333,7 +335,8 @@
     "name": "read-grant-is-not-write",
     "peer_role": "hub",
     "fixtures": [
-      "hub.read-grant-is-not-write"
+      "hub.read-grant-is-not-write",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -384,7 +387,8 @@
     "name": "write-stale-snapshot",
     "peer_role": "hub",
     "fixtures": [
-      "hub.write-stale-snapshot"
+      "hub.write-stale-snapshot",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -415,7 +419,8 @@
     "name": "debug-traversal",
     "peer_role": "hub",
     "fixtures": [
-      "hub.debug-traversal"
+      "hub.debug-traversal",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -446,7 +451,8 @@
     "name": "debug-inbox-protected",
     "peer_role": "hub",
     "fixtures": [
-      "hub.debug-inbox-protected"
+      "hub.debug-inbox-protected",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -477,7 +483,8 @@
     "name": "pause-single-step",
     "peer_role": "hub",
     "fixtures": [
-      "hub.pause-single-step"
+      "hub.pause-single-step",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -542,7 +549,8 @@
     "name": "inbox-durable-dedup",
     "peer_role": "hub",
     "fixtures": [
-      "hub.inbox-durable-dedup"
+      "hub.inbox-durable-dedup",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -635,7 +643,8 @@
     "name": "inbox-conflicting-id",
     "peer_role": "hub",
     "fixtures": [
-      "hub.inbox-conflicting-id"
+      "hub.inbox-conflicting-id",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -709,7 +718,8 @@
     "name": "queue-backpressure",
     "peer_role": "hub",
     "fixtures": [
-      "hub.queue-backpressure"
+      "hub.queue-backpressure",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -751,7 +761,8 @@
     "name": "unknown-receipt",
     "peer_role": "hub",
     "fixtures": [
-      "hub.unknown-receipt"
+      "hub.unknown-receipt",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -782,7 +793,8 @@
     "name": "cross-owner-receipt",
     "peer_role": "hub",
     "fixtures": [
-      "hub.cross-owner-receipt"
+      "hub.cross-owner-receipt",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -913,7 +925,8 @@
     "name": "action-expired",
     "peer_role": "hub",
     "fixtures": [
-      "hub.action-expired"
+      "hub.action-expired",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -983,7 +996,8 @@
     "name": "git-invalid-signature",
     "peer_role": "hub",
     "fixtures": [
-      "hub.git-invalid-signature"
+      "hub.git-invalid-signature",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1029,7 +1043,8 @@
     "name": "git-push-activate",
     "peer_role": "hub",
     "fixtures": [
-      "hub.git-push-activate"
+      "hub.git-push-activate",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1170,7 +1185,8 @@
     "name": "git-bundle-hash-mismatch",
     "peer_role": "hub",
     "fixtures": [
-      "hub.git-bundle-hash-mismatch"
+      "hub.git-bundle-hash-mismatch",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1241,7 +1257,8 @@
     "name": "git-offset-gap",
     "peer_role": "hub",
     "fixtures": [
-      "hub.git-offset-gap"
+      "hub.git-offset-gap",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1304,7 +1321,8 @@
     "name": "inbox-boundary-queued",
     "peer_role": "hub",
     "fixtures": [
-      "hub.inbox-boundary-queued"
+      "hub.inbox-boundary-queued",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1366,7 +1384,8 @@
     "name": "single-step-requires-pause",
     "peer_role": "hub",
     "fixtures": [
-      "hub.single-step-requires-pause"
+      "hub.single-step-requires-pause",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
@@ -1395,7 +1414,8 @@
     "name": "start-missing-capability",
     "peer_role": "hub",
     "fixtures": [
-      "hub.start-missing-capability"
+      "hub.start-missing-capability",
+      "hub.reverse-stream"
     ],
     "steps": [
       {
