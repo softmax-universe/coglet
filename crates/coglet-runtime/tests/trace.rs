@@ -48,6 +48,61 @@ fn complete_frozen_archive_profiles_validate_without_guest_execution() {
 }
 
 #[test]
+fn replay_checks_state_without_requiring_identical_wall_clock_observations() {
+    use coglet_runtime::{Engine, EngineReport, MockEngine, StepHost};
+    use serde_json::json;
+    struct Timed(Value, u64);
+    impl Engine for Timed {
+        fn execute(
+            &mut self,
+            inputs: &Value,
+            host: &mut StepHost,
+        ) -> coglet_runtime::Result<EngineReport> {
+            let mut report = MockEngine::new(self.0.clone()).execute(inputs, host)?;
+            report.usage["wall_time_us"] = json!(self.1);
+            Ok(report)
+        }
+    }
+    let cases = corpus(include_str!("../../../conformance/abi/cases.json"));
+    let send = &cases.iter().find(|c| c["name"] == "no-effects").unwrap()["steps"][0]["send"];
+    let mut live = Runtime::from_fixture(send).unwrap();
+    let first = live
+        .step(&send["inputs"], &mut Timed(send["guest_script"].clone(), 1))
+        .unwrap();
+    let mut next = send["inputs"].clone();
+    next["step"] = json!(1);
+    next["previous"] = first["record_hash"].clone();
+    let second = live
+        .step(&next, &mut Timed(send["guest_script"].clone(), 2))
+        .unwrap();
+    let mut forged = live.records()[0].clone();
+    forged["usage"]["wall_time_us"] =
+        json!(forged["budgets"]["wall_time_us"].as_u64().unwrap() + 1);
+    forged.as_object_mut().unwrap().remove("record_hash");
+    forged["record_hash"] = json!(coglet_runtime::digest(
+        &coglet_runtime::cbor(&forged).unwrap()
+    ));
+    assert!(
+        Runtime::from_fixture(send)
+            .unwrap()
+            .replay(&[forged], &mut Timed(send["guest_script"].clone(), 3))
+            .is_err(),
+        "over-budget recording replayed as committed"
+    );
+    let hashes = Runtime::from_fixture(send)
+        .unwrap()
+        .replay(live.records(), &mut Timed(send["guest_script"].clone(), 3))
+        .unwrap();
+    assert_eq!(
+        hashes,
+        vec![
+            first["state_hash"].as_str().unwrap(),
+            second["state_hash"].as_str().unwrap()
+        ]
+    );
+}
+
+#[test]
 fn imported_archives_retain_unreferenced_verified_blobs() {
     use coglet_runtime::digest;
     use serde_json::json;

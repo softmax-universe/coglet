@@ -129,19 +129,7 @@ impl Engine for NativeEngine {
             .take()
             .ok_or("native execution requires successful admission")?;
         let outcome = instance.handle(input, &mut TransactionHost(host));
-        let failure = outcome.result.err().map(|error| {
-            use coglet_engine::Error::*;
-            let (kind, code) = match &error {
-                ComputeExhausted => ("compute", "resource_exhausted"),
-                MemoryExhausted => ("memory", "resource_exhausted"),
-                HostBytesExhausted => ("host_bytes", "resource_exhausted"),
-                DeadlineExceeded => ("wall", "deadline_exceeded"),
-                InvalidPointer | InvalidArgument => ("invalid_argument", "invalid_argument"),
-                GuestReturn(_) => ("guest_return", "invalid_argument"),
-                _ => ("trap", "unavailable"),
-            };
-            json!({"kind":kind,"error":{"code":code,"message":error.to_string(),"retryable":false}})
-        });
+        let failure = outcome.result.err().map(engine_failure);
         Ok(EngineReport {
             // Engine API exposes copied bytes/compute, not peak linear pages.
             // Report the conservative admitted page bound, never invented RSS.
@@ -149,6 +137,36 @@ impl Engine for NativeEngine {
                 "memory_pages":memory_pages,"wall_time_us":u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX)}),
             failure,
         })
+    }
+}
+
+fn engine_failure(error: coglet_engine::Error) -> Value {
+    use coglet_engine::Error::*;
+    let (kind, code) = match &error {
+        ComputeExhausted => ("compute", "resource_exhausted"),
+        MemoryExhausted => ("memory", "resource_exhausted"),
+        HostBytesExhausted => ("host_bytes", "resource_exhausted"),
+        DeadlineExceeded => ("wall", "deadline_exceeded"),
+        InvalidPointer | InvalidArgument => ("invalid_argument", "invalid_argument"),
+        GuestReturn(_) | GuestExit(_) => ("guest_return", "invalid_argument"),
+        _ => ("trap", "unavailable"),
+    };
+    json!({"kind":kind,"error":{"code":code,"message":error.to_string(),"retryable":false}})
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn guest_exit_is_guest_return_abort_including_zero_status() {
+        // Mapping proof only: native WASI admission is still refused. Do not
+        // mistake these typed outcomes for execution of a proc_exit import.
+        for code in [0, 1, u32::MAX] {
+            let failure = engine_failure(coglet_engine::Error::GuestExit(code));
+            assert_eq!(failure["kind"], "guest_return");
+            assert_eq!(failure["error"]["code"], "invalid_argument");
+            assert_eq!(failure["error"]["retryable"], false);
+        }
     }
 }
 
@@ -187,7 +205,10 @@ impl crate::RuntimeService {
         Ok(())
     }
     pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
-        if self.native.is_none() || self.surface_epoch(session.surface()) != session.grant_epoch() {
+        if self.native.is_none()
+            || self.state.runtime.unresolved_attempt.is_some()
+            || self.surface_epoch(session.surface()) != session.grant_epoch()
+        {
             return Ok(());
         }
         let manifest = &self.state.runtime.manifest;

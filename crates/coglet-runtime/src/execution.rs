@@ -160,6 +160,7 @@ impl RuntimeService {
                     return Err("recovered staged boundary state mismatch".into());
                 }
             }
+            Self::validate_source_reservations(&state, &configured, store.records())?;
             Self::validate_queued_wakes(&state)?;
             Self::validate_private_events(&state)?;
             Self::attempted_ordinals(&state)?;
@@ -852,6 +853,13 @@ impl Runtime {
     }
 
     fn validate_recovered(&self, records: &[Value]) -> Result<()> {
+        for (hash, bytes) in &self.retained_blobs {
+            let raw = hex::decode(bytes.as_str().ok_or("invalid retained blob")?)
+                .map_err(|e| e.to_string())?;
+            if &digest(&raw) != hash {
+                return Err("retained blob digest mismatch".into());
+            }
+        }
         let derived = Self::reconstruct(&self.initial_setup, records)?;
         if self.files != derived.files
             || self.manifest != derived.manifest
@@ -1028,6 +1036,13 @@ impl Runtime {
             if record["record_hash"] != digest(&cbor(&unhashed)?) {
                 return Err("replay record checksum mismatch".into());
             }
+            if is_step && record["status"] == "committed" {
+                for field in ["compute", "memory_pages", "host_bytes", "wall_time_us"] {
+                    if record["usage"][field].as_u64() > record["budgets"][field].as_u64() {
+                        return Err("replay committed record exceeds observed budget".into());
+                    }
+                }
+            }
             if !is_step {
                 let actual = candidate.seal_boundary(
                     &record["trace_id"],
@@ -1057,9 +1072,24 @@ impl Runtime {
                 inputs.insert(key.into(), record[key].clone());
             }
             let result = candidate.step(&Value::Object(inputs), engine)?;
-            if result["journal"] != *record {
+            // Wall duration is a host observation, not deterministic guest
+            // state. Both executions independently enforced their wall limits.
+            // Compare every other field, including deterministic usage counters,
+            // effects, failure and snapshots; validate the ORIGINAL checksum
+            // above and retain its identity for the next recorded chain link.
+            let mut actual = result["journal"].clone();
+            let mut expected = record.clone();
+            for value in [&mut actual, &mut expected] {
+                value.as_object_mut().unwrap().remove("record_hash");
+                value["usage"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("wall_time_us");
+            }
+            if actual != expected {
                 return Err(format!("replay mismatch at step {}", record["step"]));
             }
+            candidate.previous = record["record_hash"].clone();
             hashes.push(result["state_hash"].as_str().unwrap().into());
         }
         Ok(hashes)

@@ -65,6 +65,96 @@ fn wal(name: &str) -> std::path::PathBuf {
     std::fs::create_dir_all(&dir).unwrap();
     dir.join("state.wal")
 }
+#[cfg(feature = "native-engine")]
+#[test]
+fn native_pump_reconciles_retained_actions_but_does_not_dispatch_new_intents_while_fenced() {
+    use coglet_runtime::{Engine, EngineReport, NativeSchedule, RuntimeService, StepHost, digest};
+    use std::sync::{Arc, Mutex};
+    struct Lost;
+    impl Engine for Lost {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> coglet_runtime::Result<EngineReport> {
+            Err("lost after entry".into())
+        }
+    }
+    let path = wal("native-fenced-pump");
+    let mut setup = setup();
+    let wasm = wat::parse_str("(module (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
+    setup["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(&wasm));
+    let raw = hex::decode(
+        setup["initial_files"]["/code/build/provenance.cbor"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let mut provenance: Value = coglet_types::decode("hub-build-record", &raw)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    provenance["rewritten_sha256"] = json!(digest(&wasm));
+    setup["initial_files"]["/code/build/provenance.cbor"] =
+        json!(hex::encode(cbor(&provenance).unwrap()));
+    setup["manifest"]["budgets"]["compute_mode"] = json!(coglet_engine_wamr::COMPUTE_MODE);
+    setup["manifest"]["budgets"]["memory_pages"] = json!(2);
+    setup["manifest"]["subscriptions"] = json!([]);
+    setup["manifest"]["required_capabilities"] = json!(["expression.set_expression"]);
+    setup["manifest"]["exclusive_outputs"] = json!(["display.face"]);
+    let mut later = action();
+    later["id"] = json!("6".repeat(32));
+    setup["initial_actions"] = json!([action(), later]);
+    setup["initial_effect_ids"]["actions"] = json!([action()["id"], later["id"]]);
+    let service = Arc::new(Mutex::new(
+        RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    service.lock().unwrap().supervised_now().unwrap();
+    let mut s = live(service.clone());
+    caps(&mut s);
+    grants(&mut s, 1);
+    let saved = service
+        .lock()
+        .unwrap()
+        .prepare_dispatch(&s, action()["id"].as_str().unwrap(), 130)
+        .unwrap();
+    {
+        let mut service = service.lock().unwrap();
+        let event = setup["inputs"]["events"][0].clone();
+        service.enqueue(event).unwrap();
+        let mut context = setup["inputs"].clone();
+        context["budgets"] = setup["manifest"]["budgets"].clone();
+        assert!(service.run_next(&context, &mut Lost).is_err());
+        service
+            .enable_native(NativeSchedule {
+                trace_id: context["trace_id"].as_str().unwrap().into(),
+                seed: 1,
+                runtime_bytes: 8_388_608,
+                stack_bytes: 65_536,
+            })
+            .unwrap();
+    }
+    assert!(
+        service
+            .lock()
+            .unwrap()
+            .prepare_dispatch(&s, later["id"].as_str().unwrap(), 140)
+            .is_err(),
+        "direct preparation bypassed attempt fence"
+    );
+    s.pump_dispatch(140).unwrap();
+    assert_eq!(
+        s.pop().unwrap(),
+        saved,
+        "retained action no longer reconcilable"
+    );
+    assert!(
+        s.pop().is_none(),
+        "new intent dispatched during unknown guest attempt"
+    );
+    assert_eq!(service.lock().unwrap().queued(), 1);
+    assert!(service.lock().unwrap().records().is_empty());
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+
 #[test]
 fn native_read_is_caller_scoped_and_timeout_discards_late_reply() {
     let mut s = session();

@@ -168,18 +168,26 @@ The unimplemented boundaries remain explicit:
   inbox-wake completeness, timer bindings and source reservation uniqueness. Fresh
   services atomically seed all initial inbox wakes. Private leases bind ordinal,
   exact event, source, epoch, nonzero expiry and source highwaters before cleanup.
-  Source sequence and clock have cross-segment lower-bound checks; exact derivation
-  of all reservations, complete retained-blob integrity on WAL recovery and stronger
-  attempt-intent validation remain qualification work. Header-less old WALs fail
+  Recovery verifies retained blob digests and reruns no-guest attempt preflight on
+  a disposable clone, including effective budgets, event/boundary semantics and
+  engine/grants/seed shapes. Own-source reservations are derived from the whole
+  multi-segment WAL, router and host-appended inbox: duplicate reuse and generated
+  wake gaps fail closed; authenticated boundary inputs may advance their source
+  floor. Clock continuity retains cross-segment lower-bound checks. Header-less old WALs fail
   closed; there is no silent migration. The WAL has a 64 MiB state-frame bound and
   no reclamation yet; segment headers/history consume storage and can eventually
   backpressure, rather than evict lifetime data or receipts.
 - `seal_boundary` atomically persists the seal, inbox append/pending removal and
   newly queued inbox wakes; heard-only seals queue no wake. Applied staged changes
   enter the next real step or a trailing seal, including zero-step exports.
-- Remaining attempt/native details include explicit proc_exit classification
-  (native WASI is still refused), retaining normal prior-outbox pump liveness while
-  guest execution is fenced, and additional fault-injection proof.
+- Native pump liveness while fenced retains existing IDs but refuses new dispatches
+  and terminal appends. Typed GuestExit (including zero) maps to guest_return;
+  native WASI is still refused, so this is not a proc_exit execution proof.
+  See [ABI applicability and remaining gates](abi-qualification.md). Real WAMR
+  two-step journal replay now compares state hashes with independent execution:
+  wall duration observations may differ, but both observed limits/status and all
+  deterministic record fields remain checked. Simple enqueue retains bounded
+  tail admission while fenced; it cannot consume or reorder the attempted prefix.
 - Independent exact-head review, green CI, merge, and board review handoff.
 
 The internal WAL format is not the exported ABI journal. Each internal commit

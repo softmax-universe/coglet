@@ -307,6 +307,97 @@ fn trace_identity_cannot_change_between_steps_or_on_trailing_boundary() {
 }
 
 #[test]
+fn recovered_attempt_revalidates_effective_budget_and_boundary_before_cleanup() {
+    let send = setup();
+    for defect in ["budget", "boundary", "batch"] {
+        let directory = std::env::temp_dir().join(format!(
+            "coglet-attempt-invalid-{defect}-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("runtime.wal");
+        let mut service = RuntimeService::open(&path, &send, 4).unwrap();
+        service
+            .enqueue(send["inputs"]["events"][0].clone())
+            .unwrap();
+        drop(service);
+        let mut store = DurableStore::open(&path).unwrap();
+        let mut state = store.state().unwrap().clone();
+        let mut inputs = send["inputs"].clone();
+        match defect {
+            "budget" => {
+                inputs["budgets"]["compute"] =
+                    json!(send["manifest"]["budgets"]["compute"].as_u64().unwrap() + 1)
+            }
+            "boundary" => inputs["boundary"] = json!([{}]),
+            _ => inputs["budgets"]["max_events"] = json!(0),
+        }
+        state["runtime"]["unresolved_attempt"] = inputs;
+        store.commit(&state, None).unwrap();
+        drop(store);
+        assert!(
+            RuntimeService::open(&path, &send, 4).is_err(),
+            "invalid {defect} attempt accepted"
+        );
+        fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[test]
+fn recovered_source_reservations_cannot_have_gaps_or_reuse_consumed_sequences() {
+    for defect in ["gap", "reuse"] {
+        let mut send = setup();
+        send["initial_timers"] = json!([{"id":"a".repeat(32),"at":1},{"id":"b".repeat(32),"at":2}]);
+        send["initial_effect_ids"]["timers"] = json!(["a".repeat(32), "b".repeat(32)]);
+        let directory =
+            std::env::temp_dir().join(format!("coglet-source-{defect}-{}", std::process::id()));
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("wal");
+        let mut service = RuntimeService::open(&path, &send, 4).unwrap();
+        service.queue_due_timers(1).unwrap();
+        let mut inputs = send["inputs"].clone();
+        inputs["logical_time"] = json!(1);
+        service
+            .run_next(&inputs, &mut MockEngine::new(send["guest_script"].clone()))
+            .unwrap();
+        service.queue_due_timers(2).unwrap();
+        drop(service);
+        let mut store = DurableStore::open(&path).unwrap();
+        let mut state = store.state().unwrap().clone();
+        let seq = if defect == "gap" { 998 } else { 0 };
+        state["router"]["queue"][0][1]["seq"] = json!(seq);
+        state["runtime"]["next_source_seq"] = json!(seq + 1);
+        store.commit(&state, None).unwrap();
+        drop(store);
+        assert!(
+            RuntimeService::open(&path, &send, 4).is_err(),
+            "{defect} source reservation accepted"
+        );
+        fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[test]
+fn recovery_rejects_corrupt_retained_blobs() {
+    let send = setup();
+    let directory =
+        std::env::temp_dir().join(format!("coglet-blob-corrupt-{}", std::process::id()));
+    fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("runtime.wal");
+    drop(RuntimeService::open(&path, &send, 4).unwrap());
+    let mut store = DurableStore::open(&path).unwrap();
+    let mut state = store.state().unwrap().clone();
+    state["runtime"]["retained_blobs"] = json!({"a".repeat(64):"00"});
+    store.commit(&state, None).unwrap();
+    drop(store);
+    assert!(
+        RuntimeService::open(&path, &send, 4).is_err(),
+        "corrupt content-addressed blob accepted"
+    );
+    fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
 fn recovery_rejects_router_metadata_that_cannot_be_an_admitted_queue() {
     for (name, router) in [
         (
@@ -422,6 +513,7 @@ fn recovery_rejects_forged_host_state_even_with_valid_internal_frame_checksum() 
             "pending_timers",
             json!({"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa":{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","at":10}}),
         ),
+        ("source-highwater", "next_source_seq", json!(999)),
         ("wakes", "inbox_wakes", json!([99])),
         ("head", "previous", json!("a".repeat(64))),
         ("step", "step", json!(2)),

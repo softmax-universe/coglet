@@ -27,6 +27,33 @@ impl RuntimeService {
         {
             return Err("attempt reservation differs from durable journal head".into());
         }
+        // Run the same no-guest preflight as a live step on a disposable clone.
+        // The probe stops at admission; it cannot consume or execute an attempt.
+        struct Probe(bool);
+        impl Engine for Probe {
+            fn admit(&mut self, _: &Value, _: &StepHost) -> Result<()> {
+                self.0 = true;
+                Err("recovery preflight complete".into())
+            }
+            fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+                unreachable!("recovery preflight cannot execute guest")
+            }
+        }
+        validate("engine", &inputs["engine"])?;
+        inputs["seed"].as_u64().ok_or("invalid attempted seed")?;
+        for grant in inputs["grants"]
+            .as_array()
+            .ok_or("invalid attempted grants")?
+        {
+            validate("capability-name", grant)?;
+        }
+        let mut candidate = state.runtime.clone();
+        candidate.unresolved_attempt = None;
+        let mut probe = Probe(false);
+        let result = candidate.step(inputs, &mut probe);
+        if !probe.0 {
+            return Err(format!("invalid attempted input: {}", result.unwrap_err()));
+        }
         Ok(state
             .router
             .entries()
@@ -100,6 +127,67 @@ impl RuntimeService {
             Some(record),
         )?;
         self.state = next;
+        Ok(())
+    }
+
+    /// Every own-source reservation is retained either in a consumed batch,
+    /// the router, or a host-appended inbox line. Segment headers are not a
+    /// sequence authority; examine the entire immutable WAL, not just its tail.
+    pub(super) fn validate_source_reservations(
+        state: &ServiceState,
+        root: &Runtime,
+        records: &[Value],
+    ) -> Result<()> {
+        let owner = &state.runtime.manifest["id"];
+        let mut sequences = BTreeSet::new();
+        let mut observe = |event: &Value| -> Result<()> {
+            if &event["source"] == owner {
+                let seq = event["seq"].as_u64().ok_or("invalid source sequence")?;
+                if !sequences.insert(seq) {
+                    return Err("recovered source reservation reused".into());
+                }
+            }
+            Ok(())
+        };
+        for record in records {
+            for event in record["events"].as_array().into_iter().flatten() {
+                observe(event)?;
+            }
+        }
+        for event in state.router.events() {
+            observe(event)?;
+        }
+        let runtime = state
+            .staged_boundary
+            .as_ref()
+            .map(|s| &s.runtime)
+            .unwrap_or(&state.runtime);
+        // Initial inbox contents are supplied state, not reservations made by
+        // this coordinator. Later lines cannot be removed or rewritten.
+        let initial_count = crate::boundary::inbox(&root.files)?.len();
+        let mut external_reservations = BTreeSet::new();
+        for message in crate::boundary::inbox(&runtime.files)?
+            .iter()
+            .skip(initial_count)
+        {
+            let event = &message["event"];
+            observe(event)?;
+            if &event["source"] == owner {
+                // Authenticated boundary input can advance its producer's
+                // source sequence; generated timer/inbox wakes cannot do so.
+                external_reservations.insert(event["seq"].as_u64().unwrap());
+            }
+        }
+        let mut next = 0;
+        for seq in sequences {
+            if seq != next && !external_reservations.contains(&seq) {
+                return Err("recovered source reservations have a gap".into());
+            }
+            next = seq.checked_add(1).ok_or("source sequence exhausted")?;
+        }
+        if state.runtime.next_source_seq != next || runtime.next_source_seq != next {
+            return Err("recovered source highwater differs from retained reservations".into());
+        }
         Ok(())
     }
 
