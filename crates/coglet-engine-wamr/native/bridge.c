@@ -104,7 +104,7 @@ int ce_valid(Context *c, uint32_t ptr, uint32_t len) { return wasm_runtime_valid
 // buffer concurrently. Never expose a borrowed pointer to that mutable buffer.
 int ce_copy_exception(Context *c, char *output, uint32_t capacity) {
     if (!output || capacity < EXCEPTION_BUF_LEN) return -1;
-    return wasm_runtime_copy_exception(c->instance, output) ? 1 : 0;
+    return wasm_copy_exception((WASMModuleInstance *)c->instance, output) ? 1 : 0;
 }
 int ce_write(Context *c, uint32_t ptr, const uint8_t *bytes, uint32_t len) {
     if (!wasm_runtime_validate_app_addr(c->instance, ptr, len)) return 0;
