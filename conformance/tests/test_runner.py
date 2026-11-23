@@ -78,14 +78,23 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(len(report.findall('testcase')), 4)
 
     def test_default_registry_runs_claimed_suites(self):
+        import tomllib
+        from harness import cases_for
+
+        registry = tomllib.loads((CONF / 'impls.toml').read_text())
+        expected = {
+            (f"{impl['name']}.{suite}", case['name'])
+            for impl in registry['implementations']
+            for suite in impl['suites']
+            for case in cases_for(CONF, suite)
+        }
         result, report = self.invoke()
         self.assertEqual(result.returncode, 0, result.stderr)
-        registry = tomllib.loads((CONF / 'impls.toml').read_text())
-        expected = sum(len(cases_for(CONF, suite))
-                       for impl in registry['implementations'] for suite in impl['suites'])
-        self.assertGreater(expected, 0)
-        self.assertEqual(report.get('tests'), str(expected))
-        self.assertEqual(len(report.findall('testcase')), expected)
+        actual = [(case.get('classname'), case.get('name'))
+                  for case in report.findall('testcase')]
+        self.assertEqual(set(actual), expected)
+        self.assertEqual(len(actual), len(expected))
+        self.assertEqual(report.get('tests'), str(len(expected)))
         self.assertEqual(report.get('failures'), '0')
         self.assertEqual(report.get('skipped'), '0')
 

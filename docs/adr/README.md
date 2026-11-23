@@ -17,6 +17,9 @@ and the other ADR status decisions remain separate.
 | 0008 | [WAMR platform findings](0008-engine-findings-platforms.md) | Proposed; renumbered from duplicate 0002 |
 | 0009 | [Spec v0 freeze](0009-spec-v0-freeze.md) | Accepted; implementation qualification excluded |
 | 0010 | [Heard-audio truncation and speech work handoff](0010-speech-heard-truncation-and-work-handoff.md) | Proposed |
+| 0011 | Design-document fold-in | Reserved by orchestrator |
+| 0012 | Hub publish-time float rewrite (if ADR-0003 changes) | Reserved by orchestrator |
+| 0013 | [Factory database capability and recovery boundary](0013-factory-db-capability.md) | Proposed; PR #41 |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,
