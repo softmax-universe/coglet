@@ -46,7 +46,7 @@ enrollment and speech-provider delivery remain separate integration work.
   Monitor removal rehomes it on the main display. Toggle off also hides the conversation.
   Open Chat / Open Voice remain accessible from the menu bar when the orb is off.
   The conversation's small menu clears the draft or hides the orb. Chat sending and
-  voice capture remain explicitly unavailable until runtime/audio integration lands.
+  runtime speech delivery remain explicitly unavailable until runtime integration lands.
   Check for Updates opens the honest Updates placeholder; it does not claim that
   an update check ran.
 - Microphone is checked with `AVCaptureDevice`; Input Monitoring with CoreGraphics
@@ -179,7 +179,8 @@ The automated fake-keychain tests prove selection/pinning and nested-signing ord
 5. Repeat another source change/build/open, save `requirement-3.txt` and compare all
    three designated requirements (`diff`). Confirm `granted` again without prompting.
    Record macOS version, certificate fingerprint, three requirements, and observations
-   in the PR. Never claim this proves actual audio capture (not wired yet).
+   in the PR. This signing check alone does not prove actual audio capture; use the
+   separate push-to-talk real-Mac acceptance checklist above.
 6. Denial path: turn Softmax off in System Settings → Privacy & Security → Microphone,
    return to Audio/Voice and refresh. Expect actionable denial copy, a Settings button,
    and no repeated request button. Restricted policy directs the user to their admin.
