@@ -1,0 +1,47 @@
+
+Version symbols section '.gnu.version' contains 99 entries:
+ Addr: 0x0000000000000d44  Offset: 0x00000d44  Link: 5 (.dynsym)
+  000:   0 (*local*)       0 (*local*)       0 (*local*)       2 (GLIBC_2.4)  
+  004:   2 (GLIBC_2.4)     3 (GCC_3.0)       2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  008:   2 (GLIBC_2.4)     4 (GLIBC_2.16)    2 (GLIBC_2.4)     3 (GCC_3.0)    
+  00c:   5 (GLIBC_2.34)    6 (GCC_3.5)       2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  010:   1 (*global*)      7 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  014:   6 (GCC_3.5)       2 (GLIBC_2.4)     8 (GLIBC_2.32)    2 (GLIBC_2.4)  
+  018:   7 (GLIBC_2.4)     2 (GLIBC_2.4)     1 (*global*)      7 (GLIBC_2.4)  
+  01c:   3 (GCC_3.0)       7 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  020:   2 (GLIBC_2.4)     1 (*global*)      9 (GLIBC_2.33)    7 (GLIBC_2.4)  
+  024:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     7 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  028:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  02c:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     5 (GLIBC_2.34)    9 (GLIBC_2.33) 
+  030:   2 (GLIBC_2.4)     5 (GLIBC_2.34)    2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  034:   2 (GLIBC_2.4)     a (GLIBC_2.4)     6 (GCC_3.5)       2 (GLIBC_2.4)  
+  038:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     b (GLIBC_2.30)    2 (GLIBC_2.4)  
+  03c:   2 (GLIBC_2.4)     7 (GLIBC_2.4)     7 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  040:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  044:   2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  048:   c (GCC_4.3.0)     2 (GLIBC_2.4)     6 (GCC_3.5)       2 (GLIBC_2.4)  
+  04c:   2 (GLIBC_2.4)     3 (GCC_3.0)       2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  050:   2 (GLIBC_2.4)     d (GLIBC_2.28)    2 (GLIBC_2.4)     5 (GLIBC_2.34) 
+  054:   d (GLIBC_2.28)    3 (GCC_3.0)       2 (GLIBC_2.4)     7 (GLIBC_2.4)  
+  058:   6 (GCC_3.5)       2 (GLIBC_2.4)     2 (GLIBC_2.4)     2 (GLIBC_2.4)  
+  05c:   2 (GLIBC_2.4)     7 (GLIBC_2.4)     2 (GLIBC_2.4)     1 (*global*)   
+  060:   1 (*global*)      1 (*global*)      1 (*global*)   
+
+Version needs section '.gnu.version_r' contains 4 entries:
+ Addr: 0x0000000000000e0c  Offset: 0x00000e0c  Link: 6 (.dynstr)
+  000000: Version: 1  File: ld-linux-armhf.so.3  Cnt: 1
+  0x0010:   Name: GLIBC_2.4  Flags: none  Version: 10
+  0x0020: Version: 1  File: libm.so.6  Cnt: 1
+  0x0030:   Name: GLIBC_2.4  Flags: none  Version: 7
+  0x0040: Version: 1  File: libgcc_s.so.1  Cnt: 3
+  0x0050:   Name: GCC_4.3.0  Flags: none  Version: 12
+  0x0060:   Name: GCC_3.5  Flags: none  Version: 6
+  0x0070:   Name: GCC_3.0  Flags: none  Version: 3
+  0x0080: Version: 1  File: libc.so.6  Cnt: 7
+  0x0090:   Name: GLIBC_2.28  Flags: none  Version: 13
+  0x00a0:   Name: GLIBC_2.30  Flags: none  Version: 11
+  0x00b0:   Name: GLIBC_2.33  Flags: none  Version: 9
+  0x00c0:   Name: GLIBC_2.32  Flags: none  Version: 8
+  0x00d0:   Name: GLIBC_2.34  Flags: none  Version: 5
+  0x00e0:   Name: GLIBC_2.16  Flags: none  Version: 4
+  0x00f0:   Name: GLIBC_2.4  Flags: none  Version: 2
