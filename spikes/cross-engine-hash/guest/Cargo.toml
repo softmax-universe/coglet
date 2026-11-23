@@ -1,0 +1,28 @@
+[package]
+name = "xhash-guest"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+# Each feature builds a deliberately rule-breaking variant (a counterexample).
+# The default build (no features) is the rule-conforming guest.
+[features]
+# R4 violation: wall clock folded into state via WASI clock_time_get.
+wasi-clock = []
+# R4 violation: OS randomness folded into state via WASI random_get.
+wasi-random = []
+# R2 violation: relaxed-simd ops (needs RUSTFLAGS=-Ctarget-feature=+relaxed-simd).
+relaxed-simd = []
+# R1 violation: atomic ops (needs RUSTFLAGS=-Ctarget-feature=+atomics,+bulk-memory).
+threads = []
+
+[profile.release]
+opt-level = 2
+panic = "abort"
+lto = true
+codegen-units = 1
+
+[workspace]
