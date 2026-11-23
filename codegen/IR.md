@@ -13,7 +13,7 @@ with duplicate entry rules such as `wire`.
 Existing: `ref {name}`, `literal {value}`, `primitive {name: tstr|bool}`,
 `range {min,max}`, `union {items}`, `regexp {pattern}`, `size {min,max}`,
 `record {fields:[{name,optional,type}]}`, `array {item,min,max?}`,
-`map {item,min?,max?}`. All bounds are inclusive. An omitted max is unbounded.
+`map {item,key?,min?,max?}`. All bounds are inclusive. An omitted max is unbounded.
 `size` is UTF-8 text byte length (the currently inventoried use).
 
 Added:
@@ -24,7 +24,7 @@ Added:
 - `tuple {items:[{type,min,max?}]}`: ordered array entries with inclusive
   occurrences. Match the whole array. Optional/repeated entries may require
   trying multiple positions, not a greedy match.
-- `record.rest? {item,min,max?}`: applies to otherwise-unclaimed keys only.
+- `record.rest? {item,key?,min,max?}`: applies to otherwise-unclaimed keys only.
   No rest means closed map. `nil .and false` lowers to intersection of two
   incompatible literals, so it is the empty type, NOT the literal false.
 
