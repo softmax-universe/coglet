@@ -25,14 +25,15 @@ import SoftmaxCore
         let root = URL(fileURLWithPath: directory, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var manifest: [String] = []
-        var geometryLog: [String] = []
-        var predecessor = "none"
-        var probedAnomaly = false
-        defer { geometryLog.forEach { print($0) } }
+        var lifecycleLog: [String] = []
+        defer { lifecycleLog.forEach { print($0) } }
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
-                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
+                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V, lifecycle: Bool? = nil) throws {
+                    weak var weakWindow: NSWindow?
+                    weak var weakHost: NSView?
+                    func render() throws {
                     let key = "\(theme)-\(name)"
                     let hosting = NSHostingView(rootView: view
                         .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -41,6 +42,8 @@ import SoftmaxCore
                         .environment(\.softmaxHighContrast, contrast == .increased)
                         .environment(\.softmaxFreezeMotion, true))
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+                    weakWindow = window
+                    weakHost = hosting
                     window.appearance = NSAppearance(named: contrast == .increased ? (scheme == .dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua) : (scheme == .dark ? .darkAqua : .aqua))
                     window.isReleasedWhenClosed = false
                     window.contentView = hosting
@@ -54,17 +57,6 @@ import SoftmaxCore
                     var previous: Data?
                     var identicalFrames = 0
                     var stable: Data?
-                    // Diagnostic oracle from observed native frames (normal25/large35),
-                    // NOT production sizing. Never query intrinsic sizes on good fixtures:
-                    // a query can populate caches used by a later hosting graph.
-                    let traceGeometry = name.hasPrefix("commands") || name.hasPrefix("settings-")
-                    let expectedFieldHeight: CGFloat = name.hasSuffix("-large") ? 35 : 25
-                    func editableFields(_ view: NSView) -> [NSTextField] {
-                        let own = (view as? NSTextField).map { $0.isEditable ? [$0] : [] } ?? []
-                        return own + view.subviews.flatMap { editableFields($0) }
-                    }
-                    var probeMismatch = false
-                    var probeStage = 0
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
                         // AppKit can initially reserve a legacy scroller gutter before
@@ -78,18 +70,6 @@ import SoftmaxCore
                             for child in view.subviews { normalizeScrollers(child) }
                         }
                         normalizeScrollers(hosting)
-                        if probeMismatch, stable != nil {
-                            probeStage += 1
-                            // Stage1 is an untouched extra tick; stage2 queries only;
-                            // stage3 invalidates only the native field (not the host).
-                            if probeStage == 2 {
-                                for field in editableFields(hosting) {
-                                    geometryLog.append("SNAPSHOT-GEOMETRY \(key) queryOnly intrinsic=\(field.intrinsicContentSize)")
-                                }
-                            } else if probeStage == 3 {
-                                editableFields(hosting).forEach { $0.invalidateIntrinsicContentSize() }
-                            }
-                        }
                         hosting.layoutSubtreeIfNeeded()
                         if let editor = window.firstResponder as? NSTextView {
                             editor.setSelectedRange(NSRange(location: 0, length: 0))
@@ -102,34 +82,45 @@ import SoftmaxCore
                         guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
                         identicalFrames = bytes == previous ? identicalFrames + 1 : 1
                         previous = bytes
-                        let accepting = stable == nil && identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2
-                        if accepting { stable = bytes }
-                        if traceGeometry, stable != nil {
-                            let fields = editableFields(hosting)
-                            let mismatch = fields.contains { abs($0.frame.height - expectedFieldHeight) > 0.5 }
-                            let rows = fields.map { "id=\(ObjectIdentifier($0)) frame=\($0.frame) font=\(String(describing: $0.font))" }
-                            geometryLog.append("SNAPSHOT-GEOMETRY \(key) predecessor=\(predecessor) stage=\(probeStage) heightMismatch=\(mismatch) fields=\(rows)")
-                            if accepting {
-                                probeMismatch = mismatch && !probedAnomaly
-                                if probeMismatch { probedAnomaly = true }
-                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started)) probeMismatch=\(probeMismatch)")
-                            } else if probeMismatch {
-                                let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
-                                try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
-                                try bytes.write(to: diagnostics.appendingPathComponent("\(key)-stage\(probeStage).png"))
-                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) stage=\(probeStage) acceptedEqualsStage=\(stable == bytes)")
-                                if !mismatch || probeStage >= 3 { break }
-                            }
+                        if identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
+                            stable = bytes
+                            break
                         }
-                        if accepting && !probeMismatch { break }
                     }
                     guard let bytes = stable else {
                         throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
                     }
-                    try bytes.write(to: root.appendingPathComponent(key + ".png"))
-                    manifest.append(key)
+                    if let full = lifecycle {
+                        func fields(_ view: NSView) -> [NSTextField] {
+                            let own = (view as? NSTextField).map { $0.isEditable ? [$0] : [] } ?? []
+                            return own + view.subviews.flatMap { fields($0) }
+                        }
+                        let expected: CGFloat = name.hasSuffix("-large") ? 35 : 25
+                        let heights = fields(hosting).map { $0.frame.height }
+                        let mismatch = heights.isEmpty || heights.contains { abs($0 - expected) > 0.5 }
+                        lifecycleLog.append("LIFECYCLE \(key) full=\(full) heights=\(heights) heightMismatch=\(mismatch)")
+                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/Lifecycle", isDirectory: true)
+                        try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
+                        try bytes.write(to: diagnostics.appendingPathComponent(key + ".png"))
+                    } else {
+                        try bytes.write(to: root.appendingPathComponent(key + ".png"))
+                        manifest.append(key)
+                    }
+                    if lifecycle == true {
+                        window.endEditing(for: nil)
+                        window.makeFirstResponder(nil)
+                        window.contentView = nil
+                    }
                     window.close()
-                    predecessor = key
+                    }
+                    if lifecycle == true {
+                        try autoreleasepool { try render() }
+                    } else {
+                        try render()
+                    }
+                    if let full = lifecycle {
+                        lifecycleLog.append("LIFECYCLE \(key) full=\(full) afterTeardown windowDeallocated=\(weakWindow == nil) hostDeallocated=\(weakHost == nil)")
+                    }
                 }
                 let model = ShellModel()
                 let commands = SoftmaxCommand.catalog(settings: { _ in }, face: {}, chat: { _ in }, about: {})
@@ -182,6 +173,22 @@ import SoftmaxCore
                 try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
                 try capture("about-large", NSSize(width: 420, height: 420), AboutView().environment(\.softmaxTextScale, 1.6))
                 try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
+                // Bounded experiment outside the strict360 manifest. Same capture path,
+                // control close-only versus explicit teardown + autorelease-pool drain.
+                for full in [false, true] {
+                    for iteration in 0..<12 {
+                        for large in [false, true] {
+                            let suffix = large ? "-large" : ""
+                            let prefix = "lifecycle-\(full)-\(iteration)"
+                            let scale = large ? 1.6 : 1.0
+                            try capture(prefix + "-commands-empty" + suffix, NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: "no-such-command").environment(\.softmaxTextScale, scale), lifecycle: full)
+                            for tab in [SettingsTab.hub, .audio] {
+                                model.selectedTab = tab
+                                try capture(prefix + "-settings-\(tab.rawValue.lowercased())" + suffix, NSSize(width: 760, height: 540), SettingsView(model: model).environment(\.softmaxTextScale, scale), lifecycle: full)
+                            }
+                        }
+                    }
+                }
 
             }
         }
