@@ -2,6 +2,7 @@
 mod boundary;
 mod execution;
 mod filesystem;
+mod heard;
 mod host;
 mod journal;
 mod router;

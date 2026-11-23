@@ -38,11 +38,33 @@ pub fn digest(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
 }
 
+pub(crate) fn reserved_collision(path: &str) -> bool {
+    [
+        "/data/inbox.jsonl",
+        crate::heard::PATH,
+        "/logs/events.jsonl",
+    ]
+    .iter()
+    .any(|reserved| {
+        path == *reserved
+            || path.starts_with(&format!("{reserved}/"))
+            || reserved.starts_with(&format!("{path}/"))
+    })
+}
+
 impl Snapshot {
     pub fn new(files: BTreeMap<String, String>) -> Result<Self> {
         for (path, bytes) in &files {
             if !valid_path(path) {
                 return Err(format!("invalid path: {path:?}"));
+            }
+            if reserved_collision(path)
+                && !matches!(
+                    path.as_str(),
+                    "/data/inbox.jsonl" | "/data/runtime/heard.cbor" | "/logs/events.jsonl"
+                )
+            {
+                return Err("file/directory collision with reserved host file".into());
             }
             if bytes
                 .bytes()
@@ -60,6 +82,7 @@ impl Snapshot {
                 prefix = parent;
             }
         }
+        crate::heard::decode(files.get(crate::heard::PATH).map(String::as_str))?;
         Ok(Self(files))
     }
 
@@ -84,12 +107,7 @@ impl Snapshot {
         if !valid_path(path) {
             return Err("invalid filesystem path".into());
         }
-        if path.starts_with("/code/")
-            || matches!(
-                path,
-                "/data/inbox.jsonl" | "/data/runtime/heard.cbor" | "/logs/events.jsonl"
-            )
-        {
+        if path.starts_with("/code/") || reserved_collision(path) {
             return Err("permission_denied: host-owned file".into());
         }
         let encoded = hex::encode(bytes);
