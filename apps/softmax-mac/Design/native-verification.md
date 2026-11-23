@@ -98,6 +98,24 @@ synonyms; / or typing on Settings filters locally, with literal match emphasis.
 No unimplemented coglet or hub object is invented for search results. Native
 keyboard tests exercise arrows, activation, dismissal and focus return.
 
+## Keyboard remediation and deterministic capture
+
+Native run `45124822512` reproduces both review findings with real key input:
+selected command rows leave the viewport, and focused Settings search consumes
+arrows. Run `45126403527` after the production fixes passes all 39 unit and 9 UI
+tests, including both regressions; `45128197127` repeats those passes and the
+light/dark accessibility audits. These runs are not final snapshot acceptance.
+
+Run `45128197127` exposed 15 remaining selected-query reference highlights after
+field-editor selection normalization. Every changed pixel lies within the query
+text rectangle (x26–215, y24–51); all 15 old/new crops were visually inspected
+before updating only those references. One additional Settings Hub capture had
+a 10 pt taller empty search field; its reference is deliberately unchanged.
+The renderer now requires three consecutive identical PNG frames after at least
+200 ms of run-loop/layout settling, with a two-second fail-closed deadline per
+fixture. This replaces the single 40 ms delay, not the pixel comparison gate.
+Native execution must still verify stability and strict 360-state equality.
+
 ## Intentional differences from the design study
 
 - Keep Right Option and near-menu-bar HUD from the more-specific PTT acceptance.

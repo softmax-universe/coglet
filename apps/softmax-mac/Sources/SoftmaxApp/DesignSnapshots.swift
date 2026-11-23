@@ -42,20 +42,36 @@ import SoftmaxCore
                     window.contentView = hosting
                     hosting.frame = NSRect(origin: .zero, size: size)
                     window.orderBack(nil)
-                    RunLoop.current.run(until: Date().addingTimeInterval(0.04))
-                    hosting.layoutSubtreeIfNeeded()
-                    // TextField's deferred autofocus can select its initial query. That
-                    // transient field-editor selection is not a fixture state: normalize
-                    // it before rasterization, without changing production focus behavior.
-                    if let editor = window.firstResponder as? NSTextView {
-                        editor.setSelectedRange(NSRange(location: 0, length: 0))
+                    // SwiftUI/AppKit may defer intrinsic TextField sizing and autofocus
+                    // beyond one run-loop turn. Require three identical consecutive rasters
+                    // after a minimum settling interval, rather than capturing a 40 ms race.
+                    // This affects fixtures only; production keyboard focus stays unchanged.
+                    let started = Date()
+                    var previous: Data?
+                    var identicalFrames = 0
+                    var stable: Data?
+                    while Date().timeIntervalSince(started) < 2 {
+                        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                        hosting.layoutSubtreeIfNeeded()
+                        if let editor = window.firstResponder as? NSTextView {
+                            editor.setSelectedRange(NSRange(location: 0, length: 0))
+                        }
+                        window.display()
+                        guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
+                            throw CocoaError(.fileWriteUnknown)
+                        }
+                        hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+                        guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
+                        identicalFrames = bytes == previous ? identicalFrames + 1 : 1
+                        previous = bytes
+                        if identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2 {
+                            stable = bytes
+                            break
+                        }
                     }
-                    window.display()
-                    guard let bitmap = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else {
-                        throw CocoaError(.fileWriteUnknown)
+                    guard let bytes = stable else {
+                        throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
                     }
-                    hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
-                    guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
                     try bytes.write(to: root.appendingPathComponent(key + ".png"))
                     manifest.append(key)
                     window.close()
