@@ -745,7 +745,7 @@
   function phases(fig) {
     var W = 1000, H = 420, svg = svgRoot(W, H, 'Build phases: P0 skeleton and specs, v0 freeze, P2 parallel components, P3 milestones, P4 product lanes'), M = defs(svg);
     var cols = [
-      [16, 'P0 · P1', 'specs + spikes', ['skeleton ✓', 'conventions ✓', 'ABI + journal', 'surface + speech', 'hub protocol', 'policy draft', 'conformance harness', 'codegen', 'spikes: WAMR cap ✓ armv7 ✓', '  iOS build pending, float hash']],
+      [16, 'P0 · P1', 'specs + spikes', ['skeleton ✓', 'conventions ✓', 'ABI + journal', 'surface + speech', 'hub protocol', 'policy draft', 'conformance harness', 'codegen', 'spikes: WAMR cap ✓ armv7 ✓', '  hash ✓; iOS build pending']],
       [222, 'gate', 'v0 freeze', ['ADR-0001', 'conventions · ABI', 'surface · speech', 'minimal hub protocol', '', 'the one serial gate']],
       [388, 'P2', 'all parallel', ['engine-wamr', 'mock engine', 'fs (CoW)', 'runtime core + C ABI', 'guest SDK, echo, counter', 'surface SDKs rust py swift', 'hub proto + mock hub', 'kernel part 1', 'mock LLM + gateway', 'release pipeline']],
       [606, 'P3', 'milestones', ['M1 hello coglet', 'M2 sandbox: gridbot,', '  cartpole, CLI, visualizer', 'M2b Face on Mac', 'M3 self-editing loop', '  (policy freeze)', 'parallel: Wasmtime + hash,', '  trace, fault injection']],

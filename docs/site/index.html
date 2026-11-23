@@ -153,7 +153,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
   <h3>WAMR first, behind an <code>Engine</code> trait</h3>
   <figure class="dg" data-diagram="engine"></figure>
   <div class="prose">
-    <p>WAMR runs where Wasmtime can't: iOS forbids generating machine code at runtime (interpreter only), and the EO1 is 32-bit ARM. Wasmtime comes later for the hub and Macs. Running the same coglet on both engines and comparing state hashes is a conformance test for free. Floating-point determinism across engines is being pinned down by a spike before the v0 freeze.</p>
+    <p>WAMR runs where Wasmtime can't: iOS forbids generating machine code at runtime (interpreter only), and the EO1 is 32-bit ARM. Wasmtime comes later for the hub and Macs. Running the same coglet on both engines and comparing state hashes is a conformance test for free. Cross-engine determinism comes from build-time rules the hub applies at build-then-commit (proposed in <a data-spec="adrDeterm"></a>): no threads, no relaxed SIMD, NaN results canonicalised by a module transform, time and randomness only from <code>handle</code> inputs, and a pinned Wasm feature set.</p>
     <p><b>Inbox as a file.</b> The hub never injects messages into a running step: it appends to <code>/data/inbox.jsonl</code> between steps and never rewrites it; the coglet keeps its own read cursor in <code>/data</code>. Steering messages, async LLM answers and factory notes all use this one primitive.</p>
   </div>
   <div class="specs"><span>spec</span><a data-spec="abi"></a><a data-spec="manifest"></a><a data-spec="adrPlatforms"></a><a data-spec="adrCap"></a><a data-spec="adrDeterm"></a></div>

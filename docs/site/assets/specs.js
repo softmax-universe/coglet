@@ -23,7 +23,7 @@
     adrConv:     { path: 'docs/adr/0002-common-conventions.md', label: 'ADR-0002 common conventions', status: 'live' },
     adrPlatforms:{ path: 'docs/adr/0002-engine-findings-platforms.md', label: 'ADR-0002 WAMR platform findings', status: 'live' },
     adrCap:      { path: 'docs/adr/0001-engine-findings-cap.md', label: 'ADR-0001 WAMR cap/deadline findings', status: 'live' },
-    adrDeterm:   { path: 'docs/adr/0003-determinism-rules.md', label: 'ADR-0003 determinism rules', status: 'progress', pr: 5 },
+    adrDeterm:   { path: 'docs/adr/0003-determinism-rules.md', label: 'ADR-0003 determinism rules', status: 'live' },
     conventions: { path: 'spec/conventions.md', label: 'spec/conventions.md', status: 'live' },
     abi:         { path: 'spec/abi.md', label: 'spec/abi.md', status: 'progress', pr: 8 },
     surface:     { path: 'spec/surface-protocol.md', label: 'spec/surface-protocol.md', status: 'progress', pr: 9 },
@@ -35,7 +35,7 @@
     messages:    { path: 'spec/messages', dir: true, label: 'spec/messages/', status: 'live' },
     fixtures:    { path: 'spec/fixtures', dir: true, label: 'spec/fixtures/', status: 'live' },
     conformance: { path: 'conformance', dir: true, label: 'conformance/', status: 'scaffold' },
-    spikeHash:   { path: 'spikes/cross-engine-hash', dir: true, label: 'spikes/cross-engine-hash/', status: 'progress', pr: 5 },
+    spikeHash:   { path: 'spikes/cross-engine-hash', dir: true, label: 'spikes/cross-engine-hash/', status: 'live' },
     spikeWamr:   { path: 'spikes/wamr-platforms', dir: true, label: 'spikes/wamr-platforms/', status: 'live' },
     spikeCap:    { path: 'spikes/wamr-cap', dir: true, label: 'spikes/wamr-cap/', status: 'live' }
   };
@@ -57,7 +57,7 @@
   }
 
   // Paths that exist only in an open PR link to the PR's files instead of a 404 on main.
-  var ONLY_IN_PR = { adrDeterm: 1, spikeHash: 1 };
+  var ONLY_IN_PR = {};
 
   function linkFor(key) {
     var s = SPECS[key];
