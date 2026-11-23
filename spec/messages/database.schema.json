@@ -1,0 +1,1012 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/database.schema.json",
+  "$ref": "#/$defs/database",
+  "$defs": {
+    "db-recovery-abort": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "db_recovery_abort"
+        },
+        "prepared_record_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        }
+      },
+      "required": [
+        "kind",
+        "prepared_record_hash"
+      ],
+      "additionalProperties": false
+    },
+    "db-failure": {
+      "anyOf": [
+        {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/failure"
+        },
+        {
+          "$ref": "#/$defs/db-recovery-abort"
+        }
+      ]
+    },
+    "db-cell": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 18446744073709551615
+        },
+        {
+          "type": "string",
+          "minLength": 0
+        }
+      ]
+    },
+    "db-cursor": {
+      "type": "string",
+      "minLength": 1
+    },
+    "db-statement": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "statement"
+        },
+        "statement": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}(?![\\s\\S])"
+        },
+        "mode": {
+          "enum": [
+            "read",
+            "write"
+          ]
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/db-cell"
+          },
+          "minItems": 0,
+          "maxItems": 32
+        },
+        "max_rows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        "max_bytes": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 65536
+        },
+        "cursor": {
+          "$ref": "#/$defs/db-cursor"
+        }
+      },
+      "required": [
+        "operation",
+        "statement",
+        "mode",
+        "params",
+        "max_rows",
+        "max_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "db-enqueue": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "enqueue"
+        },
+        "intent_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action-id"
+        },
+        "idempotency_key": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "kind": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+        },
+        "payload": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/profile-map"
+        },
+        "correlation_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "operation",
+        "intent_id",
+        "idempotency_key",
+        "kind",
+        "payload",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "db-request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/db-statement"
+        },
+        {
+          "$ref": "#/$defs/db-enqueue"
+        }
+      ]
+    },
+    "db-row": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/db-cell"
+      },
+      "minItems": 0,
+      "maxItems": 16
+    },
+    "db-page": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "page"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "maxItems": 16
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/db-row"
+          },
+          "minItems": 0,
+          "maxItems": 64
+        },
+        "affected": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/db-cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "columns",
+        "rows",
+        "affected",
+        "revision",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    },
+    "db-enqueued": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "enqueued"
+        },
+        "intent_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action-id"
+        },
+        "duplicate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "intent_id",
+        "duplicate"
+      ],
+      "additionalProperties": false
+    },
+    "db-failed": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "failed"
+        },
+        "error": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/error"
+        }
+      },
+      "required": [
+        "status",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "db-reply": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/db-page"
+        },
+        {
+          "$ref": "#/$defs/db-enqueued"
+        },
+        {
+          "$ref": "#/$defs/db-failed"
+        }
+      ]
+    },
+    "db-outcome": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "intent_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action-id"
+            },
+            "idempotency_key": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "status": {
+              "const": "succeeded"
+            },
+            "result": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/profile-map"
+            }
+          },
+          "required": [
+            "intent_id",
+            "idempotency_key",
+            "correlation_id",
+            "status",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "intent_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action-id"
+            },
+            "idempotency_key": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "status": {
+              "enum": [
+                "failed",
+                "cancelled"
+              ]
+            },
+            "error": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "intent_id",
+            "idempotency_key",
+            "correlation_id",
+            "status",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "db-host-call": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument": {
+              "$ref": "#/$defs/db-request"
+            },
+            "result": {
+              "const": 0
+            },
+            "response": {
+              "$ref": "#/$defs/db-reply"
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result",
+            "response"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument": {
+              "$ref": "#/$defs/db-request"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument_hex": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hex"
+            },
+            "result": {
+              "const": 1
+            }
+          },
+          "required": [
+            "op",
+            "argument_hex",
+            "result"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "db-config": {
+      "type": "object",
+      "properties": {
+        "schema_min": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "schema_max": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "catalog_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        }
+      },
+      "required": [
+        "schema_min",
+        "schema_max",
+        "catalog_hash"
+      ],
+      "additionalProperties": false
+    },
+    "db-manifest": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.2"
+        },
+        "id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+          },
+          "minItems": 0
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+          },
+          "minItems": 0
+        },
+        "exclusive_outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+          },
+          "minItems": 0
+        },
+        "budgets": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/budgets"
+        },
+        "database": {
+          "$ref": "#/$defs/db-config"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "subscriptions",
+        "required_capabilities",
+        "exclusive_outputs",
+        "budgets",
+        "database"
+      ],
+      "additionalProperties": false
+    },
+    "db-step-record": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.2"
+            },
+            "trace_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/call"
+                  },
+                  {
+                    "$ref": "#/$defs/db-host-call"
+                  }
+                ]
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "committed"
+            },
+            "db_before": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_after": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_schema_version": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_catalog_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status",
+            "db_before",
+            "db_after",
+            "db_schema_version",
+            "db_catalog_hash"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.2"
+            },
+            "trace_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/call"
+                  },
+                  {
+                    "$ref": "#/$defs/db-host-call"
+                  }
+                ]
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "aborted"
+            },
+            "failure": {
+              "$ref": "#/$defs/db-failure"
+            },
+            "db_before": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_after": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_schema_version": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            "db_catalog_hash": {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status",
+            "failure",
+            "db_before",
+            "db_after",
+            "db_schema_version",
+            "db_catalog_hash"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "db-trace": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.2"
+        },
+        "trace_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "initial_effect_ids": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/effect-ledger"
+        },
+        "initial_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action"
+          },
+          "minItems": 0
+        },
+        "initial_inbox_wakes": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+          },
+          "minItems": 0
+        },
+        "initial_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "initial_files": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+        },
+        "code_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "manifest_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "final_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "trailing_boundary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/db-boundary-record"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initial_timers": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/timer-request"
+          },
+          "minItems": 0
+        },
+        "initial_llm_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/llm-request"
+          },
+          "minItems": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/db-step-record"
+          },
+          "minItems": 0
+        },
+        "blobs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hex"
+          }
+        },
+        "initial_db_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "final_db_revision": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "version",
+        "trace_id",
+        "coglet",
+        "initial_effect_ids",
+        "initial_actions",
+        "initial_inbox_wakes",
+        "initial_hash",
+        "initial_files",
+        "code_hash",
+        "manifest_hash",
+        "final_hash",
+        "trailing_boundary",
+        "initial_timers",
+        "initial_llm_requests",
+        "records",
+        "blobs",
+        "initial_db_revision",
+        "final_db_revision"
+      ],
+      "additionalProperties": false
+    },
+    "db-boundary-record": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.2"
+        },
+        "trace_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "logical_time": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "output_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "record_hash": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/hash"
+        },
+        "boundary": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/boundary-change"
+          },
+          "minItems": 1
+        },
+        "output_files": {
+          "$ref": "https://coglet.dev/spec/messages/abi.schema.json#/$defs/snapshot"
+        }
+      },
+      "required": [
+        "version",
+        "trace_id",
+        "coglet",
+        "logical_time",
+        "previous",
+        "before_hash",
+        "output_hash",
+        "record_hash",
+        "boundary",
+        "output_files"
+      ],
+      "additionalProperties": false
+    },
+    "database": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/db-request"
+        },
+        {
+          "$ref": "#/$defs/db-reply"
+        },
+        {
+          "$ref": "#/$defs/db-outcome"
+        },
+        {
+          "$ref": "#/$defs/db-host-call"
+        },
+        {
+          "$ref": "#/$defs/db-manifest"
+        },
+        {
+          "$ref": "#/$defs/db-step-record"
+        },
+        {
+          "$ref": "#/$defs/db-trace"
+        },
+        {
+          "$ref": "#/$defs/db-boundary-record"
+        }
+      ]
+    }
+  }
+}

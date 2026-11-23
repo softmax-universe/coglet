@@ -62,22 +62,33 @@ actual modules for forbidden imports and execute the real allocation/entry/host
 paths; toolchain changes must keep those tests green. WASI `_initialize` may be
 called once by a reactor loader; no start section or `_start` is permitted.
 
-## Proof boundaries / integration pending
+## Proof boundaries
 
-The Python host uses Wasmtime as a supplemental export/guest test engine. It
-provides only test directories and captured ABI calls. Its WASI writes are NOT
-a transactional filesystem: these tests are not runtime commit/rollback,
-budget qualification, mock-engine or WAMR conformance. Both reference manifests
-use fixture-only `test.echo` as explicitly allowed by the frozen binding spec;
-a production deployment MUST replace fixture identities and install a trusted
-catalog, schemas and grants for any extension operations. The manifests'
-`wamr-interp-metered-v0` compute mode is a pending integration placeholder, not
-qualified engine admission; align it with the engine owner's exact published
-mode before claiming runtime conformance.
+The Python Wasmtime host is a supplemental export test, not runtime qualification.
+`conformance/abi/reference-guests.json` is the shared `guest-reference` profile:
+exact CBOR requests/responses run through the harness's framed pipe bridge and
+`sdk/guest-rust/examples/reference_conformance.rs`. Run it with either `mock` or
+`wamr` as the final adapter argument. Both execute the same reference `wake` code:
+MockEngine registers fixed opaque module keys and fresh metered native guests;
+WAMR loads the actual built Wasm bytes. Neither reads fixture names or expected
+responses. Files are an in-memory overlay and failed attempts discard calls and
+writes. Counter persistence is checked by supplying the prior committed snapshot
+to a fresh instance. This test adapter is NOT the runtime journal/durable WAL,
+capability catalog, or a complete WASI implementation. Native compute is explicitly
+cooperative simulation, never native preemption/RSS measurement.
 
-Required remaining integration: run reference guest cases through the native
-mock Engine implementation (and WAMR when merged) under `conformance/abi/`.
-The existing `abi.step` timeline is a runtime-script seam, not a Wasm guest
-executor, so passing these supplemental tests must not be reported as that
-suite passing. Owners: mock t_01a205e53e26e3a6, engine t_01a205e4fdee443e;
-SDK t_01a205e62f38d7ca retains acceptance until integration is actually run.
+```sh
+cargo build --locked -p coglet-guest-rust --example reference_conformance
+for engine in mock wamr; do
+  conformance/run --suite abi --peer-role guest-reference --impl "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance $engine" --junit "target/reference-$engine.xml"
+done
+```
+
+Non-reference runtime/journal cases are reported as unsupported-role skips, not
+passing claims. Existing `abi.step` is still a separate runtime-script seam.
+The build driver applies the existing R3 NaN transform before publication; WAMR
+independently validates the transformed bytes without an admission exemption.
+Both manifests select `wamr-2.4.3-fast-cumulative-v1`; native simulation selects its
+own Engine metadata mode rather than claiming WAMR accounting. Manifests use
+fixture-only `test.echo`, permitted by the frozen binding spec. Production must
+replace fixture identities and install a trusted catalog, schemas and grants.

@@ -1,0 +1,1488 @@
+[
+  {
+    "name": "lexical-control-ticket-target-base",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "final-newline-ticket-target-base",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc\n"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-ticket-capabilities-edit_paths-0",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "final-newline-ticket-capabilities-edit_paths-0",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src\n",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-ticket-capabilities-edit_paths-1",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "final-newline-ticket-capabilities-edit_paths-1",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts\n",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-ticket-capabilities-edit_paths-2",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "final-newline-ticket-capabilities-edit_paths-2",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config\n"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-ticket-budget-currency",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f4"
+  },
+  {
+    "name": "final-newline-ticket-budget-currency",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD\n"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-request-ticket-target-base",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-request-ticket-target-base",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc\n"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-request-ticket-capabilities-edit_paths-0",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-request-ticket-capabilities-edit_paths-0",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src\n",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-request-ticket-capabilities-edit_paths-1",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-request-ticket-capabilities-edit_paths-1",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts\n",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-request-ticket-capabilities-edit_paths-2",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-request-ticket-capabilities-edit_paths-2",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config\n"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-request-ticket-budget-currency",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a4626f70667375626d6974667469636b6574a664676f616ca26a616363657074616e63658178235265706c6179206a6f75726e616c20636f7270757320776974686f75742074726170736b6465736372697074696f6e6e466978206e617669676174696f6e656761746573a2687265717569726564826e6a6f75726e616c5f7265706c61796d686561646c6573735f67616d656e68756d616e5f617070726f76616cf566627564676574a36774696d655f6d731a000927c06863757272656e637963555344707370656e645f6d6963726f756e6974731a000f424066746172676574a36462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363647265706f6b7265706f3a61766174617266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e7465787483a2637265666a736e617073686f743a31646b696e646e776f726c645f736e617073686f74a2637265666c7472616e7363726970743a31646b696e646a7472616e736372697074a2637265666774726163653a31646b696e646574726163656c6361706162696c6974696573a36a64656275675f72656164f56a656469745f706174687383637372636770726f6d707473672e636f6e6669676b64656275675f7772697465f46776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-request-ticket-budget-currency",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD\n"
+        }
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-result-candidate-commit",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": true,
+    "cbor_hex": "a9637365710265676174657381a86462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d763166737461747573667061737365646963616e6469646174657828626262626262626262626262626262626262626262626262626262626262626262626262626262626c65766964656e63655f7265666f61727469666163743a676174652d316d636865636b65645f61745f6d731903e86f706f6c6963795f7265766973696f6e7820313131313131313131313131313131313131313131313131313131313131313165737461746564646f6e656773756d6d617279781b43616e646964617465206275696c7420616e6420636865636b65646776657273696f6e63302e31687265766973696f6e016963616e646964617465a266636f6d6d69747828626262626262626262626262626262626262626262626262626262626262626262626262626262626d7369676e61747572655f7265666b7369676e61747572653a31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-result-candidate-commit",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-result-gates-0-candidate",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": true,
+    "cbor_hex": "a9637365710265676174657381a86462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d763166737461747573667061737365646963616e6469646174657828626262626262626262626262626262626262626262626262626262626262626262626262626262626c65766964656e63655f7265666f61727469666163743a676174652d316d636865636b65645f61745f6d731903e86f706f6c6963795f7265766973696f6e7820313131313131313131313131313131313131313131313131313131313131313165737461746564646f6e656773756d6d617279781b43616e646964617465206275696c7420616e6420636865636b65646776657273696f6e63302e31687265766973696f6e016963616e646964617465a266636f6d6d69747828626262626262626262626262626262626262626262626262626262626262626262626262626262626d7369676e61747572655f7265666b7369676e61747572653a31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-result-gates-0-candidate",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "lexical-control-result-gates-0-base",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": true,
+    "cbor_hex": "a9637365710265676174657381a86462617365782863636363636363636363636363636363636363636363636363636363636363636363636363636363646b696e646e6a6f75726e616c5f7265706c61796573756974656f73756974653a7265706c61792d763166737461747573667061737365646963616e6469646174657828626262626262626262626262626262626262626262626262626262626262626262626262626262626c65766964656e63655f7265666f61727469666163743a676174652d316d636865636b65645f61745f6d731903e86f706f6c6963795f7265766973696f6e7820313131313131313131313131313131313131313131313131313131313131313165737461746564646f6e656773756d6d617279781b43616e646964617465206275696c7420616e6420636865636b65646776657273696f6e63302e31687265766973696f6e016963616e646964617465a266636f6d6d69747828626262626262626262626262626262626262626262626262626262626262626262626262626262626d7369676e61747572655f7265666b7369676e61747572653a31697469636b65745f6964782031313131313131313131313131313131313131313131313131313131313131316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "final-newline-result-gates-0-base",
+    "type": "result",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "ticket_id": "11111111111111111111111111111111",
+      "revision": 1,
+      "seq": 2,
+      "state": "done",
+      "summary": "Candidate built and checked",
+      "candidate": {
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "signature_ref": "signature:1"
+      },
+      "gates": [
+        {
+          "kind": "journal_replay",
+          "suite": "suite:replay-v1",
+          "candidate": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "base": "cccccccccccccccccccccccccccccccccccccccc\n",
+          "policy_revision": "11111111111111111111111111111111",
+          "checked_at_ms": 1000,
+          "status": "passed",
+          "evidence_ref": "artifact:gate-1"
+        }
+      ]
+    },
+    "valid": false
+  },
+  {
+    "name": "duplicate-paths-ticket",
+    "type": "ticket",
+    "value": {
+      "target": {
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repo": "repo:avatar",
+        "base": "cccccccccccccccccccccccccccccccccccccccc"
+      },
+      "goal": {
+        "description": "Fix navigation",
+        "acceptance": [
+          "Replay journal corpus without traps"
+        ]
+      },
+      "context": [
+        {
+          "kind": "world_snapshot",
+          "ref": "snapshot:1"
+        },
+        {
+          "kind": "transcript",
+          "ref": "transcript:1"
+        },
+        {
+          "kind": "trace",
+          "ref": "trace:1"
+        }
+      ],
+      "capabilities": {
+        "edit_paths": [
+          "src",
+          "prompts",
+          ".config",
+          "src",
+          "prompts",
+          ".config"
+        ],
+        "debug_read": true,
+        "debug_write": false
+      },
+      "gates": {
+        "required": [
+          "journal_replay",
+          "headless_game"
+        ],
+        "human_approval": true
+      },
+      "budget": {
+        "time_ms": 600000,
+        "spend_microunits": 1000000,
+        "currency": "USD"
+      }
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "duplicate-paths-submit",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config",
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false,
+    "semantic": true
+  },
+  {
+    "name": "duplicate-paths-amend",
+    "type": "request",
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "amend",
+      "ticket_id": "11111111111111111111111111111111",
+      "expected_revision": 1,
+      "ticket": {
+        "target": {
+          "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "repo": "repo:avatar",
+          "base": "cccccccccccccccccccccccccccccccccccccccc"
+        },
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay journal corpus without traps"
+          ]
+        },
+        "context": [
+          {
+            "kind": "world_snapshot",
+            "ref": "snapshot:1"
+          },
+          {
+            "kind": "transcript",
+            "ref": "transcript:1"
+          },
+          {
+            "kind": "trace",
+            "ref": "trace:1"
+          }
+        ],
+        "capabilities": {
+          "edit_paths": [
+            "src",
+            "prompts",
+            ".config",
+            "src",
+            "prompts",
+            ".config"
+          ],
+          "debug_read": true,
+          "debug_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay",
+            "headless_game"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
+      }
+    },
+    "valid": false,
+    "semantic": true
+  }
+]

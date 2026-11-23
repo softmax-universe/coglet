@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,9 +14,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user wabt time
+      - run: sudo apt-get update && sudo apt-get install -y cmake gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user wabt time
       - run: rustup toolchain install 1.91.1 --profile minimal && rustup target add --toolchain 1.91.1 armv7-unknown-linux-gnueabihf
       - run: bash spikes/wamr-platforms/test-armv7.sh
+      - name: Qualify real engine crate on ARMv7 QEMU (not native EO1 evidence)
+        run: |
+          rustup target add armv7-unknown-linux-gnueabihf
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER='qemu-arm -L /usr/arm-linux-gnueabihf' cargo test --locked -p coglet-engine-wamr --target armv7-unknown-linux-gnueabihf -- --test-threads=1
       - uses: actions/upload-artifact@v4
         if: always()
         with:

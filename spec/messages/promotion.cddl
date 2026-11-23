@@ -1,0 +1,70 @@
+; Draft payload contracts, not currently legal frozen hub frames.
+; Import common.cddl once. Trust, timing and bindings are in promotion.md.
+promotion = promotion-propose / promotion-promote / promotion-rollback /
+  promotion-status-request / promotion-response / promotion-audit
+promotion-commit = tstr .regexp "^([0-9a-f]{40}|[0-9a-f]{64})$"
+promotion-text = tstr .size (1..18446744073709551615)
+promotion-op = "propose" / "promote" / "rollback" / "status"
+promotion-envelope = (
+  version: "0.1", correlation_id: correlation-id, coglet: coglet-id
+)
+promotion-gate-report = {
+  kind: "journal_replay" / "headless_game", suite: promotion-text,
+  candidate: promotion-commit, base: promotion-commit / null,
+  policy_revision: correlation-id, checked_at_ms: uint64,
+  status: "passed" / "failed", evidence_ref: promotion-text
+}
+promotion-propose = {
+  promotion-envelope, op: "propose", candidate: promotion-commit,
+  base: promotion-commit / null, expected_generation: uint64,
+  policy_revision: correlation-id, gates: [+ promotion-gate-report],
+  ? approval_ref: promotion-text
+}
+promotion-promote = {
+  promotion-envelope, op: "promote", proposal_id: correlation-id,
+  expected_generation: uint64
+}
+promotion-rollback = {
+  promotion-envelope, op: "rollback", expected_generation: uint64,
+  reason: promotion-text
+}
+promotion-status-request = {promotion-envelope, op: "status"}
+promotion-status = {
+  generation: uint64, live_commit: promotion-commit / null,
+  last_known_good: promotion-commit / null, candidate: promotion-commit / null,
+  state: "empty" / "proposed" / "activating" / "probation" / "stable" /
+    "rolling_back" / "stopped",
+  proposal_id: correlation-id / null, policy_revision: correlation-id,
+  probation: promotion-probation / null, recent_health: [0*64 promotion-health]
+}
+promotion-probation = {
+  started_at_ms: uint64, expires_at_ms: uint64, consecutive_failures: uint64,
+  step_failures: uint64, budget_violations: uint64
+}
+promotion-health = {
+  generation: uint64, commit: promotion-commit, observed_at_ms: uint64, healthy: bool
+}
+promotion-response = {
+  promotion-envelope, op: "propose", ok: true,
+  result: {proposal_id: correlation-id, state: "proposed"}
+} / {
+  promotion-envelope, op: "promote", ok: true,
+  result: {proposal_id: correlation-id, state: "activating"}
+} / {
+  promotion-envelope, op: "rollback", ok: true, result: {state: "rolling_back"}
+} / {
+  promotion-envelope, op: "status", ok: true, result: promotion-status
+} / {
+  promotion-envelope, op: promotion-op, ok: false, "error": error
+}
+promotion-audit = {
+  version: "0.1", audit_id: correlation-id, correlation_id: correlation-id,
+  coglet: coglet-id, actor: "kernel" / coglet-id / hub-id / surface-id,
+  operation: promotion-op,
+  phase: "admitted" / "rejected" / "activated" / "probation_passed" /
+    "rollback_triggered" / "restored" / "stopped" / "observed",
+  generation: uint64, observed_at_ms: uint64, proposal_id: correlation-id / null,
+  before_commit: promotion-commit / null, after_commit: promotion-commit / null,
+  policy_revision: correlation-id, reason: promotion-text,
+  evidence_refs: [* tstr .size (1..18446744073709551615)]
+}

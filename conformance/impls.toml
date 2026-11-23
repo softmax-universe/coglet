@@ -1,6 +1,62 @@
 # Only self-test claims exist until real/mock protocol implementations register.
 [[implementations]]
+name = "native-mock-engine"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/mock-conformance"]
+
+[[implementations]]
 name = "loopback"
 suites = ["self-test"]
 transport = "stdio"
 command = ["python3", "conformance/loopback.py"]
+
+[[implementations]]
+name = "wamr-interpreter"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/wamr-conformance"]
+
+[[implementations]]
+name = "surface-rust-reference"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/release/coglet-reference-surface", "--stdio"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "mock-surface"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/release/coglet-mock-surface", "--stdio"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "surface-rust-reference-in-process"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/release/coglet-reference-surface", "--stdio", "--transport", "in-process"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "mock-surface-in-process"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/release/coglet-mock-surface", "--stdio", "--transport", "in-process"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"

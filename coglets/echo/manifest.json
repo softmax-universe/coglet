@@ -6,7 +6,7 @@
   "exclusive_outputs": [],
   "budgets": {
     "compute": 10000000,
-    "compute_mode": "wamr-interp-metered-v0",
+    "compute_mode": "wamr-2.4.3-fast-cumulative-v1",
     "memory_pages": 256,
     "wall_time_us": 1000000,
     "max_events": 64,
