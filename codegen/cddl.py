@@ -143,6 +143,9 @@ class Parser:
         if t in ('{', '['):
             return {'op': 'container', 'kind': t, 'group': self.group('}' if t == '{' else ']')}
         if t == '(':
+            if self.peek() == ')':
+                self.take(')')
+                return {'op': 'group', 'alternatives': [[]]}
             start = self.i
             # A colon/comma/group choice at nesting depth zero disambiguates
             # a group from a parenthesized type expression.

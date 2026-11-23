@@ -16,7 +16,7 @@ RESERVED_TYPES = {'Message', 'Any', 'Literal', 'ClassVar', 'String', 'Option', '
 
 
 def title(name):
-    result = ''.join(part[:1].upper() + part[1:] for part in re.split(r'[-_:]+', name))
+    result = ''.join(part[:1].upper() + part[1:] for part in re.split(r'[-_:]+', name.replace('$', '')))
     if not result or not result.isascii() or not result.isidentifier() or result in RESERVED_TYPES or result in RUST_KEYWORDS:
         raise ValueError(f'unsupported/reserved generated type identifier {name!r} -> {result!r}')
     return result

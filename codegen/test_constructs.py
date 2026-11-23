@@ -22,6 +22,23 @@ class ConstructTests(unittest.TestCase):
         node = parse('x = {(op: "a", n: tstr) // (op: "b", n: bool)}')['x']
         self.assertEqual(node['op'], 'union')
 
+    def test_empty_group_socket(self):
+        rules = parse('$$g = ()\n$$g //= (op: "a")\nx = {$$g}')
+        self.assertEqual(rules['x']['op'], 'union')
+        self.assertEqual(rules['x']['items'][0], {'op': 'record', 'fields': []})
+
+    def test_typed_regexp_map_keys(self):
+        from coglet_surface.codec import validate
+        rules = parse('key = tstr .regexp "[a-z]+"\nx = {* (key) => (tstr .regexp "[a-z]+")}')
+        validate('x', {'abc': 'def'}, rules)
+        for value in ({'ABC': 'def'}, {'abc': 'DEF'}):
+            with self.assertRaises(ValueError):
+                validate('x', value, rules)
+
+    def test_type_socket_augmentation(self):
+        rules = parse('$t = "a"\n$t /= "b"\nx = [$t]')
+        self.assertEqual(len(rules['$t']['items']), 2)
+
     def test_controls(self):
         rules = parse('x = tstr .size (1..4) .regexp "[a-z]+"\nn = nil .and false\nd = tstr .default "x"')
         self.assertEqual(rules['x']['op'], 'intersection')
