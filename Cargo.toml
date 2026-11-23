@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/coglet-types",
+    "crates/coglet-engine",
+    "crates/coglet-engine-wamr",
+    "crates/coglet-engine-wasmtime",
+    "crates/coglet-fs",
+    "crates/coglet-runtime",
+    "crates/coglet-proto",
+    "crates/coglet-hub",
+    "crates/coglet-llm",
+    "crates/coglet-gate",
+    "crates/coglet-trace",
+    "crates/coglet-mock",
+    "crates/coglet-cli",
+    "sdk/guest-rust",
+    "sdk/surface-rust",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
