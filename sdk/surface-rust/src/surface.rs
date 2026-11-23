@@ -417,7 +417,7 @@ impl Surface {
     }
 
     fn enc(&self, msg: &Json) -> Result<Vec<u8>, String> {
-        let bytes = coglet_types::encode_typed(&rule_key("surface:surface-message"), msg)
+        let bytes = crate::codec::encode(&rule_key("surface:surface-message"), msg)
             .map_err(|e| format!("internal: outbound message invalid: {e}"))?;
         if bytes.is_empty() || bytes.len() > MAX_FRAME {
             return Err("resource_exhausted: outbound frame exceeds 1 MiB".into());

@@ -66,7 +66,7 @@ pub fn grant(coglet: &str, ops: &[&str], res: &[&str], expires: u64) -> GrantSpe
 }
 
 pub fn encode(msg: &Json) -> Vec<u8> {
-    coglet_types::encode_typed(RULE, msg).expect("test message must be valid")
+    coglet_surface_rust::codec::encode(RULE, msg).expect("test message must be valid")
 }
 pub fn decode(raw: &[u8]) -> Json {
     coglet_types::decode_typed(RULE, raw).expect("surface output must be valid")

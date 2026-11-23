@@ -4,6 +4,7 @@
 
 pub mod backend;
 pub mod catalog;
+pub mod codec;
 pub mod config;
 pub mod error;
 pub mod ids;

@@ -10,7 +10,7 @@ name = "surface-rust-reference"
 suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
-command = ["target/debug/coglet-reference-surface", "--stdio"]
+command = ["target/release/coglet-reference-surface", "--stdio"]
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -21,7 +21,7 @@ name = "mock-surface"
 suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
-command = ["target/debug/coglet-mock-surface", "--stdio"]
+command = ["target/release/coglet-mock-surface", "--stdio"]
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -32,7 +32,7 @@ name = "surface-rust-reference-in-process"
 suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
-command = ["target/debug/coglet-reference-surface", "--stdio", "--transport", "in-process"]
+command = ["target/release/coglet-reference-surface", "--stdio", "--transport", "in-process"]
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -43,7 +43,7 @@ name = "mock-surface-in-process"
 suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
-command = ["target/debug/coglet-mock-surface", "--stdio", "--transport", "in-process"]
+command = ["target/release/coglet-mock-surface", "--stdio", "--transport", "in-process"]
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]

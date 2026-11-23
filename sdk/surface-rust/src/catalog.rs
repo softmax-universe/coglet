@@ -45,7 +45,7 @@ pub fn schema_uri(rule: &str) -> String {
 }
 
 pub fn validate_rule(rule: &str, value: &Json) -> Result<(), String> {
-    let v = coglet_types::Value::serialized(value).map_err(|e| e.to_string())?;
+    let v = crate::codec::to_profile(value)?;
     coglet_types::validate(&rule_key(rule), &v)
 }
 
