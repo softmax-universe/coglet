@@ -105,7 +105,8 @@ def lint(root):
     for base in ['crates', 'sdk', 'codegen']:
         paths.update(p for p in (root / base).rglob('*')
                      if p.is_file() and p.suffix in generated_suffixes
-                     and ('generated' in p.name.lower() or p.name == 'schema.json')
+                     and (any('generated' in part.lower() for part in p.relative_to(root / base).parts)
+                          or p.name == 'schema.json')
                      and '__pycache__' not in p.parts)
     bounds = re.compile(r'(?<![\w])(?:[0-9]+)?\*\s+[0-9]+|(?<![\w])[0-9]+\s+\*[0-9]*')
     for path in sorted(paths):

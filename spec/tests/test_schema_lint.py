@@ -75,6 +75,29 @@ class SchemaLintTests(unittest.TestCase):
             path.write_text('root = {*0 tstr => tstr}\n; ignore [* 17 x]\nx = "literal * 2"\n')
             self.assertEqual(lint(root), [])
 
+    def test_actual_generated_output_paths_are_checked(self):
+        # All current outputs of codegen.generate.generate, including Java IR.
+        paths = [
+            'crates/coglet-types/src/generated.rs',
+            'sdk/surface-python/coglet_surface/generated.py',
+            'sdk/surface-go/types/generated.go',
+            'sdk/surface-java/src/main/java/org/coglet/surface/Generated.java',
+            'sdk/surface-java/src/main/resources/schema.json',
+            'sdk/surface-swift/Sources/CogletTypes/Generated/Types.swift',
+        ]
+        for relative in paths:
+            with self.subTest(path=relative), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                path = root / relative
+                path.parent.mkdir(parents=True)
+                path.write_text('"root = [* 17 uint]"\n')
+                self.assertEqual(lint(root), [{
+                    'file': relative, 'kind': 'spaced-cddl-bound',
+                    'line': 1, 'token': '* 17',
+                }])
+                path.write_text('"root = [*17 uint]"\n')
+                self.assertEqual(lint(root), [])
+
     def test_generated_output_is_checked(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
