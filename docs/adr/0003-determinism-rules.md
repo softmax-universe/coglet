@@ -1,7 +1,10 @@
-# ADR 0003: Determinism rules for coglet Wasm modules
+# ADR-0003: Determinism rules for coglet Wasm modules
 
-- Status: proposed
+- Status: Proposed
 - Date: 2026-11-23
+- Authors: default (Hermes worker), task t_01a205d4af9cc355
+- Related PR: https://github.com/softmax-universe/coglet/pull/5
+- Supersedes / superseded by: none
 - Evidence: [`spikes/cross-engine-hash/`](../../spikes/cross-engine-hash/) and its CI job `spike-cross-engine-hash`
 - Relates to: `docs/design/coglet-runtime.md` §Revised runtime model; plan ground rule 5 ("both engines must reach identical state hashes")
 
@@ -66,7 +69,7 @@ isn't sorted, or environment-dependent values.
 sign-extension, saturating float-to-int, multi-value, bulk memory, reference types. Both engines
 are configured to the same set. Anything newer is added by a later ADR with a cross-engine test.
 
-## Conformance check
+## Verification
 
 `scripts/run-matrix.sh` (CI) asserts: the conforming guest passes lint and has identical per-step
 hashes on all four configurations; each counterexample is rejected by lint with the expected rule
@@ -97,3 +100,14 @@ a CI artifact.
 4. **WAMR variants.** Classic interpreter, `wamrc --opt-level`, `--enable-fp-contract`-like options, and the JIT tiers
    were not varied. Any that change float codegen need to be pinned in the engine config.
 5. **Spec versions.** Wasm 3.0 additions (GC, exceptions, tail calls, memory64) are excluded by R5 until tested.
+
+## Alternatives
+
+- **Engine flags only** (`cranelift_nan_canonicalization`): measured, diverges from WAMR at step 0 because WAMR has no equivalent. Rejected as the sole mechanism.
+- **Author discipline** (SDK scrubs NaNs before storing): unenforceable for arbitrary guest languages, and misses NaNs that are only hashed or compared bitwise. Rejected.
+- **Hash a canonical view of state** (canonicalize NaNs when hashing, not when computing): hides the divergence in the hash but lets coglet logic branch on payload bits (`to_bits`) differently per engine, so replay can still fork. Rejected, but cheap to add as a belt-and-braces measure.
+- **One engine only**: contradicts plan rule 5 and the iOS/EO1 constraints.
+
+## Approval
+
+Not yet reviewed. Pending independent review of PR #5; this ADR is `Proposed` and is not a decision until accepted.
