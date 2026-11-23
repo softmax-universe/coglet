@@ -5,7 +5,7 @@ package types
 import "github.com/softmax-universe/coglet/sdk/surface-go/codec"
 
 // SchemaJSON is the validation IR compiled from spec/messages/*.cddl.
-const SchemaJSON = "{\"act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"common::action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"common::coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"common::error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"common::event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"common::node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"common::profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"common::surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"common::version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"common::version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"},\"correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression::expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression::expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"speech::speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech::speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech::speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"surface::surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface::surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
+const SchemaJSON = "{\"abi\":{\"items\":[{\"name\":\"abi::trace\",\"op\":\"ref\"},{\"name\":\"abi::step-record\",\"op\":\"ref\"},{\"name\":\"abi::inbox-message\",\"op\":\"ref\"},{\"name\":\"abi::timer-request\",\"op\":\"ref\"},{\"name\":\"abi::llm-request\",\"op\":\"ref\"},{\"name\":\"abi::llm-reply\",\"op\":\"ref\"},{\"name\":\"abi::log-entry\",\"op\":\"ref\"},{\"name\":\"abi::manifest\",\"op\":\"ref\"}],\"op\":\"union\"},\"abi::abi\":{\"items\":[{\"name\":\"abi::trace\",\"op\":\"ref\"},{\"name\":\"abi::step-record\",\"op\":\"ref\"},{\"name\":\"abi::inbox-message\",\"op\":\"ref\"},{\"name\":\"abi::timer-request\",\"op\":\"ref\"},{\"name\":\"abi::llm-request\",\"op\":\"ref\"},{\"name\":\"abi::llm-reply\",\"op\":\"ref\"},{\"name\":\"abi::log-entry\",\"op\":\"ref\"},{\"name\":\"abi::manifest\",\"op\":\"ref\"}],\"op\":\"union\"},\"abi::boundary-change\":{\"fields\":[{\"name\":\"actor\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"audit_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ticket\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"common::correlation-id\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"method\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"target\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"path\",\"optional\":false,\"type\":{\"name\":\"abi::path\",\"op\":\"ref\"}},{\"name\":\"before\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hex\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"after\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hex\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}}],\"op\":\"record\"},\"abi::budgets\":{\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"compute_mode\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"max\":65536,\"min\":1,\"op\":\"range\"}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"max_events\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}}],\"op\":\"record\"},\"abi::call\":{\"items\":[{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"timer\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"emit\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"llm\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"log\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"timer\"},{\"op\":\"literal\",\"value\":\"emit\"},{\"op\":\"literal\",\"value\":\"llm\"},{\"op\":\"literal\",\"value\":\"log\"}],\"op\":\"union\"}},{\"name\":\"argument_hex\",\"optional\":false,\"type\":{\"name\":\"abi::hex\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":1}}],\"op\":\"record\"}],\"op\":\"union\"},\"abi::effect-ledger\":{\"fields\":[{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}}],\"op\":\"record\"},\"abi::engine\":{\"fields\":[{\"name\":\"build\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"policy\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"abi::failure\":{\"fields\":[{\"name\":\"kind\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"compute\"},{\"op\":\"literal\",\"value\":\"memory\"},{\"op\":\"literal\",\"value\":\"wall\"},{\"op\":\"literal\",\"value\":\"host_bytes\"},{\"op\":\"literal\",\"value\":\"trap\"},{\"op\":\"literal\",\"value\":\"guest_return\"},{\"op\":\"literal\",\"value\":\"invalid_argument\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::hash\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"abi::hex\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^([0-9a-f]{2})*$\"}],\"op\":\"intersection\"},\"abi::inbox-message\":{\"fields\":[{\"name\":\"index\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"sender\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"event\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::llm-reply\":{\"items\":[{\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"output\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"failed\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"abi::llm-request\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"model\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"input\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::log-entry\":{\"fields\":[{\"name\":\"level\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"debug\"},{\"op\":\"literal\",\"value\":\"info\"},{\"op\":\"literal\",\"value\":\"warn\"},{\"op\":\"literal\",\"value\":\"error\"}],\"op\":\"union\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"fields\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::manifest\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"subscriptions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"required_capabilities\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive_outputs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::path\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^/(code|data|logs)(/[^/]+)+$\"}],\"op\":\"intersection\"},\"abi::snapshot\":{\"item\":{\"name\":\"abi::hex\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"abi::step-record\":{\"items\":[{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hash\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"name\":\"abi::engine\",\"op\":\"ref\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::event\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::boundary-change\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::call\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::action\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"name\":\"abi::usage\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"committed\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hash\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"name\":\"abi::engine\",\"op\":\"ref\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::event\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::boundary-change\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::call\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::action\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"name\":\"abi::usage\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"aborted\"}},{\"name\":\"failure\",\"optional\":false,\"type\":{\"name\":\"abi::failure\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"abi::timer-request\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"at\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"abi::trace\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"initial_effect_ids\",\"optional\":false,\"type\":{\"name\":\"abi::effect-ledger\",\"op\":\"ref\"}},{\"name\":\"initial_inbox_wakes\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::uint64\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"initial_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"initial_timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"initial_llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"records\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::step-record\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"blobs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::hex\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"}}],\"op\":\"record\"},\"abi::usage\":{\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"boundary-change\":{\"fields\":[{\"name\":\"actor\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"audit_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ticket\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"common::correlation-id\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"method\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"target\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"path\",\"optional\":false,\"type\":{\"name\":\"abi::path\",\"op\":\"ref\"}},{\"name\":\"before\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hex\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"after\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hex\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}}],\"op\":\"record\"},\"budgets\":{\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"compute_mode\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"max\":65536,\"min\":1,\"op\":\"range\"}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"max_events\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}}],\"op\":\"record\"},\"call\":{\"items\":[{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"timer\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"emit\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"llm\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"log\"}},{\"name\":\"argument\",\"optional\":false,\"type\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"max\":4,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"op\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"timer\"},{\"op\":\"literal\",\"value\":\"emit\"},{\"op\":\"literal\",\"value\":\"llm\"},{\"op\":\"literal\",\"value\":\"log\"}],\"op\":\"union\"}},{\"name\":\"argument_hex\",\"optional\":false,\"type\":{\"name\":\"abi::hex\",\"op\":\"ref\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":1}}],\"op\":\"record\"}],\"op\":\"union\"},\"cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"common::action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"common::coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"common::error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"common::event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"common::node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"common::profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"common::surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"common::version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"common::version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"},\"correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"effect-ledger\":{\"fields\":[{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}}],\"op\":\"record\"},\"engine\":{\"fields\":[{\"name\":\"build\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"policy\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression::expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression::expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"failure\":{\"fields\":[{\"name\":\"kind\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"compute\"},{\"op\":\"literal\",\"value\":\"memory\"},{\"op\":\"literal\",\"value\":\"wall\"},{\"op\":\"literal\",\"value\":\"host_bytes\"},{\"op\":\"literal\",\"value\":\"trap\"},{\"op\":\"literal\",\"value\":\"guest_return\"},{\"op\":\"literal\",\"value\":\"invalid_argument\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"},\"grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hash\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hex\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^([0-9a-f]{2})*$\"}],\"op\":\"intersection\"},\"hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"inbox-message\":{\"fields\":[{\"name\":\"index\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"sender\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"event\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},\"kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"llm-reply\":{\"items\":[{\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"output\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"request_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"failed\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"llm-request\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"model\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"input\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"log-entry\":{\"fields\":[{\"name\":\"level\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"debug\"},{\"op\":\"literal\",\"value\":\"info\"},{\"op\":\"literal\",\"value\":\"warn\"},{\"op\":\"literal\",\"value\":\"error\"}],\"op\":\"union\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"fields\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"manifest\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"subscriptions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"required_capabilities\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive_outputs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}}],\"op\":\"record\"},\"method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"path\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^/(code|data|logs)(/[^/]+)+$\"}],\"op\":\"intersection\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"snapshot\":{\"item\":{\"name\":\"abi::hex\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"speech::speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech::speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech::speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"step-record\":{\"items\":[{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hash\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"name\":\"abi::engine\",\"op\":\"ref\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::event\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::boundary-change\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::call\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::action\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"name\":\"abi::usage\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"committed\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"step\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"seed\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"previous\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"abi::hash\",\"op\":\"ref\"},{\"op\":\"literal\",\"value\":null}],\"op\":\"union\"}},{\"name\":\"code_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"manifest_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"before_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"input_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"output_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"record_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"engine\",\"optional\":false,\"type\":{\"name\":\"abi::engine\",\"op\":\"ref\"}},{\"name\":\"budgets\",\"optional\":false,\"type\":{\"name\":\"abi::budgets\",\"op\":\"ref\"}},{\"name\":\"grants\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::event\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"boundary\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::boundary-change\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"calls\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::call\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::action\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"logs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::log-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"input_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"output_files\",\"optional\":false,\"type\":{\"name\":\"abi::snapshot\",\"op\":\"ref\"}},{\"name\":\"usage\",\"optional\":false,\"type\":{\"name\":\"abi::usage\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"aborted\"}},{\"name\":\"failure\",\"optional\":false,\"type\":{\"name\":\"abi::failure\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"surface::surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface::surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"timer-request\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"at\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"trace\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"0.1\"}},{\"name\":\"trace_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"initial_effect_ids\",\"optional\":false,\"type\":{\"name\":\"abi::effect-ledger\",\"op\":\"ref\"}},{\"name\":\"initial_inbox_wakes\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::uint64\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"initial_hash\",\"optional\":false,\"type\":{\"name\":\"abi::hash\",\"op\":\"ref\"}},{\"name\":\"initial_timers\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::timer-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"initial_llm_requests\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::llm-request\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"records\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::step-record\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}},{\"name\":\"blobs\",\"optional\":false,\"type\":{\"item\":{\"name\":\"abi::hex\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"}}],\"op\":\"record\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"usage\":{\"fields\":[{\"name\":\"compute\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"memory_pages\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"wall_time_us\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"host_bytes\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
 
 var schema = codec.MustParseSchema(SchemaJSON)
 
@@ -25,6 +25,146 @@ func Decode(rule string, raw []byte) (any, error) {
 // Validate checks v against the named rule without returning bytes.
 func Validate(rule string, v any) error {
 	return schema.Validate(rule, v)
+}
+
+// AbiAbi is CDDL rule 'abi::abi'; constraints are enforced by Encode/Decode.
+type AbiAbi = Abi
+
+func asAbiAbi(x any) (AbiAbi, error) {
+	return asAbi(x)
+}
+
+// AbiHash is CDDL rule 'abi::hash'; constraints are enforced by Encode/Decode.
+type AbiHash = Hash
+
+func asAbiHash(x any) (AbiHash, error) {
+	return asHash(x)
+}
+
+// AbiHex is CDDL rule 'abi::hex'; constraints are enforced by Encode/Decode.
+type AbiHex = Hex
+
+func asAbiHex(x any) (AbiHex, error) {
+	return asHex(x)
+}
+
+// AbiPath is CDDL rule 'abi::path'; constraints are enforced by Encode/Decode.
+type AbiPath = Path
+
+func asAbiPath(x any) (AbiPath, error) {
+	return asPath(x)
+}
+
+// AbiSnapshot is CDDL rule 'abi::snapshot'; constraints are enforced by Encode/Decode.
+type AbiSnapshot = Snapshot
+
+func asAbiSnapshot(x any) (AbiSnapshot, error) {
+	return asSnapshot(x)
+}
+
+// AbiBudgets is CDDL rule 'abi::budgets'; constraints are enforced by Encode/Decode.
+type AbiBudgets = Budgets
+
+func asAbiBudgets(x any) (AbiBudgets, error) {
+	return asBudgets(x)
+}
+
+// AbiTimerRequest is CDDL rule 'abi::timer-request'; constraints are enforced by Encode/Decode.
+type AbiTimerRequest = TimerRequest
+
+func asAbiTimerRequest(x any) (AbiTimerRequest, error) {
+	return asTimerRequest(x)
+}
+
+// AbiLlmRequest is CDDL rule 'abi::llm-request'; constraints are enforced by Encode/Decode.
+type AbiLlmRequest = LlmRequest
+
+func asAbiLlmRequest(x any) (AbiLlmRequest, error) {
+	return asLlmRequest(x)
+}
+
+// AbiLogEntry is CDDL rule 'abi::log-entry'; constraints are enforced by Encode/Decode.
+type AbiLogEntry = LogEntry
+
+func asAbiLogEntry(x any) (AbiLogEntry, error) {
+	return asLogEntry(x)
+}
+
+// AbiLlmReply is CDDL rule 'abi::llm-reply'; constraints are enforced by Encode/Decode.
+type AbiLlmReply = LlmReply
+
+func asAbiLlmReply(x any) (AbiLlmReply, error) {
+	return asLlmReply(x)
+}
+
+// AbiInboxMessage is CDDL rule 'abi::inbox-message'; constraints are enforced by Encode/Decode.
+type AbiInboxMessage = InboxMessage
+
+func asAbiInboxMessage(x any) (AbiInboxMessage, error) {
+	return asInboxMessage(x)
+}
+
+// AbiCall is CDDL rule 'abi::call'; constraints are enforced by Encode/Decode.
+type AbiCall = Call
+
+func asAbiCall(x any) (AbiCall, error) {
+	return asCall(x)
+}
+
+// AbiBoundaryChange is CDDL rule 'abi::boundary-change'; constraints are enforced by Encode/Decode.
+type AbiBoundaryChange = BoundaryChange
+
+func asAbiBoundaryChange(x any) (AbiBoundaryChange, error) {
+	return asBoundaryChange(x)
+}
+
+// AbiEngine is CDDL rule 'abi::engine'; constraints are enforced by Encode/Decode.
+type AbiEngine = Engine
+
+func asAbiEngine(x any) (AbiEngine, error) {
+	return asEngine(x)
+}
+
+// AbiUsage is CDDL rule 'abi::usage'; constraints are enforced by Encode/Decode.
+type AbiUsage = Usage
+
+func asAbiUsage(x any) (AbiUsage, error) {
+	return asUsage(x)
+}
+
+// AbiFailure is CDDL rule 'abi::failure'; constraints are enforced by Encode/Decode.
+type AbiFailure = Failure
+
+func asAbiFailure(x any) (AbiFailure, error) {
+	return asFailure(x)
+}
+
+// AbiStepRecord is CDDL rule 'abi::step-record'; constraints are enforced by Encode/Decode.
+type AbiStepRecord = StepRecord
+
+func asAbiStepRecord(x any) (AbiStepRecord, error) {
+	return asStepRecord(x)
+}
+
+// AbiEffectLedger is CDDL rule 'abi::effect-ledger'; constraints are enforced by Encode/Decode.
+type AbiEffectLedger = EffectLedger
+
+func asAbiEffectLedger(x any) (AbiEffectLedger, error) {
+	return asEffectLedger(x)
+}
+
+// AbiTrace is CDDL rule 'abi::trace'; constraints are enforced by Encode/Decode.
+type AbiTrace = Trace
+
+func asAbiTrace(x any) (AbiTrace, error) {
+	return asTrace(x)
+}
+
+// AbiManifest is CDDL rule 'abi::manifest'; constraints are enforced by Encode/Decode.
+type AbiManifest = Manifest
+
+func asAbiManifest(x any) (AbiManifest, error) {
+	return asManifest(x)
 }
 
 // CommonCommon is CDDL rule 'common::common'; constraints are enforced by Encode/Decode.
@@ -431,6 +571,1599 @@ type SurfaceSurfaceMessage = SurfaceMessage
 
 func asSurfaceSurfaceMessage(x any) (SurfaceSurfaceMessage, error) {
 	return asSurfaceMessage(x)
+}
+
+// Abi is CDDL rule 'abi'; constraints are enforced by Encode/Decode.
+type Abi = any
+
+func asAbi(x any) (Abi, error) {
+	return codec.AsAny(x)
+}
+
+// Hash is CDDL rule 'hash'; constraints are enforced by Encode/Decode.
+type Hash = string
+
+func asHash(x any) (Hash, error) {
+	return codec.AsString(x)
+}
+
+// Hex is CDDL rule 'hex'; constraints are enforced by Encode/Decode.
+type Hex = string
+
+func asHex(x any) (Hex, error) {
+	return codec.AsString(x)
+}
+
+// Path is CDDL rule 'path'; constraints are enforced by Encode/Decode.
+type Path = string
+
+func asPath(x any) (Path, error) {
+	return codec.AsString(x)
+}
+
+// Snapshot is CDDL rule 'snapshot'; constraints are enforced by Encode/Decode.
+type Snapshot = map[string]AbiHex
+
+func asSnapshot(x any) (Snapshot, error) {
+	return (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(x)
+}
+
+// Budgets is CDDL rule 'budgets'. Optional fields are pointers; nil means absent.
+type Budgets struct {
+	Compute     uint64
+	ComputeMode string
+	MemoryPages uint64
+	WallTimeUs  uint64
+	MaxEvents   uint64
+	HostBytes   uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Budgets) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["compute"] = v.Compute
+	m["compute_mode"] = v.ComputeMode
+	m["memory_pages"] = v.MemoryPages
+	m["wall_time_us"] = v.WallTimeUs
+	m["max_events"] = v.MaxEvents
+	m["host_bytes"] = v.HostBytes
+	return m
+}
+
+func asBudgets(x any) (Budgets, error) {
+	var out Budgets
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Compute, err = codec.AsUint64(m["compute"]); err != nil {
+		return out, err
+	}
+	if out.ComputeMode, err = codec.AsString(m["compute_mode"]); err != nil {
+		return out, err
+	}
+	if out.MemoryPages, err = codec.AsUint64(m["memory_pages"]); err != nil {
+		return out, err
+	}
+	if out.WallTimeUs, err = codec.AsUint64(m["wall_time_us"]); err != nil {
+		return out, err
+	}
+	if out.MaxEvents, err = codec.AsUint64(m["max_events"]); err != nil {
+		return out, err
+	}
+	if out.HostBytes, err = codec.AsUint64(m["host_bytes"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Budgets) ToCBOR() ([]byte, error) {
+	return schema.Encode("budgets", v)
+}
+
+// DecodeBudgets strictly decodes and validates a budgets item.
+func DecodeBudgets(raw []byte) (Budgets, error) {
+	var zero Budgets
+	v, err := schema.Decode("budgets", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asBudgets(v)
+}
+
+// TimerRequest is CDDL rule 'timer-request'. Optional fields are pointers; nil means absent.
+type TimerRequest struct {
+	Id CommonCorrelationId
+	At CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v TimerRequest) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["id"] = v.Id
+	m["at"] = v.At
+	return m
+}
+
+func asTimerRequest(x any) (TimerRequest, error) {
+	var out TimerRequest
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Id, err = asCommonCorrelationId(m["id"]); err != nil {
+		return out, err
+	}
+	if out.At, err = asCommonUint64(m["at"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v TimerRequest) ToCBOR() ([]byte, error) {
+	return schema.Encode("timer-request", v)
+}
+
+// DecodeTimerRequest strictly decodes and validates a timer-request item.
+func DecodeTimerRequest(raw []byte) (TimerRequest, error) {
+	var zero TimerRequest
+	v, err := schema.Decode("timer-request", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asTimerRequest(v)
+}
+
+// LlmRequest is CDDL rule 'llm-request'. Optional fields are pointers; nil means absent.
+type LlmRequest struct {
+	Id            CommonCorrelationId
+	CorrelationId CommonCorrelationId
+	Capability    CommonCapabilityName
+	Model         string
+	Input         CommonProfileMap
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v LlmRequest) ToValue() map[string]any {
+	m := make(map[string]any, 5)
+	m["id"] = v.Id
+	m["correlation_id"] = v.CorrelationId
+	m["capability"] = v.Capability
+	m["model"] = v.Model
+	m["input"] = v.Input
+	return m
+}
+
+func asLlmRequest(x any) (LlmRequest, error) {
+	var out LlmRequest
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Id, err = asCommonCorrelationId(m["id"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	if out.Capability, err = asCommonCapabilityName(m["capability"]); err != nil {
+		return out, err
+	}
+	if out.Model, err = codec.AsString(m["model"]); err != nil {
+		return out, err
+	}
+	if out.Input, err = asCommonProfileMap(m["input"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v LlmRequest) ToCBOR() ([]byte, error) {
+	return schema.Encode("llm-request", v)
+}
+
+// DecodeLlmRequest strictly decodes and validates a llm-request item.
+func DecodeLlmRequest(raw []byte) (LlmRequest, error) {
+	var zero LlmRequest
+	v, err := schema.Decode("llm-request", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asLlmRequest(v)
+}
+
+// LogEntry is CDDL rule 'log-entry'. Optional fields are pointers; nil means absent.
+type LogEntry struct {
+	Level   string
+	Message string
+	Fields  CommonProfileMap
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v LogEntry) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["level"] = v.Level
+	m["message"] = v.Message
+	m["fields"] = v.Fields
+	return m
+}
+
+func asLogEntry(x any) (LogEntry, error) {
+	var out LogEntry
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Level, err = codec.AsString(m["level"]); err != nil {
+		return out, err
+	}
+	if out.Message, err = codec.AsString(m["message"]); err != nil {
+		return out, err
+	}
+	if out.Fields, err = asCommonProfileMap(m["fields"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v LogEntry) ToCBOR() ([]byte, error) {
+	return schema.Encode("log-entry", v)
+}
+
+// DecodeLogEntry strictly decodes and validates a log-entry item.
+func DecodeLogEntry(raw []byte) (LogEntry, error) {
+	var zero LogEntry
+	v, err := schema.Decode("log-entry", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asLogEntry(v)
+}
+
+// LlmReply is one of the record branches of CDDL rule 'llm-reply'.
+type LlmReply interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isLlmReply()
+}
+
+// LlmReply1 is branch 1 of CDDL rule 'llm-reply'. Optional fields are pointers; nil means absent.
+type LlmReply1 struct {
+	RequestId CommonCorrelationId
+	Status    string
+	Output    CommonProfileMap
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v LlmReply1) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["request_id"] = v.RequestId
+	m["status"] = v.Status
+	m["output"] = v.Output
+	return m
+}
+
+func asLlmReply1(x any) (LlmReply1, error) {
+	var out LlmReply1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.RequestId, err = asCommonCorrelationId(m["request_id"]); err != nil {
+		return out, err
+	}
+	if out.Status, err = codec.AsString(m["status"]); err != nil {
+		return out, err
+	}
+	if out.Output, err = asCommonProfileMap(m["output"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (LlmReply1) isLlmReply() {}
+
+// ToCBOR encodes the record as branch 1 of llm-reply.
+func (v LlmReply1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("llm-reply", 0, v)
+}
+
+// DecodeLlmReply1 decodes an item that matches branch 1 of llm-reply.
+func DecodeLlmReply1(raw []byte) (LlmReply1, error) {
+	var zero LlmReply1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("llm-reply", 0, v); err != nil {
+		return zero, err
+	}
+	return asLlmReply1(v)
+}
+
+// LlmReply2 is branch 2 of CDDL rule 'llm-reply'. Optional fields are pointers; nil means absent.
+type LlmReply2 struct {
+	RequestId CommonCorrelationId
+	Status    string
+	Error     CommonError
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v LlmReply2) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["request_id"] = v.RequestId
+	m["status"] = v.Status
+	m["error"] = v.Error
+	return m
+}
+
+func asLlmReply2(x any) (LlmReply2, error) {
+	var out LlmReply2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.RequestId, err = asCommonCorrelationId(m["request_id"]); err != nil {
+		return out, err
+	}
+	if out.Status, err = codec.AsString(m["status"]); err != nil {
+		return out, err
+	}
+	if out.Error, err = asCommonError(m["error"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (LlmReply2) isLlmReply() {}
+
+// ToCBOR encodes the record as branch 2 of llm-reply.
+func (v LlmReply2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("llm-reply", 1, v)
+}
+
+// DecodeLlmReply2 decodes an item that matches branch 2 of llm-reply.
+func DecodeLlmReply2(raw []byte) (LlmReply2, error) {
+	var zero LlmReply2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("llm-reply", 1, v); err != nil {
+		return zero, err
+	}
+	return asLlmReply2(v)
+}
+
+func asLlmReply(x any) (LlmReply, error) {
+	if schema.ValidateVariant("llm-reply", 0, x) == nil {
+		v, err := asLlmReply1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("llm-reply", 1, x) == nil {
+		v, err := asLlmReply2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeLlmReply strictly decodes and validates a llm-reply item into its branch.
+func DecodeLlmReply(raw []byte) (LlmReply, error) {
+	v, err := schema.Decode("llm-reply", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asLlmReply(v)
+}
+
+// InboxMessage is CDDL rule 'inbox-message'. Optional fields are pointers; nil means absent.
+type InboxMessage struct {
+	Index  CommonUint64
+	Id     CommonCorrelationId
+	Sender CommonSourceId
+	Event  CommonEvent
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v InboxMessage) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["index"] = v.Index
+	m["id"] = v.Id
+	m["sender"] = v.Sender
+	m["event"] = v.Event
+	return m
+}
+
+func asInboxMessage(x any) (InboxMessage, error) {
+	var out InboxMessage
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Index, err = asCommonUint64(m["index"]); err != nil {
+		return out, err
+	}
+	if out.Id, err = asCommonCorrelationId(m["id"]); err != nil {
+		return out, err
+	}
+	if out.Sender, err = asCommonSourceId(m["sender"]); err != nil {
+		return out, err
+	}
+	if out.Event, err = asCommonEvent(m["event"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v InboxMessage) ToCBOR() ([]byte, error) {
+	return schema.Encode("inbox-message", v)
+}
+
+// DecodeInboxMessage strictly decodes and validates a inbox-message item.
+func DecodeInboxMessage(raw []byte) (InboxMessage, error) {
+	var zero InboxMessage
+	v, err := schema.Decode("inbox-message", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asInboxMessage(v)
+}
+
+// Call is one of the record branches of CDDL rule 'call'.
+type Call interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isCall()
+}
+
+// Call1 is branch 1 of CDDL rule 'call'. Optional fields are pointers; nil means absent.
+type Call1 struct {
+	Op       string
+	Argument AbiTimerRequest
+	Result   uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Call1) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["op"] = v.Op
+	m["argument"] = v.Argument
+	m["result"] = v.Result
+	return m
+}
+
+func asCall1(x any) (Call1, error) {
+	var out Call1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Op, err = codec.AsString(m["op"]); err != nil {
+		return out, err
+	}
+	if out.Argument, err = asAbiTimerRequest(m["argument"]); err != nil {
+		return out, err
+	}
+	if out.Result, err = codec.AsUint64(m["result"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (Call1) isCall() {}
+
+// ToCBOR encodes the record as branch 1 of call.
+func (v Call1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("call", 0, v)
+}
+
+// DecodeCall1 decodes an item that matches branch 1 of call.
+func DecodeCall1(raw []byte) (Call1, error) {
+	var zero Call1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("call", 0, v); err != nil {
+		return zero, err
+	}
+	return asCall1(v)
+}
+
+// Call2 is branch 2 of CDDL rule 'call'. Optional fields are pointers; nil means absent.
+type Call2 struct {
+	Op       string
+	Argument CommonAction
+	Result   uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Call2) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["op"] = v.Op
+	m["argument"] = v.Argument
+	m["result"] = v.Result
+	return m
+}
+
+func asCall2(x any) (Call2, error) {
+	var out Call2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Op, err = codec.AsString(m["op"]); err != nil {
+		return out, err
+	}
+	if out.Argument, err = asCommonAction(m["argument"]); err != nil {
+		return out, err
+	}
+	if out.Result, err = codec.AsUint64(m["result"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (Call2) isCall() {}
+
+// ToCBOR encodes the record as branch 2 of call.
+func (v Call2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("call", 1, v)
+}
+
+// DecodeCall2 decodes an item that matches branch 2 of call.
+func DecodeCall2(raw []byte) (Call2, error) {
+	var zero Call2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("call", 1, v); err != nil {
+		return zero, err
+	}
+	return asCall2(v)
+}
+
+// Call3 is branch 3 of CDDL rule 'call'. Optional fields are pointers; nil means absent.
+type Call3 struct {
+	Op       string
+	Argument AbiLlmRequest
+	Result   uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Call3) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["op"] = v.Op
+	m["argument"] = v.Argument
+	m["result"] = v.Result
+	return m
+}
+
+func asCall3(x any) (Call3, error) {
+	var out Call3
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Op, err = codec.AsString(m["op"]); err != nil {
+		return out, err
+	}
+	if out.Argument, err = asAbiLlmRequest(m["argument"]); err != nil {
+		return out, err
+	}
+	if out.Result, err = codec.AsUint64(m["result"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (Call3) isCall() {}
+
+// ToCBOR encodes the record as branch 3 of call.
+func (v Call3) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("call", 2, v)
+}
+
+// DecodeCall3 decodes an item that matches branch 3 of call.
+func DecodeCall3(raw []byte) (Call3, error) {
+	var zero Call3
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("call", 2, v); err != nil {
+		return zero, err
+	}
+	return asCall3(v)
+}
+
+// Call4 is branch 4 of CDDL rule 'call'. Optional fields are pointers; nil means absent.
+type Call4 struct {
+	Op       string
+	Argument AbiLogEntry
+	Result   uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Call4) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["op"] = v.Op
+	m["argument"] = v.Argument
+	m["result"] = v.Result
+	return m
+}
+
+func asCall4(x any) (Call4, error) {
+	var out Call4
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Op, err = codec.AsString(m["op"]); err != nil {
+		return out, err
+	}
+	if out.Argument, err = asAbiLogEntry(m["argument"]); err != nil {
+		return out, err
+	}
+	if out.Result, err = codec.AsUint64(m["result"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (Call4) isCall() {}
+
+// ToCBOR encodes the record as branch 4 of call.
+func (v Call4) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("call", 3, v)
+}
+
+// DecodeCall4 decodes an item that matches branch 4 of call.
+func DecodeCall4(raw []byte) (Call4, error) {
+	var zero Call4
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("call", 3, v); err != nil {
+		return zero, err
+	}
+	return asCall4(v)
+}
+
+// Call5 is branch 5 of CDDL rule 'call'. Optional fields are pointers; nil means absent.
+type Call5 struct {
+	Op          string
+	ArgumentHex AbiHex
+	Result      uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Call5) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["op"] = v.Op
+	m["argument_hex"] = v.ArgumentHex
+	m["result"] = v.Result
+	return m
+}
+
+func asCall5(x any) (Call5, error) {
+	var out Call5
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Op, err = codec.AsString(m["op"]); err != nil {
+		return out, err
+	}
+	if out.ArgumentHex, err = asAbiHex(m["argument_hex"]); err != nil {
+		return out, err
+	}
+	if out.Result, err = codec.AsUint64(m["result"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (Call5) isCall() {}
+
+// ToCBOR encodes the record as branch 5 of call.
+func (v Call5) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("call", 4, v)
+}
+
+// DecodeCall5 decodes an item that matches branch 5 of call.
+func DecodeCall5(raw []byte) (Call5, error) {
+	var zero Call5
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("call", 4, v); err != nil {
+		return zero, err
+	}
+	return asCall5(v)
+}
+
+func asCall(x any) (Call, error) {
+	if schema.ValidateVariant("call", 0, x) == nil {
+		v, err := asCall1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("call", 1, x) == nil {
+		v, err := asCall2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("call", 2, x) == nil {
+		v, err := asCall3(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("call", 3, x) == nil {
+		v, err := asCall4(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("call", 4, x) == nil {
+		v, err := asCall5(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeCall strictly decodes and validates a call item into its branch.
+func DecodeCall(raw []byte) (Call, error) {
+	v, err := schema.Decode("call", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asCall(v)
+}
+
+// BoundaryChange is CDDL rule 'boundary-change'. Optional fields are pointers; nil means absent.
+type BoundaryChange struct {
+	Actor   CommonSourceId
+	AuditId CommonCorrelationId
+	Ticket  any
+	Method  CommonMethodName
+	Target  CommonCogletId
+	Path    AbiPath
+	Before  any
+	After   any
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v BoundaryChange) ToValue() map[string]any {
+	m := make(map[string]any, 8)
+	m["actor"] = v.Actor
+	m["audit_id"] = v.AuditId
+	m["ticket"] = v.Ticket
+	m["method"] = v.Method
+	m["target"] = v.Target
+	m["path"] = v.Path
+	m["before"] = v.Before
+	m["after"] = v.After
+	return m
+}
+
+func asBoundaryChange(x any) (BoundaryChange, error) {
+	var out BoundaryChange
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Actor, err = asCommonSourceId(m["actor"]); err != nil {
+		return out, err
+	}
+	if out.AuditId, err = asCommonCorrelationId(m["audit_id"]); err != nil {
+		return out, err
+	}
+	if out.Ticket, err = codec.AsAny(m["ticket"]); err != nil {
+		return out, err
+	}
+	if out.Method, err = asCommonMethodName(m["method"]); err != nil {
+		return out, err
+	}
+	if out.Target, err = asCommonCogletId(m["target"]); err != nil {
+		return out, err
+	}
+	if out.Path, err = asAbiPath(m["path"]); err != nil {
+		return out, err
+	}
+	if out.Before, err = codec.AsAny(m["before"]); err != nil {
+		return out, err
+	}
+	if out.After, err = codec.AsAny(m["after"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v BoundaryChange) ToCBOR() ([]byte, error) {
+	return schema.Encode("boundary-change", v)
+}
+
+// DecodeBoundaryChange strictly decodes and validates a boundary-change item.
+func DecodeBoundaryChange(raw []byte) (BoundaryChange, error) {
+	var zero BoundaryChange
+	v, err := schema.Decode("boundary-change", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asBoundaryChange(v)
+}
+
+// Engine is CDDL rule 'engine'. Optional fields are pointers; nil means absent.
+type Engine struct {
+	Build  string
+	Policy string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Engine) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["build"] = v.Build
+	m["policy"] = v.Policy
+	return m
+}
+
+func asEngine(x any) (Engine, error) {
+	var out Engine
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Build, err = codec.AsString(m["build"]); err != nil {
+		return out, err
+	}
+	if out.Policy, err = codec.AsString(m["policy"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Engine) ToCBOR() ([]byte, error) {
+	return schema.Encode("engine", v)
+}
+
+// DecodeEngine strictly decodes and validates a engine item.
+func DecodeEngine(raw []byte) (Engine, error) {
+	var zero Engine
+	v, err := schema.Decode("engine", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asEngine(v)
+}
+
+// Usage is CDDL rule 'usage'. Optional fields are pointers; nil means absent.
+type Usage struct {
+	Compute     CommonUint64
+	MemoryPages CommonUint64
+	WallTimeUs  CommonUint64
+	HostBytes   CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Usage) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["compute"] = v.Compute
+	m["memory_pages"] = v.MemoryPages
+	m["wall_time_us"] = v.WallTimeUs
+	m["host_bytes"] = v.HostBytes
+	return m
+}
+
+func asUsage(x any) (Usage, error) {
+	var out Usage
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Compute, err = asCommonUint64(m["compute"]); err != nil {
+		return out, err
+	}
+	if out.MemoryPages, err = asCommonUint64(m["memory_pages"]); err != nil {
+		return out, err
+	}
+	if out.WallTimeUs, err = asCommonUint64(m["wall_time_us"]); err != nil {
+		return out, err
+	}
+	if out.HostBytes, err = asCommonUint64(m["host_bytes"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Usage) ToCBOR() ([]byte, error) {
+	return schema.Encode("usage", v)
+}
+
+// DecodeUsage strictly decodes and validates a usage item.
+func DecodeUsage(raw []byte) (Usage, error) {
+	var zero Usage
+	v, err := schema.Decode("usage", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asUsage(v)
+}
+
+// Failure is CDDL rule 'failure'. Optional fields are pointers; nil means absent.
+type Failure struct {
+	Kind  string
+	Error CommonError
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Failure) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["kind"] = v.Kind
+	m["error"] = v.Error
+	return m
+}
+
+func asFailure(x any) (Failure, error) {
+	var out Failure
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Kind, err = codec.AsString(m["kind"]); err != nil {
+		return out, err
+	}
+	if out.Error, err = asCommonError(m["error"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Failure) ToCBOR() ([]byte, error) {
+	return schema.Encode("failure", v)
+}
+
+// DecodeFailure strictly decodes and validates a failure item.
+func DecodeFailure(raw []byte) (Failure, error) {
+	var zero Failure
+	v, err := schema.Decode("failure", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asFailure(v)
+}
+
+// StepRecord is one of the record branches of CDDL rule 'step-record'.
+type StepRecord interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isStepRecord()
+}
+
+// StepRecord1 is branch 1 of CDDL rule 'step-record'. Optional fields are pointers; nil means absent.
+type StepRecord1 struct {
+	Version      string
+	TraceId      CommonCorrelationId
+	Coglet       CommonCogletId
+	Step         CommonUint64
+	LogicalTime  CommonUint64
+	Seed         CommonUint64
+	Previous     any
+	CodeHash     AbiHash
+	ManifestHash AbiHash
+	BeforeHash   AbiHash
+	InputHash    AbiHash
+	OutputHash   AbiHash
+	RecordHash   AbiHash
+	Engine       AbiEngine
+	Budgets      AbiBudgets
+	Grants       []CommonCapabilityName
+	Events       []CommonEvent
+	Boundary     []AbiBoundaryChange
+	Calls        []AbiCall
+	Actions      []CommonAction
+	Timers       []AbiTimerRequest
+	LlmRequests  []AbiLlmRequest
+	Logs         []AbiLogEntry
+	InputFiles   AbiSnapshot
+	OutputFiles  AbiSnapshot
+	Usage        AbiUsage
+	Status       string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v StepRecord1) ToValue() map[string]any {
+	m := make(map[string]any, 27)
+	m["version"] = v.Version
+	m["trace_id"] = v.TraceId
+	m["coglet"] = v.Coglet
+	m["step"] = v.Step
+	m["logical_time"] = v.LogicalTime
+	m["seed"] = v.Seed
+	m["previous"] = v.Previous
+	m["code_hash"] = v.CodeHash
+	m["manifest_hash"] = v.ManifestHash
+	m["before_hash"] = v.BeforeHash
+	m["input_hash"] = v.InputHash
+	m["output_hash"] = v.OutputHash
+	m["record_hash"] = v.RecordHash
+	m["engine"] = v.Engine
+	m["budgets"] = v.Budgets
+	m["grants"] = v.Grants
+	m["events"] = v.Events
+	m["boundary"] = v.Boundary
+	m["calls"] = v.Calls
+	m["actions"] = v.Actions
+	m["timers"] = v.Timers
+	m["llm_requests"] = v.LlmRequests
+	m["logs"] = v.Logs
+	m["input_files"] = v.InputFiles
+	m["output_files"] = v.OutputFiles
+	m["usage"] = v.Usage
+	m["status"] = v.Status
+	return m
+}
+
+func asStepRecord1(x any) (StepRecord1, error) {
+	var out StepRecord1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Version, err = codec.AsString(m["version"]); err != nil {
+		return out, err
+	}
+	if out.TraceId, err = asCommonCorrelationId(m["trace_id"]); err != nil {
+		return out, err
+	}
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
+		return out, err
+	}
+	if out.Step, err = asCommonUint64(m["step"]); err != nil {
+		return out, err
+	}
+	if out.LogicalTime, err = asCommonUint64(m["logical_time"]); err != nil {
+		return out, err
+	}
+	if out.Seed, err = asCommonUint64(m["seed"]); err != nil {
+		return out, err
+	}
+	if out.Previous, err = codec.AsAny(m["previous"]); err != nil {
+		return out, err
+	}
+	if out.CodeHash, err = asAbiHash(m["code_hash"]); err != nil {
+		return out, err
+	}
+	if out.ManifestHash, err = asAbiHash(m["manifest_hash"]); err != nil {
+		return out, err
+	}
+	if out.BeforeHash, err = asAbiHash(m["before_hash"]); err != nil {
+		return out, err
+	}
+	if out.InputHash, err = asAbiHash(m["input_hash"]); err != nil {
+		return out, err
+	}
+	if out.OutputHash, err = asAbiHash(m["output_hash"]); err != nil {
+		return out, err
+	}
+	if out.RecordHash, err = asAbiHash(m["record_hash"]); err != nil {
+		return out, err
+	}
+	if out.Engine, err = asAbiEngine(m["engine"]); err != nil {
+		return out, err
+	}
+	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
+		return out, err
+	}
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+		return out, err
+	}
+	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+		return out, err
+	}
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+		return out, err
+	}
+	if out.Calls, err = (func(x any) ([]AbiCall, error) { return codec.AsList(x, asAbiCall) })(m["calls"]); err != nil {
+		return out, err
+	}
+	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+		return out, err
+	}
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+		return out, err
+	}
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+		return out, err
+	}
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+		return out, err
+	}
+	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
+		return out, err
+	}
+	if out.OutputFiles, err = asAbiSnapshot(m["output_files"]); err != nil {
+		return out, err
+	}
+	if out.Usage, err = asAbiUsage(m["usage"]); err != nil {
+		return out, err
+	}
+	if out.Status, err = codec.AsString(m["status"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (StepRecord1) isStepRecord() {}
+
+// ToCBOR encodes the record as branch 1 of step-record.
+func (v StepRecord1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("step-record", 0, v)
+}
+
+// DecodeStepRecord1 decodes an item that matches branch 1 of step-record.
+func DecodeStepRecord1(raw []byte) (StepRecord1, error) {
+	var zero StepRecord1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("step-record", 0, v); err != nil {
+		return zero, err
+	}
+	return asStepRecord1(v)
+}
+
+// StepRecord2 is branch 2 of CDDL rule 'step-record'. Optional fields are pointers; nil means absent.
+type StepRecord2 struct {
+	Version      string
+	TraceId      CommonCorrelationId
+	Coglet       CommonCogletId
+	Step         CommonUint64
+	LogicalTime  CommonUint64
+	Seed         CommonUint64
+	Previous     any
+	CodeHash     AbiHash
+	ManifestHash AbiHash
+	BeforeHash   AbiHash
+	InputHash    AbiHash
+	OutputHash   AbiHash
+	RecordHash   AbiHash
+	Engine       AbiEngine
+	Budgets      AbiBudgets
+	Grants       []CommonCapabilityName
+	Events       []CommonEvent
+	Boundary     []AbiBoundaryChange
+	Calls        []AbiCall
+	Actions      []CommonAction
+	Timers       []AbiTimerRequest
+	LlmRequests  []AbiLlmRequest
+	Logs         []AbiLogEntry
+	InputFiles   AbiSnapshot
+	OutputFiles  AbiSnapshot
+	Usage        AbiUsage
+	Status       string
+	Failure      AbiFailure
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v StepRecord2) ToValue() map[string]any {
+	m := make(map[string]any, 28)
+	m["version"] = v.Version
+	m["trace_id"] = v.TraceId
+	m["coglet"] = v.Coglet
+	m["step"] = v.Step
+	m["logical_time"] = v.LogicalTime
+	m["seed"] = v.Seed
+	m["previous"] = v.Previous
+	m["code_hash"] = v.CodeHash
+	m["manifest_hash"] = v.ManifestHash
+	m["before_hash"] = v.BeforeHash
+	m["input_hash"] = v.InputHash
+	m["output_hash"] = v.OutputHash
+	m["record_hash"] = v.RecordHash
+	m["engine"] = v.Engine
+	m["budgets"] = v.Budgets
+	m["grants"] = v.Grants
+	m["events"] = v.Events
+	m["boundary"] = v.Boundary
+	m["calls"] = v.Calls
+	m["actions"] = v.Actions
+	m["timers"] = v.Timers
+	m["llm_requests"] = v.LlmRequests
+	m["logs"] = v.Logs
+	m["input_files"] = v.InputFiles
+	m["output_files"] = v.OutputFiles
+	m["usage"] = v.Usage
+	m["status"] = v.Status
+	m["failure"] = v.Failure
+	return m
+}
+
+func asStepRecord2(x any) (StepRecord2, error) {
+	var out StepRecord2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Version, err = codec.AsString(m["version"]); err != nil {
+		return out, err
+	}
+	if out.TraceId, err = asCommonCorrelationId(m["trace_id"]); err != nil {
+		return out, err
+	}
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
+		return out, err
+	}
+	if out.Step, err = asCommonUint64(m["step"]); err != nil {
+		return out, err
+	}
+	if out.LogicalTime, err = asCommonUint64(m["logical_time"]); err != nil {
+		return out, err
+	}
+	if out.Seed, err = asCommonUint64(m["seed"]); err != nil {
+		return out, err
+	}
+	if out.Previous, err = codec.AsAny(m["previous"]); err != nil {
+		return out, err
+	}
+	if out.CodeHash, err = asAbiHash(m["code_hash"]); err != nil {
+		return out, err
+	}
+	if out.ManifestHash, err = asAbiHash(m["manifest_hash"]); err != nil {
+		return out, err
+	}
+	if out.BeforeHash, err = asAbiHash(m["before_hash"]); err != nil {
+		return out, err
+	}
+	if out.InputHash, err = asAbiHash(m["input_hash"]); err != nil {
+		return out, err
+	}
+	if out.OutputHash, err = asAbiHash(m["output_hash"]); err != nil {
+		return out, err
+	}
+	if out.RecordHash, err = asAbiHash(m["record_hash"]); err != nil {
+		return out, err
+	}
+	if out.Engine, err = asAbiEngine(m["engine"]); err != nil {
+		return out, err
+	}
+	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
+		return out, err
+	}
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+		return out, err
+	}
+	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+		return out, err
+	}
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+		return out, err
+	}
+	if out.Calls, err = (func(x any) ([]AbiCall, error) { return codec.AsList(x, asAbiCall) })(m["calls"]); err != nil {
+		return out, err
+	}
+	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+		return out, err
+	}
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+		return out, err
+	}
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+		return out, err
+	}
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+		return out, err
+	}
+	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
+		return out, err
+	}
+	if out.OutputFiles, err = asAbiSnapshot(m["output_files"]); err != nil {
+		return out, err
+	}
+	if out.Usage, err = asAbiUsage(m["usage"]); err != nil {
+		return out, err
+	}
+	if out.Status, err = codec.AsString(m["status"]); err != nil {
+		return out, err
+	}
+	if out.Failure, err = asAbiFailure(m["failure"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (StepRecord2) isStepRecord() {}
+
+// ToCBOR encodes the record as branch 2 of step-record.
+func (v StepRecord2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("step-record", 1, v)
+}
+
+// DecodeStepRecord2 decodes an item that matches branch 2 of step-record.
+func DecodeStepRecord2(raw []byte) (StepRecord2, error) {
+	var zero StepRecord2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("step-record", 1, v); err != nil {
+		return zero, err
+	}
+	return asStepRecord2(v)
+}
+
+func asStepRecord(x any) (StepRecord, error) {
+	if schema.ValidateVariant("step-record", 0, x) == nil {
+		v, err := asStepRecord1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("step-record", 1, x) == nil {
+		v, err := asStepRecord2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeStepRecord strictly decodes and validates a step-record item into its branch.
+func DecodeStepRecord(raw []byte) (StepRecord, error) {
+	v, err := schema.Decode("step-record", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asStepRecord(v)
+}
+
+// EffectLedger is CDDL rule 'effect-ledger'. Optional fields are pointers; nil means absent.
+type EffectLedger struct {
+	Actions     []CommonCorrelationId
+	Timers      []CommonCorrelationId
+	LlmRequests []CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v EffectLedger) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["actions"] = v.Actions
+	m["timers"] = v.Timers
+	m["llm_requests"] = v.LlmRequests
+	return m
+}
+
+func asEffectLedger(x any) (EffectLedger, error) {
+	var out EffectLedger
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Actions, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["actions"]); err != nil {
+		return out, err
+	}
+	if out.Timers, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["timers"]); err != nil {
+		return out, err
+	}
+	if out.LlmRequests, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["llm_requests"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v EffectLedger) ToCBOR() ([]byte, error) {
+	return schema.Encode("effect-ledger", v)
+}
+
+// DecodeEffectLedger strictly decodes and validates a effect-ledger item.
+func DecodeEffectLedger(raw []byte) (EffectLedger, error) {
+	var zero EffectLedger
+	v, err := schema.Decode("effect-ledger", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asEffectLedger(v)
+}
+
+// Trace is CDDL rule 'trace'. Optional fields are pointers; nil means absent.
+type Trace struct {
+	Version            string
+	TraceId            CommonCorrelationId
+	Coglet             CommonCogletId
+	InitialEffectIds   AbiEffectLedger
+	InitialInboxWakes  []CommonUint64
+	InitialHash        AbiHash
+	InitialTimers      []AbiTimerRequest
+	InitialLlmRequests []AbiLlmRequest
+	Records            []AbiStepRecord
+	Blobs              map[string]AbiHex
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Trace) ToValue() map[string]any {
+	m := make(map[string]any, 10)
+	m["version"] = v.Version
+	m["trace_id"] = v.TraceId
+	m["coglet"] = v.Coglet
+	m["initial_effect_ids"] = v.InitialEffectIds
+	m["initial_inbox_wakes"] = v.InitialInboxWakes
+	m["initial_hash"] = v.InitialHash
+	m["initial_timers"] = v.InitialTimers
+	m["initial_llm_requests"] = v.InitialLlmRequests
+	m["records"] = v.Records
+	m["blobs"] = v.Blobs
+	return m
+}
+
+func asTrace(x any) (Trace, error) {
+	var out Trace
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Version, err = codec.AsString(m["version"]); err != nil {
+		return out, err
+	}
+	if out.TraceId, err = asCommonCorrelationId(m["trace_id"]); err != nil {
+		return out, err
+	}
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
+		return out, err
+	}
+	if out.InitialEffectIds, err = asAbiEffectLedger(m["initial_effect_ids"]); err != nil {
+		return out, err
+	}
+	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) { return codec.AsList(x, asCommonUint64) })(m["initial_inbox_wakes"]); err != nil {
+		return out, err
+	}
+	if out.InitialHash, err = asAbiHash(m["initial_hash"]); err != nil {
+		return out, err
+	}
+	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["initial_timers"]); err != nil {
+		return out, err
+	}
+	if out.InitialLlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["initial_llm_requests"]); err != nil {
+		return out, err
+	}
+	if out.Records, err = (func(x any) ([]AbiStepRecord, error) { return codec.AsList(x, asAbiStepRecord) })(m["records"]); err != nil {
+		return out, err
+	}
+	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(m["blobs"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Trace) ToCBOR() ([]byte, error) {
+	return schema.Encode("trace", v)
+}
+
+// DecodeTrace strictly decodes and validates a trace item.
+func DecodeTrace(raw []byte) (Trace, error) {
+	var zero Trace
+	v, err := schema.Decode("trace", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asTrace(v)
+}
+
+// Manifest is CDDL rule 'manifest'. Optional fields are pointers; nil means absent.
+type Manifest struct {
+	Version              string
+	Id                   CommonCogletId
+	Subscriptions        []CommonCapabilityName
+	RequiredCapabilities []CommonCapabilityName
+	ExclusiveOutputs     []CommonCapabilityName
+	Budgets              AbiBudgets
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Manifest) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["version"] = v.Version
+	m["id"] = v.Id
+	m["subscriptions"] = v.Subscriptions
+	m["required_capabilities"] = v.RequiredCapabilities
+	m["exclusive_outputs"] = v.ExclusiveOutputs
+	m["budgets"] = v.Budgets
+	return m
+}
+
+func asManifest(x any) (Manifest, error) {
+	var out Manifest
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Version, err = codec.AsString(m["version"]); err != nil {
+		return out, err
+	}
+	if out.Id, err = asCommonCogletId(m["id"]); err != nil {
+		return out, err
+	}
+	if out.Subscriptions, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["subscriptions"]); err != nil {
+		return out, err
+	}
+	if out.RequiredCapabilities, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["required_capabilities"]); err != nil {
+		return out, err
+	}
+	if out.ExclusiveOutputs, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["exclusive_outputs"]); err != nil {
+		return out, err
+	}
+	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Manifest) ToCBOR() ([]byte, error) {
+	return schema.Encode("manifest", v)
+}
+
+// DecodeManifest strictly decodes and validates a manifest item.
+func DecodeManifest(raw []byte) (Manifest, error) {
+	var zero Manifest
+	v, err := schema.Decode("manifest", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asManifest(v)
 }
 
 // Common is CDDL rule 'common'; constraints are enforced by Encode/Decode.

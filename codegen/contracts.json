@@ -1,5 +1,6 @@
 {
   "common": "generated",
+  "abi": "generated",
   "surface": "generated",
   "speech": "generated",
   "expression": "generated"
