@@ -1,6 +1,6 @@
 # ADR-0009: Spec v0 freeze
 
-- Status: Proposed
+- Status: Accepted (2026-11-23; freeze only, not implementation qualification)
 - Date: 2026-11-23
 - Authors: Coglet cross-spec freeze review
 - Related PR: https://github.com/softmax-universe/coglet/pull/36
@@ -9,10 +9,15 @@
 ## Context
 
 The v0 freeze is the serial gate in [the plan](../plan.md#phases-and-dependencies).
-This proposal is **not an announcement that the gate has passed**. The tag
-`spec-v0` must not be created until the cross-spec repairs, independent review,
-and exact-head fixture validation, generated-output check and harness self-test
-are green and the freeze PR is merged.
+David directed merge-as-is and fix-forward on 2026-11-23. PR #36 merged as
+`c9c22b6878898282848484c52df4d37c054f6720`; the published `spec-v0` tag stays on
+that commit and MUST NOT be moved. The freeze owner accepts this ADR under that
+instruction. Post-freeze corrections use reviewed follow-up PRs and contract
+changes still require an ADR. This acceptance does not qualify implementations.
+
+The proposal and milestone sections below retain their historical rationale;
+references there to pending acceptance describe their pre-freeze state. The
+Approval section records the final disposition, including the postmerge CI gap.
 
 The orchestrator reserved 0009 for this freeze. ADR 0004 already describes the
 hub protocol; the platform findings currently numbered 0002 will become 0008.
@@ -268,5 +273,24 @@ Required before acceptance:
 
 ## Approval
 
-Pending cross-spec repairs and independent exact-head review. Do not infer
-acceptance from this proposal's presence on a branch or in a draft PR.
+Accepted by the freeze owner on David's merge-as-is / fix-forward instruction,
+relayed by the orchestrator on 2026-11-23. The published tag records the original
+freeze merge, not this status clarification. M-D's exact head
+`910009f02e0c58affd9ea8761fda160e07d33f05` has green PR CI and separate-session
+delta approval with 88 passing spec tests; its tree equals the freeze merge.
+The final delta approval was recorded after merge, not retrospectively claimed
+as a premerge gate.
+
+The first postmerge conformance attempt (run `45153891816`) failed when rustfmt
+exited 1 during codegen freshness; its diagnostic was hidden by stderr capture.
+Attempt 2 succeeded on the identical tree, closing red main without a code fix;
+the original failure's cause is unproven. The follow-up PR preserves formatter
+stderr without weakening failure or freshness checks, so a future failure is
+diagnosable. Required CI and independent review still gate that PR's merge.
+No production protocol implementation was qualified by the harness loopback tests.
+
+ADRs 0001/0008 remain bounded spike evidence and ADR-0003's amended R4 remains
+the recorded-input policy, not proof of production transform qualification.
+Their remaining formal-status reconciliation and the M1 inventory belong to
+post-freeze owner `t_01a207e76001ac2c`; this freeze acceptance neither silently
+accepts those implementations nor waives the ledger's fail-closed gates.
