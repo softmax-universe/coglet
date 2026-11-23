@@ -30,6 +30,14 @@ class SwiftEmitterTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'identifier'):
                 generate_swift(parse('thing = {' + key + ': tstr}'))
 
+    def test_nonproductive_and_struct_only_recursion_fail_closed(self):
+        for cddl in ('cycle = cycle', 'a = b\nb = a',
+                     'cycle = cycle / null', 'cycle = { ? next: cycle }'):
+            with self.subTest(cddl=cddl), self.assertRaisesRegex(ValueError, 'recursive type cycle'):
+                generate_swift(parse(cddl))
+        # Recursive containers behind an indirect enum are productive.
+        self.assertIn('indirect enum Tree', generate_swift(parse('tree = null / [* tree]')))
+
     def test_unknown_ir_fails_closed(self):
         with self.assertRaises(ValueError):
             generate_swift({'thing': {'op': 'future-node'}})

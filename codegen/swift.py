@@ -38,6 +38,35 @@ def generate_swift(rules):
     for key in rules:
         register(key, name(key))
 
+    def references(node, layout=False):
+        op = node['op']
+        if op == 'ref':
+            return {node['name']}
+        if op == 'union':
+            return set() if layout else set().union(*(references(v) for v in node['items']))
+        if op == 'record' and layout:
+            return set().union(*(references(f['type'], True) for f in node['fields']))
+        return set()
+
+    # Transparent recursive aliases/unions consume no wire depth and cannot
+    # choose a productive typed branch. Reject them rather than looping during
+    # conversion. Struct-only recursion also has no finite Swift value layout;
+    # recursive arrays/maps/indirect unions remain supported.
+    for layout in (False, True):
+        active, done = set(), set()
+        def visit(key):
+            if key in active:
+                raise ValueError('unsupported Swift recursive type cycle: ' + key)
+            if key in done:
+                return
+            active.add(key)
+            for ref in references(rules[key], layout):
+                visit(ref)
+            active.remove(key)
+            done.add(key)
+        for key in rules:
+            visit(key)
+
     def typ(node, hint):
         op = node['op']
         if op == 'ref':
