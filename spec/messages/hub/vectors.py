@@ -32,7 +32,8 @@ with tempfile.TemporaryDirectory() as td:
     for purpose in ['delegation', 'hub-ref', 'published-ref', 'logs-ref']:
         statement = {'purpose': purpose, 'hub': hub, 'coglet': cid, 'generation': 1}
         if purpose == 'delegation':
-            statement.update(device=device, expires=4102444800, methods=['hub.events', 'hub.actions'])
+            statement.update(device=device, expires=4102444800,
+                             methods=['hub.install', 'hub.git.push', 'hub.status', 'hub.events', 'hub.actions'])
         else:
             ref = {'hub-ref': 'refs/heads/hub', 'published-ref': 'refs/published/main', 'logs-ref': 'refs/heads/logs'}[purpose]
             statement.update(ref=ref, old=None, new='d' * 40, archive_sha256='e' * 64)

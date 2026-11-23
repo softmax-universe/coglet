@@ -1128,12 +1128,15 @@
                 "device": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
                 "expires": 4102444800,
                 "methods": [
+                  "hub.install",
+                  "hub.git.push",
+                  "hub.status",
                   "hub.events",
                   "hub.actions"
                 ]
               },
               "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-              "signature": "6a12be7c803a9186852097ca078c92e20e7f426b7170c2aa28f373042950c39c398fc5a44937560e54f5349ee5f2c041198fb2a8bceba4295c5b140f11644e08"
+              "signature": "195f4d22e124505a02464393339d8e47a1d9d4149d977704d4ea0dd89c3a4e8305d2ff40b7994209d866972888e83a49cf32c10d43ed19634007844f550f070b"
             },
             "initial": {
               "statement": {
