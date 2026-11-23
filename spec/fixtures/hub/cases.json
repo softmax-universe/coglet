@@ -6187,5 +6187,1404 @@
     "type": "hub-ref",
     "valid": false,
     "value": "refs/heads/main"
+  },
+  {
+    "name": "hub-oid-end-control-0",
+    "type": "hub-oid",
+    "valid": true,
+    "value": "dddddddddddddddddddddddddddddddddddddddd",
+    "cbor_hex": "782864646464646464646464646464646464646464646464646464646464646464646464646464646464"
+  },
+  {
+    "name": "hub-oid-final-lf-0",
+    "type": "hub-oid",
+    "valid": false,
+    "value": "dddddddddddddddddddddddddddddddddddddddd\n"
+  },
+  {
+    "name": "hub-hash-end-control-0",
+    "type": "hub-hash",
+    "valid": true,
+    "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "cbor_hex": "784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565"
+  },
+  {
+    "name": "hub-hash-final-lf-0",
+    "type": "hub-hash",
+    "valid": false,
+    "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+  },
+  {
+    "name": "hub-signature-end-control-0",
+    "type": "hub-signature",
+    "valid": true,
+    "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "cbor_hex": "78806666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666"
+  },
+  {
+    "name": "hub-signature-final-lf-0",
+    "type": "hub-signature",
+    "valid": false,
+    "value": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n"
+  },
+  {
+    "name": "hub-secret-end-control-0",
+    "type": "hub-secret",
+    "valid": true,
+    "value": "1111111111111111111111111111111111111111111111111111111111111111",
+    "cbor_hex": "784031313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "hub-secret-final-lf-0",
+    "type": "hub-secret",
+    "valid": false,
+    "value": "1111111111111111111111111111111111111111111111111111111111111111\n"
+  },
+  {
+    "name": "hub-path-end-control-0",
+    "type": "hub-path",
+    "valid": true,
+    "value": "/data/state.json",
+    "cbor_hex": "702f646174612f73746174652e6a736f6e"
+  },
+  {
+    "name": "hub-path-final-lf-0",
+    "type": "hub-path",
+    "valid": false,
+    "value": "/data/state.json\n"
+  },
+  {
+    "name": "hub-path-end-control-1",
+    "type": "hub-path",
+    "valid": true,
+    "value": "/logs/run.jsonl",
+    "cbor_hex": "6f2f6c6f67732f72756e2e6a736f6e6c"
+  },
+  {
+    "name": "hub-path-final-lf-1",
+    "type": "hub-path",
+    "valid": false,
+    "value": "/logs/run.jsonl\n"
+  },
+  {
+    "name": "hub-path-end-control-2",
+    "type": "hub-path",
+    "valid": true,
+    "value": "@step/42",
+    "cbor_hex": "6840737465702f3432"
+  },
+  {
+    "name": "hub-path-final-lf-2",
+    "type": "hub-path",
+    "valid": false,
+    "value": "@step/42\n"
+  },
+  {
+    "name": "hub-write-path-end-control-0",
+    "type": "hub-write-path",
+    "valid": true,
+    "value": "/data/state.json",
+    "cbor_hex": "702f646174612f73746174652e6a736f6e"
+  },
+  {
+    "name": "hub-write-path-final-lf-0",
+    "type": "hub-write-path",
+    "valid": false,
+    "value": "/data/state.json\n"
+  },
+  {
+    "name": "hub-chunk-hex-end-control-0",
+    "type": "hub-chunk-hex",
+    "valid": true,
+    "value": "00",
+    "cbor_hex": "623030"
+  },
+  {
+    "name": "hub-chunk-hex-final-lf-0",
+    "type": "hub-chunk-hex",
+    "valid": false,
+    "value": "00\n"
+  },
+  {
+    "name": "hub-oid-nested-0-True-hub-git-push-request",
+    "type": "hub-git-push-request",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-oid-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-oid-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-oid-nested-0-False-hub-git-push-request",
+    "type": "hub-git-push-request",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd\n",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-oid-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd\n",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-oid-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd\n",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-hash-nested-0-True-hub-git-push-request",
+    "type": "hub-git-push-request",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-hash-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-hash-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c6875622e6769742e7075736866706172616d73a36473697a65016673686132353678406565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656566757064617465a3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-hash-nested-0-False-hub-git-push-request",
+    "type": "hub-git-push-request",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-hash-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-hash-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "hub.git.push",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "update": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "size": 1,
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\n"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-signature-nested-0-True-hub-install-request",
+    "type": "hub-install-request",
+    "valid": true,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646b6875622e696e7374616c6c66706172616d73a267696e697469616ca3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a64656c65676174696f6ea3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a76368756278406161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166646576696365784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161676578706972657300676d6574686f6473816a6875622e656e726f6c6c67707572706f73656a64656c65676174696f6e6a67656e65726174696f6e00667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-signature-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646b6875622e696e7374616c6c66706172616d73a267696e697469616ca3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a64656c65676174696f6ea3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a76368756278406161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166646576696365784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161676578706972657300676d6574686f6473816a6875622e656e726f6c6c67707572706f73656a64656c65676174696f6e6a67656e65726174696f6e00667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-signature-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646b6875622e696e7374616c6c66706172616d73a267696e697469616ca3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a863687562784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161636e6577782864646464646464646464646464646464646464646464646464646464646464646464646464646464636f6c64782864646464646464646464646464646464646464646464646464646464646464646464646464646464637265666e726566732f68656164732f68756266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167707572706f7365676875622d7265666a67656e65726174696f6e006e617263686976655f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a64656c65676174696f6ea3667369676e6572784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161697369676e6174757265788066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666973746174656d656e74a76368756278406161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166646576696365784061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161676578706972657300676d6574686f6473816a6875622e656e726f6c6c67707572706f73656a64656c65676174696f6e6a67656e65726174696f6e00667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-signature-nested-0-False-hub-install-request",
+    "type": "hub-install-request",
+    "valid": false,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-signature-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-signature-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "hub.install",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "delegation": {
+          "statement": {
+            "purpose": "delegation",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "device": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "generation": 0,
+            "expires": 0,
+            "methods": [
+              "hub.enroll"
+            ]
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n"
+        },
+        "initial": {
+          "statement": {
+            "purpose": "hub-ref",
+            "hub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ref": "refs/heads/hub",
+            "old": "dddddddddddddddddddddddddddddddddddddddd",
+            "new": "dddddddddddddddddddddddddddddddddddddddd",
+            "archive_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "generation": 0
+          },
+          "signer": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "signature": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-secret-nested-0-True-hub-enroll-request",
+    "type": "hub-enroll-request",
+    "valid": true,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163302e3166696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-secret-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163302e3166696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-secret-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163302e3166696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-secret-nested-0-False-hub-enroll-request",
+    "type": "hub-enroll-request",
+    "valid": false,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111\n"
+      }
+    }
+  },
+  {
+    "name": "hub-secret-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111\n"
+      }
+    }
+  },
+  {
+    "name": "hub-secret-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "hub.enroll",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "offer": {
+          "versions": [
+            "0.1"
+          ]
+        },
+        "invite": "1111111111111111111111111111111111111111111111111111111111111111\n"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-0-True-debug-read-request",
+    "type": "debug-read-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a36470617468702f646174612f73746174652e6a736f6e656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a36470617468702f646174612f73746174652e6a736f6e656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a36470617468702f646174612f73746174652e6a736f6e656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-0-False-debug-read-request",
+    "type": "debug-read-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-1-True-debug-read-request",
+    "type": "debug-read-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686f2f6c6f67732f72756e2e6a736f6e6c656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-1-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686f2f6c6f67732f72756e2e6a736f6e6c656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-1-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686f2f6c6f67732f72756e2e6a736f6e6c656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-1-False-debug-read-request",
+    "type": "debug-read-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-1-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-1-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/logs/run.jsonl\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-2-True-debug-read-request",
+    "type": "debug-read-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686840737465702f3432656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-2-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686840737465702f3432656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-2-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646a64656275672e7265616466706172616d73a364706174686840737465702f3432656c696d697401666f666673657400667461726765747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616167636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-path-nested-2-False-debug-read-request",
+    "type": "debug-read-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-2-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-path-nested-2-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "debug.read",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "@step/42\n",
+        "offset": 0,
+        "limit": 1
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-write-path-nested-0-True-debug-write-request",
+    "type": "debug-write-request",
+    "valid": true,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646b64656275672e777269746566706172616d73a46470617468702f646174612f73746174652e6a736f6e64746578746568656c6c6f656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626d65787065637465645f68617368784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-write-path-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646b64656275672e777269746566706172616d73a46470617468702f646174612f73746174652e6a736f6e64746578746568656c6c6f656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626d65787065637465645f68617368784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-write-path-nested-0-True-hub-request",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a5666d6574686f646b64656275672e777269746566706172616d73a46470617468702f646174612f73746174652e6a736f6e64746578746568656c6c6f656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626d65787065637465645f68617368784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565667461726765747847636f676c65743a616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-write-path-nested-0-False-debug-write-request",
+    "type": "debug-write-request",
+    "valid": false,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-write-path-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-write-path-nested-0-False-hub-request",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "debug.write",
+      "target": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "path": "/data/state.json\n",
+        "text": "hello",
+        "expected_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "hub-chunk-hex-nested-0-True-hub-chunk",
+    "type": "hub-chunk",
+    "valid": true,
+    "value": {
+      "type": "chunk",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "offset": 0,
+      "hex": "00"
+    },
+    "cbor_hex": "a4636865786230306474797065656368756e6b666f6666736574006e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-chunk-hex-nested-0-True-hub-frame",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "type": "chunk",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "offset": 0,
+      "hex": "00"
+    },
+    "cbor_hex": "a4636865786230306474797065656368756e6b666f6666736574006e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "hub-chunk-hex-nested-0-False-hub-chunk",
+    "type": "hub-chunk",
+    "valid": false,
+    "value": {
+      "type": "chunk",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "offset": 0,
+      "hex": "00\n"
+    }
+  },
+  {
+    "name": "hub-chunk-hex-nested-0-False-hub-frame",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "type": "chunk",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "offset": 0,
+      "hex": "00\n"
+    }
   }
 ]

@@ -21,12 +21,12 @@ hub-target = coglet-id / hub-null
 hub-maybe-step = uint64 / hub-null
 hub-maybe-error = error / hub-null
 hub-maybe-secret = hub-secret / hub-null
-hub-empty = {* 0 tstr => profile-value}
+hub-empty = {*0 tstr => profile-value}
 hub-state = "stopped" / "running" / "paused" / "faulted"
 hub-ref = "refs/heads/hub" / "refs/published/main" / "refs/heads/logs"
 hub-fetch-ref = "refs/published/main" / "refs/heads/logs"
 hub-method = "hub.enroll" / "hub.install" / "hub.start" / "hub.stop" / "hub.status" / "hub.git.push" / "hub.git.fetch" / "hub.events" / "hub.actions" / "debug.read" / "debug.write" / "debug.pause" / "debug.step" / "hub.inbox" / "hub.health" / "hub.receipt" / "hub.cancel"
-hub-methods = [* 17 hub-method]
+hub-methods = [*17 hub-method]
 hub-purpose-delegation = "delegation"
 hub-delegation-statement = {"purpose": hub-purpose-delegation, "coglet": coglet-id, "device": node-id, "hub": node-id, "generation": uint64, "expires": uint64, "methods": hub-methods}
 hub-ref-purpose = "hub-ref" / "published-ref" / "logs-ref"
@@ -44,9 +44,9 @@ hub-failed = "failed"
 hub-receipt-failed = {"operation_id": correlation-id, "state": hub-failed, "step": hub-null, "error": error}
 hub-mutation-receipt = hub-receipt-queued / hub-receipt-applied / hub-receipt-cancelled / hub-receipt-failed
 hub-inbox-delivery = {"id": correlation-id, "sender": source-id, "event": event}
-hub-event-batch = [* 64 event]
+hub-event-batch = [*64 event]
 hub-health-item = {"coglet": coglet-id, "status": hub-status}
-hub-health-items = [* 256 hub-health-item]
+hub-health-items = [*256 hub-health-item]
 hub-enroll-params = {"offer": version-offer, "invite": hub-maybe-secret}
 hub-install-params = {"delegation": hub-signed-delegation, "initial": hub-signed-ref}
 hub-push-params = {"update": hub-signed-ref, "size": hub-size, "sha256": hub-hash}

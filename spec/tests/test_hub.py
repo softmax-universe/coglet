@@ -60,6 +60,17 @@ class HubFixtures(unittest.TestCase):
         self.assertEqual(covered, set(self.root['$defs']))
         print(f'hub: {len(self.cases)} dual-schema cases; {len(covered)} golden rule vectors')
 
+    def test_standard_occurrence_and_absolute_end_regressions(self):
+        # RFC 8610 occur = [uint] "*" [uint]: no whitespace within bounds.
+        self.assertNotRegex(self.cddl, r'\*\s+\d')
+        for bound in ['*0 tstr', '*17 hub-method', '*64 event', '*256 hub-health-item']:
+            self.assertIn(bound, self.cddl)
+        for rule, schema in self.root['$defs'].items():
+            if 'pattern' in schema:
+                self.assertNotIn('$', schema['pattern'])
+                self.assertTrue(any(c['name'] == rule + '-final-lf-0' and not c['valid'] for c in self.cases))
+                self.assertTrue(any(c['name'] == rule + '-end-control-0' and c['valid'] for c in self.cases))
+
     def test_frame_rejections(self):
         cases = json.loads((SPEC / 'fixtures/hub/framing.json').read_text())
         self.assertTrue(cases)

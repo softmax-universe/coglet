@@ -39,7 +39,7 @@ def ref(name):
 def obj(name, fields, optional=()):
     c = ', '.join(('? ' if k in optional else '') + f'{json.dumps(k)}: {t}' for k, t in fields.items())
     if not fields:
-        c = '* 0 tstr => profile-value'
+        c = '*0 tstr => profile-value'
     add(name, '{' + c + '}', {'type': 'object', 'properties': {k: ref(t) for k, t in fields.items()},
         'required': [k for k in fields if k not in optional], 'additionalProperties': False},
         {k: copy.deepcopy(EX[t]) for k, t in fields.items() if k not in optional})
@@ -55,11 +55,15 @@ def union(name, names):
 
 
 def array(name, t, maximum):
-    return add(name, f'[* {maximum} {t}]', {'type': 'array', 'items': ref(t), 'maxItems': maximum}, [copy.deepcopy(EX[t])])
+    return add(name, f'[*{maximum} {t}]', {'type': 'array', 'items': ref(t), 'maxItems': maximum}, [copy.deepcopy(EX[t])])
 
 
 def text(name, regex, sample):
-    return add(name, 'tstr .regexp ' + json.dumps(regex), {'type': 'string', 'pattern': regex}, sample)
+    # JSON Schema searches rather than full-matches; $ accepts a final LF.
+    # Every $ here is an end assertion (none is escaped/in a character class).
+    # Replace ALL alternatives' ends with the portable absolute-end assertion.
+    pattern = regex.replace('$', r'(?![\s\S])')
+    return add(name, 'tstr .regexp ' + json.dumps(regex), {'type': 'string', 'pattern': pattern}, sample)
 
 
 def bounded(name, low, high):
@@ -197,6 +201,49 @@ for name, value in [('hub-timeout', 0), ('hub-timeout', 300001), ('hub-chunk-hex
                     ('hub-receipt-applied', {'operation_id': ID, 'state': 'applied', 'step': None, 'error': None}),
                     ('hub-event-batch', [EX['event']] * 65), ('hub-ref', 'refs/heads/main')]:
     cases.append({'name': f'negative-{len(cases)}', 'type': name, 'valid': False, 'value': value})
+# Whole-string grammar regressions, including both path alternatives, selected
+# rules, method-specific requests, and the enclosing public frame union.
+def fixture(name, rule, value, valid):
+    case = {'name': name, 'type': rule, 'valid': valid, 'value': value}
+    if valid:
+        case['cbor_hex'] = encode(value).hex()
+    cases.append(case)
+
+for rule, schema in D.items():
+    if 'pattern' in schema:
+        samples = [EX[rule]]
+        if rule == 'hub-path':
+            samples += ['/logs/run.jsonl', '@step/42']
+        for i, sample in enumerate(samples):
+            fixture(f'{rule}-end-control-{i}', rule, sample, True)
+            fixture(f'{rule}-final-lf-{i}', rule, sample + '\n', False)
+
+nested_patterns = [
+    ('hub-oid', 'hub-git-push-request', ('params', 'update', 'statement', 'new')),
+    ('hub-hash', 'hub-git-push-request', ('params', 'sha256')),
+    ('hub-signature', 'hub-install-request', ('params', 'delegation', 'signature')),
+    ('hub-secret', 'hub-enroll-request', ('params', 'invite')),
+    ('hub-path', 'debug-read-request', ('params', 'path')),
+    ('hub-write-path', 'debug-write-request', ('params', 'path')),
+    ('hub-chunk-hex', 'hub-chunk', ('hex',)),
+]
+for pattern_rule, request_rule, path in nested_patterns:
+    samples = [EX[pattern_rule]]
+    if pattern_rule == 'hub-path':
+        samples += ['/logs/run.jsonl', '@step/42']
+    for i, sample in enumerate(samples):
+        for valid in [True, False]:
+            value = copy.deepcopy(EX[request_rule])
+            parent = value
+            for key in path[:-1]:
+                parent = parent[key]
+            parent[path[-1]] = sample if valid else sample + '\n'
+            roots = [request_rule, 'hub-frame']
+            if request_rule in requests:
+                roots.append('hub-request')
+            for root_rule in roots:
+                fixture(f'{pattern_rule}-nested-{i}-{valid}-{root_rule}', root_rule, value, valid)
+
 folder = SPEC / 'fixtures/hub'
 folder.mkdir(exist_ok=True)
 (folder / 'cases.json').write_text(json.dumps(cases, indent=2) + '\n')

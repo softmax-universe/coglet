@@ -11,11 +11,11 @@
     },
     "hub-oid": {
       "type": "string",
-      "pattern": "^[0-9a-f]{40}$"
+      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
     },
     "hub-hash": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
     },
     "hub-build-version": {
       "enum": [
@@ -60,11 +60,11 @@
     },
     "hub-signature": {
       "type": "string",
-      "pattern": "^[0-9a-f]{128}$"
+      "pattern": "^[0-9a-f]{128}(?![\\s\\S])"
     },
     "hub-secret": {
       "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
     },
     "hub-text": {
       "type": "string",
@@ -72,15 +72,15 @@
     },
     "hub-path": {
       "type": "string",
-      "pattern": "^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}$|^@step/[0-9]{1,20}$"
+      "pattern": "^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}(?![\\s\\S])|^@step/[0-9]{1,20}(?![\\s\\S])"
     },
     "hub-write-path": {
       "type": "string",
-      "pattern": "^/data/[a-zA-Z0-9_./-]{1,512}$"
+      "pattern": "^/data/[a-zA-Z0-9_./-]{1,512}(?![\\s\\S])"
     },
     "hub-chunk-hex": {
       "type": "string",
-      "pattern": "^([0-9a-f]{2}){1,32768}$"
+      "pattern": "^([0-9a-f]{2}){1,32768}(?![\\s\\S])"
     },
     "hub-timeout": {
       "type": "integer",
