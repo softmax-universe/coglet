@@ -56,8 +56,8 @@ final class FaceHost: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                driver.tick(); speech.tick()
-                if demo { DemoFaceDriver(driver: driver).step(seconds: ProcessInfo.processInfo.systemUptime - demoStart) }
+                self.driver.tick(); self.speech.tick()
+                if self.demo { DemoFaceDriver(driver: self.driver).step(seconds: ProcessInfo.processInfo.systemUptime - self.demoStart) }
             }
         }
     }
