@@ -1,6 +1,80 @@
 use super::*;
 use coglet_proto::transport::Session;
 
+#[cfg(test)]
+mod receipt_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn queued_receipt_cannot_mask_committed_ticket_end() {
+        let dir = tempfile::tempdir().unwrap();
+        let hub = iroh::SecretKey::generate().public();
+        let kernel = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
+        let actor = format!("hub:{hub}");
+        let ticket = "aa".repeat(16);
+        let target = format!("coglet:{}", iroh::SecretKey::generate().public());
+        let id = "bb".repeat(16);
+        let request = json!({"context":{"actor":actor,"ticket":ticket}});
+        {
+            let s = kernel.state.lock().unwrap();
+            s.store.db.execute(
+                "INSERT INTO deliveries(target,id,intent,request,attempted) VALUES(?1,?2,'{}',?3,1)",
+                params![target,id,request.to_string()],
+            ).unwrap();
+        }
+        // A remote receipt has arrived; before its local finalization the operator
+        // commits ticket cancellation. No sleeps or transport timing assumptions.
+        let queued = json!({"type":"reply","correlation_id":id,"result":{"operation_id":id,"state":"queued"}});
+        // With no terminal state a queued observation remains nonterminal and
+        // can be reconciled again; it must not consume the eventual cancellation.
+        {
+            let mut s = kernel.state.lock().unwrap();
+            assert_eq!(
+                s.finish_action(&target, &id, queued.clone()).unwrap(),
+                queued
+            );
+            let reply: Option<String> = s
+                .store
+                .db
+                .query_row("SELECT reply FROM deliveries", [], |r| r.get(0))
+                .unwrap();
+            assert!(reply.is_none());
+        }
+        kernel.end_ticket(&actor, &ticket).await.unwrap();
+        let terminal: Value = {
+            let s = kernel.state.lock().unwrap();
+            let text: String = s
+                .store
+                .db
+                .query_row("SELECT reply FROM deliveries", [], |r| r.get(0))
+                .unwrap();
+            serde_json::from_str(&text).unwrap()
+        };
+        assert_eq!(terminal["error"]["details"]["ticket_ended"], true);
+        let returned = kernel
+            .state
+            .lock()
+            .unwrap()
+            .finish_action(&target, &id, queued)
+            .unwrap();
+        assert_eq!(
+            returned, terminal,
+            "a stale queued receipt must return the committed terminal result"
+        );
+        drop(kernel);
+        let reopened = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
+        let text: String = reopened
+            .state
+            .lock()
+            .unwrap()
+            .store
+            .db
+            .query_row("SELECT reply FROM deliveries", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&text).unwrap(), terminal);
+    }
+}
+
 struct ActiveDispatch {
     boundary: Arc<Mutex<DispatchFence>>,
     key: (String, String),
@@ -177,22 +251,66 @@ impl Kernel {
         // The local adapter always gets the original dispatch identity; preserve
         // the receiver's authoritative receipt rather than inventing action-accept.
         result["correlation_id"] = json!(id);
-        self.work(move|s| {
-            let tx=s.store.db.transaction()?;
-            if result["result"]["state"]=="queued" {
-                audit(&tx,json!({"method":"hub.actions.reconcile","operation_id":id,"target":target,"outcome":"queued"}))?;
-                tx.commit()?;return Ok(result);
-            }
-            if result["error"]["details"]["unknown_effect"]==true {
-                let known:bool=tx.query_row("SELECT EXISTS(SELECT 1 FROM outcomes WHERE target=?1 AND action_id=?2)",params![target,id],|r|r.get(0))?;
-                if known { result["error"]["details"]=json!({"unknown_effect":false,"outcome_observed":true});result["error"]["message"]=json!("dispatch reply unavailable; durable action outcome observed"); }
-            }
-            let changed=tx.execute("UPDATE deliveries SET reply=?3 WHERE target=?1 AND id=?2 AND reply IS NULL",params![target,id,serde_json::to_string(&result)?])?;
-            if changed>0 {audit(&tx,json!({"method":"hub.actions.dispatch","operation_id":id,"target":target,"outcome":if result["error"]["details"]["unknown_effect"]==true {"unknown_effect"} else {"replied"}}))?;}
-            let saved:String=tx.query_row("SELECT reply FROM deliveries WHERE target=?1 AND id=?2",params![target,id],|r|r.get(0))?;
-            tx.commit()?; Ok(serde_json::from_str(&saved)?)
-        }).await
+        self.work(move |s| s.finish_action(&target, &id, result))
+            .await
     }
+}
+impl State {
+    fn finish_action(&mut self, target: &str, id: &str, mut result: Value) -> Result<Value> {
+        let tx = self.store.db.transaction()?;
+        // A terminal local result committed while the transport reply was in
+        // flight wins, including over a nonterminal queued receipt. Read and
+        // audit in the same transaction as normal dispatch finalization.
+        let saved: Option<String> = tx.query_row(
+            "SELECT reply FROM deliveries WHERE target=?1 AND id=?2",
+            params![target, id],
+            |r| r.get(0),
+        )?;
+        if let Some(saved) = saved {
+            tx.commit()?;
+            return Ok(serde_json::from_str(&saved)?);
+        }
+        if result["result"]["state"] == "queued" {
+            audit(
+                &tx,
+                json!({"method":"hub.actions.reconcile","operation_id":id,"target":target,"outcome":"queued"}),
+            )?;
+            tx.commit()?;
+            return Ok(result);
+        }
+        if result["error"]["details"]["unknown_effect"] == true {
+            let known: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM outcomes WHERE target=?1 AND action_id=?2)",
+                params![target, id],
+                |r| r.get(0),
+            )?;
+            if known {
+                result["error"]["details"] =
+                    json!({"unknown_effect":false,"outcome_observed":true});
+                result["error"]["message"] =
+                    json!("dispatch reply unavailable; durable action outcome observed");
+            }
+        }
+        let changed = tx.execute(
+            "UPDATE deliveries SET reply=?3 WHERE target=?1 AND id=?2 AND reply IS NULL",
+            params![target, id, serde_json::to_string(&result)?],
+        )?;
+        if changed > 0 {
+            audit(
+                &tx,
+                json!({"method":"hub.actions.dispatch","operation_id":id,"target":target,"outcome":if result["error"]["details"]["unknown_effect"]==true {"unknown_effect"} else {"replied"}}),
+            )?;
+        }
+        let saved: String = tx.query_row(
+            "SELECT reply FROM deliveries WHERE target=?1 AND id=?2",
+            params![target, id],
+            |r| r.get(0),
+        )?;
+        tx.commit()?;
+        Ok(serde_json::from_str(&saved)?)
+    }
+}
+impl Kernel {
     async fn request_fenced(
         &self,
         session: &Session,

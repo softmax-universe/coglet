@@ -93,25 +93,26 @@ Revocation/provisioning are local Kernel APIs. Restart closes old invite windows
   through atomic rename. A subprocess smoke checks serve startup, concurrent-owner
   refusal, SIGINT shutdown, and stable-identity reopening.
 
-## Not ready to land — remaining work
+## Scope and follow-up hardening
 
-The early independent review and focused WIP review are **not ship approval**.
-Remaining same-card acceptance work:
+This milestone covers the event-kernel subset and the two-device routing/audit
+integration, not full action/scheduler/Git/runtime/mock conformance. A queued
+receipt now rechecks durable terminal state before return; a deterministic test
+orders ticket-end commit before finalization and verifies restart preservation.
 
-1. Integrate the existing scheduler producer's Session reset-on-drop guard (PR57,
-   owner `t_01a2083fe588e786`) after its normal merge gates; do not modify its files
-   here. Verify blocked opening/write cancellation against that real transport.
-2. Additional hardening: first-write/expiry/revocation races and caller abort,
-   scoped ticket ending during an in-flight action, queued/failed/cancelled receipt
-   recovery and restart, audit-atomic cancellation, unmapped/overflowed deadlines.
-   In particular, a queued receipt racing ticket cancellation needs its final
-   local terminal-state recheck before returning. Receiving-runtime action-deadline
-   checks are not proven by Unix delegation-expiry tests; do not conflate epochs.
+Additional hardening is explicitly tracked by **`t_01a20a45653f8fea`**, depending
+on this milestone and the scheduler producer (`t_01a2083fe588e786`, PR57):
+
+1. Integrate and verify the producer's reset-on-drop guard against blocked stream
+   opening/write and caller abort; the per-poll fence alone is not that proof.
+2. Establish receiving-runtime action-deadline admission without conflating
+   logical epochs with Unix authority expiry, then exercise the broader in-flight
+   ticket, audit rollback, receipt restart, absent/overflowed mapping matrix.
 3. Review ambiguous-action receipt semantics against the frozen protocol before
-   claiming full action conformance. Current conformance claim remains only the
-   10 unchanged event-kernel cases above; no scheduler/Git/runtime/mock claim.
-4. Final independent exact-head review, current-main rebase, green CI, merged PR,
-   and the card's final review handoff remain required.
+   claiming full action conformance.
+
+Final independent exact-head review, green CI, merge and the card's final review
+handoff remain landing gates for this milestone.
 
 Full scheduler/Git/reference+mock integration stays with the producer-split owners
 listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
