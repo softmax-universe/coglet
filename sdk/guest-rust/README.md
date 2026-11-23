@@ -1,5 +1,24 @@
 # Rust guest SDK (ABI 0.1)
 
+## Opt-in database extension (in progress)
+
+The default feature set and `Host` remain frozen ABI0.1. Feature `database` adds
+`database::{DbHost, Client, DbError}` and `Context::database()` only for a host
+implementing both boundaries. Wasm uses synchronous `coglet_v0.db` with separate
+input/output allocations and a 65,540-byte output buffer. Typed generated
+requests/replies retain uint64 values and deterministic CBOR. Reply framing,
+shape, cell/cursor UTF-8 byte limits, whole-page bounds and operation/ID bindings
+are checked. Typed DB errors are distinct from host return-code errors.
+
+Every success is **provisional**. Always propagate errors out of handle; there is
+no guest commit, migration or authority acquisition API. Host units must enforce
+poisoning/call counts and rollback independently of this untrusted guest client.
+Locally rejected requests never invoke the host and are not host calls; local
+checks cannot replace host validation. This feature does not make existing
+0.1 engines admit DB guests. Factory's supplemental real Wasm/SQLite probe and
+proof boundaries are documented in `coglets/factory/README.md`.
+
+
 Write a synchronous entry point, build a **cdylib** for `wasm32-wasip1`, and
 export a bounded unshared memory. No command-style `main`/`_start` is used.
 
