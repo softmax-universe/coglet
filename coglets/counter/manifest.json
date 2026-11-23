@@ -1,0 +1,15 @@
+{
+  "version": "0.1",
+  "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "subscriptions": ["test.echo"],
+  "required_capabilities": [],
+  "exclusive_outputs": [],
+  "budgets": {
+    "compute": 10000000,
+    "compute_mode": "wamr-2.4.3-fast-cumulative-v1",
+    "memory_pages": 256,
+    "wall_time_us": 1000000,
+    "max_events": 64,
+    "host_bytes": 1048576
+  }
+}
