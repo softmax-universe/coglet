@@ -5,8 +5,9 @@ let package = Package(
     name: "SoftmaxCore",
     platforms: [.macOS(.v14)],
     products: [.library(name: "SoftmaxCore", targets: ["SoftmaxCore"])],
+    dependencies: [.package(path: "../../surfaces/face-mac")],
     targets: [
-        .target(name: "SoftmaxCore"),
-        .testTarget(name: "SoftmaxCoreTests", dependencies: ["SoftmaxCore"])
+        .target(name: "SoftmaxCore", dependencies: [.product(name: "FaceMac", package: "face-mac")]),
+        .testTarget(name: "SoftmaxCoreTests", dependencies: ["SoftmaxCore", .product(name: "FaceMac", package: "face-mac")])
     ]
 )

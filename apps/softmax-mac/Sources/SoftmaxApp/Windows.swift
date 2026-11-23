@@ -27,11 +27,19 @@ struct SettingsView: View {
                 Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                 LoginItemControls(model: model)
             case .hotkey:
-                Text("Global push-to-talk is not wired in this skeleton. Hotkey configuration will appear here.")
+                Text("Push-to-talk: \(model.hotkeyName)")
+                HStack {
+                    Button(model.recordingKey ? "Cancel Recording" : "Record Hotkey…") { model.recordHotkey() }
+                    Button("Reset to Right Option") { model.resetHotkey() }
+                }
+                if model.recordingKey { Text("Press a key or chord. Modifier-only keys are supported.") }
+                Toggle("Toggle mode (press to start, press again to stop)", isOn: $model.toggleMode)
+                Toggle("Play start sound", isOn: $model.startSound)
                 Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
+                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
             case .audio:
                 MicrophoneControls(model: model)
-                Text("Device selection and audio capture are not connected yet.")
+                Text("Default system input · voice processing and echo cancellation enabled.")
             case .hub:
                 Text("Offline — no hub configured. Enrollment and connectivity are not implemented yet.")
             case .coglets:
@@ -39,7 +47,7 @@ struct SettingsView: View {
             case .updates:
                 UpdatesView(updates: model.updates)
             case .privacy:
-                Text("No audio is captured or sent by this skeleton.")
+                Text("Audio is captured only while push-to-talk is listening (maximum 120 seconds). Runtime speech delivery is a separate integration.")
                 Text("Microphone: \(model.permissions.microphone.rawValue)")
                 Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
                 Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
@@ -84,7 +92,7 @@ struct OnboardingView: View {
                 Text("Allow the microphone for future push-to-talk conversations. You can continue without access and enable it later in Privacy settings.")
                 MicrophoneControls(model: model)
             case 1:
-                Text("Input Monitoring will allow the global push-to-talk key to work outside Softmax. The hotkey itself is not connected in this skeleton.")
+                Text("Input Monitoring lets Right Option activate push-to-talk outside Softmax. Change the key in Settings › Hotkey.")
                 Text("Status: \(model.permissions.inputMonitoring.rawValue)")
                 Button("Request Input Monitoring") { model.requestInputMonitoring() }
                 Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }

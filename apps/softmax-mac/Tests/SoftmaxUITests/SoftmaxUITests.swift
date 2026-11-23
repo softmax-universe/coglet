@@ -23,7 +23,7 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(chat.textViews["Message draft"].exists)
         XCTAssertFalse(chat.buttons["Send"].isEnabled)
         orb.rightClick()
-        XCTAssertTrue(chat.staticTexts["Voice capture is not connected yet. No microphone audio is being recorded."].waitForExistence(timeout: 5))
+        XCTAssertTrue(chat.staticTexts["Use the push-to-talk hotkey to capture audio. Runtime speech delivery is not connected yet."].waitForExistence(timeout: 5))
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "orb-voice-panel"
         screenshot.lifetime = .keepAlways
