@@ -80,6 +80,7 @@ class ControlFixtures(unittest.TestCase):
             Draft202012Validator.check_schema(schema)
 
     def test_fixture_shapes_bindings_and_golden_cbor(self):
+        all_cases = []
         for group, path in SCHEMAS.items():
             schema = self.schemas[path]
             cases = json.loads((SPEC / 'fixtures' / group / 'cases.json').read_text())
@@ -106,9 +107,12 @@ class ControlFixtures(unittest.TestCase):
                         self.assertEqual(decode(raw), case['value'])
                         self.assertEqual(encode(case['value']), raw)
                         self.assertEqual(encode(decode(raw)), raw)
+            all_cases.extend(cases)
             print(f'{group}: {len(cases)} fixtures; '
                   f'{sum(c["valid"] for c in cases)} golden round-trips; '
                   f'{sum(c.get("semantic", False) for c in cases)} semantic negatives')
+        print(f'control total: {len(all_cases)} fixtures; '
+              f'{sum(c["valid"] for c in all_cases)} golden round-trips')
 
     def test_schema_roots_accept_all_valid_messages(self):
         for group, path in SCHEMAS.items():
