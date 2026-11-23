@@ -4,7 +4,7 @@ import dataclasses as _coglet_dataclasses
 from typing import Any, ClassVar, Literal
 import json
 from .codec import Message
-SCHEMA = json.loads('{"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"}}')
+SCHEMA = json.loads('{"act":{"fields":[{"name":"grant_epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"action","optional":false,"type":{"name":"common::action","op":"ref"}}],"op":"record"},"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"backchannel":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"cue","optional":false,"type":{"items":[{"op":"literal","value":"ack"},{"op":"literal","value":"thinking"},{"op":"literal","value":"agree"}],"op":"union"}}],"op":"record"},"cap-entry":{"fields":[{"name":"name","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"events","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"reads","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"exclusive","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"schemas","optional":false,"type":{"name":"surface::schema-refs","op":"ref"}}],"op":"record"},"capabilities":{"fields":[{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"entries","optional":false,"type":{"item":{"name":"surface::cap-entry","op":"ref"},"min":0,"op":"array"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"expression-entry":{"name":"expression::expression-profile","op":"ref"},"expression-profile":{"items":[{"name":"expression::set-expression","op":"ref"},{"name":"expression::expression-state","op":"ref"}],"op":"union"},"expression-state":{"fields":[{"name":"expression","optional":false,"type":{"items":[{"op":"literal","value":"neutral"},{"op":"literal","value":"listening"},{"op":"literal","value":"thinking"},{"op":"literal","value":"speaking"},{"op":"literal","value":"happy"},{"op":"literal","value":"concerned"}],"op":"union"}},{"name":"intensity","optional":false,"type":{"max":1000,"min":0,"op":"range"}},{"name":"remaining_ms","optional":false,"type":{"max":60000,"min":0,"op":"range"}}],"op":"record"},"expression::expression-entry":{"name":"expression::expression-profile","op":"ref"},"expression::expression-profile":{"items":[{"name":"expression::set-expression","op":"ref"},{"name":"expression::expression-state","op":"ref"}],"op":"union"},"expression::expression-state":{"fields":[{"name":"expression","optional":false,"type":{"items":[{"op":"literal","value":"neutral"},{"op":"literal","value":"listening"},{"op":"literal","value":"thinking"},{"op":"literal","value":"speaking"},{"op":"literal","value":"happy"},{"op":"literal","value":"concerned"}],"op":"union"}},{"name":"intensity","optional":false,"type":{"max":1000,"min":0,"op":"range"}},{"name":"remaining_ms","optional":false,"type":{"max":60000,"min":0,"op":"range"}}],"op":"record"},"expression::set-expression":{"fields":[{"name":"expression","optional":false,"type":{"items":[{"op":"literal","value":"neutral"},{"op":"literal","value":"listening"},{"op":"literal","value":"thinking"},{"op":"literal","value":"speaking"},{"op":"literal","value":"happy"},{"op":"literal","value":"concerned"}],"op":"union"}},{"name":"intensity","optional":false,"type":{"max":1000,"min":0,"op":"range"}},{"name":"duration_ms","optional":false,"type":{"max":60000,"min":0,"op":"range"}}],"op":"record"},"grant":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"operations","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"resources","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"expires","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"grants":{"fields":[{"name":"epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"entries","optional":false,"type":{"item":{"name":"surface::grant","op":"ref"},"min":0,"op":"array"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"health":{"fields":[{"name":"state","optional":false,"type":{"items":[{"op":"literal","value":"ready"},{"op":"literal","value":"degraded"},{"op":"literal","value":"stopped"}],"op":"union"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"pending","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hello":{"fields":[{"name":"surface","optional":false,"type":{"name":"common::surface-id","op":"ref"}},{"name":"offer","optional":false,"type":{"name":"common::version-offer","op":"ref"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hello-reply":{"fields":[{"name":"selection","optional":false,"type":{"name":"common::version-selection","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"kill":{"fields":[{"name":"reason","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,16384}$"}],"op":"intersection"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"read":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"grant_epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"read-reply":{"items":[{"fields":[{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":true}},{"name":"value","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"snapshot","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},{"fields":[{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"schema-refs":{"item":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,2048}$"}],"op":"intersection"},"key":{"name":"common::capability-name","op":"ref"},"min":0,"op":"map"},"session-close":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"session-open":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"route","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,256}$"}],"op":"intersection"}}],"op":"record"},"set-expression":{"fields":[{"name":"expression","optional":false,"type":{"items":[{"op":"literal","value":"neutral"},{"op":"literal","value":"listening"},{"op":"literal","value":"thinking"},{"op":"literal","value":"speaking"},{"op":"literal","value":"happy"},{"op":"literal","value":"concerned"}],"op":"union"}},{"name":"intensity","optional":false,"type":{"max":1000,"min":0,"op":"range"}},{"name":"duration_ms","optional":false,"type":{"max":60000,"min":0,"op":"range"}}],"op":"record"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"speak-chunk":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"chunk","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,4096}$"}],"op":"intersection"}},{"name":"final","optional":false,"type":{"name":"bool","op":"primitive"}}],"op":"record"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"speech-barge-in":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"item","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"played_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"reflex","optional":false,"type":{"items":[{"op":"literal","value":"stopped"},{"op":"literal","value":"ducked"}],"op":"union"}}],"op":"record"},"speech-config":{"fields":[{"name":"stt","optional":false,"type":{"name":"speech::speech-route","op":"ref"}},{"name":"tts","optional":false,"type":{"name":"speech::speech-route","op":"ref"}},{"name":"barge","optional":false,"type":{"items":[{"op":"literal","value":"stop"},{"op":"literal","value":"duck"}],"op":"union"}},{"name":"session_mode","optional":false,"type":{"items":[{"op":"literal","value":"text"},{"op":"literal","value":"speech_to_speech"}],"op":"union"}}],"op":"record"},"speech-end":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{0,16384}$"}],"op":"intersection"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"speech-entry":{"name":"speech::speech-profile","op":"ref"},"speech-partial":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{0,16384}$"}],"op":"intersection"}}],"op":"record"},"speech-position":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"chunk","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"item","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"played_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"state","optional":false,"type":{"items":[{"op":"literal","value":"playing"},{"op":"literal","value":"ducked"},{"op":"literal","value":"stopped"},{"op":"literal","value":"finished"}],"op":"union"}}],"op":"record"},"speech-profile":{"items":[{"name":"speech::speech-start","op":"ref"},{"name":"speech::speech-partial","op":"ref"},{"name":"speech::speech-end","op":"ref"},{"name":"speech::speech-position","op":"ref"},{"name":"speech::speech-barge-in","op":"ref"},{"name":"speech::speak-chunk","op":"ref"},{"name":"speech::stop","op":"ref"},{"name":"speech::backchannel","op":"ref"},{"name":"speech::speech-route","op":"ref"},{"name":"speech::speech-config","op":"ref"},{"name":"speech::session-open","op":"ref"},{"name":"speech::session-close","op":"ref"},{"name":"speech::tool-call","op":"ref"},{"name":"speech::tool-result","op":"ref"}],"op":"union"},"speech-route":{"fields":[{"name":"placement","optional":false,"type":{"items":[{"op":"literal","value":"surface"},{"op":"literal","value":"runtime"},{"op":"literal","value":"hub"},{"op":"literal","value":"provider"}],"op":"union"}},{"name":"route","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,256}$"}],"op":"intersection"}}],"op":"record"},"speech-start":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"speech::backchannel":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"cue","optional":false,"type":{"items":[{"op":"literal","value":"ack"},{"op":"literal","value":"thinking"},{"op":"literal","value":"agree"}],"op":"union"}}],"op":"record"},"speech::session-close":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"speech::session-open":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"route","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,256}$"}],"op":"intersection"}}],"op":"record"},"speech::speak-chunk":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"chunk","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,4096}$"}],"op":"intersection"}},{"name":"final","optional":false,"type":{"name":"bool","op":"primitive"}}],"op":"record"},"speech::speech-barge-in":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"item","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"played_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"reflex","optional":false,"type":{"items":[{"op":"literal","value":"stopped"},{"op":"literal","value":"ducked"}],"op":"union"}}],"op":"record"},"speech::speech-config":{"fields":[{"name":"stt","optional":false,"type":{"name":"speech::speech-route","op":"ref"}},{"name":"tts","optional":false,"type":{"name":"speech::speech-route","op":"ref"}},{"name":"barge","optional":false,"type":{"items":[{"op":"literal","value":"stop"},{"op":"literal","value":"duck"}],"op":"union"}},{"name":"session_mode","optional":false,"type":{"items":[{"op":"literal","value":"text"},{"op":"literal","value":"speech_to_speech"}],"op":"union"}}],"op":"record"},"speech::speech-end":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{0,16384}$"}],"op":"intersection"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"speech::speech-entry":{"name":"speech::speech-profile","op":"ref"},"speech::speech-partial":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"text","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{0,16384}$"}],"op":"intersection"}}],"op":"record"},"speech::speech-position":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"chunk","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"item","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"played_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"state","optional":false,"type":{"items":[{"op":"literal","value":"playing"},{"op":"literal","value":"ducked"},{"op":"literal","value":"stopped"},{"op":"literal","value":"finished"}],"op":"union"}}],"op":"record"},"speech::speech-profile":{"items":[{"name":"speech::speech-start","op":"ref"},{"name":"speech::speech-partial","op":"ref"},{"name":"speech::speech-end","op":"ref"},{"name":"speech::speech-position","op":"ref"},{"name":"speech::speech-barge-in","op":"ref"},{"name":"speech::speak-chunk","op":"ref"},{"name":"speech::stop","op":"ref"},{"name":"speech::backchannel","op":"ref"},{"name":"speech::speech-route","op":"ref"},{"name":"speech::speech-config","op":"ref"},{"name":"speech::session-open","op":"ref"},{"name":"speech::session-close","op":"ref"},{"name":"speech::tool-call","op":"ref"},{"name":"speech::tool-result","op":"ref"}],"op":"union"},"speech::speech-route":{"fields":[{"name":"placement","optional":false,"type":{"items":[{"op":"literal","value":"surface"},{"op":"literal","value":"runtime"},{"op":"literal","value":"hub"},{"op":"literal","value":"provider"}],"op":"union"}},{"name":"route","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,256}$"}],"op":"intersection"}}],"op":"record"},"speech::speech-start":{"fields":[{"name":"utterance","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"position_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"speech::stop":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"speech::tool-call":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"name","optional":false,"type":{"name":"common::method-name","op":"ref"}},{"name":"arguments","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"speech::tool-result":{"items":[{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":true}},{"name":"value","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":false}},{"name":"value","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"stop":{"fields":[{"name":"stream","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface-entry":{"name":"surface::surface-message","op":"ref"},"surface-error":{"fields":[{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"surface-message":{"items":[{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"hello"}},{"name":"body","optional":false,"type":{"name":"surface::hello","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"hello_reply"}},{"name":"body","optional":false,"type":{"name":"surface::hello-reply","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"capabilities"}},{"name":"body","optional":false,"type":{"name":"surface::capabilities","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"grants"}},{"name":"body","optional":false,"type":{"name":"surface::grants","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"event"}},{"name":"body","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"read"}},{"name":"body","optional":false,"type":{"name":"surface::read","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"read_reply"}},{"name":"body","optional":false,"type":{"name":"surface::read-reply","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"act"}},{"name":"body","optional":false,"type":{"name":"surface::act","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"accept"}},{"name":"body","optional":false,"type":{"name":"common::action-accept","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"health"}},{"name":"body","optional":false,"type":{"name":"surface::health","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"kill"}},{"name":"body","optional":false,"type":{"name":"surface::kill","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"error"}},{"name":"body","optional":false,"type":{"name":"surface::surface-error","op":"ref"}}],"op":"record"}],"op":"union"},"surface::act":{"fields":[{"name":"grant_epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"action","optional":false,"type":{"name":"common::action","op":"ref"}}],"op":"record"},"surface::cap-entry":{"fields":[{"name":"name","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"events","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"reads","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"exclusive","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"schemas","optional":false,"type":{"name":"surface::schema-refs","op":"ref"}}],"op":"record"},"surface::capabilities":{"fields":[{"name":"revision","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"entries","optional":false,"type":{"item":{"name":"surface::cap-entry","op":"ref"},"min":0,"op":"array"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::grant":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"operations","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"resources","optional":false,"type":{"item":{"name":"common::capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"expires","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"surface::grants":{"fields":[{"name":"epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"entries","optional":false,"type":{"item":{"name":"surface::grant","op":"ref"},"min":0,"op":"array"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::health":{"fields":[{"name":"state","optional":false,"type":{"items":[{"op":"literal","value":"ready"},{"op":"literal","value":"degraded"},{"op":"literal","value":"stopped"}],"op":"union"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"pending","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::hello":{"fields":[{"name":"surface","optional":false,"type":{"name":"common::surface-id","op":"ref"}},{"name":"offer","optional":false,"type":{"name":"common::version-offer","op":"ref"}},{"name":"clock","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::hello-reply":{"fields":[{"name":"selection","optional":false,"type":{"name":"common::version-selection","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::kill":{"fields":[{"name":"reason","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,16384}$"}],"op":"intersection"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::read":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"grant_epoch","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::read-reply":{"items":[{"fields":[{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":true}},{"name":"value","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"snapshot","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},{"fields":[{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"surface::schema-refs":{"item":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[\\\\s\\\\S]{1,2048}$"}],"op":"intersection"},"key":{"name":"common::capability-name","op":"ref"},"min":0,"op":"map"},"surface::surface-entry":{"name":"surface::surface-message","op":"ref"},"surface::surface-error":{"fields":[{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"surface::surface-message":{"items":[{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"hello"}},{"name":"body","optional":false,"type":{"name":"surface::hello","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"hello_reply"}},{"name":"body","optional":false,"type":{"name":"surface::hello-reply","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"capabilities"}},{"name":"body","optional":false,"type":{"name":"surface::capabilities","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"grants"}},{"name":"body","optional":false,"type":{"name":"surface::grants","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"event"}},{"name":"body","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"read"}},{"name":"body","optional":false,"type":{"name":"surface::read","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"read_reply"}},{"name":"body","optional":false,"type":{"name":"surface::read-reply","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"act"}},{"name":"body","optional":false,"type":{"name":"surface::act","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"accept"}},{"name":"body","optional":false,"type":{"name":"common::action-accept","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"health"}},{"name":"body","optional":false,"type":{"name":"surface::health","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"kill"}},{"name":"body","optional":false,"type":{"name":"surface::kill","op":"ref"}}],"op":"record"},{"fields":[{"name":"type","optional":false,"type":{"op":"literal","value":"error"}},{"name":"body","optional":false,"type":{"name":"surface::surface-error","op":"ref"}}],"op":"record"}],"op":"union"},"tool-call":{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"name","optional":false,"type":{"name":"common::method-name","op":"ref"}},{"name":"arguments","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"tool-result":{"items":[{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":true}},{"name":"value","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"session","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"call","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"ok","optional":false,"type":{"op":"literal","value":false}},{"name":"value","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"}}')
 CommonCommon = Any
 CommonUint64 = int
 CommonProfileInt = Any
@@ -83,6 +83,266 @@ class CommonError(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
+ExpressionExpressionEntry = Any
+@_coglet_dataclasses.dataclass
+class ExpressionSetExpression(Message):
+    _rule: ClassVar[str] = 'expression::set-expression'
+    expression: Any = _coglet_dataclasses.field(metadata={"wire": 'expression'})
+    intensity: int = _coglet_dataclasses.field(metadata={"wire": 'intensity'})
+    duration_ms: int = _coglet_dataclasses.field(metadata={"wire": 'duration_ms'})
+@_coglet_dataclasses.dataclass
+class ExpressionExpressionState(Message):
+    _rule: ClassVar[str] = 'expression::expression-state'
+    expression: Any = _coglet_dataclasses.field(metadata={"wire": 'expression'})
+    intensity: int = _coglet_dataclasses.field(metadata={"wire": 'intensity'})
+    remaining_ms: int = _coglet_dataclasses.field(metadata={"wire": 'remaining_ms'})
+ExpressionExpressionProfile = Any
+SpeechSpeechEntry = Any
+@_coglet_dataclasses.dataclass
+class SpeechSpeechStart(Message):
+    _rule: ClassVar[str] = 'speech::speech-start'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechPartial(Message):
+    _rule: ClassVar[str] = 'speech::speech-partial'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechEnd(Message):
+    _rule: ClassVar[str] = 'speech::speech-end'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechPosition(Message):
+    _rule: ClassVar[str] = 'speech::speech-position'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    chunk: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'chunk'})
+    item: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'item'})
+    played_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'played_ms'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+    state: Any = _coglet_dataclasses.field(metadata={"wire": 'state'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechBargeIn(Message):
+    _rule: ClassVar[str] = 'speech::speech-barge-in'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    item: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'item'})
+    played_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'played_ms'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+    reflex: Any = _coglet_dataclasses.field(metadata={"wire": 'reflex'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeakChunk(Message):
+    _rule: ClassVar[str] = 'speech::speak-chunk'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    chunk: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'chunk'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    final_: bool = _coglet_dataclasses.field(metadata={"wire": 'final'})
+@_coglet_dataclasses.dataclass
+class SpeechStop(Message):
+    _rule: ClassVar[str] = 'speech::stop'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+@_coglet_dataclasses.dataclass
+class SpeechBackchannel(Message):
+    _rule: ClassVar[str] = 'speech::backchannel'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    cue: Any = _coglet_dataclasses.field(metadata={"wire": 'cue'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechRoute(Message):
+    _rule: ClassVar[str] = 'speech::speech-route'
+    placement: Any = _coglet_dataclasses.field(metadata={"wire": 'placement'})
+    route: str = _coglet_dataclasses.field(metadata={"wire": 'route'})
+@_coglet_dataclasses.dataclass
+class SpeechSpeechConfig(Message):
+    _rule: ClassVar[str] = 'speech::speech-config'
+    stt: SpeechSpeechRoute = _coglet_dataclasses.field(metadata={"wire": 'stt'})
+    tts: SpeechSpeechRoute = _coglet_dataclasses.field(metadata={"wire": 'tts'})
+    barge: Any = _coglet_dataclasses.field(metadata={"wire": 'barge'})
+    session_mode: Any = _coglet_dataclasses.field(metadata={"wire": 'session_mode'})
+@_coglet_dataclasses.dataclass
+class SpeechSessionOpen(Message):
+    _rule: ClassVar[str] = 'speech::session-open'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    route: str = _coglet_dataclasses.field(metadata={"wire": 'route'})
+@_coglet_dataclasses.dataclass
+class SpeechSessionClose(Message):
+    _rule: ClassVar[str] = 'speech::session-close'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+@_coglet_dataclasses.dataclass
+class SpeechToolCall(Message):
+    _rule: ClassVar[str] = 'speech::tool-call'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    name: CommonMethodName = _coglet_dataclasses.field(metadata={"wire": 'name'})
+    arguments: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'arguments'})
+@_coglet_dataclasses.dataclass
+class SpeechToolResult1(Message):
+    _rule: ClassVar[str] = 'speech::tool-result'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    ok: Literal[True] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'value'})
+@_coglet_dataclasses.dataclass
+class SpeechToolResult2(Message):
+    _rule: ClassVar[str] = 'speech::tool-result'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    ok: Literal[False] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonError = _coglet_dataclasses.field(metadata={"wire": 'value'})
+SpeechToolResult = SpeechToolResult1 | SpeechToolResult2
+SpeechSpeechProfile = Any
+SurfaceSurfaceEntry = Any
+@_coglet_dataclasses.dataclass
+class SurfaceHello(Message):
+    _rule: ClassVar[str] = 'surface::hello'
+    surface: CommonSurfaceId = _coglet_dataclasses.field(metadata={"wire": 'surface'})
+    offer: CommonVersionOffer = _coglet_dataclasses.field(metadata={"wire": 'offer'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceHelloReply(Message):
+    _rule: ClassVar[str] = 'surface::hello-reply'
+    selection: CommonVersionSelection = _coglet_dataclasses.field(metadata={"wire": 'selection'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+SurfaceSchemaRefs = dict[str, Any]
+@_coglet_dataclasses.dataclass
+class SurfaceCapEntry(Message):
+    _rule: ClassVar[str] = 'surface::cap-entry'
+    name: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'name'})
+    events: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    reads: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'reads'})
+    actions: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    exclusive: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'exclusive'})
+    schemas: SurfaceSchemaRefs = _coglet_dataclasses.field(metadata={"wire": 'schemas'})
+@_coglet_dataclasses.dataclass
+class SurfaceCapabilities(Message):
+    _rule: ClassVar[str] = 'surface::capabilities'
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    entries: list[SurfaceCapEntry] = _coglet_dataclasses.field(metadata={"wire": 'entries'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceGrant(Message):
+    _rule: ClassVar[str] = 'surface::grant'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    operations: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'operations'})
+    resources: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'resources'})
+    expires: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'expires'})
+@_coglet_dataclasses.dataclass
+class SurfaceGrants(Message):
+    _rule: ClassVar[str] = 'surface::grants'
+    epoch: int = _coglet_dataclasses.field(metadata={"wire": 'epoch'})
+    entries: list[SurfaceGrant] = _coglet_dataclasses.field(metadata={"wire": 'entries'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceRead(Message):
+    _rule: ClassVar[str] = 'surface::read'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    capability: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'capability'})
+    args: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'args'})
+    grant_epoch: int = _coglet_dataclasses.field(metadata={"wire": 'grant_epoch'})
+    deadline: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'deadline'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceReadReply1(Message):
+    _rule: ClassVar[str] = 'surface::read-reply'
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    ok: Literal[True] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'value'})
+    snapshot: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'snapshot'})
+@_coglet_dataclasses.dataclass
+class SurfaceReadReply2(Message):
+    _rule: ClassVar[str] = 'surface::read-reply'
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    ok: Literal[False] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+SurfaceReadReply = SurfaceReadReply1 | SurfaceReadReply2
+@_coglet_dataclasses.dataclass
+class SurfaceAct(Message):
+    _rule: ClassVar[str] = 'surface::act'
+    grant_epoch: int = _coglet_dataclasses.field(metadata={"wire": 'grant_epoch'})
+    action: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'action'})
+@_coglet_dataclasses.dataclass
+class SurfaceHealth(Message):
+    _rule: ClassVar[str] = 'surface::health'
+    state: Any = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    pending: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'pending'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceKill(Message):
+    _rule: ClassVar[str] = 'surface::kill'
+    reason: str = _coglet_dataclasses.field(metadata={"wire": 'reason'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceError(Message):
+    _rule: ClassVar[str] = 'surface::surface-error'
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage1(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['hello'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHello = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage2(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['hello_reply'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHelloReply = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage3(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['capabilities'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceCapabilities = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage4(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['grants'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceGrants = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage5(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['event'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage6(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['read'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceRead = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage7(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['read_reply'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceReadReply = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage8(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['act'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceAct = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage9(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['accept'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: CommonActionAccept = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage10(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['health'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHealth = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage11(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['kill'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceKill = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceSurfaceMessage12(Message):
+    _rule: ClassVar[str] = 'surface::surface-message'
+    type_: Literal['error'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceSurfaceError = _coglet_dataclasses.field(metadata={"wire": 'body'})
+SurfaceSurfaceMessage = SurfaceSurfaceMessage1 | SurfaceSurfaceMessage2 | SurfaceSurfaceMessage3 | SurfaceSurfaceMessage4 | SurfaceSurfaceMessage5 | SurfaceSurfaceMessage6 | SurfaceSurfaceMessage7 | SurfaceSurfaceMessage8 | SurfaceSurfaceMessage9 | SurfaceSurfaceMessage10 | SurfaceSurfaceMessage11 | SurfaceSurfaceMessage12
 Common = Any
 Uint64 = int
 ProfileInt = Any
@@ -161,4 +421,264 @@ class Error(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
-RECORDS = {'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}
+ExpressionEntry = Any
+@_coglet_dataclasses.dataclass
+class SetExpression(Message):
+    _rule: ClassVar[str] = 'set-expression'
+    expression: Any = _coglet_dataclasses.field(metadata={"wire": 'expression'})
+    intensity: int = _coglet_dataclasses.field(metadata={"wire": 'intensity'})
+    duration_ms: int = _coglet_dataclasses.field(metadata={"wire": 'duration_ms'})
+@_coglet_dataclasses.dataclass
+class ExpressionState(Message):
+    _rule: ClassVar[str] = 'expression-state'
+    expression: Any = _coglet_dataclasses.field(metadata={"wire": 'expression'})
+    intensity: int = _coglet_dataclasses.field(metadata={"wire": 'intensity'})
+    remaining_ms: int = _coglet_dataclasses.field(metadata={"wire": 'remaining_ms'})
+ExpressionProfile = Any
+SpeechEntry = Any
+@_coglet_dataclasses.dataclass
+class SpeechStart(Message):
+    _rule: ClassVar[str] = 'speech-start'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+@_coglet_dataclasses.dataclass
+class SpeechPartial(Message):
+    _rule: ClassVar[str] = 'speech-partial'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+@_coglet_dataclasses.dataclass
+class SpeechEnd(Message):
+    _rule: ClassVar[str] = 'speech-end'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+@_coglet_dataclasses.dataclass
+class SpeechPosition(Message):
+    _rule: ClassVar[str] = 'speech-position'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    chunk: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'chunk'})
+    item: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'item'})
+    played_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'played_ms'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+    state: Any = _coglet_dataclasses.field(metadata={"wire": 'state'})
+@_coglet_dataclasses.dataclass
+class SpeechBargeIn(Message):
+    _rule: ClassVar[str] = 'speech-barge-in'
+    utterance: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'utterance'})
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    item: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'item'})
+    played_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'played_ms'})
+    position_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'position_ms'})
+    reflex: Any = _coglet_dataclasses.field(metadata={"wire": 'reflex'})
+@_coglet_dataclasses.dataclass
+class SpeakChunk(Message):
+    _rule: ClassVar[str] = 'speak-chunk'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    chunk: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'chunk'})
+    text: str = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    final_: bool = _coglet_dataclasses.field(metadata={"wire": 'final'})
+@_coglet_dataclasses.dataclass
+class Stop(Message):
+    _rule: ClassVar[str] = 'stop'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+@_coglet_dataclasses.dataclass
+class Backchannel(Message):
+    _rule: ClassVar[str] = 'backchannel'
+    stream: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'stream'})
+    cue: Any = _coglet_dataclasses.field(metadata={"wire": 'cue'})
+@_coglet_dataclasses.dataclass
+class SpeechRoute(Message):
+    _rule: ClassVar[str] = 'speech-route'
+    placement: Any = _coglet_dataclasses.field(metadata={"wire": 'placement'})
+    route: str = _coglet_dataclasses.field(metadata={"wire": 'route'})
+@_coglet_dataclasses.dataclass
+class SpeechConfig(Message):
+    _rule: ClassVar[str] = 'speech-config'
+    stt: SpeechSpeechRoute = _coglet_dataclasses.field(metadata={"wire": 'stt'})
+    tts: SpeechSpeechRoute = _coglet_dataclasses.field(metadata={"wire": 'tts'})
+    barge: Any = _coglet_dataclasses.field(metadata={"wire": 'barge'})
+    session_mode: Any = _coglet_dataclasses.field(metadata={"wire": 'session_mode'})
+@_coglet_dataclasses.dataclass
+class SessionOpen(Message):
+    _rule: ClassVar[str] = 'session-open'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    route: str = _coglet_dataclasses.field(metadata={"wire": 'route'})
+@_coglet_dataclasses.dataclass
+class SessionClose(Message):
+    _rule: ClassVar[str] = 'session-close'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+@_coglet_dataclasses.dataclass
+class ToolCall(Message):
+    _rule: ClassVar[str] = 'tool-call'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    name: CommonMethodName = _coglet_dataclasses.field(metadata={"wire": 'name'})
+    arguments: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'arguments'})
+@_coglet_dataclasses.dataclass
+class ToolResult1(Message):
+    _rule: ClassVar[str] = 'tool-result'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    ok: Literal[True] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'value'})
+@_coglet_dataclasses.dataclass
+class ToolResult2(Message):
+    _rule: ClassVar[str] = 'tool-result'
+    session: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'session'})
+    call: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'call'})
+    ok: Literal[False] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonError = _coglet_dataclasses.field(metadata={"wire": 'value'})
+ToolResult = ToolResult1 | ToolResult2
+SpeechProfile = Any
+SurfaceEntry = Any
+@_coglet_dataclasses.dataclass
+class Hello(Message):
+    _rule: ClassVar[str] = 'hello'
+    surface: CommonSurfaceId = _coglet_dataclasses.field(metadata={"wire": 'surface'})
+    offer: CommonVersionOffer = _coglet_dataclasses.field(metadata={"wire": 'offer'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class HelloReply(Message):
+    _rule: ClassVar[str] = 'hello-reply'
+    selection: CommonVersionSelection = _coglet_dataclasses.field(metadata={"wire": 'selection'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+SchemaRefs = dict[str, Any]
+@_coglet_dataclasses.dataclass
+class CapEntry(Message):
+    _rule: ClassVar[str] = 'cap-entry'
+    name: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'name'})
+    events: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'events'})
+    reads: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'reads'})
+    actions: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'actions'})
+    exclusive: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'exclusive'})
+    schemas: SurfaceSchemaRefs = _coglet_dataclasses.field(metadata={"wire": 'schemas'})
+@_coglet_dataclasses.dataclass
+class Capabilities(Message):
+    _rule: ClassVar[str] = 'capabilities'
+    revision: int = _coglet_dataclasses.field(metadata={"wire": 'revision'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    entries: list[SurfaceCapEntry] = _coglet_dataclasses.field(metadata={"wire": 'entries'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class Grant(Message):
+    _rule: ClassVar[str] = 'grant'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    operations: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'operations'})
+    resources: list[CommonCapabilityName] = _coglet_dataclasses.field(metadata={"wire": 'resources'})
+    expires: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'expires'})
+@_coglet_dataclasses.dataclass
+class Grants(Message):
+    _rule: ClassVar[str] = 'grants'
+    epoch: int = _coglet_dataclasses.field(metadata={"wire": 'epoch'})
+    entries: list[SurfaceGrant] = _coglet_dataclasses.field(metadata={"wire": 'entries'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class Read(Message):
+    _rule: ClassVar[str] = 'read'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    capability: CommonCapabilityName = _coglet_dataclasses.field(metadata={"wire": 'capability'})
+    args: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'args'})
+    grant_epoch: int = _coglet_dataclasses.field(metadata={"wire": 'grant_epoch'})
+    deadline: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'deadline'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class ReadReply1(Message):
+    _rule: ClassVar[str] = 'read-reply'
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    ok: Literal[True] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    value: CommonProfileMap = _coglet_dataclasses.field(metadata={"wire": 'value'})
+    snapshot: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'snapshot'})
+@_coglet_dataclasses.dataclass
+class ReadReply2(Message):
+    _rule: ClassVar[str] = 'read-reply'
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    ok: Literal[False] = _coglet_dataclasses.field(metadata={"wire": 'ok'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+ReadReply = ReadReply1 | ReadReply2
+@_coglet_dataclasses.dataclass
+class Act(Message):
+    _rule: ClassVar[str] = 'act'
+    grant_epoch: int = _coglet_dataclasses.field(metadata={"wire": 'grant_epoch'})
+    action: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'action'})
+@_coglet_dataclasses.dataclass
+class Health(Message):
+    _rule: ClassVar[str] = 'health'
+    state: Any = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    clock: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'clock'})
+    pending: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'pending'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class Kill(Message):
+    _rule: ClassVar[str] = 'kill'
+    reason: str = _coglet_dataclasses.field(metadata={"wire": 'reason'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceError(Message):
+    _rule: ClassVar[str] = 'surface-error'
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage1(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['hello'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHello = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage2(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['hello_reply'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHelloReply = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage3(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['capabilities'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceCapabilities = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage4(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['grants'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceGrants = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage5(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['event'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage6(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['read'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceRead = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage7(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['read_reply'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceReadReply = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage8(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['act'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceAct = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage9(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['accept'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: CommonActionAccept = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage10(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['health'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceHealth = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage11(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['kill'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceKill = _coglet_dataclasses.field(metadata={"wire": 'body'})
+@_coglet_dataclasses.dataclass
+class SurfaceMessage12(Message):
+    _rule: ClassVar[str] = 'surface-message'
+    type_: Literal['error'] = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    body: SurfaceSurfaceError = _coglet_dataclasses.field(metadata={"wire": 'body'})
+SurfaceMessage = SurfaceMessage1 | SurfaceMessage2 | SurfaceMessage3 | SurfaceMessage4 | SurfaceMessage5 | SurfaceMessage6 | SurfaceMessage7 | SurfaceMessage8 | SurfaceMessage9 | SurfaceMessage10 | SurfaceMessage11 | SurfaceMessage12
+RECORDS = {'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'expression::set-expression': [ExpressionSetExpression], 'expression::expression-state': [ExpressionExpressionState], 'speech::speech-start': [SpeechSpeechStart], 'speech::speech-partial': [SpeechSpeechPartial], 'speech::speech-end': [SpeechSpeechEnd], 'speech::speech-position': [SpeechSpeechPosition], 'speech::speech-barge-in': [SpeechSpeechBargeIn], 'speech::speak-chunk': [SpeechSpeakChunk], 'speech::stop': [SpeechStop], 'speech::backchannel': [SpeechBackchannel], 'speech::speech-route': [SpeechSpeechRoute], 'speech::speech-config': [SpeechSpeechConfig], 'speech::session-open': [SpeechSessionOpen], 'speech::session-close': [SpeechSessionClose], 'speech::tool-call': [SpeechToolCall], 'speech::tool-result': [SpeechToolResult1, SpeechToolResult2], 'surface::hello': [SurfaceHello], 'surface::hello-reply': [SurfaceHelloReply], 'surface::cap-entry': [SurfaceCapEntry], 'surface::capabilities': [SurfaceCapabilities], 'surface::grant': [SurfaceGrant], 'surface::grants': [SurfaceGrants], 'surface::read': [SurfaceRead], 'surface::read-reply': [SurfaceReadReply1, SurfaceReadReply2], 'surface::act': [SurfaceAct], 'surface::health': [SurfaceHealth], 'surface::kill': [SurfaceKill], 'surface::surface-error': [SurfaceSurfaceError], 'surface::surface-message': [SurfaceSurfaceMessage1, SurfaceSurfaceMessage2, SurfaceSurfaceMessage3, SurfaceSurfaceMessage4, SurfaceSurfaceMessage5, SurfaceSurfaceMessage6, SurfaceSurfaceMessage7, SurfaceSurfaceMessage8, SurfaceSurfaceMessage9, SurfaceSurfaceMessage10, SurfaceSurfaceMessage11, SurfaceSurfaceMessage12], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error], 'set-expression': [SetExpression], 'expression-state': [ExpressionState], 'speech-start': [SpeechStart], 'speech-partial': [SpeechPartial], 'speech-end': [SpeechEnd], 'speech-position': [SpeechPosition], 'speech-barge-in': [SpeechBargeIn], 'speak-chunk': [SpeakChunk], 'stop': [Stop], 'backchannel': [Backchannel], 'speech-route': [SpeechRoute], 'speech-config': [SpeechConfig], 'session-open': [SessionOpen], 'session-close': [SessionClose], 'tool-call': [ToolCall], 'tool-result': [ToolResult1, ToolResult2], 'hello': [Hello], 'hello-reply': [HelloReply], 'cap-entry': [CapEntry], 'capabilities': [Capabilities], 'grant': [Grant], 'grants': [Grants], 'read': [Read], 'read-reply': [ReadReply1, ReadReply2], 'act': [Act], 'health': [Health], 'kill': [Kill], 'surface-error': [SurfaceError], 'surface-message': [SurfaceMessage1, SurfaceMessage2, SurfaceMessage3, SurfaceMessage4, SurfaceMessage5, SurfaceMessage6, SurfaceMessage7, SurfaceMessage8, SurfaceMessage9, SurfaceMessage10, SurfaceMessage11, SurfaceMessage12]}

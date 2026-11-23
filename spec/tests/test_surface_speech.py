@@ -70,6 +70,17 @@ class ProfileFixtures(unittest.TestCase):
             profile='expression' if cap.startswith('expression.') else 'speech'
             self.assertTrue(self.validate(profile,ACTIONS[cap],body['action']['args']))
 
+    def test_reference_validator_setup_failure_is_fatal(self):
+        # Cross-check invokes this wrapper without ruby -rbundler/setup. A
+        # missing dependency must be a tool error (2), not shape rejection (1).
+        env = dict(self.ruby_env, BUNDLE_GEMFILE=str(self.target/'missing-Gemfile'))
+        checked = subprocess.run(
+            ['ruby', str(SPEC/'tests/cddl_check.rb'), 'speak-chunk',
+             str(self.cddl_paths['speech'])], input=b'{}', env=env,
+            capture_output=True, timeout=10)
+        self.assertEqual(checked.returncode, 2, checked.stderr.decode())
+        self.assertIn(b'Gemfile', checked.stderr)
+
     def test_dual_schema_goldens(self):
         total=valid=0
         for profile in ('surface','speech','expression'):

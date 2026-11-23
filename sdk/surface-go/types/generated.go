@@ -5,7 +5,7 @@ package types
 import "github.com/softmax-universe/coglet/sdk/surface-go/codec"
 
 // SchemaJSON is the validation IR compiled from spec/messages/*.cddl.
-const SchemaJSON = "{\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"common::action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"common::coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"common::error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"common::event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"common::node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"common::profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"common::surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"common::version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"common::version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"},\"correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
+const SchemaJSON = "{\"act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::action\":{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::action-accept\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"accepted\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::action-id\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"},\"common::action-outcome\":{\"items\":[{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"name\":\"common::action-id\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}],\"op\":\"union\"}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"common::capability-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$\"}],\"op\":\"intersection\"},\"common::coglet-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^coglet:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::common\":{\"items\":[{\"name\":\"common::event\",\"op\":\"ref\"},{\"name\":\"common::action\",\"op\":\"ref\"},{\"name\":\"common::action-accept\",\"op\":\"ref\"},{\"name\":\"common::action-outcome\",\"op\":\"ref\"},{\"name\":\"common::error\",\"op\":\"ref\"},{\"name\":\"common::version-offer\",\"op\":\"ref\"},{\"name\":\"common::version-selection\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"common::error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"common::event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"common::hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"common::node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"common::profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"common::spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"common::surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"common::uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"common::version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"common::version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"},\"correlation-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{32}$\"}],\"op\":\"intersection\"},\"error\":{\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"name\":\"common::error-code\",\"op\":\"ref\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"max\":18446744073709551615,\"min\":1,\"op\":\"size\"}],\"op\":\"intersection\"}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"error-code\":{\"items\":[{\"op\":\"literal\",\"value\":\"invalid_argument\"},{\"op\":\"literal\",\"value\":\"unsupported_version\"},{\"op\":\"literal\",\"value\":\"unauthenticated\"},{\"op\":\"literal\",\"value\":\"permission_denied\"},{\"op\":\"literal\",\"value\":\"not_found\"},{\"op\":\"literal\",\"value\":\"conflict\"},{\"op\":\"literal\",\"value\":\"resource_exhausted\"},{\"op\":\"literal\",\"value\":\"deadline_exceeded\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"unavailable\"},{\"op\":\"literal\",\"value\":\"internal\"}],\"op\":\"union\"},\"event\":{\"fields\":[{\"name\":\"source\",\"optional\":false,\"type\":{\"name\":\"common::source-id\",\"op\":\"ref\"}},{\"name\":\"kind\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"seq\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"logical_time\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"payload\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::expression-entry\":{\"name\":\"expression::expression-profile\",\"op\":\"ref\"},\"expression::expression-profile\":{\"items\":[{\"name\":\"expression::set-expression\",\"op\":\"ref\"},{\"name\":\"expression::expression-state\",\"op\":\"ref\"}],\"op\":\"union\"},\"expression::expression-state\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"expression::set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"hub-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^hub:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"method-name\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$\"}],\"op\":\"intersection\"},\"node-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"profile-int\":{\"items\":[{\"max\":-1,\"min\":-9223372036854775808,\"op\":\"range\"},{\"name\":\"common::uint64\",\"op\":\"ref\"}],\"op\":\"union\"},\"profile-map\":{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"profile-value\":{\"items\":[{\"name\":\"common::profile-int\",\"op\":\"ref\"},{\"name\":\"tstr\",\"op\":\"primitive\"},{\"name\":\"bool\",\"op\":\"primitive\"},{\"op\":\"literal\",\"value\":null},{\"item\":{\"name\":\"common::profile-value\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"},{\"name\":\"common::profile-map\",\"op\":\"ref\"}],\"op\":\"union\"},\"read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"set-expression\":{\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}],\"op\":\"union\"}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"max\":1000,\"min\":0,\"op\":\"range\"}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"max\":60000,\"min\":0,\"op\":\"range\"}}],\"op\":\"record\"},\"source-id\":{\"items\":[{\"name\":\"common::coglet-id\",\"op\":\"ref\"},{\"name\":\"common::surface-id\",\"op\":\"ref\"},{\"name\":\"common::hub-id\",\"op\":\"ref\"}],\"op\":\"union\"},\"speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"spec-version\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$\"}],\"op\":\"intersection\"},\"speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::backchannel\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::session-close\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::session-open\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speak-chunk\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}],\"op\":\"intersection\"}},{\"name\":\"final\",\"optional\":false,\"type\":{\"name\":\"bool\",\"op\":\"primitive\"}}],\"op\":\"record\"},\"speech::speech-barge-in\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-config\":{\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"name\":\"speech::speech-route\",\"op\":\"ref\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}],\"op\":\"union\"}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-end\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::speech-entry\":{\"name\":\"speech::speech-profile\",\"op\":\"ref\"},\"speech::speech-partial\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-position\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}],\"op\":\"union\"}}],\"op\":\"record\"},\"speech::speech-profile\":{\"items\":[{\"name\":\"speech::speech-start\",\"op\":\"ref\"},{\"name\":\"speech::speech-partial\",\"op\":\"ref\"},{\"name\":\"speech::speech-end\",\"op\":\"ref\"},{\"name\":\"speech::speech-position\",\"op\":\"ref\"},{\"name\":\"speech::speech-barge-in\",\"op\":\"ref\"},{\"name\":\"speech::speak-chunk\",\"op\":\"ref\"},{\"name\":\"speech::stop\",\"op\":\"ref\"},{\"name\":\"speech::backchannel\",\"op\":\"ref\"},{\"name\":\"speech::speech-route\",\"op\":\"ref\"},{\"name\":\"speech::speech-config\",\"op\":\"ref\"},{\"name\":\"speech::session-open\",\"op\":\"ref\"},{\"name\":\"speech::session-close\",\"op\":\"ref\"},{\"name\":\"speech::tool-call\",\"op\":\"ref\"},{\"name\":\"speech::tool-result\",\"op\":\"ref\"}],\"op\":\"union\"},\"speech::speech-route\":{\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}],\"op\":\"union\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}],\"op\":\"intersection\"}}],\"op\":\"record\"},\"speech::speech-start\":{\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"speech::tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"stop\":{\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface-id\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^surface:[0-9a-f]{64}$\"}],\"op\":\"intersection\"},\"surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::act\":{\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"action\",\"optional\":false,\"type\":{\"name\":\"common::action\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::cap-entry\":{\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"name\":\"surface::schema-refs\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::capabilities\":{\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::cap-entry\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grant\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::grants\":{\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"item\":{\"name\":\"surface::grant\",\"op\":\"ref\"},\"min\":0,\"op\":\"array\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::health\":{\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}],\"op\":\"union\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello\":{\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"name\":\"common::surface-id\",\"op\":\"ref\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"name\":\"common::version-offer\",\"op\":\"ref\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::hello-reply\":{\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"name\":\"common::version-selection\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::kill\":{\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}],\"op\":\"intersection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read\":{\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"name\":\"common::coglet-id\",\"op\":\"ref\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"name\":\"common::capability-name\",\"op\":\"ref\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"max\":18446744073709551615,\"min\":1,\"op\":\"range\"}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::read-reply\":{\"items\":[{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"name\":\"common::uint64\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"surface::schema-refs\":{\"item\":{\"items\":[{\"name\":\"tstr\",\"op\":\"primitive\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,2048}$\"}],\"op\":\"intersection\"},\"key\":{\"name\":\"common::capability-name\",\"op\":\"ref\"},\"min\":0,\"op\":\"map\"},\"surface::surface-entry\":{\"name\":\"surface::surface-message\",\"op\":\"ref\"},\"surface::surface-error\":{\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}}],\"op\":\"record\"},\"surface::surface-message\":{\"items\":[{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::hello-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::capabilities\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::grants\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::event\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::read-reply\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::act\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"common::action-accept\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::health\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::kill\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"name\":\"surface::surface-error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"tool-call\":{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"name\":\"common::method-name\",\"op\":\"ref\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},\"tool-result\":{\"items\":[{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::profile-map\",\"op\":\"ref\"}}],\"op\":\"record\"},{\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"name\":\"common::correlation-id\",\"op\":\"ref\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"name\":\"common::error\",\"op\":\"ref\"}}],\"op\":\"record\"}],\"op\":\"union\"},\"uint64\":{\"max\":18446744073709551615,\"min\":0,\"op\":\"range\"},\"version-offer\":{\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"item\":{\"name\":\"common::spec-version\",\"op\":\"ref\"},\"min\":1,\"op\":\"array\"}}],\"op\":\"record\"},\"version-selection\":{\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"name\":\"common::spec-version\",\"op\":\"ref\"}}],\"op\":\"record\"}}"
 
 var schema = codec.MustParseSchema(SchemaJSON)
 
@@ -186,6 +186,251 @@ type CommonError = Error
 
 func asCommonError(x any) (CommonError, error) {
 	return asError(x)
+}
+
+// ExpressionExpressionEntry is CDDL rule 'expression::expression-entry'; constraints are enforced by Encode/Decode.
+type ExpressionExpressionEntry = ExpressionEntry
+
+func asExpressionExpressionEntry(x any) (ExpressionExpressionEntry, error) {
+	return asExpressionEntry(x)
+}
+
+// ExpressionSetExpression is CDDL rule 'expression::set-expression'; constraints are enforced by Encode/Decode.
+type ExpressionSetExpression = SetExpression
+
+func asExpressionSetExpression(x any) (ExpressionSetExpression, error) {
+	return asSetExpression(x)
+}
+
+// ExpressionExpressionState is CDDL rule 'expression::expression-state'; constraints are enforced by Encode/Decode.
+type ExpressionExpressionState = ExpressionState
+
+func asExpressionExpressionState(x any) (ExpressionExpressionState, error) {
+	return asExpressionState(x)
+}
+
+// ExpressionExpressionProfile is CDDL rule 'expression::expression-profile'; constraints are enforced by Encode/Decode.
+type ExpressionExpressionProfile = ExpressionProfile
+
+func asExpressionExpressionProfile(x any) (ExpressionExpressionProfile, error) {
+	return asExpressionProfile(x)
+}
+
+// SpeechSpeechEntry is CDDL rule 'speech::speech-entry'; constraints are enforced by Encode/Decode.
+type SpeechSpeechEntry = SpeechEntry
+
+func asSpeechSpeechEntry(x any) (SpeechSpeechEntry, error) {
+	return asSpeechEntry(x)
+}
+
+// SpeechSpeechStart is CDDL rule 'speech::speech-start'; constraints are enforced by Encode/Decode.
+type SpeechSpeechStart = SpeechStart
+
+func asSpeechSpeechStart(x any) (SpeechSpeechStart, error) {
+	return asSpeechStart(x)
+}
+
+// SpeechSpeechPartial is CDDL rule 'speech::speech-partial'; constraints are enforced by Encode/Decode.
+type SpeechSpeechPartial = SpeechPartial
+
+func asSpeechSpeechPartial(x any) (SpeechSpeechPartial, error) {
+	return asSpeechPartial(x)
+}
+
+// SpeechSpeechEnd is CDDL rule 'speech::speech-end'; constraints are enforced by Encode/Decode.
+type SpeechSpeechEnd = SpeechEnd
+
+func asSpeechSpeechEnd(x any) (SpeechSpeechEnd, error) {
+	return asSpeechEnd(x)
+}
+
+// SpeechSpeechPosition is CDDL rule 'speech::speech-position'; constraints are enforced by Encode/Decode.
+type SpeechSpeechPosition = SpeechPosition
+
+func asSpeechSpeechPosition(x any) (SpeechSpeechPosition, error) {
+	return asSpeechPosition(x)
+}
+
+// SpeechSpeechBargeIn is CDDL rule 'speech::speech-barge-in'; constraints are enforced by Encode/Decode.
+type SpeechSpeechBargeIn = SpeechBargeIn
+
+func asSpeechSpeechBargeIn(x any) (SpeechSpeechBargeIn, error) {
+	return asSpeechBargeIn(x)
+}
+
+// SpeechSpeakChunk is CDDL rule 'speech::speak-chunk'; constraints are enforced by Encode/Decode.
+type SpeechSpeakChunk = SpeakChunk
+
+func asSpeechSpeakChunk(x any) (SpeechSpeakChunk, error) {
+	return asSpeakChunk(x)
+}
+
+// SpeechStop is CDDL rule 'speech::stop'; constraints are enforced by Encode/Decode.
+type SpeechStop = Stop
+
+func asSpeechStop(x any) (SpeechStop, error) {
+	return asStop(x)
+}
+
+// SpeechBackchannel is CDDL rule 'speech::backchannel'; constraints are enforced by Encode/Decode.
+type SpeechBackchannel = Backchannel
+
+func asSpeechBackchannel(x any) (SpeechBackchannel, error) {
+	return asBackchannel(x)
+}
+
+// SpeechSpeechRoute is CDDL rule 'speech::speech-route'; constraints are enforced by Encode/Decode.
+type SpeechSpeechRoute = SpeechRoute
+
+func asSpeechSpeechRoute(x any) (SpeechSpeechRoute, error) {
+	return asSpeechRoute(x)
+}
+
+// SpeechSpeechConfig is CDDL rule 'speech::speech-config'; constraints are enforced by Encode/Decode.
+type SpeechSpeechConfig = SpeechConfig
+
+func asSpeechSpeechConfig(x any) (SpeechSpeechConfig, error) {
+	return asSpeechConfig(x)
+}
+
+// SpeechSessionOpen is CDDL rule 'speech::session-open'; constraints are enforced by Encode/Decode.
+type SpeechSessionOpen = SessionOpen
+
+func asSpeechSessionOpen(x any) (SpeechSessionOpen, error) {
+	return asSessionOpen(x)
+}
+
+// SpeechSessionClose is CDDL rule 'speech::session-close'; constraints are enforced by Encode/Decode.
+type SpeechSessionClose = SessionClose
+
+func asSpeechSessionClose(x any) (SpeechSessionClose, error) {
+	return asSessionClose(x)
+}
+
+// SpeechToolCall is CDDL rule 'speech::tool-call'; constraints are enforced by Encode/Decode.
+type SpeechToolCall = ToolCall
+
+func asSpeechToolCall(x any) (SpeechToolCall, error) {
+	return asToolCall(x)
+}
+
+// SpeechToolResult is CDDL rule 'speech::tool-result'; constraints are enforced by Encode/Decode.
+type SpeechToolResult = ToolResult
+
+func asSpeechToolResult(x any) (SpeechToolResult, error) {
+	return asToolResult(x)
+}
+
+// SpeechSpeechProfile is CDDL rule 'speech::speech-profile'; constraints are enforced by Encode/Decode.
+type SpeechSpeechProfile = SpeechProfile
+
+func asSpeechSpeechProfile(x any) (SpeechSpeechProfile, error) {
+	return asSpeechProfile(x)
+}
+
+// SurfaceSurfaceEntry is CDDL rule 'surface::surface-entry'; constraints are enforced by Encode/Decode.
+type SurfaceSurfaceEntry = SurfaceEntry
+
+func asSurfaceSurfaceEntry(x any) (SurfaceSurfaceEntry, error) {
+	return asSurfaceEntry(x)
+}
+
+// SurfaceHello is CDDL rule 'surface::hello'; constraints are enforced by Encode/Decode.
+type SurfaceHello = Hello
+
+func asSurfaceHello(x any) (SurfaceHello, error) {
+	return asHello(x)
+}
+
+// SurfaceHelloReply is CDDL rule 'surface::hello-reply'; constraints are enforced by Encode/Decode.
+type SurfaceHelloReply = HelloReply
+
+func asSurfaceHelloReply(x any) (SurfaceHelloReply, error) {
+	return asHelloReply(x)
+}
+
+// SurfaceSchemaRefs is CDDL rule 'surface::schema-refs'; constraints are enforced by Encode/Decode.
+type SurfaceSchemaRefs = SchemaRefs
+
+func asSurfaceSchemaRefs(x any) (SurfaceSchemaRefs, error) {
+	return asSchemaRefs(x)
+}
+
+// SurfaceCapEntry is CDDL rule 'surface::cap-entry'; constraints are enforced by Encode/Decode.
+type SurfaceCapEntry = CapEntry
+
+func asSurfaceCapEntry(x any) (SurfaceCapEntry, error) {
+	return asCapEntry(x)
+}
+
+// SurfaceCapabilities is CDDL rule 'surface::capabilities'; constraints are enforced by Encode/Decode.
+type SurfaceCapabilities = Capabilities
+
+func asSurfaceCapabilities(x any) (SurfaceCapabilities, error) {
+	return asCapabilities(x)
+}
+
+// SurfaceGrant is CDDL rule 'surface::grant'; constraints are enforced by Encode/Decode.
+type SurfaceGrant = Grant
+
+func asSurfaceGrant(x any) (SurfaceGrant, error) {
+	return asGrant(x)
+}
+
+// SurfaceGrants is CDDL rule 'surface::grants'; constraints are enforced by Encode/Decode.
+type SurfaceGrants = Grants
+
+func asSurfaceGrants(x any) (SurfaceGrants, error) {
+	return asGrants(x)
+}
+
+// SurfaceRead is CDDL rule 'surface::read'; constraints are enforced by Encode/Decode.
+type SurfaceRead = Read
+
+func asSurfaceRead(x any) (SurfaceRead, error) {
+	return asRead(x)
+}
+
+// SurfaceReadReply is CDDL rule 'surface::read-reply'; constraints are enforced by Encode/Decode.
+type SurfaceReadReply = ReadReply
+
+func asSurfaceReadReply(x any) (SurfaceReadReply, error) {
+	return asReadReply(x)
+}
+
+// SurfaceAct is CDDL rule 'surface::act'; constraints are enforced by Encode/Decode.
+type SurfaceAct = Act
+
+func asSurfaceAct(x any) (SurfaceAct, error) {
+	return asAct(x)
+}
+
+// SurfaceHealth is CDDL rule 'surface::health'; constraints are enforced by Encode/Decode.
+type SurfaceHealth = Health
+
+func asSurfaceHealth(x any) (SurfaceHealth, error) {
+	return asHealth(x)
+}
+
+// SurfaceKill is CDDL rule 'surface::kill'; constraints are enforced by Encode/Decode.
+type SurfaceKill = Kill
+
+func asSurfaceKill(x any) (SurfaceKill, error) {
+	return asKill(x)
+}
+
+// SurfaceSurfaceError is CDDL rule 'surface::surface-error'; constraints are enforced by Encode/Decode.
+type SurfaceSurfaceError = SurfaceError
+
+func asSurfaceSurfaceError(x any) (SurfaceSurfaceError, error) {
+	return asSurfaceError(x)
+}
+
+// SurfaceSurfaceMessage is CDDL rule 'surface::surface-message'; constraints are enforced by Encode/Decode.
+type SurfaceSurfaceMessage = SurfaceMessage
+
+func asSurfaceSurfaceMessage(x any) (SurfaceSurfaceMessage, error) {
+	return asSurfaceMessage(x)
 }
 
 // Common is CDDL rule 'common'; constraints are enforced by Encode/Decode.
@@ -872,4 +1117,2393 @@ func DecodeError(raw []byte) (Error, error) {
 		return zero, err
 	}
 	return asError(v)
+}
+
+// ExpressionEntry is CDDL rule 'expression-entry'; constraints are enforced by Encode/Decode.
+type ExpressionEntry = ExpressionExpressionProfile
+
+func asExpressionEntry(x any) (ExpressionEntry, error) {
+	return asExpressionExpressionProfile(x)
+}
+
+// SetExpression is CDDL rule 'set-expression'. Optional fields are pointers; nil means absent.
+type SetExpression struct {
+	Expression string
+	Intensity  uint64
+	DurationMs uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SetExpression) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["expression"] = v.Expression
+	m["intensity"] = v.Intensity
+	m["duration_ms"] = v.DurationMs
+	return m
+}
+
+func asSetExpression(x any) (SetExpression, error) {
+	var out SetExpression
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Expression, err = codec.AsString(m["expression"]); err != nil {
+		return out, err
+	}
+	if out.Intensity, err = codec.AsUint64(m["intensity"]); err != nil {
+		return out, err
+	}
+	if out.DurationMs, err = codec.AsUint64(m["duration_ms"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SetExpression) ToCBOR() ([]byte, error) {
+	return schema.Encode("set-expression", v)
+}
+
+// DecodeSetExpression strictly decodes and validates a set-expression item.
+func DecodeSetExpression(raw []byte) (SetExpression, error) {
+	var zero SetExpression
+	v, err := schema.Decode("set-expression", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSetExpression(v)
+}
+
+// ExpressionState is CDDL rule 'expression-state'. Optional fields are pointers; nil means absent.
+type ExpressionState struct {
+	Expression  string
+	Intensity   uint64
+	RemainingMs uint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ExpressionState) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["expression"] = v.Expression
+	m["intensity"] = v.Intensity
+	m["remaining_ms"] = v.RemainingMs
+	return m
+}
+
+func asExpressionState(x any) (ExpressionState, error) {
+	var out ExpressionState
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Expression, err = codec.AsString(m["expression"]); err != nil {
+		return out, err
+	}
+	if out.Intensity, err = codec.AsUint64(m["intensity"]); err != nil {
+		return out, err
+	}
+	if out.RemainingMs, err = codec.AsUint64(m["remaining_ms"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v ExpressionState) ToCBOR() ([]byte, error) {
+	return schema.Encode("expression-state", v)
+}
+
+// DecodeExpressionState strictly decodes and validates a expression-state item.
+func DecodeExpressionState(raw []byte) (ExpressionState, error) {
+	var zero ExpressionState
+	v, err := schema.Decode("expression-state", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asExpressionState(v)
+}
+
+// ExpressionProfile is CDDL rule 'expression-profile'; constraints are enforced by Encode/Decode.
+type ExpressionProfile = any
+
+func asExpressionProfile(x any) (ExpressionProfile, error) {
+	return codec.AsAny(x)
+}
+
+// SpeechEntry is CDDL rule 'speech-entry'; constraints are enforced by Encode/Decode.
+type SpeechEntry = SpeechSpeechProfile
+
+func asSpeechEntry(x any) (SpeechEntry, error) {
+	return asSpeechSpeechProfile(x)
+}
+
+// SpeechStart is CDDL rule 'speech-start'. Optional fields are pointers; nil means absent.
+type SpeechStart struct {
+	Utterance  CommonCorrelationId
+	PositionMs CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechStart) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["utterance"] = v.Utterance
+	m["position_ms"] = v.PositionMs
+	return m
+}
+
+func asSpeechStart(x any) (SpeechStart, error) {
+	var out SpeechStart
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Utterance, err = asCommonCorrelationId(m["utterance"]); err != nil {
+		return out, err
+	}
+	if out.PositionMs, err = asCommonUint64(m["position_ms"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechStart) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-start", v)
+}
+
+// DecodeSpeechStart strictly decodes and validates a speech-start item.
+func DecodeSpeechStart(raw []byte) (SpeechStart, error) {
+	var zero SpeechStart
+	v, err := schema.Decode("speech-start", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechStart(v)
+}
+
+// SpeechPartial is CDDL rule 'speech-partial'. Optional fields are pointers; nil means absent.
+type SpeechPartial struct {
+	Utterance CommonCorrelationId
+	Revision  uint64
+	Text      string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechPartial) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["utterance"] = v.Utterance
+	m["revision"] = v.Revision
+	m["text"] = v.Text
+	return m
+}
+
+func asSpeechPartial(x any) (SpeechPartial, error) {
+	var out SpeechPartial
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Utterance, err = asCommonCorrelationId(m["utterance"]); err != nil {
+		return out, err
+	}
+	if out.Revision, err = codec.AsUint64(m["revision"]); err != nil {
+		return out, err
+	}
+	if out.Text, err = codec.AsString(m["text"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechPartial) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-partial", v)
+}
+
+// DecodeSpeechPartial strictly decodes and validates a speech-partial item.
+func DecodeSpeechPartial(raw []byte) (SpeechPartial, error) {
+	var zero SpeechPartial
+	v, err := schema.Decode("speech-partial", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechPartial(v)
+}
+
+// SpeechEnd is CDDL rule 'speech-end'. Optional fields are pointers; nil means absent.
+type SpeechEnd struct {
+	Utterance  CommonCorrelationId
+	Revision   uint64
+	Text       string
+	PositionMs CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechEnd) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["utterance"] = v.Utterance
+	m["revision"] = v.Revision
+	m["text"] = v.Text
+	m["position_ms"] = v.PositionMs
+	return m
+}
+
+func asSpeechEnd(x any) (SpeechEnd, error) {
+	var out SpeechEnd
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Utterance, err = asCommonCorrelationId(m["utterance"]); err != nil {
+		return out, err
+	}
+	if out.Revision, err = codec.AsUint64(m["revision"]); err != nil {
+		return out, err
+	}
+	if out.Text, err = codec.AsString(m["text"]); err != nil {
+		return out, err
+	}
+	if out.PositionMs, err = asCommonUint64(m["position_ms"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechEnd) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-end", v)
+}
+
+// DecodeSpeechEnd strictly decodes and validates a speech-end item.
+func DecodeSpeechEnd(raw []byte) (SpeechEnd, error) {
+	var zero SpeechEnd
+	v, err := schema.Decode("speech-end", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechEnd(v)
+}
+
+// SpeechPosition is CDDL rule 'speech-position'. Optional fields are pointers; nil means absent.
+type SpeechPosition struct {
+	Stream     CommonCorrelationId
+	Chunk      CommonUint64
+	Item       CommonCorrelationId
+	PlayedMs   CommonUint64
+	PositionMs CommonUint64
+	State      string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechPosition) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["stream"] = v.Stream
+	m["chunk"] = v.Chunk
+	m["item"] = v.Item
+	m["played_ms"] = v.PlayedMs
+	m["position_ms"] = v.PositionMs
+	m["state"] = v.State
+	return m
+}
+
+func asSpeechPosition(x any) (SpeechPosition, error) {
+	var out SpeechPosition
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Stream, err = asCommonCorrelationId(m["stream"]); err != nil {
+		return out, err
+	}
+	if out.Chunk, err = asCommonUint64(m["chunk"]); err != nil {
+		return out, err
+	}
+	if out.Item, err = asCommonCorrelationId(m["item"]); err != nil {
+		return out, err
+	}
+	if out.PlayedMs, err = asCommonUint64(m["played_ms"]); err != nil {
+		return out, err
+	}
+	if out.PositionMs, err = asCommonUint64(m["position_ms"]); err != nil {
+		return out, err
+	}
+	if out.State, err = codec.AsString(m["state"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechPosition) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-position", v)
+}
+
+// DecodeSpeechPosition strictly decodes and validates a speech-position item.
+func DecodeSpeechPosition(raw []byte) (SpeechPosition, error) {
+	var zero SpeechPosition
+	v, err := schema.Decode("speech-position", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechPosition(v)
+}
+
+// SpeechBargeIn is CDDL rule 'speech-barge-in'. Optional fields are pointers; nil means absent.
+type SpeechBargeIn struct {
+	Utterance  CommonCorrelationId
+	Stream     CommonCorrelationId
+	Item       CommonCorrelationId
+	PlayedMs   CommonUint64
+	PositionMs CommonUint64
+	Reflex     string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechBargeIn) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["utterance"] = v.Utterance
+	m["stream"] = v.Stream
+	m["item"] = v.Item
+	m["played_ms"] = v.PlayedMs
+	m["position_ms"] = v.PositionMs
+	m["reflex"] = v.Reflex
+	return m
+}
+
+func asSpeechBargeIn(x any) (SpeechBargeIn, error) {
+	var out SpeechBargeIn
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Utterance, err = asCommonCorrelationId(m["utterance"]); err != nil {
+		return out, err
+	}
+	if out.Stream, err = asCommonCorrelationId(m["stream"]); err != nil {
+		return out, err
+	}
+	if out.Item, err = asCommonCorrelationId(m["item"]); err != nil {
+		return out, err
+	}
+	if out.PlayedMs, err = asCommonUint64(m["played_ms"]); err != nil {
+		return out, err
+	}
+	if out.PositionMs, err = asCommonUint64(m["position_ms"]); err != nil {
+		return out, err
+	}
+	if out.Reflex, err = codec.AsString(m["reflex"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechBargeIn) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-barge-in", v)
+}
+
+// DecodeSpeechBargeIn strictly decodes and validates a speech-barge-in item.
+func DecodeSpeechBargeIn(raw []byte) (SpeechBargeIn, error) {
+	var zero SpeechBargeIn
+	v, err := schema.Decode("speech-barge-in", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechBargeIn(v)
+}
+
+// SpeakChunk is CDDL rule 'speak-chunk'. Optional fields are pointers; nil means absent.
+type SpeakChunk struct {
+	Stream CommonCorrelationId
+	Chunk  CommonUint64
+	Text   string
+	Final  bool
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeakChunk) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["stream"] = v.Stream
+	m["chunk"] = v.Chunk
+	m["text"] = v.Text
+	m["final"] = v.Final
+	return m
+}
+
+func asSpeakChunk(x any) (SpeakChunk, error) {
+	var out SpeakChunk
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Stream, err = asCommonCorrelationId(m["stream"]); err != nil {
+		return out, err
+	}
+	if out.Chunk, err = asCommonUint64(m["chunk"]); err != nil {
+		return out, err
+	}
+	if out.Text, err = codec.AsString(m["text"]); err != nil {
+		return out, err
+	}
+	if out.Final, err = codec.AsBool(m["final"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeakChunk) ToCBOR() ([]byte, error) {
+	return schema.Encode("speak-chunk", v)
+}
+
+// DecodeSpeakChunk strictly decodes and validates a speak-chunk item.
+func DecodeSpeakChunk(raw []byte) (SpeakChunk, error) {
+	var zero SpeakChunk
+	v, err := schema.Decode("speak-chunk", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeakChunk(v)
+}
+
+// Stop is CDDL rule 'stop'. Optional fields are pointers; nil means absent.
+type Stop struct {
+	Stream CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Stop) ToValue() map[string]any {
+	m := make(map[string]any, 1)
+	m["stream"] = v.Stream
+	return m
+}
+
+func asStop(x any) (Stop, error) {
+	var out Stop
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Stream, err = asCommonCorrelationId(m["stream"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Stop) ToCBOR() ([]byte, error) {
+	return schema.Encode("stop", v)
+}
+
+// DecodeStop strictly decodes and validates a stop item.
+func DecodeStop(raw []byte) (Stop, error) {
+	var zero Stop
+	v, err := schema.Decode("stop", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asStop(v)
+}
+
+// Backchannel is CDDL rule 'backchannel'. Optional fields are pointers; nil means absent.
+type Backchannel struct {
+	Stream CommonCorrelationId
+	Cue    string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Backchannel) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["stream"] = v.Stream
+	m["cue"] = v.Cue
+	return m
+}
+
+func asBackchannel(x any) (Backchannel, error) {
+	var out Backchannel
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Stream, err = asCommonCorrelationId(m["stream"]); err != nil {
+		return out, err
+	}
+	if out.Cue, err = codec.AsString(m["cue"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Backchannel) ToCBOR() ([]byte, error) {
+	return schema.Encode("backchannel", v)
+}
+
+// DecodeBackchannel strictly decodes and validates a backchannel item.
+func DecodeBackchannel(raw []byte) (Backchannel, error) {
+	var zero Backchannel
+	v, err := schema.Decode("backchannel", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asBackchannel(v)
+}
+
+// SpeechRoute is CDDL rule 'speech-route'. Optional fields are pointers; nil means absent.
+type SpeechRoute struct {
+	Placement string
+	Route     string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechRoute) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["placement"] = v.Placement
+	m["route"] = v.Route
+	return m
+}
+
+func asSpeechRoute(x any) (SpeechRoute, error) {
+	var out SpeechRoute
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Placement, err = codec.AsString(m["placement"]); err != nil {
+		return out, err
+	}
+	if out.Route, err = codec.AsString(m["route"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechRoute) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-route", v)
+}
+
+// DecodeSpeechRoute strictly decodes and validates a speech-route item.
+func DecodeSpeechRoute(raw []byte) (SpeechRoute, error) {
+	var zero SpeechRoute
+	v, err := schema.Decode("speech-route", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechRoute(v)
+}
+
+// SpeechConfig is CDDL rule 'speech-config'. Optional fields are pointers; nil means absent.
+type SpeechConfig struct {
+	Stt         SpeechSpeechRoute
+	Tts         SpeechSpeechRoute
+	Barge       string
+	SessionMode string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SpeechConfig) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["stt"] = v.Stt
+	m["tts"] = v.Tts
+	m["barge"] = v.Barge
+	m["session_mode"] = v.SessionMode
+	return m
+}
+
+func asSpeechConfig(x any) (SpeechConfig, error) {
+	var out SpeechConfig
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Stt, err = asSpeechSpeechRoute(m["stt"]); err != nil {
+		return out, err
+	}
+	if out.Tts, err = asSpeechSpeechRoute(m["tts"]); err != nil {
+		return out, err
+	}
+	if out.Barge, err = codec.AsString(m["barge"]); err != nil {
+		return out, err
+	}
+	if out.SessionMode, err = codec.AsString(m["session_mode"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SpeechConfig) ToCBOR() ([]byte, error) {
+	return schema.Encode("speech-config", v)
+}
+
+// DecodeSpeechConfig strictly decodes and validates a speech-config item.
+func DecodeSpeechConfig(raw []byte) (SpeechConfig, error) {
+	var zero SpeechConfig
+	v, err := schema.Decode("speech-config", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSpeechConfig(v)
+}
+
+// SessionOpen is CDDL rule 'session-open'. Optional fields are pointers; nil means absent.
+type SessionOpen struct {
+	Session CommonCorrelationId
+	Route   string
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SessionOpen) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["session"] = v.Session
+	m["route"] = v.Route
+	return m
+}
+
+func asSessionOpen(x any) (SessionOpen, error) {
+	var out SessionOpen
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Session, err = asCommonCorrelationId(m["session"]); err != nil {
+		return out, err
+	}
+	if out.Route, err = codec.AsString(m["route"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SessionOpen) ToCBOR() ([]byte, error) {
+	return schema.Encode("session-open", v)
+}
+
+// DecodeSessionOpen strictly decodes and validates a session-open item.
+func DecodeSessionOpen(raw []byte) (SessionOpen, error) {
+	var zero SessionOpen
+	v, err := schema.Decode("session-open", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSessionOpen(v)
+}
+
+// SessionClose is CDDL rule 'session-close'. Optional fields are pointers; nil means absent.
+type SessionClose struct {
+	Session CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SessionClose) ToValue() map[string]any {
+	m := make(map[string]any, 1)
+	m["session"] = v.Session
+	return m
+}
+
+func asSessionClose(x any) (SessionClose, error) {
+	var out SessionClose
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Session, err = asCommonCorrelationId(m["session"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SessionClose) ToCBOR() ([]byte, error) {
+	return schema.Encode("session-close", v)
+}
+
+// DecodeSessionClose strictly decodes and validates a session-close item.
+func DecodeSessionClose(raw []byte) (SessionClose, error) {
+	var zero SessionClose
+	v, err := schema.Decode("session-close", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSessionClose(v)
+}
+
+// ToolCall is CDDL rule 'tool-call'. Optional fields are pointers; nil means absent.
+type ToolCall struct {
+	Session   CommonCorrelationId
+	Call      CommonCorrelationId
+	Name      CommonMethodName
+	Arguments CommonProfileMap
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ToolCall) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["session"] = v.Session
+	m["call"] = v.Call
+	m["name"] = v.Name
+	m["arguments"] = v.Arguments
+	return m
+}
+
+func asToolCall(x any) (ToolCall, error) {
+	var out ToolCall
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Session, err = asCommonCorrelationId(m["session"]); err != nil {
+		return out, err
+	}
+	if out.Call, err = asCommonCorrelationId(m["call"]); err != nil {
+		return out, err
+	}
+	if out.Name, err = asCommonMethodName(m["name"]); err != nil {
+		return out, err
+	}
+	if out.Arguments, err = asCommonProfileMap(m["arguments"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v ToolCall) ToCBOR() ([]byte, error) {
+	return schema.Encode("tool-call", v)
+}
+
+// DecodeToolCall strictly decodes and validates a tool-call item.
+func DecodeToolCall(raw []byte) (ToolCall, error) {
+	var zero ToolCall
+	v, err := schema.Decode("tool-call", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asToolCall(v)
+}
+
+// ToolResult is one of the record branches of CDDL rule 'tool-result'.
+type ToolResult interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isToolResult()
+}
+
+// ToolResult1 is branch 1 of CDDL rule 'tool-result'. Optional fields are pointers; nil means absent.
+type ToolResult1 struct {
+	Session CommonCorrelationId
+	Call    CommonCorrelationId
+	Ok      bool
+	Value   CommonProfileMap
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ToolResult1) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["session"] = v.Session
+	m["call"] = v.Call
+	m["ok"] = v.Ok
+	m["value"] = v.Value
+	return m
+}
+
+func asToolResult1(x any) (ToolResult1, error) {
+	var out ToolResult1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Session, err = asCommonCorrelationId(m["session"]); err != nil {
+		return out, err
+	}
+	if out.Call, err = asCommonCorrelationId(m["call"]); err != nil {
+		return out, err
+	}
+	if out.Ok, err = codec.AsBool(m["ok"]); err != nil {
+		return out, err
+	}
+	if out.Value, err = asCommonProfileMap(m["value"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (ToolResult1) isToolResult() {}
+
+// ToCBOR encodes the record as branch 1 of tool-result.
+func (v ToolResult1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("tool-result", 0, v)
+}
+
+// DecodeToolResult1 decodes an item that matches branch 1 of tool-result.
+func DecodeToolResult1(raw []byte) (ToolResult1, error) {
+	var zero ToolResult1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("tool-result", 0, v); err != nil {
+		return zero, err
+	}
+	return asToolResult1(v)
+}
+
+// ToolResult2 is branch 2 of CDDL rule 'tool-result'. Optional fields are pointers; nil means absent.
+type ToolResult2 struct {
+	Session CommonCorrelationId
+	Call    CommonCorrelationId
+	Ok      bool
+	Value   CommonError
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ToolResult2) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["session"] = v.Session
+	m["call"] = v.Call
+	m["ok"] = v.Ok
+	m["value"] = v.Value
+	return m
+}
+
+func asToolResult2(x any) (ToolResult2, error) {
+	var out ToolResult2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Session, err = asCommonCorrelationId(m["session"]); err != nil {
+		return out, err
+	}
+	if out.Call, err = asCommonCorrelationId(m["call"]); err != nil {
+		return out, err
+	}
+	if out.Ok, err = codec.AsBool(m["ok"]); err != nil {
+		return out, err
+	}
+	if out.Value, err = asCommonError(m["value"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (ToolResult2) isToolResult() {}
+
+// ToCBOR encodes the record as branch 2 of tool-result.
+func (v ToolResult2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("tool-result", 1, v)
+}
+
+// DecodeToolResult2 decodes an item that matches branch 2 of tool-result.
+func DecodeToolResult2(raw []byte) (ToolResult2, error) {
+	var zero ToolResult2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("tool-result", 1, v); err != nil {
+		return zero, err
+	}
+	return asToolResult2(v)
+}
+
+func asToolResult(x any) (ToolResult, error) {
+	if schema.ValidateVariant("tool-result", 0, x) == nil {
+		v, err := asToolResult1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("tool-result", 1, x) == nil {
+		v, err := asToolResult2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeToolResult strictly decodes and validates a tool-result item into its branch.
+func DecodeToolResult(raw []byte) (ToolResult, error) {
+	v, err := schema.Decode("tool-result", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asToolResult(v)
+}
+
+// SpeechProfile is CDDL rule 'speech-profile'; constraints are enforced by Encode/Decode.
+type SpeechProfile = any
+
+func asSpeechProfile(x any) (SpeechProfile, error) {
+	return codec.AsAny(x)
+}
+
+// SurfaceEntry is CDDL rule 'surface-entry'; constraints are enforced by Encode/Decode.
+type SurfaceEntry = SurfaceSurfaceMessage
+
+func asSurfaceEntry(x any) (SurfaceEntry, error) {
+	return asSurfaceSurfaceMessage(x)
+}
+
+// Hello is CDDL rule 'hello'. Optional fields are pointers; nil means absent.
+type Hello struct {
+	Surface       CommonSurfaceId
+	Offer         CommonVersionOffer
+	Clock         CommonUint64
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Hello) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["surface"] = v.Surface
+	m["offer"] = v.Offer
+	m["clock"] = v.Clock
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asHello(x any) (Hello, error) {
+	var out Hello
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Surface, err = asCommonSurfaceId(m["surface"]); err != nil {
+		return out, err
+	}
+	if out.Offer, err = asCommonVersionOffer(m["offer"]); err != nil {
+		return out, err
+	}
+	if out.Clock, err = asCommonUint64(m["clock"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Hello) ToCBOR() ([]byte, error) {
+	return schema.Encode("hello", v)
+}
+
+// DecodeHello strictly decodes and validates a hello item.
+func DecodeHello(raw []byte) (Hello, error) {
+	var zero Hello
+	v, err := schema.Decode("hello", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asHello(v)
+}
+
+// HelloReply is CDDL rule 'hello-reply'. Optional fields are pointers; nil means absent.
+type HelloReply struct {
+	Selection     CommonVersionSelection
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v HelloReply) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["selection"] = v.Selection
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asHelloReply(x any) (HelloReply, error) {
+	var out HelloReply
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Selection, err = asCommonVersionSelection(m["selection"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v HelloReply) ToCBOR() ([]byte, error) {
+	return schema.Encode("hello-reply", v)
+}
+
+// DecodeHelloReply strictly decodes and validates a hello-reply item.
+func DecodeHelloReply(raw []byte) (HelloReply, error) {
+	var zero HelloReply
+	v, err := schema.Decode("hello-reply", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asHelloReply(v)
+}
+
+// SchemaRefs is CDDL rule 'schema-refs'; constraints are enforced by Encode/Decode.
+type SchemaRefs = map[string]string
+
+func asSchemaRefs(x any) (SchemaRefs, error) {
+	return (func(x any) (map[string]string, error) { return codec.AsMap(x, codec.AsString) })(x)
+}
+
+// CapEntry is CDDL rule 'cap-entry'. Optional fields are pointers; nil means absent.
+type CapEntry struct {
+	Name      CommonCapabilityName
+	Events    []CommonCapabilityName
+	Reads     []CommonCapabilityName
+	Actions   []CommonCapabilityName
+	Exclusive []CommonCapabilityName
+	Schemas   SurfaceSchemaRefs
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v CapEntry) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["name"] = v.Name
+	m["events"] = v.Events
+	m["reads"] = v.Reads
+	m["actions"] = v.Actions
+	m["exclusive"] = v.Exclusive
+	m["schemas"] = v.Schemas
+	return m
+}
+
+func asCapEntry(x any) (CapEntry, error) {
+	var out CapEntry
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Name, err = asCommonCapabilityName(m["name"]); err != nil {
+		return out, err
+	}
+	if out.Events, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["events"]); err != nil {
+		return out, err
+	}
+	if out.Reads, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["reads"]); err != nil {
+		return out, err
+	}
+	if out.Actions, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["actions"]); err != nil {
+		return out, err
+	}
+	if out.Exclusive, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["exclusive"]); err != nil {
+		return out, err
+	}
+	if out.Schemas, err = asSurfaceSchemaRefs(m["schemas"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v CapEntry) ToCBOR() ([]byte, error) {
+	return schema.Encode("cap-entry", v)
+}
+
+// DecodeCapEntry strictly decodes and validates a cap-entry item.
+func DecodeCapEntry(raw []byte) (CapEntry, error) {
+	var zero CapEntry
+	v, err := schema.Decode("cap-entry", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asCapEntry(v)
+}
+
+// Capabilities is CDDL rule 'capabilities'. Optional fields are pointers; nil means absent.
+type Capabilities struct {
+	Revision      uint64
+	Clock         CommonUint64
+	Entries       []SurfaceCapEntry
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Capabilities) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["revision"] = v.Revision
+	m["clock"] = v.Clock
+	m["entries"] = v.Entries
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asCapabilities(x any) (Capabilities, error) {
+	var out Capabilities
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Revision, err = codec.AsUint64(m["revision"]); err != nil {
+		return out, err
+	}
+	if out.Clock, err = asCommonUint64(m["clock"]); err != nil {
+		return out, err
+	}
+	if out.Entries, err = (func(x any) ([]SurfaceCapEntry, error) { return codec.AsList(x, asSurfaceCapEntry) })(m["entries"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Capabilities) ToCBOR() ([]byte, error) {
+	return schema.Encode("capabilities", v)
+}
+
+// DecodeCapabilities strictly decodes and validates a capabilities item.
+func DecodeCapabilities(raw []byte) (Capabilities, error) {
+	var zero Capabilities
+	v, err := schema.Decode("capabilities", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asCapabilities(v)
+}
+
+// Grant is CDDL rule 'grant'. Optional fields are pointers; nil means absent.
+type Grant struct {
+	Coglet     CommonCogletId
+	Operations []CommonCapabilityName
+	Resources  []CommonCapabilityName
+	Expires    CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Grant) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["coglet"] = v.Coglet
+	m["operations"] = v.Operations
+	m["resources"] = v.Resources
+	m["expires"] = v.Expires
+	return m
+}
+
+func asGrant(x any) (Grant, error) {
+	var out Grant
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
+		return out, err
+	}
+	if out.Operations, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["operations"]); err != nil {
+		return out, err
+	}
+	if out.Resources, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["resources"]); err != nil {
+		return out, err
+	}
+	if out.Expires, err = asCommonUint64(m["expires"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Grant) ToCBOR() ([]byte, error) {
+	return schema.Encode("grant", v)
+}
+
+// DecodeGrant strictly decodes and validates a grant item.
+func DecodeGrant(raw []byte) (Grant, error) {
+	var zero Grant
+	v, err := schema.Decode("grant", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asGrant(v)
+}
+
+// Grants is CDDL rule 'grants'. Optional fields are pointers; nil means absent.
+type Grants struct {
+	Epoch         uint64
+	Entries       []SurfaceGrant
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Grants) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["epoch"] = v.Epoch
+	m["entries"] = v.Entries
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asGrants(x any) (Grants, error) {
+	var out Grants
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Epoch, err = codec.AsUint64(m["epoch"]); err != nil {
+		return out, err
+	}
+	if out.Entries, err = (func(x any) ([]SurfaceGrant, error) { return codec.AsList(x, asSurfaceGrant) })(m["entries"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Grants) ToCBOR() ([]byte, error) {
+	return schema.Encode("grants", v)
+}
+
+// DecodeGrants strictly decodes and validates a grants item.
+func DecodeGrants(raw []byte) (Grants, error) {
+	var zero Grants
+	v, err := schema.Decode("grants", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asGrants(v)
+}
+
+// Read is CDDL rule 'read'. Optional fields are pointers; nil means absent.
+type Read struct {
+	Coglet        CommonCogletId
+	Capability    CommonCapabilityName
+	Args          CommonProfileMap
+	GrantEpoch    uint64
+	Deadline      CommonUint64
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Read) ToValue() map[string]any {
+	m := make(map[string]any, 6)
+	m["coglet"] = v.Coglet
+	m["capability"] = v.Capability
+	m["args"] = v.Args
+	m["grant_epoch"] = v.GrantEpoch
+	m["deadline"] = v.Deadline
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asRead(x any) (Read, error) {
+	var out Read
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
+		return out, err
+	}
+	if out.Capability, err = asCommonCapabilityName(m["capability"]); err != nil {
+		return out, err
+	}
+	if out.Args, err = asCommonProfileMap(m["args"]); err != nil {
+		return out, err
+	}
+	if out.GrantEpoch, err = codec.AsUint64(m["grant_epoch"]); err != nil {
+		return out, err
+	}
+	if out.Deadline, err = asCommonUint64(m["deadline"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Read) ToCBOR() ([]byte, error) {
+	return schema.Encode("read", v)
+}
+
+// DecodeRead strictly decodes and validates a read item.
+func DecodeRead(raw []byte) (Read, error) {
+	var zero Read
+	v, err := schema.Decode("read", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asRead(v)
+}
+
+// ReadReply is one of the record branches of CDDL rule 'read-reply'.
+type ReadReply interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isReadReply()
+}
+
+// ReadReply1 is branch 1 of CDDL rule 'read-reply'. Optional fields are pointers; nil means absent.
+type ReadReply1 struct {
+	CorrelationId CommonCorrelationId
+	Ok            bool
+	Value         CommonProfileMap
+	Snapshot      CommonUint64
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ReadReply1) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["correlation_id"] = v.CorrelationId
+	m["ok"] = v.Ok
+	m["value"] = v.Value
+	m["snapshot"] = v.Snapshot
+	return m
+}
+
+func asReadReply1(x any) (ReadReply1, error) {
+	var out ReadReply1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	if out.Ok, err = codec.AsBool(m["ok"]); err != nil {
+		return out, err
+	}
+	if out.Value, err = asCommonProfileMap(m["value"]); err != nil {
+		return out, err
+	}
+	if out.Snapshot, err = asCommonUint64(m["snapshot"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (ReadReply1) isReadReply() {}
+
+// ToCBOR encodes the record as branch 1 of read-reply.
+func (v ReadReply1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("read-reply", 0, v)
+}
+
+// DecodeReadReply1 decodes an item that matches branch 1 of read-reply.
+func DecodeReadReply1(raw []byte) (ReadReply1, error) {
+	var zero ReadReply1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("read-reply", 0, v); err != nil {
+		return zero, err
+	}
+	return asReadReply1(v)
+}
+
+// ReadReply2 is branch 2 of CDDL rule 'read-reply'. Optional fields are pointers; nil means absent.
+type ReadReply2 struct {
+	CorrelationId CommonCorrelationId
+	Ok            bool
+	Error         CommonError
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v ReadReply2) ToValue() map[string]any {
+	m := make(map[string]any, 3)
+	m["correlation_id"] = v.CorrelationId
+	m["ok"] = v.Ok
+	m["error"] = v.Error
+	return m
+}
+
+func asReadReply2(x any) (ReadReply2, error) {
+	var out ReadReply2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	if out.Ok, err = codec.AsBool(m["ok"]); err != nil {
+		return out, err
+	}
+	if out.Error, err = asCommonError(m["error"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (ReadReply2) isReadReply() {}
+
+// ToCBOR encodes the record as branch 2 of read-reply.
+func (v ReadReply2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("read-reply", 1, v)
+}
+
+// DecodeReadReply2 decodes an item that matches branch 2 of read-reply.
+func DecodeReadReply2(raw []byte) (ReadReply2, error) {
+	var zero ReadReply2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("read-reply", 1, v); err != nil {
+		return zero, err
+	}
+	return asReadReply2(v)
+}
+
+func asReadReply(x any) (ReadReply, error) {
+	if schema.ValidateVariant("read-reply", 0, x) == nil {
+		v, err := asReadReply1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("read-reply", 1, x) == nil {
+		v, err := asReadReply2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeReadReply strictly decodes and validates a read-reply item into its branch.
+func DecodeReadReply(raw []byte) (ReadReply, error) {
+	v, err := schema.Decode("read-reply", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asReadReply(v)
+}
+
+// Act is CDDL rule 'act'. Optional fields are pointers; nil means absent.
+type Act struct {
+	GrantEpoch uint64
+	Action     CommonAction
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Act) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["grant_epoch"] = v.GrantEpoch
+	m["action"] = v.Action
+	return m
+}
+
+func asAct(x any) (Act, error) {
+	var out Act
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.GrantEpoch, err = codec.AsUint64(m["grant_epoch"]); err != nil {
+		return out, err
+	}
+	if out.Action, err = asCommonAction(m["action"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Act) ToCBOR() ([]byte, error) {
+	return schema.Encode("act", v)
+}
+
+// DecodeAct strictly decodes and validates a act item.
+func DecodeAct(raw []byte) (Act, error) {
+	var zero Act
+	v, err := schema.Decode("act", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asAct(v)
+}
+
+// Health is CDDL rule 'health'. Optional fields are pointers; nil means absent.
+type Health struct {
+	State         string
+	Clock         CommonUint64
+	Pending       CommonUint64
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Health) ToValue() map[string]any {
+	m := make(map[string]any, 4)
+	m["state"] = v.State
+	m["clock"] = v.Clock
+	m["pending"] = v.Pending
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asHealth(x any) (Health, error) {
+	var out Health
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.State, err = codec.AsString(m["state"]); err != nil {
+		return out, err
+	}
+	if out.Clock, err = asCommonUint64(m["clock"]); err != nil {
+		return out, err
+	}
+	if out.Pending, err = asCommonUint64(m["pending"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Health) ToCBOR() ([]byte, error) {
+	return schema.Encode("health", v)
+}
+
+// DecodeHealth strictly decodes and validates a health item.
+func DecodeHealth(raw []byte) (Health, error) {
+	var zero Health
+	v, err := schema.Decode("health", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asHealth(v)
+}
+
+// Kill is CDDL rule 'kill'. Optional fields are pointers; nil means absent.
+type Kill struct {
+	Reason        string
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v Kill) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["reason"] = v.Reason
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asKill(x any) (Kill, error) {
+	var out Kill
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Reason, err = codec.AsString(m["reason"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v Kill) ToCBOR() ([]byte, error) {
+	return schema.Encode("kill", v)
+}
+
+// DecodeKill strictly decodes and validates a kill item.
+func DecodeKill(raw []byte) (Kill, error) {
+	var zero Kill
+	v, err := schema.Decode("kill", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asKill(v)
+}
+
+// SurfaceError is CDDL rule 'surface-error'. Optional fields are pointers; nil means absent.
+type SurfaceError struct {
+	Error         CommonError
+	CorrelationId CommonCorrelationId
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceError) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["error"] = v.Error
+	m["correlation_id"] = v.CorrelationId
+	return m
+}
+
+func asSurfaceError(x any) (SurfaceError, error) {
+	var out SurfaceError
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Error, err = asCommonError(m["error"]); err != nil {
+		return out, err
+	}
+	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+// ToCBOR encodes the record as deterministic CBOR.
+func (v SurfaceError) ToCBOR() ([]byte, error) {
+	return schema.Encode("surface-error", v)
+}
+
+// DecodeSurfaceError strictly decodes and validates a surface-error item.
+func DecodeSurfaceError(raw []byte) (SurfaceError, error) {
+	var zero SurfaceError
+	v, err := schema.Decode("surface-error", raw)
+	if err != nil {
+		return zero, err
+	}
+	return asSurfaceError(v)
+}
+
+// SurfaceMessage is one of the record branches of CDDL rule 'surface-message'.
+type SurfaceMessage interface {
+	codec.Valuer
+	ToCBOR() ([]byte, error)
+	isSurfaceMessage()
+}
+
+// SurfaceMessage1 is branch 1 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage1 struct {
+	Type string
+	Body SurfaceHello
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage1) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage1(x any) (SurfaceMessage1, error) {
+	var out SurfaceMessage1
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceHello(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage1) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 1 of surface-message.
+func (v SurfaceMessage1) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 0, v)
+}
+
+// DecodeSurfaceMessage1 decodes an item that matches branch 1 of surface-message.
+func DecodeSurfaceMessage1(raw []byte) (SurfaceMessage1, error) {
+	var zero SurfaceMessage1
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 0, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage1(v)
+}
+
+// SurfaceMessage2 is branch 2 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage2 struct {
+	Type string
+	Body SurfaceHelloReply
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage2) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage2(x any) (SurfaceMessage2, error) {
+	var out SurfaceMessage2
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceHelloReply(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage2) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 2 of surface-message.
+func (v SurfaceMessage2) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 1, v)
+}
+
+// DecodeSurfaceMessage2 decodes an item that matches branch 2 of surface-message.
+func DecodeSurfaceMessage2(raw []byte) (SurfaceMessage2, error) {
+	var zero SurfaceMessage2
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 1, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage2(v)
+}
+
+// SurfaceMessage3 is branch 3 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage3 struct {
+	Type string
+	Body SurfaceCapabilities
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage3) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage3(x any) (SurfaceMessage3, error) {
+	var out SurfaceMessage3
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceCapabilities(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage3) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 3 of surface-message.
+func (v SurfaceMessage3) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 2, v)
+}
+
+// DecodeSurfaceMessage3 decodes an item that matches branch 3 of surface-message.
+func DecodeSurfaceMessage3(raw []byte) (SurfaceMessage3, error) {
+	var zero SurfaceMessage3
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 2, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage3(v)
+}
+
+// SurfaceMessage4 is branch 4 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage4 struct {
+	Type string
+	Body SurfaceGrants
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage4) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage4(x any) (SurfaceMessage4, error) {
+	var out SurfaceMessage4
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceGrants(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage4) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 4 of surface-message.
+func (v SurfaceMessage4) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 3, v)
+}
+
+// DecodeSurfaceMessage4 decodes an item that matches branch 4 of surface-message.
+func DecodeSurfaceMessage4(raw []byte) (SurfaceMessage4, error) {
+	var zero SurfaceMessage4
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 3, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage4(v)
+}
+
+// SurfaceMessage5 is branch 5 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage5 struct {
+	Type string
+	Body CommonEvent
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage5) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage5(x any) (SurfaceMessage5, error) {
+	var out SurfaceMessage5
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asCommonEvent(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage5) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 5 of surface-message.
+func (v SurfaceMessage5) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 4, v)
+}
+
+// DecodeSurfaceMessage5 decodes an item that matches branch 5 of surface-message.
+func DecodeSurfaceMessage5(raw []byte) (SurfaceMessage5, error) {
+	var zero SurfaceMessage5
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 4, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage5(v)
+}
+
+// SurfaceMessage6 is branch 6 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage6 struct {
+	Type string
+	Body SurfaceRead
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage6) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage6(x any) (SurfaceMessage6, error) {
+	var out SurfaceMessage6
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceRead(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage6) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 6 of surface-message.
+func (v SurfaceMessage6) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 5, v)
+}
+
+// DecodeSurfaceMessage6 decodes an item that matches branch 6 of surface-message.
+func DecodeSurfaceMessage6(raw []byte) (SurfaceMessage6, error) {
+	var zero SurfaceMessage6
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 5, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage6(v)
+}
+
+// SurfaceMessage7 is branch 7 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage7 struct {
+	Type string
+	Body SurfaceReadReply
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage7) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage7(x any) (SurfaceMessage7, error) {
+	var out SurfaceMessage7
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceReadReply(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage7) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 7 of surface-message.
+func (v SurfaceMessage7) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 6, v)
+}
+
+// DecodeSurfaceMessage7 decodes an item that matches branch 7 of surface-message.
+func DecodeSurfaceMessage7(raw []byte) (SurfaceMessage7, error) {
+	var zero SurfaceMessage7
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 6, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage7(v)
+}
+
+// SurfaceMessage8 is branch 8 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage8 struct {
+	Type string
+	Body SurfaceAct
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage8) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage8(x any) (SurfaceMessage8, error) {
+	var out SurfaceMessage8
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceAct(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage8) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 8 of surface-message.
+func (v SurfaceMessage8) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 7, v)
+}
+
+// DecodeSurfaceMessage8 decodes an item that matches branch 8 of surface-message.
+func DecodeSurfaceMessage8(raw []byte) (SurfaceMessage8, error) {
+	var zero SurfaceMessage8
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 7, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage8(v)
+}
+
+// SurfaceMessage9 is branch 9 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage9 struct {
+	Type string
+	Body CommonActionAccept
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage9) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage9(x any) (SurfaceMessage9, error) {
+	var out SurfaceMessage9
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asCommonActionAccept(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage9) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 9 of surface-message.
+func (v SurfaceMessage9) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 8, v)
+}
+
+// DecodeSurfaceMessage9 decodes an item that matches branch 9 of surface-message.
+func DecodeSurfaceMessage9(raw []byte) (SurfaceMessage9, error) {
+	var zero SurfaceMessage9
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 8, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage9(v)
+}
+
+// SurfaceMessage10 is branch 10 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage10 struct {
+	Type string
+	Body SurfaceHealth
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage10) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage10(x any) (SurfaceMessage10, error) {
+	var out SurfaceMessage10
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceHealth(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage10) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 10 of surface-message.
+func (v SurfaceMessage10) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 9, v)
+}
+
+// DecodeSurfaceMessage10 decodes an item that matches branch 10 of surface-message.
+func DecodeSurfaceMessage10(raw []byte) (SurfaceMessage10, error) {
+	var zero SurfaceMessage10
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 9, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage10(v)
+}
+
+// SurfaceMessage11 is branch 11 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage11 struct {
+	Type string
+	Body SurfaceKill
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage11) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage11(x any) (SurfaceMessage11, error) {
+	var out SurfaceMessage11
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceKill(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage11) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 11 of surface-message.
+func (v SurfaceMessage11) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 10, v)
+}
+
+// DecodeSurfaceMessage11 decodes an item that matches branch 11 of surface-message.
+func DecodeSurfaceMessage11(raw []byte) (SurfaceMessage11, error) {
+	var zero SurfaceMessage11
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 10, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage11(v)
+}
+
+// SurfaceMessage12 is branch 12 of CDDL rule 'surface-message'. Optional fields are pointers; nil means absent.
+type SurfaceMessage12 struct {
+	Type string
+	Body SurfaceSurfaceError
+}
+
+// ToValue returns the generic CBOR value model of the record.
+func (v SurfaceMessage12) ToValue() map[string]any {
+	m := make(map[string]any, 2)
+	m["type"] = v.Type
+	m["body"] = v.Body
+	return m
+}
+
+func asSurfaceMessage12(x any) (SurfaceMessage12, error) {
+	var out SurfaceMessage12
+	m, ok := x.(map[string]any)
+	if !ok {
+		return out, codec.ErrShape
+	}
+	var err error
+	if out.Type, err = codec.AsString(m["type"]); err != nil {
+		return out, err
+	}
+	if out.Body, err = asSurfaceSurfaceError(m["body"]); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (SurfaceMessage12) isSurfaceMessage() {}
+
+// ToCBOR encodes the record as branch 12 of surface-message.
+func (v SurfaceMessage12) ToCBOR() ([]byte, error) {
+	return schema.EncodeVariant("surface-message", 11, v)
+}
+
+// DecodeSurfaceMessage12 decodes an item that matches branch 12 of surface-message.
+func DecodeSurfaceMessage12(raw []byte) (SurfaceMessage12, error) {
+	var zero SurfaceMessage12
+	v, err := codec.DecodeProfile(raw)
+	if err != nil {
+		return zero, err
+	}
+	if err := schema.ValidateVariant("surface-message", 11, v); err != nil {
+		return zero, err
+	}
+	return asSurfaceMessage12(v)
+}
+
+func asSurfaceMessage(x any) (SurfaceMessage, error) {
+	if schema.ValidateVariant("surface-message", 0, x) == nil {
+		v, err := asSurfaceMessage1(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 1, x) == nil {
+		v, err := asSurfaceMessage2(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 2, x) == nil {
+		v, err := asSurfaceMessage3(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 3, x) == nil {
+		v, err := asSurfaceMessage4(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 4, x) == nil {
+		v, err := asSurfaceMessage5(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 5, x) == nil {
+		v, err := asSurfaceMessage6(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 6, x) == nil {
+		v, err := asSurfaceMessage7(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 7, x) == nil {
+		v, err := asSurfaceMessage8(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 8, x) == nil {
+		v, err := asSurfaceMessage9(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 9, x) == nil {
+		v, err := asSurfaceMessage10(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 10, x) == nil {
+		v, err := asSurfaceMessage11(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	if schema.ValidateVariant("surface-message", 11, x) == nil {
+		v, err := asSurfaceMessage12(x)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	}
+	return nil, codec.ErrShape
+}
+
+// DecodeSurfaceMessage strictly decodes and validates a surface-message item into its branch.
+func DecodeSurfaceMessage(raw []byte) (SurfaceMessage, error) {
+	v, err := schema.Decode("surface-message", raw)
+	if err != nil {
+		return nil, err
+	}
+	return asSurfaceMessage(v)
 }

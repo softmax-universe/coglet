@@ -99,6 +99,392 @@ if (this.details != null) m.put("details", this.details.value());
 return m; }
 public static Error fromCbor(byte[] raw) { return Codec.decodeRecord("error", raw, Error.class); }
 }
+public record SetExpression(String expression, BigInteger intensity, BigInteger duration_ms) implements Message {
+public String rule() { return "set-expression"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("expression", this.expression);
+m.put("intensity", this.intensity);
+m.put("duration_ms", this.duration_ms);
+return m; }
+public static SetExpression fromCbor(byte[] raw) { return Codec.decodeRecord("set-expression", raw, SetExpression.class); }
+}
+public record ExpressionState(String expression, BigInteger intensity, BigInteger remaining_ms) implements Message {
+public String rule() { return "expression-state"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("expression", this.expression);
+m.put("intensity", this.intensity);
+m.put("remaining_ms", this.remaining_ms);
+return m; }
+public static ExpressionState fromCbor(byte[] raw) { return Codec.decodeRecord("expression-state", raw, ExpressionState.class); }
+}
+public record SpeechStart(String utterance, BigInteger position_ms) implements Message {
+public String rule() { return "speech-start"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("utterance", this.utterance);
+m.put("position_ms", this.position_ms);
+return m; }
+public static SpeechStart fromCbor(byte[] raw) { return Codec.decodeRecord("speech-start", raw, SpeechStart.class); }
+}
+public record SpeechPartial(String utterance, BigInteger revision, String text) implements Message {
+public String rule() { return "speech-partial"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("utterance", this.utterance);
+m.put("revision", this.revision);
+m.put("text", this.text);
+return m; }
+public static SpeechPartial fromCbor(byte[] raw) { return Codec.decodeRecord("speech-partial", raw, SpeechPartial.class); }
+}
+public record SpeechEnd(String utterance, BigInteger revision, String text, BigInteger position_ms) implements Message {
+public String rule() { return "speech-end"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("utterance", this.utterance);
+m.put("revision", this.revision);
+m.put("text", this.text);
+m.put("position_ms", this.position_ms);
+return m; }
+public static SpeechEnd fromCbor(byte[] raw) { return Codec.decodeRecord("speech-end", raw, SpeechEnd.class); }
+}
+public record SpeechPosition(String stream, BigInteger chunk, String item, BigInteger played_ms, BigInteger position_ms, String state) implements Message {
+public String rule() { return "speech-position"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("stream", this.stream);
+m.put("chunk", this.chunk);
+m.put("item", this.item);
+m.put("played_ms", this.played_ms);
+m.put("position_ms", this.position_ms);
+m.put("state", this.state);
+return m; }
+public static SpeechPosition fromCbor(byte[] raw) { return Codec.decodeRecord("speech-position", raw, SpeechPosition.class); }
+}
+public record SpeechBargeIn(String utterance, String stream, String item, BigInteger played_ms, BigInteger position_ms, String reflex) implements Message {
+public String rule() { return "speech-barge-in"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("utterance", this.utterance);
+m.put("stream", this.stream);
+m.put("item", this.item);
+m.put("played_ms", this.played_ms);
+m.put("position_ms", this.position_ms);
+m.put("reflex", this.reflex);
+return m; }
+public static SpeechBargeIn fromCbor(byte[] raw) { return Codec.decodeRecord("speech-barge-in", raw, SpeechBargeIn.class); }
+}
+public record SpeakChunk(String stream, BigInteger chunk, String text, Boolean final_) implements Message {
+public String rule() { return "speak-chunk"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("stream", this.stream);
+m.put("chunk", this.chunk);
+m.put("text", this.text);
+m.put("final", this.final_);
+return m; }
+public static SpeakChunk fromCbor(byte[] raw) { return Codec.decodeRecord("speak-chunk", raw, SpeakChunk.class); }
+}
+public record Stop(String stream) implements Message {
+public String rule() { return "stop"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("stream", this.stream);
+return m; }
+public static Stop fromCbor(byte[] raw) { return Codec.decodeRecord("stop", raw, Stop.class); }
+}
+public record Backchannel(String stream, String cue) implements Message {
+public String rule() { return "backchannel"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("stream", this.stream);
+m.put("cue", this.cue);
+return m; }
+public static Backchannel fromCbor(byte[] raw) { return Codec.decodeRecord("backchannel", raw, Backchannel.class); }
+}
+public record SpeechRoute(String placement, String route) implements Message {
+public String rule() { return "speech-route"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("placement", this.placement);
+m.put("route", this.route);
+return m; }
+public static SpeechRoute fromCbor(byte[] raw) { return Codec.decodeRecord("speech-route", raw, SpeechRoute.class); }
+}
+public record SpeechConfig(SpeechRoute stt, SpeechRoute tts, String barge, String session_mode) implements Message {
+public String rule() { return "speech-config"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("stt", this.stt);
+m.put("tts", this.tts);
+m.put("barge", this.barge);
+m.put("session_mode", this.session_mode);
+return m; }
+public static SpeechConfig fromCbor(byte[] raw) { return Codec.decodeRecord("speech-config", raw, SpeechConfig.class); }
+}
+public record SessionOpen(String session, String route) implements Message {
+public String rule() { return "session-open"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("session", this.session);
+m.put("route", this.route);
+return m; }
+public static SessionOpen fromCbor(byte[] raw) { return Codec.decodeRecord("session-open", raw, SessionOpen.class); }
+}
+public record SessionClose(String session) implements Message {
+public String rule() { return "session-close"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("session", this.session);
+return m; }
+public static SessionClose fromCbor(byte[] raw) { return Codec.decodeRecord("session-close", raw, SessionClose.class); }
+}
+public record ToolCall(String session, String call, String name, Map<String, Object> arguments) implements Message {
+public String rule() { return "tool-call"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("session", this.session);
+m.put("call", this.call);
+m.put("name", this.name);
+m.put("arguments", this.arguments);
+return m; }
+public static ToolCall fromCbor(byte[] raw) { return Codec.decodeRecord("tool-call", raw, ToolCall.class); }
+}
+public sealed interface ToolResult extends Message permits ToolResult1, ToolResult2 {
+static ToolResult fromCbor(byte[] raw) { return (ToolResult) Codec.decodeTyped("tool-result", raw); }
+}
+public record ToolResult1(String session, String call, Boolean ok, Map<String, Object> value) implements ToolResult {
+public String rule() { return "tool-result"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("session", this.session);
+m.put("call", this.call);
+m.put("ok", this.ok);
+m.put("value", this.value);
+return m; }
+public static ToolResult1 fromCbor(byte[] raw) { return Codec.decodeRecord("tool-result", raw, ToolResult1.class); }
+}
+public record ToolResult2(String session, String call, Boolean ok, Error value) implements ToolResult {
+public String rule() { return "tool-result"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("session", this.session);
+m.put("call", this.call);
+m.put("ok", this.ok);
+m.put("value", this.value);
+return m; }
+public static ToolResult2 fromCbor(byte[] raw) { return Codec.decodeRecord("tool-result", raw, ToolResult2.class); }
+}
+public record Hello(String surface, VersionOffer offer, BigInteger clock, String correlation_id) implements Message {
+public String rule() { return "hello"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("surface", this.surface);
+m.put("offer", this.offer);
+m.put("clock", this.clock);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Hello fromCbor(byte[] raw) { return Codec.decodeRecord("hello", raw, Hello.class); }
+}
+public record HelloReply(VersionSelection selection, String correlation_id) implements Message {
+public String rule() { return "hello-reply"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("selection", this.selection);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static HelloReply fromCbor(byte[] raw) { return Codec.decodeRecord("hello-reply", raw, HelloReply.class); }
+}
+public record CapEntry(String name, List<String> events, List<String> reads, List<String> actions, List<String> exclusive, Map<String, String> schemas) implements Message {
+public String rule() { return "cap-entry"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("name", this.name);
+m.put("events", this.events);
+m.put("reads", this.reads);
+m.put("actions", this.actions);
+m.put("exclusive", this.exclusive);
+m.put("schemas", this.schemas);
+return m; }
+public static CapEntry fromCbor(byte[] raw) { return Codec.decodeRecord("cap-entry", raw, CapEntry.class); }
+}
+public record Capabilities(BigInteger revision, BigInteger clock, List<CapEntry> entries, String correlation_id) implements Message {
+public String rule() { return "capabilities"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("revision", this.revision);
+m.put("clock", this.clock);
+m.put("entries", this.entries);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Capabilities fromCbor(byte[] raw) { return Codec.decodeRecord("capabilities", raw, Capabilities.class); }
+}
+public record Grant(String coglet, List<String> operations, List<String> resources, BigInteger expires) implements Message {
+public String rule() { return "grant"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("coglet", this.coglet);
+m.put("operations", this.operations);
+m.put("resources", this.resources);
+m.put("expires", this.expires);
+return m; }
+public static Grant fromCbor(byte[] raw) { return Codec.decodeRecord("grant", raw, Grant.class); }
+}
+public record Grants(BigInteger epoch, List<Grant> entries, String correlation_id) implements Message {
+public String rule() { return "grants"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("epoch", this.epoch);
+m.put("entries", this.entries);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Grants fromCbor(byte[] raw) { return Codec.decodeRecord("grants", raw, Grants.class); }
+}
+public record Read(String coglet, String capability, Map<String, Object> args, BigInteger grant_epoch, BigInteger deadline, String correlation_id) implements Message {
+public String rule() { return "read"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("coglet", this.coglet);
+m.put("capability", this.capability);
+m.put("args", this.args);
+m.put("grant_epoch", this.grant_epoch);
+m.put("deadline", this.deadline);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Read fromCbor(byte[] raw) { return Codec.decodeRecord("read", raw, Read.class); }
+}
+public sealed interface ReadReply extends Message permits ReadReply1, ReadReply2 {
+static ReadReply fromCbor(byte[] raw) { return (ReadReply) Codec.decodeTyped("read-reply", raw); }
+}
+public record ReadReply1(String correlation_id, Boolean ok, Map<String, Object> value, BigInteger snapshot) implements ReadReply {
+public String rule() { return "read-reply"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("correlation_id", this.correlation_id);
+m.put("ok", this.ok);
+m.put("value", this.value);
+m.put("snapshot", this.snapshot);
+return m; }
+public static ReadReply1 fromCbor(byte[] raw) { return Codec.decodeRecord("read-reply", raw, ReadReply1.class); }
+}
+public record ReadReply2(String correlation_id, Boolean ok, Error error) implements ReadReply {
+public String rule() { return "read-reply"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("correlation_id", this.correlation_id);
+m.put("ok", this.ok);
+m.put("error", this.error);
+return m; }
+public static ReadReply2 fromCbor(byte[] raw) { return Codec.decodeRecord("read-reply", raw, ReadReply2.class); }
+}
+public record Act(BigInteger grant_epoch, Action action) implements Message {
+public String rule() { return "act"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("grant_epoch", this.grant_epoch);
+m.put("action", this.action);
+return m; }
+public static Act fromCbor(byte[] raw) { return Codec.decodeRecord("act", raw, Act.class); }
+}
+public record Health(String state, BigInteger clock, BigInteger pending, String correlation_id) implements Message {
+public String rule() { return "health"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("state", this.state);
+m.put("clock", this.clock);
+m.put("pending", this.pending);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Health fromCbor(byte[] raw) { return Codec.decodeRecord("health", raw, Health.class); }
+}
+public record Kill(String reason, String correlation_id) implements Message {
+public String rule() { return "kill"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("reason", this.reason);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static Kill fromCbor(byte[] raw) { return Codec.decodeRecord("kill", raw, Kill.class); }
+}
+public record SurfaceError(Error error, String correlation_id) implements Message {
+public String rule() { return "surface-error"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("error", this.error);
+m.put("correlation_id", this.correlation_id);
+return m; }
+public static SurfaceError fromCbor(byte[] raw) { return Codec.decodeRecord("surface-error", raw, SurfaceError.class); }
+}
+public sealed interface SurfaceMessage extends Message permits SurfaceMessage1, SurfaceMessage2, SurfaceMessage3, SurfaceMessage4, SurfaceMessage5, SurfaceMessage6, SurfaceMessage7, SurfaceMessage8, SurfaceMessage9, SurfaceMessage10, SurfaceMessage11, SurfaceMessage12 {
+static SurfaceMessage fromCbor(byte[] raw) { return (SurfaceMessage) Codec.decodeTyped("surface-message", raw); }
+}
+public record SurfaceMessage1(String type, Hello body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage1 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage1.class); }
+}
+public record SurfaceMessage2(String type, HelloReply body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage2 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage2.class); }
+}
+public record SurfaceMessage3(String type, Capabilities body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage3 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage3.class); }
+}
+public record SurfaceMessage4(String type, Grants body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage4 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage4.class); }
+}
+public record SurfaceMessage5(String type, Event body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage5 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage5.class); }
+}
+public record SurfaceMessage6(String type, Read body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage6 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage6.class); }
+}
+public record SurfaceMessage7(String type, ReadReply body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage7 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage7.class); }
+}
+public record SurfaceMessage8(String type, Act body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage8 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage8.class); }
+}
+public record SurfaceMessage9(String type, ActionAccept body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage9 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage9.class); }
+}
+public record SurfaceMessage10(String type, Health body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage10 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage10.class); }
+}
+public record SurfaceMessage11(String type, Kill body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage11 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage11.class); }
+}
+public record SurfaceMessage12(String type, SurfaceError body) implements SurfaceMessage {
+public String rule() { return "surface-message"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("type", this.type);
+m.put("body", this.body);
+return m; }
+public static SurfaceMessage12 fromCbor(byte[] raw) { return Codec.decodeRecord("surface-message", raw, SurfaceMessage12.class); }
+}
 static void registerAll() {
 Codec.register("version-offer", VersionOffer.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"versions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::spec-version\"},\"min\":1}}]}", new String[]{"versions"});
 Codec.register("version-selection", VersionSelection.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"version\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::spec-version\"}}]}", new String[]{"version"});
@@ -109,6 +495,48 @@ Codec.register("action-accept", ActionAccept2.class, "{\"op\":\"record\",\"field
 Codec.register("action-outcome", ActionOutcome1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"result\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"id","correlation_id","status","result"});
 Codec.register("action-outcome", ActionOutcome2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-id\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"failed\"},{\"op\":\"literal\",\"value\":\"cancelled\"},{\"op\":\"literal\",\"value\":\"expired\"}]}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"id","correlation_id","status","error"});
 Codec.register("error", Error.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"code\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error-code\"}},{\"name\":\"message\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"size\",\"min\":1,\"max\":18446744073709551615}]}},{\"name\":\"retryable\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"details\",\"optional\":true,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"code","message","retryable","details"});
+Codec.register("set-expression", SetExpression.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}]}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":1000}},{\"name\":\"duration_ms\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":60000}}]}", new String[]{"expression","intensity","duration_ms"});
+Codec.register("expression-state", ExpressionState.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"expression\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"neutral\"},{\"op\":\"literal\",\"value\":\"listening\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"speaking\"},{\"op\":\"literal\",\"value\":\"happy\"},{\"op\":\"literal\",\"value\":\"concerned\"}]}},{\"name\":\"intensity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":1000}},{\"name\":\"remaining_ms\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":60000}}]}", new String[]{"expression","intensity","remaining_ms"});
+Codec.register("speech-start", SpeechStart.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"utterance","position_ms"});
+Codec.register("speech-partial", SpeechPartial.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}]}}]}", new String[]{"utterance","revision","text"});
+Codec.register("speech-end", SpeechEnd.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}]}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"utterance","revision","text","position_ms"});
+Codec.register("speech-position", SpeechPosition.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"state\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"playing\"},{\"op\":\"literal\",\"value\":\"ducked\"},{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"finished\"}]}}]}", new String[]{"stream","chunk","item","played_ms","position_ms","state"});
+Codec.register("speech-barge-in", SpeechBargeIn.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"stream\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"item\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"played_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"reflex\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"stopped\"},{\"op\":\"literal\",\"value\":\"ducked\"}]}}]}", new String[]{"utterance","stream","item","played_ms","position_ms","reflex"});
+Codec.register("speak-chunk", SpeakChunk.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"chunk\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,4096}$\"}]}},{\"name\":\"final\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}}]}", new String[]{"stream","chunk","text","final"});
+Codec.register("stop", Stop.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"stream"});
+Codec.register("backchannel", Backchannel.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"stream\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"cue\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"ack\"},{\"op\":\"literal\",\"value\":\"thinking\"},{\"op\":\"literal\",\"value\":\"agree\"}]}}]}", new String[]{"stream","cue"});
+Codec.register("speech-route", SpeechRoute.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"placement\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"surface\"},{\"op\":\"literal\",\"value\":\"runtime\"},{\"op\":\"literal\",\"value\":\"hub\"},{\"op\":\"literal\",\"value\":\"provider\"}]}},{\"name\":\"route\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}]}}]}", new String[]{"placement","route"});
+Codec.register("speech-config", SpeechConfig.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"stt\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"speech::speech-route\"}},{\"name\":\"tts\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"speech::speech-route\"}},{\"name\":\"barge\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"stop\"},{\"op\":\"literal\",\"value\":\"duck\"}]}},{\"name\":\"session_mode\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"text\"},{\"op\":\"literal\",\"value\":\"speech_to_speech\"}]}}]}", new String[]{"stt","tts","barge","session_mode"});
+Codec.register("session-open", SessionOpen.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"route\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,256}$\"}]}}]}", new String[]{"session","route"});
+Codec.register("session-close", SessionClose.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"session"});
+Codec.register("tool-call", ToolCall.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"name\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::method-name\"}},{\"name\":\"arguments\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"session","call","name","arguments"});
+Codec.register("tool-result", ToolResult1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"session","call","ok","value"});
+Codec.register("tool-result", ToolResult2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"session\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"session","call","ok","value"});
+Codec.register("hello", Hello.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::surface-id\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::version-offer\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"surface","offer","clock","correlation_id"});
+Codec.register("hello-reply", HelloReply.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::version-selection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"selection","correlation_id"});
+Codec.register("cap-entry", CapEntry.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::schema-refs\"}}]}", new String[]{"name","events","reads","actions","exclusive","schemas"});
+Codec.register("capabilities", Capabilities.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"surface::cap-entry\"},\"min\":0}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"revision","clock","entries","correlation_id"});
+Codec.register("grant", Grant.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"operations\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"resources\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"expires\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"coglet","operations","resources","expires"});
+Codec.register("grants", Grants.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"entries\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"surface::grant\"},\"min\":0}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"epoch","entries","correlation_id"});
+Codec.register("read", Read.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"coglet\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::coglet-id\"}},{\"name\":\"capability\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"args\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}},{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"deadline\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"coglet","capability","args","grant_epoch","deadline","correlation_id"});
+Codec.register("read-reply", ReadReply1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":true}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}},{\"name\":\"snapshot\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"correlation_id","ok","value","snapshot"});
+Codec.register("read-reply", ReadReply2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"ok\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":false}},{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"correlation_id","ok","error"});
+Codec.register("act", Act.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"grant_epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"action\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action\"}}]}", new String[]{"grant_epoch","action"});
+Codec.register("health", Health.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"state\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"ready\"},{\"op\":\"literal\",\"value\":\"degraded\"},{\"op\":\"literal\",\"value\":\"stopped\"}]}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"pending\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"state","clock","pending","correlation_id"});
+Codec.register("kill", Kill.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"reason\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{1,16384}$\"}]}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"reason","correlation_id"});
+Codec.register("surface-error", SurfaceError.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"error\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"error","correlation_id"});
+Codec.register("surface-message", SurfaceMessage1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::hello\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"hello_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::hello-reply\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage3.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"capabilities\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::capabilities\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage4.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"grants\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::grants\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage5.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"event\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::event\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage6.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::read\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage7.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"read_reply\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::read-reply\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage8.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"act\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::act\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage9.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"accept\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::action-accept\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage10.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"health\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::health\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage11.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"kill\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::kill\"}}]}", new String[]{"type","body"});
+Codec.register("surface-message", SurfaceMessage12.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"error\"}},{\"name\":\"body\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::surface-error\"}}]}", new String[]{"type","body"});
 Codec.alias("common::action", "action");
 Codec.alias("common::action-accept", "action-accept");
 Codec.alias("common::action-outcome", "action-outcome");
@@ -116,5 +544,34 @@ Codec.alias("common::error", "error");
 Codec.alias("common::event", "event");
 Codec.alias("common::version-offer", "version-offer");
 Codec.alias("common::version-selection", "version-selection");
+Codec.alias("expression::expression-state", "expression-state");
+Codec.alias("expression::set-expression", "set-expression");
+Codec.alias("speech::backchannel", "backchannel");
+Codec.alias("speech::session-close", "session-close");
+Codec.alias("speech::session-open", "session-open");
+Codec.alias("speech::speak-chunk", "speak-chunk");
+Codec.alias("speech::speech-barge-in", "speech-barge-in");
+Codec.alias("speech::speech-config", "speech-config");
+Codec.alias("speech::speech-end", "speech-end");
+Codec.alias("speech::speech-partial", "speech-partial");
+Codec.alias("speech::speech-position", "speech-position");
+Codec.alias("speech::speech-route", "speech-route");
+Codec.alias("speech::speech-start", "speech-start");
+Codec.alias("speech::stop", "stop");
+Codec.alias("speech::tool-call", "tool-call");
+Codec.alias("speech::tool-result", "tool-result");
+Codec.alias("surface::act", "act");
+Codec.alias("surface::cap-entry", "cap-entry");
+Codec.alias("surface::capabilities", "capabilities");
+Codec.alias("surface::grant", "grant");
+Codec.alias("surface::grants", "grants");
+Codec.alias("surface::health", "health");
+Codec.alias("surface::hello", "hello");
+Codec.alias("surface::hello-reply", "hello-reply");
+Codec.alias("surface::kill", "kill");
+Codec.alias("surface::read", "read");
+Codec.alias("surface::read-reply", "read-reply");
+Codec.alias("surface::surface-error", "surface-error");
+Codec.alias("surface::surface-message", "surface-message");
 }
 }
