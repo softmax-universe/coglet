@@ -15,6 +15,17 @@ var (
 	corr = strings.Repeat("b", 32)
 )
 
+func TestTypedNilDoesNotPanic(t *testing.T) {
+	var event *types.Event
+	if _, err := types.Encode("event", event); !errors.Is(err, codec.ErrShape) {
+		t.Fatalf("typed nil record should fail shape validation: %v", err)
+	}
+	raw, err := codec.EncodeProfile(event)
+	if err != nil || !bytes.Equal(raw, []byte{0xf6}) {
+		t.Fatalf("typed nil should encode as null: %x %v", raw, err)
+	}
+}
+
 func TestTypedEventRoundTrip(t *testing.T) {
 	ev := types.Event{
 		Source:        "surface:" + strings.Repeat("a", 64),

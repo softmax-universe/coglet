@@ -101,6 +101,12 @@ func encodeItem(dst []byte, v any, depth int) ([]byte, error) {
 			}
 		}, depth)
 	case Valuer:
+		// A typed nil also implements Valuer, but invoking its value-receiver
+		// method would panic. Treat it like other nil pointers (CBOR null).
+		rv := reflect.ValueOf(x)
+		if rv.Kind() == reflect.Pointer && rv.IsNil() {
+			return append(dst, 0xf6), nil
+		}
 		return encodeItem(dst, x.ToValue(), depth)
 	}
 	return encodeReflect(dst, reflect.ValueOf(v), depth)

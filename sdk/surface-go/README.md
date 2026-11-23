@@ -15,6 +15,9 @@ decoded, err := types.DecodeVersionOffer(raw)
 Check errors on every encode/decode. Generic `types.Encode(rule, value)` /
 `types.Decode(rule, raw)` support every CDDL entry rule. Generic integers decode
 as `uint64` or negative `int64`; lists and maps are `[]any` / `map[string]any`.
+`[]byte` / `[]uint8` and byte arrays are rejected as forbidden byte strings;
+use `[]uint64` or `[]any` for arrays of integers. Typed nil pointers encode as
+null and are rejected when the selected schema requires a record.
 Record-only unions expose numbered structs and `DecodeActionAccept` (for
 example) selects a validated branch. Optional struct fields use pointers; nil
 means absent. An optional `any` pointer can explicitly represent null.
