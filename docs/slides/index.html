@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coglet architecture — slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../site/assets/style.css">
+<script>if (/[?&]export\b/.test(location.search)) document.documentElement.className += ' export static';</script>
+<style>
+  html, body { height: 100%; overflow: hidden; background: #000; }
+  .deck { position: fixed; inset: 0; display: grid; place-items: center; }
+  .stage { width: 1920px; height: 1080px; position: relative; transform-origin: center center; flex: none; }
+  .slide { position: absolute; inset: 0; padding: 88px 120px 96px; display: none; flex-direction: column; background: #000; overflow: hidden; }
+  .slide.active { display: flex; }
+  .slide h2 { font-size: 64px; max-width: none; margin: 0 0 32px; line-height: 1.05; }
+  .slide h1 { font: 600 128px/0.92 var(--sans); letter-spacing: -.035em; margin: 0 0 36px; }
+  .slide h1 span, .slide h2 span { color: var(--cog); }
+  .slide .eyebrow { font-size: 22px; margin-bottom: 18px; }
+  .slide p, .slide li { font-size: 30px; line-height: 1.45; color: var(--ink-2); }
+  .slide li { margin: 0 0 14px; }
+  .slide ul { padding-left: 1.1em; margin: 0; }
+  .slide b { color: var(--ink); font-weight: 600; }
+  .slide code { font-size: .82em; }
+  .slide .specs { font-size: 22px; margin-top: auto; padding-top: 18px; gap: 10px 30px; }
+  .slide .specs > span:first-child { font-size: 18px; }
+  .slide .badge { font-size: 14px; }
+  .slide figure.dg { margin: 0; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  .slide .dg-scroll { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; overflow: hidden; padding: 14px; }
+  .slide .dg-svg { width: 100%; height: 100%; max-height: 100%; min-width: 0 !important; }
+  .slide .dg-cap { font-size: 26px; min-height: 2.6em; max-width: 1600px; margin-top: 16px; }
+  .slide .dg-ctl button, .slide .dg-var button { height: 40px; min-width: 44px; font-size: 18px; }
+  .slide .dg-dots .dot { width: 18px; height: 18px; min-width: 0; }
+  .slide .dg-n, .slide .dg-var .lbl { font-size: 18px; }
+  .slide .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+  .slide .cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 16px; }
+  .slide .cols3 > div { padding: 32px 36px; border-left: 1px solid var(--line); }
+  .slide .cols3 > div:first-child { border-left: 0; }
+  .slide .cols3 h4 { font: 600 24px var(--mono); letter-spacing: .12em; margin: 0 0 12px; }
+  .slide .cols3 p { color: var(--ink); font-size: 28px; margin: 0 0 16px; }
+  .slide .cols3 li { font-size: 25px; }
+  .slide .cols3 .never { font-size: 21px; color: var(--muted); margin-top: 16px; }
+  .slide pre.tree { font-size: 24px; line-height: 1.55; padding: 28px 34px; margin: 0; }
+  .slide pre.tree.small { font-size: 19px; line-height: 1.5; }
+  .slide table.t { font-size: 24px; }
+  .slide table.t th { font-size: 17px; }
+  .slide table.t td { padding: 12px 18px 12px 0; }
+  .slide .callout { font-size: 27px; line-height: 1.5; padding: 26px 30px; }
+  .slide .art-bg { position: absolute; inset: 0; z-index: 0; }
+  .slide .art-bg img { width: 100%; height: 100%; object-fit: cover; opacity: .9; }
+  .slide .art-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #000 30%, rgba(0,0,0,.6) 55%, rgba(0,0,0,0) 80%); }
+  .slide > *:not(.art-bg) { position: relative; z-index: 1; }
+  .slide .side-art { position: absolute; right: 0; top: 0; bottom: 0; width: 46%; z-index: 0; }
+  .slide .side-art img { width: 100%; height: 100%; object-fit: cover; }
+  .slide .side-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #000 0%, rgba(0,0,0,0) 35%); }
+  .slide .narrow { max-width: 54%; }
+  .slide .big { font-size: 34px; }
+  .foot { position: absolute; left: 120px; right: 120px; bottom: 36px; display: flex; justify-content: space-between; font: 18px var(--mono); color: #555; z-index: 2; }
+  .foot .n { color: var(--muted); }
+  .progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--cog); z-index: 3; transition: width .3s; }
+  .hud { position: fixed; right: 14px; bottom: 12px; font: 12px var(--mono); color: #555; z-index: 10; }
+  .hud a { color: #777; }
+  .overview .stage { transform: none !important; width: auto; height: auto; }
+  /* print / PDF: one slide per page, every diagram at its final step */
+  @media print {
+    @page { size: 1920px 1080px; margin: 0; }
+    html, body { overflow: visible; height: auto; }
+    .deck { position: static; display: block; }
+    .stage { transform: none !important; width: 1920px; height: auto; }
+    .slide { position: relative; display: flex !important; width: 1920px; height: 1080px; page-break-after: always; break-after: page; }
+    .hud, .progress { display: none; }
+  }
+  html.export .deck { position: static; display: block; }
+  html.export, html.export body { overflow: visible; height: auto; }
+  html.export .stage { transform: none !important; height: auto; }
+  html.export .slide { position: relative; display: flex !important; height: 1080px; }
+  html.export .hud { display: none; }
+</style>
+</head>
+<body>
+<div class="deck"><div class="stage" id="stage">
+
+<!-- 1 -->
+<section class="slide" data-title="Title">
+  <div class="art-bg"><img src="../site/assets/art/hero.jpg" alt=""></div>
+  <p class="eyebrow" style="margin-top:120px">softmax-universe/coglet · architecture · 2026-11-23</p>
+  <h1>One agent brain,<br><span>many bodies.</span></h1>
+  <p class="narrow big">Surfaces host sandboxed Wasm <b>coglets</b>; a <b>hub</b> routes, builds, promotes and rolls them back.</p>
+  <div class="specs"><span>source</span><a data-spec="design"></a><a data-spec="plan"></a></div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-title="The problem">
+  <div class="side-art"><img src="../site/assets/art/bodies.jpg" alt=""></div>
+  <p class="eyebrow">01 · The problem</p>
+  <h2 class="narrow">One brain, bodies it doesn't control.</h2>
+  <ul class="narrow">
+    <li>First test: <b>Face on the Mac</b> + <b>Mindustry avatar</b>. Talk to the face, the hub decides, the hub drives the avatar.</li>
+    <li>Then Baby Bear pods (EO1, Echo Dot, Linux, iOS, Mac) and toy robots in a simulator.</li>
+    <li><b>Different hosts</b>: Swift, JVM, Go, 32-bit ARM, iOS (no JIT).</li>
+    <li><b>Different clocks</b>: 20 ms audio frames, game ticks, hourly frames.</li>
+    <li><b>Code changes while live</b>: every change gated, replayable, reversible.</li>
+  </ul>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-title="Three roles">
+  <p class="eyebrow">02 · Vocabulary</p>
+  <h2>Surface, Coglet, Hub.</h2>
+  <div class="cols3">
+    <div><h4 style="color:var(--srf)">SURFACE</h4><p>Adapter embedded in host software.</p><ul><li>owns real-time I/O</li><li>grants capabilities</li><li>supervises runtime, kill switch</li></ul><div class="never">face-mac · game adapter · pods</div></div>
+    <div><h4 style="color:var(--cog)">COGLET</h4><p>Code in a Wasm sandbox inside a surface.</p><ul><li>only granted capabilities</li><li>one repo, identity, files</li><li>runs only when woken</li></ul><div class="never">never talks to another coglet directly</div></div>
+    <div><h4 style="color:var(--hub)">HUB</h4><p>Runs anywhere; coglets dial in.</p><ul><li>routes all traffic</li><li>builds, promotes, rolls back</li><li>built from coglets on a fixed kernel</li></ul><div class="never">kernel · fast loop · factory</div></div>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="design"></a><a data-spec="manifest"></a></div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-title="Topology">
+  <p class="eyebrow">02 · Topology</p>
+  <h2>One <code>cogletd</code> per device, many coglets, one protocol.</h2>
+  <figure class="dg" data-diagram="roles"></figure>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-title="A coglet is a git repo">
+  <p class="eyebrow">03 · Git control plane</p>
+  <h2>A coglet is a git repo.</h2>
+  <div class="cols">
+    <pre class="tree"><span class="o">coglet repo</span>
+├── src/
+├── bin/step.wasm  <span class="c"># built + committed by hub</span>
+├── prompts/
+└── manifest
+
+<span class="o">refs</span>
+refs/heads/hub
+refs/published/main
+refs/heads/logs</pre>
+    <ul>
+      <li><b>Hub builds and commits</b> <code>bin/step.wasm</code>; devices never compile.</li>
+      <li><b>One writer per ref</b>: code pushes never conflict with logs.</li>
+      <li>Logs: JSONL appends, <b>batch-committed</b> (~30 s / rotation).</li>
+      <li><code>/data</code> is private, <b>never synced</b> through git.</li>
+    </ul>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="hub"></a></div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-title="Git refs syncing">
+  <p class="eyebrow">03 · Refs in motion</p>
+  <h2>Code lands only at a step boundary.</h2>
+  <figure class="dg" data-diagram="gitrefs"><figcaption class="dg-cap"></figcaption></figure>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-title="The runtime">
+  <div class="side-art"><img src="../site/assets/art/runtime.jpg" alt=""></div>
+  <p class="eyebrow">04 · The runtime</p>
+  <h2 class="narrow">Event-driven, fresh instance per wake.</h2>
+  <ul class="narrow">
+    <li><code>cogletd</code>: one Rust runtime; sidecar binary or C ABI library (iOS).</li>
+    <li>Wakes on <b>surface events</b>, <b>inbox appends</b>, <b>LLM responses</b>, <b>timers</b>. Idle costs nothing.</li>
+    <li>Fresh Wasm instance per wake: <b>fuel</b> cap + <b>deadline</b> interrupt (proven on the WAMR interpreter; AOT pending).</li>
+    <li>State = files: copy-on-write, content-addressed, a <b>tree hash</b> per step.</li>
+    <li><b>Deterministic replay</b> from journaled event batches + recorded LLM answers.</li>
+  </ul>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-title="One wake">
+  <p class="eyebrow">04 · One wake, event → action</p>
+  <h2>Events in, actions out, files as state.</h2>
+  <figure class="dg" data-diagram="eventflow"><figcaption class="dg-cap"></figcaption></figure>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-title="The ABI">
+  <p class="eyebrow">04 · The contract</p>
+  <h2>Plain core Wasm. One export.</h2>
+  <div class="cols">
+    <ul>
+      <li><b>Export</b> <code>handle(events, step, logical_time, seed)</code></li>
+      <li><b>Imports</b>: read state · emit action · set timer · LLM request · log</li>
+      <li>CBOR bytes, a few host fns, <b>no component model</b></li>
+      <li><b>Files</b>: <code>/code</code> ro · <code>/data</code> private · <code>/logs</code> append</li>
+    </ul>
+    <ul>
+      <li>No wall clock, no randomness beyond <code>logical_time</code>, <code>seed</code></li>
+      <li><b>Core deterministic CBOR</b>: sorted keys, no floats on the wire</li>
+      <li><b>Manifest</b>: id, subscriptions, caps, exclusive outputs, budget; refused if it asks for more than granted</li>
+      <li><b>Inbox</b> = <code>/data/inbox.jsonl</code>, appended between steps</li>
+    </ul>
+  </div>
+  <div class="specs"><span>spec</span><a data-spec="abi"></a><a data-spec="conventions"></a><a data-spec="manifest"></a></div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-title="Engine trait">
+  <p class="eyebrow">04 · Engines</p>
+  <h2>WAMR first, behind an <code>Engine</code> trait.</h2>
+  <figure class="dg" data-diagram="engine"></figure>
+  <div class="specs"><span>evidence</span><a data-spec="adrPlatforms"></a><a data-spec="adrCap"></a><a data-spec="adrDeterm"></a></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-title="One protocol">
+  <p class="eyebrow">05 · Networking</p>
+  <h2>One iroh protocol. Grants per method.</h2>
+  <figure class="dg" data-diagram="proto"><figcaption class="dg-cap"></figcaption></figure>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-title="Debugging through the hub">
+  <p class="eyebrow">05 · Debugging</p>
+  <h2>Debug goes through the hub, never direct.</h2>
+  <table class="t">
+    <thead><tr><th>Method</th><th>What it does</th><th>Grant</th></tr></thead>
+    <tbody>
+      <tr><td><code>debug.read</code></td><td>tail logs, read <code>/data</code>, inspect a step's inputs and outputs, pause, single-step</td><td>per ticket</td></tr>
+      <tr><td><code>debug.write</code></td><td>queued writes to <code>/data</code>, applied between steps, allowed on live games</td><td>per ticket, separate</td></tr>
+      <tr><td><code>inbox.append</code></td><td>steering messages, LLM answers, factory notes → <code>/data/inbox.jsonl</code></td><td>hub</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>Streams open for a ticket and close when it ends. Nothing streams unless the hub asks.</li>
+    <li>Every intervention lands in the <b>audit log</b>, so traces separate coglet decisions from hub steering (training data).</li>
+  </ul>
+  <div class="specs"><span>spec</span><a data-spec="hub"></a></div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-title="Hub structure">
+  <p class="eyebrow">06 · Hub control</p>
+  <h2>The hub is coglets on a small fixed kernel.</h2>
+  <figure class="dg" data-diagram="hubmap"></figure>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-title="Ticket">
+  <p class="eyebrow">06 · Fast loop → factory</p>
+  <h2>A ticket is the only interface.</h2>
+  <div class="cols">
+    <table class="t">
+      <tbody>
+        <tr><td>Target</td><td>coglet repo + base commit</td></tr>
+        <tr><td>Goal</td><td>request + acceptance criteria</td></tr>
+        <tr><td>Context</td><td>world slice, transcript, traces</td></tr>
+        <tr><td>Capabilities</td><td>what it may touch; debug grants</td></tr>
+        <tr><td>Gate</td><td>replay · game fork · human</td></tr>
+        <tr><td>Budget</td><td>time and spend caps</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li><b>submit</b> → ID immediately</li>
+      <li><b>update</b>: planning, building, gate running, needs input</li>
+      <li><b>answer</b> · <b>amend</b> · <b>cancel</b></li>
+      <li><b>result</b>: done (signed commit + gate results + spoken summary), needs input, failed, abandoned</li>
+      <li>Backend: Hermes gateway + Kanban, outside the self-editing loop</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-title="Promotion loop">
+  <p class="eyebrow">06 · Promotion</p>
+  <h2>Propose → promote → probation → rollback.</h2>
+  <figure class="dg" data-diagram="promotion"><figcaption class="dg-cap"></figcaption></figure>
+</section>
+
+<!-- 16 -->
+<section class="slide" data-title="Face split">
+  <div class="side-art"><img src="../site/assets/art/face.jpg" alt=""></div>
+  <p class="eyebrow">07 · Face</p>
+  <h2 class="narrow">Real-time audio stays in the surface.</h2>
+  <div class="narrow" style="display:grid;gap:24px">
+    <div class="callout srf"><b>Surface (real time)</b><br>mic · echo cancellation · VAD · streaming STT · TTS playback · reflex: duck/stop on user speech</div>
+    <div class="callout cog"><b>Coglet (decisions)</b><br>wakes on speech start, partial, end of utterance, playback position · emits speak-chunk, stop, backchannel</div>
+  </div>
+  <div class="specs narrow"><span>spec</span><a data-spec="speech"></a><a data-spec="surface"></a></div>
+</section>
+
+<!-- 17 -->
+<section class="slide" data-title="Barge-in">
+  <p class="eyebrow">07 · Barge-in</p>
+  <h2>Surface reflex first, coglet decision second.</h2>
+  <figure class="dg" data-diagram="bargein"><figcaption class="dg-cap"></figcaption></figure>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-title="Mindustry">
+  <p class="eyebrow">08 · Mindustry avatar</p>
+  <h2>Thin in-game adapter + the same <code>cogletd</code>.</h2>
+  <ul>
+    <li>Coglet does <b>not</b> run in the JVM. Java adapter on <code>sdk/surface-java</code> (owned by mindister) talks to <code>cogletd</code> over a local socket.</li>
+    <li><b>One runtime everywhere</b>; <b>crash isolation</b> (a hung coglet never takes down the game); native iroh + git, no JNI.</li>
+    <li>Adapter projects filtered state (diffs), serves <code>/dev/game/{state,events,act,results,pointer,ctl}</code> as capabilities, enforces grants and fencing.</li>
+    <li><b>Acts never execute locally</b>: hub motor queue (pacing, player-wins) → fenced acts.</li>
+  </ul>
+  <div class="specs"><span>spec</span><a data-spec="surface"></a><a data-spec="design"></a></div>
+</section>
+
+<!-- 19 -->
+<section class="slide" data-title="Baby Bear">
+  <p class="eyebrow">08 · Baby Bear</p>
+  <h2>Pods become surfaces.</h2>
+  <table class="t">
+    <tbody>
+      <tr><td>EO1 · pilot</td><td>surface + runtime + a display coglet the factory rewrites without an EO1 release; 32-bit ARM, WAMR</td></tr>
+      <tr><td>Echo Dot · Linux</td><td>shared Go pod library; Echo Dot is another body for the Face coglet (LED ring)</td></tr>
+      <tr><td>iOS</td><td>embedded runtime, interpreter only; coglets run on the hub when suspended</td></tr>
+      <tr><td>Mac</td><td>delegation and job logic move into coglets; EchoEar, Z04 badge are its peripherals</td></tr>
+    </tbody>
+  </table>
+  <ul><li>Coglet's own hub protocol on its own ALPN, beside <code>babybear/rpc/1</code>; each pod cuts over after a side-by-side check.</li></ul>
+  <div class="specs"><span>source</span><a data-spec="plan"></a></div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-title="Conformance">
+  <p class="eyebrow">09 · Specs first</p>
+  <h2>Every protocol: spec, fixtures, mock, one suite.</h2>
+  <figure class="dg" data-diagram="conformance"></figure>
+  <div class="specs"><span>spec</span><a data-spec="conformance"></a><a data-spec="messages"></a><a data-spec="fixtures"></a></div>
+</section>
+
+<!-- 21 -->
+<section class="slide" data-title="Spec status">
+  <p class="eyebrow">09 · Spec status</p>
+  <h2>Where to read (and what's still being written).</h2>
+  <div class="cols" style="gap:20px 64px">
+    <ul style="list-style:none;padding:0">
+      <li><a data-spec="conventions"></a></li>
+      <li><a data-spec="abi"></a></li>
+      <li><a data-spec="surface"></a></li>
+      <li><a data-spec="speech"></a></li>
+      <li><a data-spec="expression"></a></li>
+      <li><a data-spec="hub"></a></li>
+      <li><a data-spec="manifest"></a></li>
+    </ul>
+    <ul style="list-style:none;padding:0">
+      <li><a data-spec="policy"></a></li>
+      <li><a data-spec="messages"></a></li>
+      <li><a data-spec="fixtures"></a></li>
+      <li><a data-spec="adrFreeze"></a></li>
+      <li><a data-spec="adrConv"></a></li>
+      <li><a data-spec="adrPlatforms"></a></li>
+      <li><a data-spec="adrDeterm"></a></li>
+    </ul>
+  </div>
+  <p style="font-size:24px">Spec changes go through an ADR: <a data-spec="adrTemplate"></a></p>
+</section>
+
+<!-- 22 -->
+<section class="slide" data-title="Repo layout">
+  <p class="eyebrow">10 · Repo layout</p>
+  <h2>softmax-universe/coglet</h2>
+  <div class="cols" style="grid-template-columns: 1.25fr 1fr">
+    <pre class="tree small">spec/          <span class="c">specs, schemas, messages, fixtures</span>
+conformance/   <span class="c">black-box harness + suites</span>
+codegen/       <span class="c">schema → Rust/Py/Swift/Go/Java</span>
+crates/
+  coglet-engine{,-wamr,-wasmtime}
+  coglet-fs  coglet-runtime  coglet-proto
+  coglet-hub  coglet-llm  coglet-gate
+  coglet-trace  coglet-mock  coglet-cli
+sdk/           <span class="c">guest-rust · surface-*</span>
+surfaces/face-mac/
+sim/           <span class="c">gridbot cartpole arm2d duplex-audio paint</span>
+apps/visualizer/
+coglets/       <span class="c">echo counter gridbot-pilot face …</span>
+release/</pre>
+    <ul>
+      <li><b>Boundary</b>: used by ≥2 products → coglet (Face, SDKs, sim, visualizer).</li>
+      <li><b>mindister</b> keeps the game adapter, avatar coglet, hub config.</li>
+      <li><b>babybear</b> keeps the pod bodies.</li>
+      <li>Ideas are ported from mindister and <code>legacy/v0</code>, never code.</li>
+    </ul>
+  </div>
+  <div class="specs"><span>source</span><a data-spec="plan"></a></div>
+</section>
+
+<!-- 23 -->
+<section class="slide" data-title="Build plan">
+  <p class="eyebrow">10 · Parallel build</p>
+  <h2>One serial gate, then everything in parallel.</h2>
+  <figure class="dg" data-diagram="phases"></figure>
+  <div class="specs"><span>source</span><a data-spec="plan"></a><a data-spec="review"></a></div>
+</section>
+
+<!-- 24 -->
+<section class="slide" data-title="Open questions">
+  <p class="eyebrow">Open questions</p>
+  <h2>Still to decide.</h2>
+  <ul>
+    <li>Keep or cut the hub's ledger and motor journal? (pacing and player-wins likely stay)</li>
+    <li>Fuel and deadline budgets per step, per surface</li>
+    <li>Flush interval and size cap for the in-memory filesystem</li>
+    <li>Event-driven vs fixed-rate steps by default, per surface</li>
+    <li>caos: inspiration now, substrate later (a step = one actor message)</li>
+  </ul>
+  <p style="margin-top:auto;font-size:26px">Read more: <a href="../site/">the architecture page</a> · <a data-spec="design"></a> · <a data-spec="plan"></a></p>
+</section>
+
+</div></div>
+<div class="hud">← → / space · f fullscreen · <a href="../site/">page</a></div>
+
+<script src="../site/assets/specs.js"></script>
+<script src="../site/assets/diagrams.js"></script>
+<script>
+(function () {
+  var EXPORT = /[?&]export\b/.test(location.search);
+  if (EXPORT) document.documentElement.classList.add('export');
+  COGLET.decorateSpecs(document);
+  COGLET.initDiagrams(document);
+  var stage = document.getElementById('stage');
+  var slides = [].slice.call(document.querySelectorAll('.slide'));
+  var N = slides.length;
+  slides.forEach(function (s, i) {
+    var f = document.createElement('div'); f.className = 'foot';
+    f.innerHTML = '<span>coglet · architecture</span><span class="n">' + (i + 1) + ' / ' + N + '</span>';
+    s.appendChild(f);
+    var p = document.createElement('div'); p.className = 'progress'; p.style.width = ((i + 1) / N * 100) + '%';
+    s.appendChild(p);
+  });
+  if (EXPORT) return;
+  function fit() {
+    var k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = 'scale(' + k + ')';
+  }
+  addEventListener('resize', fit); fit();
+  var KEY = 'coglet-slides-i';
+  var cur = 0;
+  function show(i) {
+    i = Math.max(0, Math.min(N - 1, i));
+    slides[cur].classList.remove('active');
+    slides[cur].querySelectorAll('figure.dg').forEach(function (f) { f._dg && f._dg.stop(); });
+    cur = i;
+    slides[cur].classList.add('active');
+    try { localStorage.setItem(KEY, cur); } catch (e) {}
+    if (location.hash !== '#' + (cur + 1)) { try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {} }
+    document.title = slides[cur].dataset.title + ' — Coglet slides';
+    slides[cur].querySelectorAll('figure.dg').forEach(function (f) { if (f._dg && f._dg.steps.length > 1) { f._dg.go(0, false); f._dg.play(); } });
+  }
+  var start = parseInt((location.hash || '').slice(1), 10);
+  if (!(start >= 1)) { try { start = (+localStorage.getItem(KEY) || 0) + 1; } catch (e) { start = 1; } }
+  slides[0].classList.add('active');
+  show(start - 1);
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest && e.target.closest('figure.dg')) return;
+    if (['ArrowRight', 'PageDown', ' ', 'j', 'n'].indexOf(e.key) >= 0) { show(cur + 1); e.preventDefault(); }
+    else if (['ArrowLeft', 'PageUp', 'k', 'p'].indexOf(e.key) >= 0) { show(cur - 1); e.preventDefault(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(N - 1);
+    else if (e.key === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+  });
+  addEventListener('hashchange', function () { var n = parseInt(location.hash.slice(1), 10); if (n >= 1 && n - 1 !== cur) show(n - 1); });
+  var tx = null;
+  addEventListener('touchstart', function (e) { tx = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', function (e) { if (tx == null) return; var d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 50) show(cur + (d < 0 ? 1 : -1)); tx = null; });
+})();
+</script>
+</body>
+</html>
