@@ -15,7 +15,9 @@ ADR-0001 is reserved for the v0 freeze by `docs/plan.md`.
 ## Decision
 
 Define `spec/conventions.md` and reusable definitions in
-`spec/messages/common.cddl` and `common.schema.json`. Use RFC 8949 core
+`spec/messages/common.cddl` and `common.schema.json`. Use unsigned 64-bit
+counters and signed 64-bit negative values, matching common language bindings.
+Use RFC 8949 core
 deterministic CBOR (bytewise lexicographic map-key order, not length-first).
 Allow integers, text, arrays, text-key maps, booleans and null; omit bytes,
 floats and tags in this initial JSON-compatible profile. Identity text is a
