@@ -6,6 +6,39 @@ import SoftmaxCore
 /// fixtures, no TCC, capture, updater, persistence or network side effects.
 @MainActor enum DesignSnapshots {
     static func run(to directory: String) throws {
+        let root = URL(fileURLWithPath: directory, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let arguments = ProcessInfo.processInfo.arguments
+        let scaleFlag = "--design-snapshot-scale"
+        guard let scaleIndex = arguments.firstIndex(of: scaleFlag) else {
+            // AppKit text-field measurement state can outlive a window. Never host
+            // different scales in one process; retain the existing CLI/workflow.
+            var manifest: [String] = []
+            for scale in ["1.0", "1.6"] {
+                guard let executable = Bundle.main.executableURL else { throw CocoaError(.fileNoSuchFile) }
+                let process = Process()
+                process.executableURL = executable
+                process.arguments = Array(arguments.dropFirst()) + [scaleFlag, scale]
+                try process.run()
+                process.waitUntilExit()
+                guard process.terminationReason == .exit, process.terminationStatus == 0 else {
+                    throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot scale group failed: \(scale)"])
+                }
+                let path = root.appendingPathComponent("manifest-\(scale).json")
+                guard let keys = try JSONSerialization.jsonObject(with: Data(contentsOf: path)) as? [String] else {
+                    throw CocoaError(.fileReadCorruptFile)
+                }
+                manifest.append(contentsOf: keys)
+                try FileManager.default.removeItem(at: path)
+            }
+            guard manifest.count == 360, Set(manifest).count == 360 else { throw CocoaError(.fileReadCorruptFile) }
+            try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))
+            return
+        }
+        guard arguments.count > scaleIndex + 1, ["1.0", "1.6"].contains(arguments[scaleIndex + 1]) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let scaleGroup = arguments[scaleIndex + 1]
         // Asset compilation and precedence are acceptance assertions, not visual guesses.
         for state in MenuPresentation.allCases {
             let names = ["menu-\(state.rawValue)"] + ([MenuPresentation.listening, .speaking].contains(state) ? (0..<4).map { "menu-\(state.rawValue)-\($0)" } : [])
@@ -22,13 +55,12 @@ import SoftmaxCore
               MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: false, updateAvailable: true) == .offline,
               MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: true, updateAvailable: true) == .update,
               MenuPresentation.resolve(activity: .idle, hasError: false, hubConnected: true, updateAvailable: false) == .idle else { throw CocoaError(.validationMultipleErrors) }
-        let root = URL(fileURLWithPath: directory, isDirectory: true)
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var manifest: [String] = []
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
                 let theme = "\(scheme == .dark ? "dark" : "light")\(contrast == .increased ? "-contrast" : "")"
-                func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
+                @MainActor func capture<V: View>(_ name: String, _ size: NSSize, _ view: V) throws {
+                    guard name.hasSuffix("-large") == (scaleGroup == "1.6") else { return }
                     let key = "\(theme)-\(name)"
                     // Each fixture owns a fresh window and hosting graph. Drain native
                     // autoreleases before constructing the next fixture/scale.
@@ -150,6 +182,6 @@ import SoftmaxCore
                 try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
             }
         }
-        try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))
+        try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest-\(scaleGroup).json"))
     }
 }

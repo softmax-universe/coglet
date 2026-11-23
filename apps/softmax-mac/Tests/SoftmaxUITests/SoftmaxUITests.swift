@@ -156,7 +156,9 @@ final class SoftmaxUITests: XCTestCase {
             let palette = app.descendants(matching: .any).matching(identifier: "Softmax Commands").firstMatch
             XCTAssertTrue(palette.waitForExistence(timeout: 5))
             let scroll = palette.scrollViews.firstMatch
-            let expectedSearchHeight: CGFloat = scale == "1.0" ? 25 : 35
+            // AX includes the native bezel's 1pt outsets above and below the
+            // explicit SwiftUI layout frame (25/35pt); assert both scale anchors.
+            let expectedSearchHeight: CGFloat = scale == "1.0" ? 27 : 37
             let search = palette.textFields["Search commands and settings"]
             XCTAssertTrue(search.exists)
             XCTAssertEqual(search.frame.height, expectedSearchHeight, accuracy: 0.5,
