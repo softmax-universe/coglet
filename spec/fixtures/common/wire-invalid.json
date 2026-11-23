@@ -1,0 +1,70 @@
+[
+  {
+    "name": "non-shortest-int",
+    "cbor_hex": "1800"
+  },
+  {
+    "name": "indefinite-array",
+    "cbor_hex": "9f01ff"
+  },
+  {
+    "name": "indefinite-map",
+    "cbor_hex": "bf616101ff"
+  },
+  {
+    "name": "duplicate-key",
+    "cbor_hex": "a2616101616102"
+  },
+  {
+    "name": "trailing-item",
+    "cbor_hex": "0001"
+  },
+  {
+    "name": "bytes",
+    "cbor_hex": "4100"
+  },
+  {
+    "name": "tag",
+    "cbor_hex": "c001"
+  },
+  {
+    "name": "half-float",
+    "cbor_hex": "f93c00"
+  },
+  {
+    "name": "float",
+    "cbor_hex": "fa3f800000"
+  },
+  {
+    "name": "nan",
+    "cbor_hex": "f97e00"
+  },
+  {
+    "name": "undefined",
+    "cbor_hex": "f7"
+  },
+  {
+    "name": "simple",
+    "cbor_hex": "f0"
+  },
+  {
+    "name": "nontext-map-key",
+    "cbor_hex": "a10101"
+  },
+  {
+    "name": "wrong-map-order",
+    "cbor_hex": "a262616101617a02"
+  },
+  {
+    "name": "invalid-utf8",
+    "cbor_hex": "61ff"
+  },
+  {
+    "name": "truncated",
+    "cbor_hex": "a16161"
+  },
+  {
+    "name": "nonshortest-length",
+    "cbor_hex": "780161"
+  }
+]
