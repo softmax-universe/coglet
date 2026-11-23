@@ -1,0 +1,67 @@
+{
+  "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "clock": 0,
+  "hello": {
+    "type": "hello",
+    "body": {
+      "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      },
+      "clock": 0,
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  },
+  "grant": {
+    "epoch": 1,
+    "entries": [
+      {
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "operations": [
+          "speech.start",
+          "speech.partial",
+          "speech.end",
+          "speech.position",
+          "speech.barge_in",
+          "speech.tool_call",
+          "speech.config",
+          "speech.speak_chunk",
+          "speech.stop",
+          "speech.backchannel",
+          "speech.session_open",
+          "speech.session_close",
+          "speech.tool_result",
+          "expression.set_expression",
+          "expression.state"
+        ],
+        "resources": [
+          "audio.mic",
+          "audio.speaker",
+          "display.face"
+        ],
+        "expires": 10000000
+      }
+    ],
+    "correlation_id": "11111111111111111111111111111111"
+  },
+  "speech_config": {
+    "stt": {
+      "placement": "surface",
+      "route": "local"
+    },
+    "tts": {
+      "placement": "hub",
+      "route": "voice"
+    },
+    "barge": "stop",
+    "session_mode": "text"
+  },
+  "initial_expression": {
+    "expression": "neutral",
+    "intensity": 0,
+    "remaining_ms": 0
+  },
+  "case_audio_timelines": "spec/fixtures/speech/timelines.json"
+}

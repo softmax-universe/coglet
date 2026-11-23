@@ -1,9 +1,9 @@
-# ADR-0003: Surface transport and portable speech profiles
+# ADR-0007: Surface transport and portable speech profiles
 
 - Status: Proposed
 - Date: 2026-11-23
 - Authors: Coglet surface spec worker
-- Related PR: to be recorded after submission
+- Related PR: https://github.com/softmax-universe/coglet/pull/9
 - Supersedes / superseded by: none
 
 ## Context
@@ -48,7 +48,9 @@ No exactly-once claim is made across loss of the durable action ledger.
 
 `python3 -m unittest discover -s spec/tests -v` validates both schema languages,
 golden wire encoding and the surface/speech case data. Existing CI discovers the
-new tests without shared-workflow edits. Cases cover grant fencing, kill, reads,
+new tests; a minimal coordinated Ruby/Bundler setup step installs the locked
+reference CDDL validator (the existing pycddl cannot validate recursive maps).
+Cases cover grant fencing, kill, reads,
 action recovery, barge-in, over-talk and a late partial after utterance close.
 
 ## Approval

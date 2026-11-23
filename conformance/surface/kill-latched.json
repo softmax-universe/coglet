@@ -1,0 +1,89 @@
+{
+  "name": "kill-latched",
+  "peer_role": "runtime",
+  "fixtures": [
+    "surface-base",
+    "kill-at-100ms"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.1"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "kill"
+      },
+      "within_ms": 200,
+      "at_ms": 100
+    },
+    {
+      "send": {
+        "type": "act",
+        "body": {
+          "grant_epoch": 1,
+          "action": {
+            "id": "11111111111111111111111111111111",
+            "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "capability": "expression.set_expression",
+            "args": {
+              "expression": "listening",
+              "intensity": 500,
+              "duration_ms": 1000
+            },
+            "deadline": 1000000,
+            "correlation_id": "11111111111111111111111111111111"
+          }
+        }
+      },
+      "at_ms": 110
+    },
+    {
+      "match": {
+        "type": "accept",
+        "body.id": "11111111111111111111111111111111",
+        "body.correlation_id": "11111111111111111111111111111111",
+        "body.accepted": false,
+        "body.error.code": "permission_denied"
+      },
+      "within_ms": 200
+    }
+  ]
+}

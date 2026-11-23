@@ -1,0 +1,86 @@
+{
+  "name": "read-config",
+  "peer_role": "runtime",
+  "fixtures": [
+    "surface-base"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.1"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "read",
+        "body": {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "capability": "speech.config",
+          "args": {},
+          "grant_epoch": 1,
+          "deadline": 1000000,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "expect": {
+        "type": "read_reply",
+        "body": {
+          "correlation_id": "11111111111111111111111111111111",
+          "ok": true,
+          "value": {
+            "stt": {
+              "placement": "surface",
+              "route": "local"
+            },
+            "tts": {
+              "placement": "hub",
+              "route": "voice"
+            },
+            "barge": "stop",
+            "session_mode": "text"
+          },
+          "snapshot": 1
+        }
+      },
+      "within_ms": 200
+    }
+  ]
+}
