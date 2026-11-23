@@ -1,4 +1,4 @@
-# Runtime core (implementation in progress)
+# Runtime core and native surface service
 
 This crate is **not yet an M1-qualified runtime**. The current library provides:
 
@@ -63,12 +63,16 @@ fails. No recorded output files or return values are fed into guest execution.
 
 ## Baseline milestone and follow-up boundaries
 
-This component-level baseline intentionally does not qualify full ABI or operational
-surface behavior. `every_primary_abi_case_is_executed` also independently replays
+The primary ABI baseline does not qualify full ABI. Operational Linux surface
+qualification is documented separately in [qualification.md](qualification.md),
+with exact native test names, ownership and supported bounds. The small frozen
+negotiation corpus alone is not operational evidence.
+`every_primary_abi_case_is_executed` also independently replays
 all 21 primary cases and compares every per-step state hash.
 
 Remaining qualification is owned serially by board cards:
-- `t_01a2085c6e546405`: operational surface, production daemon and durable outbox.
+- `t_01a2085c6e546405`: operational surface, production daemon and durable outbox
+  (implemented; independent review/CI/landing recorded on PR #53).
 - `t_01a2085cca051179`: full ABI profiles, engine recovery and trace import/export.
 
 The unimplemented boundaries remain explicit:
@@ -83,8 +87,8 @@ The unimplemented boundaries remain explicit:
   fails closed. Non-Linux supervised clocks (including iOS) remain unimplemented.
   Dispatch order is retained/checked against initial intent order and committed action
   arrays, not sorted IDs. Expired undispatched intents receive durable local rejections.
-- Operational private events and reads exist in the shared library session, but
-  service-backed native endpoints attach it. Private event admission intersects
+- Operational private events and reads use the shared library session attached
+  by both service-backed native endpoints. Private event admission intersects
   manifest subscriptions with current grants/resources; grant replacement, expiry,
   disconnect and restart purge old-lease queued input while retaining sequence
   highwaters. Capture identities are never reopened across epochs/reconnects;
@@ -145,15 +149,15 @@ The shared source sequence persists in service state and advances for committed
 runtime-source events and receipt appends. Fresh fixture setup starts at zero;
 production restart/segment transfer must retain the full lifetime source metadata.
 
-## Native surface boundary (partial operational qualification)
+## Native surface boundary
 
 `tests/operational_surface.rs` separately exercises the library authority and WAL
 seams (not native operational qualification). Named tests cover byte-identical
 retry after clock advance, reconnect recovery without a new action, authenticated
 source/admission binding, one terminal append across restart, zero-step trailing
-export, persistent grant-epoch fencing and deadline-relative retention. Production
-non-Linux clock/lifecycle wiring, full private-event temporal normalization and real native
-pending-I/O shutdown remain required before this card is complete.
+export, persistent grant-epoch fencing and deadline-relative retention. Native
+transport evidence and the distinction between runtime pending work and actual
+device-I/O shutdown are explicit in [qualification.md](qualification.md).
 
 `tests/native_operational.rs` exercises the actual C pointer boundary and an actual
 `cogletd` Unix-socket subprocess. Both paths check reverse-lexical invocation order,
@@ -165,8 +169,10 @@ retained-dispatch fencing, and reject an expired outbox head without starving la
 actions. Two further actual native-path tests send start/partial/end and stale
 revisions, read back durable end fences/discard counts, and prove disconnected
 private input is not revived. Library tests prove source-order guest delivery and
-that router-full does not commit a revision/highwater. Playback item/stream temporal
-rules and provider media ownership remain unqualified. Five heard regressions cover
+that router-full does not commit a revision/highwater. Playback tests additionally
+cover item/stream owner/epoch/chunk bindings, exact barge pairing, terminal freeze,
+provider-native item ownership and durable recovery (see live-heard.md for the
+conservative provider lifecycle restrictions). Heard regressions cover
 native socket/C reads, conservative prefix construction, revoked late replies and
 runtime-clock barrier expiry. With native-engine, those same native paths execute
 real Wasm and verify runtime.heard precedes each position-consuming step.
@@ -208,5 +214,5 @@ cover null/unsupported open, copied input lifetime, size query, short-buffer
 nondequeue, exact read, would-block/n=0, bounded-send no-effect, malformed input,
 close, unsolicited heartbeat and stale-link timeout. Rust tests cover hostile
 binding/lifecycle/profile, framing, UID denial, path permissions and idle socket
-heartbeats. These tests do not qualify unimplemented grant/private-event/dispatch
-semantics merely because the present two-case runtime-side corpus passes.
+heartbeats. These tests alone do not qualify grant/private-event/dispatch
+semantics; the separate operational/native targets supply that evidence.
