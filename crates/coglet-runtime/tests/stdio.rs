@@ -5,6 +5,24 @@ use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
 #[test]
+fn packaging_version_exits_without_starting_daemon_and_unknown_flags_fail() {
+    for args in [vec![], vec!["--version"]] {
+        let output = Command::new(env!("CARGO_BIN_EXE_cogletd"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(output.stdout, b"cogletd 0.1.0\n");
+    }
+    let output = Command::new(env!("CARGO_BIN_EXE_cogletd"))
+        .arg("--serve")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+}
+
+#[test]
 fn cogletd_mock_stdio_computes_journal_over_native_frames() {
     let cases: Value =
         serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();

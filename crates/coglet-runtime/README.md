@@ -68,7 +68,8 @@ The unimplemented boundaries remain explicit:
 - Close/disconnect with pending real native I/O: native pointer/buffer/backpressure
   and heartbeat probes exist, but no operational native I/O can be admitted yet.
 - `cogletd` production server mode. Only --version, --mock-stdio and the explicit
-  --surface-probe-socket negotiation shell exist; ordinary invocation fails closed.
+  --surface-probe-socket negotiation shell exist. No arguments prints the version
+  and exits (workspace packaging smoke contract); unsupported arguments fail closed.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
   Recovery checks all code files, pending-ledger membership, inbox wake indices,
   trace identity and journal head/chain, but not a full reconstruction of all host

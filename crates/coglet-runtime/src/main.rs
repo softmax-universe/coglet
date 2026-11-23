@@ -88,6 +88,9 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        // Preserve the workspace packaging smoke contract; this exits immediately
+        // and never claims to have started a production daemon.
+        [] => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         _ => {
             eprintln!(
