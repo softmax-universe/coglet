@@ -20,7 +20,8 @@ struct SoftmaxApp: App {
             Text("Hub: offline (not connected)")
             Divider()
             Button("Settings…") { delegate.showSettings() }.keyboardShortcut(",")
-            Button("Check for Updates…") { delegate.showSettings(tab: .updates) }
+            Button("Check for Updates…") { delegate.model.updates.checkForUpdates() }
+                .disabled(!delegate.model.updates.enabled)
             Divider()
             Button("Quit Softmax") { NSApp.terminate(nil) }.keyboardShortcut("q")
         } label: {
@@ -38,6 +39,7 @@ struct StatusLabel: View {
 
 @MainActor
 final class ShellModel: ObservableObject {
+    let updates = UpdateController()
     let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
     @Published var machine: AppStateMachine
     @Published var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown)
