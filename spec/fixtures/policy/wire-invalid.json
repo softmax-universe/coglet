@@ -1,0 +1,13 @@
+[
+  {"name":"duplicate-map-key","cbor_hex":"a2616101616102"},
+  {"name":"nonminimal-integer","cbor_hex":"1817"},
+  {"name":"nonminimal-map-length","cbor_hex":"b800"},
+  {"name":"indefinite-map","cbor_hex":"bfff"},
+  {"name":"trailing-item","cbor_hex":"a0f6"},
+  {"name":"float","cbor_hex":"f90000"},
+  {"name":"byte-string","cbor_hex":"4100"},
+  {"name":"tag","cbor_hex":"c0f6"},
+  {"name":"nontext-key","cbor_hex":"a10001"},
+  {"name":"invalid-utf8","cbor_hex":"61ff"},
+  {"name":"truncated-map","cbor_hex":"a16161"}
+]
