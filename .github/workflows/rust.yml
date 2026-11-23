@@ -16,6 +16,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
       - run: cargo test --workspace --locked
+      - name: AOT feature fails closed under ABI v0
+        run: cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
