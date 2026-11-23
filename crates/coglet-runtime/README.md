@@ -119,12 +119,26 @@ The unimplemented boundaries remain explicit:
   feature-free service mode only hosts the outbox. Native execution currently
   refuses all WASI imports; full transactional WASI is the serial ABI qualification
   gate. No arguments still prints the version and exits.
+- Trace headers/blob import/export and offline archive validation now cover all
+  frozen boundary/receipt, provenance and heard-archive vectors in the Rust target
+  `complete_frozen_archive_profiles_validate_without_guest_execution`. Import
+  reconstructs host calls/pending state, checks mount-constrained recorded guest
+  deltas and recomputes hashes. It is **not** independent guest re-execution,
+  signature verification or proof of a producer's cutoff/completeness. Use
+  `Runtime::replay` with an independently supplied program for re-execution.
+  `Runtime::start_segment` carries in-memory host state from a sealed segment;
+  durable coordinator segment/router/dispatch transfer remains unimplemented.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
-  Recovery checks all code files, pending-ledger membership, inbox wake indices,
-  trace identity and journal head/chain, but not a full reconstruction of all host
-  metadata from prior commits yet. Router metadata also needs semantic validation.
-- Trace header/blob import/export and host-state transfer to a new segment after
-  sealing. `seal_boundary` forbids later steps in that segment. The coordinator
+  Recovery now reconstructs files, lifetime IDs, pending effects and inbox wakes
+  from the configured immutable initial header and recorded host transitions,
+  rather than accepting merely well-shaped saved pending state. It also validates
+  router capacity, reserved ordinal bounds/order and event schemas. Complete
+  router-to-host/source/lease semantic validation remains required. Source sequence
+  and clock have lower-bound checks; exact derivation of reservations remains open.
+  The internal WAL now requires the immutable initial header (`initial_setup`);
+  older header-less WALs fail closed and are not silently migrated.
+- Durable trace import/export after reopen and atomic coordinator segment transfer
+  remain required. `seal_boundary` forbids later steps in that segment. The coordinator
   atomically persists the seal, inbox append/pending removal and newly queued
   inbox wakes; heard-only seals queue no wake. Terminal surface receipt/outcome methods
   now persist dedup with exact staged inbox bytes, pending removal and one wake. Staged

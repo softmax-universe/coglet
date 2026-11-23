@@ -20,6 +20,8 @@ mod playback;
 mod speech_temporal;
 #[path = "surface_events.rs"]
 mod surface_events;
+#[path = "trace.rs"]
+mod trace;
 
 /// Engine implementations must start a fresh instance for every attempt. This
 /// fixture seam also adapts the shared Engine API through opt-in NativeEngine.
@@ -78,8 +80,13 @@ impl RuntimeService {
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
-            let state: ServiceState =
+            let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            state.router.validate_recovered()?;
+            if state.runtime.initial_setup != configured.initial_setup {
+                return Err("recovered initial snapshot/header differs from configuration".into());
+            }
+            state.runtime.records = store.records().to_vec();
             let code_files = |runtime: &Runtime| {
                 runtime
                     .files
@@ -431,6 +438,7 @@ impl Engine for MockEngine {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
+    initial_setup: Value,
     files: Snapshot,
     manifest: Value,
     step: u64,
@@ -552,6 +560,10 @@ impl Runtime {
             }
         }
         Ok(Self {
+            initial_setup: json!({"manifest":setup["manifest"],"initial_files":setup["initial_files"],
+                "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
+                "initial_inbox_wakes":setup["initial_inbox_wakes"],"initial_timers":setup["initial_timers"],
+                "initial_llm_requests":setup["initial_llm_requests"]}),
             files,
             manifest: setup["manifest"].clone(),
             step: 0,
@@ -745,6 +757,18 @@ impl Runtime {
     }
 
     fn validate_recovered(&self, records: &[Value]) -> Result<()> {
+        let derived = Self::reconstruct(&self.initial_setup, records)?;
+        if self.files != derived.files
+            || self.manifest != derived.manifest
+            || self.ledger != derived.ledger
+            || self.inbox_wakes != derived.inbox_wakes
+            || self.pending_actions != derived.pending_actions
+            || self.pending_llm != derived.pending_llm
+            || self.pending_timers != derived.pending_timers
+            || self.next_source_seq < derived.next_source_seq
+        {
+            return Err("recovered host state differs from journal reconstruction".into());
+        }
         // Revalidate semantic host-state constraints; a valid WAL checksum does
         // not establish that decoded pending work or pins are self-consistent.
         Self::from_fixture(

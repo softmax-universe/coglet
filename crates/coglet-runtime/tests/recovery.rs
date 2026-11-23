@@ -46,6 +46,45 @@ fn trace_identity_cannot_change_between_steps_or_on_trailing_boundary() {
 }
 
 #[test]
+fn recovery_rejects_router_metadata_that_cannot_be_an_admitted_queue() {
+    for (name, router) in [
+        (
+            "zero-capacity",
+            json!({"capacity":0,"next_ordinal":0,"queue":[]}),
+        ),
+        (
+            "ordinal-not-reserved",
+            json!({"capacity":4,"next_ordinal":0,"queue":[[0,setup()["inputs"]["events"][0]]]}),
+        ),
+        (
+            "duplicate-ordinal",
+            json!({"capacity":4,"next_ordinal":1,"queue":[[0,setup()["inputs"]["events"][0]],[0,setup()["inputs"]["events"][0]]]}),
+        ),
+        (
+            "invalid-event",
+            json!({"capacity":4,"next_ordinal":1,"queue":[[0,{}]]}),
+        ),
+    ] {
+        let send = setup();
+        let directory =
+            std::env::temp_dir().join(format!("coglet-router-{name}-{}", std::process::id()));
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("runtime.wal");
+        drop(RuntimeService::open(&path, &send, 4).unwrap());
+        let mut store = DurableStore::open(&path).unwrap();
+        let mut state = store.state().unwrap().clone();
+        state["router"] = router;
+        store.commit(&state, None).unwrap();
+        drop(store);
+        assert!(
+            RuntimeService::open(&path, &send, 4).is_err(),
+            "invalid router {name} accepted"
+        );
+        fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[test]
 fn effect_ledger_requires_sorted_unique_ids_before_deserialization() {
     for ids in [
         json!(["b".repeat(32), "a".repeat(32)]),
@@ -88,6 +127,11 @@ fn recovery_rejects_forged_host_state_even_with_valid_internal_frame_checksum() 
         ("wakes", "inbox_wakes", json!([99])),
         ("head", "previous", json!("a".repeat(64))),
         ("step", "step", json!(2)),
+        (
+            "extra-ledger",
+            "ledger",
+            json!({"actions":[],"timers":["a".repeat(32)],"llm_requests":[]}),
+        ),
     ] {
         let send = setup();
         let directory =

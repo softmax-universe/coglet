@@ -57,6 +57,21 @@ impl Router {
         Ok(())
     }
 
+    pub(crate) fn validate_recovered(&self) -> Result<()> {
+        if self.capacity == 0 || self.queue.len() > self.capacity {
+            return Err("invalid recovered router capacity".into());
+        }
+        let mut previous = None;
+        for (ordinal, event) in &self.queue {
+            if *ordinal >= self.next_ordinal || previous.is_some_and(|old| old >= *ordinal) {
+                return Err("invalid recovered router arrival order".into());
+            }
+            validate("event", event)?;
+            previous = Some(*ordinal);
+        }
+        Ok(())
+    }
+
     pub(crate) fn events(&self) -> impl Iterator<Item = &Value> {
         self.queue.iter().map(|(_, event)| event)
     }
