@@ -48,6 +48,9 @@ struct DesignGroup<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) { content }
+            // Native labels (including radio-group titles) must resolve against
+            // this opaque surface, not a hierarchical style inherited across it.
+            .foregroundColor(scheme == .dark ? SoftmaxDesignTokens.Dark.ink : SoftmaxDesignTokens.Light.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(SoftmaxDesignTokens.spacing[3])
             .background(scheme == .dark ? SoftmaxDesignTokens.Dark.surface : SoftmaxDesignTokens.Light.surface,

@@ -40,6 +40,16 @@ jobs:
           xcodebuild test -project Softmax.xcodeproj -scheme Softmax
           -destination 'platform=macOS' -derivedDataPath build
           -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Export live accessibility screenshots and audit evidence
+        if: ${{ !cancelled() }}
+        working-directory: apps/softmax-mac
+        run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path build/LiveWindowAttachments
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Softmax-live-window-audit-evidence
+          path: apps/softmax-mac/build/LiveWindowAttachments
+          if-no-files-found: warn
       - name: Package app artifact
         if: always()
         working-directory: apps/softmax-mac

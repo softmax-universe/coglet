@@ -25,6 +25,8 @@ final class SoftmaxUITests: XCTestCase {
         let onboarding = app.windows["Welcome to Softmax"]
         XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
         for step in 0..<3 {
+            let beforeAudit = XCTAttachment(screenshot: onboarding.screenshot())
+            beforeAudit.name = "before-audit-onboarding-\(step)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
             print("AX onboarding chapter \(step):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
@@ -42,6 +44,8 @@ final class SoftmaxUITests: XCTestCase {
         for section in ["General", "Hotkey", "Audio", "Hub", "Coglets", "Updates", "Privacy"] {
             XCTAssertFalse(onboarding.exists, "Settings must not occlude unfinished onboarding")
             settings.buttons[section].click()
+            let beforeAudit = XCTAttachment(screenshot: settings.screenshot())
+            beforeAudit.name = "before-audit-settings-\(section)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
             print("AX settings \(section):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
