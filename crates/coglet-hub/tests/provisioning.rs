@@ -117,6 +117,86 @@ async fn ticket_end_is_durable_exact_scope_and_cancels_unattempted_actions() {
 }
 
 #[tokio::test]
+async fn expired_pending_registration_requires_explicit_recovery_and_survives_another_crash() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    let dir = tempfile::tempdir().unwrap();
+    let hub = SecretKey::generate().public();
+    let now = Arc::new(AtomicU64::new(1));
+    let clock: Arc<dyn Fn() -> Option<u64> + Send + Sync> = {
+        let now = now.clone();
+        Arc::new(move || Some(now.load(Ordering::SeqCst)))
+    };
+    let kernel = Kernel::open(dir.path(), hub, clock.clone()).unwrap();
+    let key = SecretKey::generate();
+    let mut r = registration(hub);
+    r.coglet = format!("coglet:{}", key.public());
+    let proof = |generation, expires| {
+        let statement = json!({"purpose":"delegation","hub":hub.to_string(),"device":r.device,"coglet":r.coglet,"generation":generation,"expires":expires,"methods":["hub.events"]});
+        let signature = key.sign(&signing::preimage("delegation", &statement).unwrap());
+        json!({"statement":statement,"signer":key.public().to_string(),"signature":hex::encode(signature.to_bytes())})
+    };
+    let initial = proof(1, 10);
+    let replacement = proof(2, 30);
+    let renewed = proof(3, 1000);
+    r.delegation = initial;
+    let db = Connection::open(dir.path().join("kernel.db")).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_registry BEFORE INSERT ON registry BEGIN SELECT RAISE(ABORT,'injected registry failure'); END;").unwrap();
+    assert!(kernel.register(r.clone()).await.is_err());
+    now.store(20, Ordering::SeqCst);
+    assert!(kernel.register(r.clone()).await.is_err());
+    let mut recovered = r.clone();
+    recovered.delegation = replacement;
+    assert!(
+        kernel.register(recovered.clone()).await.is_err(),
+        "signature is not operator replacement approval"
+    );
+    // Same generation and policy changes remain forbidden on the recovery API.
+    assert!(kernel.recover_registration(r).await.is_err());
+    let mut changed_policy = recovered.clone();
+    changed_policy.grant_generation = 99;
+    assert!(kernel.recover_registration(changed_policy).await.is_err());
+    assert!(
+        kernel
+            .recover_registration(recovered.clone())
+            .await
+            .is_err()
+    );
+    drop(kernel);
+    db.execute_batch("DROP TRIGGER fail_registry;").unwrap();
+    let kernel = Kernel::open(dir.path(), hub, clock.clone()).unwrap();
+    now.store(40, Ordering::SeqCst);
+    assert!(
+        kernel
+            .recover_registration(recovered.clone())
+            .await
+            .is_err()
+    );
+    recovered.delegation = renewed;
+    kernel
+        .recover_registration(recovered.clone())
+        .await
+        .unwrap();
+    drop(kernel);
+    let kernel = Kernel::open(dir.path(), hub, clock).unwrap();
+    kernel.register(recovered).await.unwrap();
+    assert_eq!(
+        kernel.status().await.unwrap()["coglets"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        kernel
+            .audit()
+            .await
+            .unwrap()
+            .iter()
+            .any(|r| r["method"] == "operator.recover_registration" && r["outcome"] == "approved")
+    );
+}
+
+#[tokio::test]
 async fn malformed_delegation_does_not_reserve_provisioning_identity() {
     let dir = tempfile::tempdir().unwrap();
     let hub = SecretKey::generate().public();

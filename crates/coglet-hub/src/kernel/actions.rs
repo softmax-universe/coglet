@@ -184,36 +184,93 @@ impl Kernel {
         }).await
     }
     async fn request_fenced(&self, session: &Session, request: Value) -> Result<Value> {
-        let peer = session.peer();
-        let mut changed = self.changed.subscribe();
-        let scope = request["context"]["ticket"].as_str().map(|ticket| {
-            (
-                request["context"]["actor"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_owned(),
-                ticket.to_owned(),
-            )
-        });
-        let mut sending = Box::pin(session.request(request));
-        loop {
-            let guarded = std::future::poll_fn(|cx| {
-                let fence = self.boundary.lock().map_err(|_| Error::Denied)?;
-                if fence.revoked.contains(&peer)
-                    || scope.as_ref().is_some_and(|s| fence.ended.contains(s))
-                {
-                    return std::task::Poll::Ready(Err(Error::Denied));
-                }
-                sending
-                    .as_mut()
-                    .poll(cx)
-                    .map(|r| r.map_err(|_| Error::Denied))
-            });
-            tokio::select! {
-                biased;
-                _ = changed.changed() => continue,
-                result = guarded => return result,
+        // Authority is synchronous SQLite, so drive the transport future on a
+        // bounded blocking executor. No State/boundary lock survives a poll.
+        // This budget is distinct from control work: stalled peers cannot consume
+        // revocation's executor capacity. Dropping this caller cancels its driver.
+        struct Cancel(tokio::sync::watch::Sender<bool>);
+        impl Drop for Cancel {
+            fn drop(&mut self) {
+                self.0.send_replace(true);
             }
         }
+        let permit = self
+            .dispatch
+            .clone()
+            .try_acquire_owned()
+            .map_err(|_| Error::Full)?;
+        let (cancel, mut cancelled) = tokio::sync::watch::channel(false);
+        let _cancel = Cancel(cancel);
+        let state = self.state.clone();
+        let boundary = self.boundary.clone();
+        let mut changed = self.changed.subscribe();
+        let session = session.clone();
+        let runtime = tokio::runtime::Handle::current();
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            runtime.block_on(async move {
+                let peer = session.peer();
+                let target = request["target"].as_str().ok_or(Error::Denied)?.to_owned();
+                // Receipt keeps the original action scope/capability policy, not
+                // independent kernel authority under a substitute actor or ticket.
+                let original: Value = {
+                    let s = state.lock().map_err(|_| Error::Denied)?;
+                    let id = if request["method"] == "hub.receipt" {
+                        &request["params"]["operation_id"]
+                    } else {
+                        &request["correlation_id"]
+                    };
+                    let text: String = s.store.db.query_row(
+                        "SELECT request FROM deliveries WHERE target=?1 AND id=?2",
+                        params![target, id.as_str().ok_or(Error::Denied)?],
+                        |r| r.get(0),
+                    )?;
+                    serde_json::from_str(&text)?
+                };
+                let scope = original["context"]["ticket"].as_str().map(|ticket| {
+                    (
+                        original["context"]["actor"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_owned(),
+                        ticket.to_owned(),
+                    )
+                });
+                let cancel_view = cancelled.clone();
+                let mut sending = Box::pin(session.request(request));
+                loop {
+                    let guarded = std::future::poll_fn(|cx| {
+                        // Same state→boundary order as all operator paths. Shared
+                        // Authority checks repeat after every async setup/write wake.
+                        let s = state.lock().map_err(|_| Error::Denied)?;
+                        let fence = boundary.lock().map_err(|_| Error::Denied)?;
+                        if *cancel_view.borrow()
+                            || fence.revoked.contains(&peer)
+                            || scope.as_ref().is_some_and(|s| fence.ended.contains(s))
+                        {
+                            return std::task::Poll::Ready(Err(Error::Denied));
+                        }
+                        let r = s.action_authority(&target, &original)?;
+                        if r.device != peer.to_string() {
+                            return std::task::Poll::Ready(Err(Error::Denied));
+                        }
+                        sending
+                            .as_mut()
+                            .poll(cx)
+                            .map(|r| r.map_err(|_| Error::Denied))
+                    });
+                    tokio::select! {
+                        biased;
+                        _ = cancelled.changed() => return Err(Error::Denied),
+                        _ = changed.changed() => continue,
+                        result = guarded => return result,
+                        // Expiry/clock loss must also fence a request with no I/O wake.
+                        _ = tokio::time::sleep(Duration::from_millis(25)) => continue,
+                    }
+                }
+            })
+        })
+        .await
+        .map_err(|_| Error::Denied)?
     }
 }

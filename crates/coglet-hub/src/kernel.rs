@@ -68,6 +68,7 @@ pub struct Kernel {
     state: Arc<Mutex<State>>,
     blocking: Arc<Semaphore>,
     control: Arc<Semaphore>,
+    dispatch: Arc<Semaphore>,
     boundary: Arc<Mutex<DispatchFence>>,
     changed: tokio::sync::watch::Sender<u64>,
 }
@@ -174,6 +175,11 @@ impl State {
                                 let reply: Value = serde_json::from_str(&reply)?;
                                 reply["result"]["accepted"] == true
                                     || reply["result"]["state"] == "applied"
+                                    // A locally retained uncertain observation is
+                                    // not a runtime rejection. A matching outcome
+                                    // can arrive reliably after receipt lookup failed.
+                                    || (saved.2 != 0
+                                        && reply["error"]["details"]["unknown_effect"] == true)
                             }
                             // The authenticated runtime can emit its outcome on a
                             // separate stream before the action-accept is observed.
@@ -274,6 +280,7 @@ impl Kernel {
             })),
             blocking: Arc::new(Semaphore::new(8)),
             control: Arc::new(Semaphore::new(2)),
+            dispatch: Arc::new(Semaphore::new(8)),
             boundary: Arc::new(Mutex::new(DispatchFence::default())),
             changed: tokio::sync::watch::channel(0).0,
         })
@@ -410,6 +417,56 @@ impl Kernel {
             tx.execute("DELETE FROM provisioning WHERE target=?1",[&r.coglet])?;
             audit(&tx,json!({"method":"operator.register","target":r.coglet,"peer":r.device,"outcome":"registered"}))?;
             tx.commit()?; Ok(())
+        }).await
+    }
+    /// Explicit local operator approval to recover a pending registration with a
+    /// fresh, strictly higher delegation generation. Policy/device cannot change.
+    /// Never call automatically merely because a different signed proof arrived.
+    pub async fn recover_registration(&self, r: Registration) -> Result<()> {
+        self.work(move |s| {
+            let pending: String = s.store.db.query_row("SELECT config FROM provisioning WHERE target=?1",[&r.coglet],|row|row.get(0)).optional()?.ok_or(Error::Denied)?;
+            let old: Registration = serde_json::from_str(&pending)?;
+            let mut same_policy = r.clone();
+            same_policy.delegation = old.delegation.clone();
+            if same_policy != old || !r.delegation["statement"]["generation"].as_u64().zip(old.delegation["statement"]["generation"].as_u64()).is_some_and(|(new, old)| new > old) {
+                return Err(Error::Denied);
+            }
+            coglet_proto::signing::verify(&r.delegation,"delegation",&r.coglet[7..]).map_err(|_|Error::Denied)?;
+            let statement = &r.delegation["statement"];
+            if statement["hub"]!=s.hub.to_string() || statement["device"]!=r.device || statement["coglet"]!=r.coglet || !(s.clock)().zip(statement["expires"].as_u64()).is_some_and(|(now,expiry)|now<expiry) {return Err(Error::Denied);}
+            // Separate immutable approval survives a second crash without rewriting
+            // the original intent or asking Authority to accept an implicit replace.
+            s.store.db.execute_batch("CREATE TABLE IF NOT EXISTS provisioning_recovery(target TEXT PRIMARY KEY, config TEXT NOT NULL)")?;
+            let approved: Option<String> = s.store.db.query_row("SELECT config FROM provisioning_recovery WHERE target=?1",[&r.coglet],|row|row.get(0)).optional()?;
+            let needs_approval = match approved {
+                Some(approved) => {
+                    let approved: Registration = serde_json::from_str(&approved)?;
+                    if approved == r { false } else {
+                        if !r.delegation["statement"]["generation"].as_u64().zip(approved.delegation["statement"]["generation"].as_u64()).is_some_and(|(new, old)| new > old) { return Err(Error::Conflict(0)); }
+                        true
+                    }
+                }
+                None => true,
+            };
+            if needs_approval {
+                let tx=s.store.db.transaction()?;
+                tx.execute("INSERT INTO provisioning_recovery VALUES(?1,?2) ON CONFLICT(target) DO UPDATE SET config=excluded.config",params![r.coglet,serde_json::to_string(&r)?])?;
+                audit(&tx,json!({"method":"operator.recover_registration","target":r.coglet,"peer":r.device,"generation":statement["generation"],"outcome":"approved"}))?;
+                tx.commit()?;
+            }
+            let device=r.device.parse().map_err(|_|Error::Invalid)?;
+            // Identical accepted replacement is restart recovery, not another
+            // generation increment. Otherwise only strict operator replace can win.
+            if s.authority.accept_delegation(s.hub,device,&r.coglet,&r.delegation,|| (s.clock)()).is_err() {
+                s.authority.replace_delegation(s.hub,device,&r.coglet,&r.delegation,|| (s.clock)())?;
+            }
+            let tx=s.store.db.transaction()?;
+            tx.execute("INSERT INTO registry VALUES(?1,?2)",params![r.coglet,serde_json::to_string(&r)?])?;
+            tx.execute("DELETE FROM provisioning WHERE target=?1",[&r.coglet])?;
+            tx.execute("DELETE FROM provisioning_recovery WHERE target=?1",[&r.coglet])?;
+            audit(&tx,json!({"method":"operator.recover_registration","target":r.coglet,"peer":r.device,"outcome":"registered"}))?;
+            tx.commit()?;
+            Ok(())
         }).await
     }
     /// Local trusted runtime only. No remote debug/export authority is implied.

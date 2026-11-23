@@ -53,7 +53,17 @@ fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Er
         .open(lock_path)?;
     lock.try_lock()?;
     let path = root.join("hub.key");
-    if !path.exists() {
+    let missing = match fs::symlink_metadata(&path) {
+        Ok(meta) => {
+            if !meta.is_file() || meta.permissions().mode() & 0o077 != 0 {
+                return Err("hub.key must be a private regular file".into());
+            }
+            false
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
+        Err(error) => return Err(error.into()),
+    };
+    if missing {
         let key = SecretKey::generate();
         let staging = root.join(format!(".hub.key.{}.pending", key.public()));
         let mut file = OpenOptions::new()

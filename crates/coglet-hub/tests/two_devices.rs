@@ -28,6 +28,38 @@ impl OperationHandler for StalledSurface {
 }
 
 #[tokio::test]
+async fn stalled_dispatch_stops_when_trusted_authority_expires() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    tokio::time::timeout(Duration::from_secs(20), async {
+        let dir = tempfile::tempdir().unwrap();
+        let hub = Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
+        let device = Endpoint::builder(presets::Minimal).bind().await.unwrap();
+        let now = Arc::new(AtomicU64::new(1));
+        let clock = {let now = now.clone(); Arc::new(move || Some(now.load(Ordering::SeqCst)))};
+        let kernel = Kernel::open(dir.path(), hub.id(), clock).unwrap();
+        let actor = format!("hub:{}", hub.id());
+        let source = format!("surface:{}", SecretKey::generate().public());
+        let r = registration(&SecretKey::generate(), hub.id(), device.id(), &source, &actor);
+        kernel.open_window(Duration::from_secs(60)).await.unwrap();
+        let invite = kernel.invite(device.id(), Duration::from_secs(60), vec![Grant {method:"hub.actions".into(), target:Some(r.coglet.clone()), expires:10000, generation:0}]).await.unwrap();
+        let (ds, hs, serving) = connect(&device, &hub, kernel.clone()).await;
+        let enroll = json!({"method":"hub.enroll","target":null,"timeout_ms":1000,"correlation_id":"11".repeat(16),"params":{"offer":{"versions":["0.1"]},"invite":invite}});
+        assert_eq!(ds.request(enroll).await.unwrap()["type"], "reply");
+        kernel.register(r.clone()).await.unwrap();
+        let action = json!({"id":"44".repeat(16),"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
+        kernel.prepare_action(&r.coglet, action, json!({"actor":actor}), Some(0)).await.unwrap();
+        let stalled = Arc::new(StalledSurface(tokio::sync::Notify::new()));
+        let responder = tokio::spawn(ds.serve(stalled.clone()));
+        let dispatch = tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();async move {kernel.dispatch_action(&target,&"44".repeat(16),hs).await}});
+        stalled.0.notified().await;
+        now.store(10000, Ordering::SeqCst);
+        let result = tokio::time::timeout(Duration::from_millis(500), dispatch).await.expect("expired authority did not fence pending transport").unwrap().unwrap();
+        assert_eq!(result["error"]["details"]["unknown_effect"], true);
+        responder.abort(); serving.abort(); device.close().await; hub.close().await;
+    }).await.unwrap();
+}
+
+#[tokio::test]
 async fn stalled_peer_does_not_block_other_peer_or_its_own_revocation() {
     tokio::time::timeout(Duration::from_secs(20), async {
         let dir = tempfile::tempdir().unwrap();
@@ -106,7 +138,7 @@ async fn crashed_attempt_queries_original_scope_receipt_and_never_replays_unknow
         let mut r=registration(&SecretKey::generate(),hub.id(),device.id(),&source,&actor);
         r.actions[0].ticket=Some(ticket.clone());
         kernel.open_window(Duration::from_secs(60)).await.unwrap();
-        let invite=kernel.invite(device.id(),Duration::from_secs(60),vec![Grant{method:"hub.actions".into(),target:Some(r.coglet.clone()),expires:10000,generation:0}]).await.unwrap();
+        let invite=kernel.invite(device.id(),Duration::from_secs(60),["hub.actions","hub.events"].into_iter().map(|method| Grant{method:method.into(),target:Some(r.coglet.clone()),expires:10000,generation:0}).collect()).await.unwrap();
         let (ds,hs,serving)=connect(&device,&hub,kernel.clone()).await;
         let enroll=json!({"method":"hub.enroll","target":null,"timeout_ms":1000,"correlation_id":"11".repeat(16),"params":{"offer":{"versions":["0.1"]},"invite":invite}});
         assert_eq!(ds.request(enroll).await.unwrap()["type"],"reply"); kernel.register(r.clone()).await.unwrap();
@@ -117,13 +149,19 @@ async fn crashed_attempt_queries_original_scope_receipt_and_never_replays_unknow
         let db=rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
         db.execute("UPDATE deliveries SET attempted=1",[]).unwrap();
         let receiver=Arc::new(Receipts(Mutex::new(vec![])));
-        let responder=tokio::spawn(ds.serve(receiver.clone()));
+        let responder=tokio::spawn(ds.clone().serve(receiver.clone()));
         let result=kernel.dispatch_action(&r.coglet,&"44".repeat(16),hs.clone()).await.unwrap();
         assert_eq!(result["result"]["state"],"applied");
         let failed=kernel.dispatch_action(&r.coglet,&"55".repeat(16),hs.clone()).await.unwrap();
         assert_eq!(failed["error"]["code"],"unavailable");
         assert_eq!(failed["error"]["details"]["unknown_effect"],true);
         assert_eq!(kernel.dispatch_action(&r.coglet,&"55".repeat(16),hs).await.unwrap(),failed);
+        // Local uncertainty is not an authoritative runtime rejection. Reliable
+        // outcomes arriving after the uncertain observation must still be admitted.
+        let late=json!({"method":"hub.events","target":r.coglet,"timeout_ms":1000,"correlation_id":"77".repeat(16),"params":{"offset":0,"events":[{"source":r.coglet,"kind":"action.outcome","seq":1,"logical_time":1,"correlation_id":"22".repeat(16),"payload":{"id":"55".repeat(16),"correlation_id":"22".repeat(16),"status":"succeeded","result":{}}}]}});
+        assert_eq!(ds.request(late.clone()).await.unwrap()["result"]["next_offset"],1,"late authoritative outcome was blocked by local uncertainty");
+        assert_eq!(ds.request(late).await.unwrap()["result"]["next_offset"],1);
+        assert_eq!(kernel.events(&r.coglet).await.unwrap().len(),1);
         {let calls=receiver.0.lock().unwrap(); assert_eq!(calls.len(),2);
         for call in calls.iter() {assert_eq!(call["target"],r.coglet);assert_eq!(call["context"],json!({"actor":actor,"ticket":ticket}));}}
         responder.abort(); serving.abort(); device.close().await; hub.close().await;
