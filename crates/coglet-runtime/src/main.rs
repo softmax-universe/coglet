@@ -63,6 +63,31 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        #[cfg(target_os = "linux")]
+        [flag, path, binding, uid] if flag == "--surface-probe-socket" => {
+            let result = (|| {
+                let binding = coglet_runtime::SurfaceBinding::from_config(
+                    &std::fs::read(binding).map_err(|e| e.to_string())?,
+                )?;
+                let uid = uid.parse::<u32>().map_err(|e| e.to_string())?;
+                let server = coglet_runtime::socket::SurfaceListener::bind(
+                    std::path::Path::new(path),
+                    uid,
+                    binding,
+                )?;
+                loop {
+                    if let Err(error) = server.serve_one() {
+                        eprintln!("surface connection: {error}");
+                    }
+                }
+                #[allow(unreachable_code)]
+                Ok::<(), String>(())
+            })();
+            if let Err(error) = result {
+                eprintln!("cogletd surface probe: {error}");
+                std::process::exit(1);
+            }
+        }
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         _ => {
             eprintln!(
