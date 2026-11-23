@@ -27,7 +27,19 @@ map keys, non-shortest or indefinite encodings, trailing data, and integers
 outside `-2^63..2^64-1`. CBOR nesting is limited to 64 and schema traversal to
 128. These are message codecs, not transport or temporal protocol conformance.
 
-Run `go test -v ./...` from this directory. Tests recursively discover all
-`spec/fixtures/**/*.json`, enforce minimum corpus counts (33 golden, 43 semantic
-negatives, 17 wire negatives), and byte-identical golden encode/decode. Generate
-with repository `codegen/run`; don't hand-edit `types/generated.go`.
+The validator consumes additive IR v2: intersections validate every branch,
+`default` values are metadata only, tuples backtrack over optional/repeated
+entries, and array/map/rest occurrence and map-key constraints apply on both
+encode and decode. Open records expose a typed `Rest` map for unclaimed keys.
+Generic entry selectors accept `file::rule`; uniquely exported qualified and
+unqualified names share a Go type alias, preserving native type identity.
+
+Run `go test -v ./...` from this directory. Tests select generated fixture
+families using `codegen/contracts.json`; draft-validated families remain owned
+by their protocol suites. Adjacent `.json.format` markers explicitly declare
+`semantic-vectors-v1` files and every run reports the skipped count. Unknown
+markers and malformed case arrays fail. `semantic: true` cases must pass shape
+validation even when protocol semantics mark them invalid. Tests retain minimum
+corpus counts (33 valid shapes, 43 shape negatives, 17 wire negatives) and check
+byte-identical goldens when supplied. Generate with repository `codegen/run`;
+don't hand-edit `types/generated.go`.

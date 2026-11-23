@@ -33,6 +33,14 @@ type node struct {
 	item     *node   // array, map
 	fields   []field
 	known    map[string]*field
+	key      *node
+	rest     *node
+	entries  []tupleEntry
+}
+
+type tupleEntry struct {
+	typ      *node
+	min, max *big.Int
 }
 
 type field struct {
@@ -92,6 +100,18 @@ func (s *Schema) checkRefs(n *node) error {
 	}
 	if n.item != nil {
 		if err := s.checkRefs(n.item); err != nil {
+			return err
+		}
+	}
+	for _, child := range []*node{n.key, n.rest} {
+		if child != nil {
+			if err := s.checkRefs(child); err != nil {
+				return err
+			}
+		}
+	}
+	for _, entry := range n.entries {
+		if err := s.checkRefs(entry.typ); err != nil {
 			return err
 		}
 	}
@@ -159,7 +179,7 @@ func buildNode(v any) (*node, error) {
 		if n.pattern, err = regexp.Compile(`\A(?:` + pat + `)\z`); err != nil {
 			return nil, err
 		}
-	case "union":
+	case "union", "intersection":
 		list, _ := m["items"].([]any)
 		for _, it := range list {
 			c, err := buildNode(it)
@@ -171,16 +191,44 @@ func buildNode(v any) (*node, error) {
 		if len(n.items) == 0 {
 			return nil, errors.New("empty union")
 		}
-	case "array":
-		if n.min, err = asBig(m["min"]); err != nil {
+	case "default":
+		if n.item, err = buildNode(m["item"]); err != nil {
+			return nil, err
+		}
+	case "tuple":
+		list, ok := m["items"].([]any)
+		if !ok {
+			return nil, errors.New("tuple without items")
+		}
+		for _, it := range list {
+			entry, ok := it.(map[string]any)
+			if !ok {
+				return nil, errors.New("bad tuple entry")
+			}
+			c, err := buildNode(entry["type"])
+			if err != nil {
+				return nil, err
+			}
+			min, max, err := occurrence(entry)
+			if err != nil {
+				return nil, err
+			}
+			n.entries = append(n.entries, tupleEntry{c, min, max})
+		}
+	case "array", "map":
+		if n.min, n.max, err = occurrence(m); err != nil {
 			return nil, err
 		}
 		if n.item, err = buildNode(m["item"]); err != nil {
 			return nil, err
 		}
-	case "map":
-		if n.item, err = buildNode(m["item"]); err != nil {
-			return nil, err
+		if raw, exists := m["key"]; exists {
+			if op != "map" {
+				return nil, errors.New("array with key constraint")
+			}
+			if n.key, err = buildNode(raw); err != nil {
+				return nil, err
+			}
 		}
 	case "record":
 		list, _ := m["fields"].([]any)
@@ -204,6 +252,20 @@ func buildNode(v any) (*node, error) {
 			n.fields = append(n.fields, f)
 			n.known[f.name] = &n.fields[len(n.fields)-1]
 		}
+		if raw, exists := m["rest"]; exists {
+			rest, ok := raw.(map[string]any)
+			if !ok {
+				return nil, errors.New("bad record rest")
+			}
+			copy := make(map[string]any, len(rest)+1)
+			for k, v := range rest {
+				copy[k] = v
+			}
+			copy["op"] = "map"
+			if n.rest, err = buildNode(copy); err != nil {
+				return nil, err
+			}
+		}
 		// Re-point after slice growth.
 		for i := range n.fields {
 			n.known[n.fields[i].name] = &n.fields[i]
@@ -212,6 +274,32 @@ func buildNode(v any) (*node, error) {
 		return nil, fmt.Errorf("unsupported op %q", op)
 	}
 	return n, nil
+}
+
+// occurrence parses inclusive non-negative bounds; omitted max is unbounded.
+func occurrence(m map[string]any) (*big.Int, *big.Int, error) {
+	min := big.NewInt(0)
+	var max *big.Int
+	var err error
+	if raw, ok := m["min"]; ok {
+		if min, err = asBig(raw); err != nil {
+			return nil, nil, err
+		}
+	}
+	if raw, ok := m["max"]; ok {
+		if max, err = asBig(raw); err != nil {
+			return nil, nil, err
+		}
+	}
+	if min.Sign() < 0 || (max != nil && (max.Sign() < 0 || min.Cmp(max) > 0)) {
+		return nil, nil, errors.New("invalid occurrence bounds")
+	}
+	return min, max, nil
+}
+
+func within(count int, min, max *big.Int) bool {
+	n := big.NewInt(int64(count))
+	return (min == nil || n.Cmp(min) >= 0) && (max == nil || n.Cmp(max) <= 0)
 }
 
 // HasRule reports whether the entry rule exists.
@@ -246,6 +334,51 @@ func (s *Schema) check(n *node, v any, depth int) error {
 	switch n.op {
 	case "ref":
 		return s.check(s.rules[n.name], v, depth+1)
+	case "default":
+		return s.check(n.item, v, depth+1)
+	case "intersection":
+		for _, b := range n.items {
+			if err := s.check(b, v, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "tuple":
+		list, ok := v.([]any)
+		if !ok {
+			return shapeErr("expected tuple")
+		}
+		// Memoize (entry, position) rather than greedily consuming occurrences.
+		type position struct{ entry, offset int }
+		failed := map[position]bool{}
+		var match func(int, int) bool
+		match = func(entry, offset int) bool {
+			if entry == len(n.entries) {
+				return offset == len(list)
+			}
+			state := position{entry, offset}
+			if failed[state] {
+				return false
+			}
+			e := n.entries[entry]
+			for count := 0; offset+count <= len(list); count++ {
+				if e.max != nil && big.NewInt(int64(count)).Cmp(e.max) > 0 {
+					break
+				}
+				if within(count, e.min, e.max) && match(entry+1, offset+count) {
+					return true
+				}
+				if offset+count == len(list) || s.check(e.typ, list[offset+count], depth+1) != nil {
+					break
+				}
+			}
+			failed[state] = true
+			return false
+		}
+		if match(0, 0) {
+			return nil
+		}
+		return shapeErr("tuple occurrence mismatch")
 	case "union":
 		for _, b := range n.items {
 			if s.check(b, v, depth+1) == nil {
@@ -309,7 +442,7 @@ func (s *Schema) check(n *node, v any, depth int) error {
 		return shapeErr("text size outside bounds")
 	case "array":
 		list, ok := v.([]any)
-		if !ok || big.NewInt(int64(len(list))).Cmp(n.min) < 0 {
+		if !ok || !within(len(list), n.min, n.max) {
 			return shapeErr("array mismatch")
 		}
 		for _, e := range list {
@@ -323,7 +456,15 @@ func (s *Schema) check(n *node, v any, depth int) error {
 		if !ok {
 			return shapeErr("expected map")
 		}
-		for _, e := range m {
+		if !within(len(m), n.min, n.max) {
+			return shapeErr("map size outside bounds")
+		}
+		for k, e := range m {
+			if n.key != nil {
+				if err := s.check(n.key, k, depth+1); err != nil {
+					return err
+				}
+			}
 			if err := s.check(n.item, e, depth+1); err != nil {
 				return err
 			}
@@ -334,9 +475,18 @@ func (s *Schema) check(n *node, v any, depth int) error {
 		if !ok {
 			return shapeErr("expected record")
 		}
-		for k := range m {
+		rest := map[string]any{}
+		for k, e := range m {
 			if _, known := n.known[k]; !known {
-				return shapeErr("unknown field %q", k)
+				if n.rest == nil {
+					return shapeErr("unknown field %q", k)
+				}
+				rest[k] = e
+			}
+		}
+		if n.rest != nil {
+			if err := s.check(n.rest, rest, depth+1); err != nil {
+				return err
 			}
 		}
 		for i := range n.fields {
