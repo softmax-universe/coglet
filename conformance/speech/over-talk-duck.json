@@ -1,0 +1,149 @@
+{
+  "name": "over-talk-duck",
+  "peer_role": "runtime",
+  "fixtures": [
+    "surface-base",
+    "audio-over-talk-duck"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.1"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "act",
+        "body": {
+          "grant_epoch": 1,
+          "action": {
+            "id": "11111111111111111111111111111111",
+            "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "capability": "speech.speak_chunk",
+            "args": {
+              "stream": "22222222222222222222222222222222",
+              "chunk": 0,
+              "text": "Scripted output",
+              "final": true
+            },
+            "deadline": 1000000,
+            "correlation_id": "11111111111111111111111111111111"
+          }
+        }
+      },
+      "at_ms": 0
+    },
+    {
+      "match": {
+        "type": "accept",
+        "body.id": "11111111111111111111111111111111",
+        "body.correlation_id": "11111111111111111111111111111111",
+        "body.accepted": true
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.position",
+        "body.payload.state": "playing"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.start",
+        "body.payload.utterance": "11111111111111111111111111111111"
+      },
+      "within_ms": 200,
+      "at_ms": 100
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.barge_in",
+        "body.payload.reflex": "ducked",
+        "body.payload.item": "11111111111111111111111111111111",
+        "body.payload.played_ms": 100
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.position",
+        "body.payload.state": "ducked"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.partial"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.end"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "speech.position",
+        "body.payload.state": "finished"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "action.outcome",
+        "body.payload.id": "11111111111111111111111111111111",
+        "body.payload.correlation_id": "11111111111111111111111111111111",
+        "body.payload.status": "succeeded"
+      },
+      "within_ms": 200
+    }
+  ]
+}

@@ -1,4 +1,8 @@
 {
   "common": "generated",
-  "hub": "generated"
+  "hub": "generated",
+  "abi": "generated",
+  "surface": "generated",
+  "speech": "generated",
+  "expression": "generated"
 }

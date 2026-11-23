@@ -23,8 +23,10 @@ Inputs inventoried directly from Git (all `spec/messages/*.cddl` plus root
   choices; `* tstr => T` maps, including recursive profile values; typed map
   keys `{* (capability-name) => T}`; field groups `(fields)` and inline `//`
   alternatives inside a map; named groups used as field splices.
-- `[* T]`, `[+ T]` homogeneous arrays; bounded zero-to-max arrays `[* 17 T]`,
-  `[* 64 T]`, `[* 256 T]`; bounded empty map `{* 0 tstr => profile-value}`.
+- `[* T]`, `[+ T]` homogeneous arrays; bounded zero-to-max arrays `[*17 T]`,
+  `[*64 T]`, `[*256 T]`; bounded empty map `{*0 tstr => profile-value}`. Bounds are RFC 8610
+  `occur = [uint] "*" [uint]` with no inner whitespace; spaced forms such as `[* 64 T]` are rejected
+  loudly because strict CDDL tools do not read them as bounds.
 - `.regexp` full-match text constraints; `.size (lo..hi)` UTF-8 byte lengths;
   `.and` intersections, notably the empty type `nil .and false`, both on rest
   map entries and optional sibling fields in alternatives.
