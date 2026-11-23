@@ -53,8 +53,11 @@ struct Host {
 }
 impl Host {
     fn new(ffi: bool, name: &str) -> Self {
-        let dir =
-            std::env::temp_dir().join(format!("native-operational-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "n-{}-{}",
+            std::process::id(),
+            &coglet_runtime::digest(name.as_bytes())[..12]
+        ));
         std::fs::create_dir_all(&dir).unwrap();
         let binding = json!({"surface":S,"permitted_coglets":[C]});
         std::fs::write(

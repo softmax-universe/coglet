@@ -9,6 +9,8 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]
 default = []
+# Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
+echo-smoke = ["native-engine"]
 native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser"]
 
 [dependencies]

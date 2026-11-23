@@ -137,6 +137,41 @@ fn exercise_native(ffi: bool, abort: bool, name: &str) {
         assert_eq!(recovered.records().len(), 1);
     }
 }
+#[cfg(feature = "echo-smoke")]
+#[test]
+fn ffi_compiled_echo_timer_wake_starts_executes_and_stops() {
+    let _guard = FFI_LOCK.lock().unwrap();
+    let path = std::env::var_os("COGLET_ECHO_SMOKE_WASM")
+        .expect("echo-smoke requires the compiled guest path");
+    let wasm = std::fs::read(path).unwrap();
+    let mut host = Host::new(true, "ffi-compiled-echo");
+    host.stop();
+    std::fs::remove_file(host.dir.join("state.wal")).unwrap();
+    host.setup = with_wasm(setup(), &wasm);
+    host.setup["manifest"]["budgets"]["memory_pages"] = json!(256);
+    host.setup["manifest"]["budgets"]["compute"] = json!(100_000_000);
+    host.setup["manifest"]["budgets"]["wall_time_us"] = json!(5_000_000);
+    host.start();
+    let mut link = host.connect();
+    link.hello();
+    link.grants(1);
+    link.send(
+        "health",
+        json!({"state":"ready","clock":1200,"pending":0,"correlation_id":"9".repeat(32)}),
+    );
+    assert_eq!(decode(&link.recv())["type"], "health");
+    drop(link);
+    host.stop();
+    let recovered = RuntimeService::open(&host.dir.join("state.wal"), &host.setup, 128).unwrap();
+    assert_eq!(recovered.records().len(), 1);
+    let record = &recovered.records()[0];
+    assert_eq!(record["status"], "committed");
+    assert_eq!(record["engine"]["build"], coglet_engine_wamr::BUILD);
+    assert!(record["usage"]["compute"].as_u64().unwrap() > 0);
+    // The production echo ignores runtime.timer. This proves its real handle
+    // executes, not test.echo surface roundtrip (reserved catalog operation).
+    assert!(record["actions"].as_array().unwrap().is_empty());
+}
 #[test]
 fn ffi_real_wasm_commits_call_order_before_dispatch_and_reconciles() {
     exercise_native(true, false, "ffi-wasm");
