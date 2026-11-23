@@ -1,0 +1,847 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/tickets.schema.json",
+  "title": "Generic factory tickets \u2014 DRAFT 0.1 (M3 freeze)",
+  "$comment": "DRAFT; not frozen at v0. Semantic checks are specified in the companion Markdown.",
+  "$defs": {
+    "ticket": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "object",
+          "properties": {
+            "coglet": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+            },
+            "repo": {
+              "type": "string",
+              "minLength": 1
+            },
+            "base": {
+              "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+            }
+          },
+          "required": [
+            "coglet",
+            "repo",
+            "base"
+          ],
+          "additionalProperties": false
+        },
+        "goal": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "acceptance": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "description",
+            "acceptance"
+          ],
+          "additionalProperties": false
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "world_snapshot",
+                  "transcript",
+                  "trace",
+                  "document"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "edit_paths": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*$"
+              },
+              "minItems": 0,
+              "uniqueItems": true
+            },
+            "debug_read": {
+              "type": "boolean"
+            },
+            "debug_write": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "edit_paths",
+            "debug_read",
+            "debug_write"
+          ],
+          "additionalProperties": false
+        },
+        "gates": {
+          "type": "object",
+          "properties": {
+            "required": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "journal_replay",
+                  "headless_game"
+                ]
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "maxItems": 2,
+              "contains": {
+                "const": "journal_replay"
+              }
+            },
+            "human_approval": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "required",
+            "human_approval"
+          ],
+          "additionalProperties": false
+        },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "time_ms": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "spend_microunits": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "currency": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            }
+          },
+          "required": [
+            "time_ms",
+            "spend_microunits",
+            "currency"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "target",
+        "goal",
+        "context",
+        "capabilities",
+        "gates",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "additionalProperties": false
+    },
+    "request": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "submit"
+            },
+            "ticket": {
+              "$ref": "#/$defs/ticket"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "update"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "after_seq": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket_id",
+            "after_seq"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "answer"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "expected_revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "question_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "answer": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket_id",
+            "expected_revision",
+            "question_id",
+            "answer"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "amend"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "expected_revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "ticket": {
+              "$ref": "#/$defs/ticket"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket_id",
+            "expected_revision",
+            "ticket"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "cancel"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "expected_revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket_id",
+            "expected_revision",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "const": "result"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ticket_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "planning",
+            "building",
+            "gate_running",
+            "needs_input",
+            "cancelling",
+            "done",
+            "failed",
+            "abandoned"
+          ]
+        },
+        "seq": {
+          "allOf": [
+            {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+            },
+            {
+              "minimum": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "ticket_id",
+        "revision",
+        "state",
+        "seq"
+      ],
+      "additionalProperties": false
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "enum": [
+                "submit",
+                "answer",
+                "amend",
+                "cancel"
+              ]
+            },
+            "ok": {
+              "const": true
+            },
+            "receipt": {
+              "$ref": "#/$defs/receipt"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ok",
+            "receipt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "op": {
+              "enum": [
+                "submit",
+                "update",
+                "answer",
+                "amend",
+                "cancel",
+                "result"
+              ]
+            },
+            "ok": {
+              "const": false
+            },
+            "error": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "op",
+            "ok",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "update": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "seq": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "state": {
+              "enum": [
+                "queued",
+                "planning",
+                "building",
+                "gate_running",
+                "cancelling",
+                "done",
+                "failed",
+                "abandoned"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "ticket_id",
+            "revision",
+            "seq",
+            "state",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "seq": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "state": {
+              "const": "needs_input"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "question": {
+              "$ref": "#/$defs/question"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "ticket_id",
+            "revision",
+            "seq",
+            "state",
+            "summary",
+            "question"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "seq": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "state": {
+              "const": "done"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "candidate": {
+              "type": "object",
+              "properties": {
+                "commit": {
+                  "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/commit"
+                },
+                "signature_ref": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "commit",
+                "signature_ref"
+              ],
+              "additionalProperties": false
+            },
+            "gates": {
+              "type": "array",
+              "items": {
+                "$ref": "https://coglet.dev/spec/messages/promotion.schema.json#/$defs/gate-report"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "ticket_id",
+            "revision",
+            "seq",
+            "state",
+            "summary",
+            "candidate",
+            "gates"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "seq": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "state": {
+              "const": "needs_input"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "question": {
+              "$ref": "#/$defs/question"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "ticket_id",
+            "revision",
+            "seq",
+            "state",
+            "summary",
+            "question"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "0.1"
+            },
+            "correlation_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "ticket_id": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+            },
+            "revision": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "seq": {
+              "allOf": [
+                {
+                  "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+                },
+                {
+                  "minimum": 1
+                }
+              ]
+            },
+            "state": {
+              "enum": [
+                "failed",
+                "abandoned"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "error": {
+              "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/error"
+            }
+          },
+          "required": [
+            "version",
+            "correlation_id",
+            "ticket_id",
+            "revision",
+            "seq",
+            "state",
+            "summary",
+            "error"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "anyOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/response"
+    },
+    {
+      "$ref": "#/$defs/update"
+    },
+    {
+      "$ref": "#/$defs/result"
+    }
+  ]
+}
