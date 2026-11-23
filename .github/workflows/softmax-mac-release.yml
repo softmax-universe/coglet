@@ -55,9 +55,10 @@ jobs:
         env:
           CERTIFICATE_P12: ${{ secrets.SOFTMAX_MAC_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.SOFTMAX_MAC_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.SOFTMAX_MAC_APPLE_ID }}
+          ASC_KEY_ID: ${{ secrets.SOFTMAX_MAC_ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.SOFTMAX_MAC_ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_ASC_PRIVATE_KEY }}
           TEAM_ID: ${{ secrets.SOFTMAX_MAC_TEAM_ID }}
-          NOTARY_PASSWORD: ${{ secrets.SOFTMAX_MAC_NOTARY_PASSWORD }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_SPARKLE_PRIVATE_KEY }}
           SPARKLE_BIN: ${{ runner.temp }}/sparkle/bin
           RELEASE_TAG: ${{ github.ref_name }}

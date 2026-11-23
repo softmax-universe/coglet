@@ -47,8 +47,8 @@ def sign_tree(app, identity, mode):
 
 
 def notarize(path, temp):
-    # Password is held by a temporary keychain profile; API keys can replace this
-    # profile creation without changing the packaging or verification gates.
+    # ASC key is imported into a throwaway keychain profile; no key/password
+    # appears in logs or artifacts.
     output = run('xcrun','notarytool','submit',path,'--keychain',temp/'release.keychain-db',
                  '--keychain-profile','softmax-notary','--wait','--timeout','30m','--output-format','json',capture=True)
     result = json.loads(output)
@@ -110,8 +110,11 @@ def main():
             if IDENTITY not in identities or 'Developer ID Application:' not in identities:
                 raise RuntimeError('Imported identity is not the pinned Developer ID')
             identity=IDENTITY
+            asc=temp/'AuthKey.p8'
+            asc.write_text(os.environ['ASC_PRIVATE_KEY'])
+            asc.chmod(0o600)
             run('xcrun','notarytool','store-credentials','softmax-notary','--keychain',keychain,
-                '--apple-id',os.environ['APPLE_ID'],'--team-id',TEAM,'--password',os.environ['NOTARY_PASSWORD'],sensitive=True)
+                '--key',asc,'--key-id',os.environ['ASC_KEY_ID'],'--issuer',os.environ['ASC_ISSUER_ID'],sensitive=True)
         run('xcodegen','generate','--spec',ROOT/'project.yml')
         archive=temp/'Softmax.xcarchive'
         run('xcodebuild','archive','-project',ROOT/'Softmax.xcodeproj','-scheme','Softmax',
@@ -171,6 +174,7 @@ def main():
         if keychain.exists():
             run('security','delete-keychain',keychain)
         (temp/'certificate.p12').unlink(missing_ok=True)
+        (temp/'AuthKey.p8').unlink(missing_ok=True)
 
 if __name__=='__main__':
     try:

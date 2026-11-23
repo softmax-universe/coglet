@@ -15,14 +15,16 @@ Repository Actions secrets (never commit their values):
 | --- | --- |
 | `SOFTMAX_MAC_CERTIFICATE_P12` | Base64 P12 containing the pinned leaf and private key |
 | `SOFTMAX_MAC_CERTIFICATE_PASSWORD` | P12 password |
-| `SOFTMAX_MAC_APPLE_ID` | Apple account owning the app-specific password |
+| `SOFTMAX_MAC_ASC_KEY_ID` | App Store Connect API key ID |
+| `SOFTMAX_MAC_ASC_ISSUER_ID` | ASC issuer UUID |
+| `SOFTMAX_MAC_ASC_PRIVATE_KEY` | Matching ASC P8 private key |
 | `SOFTMAX_MAC_TEAM_ID` | Must equal Z7589R323Y |
-| `SOFTMAX_MAC_NOTARY_PASSWORD` | App-specific password, validated by notarytool |
 | `SOFTMAX_MAC_SPARKLE_PRIVATE_KEY` | Sparkle base64 32-byte Ed25519 seed |
 
 The signing P12/password were sourced from the existing MacBook `~/.bb-signing/`
-backup; notarization uses its existing app-specific Apple password. Baby Bear's
-ASC key is an alternative, but cannot be read back from GitHub's write-only secrets.
+backup; notarization uses the existing ASC key selected by
+`~/.appstoreconnect/asc.env`, independently validated with `notarytool history`
+before provision. The initial app-specific-password probe failed; it is not used.
 Do not export other identities or rotate shared Apple credentials for this app.
 The separate Ed25519 key is backed up at AWS Secrets Manager (softmax-org,
 `us-east-1`) **`coglet/softmax-mac/sparkle-ed25519`**, JSON `private_key` and
