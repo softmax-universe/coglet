@@ -1,0 +1,5 @@
+[package]
+name = "coglet-fs"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true

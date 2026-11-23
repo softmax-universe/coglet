@@ -1,0 +1,5 @@
+[package]
+name = "coglet-guest-rust"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
