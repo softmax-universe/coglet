@@ -279,9 +279,19 @@ compute/memory/host_bytes use resource_exhausted.
 
 [manifest.schema.json](manifest.schema.json) requires version=0.1, id, exact
 subscriptions, required_capabilities, exclusive_outputs and budgets. No duplicates
-or wildcards. Exclusive outputs must be a subset of required capabilities.
-Before start require subscriptions/grants and exclusive leases; manifest id must
-match runtime identity. Recheck before dispatch; lost grants deny effects.
+or wildcards. `required_capabilities` names individual operations (events, reads
+or actions), NOT capability entry/group names. `subscriptions` names advertised
+event operations. `exclusive_outputs` names advertised exclusive resources;
+resources and operations are independent namespaces, so it is NOT a subset of
+`required_capabilities`. For example, `speech.speak_chunk` requires its operation
+grant and the `audio.speaker` lease, not an `audio.speaker` operation grant.
+Before start resolve every requested operation/event/resource through the trusted
+capability catalog and require the matching current operation grants and resource
+leases. Unknown names fail closed; resource ownership does not imply operation
+permission, or vice versa. Manifest id must match runtime identity. Recheck before
+dispatch; lost grants deny effects. Guest ABI 0.1 has no synchronous surface-read
+import: a requested read operation does not add one; native runtime reads remain
+surface-protocol operations and guest observations arrive as recorded events.
 
 Fixture tests check both schemas, golden CBOR, tree/journal hashes and semantic
 negative cases: `python3 -m unittest discover -s spec/tests -v`. Schemas enforce

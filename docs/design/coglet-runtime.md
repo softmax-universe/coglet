@@ -215,7 +215,7 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 - The engine sits behind one small interface: load, set compute cap and deadline, wire host functions, call handle.
 - **Build WAMR first, interpreter in v0 on all hosts, including Macs and the hub.** [ADR 0001](../adr/0001-engine-findings-cap.md) found interpreter instruction metering and watchdog interruption work with caveats; ahead-of-time (AOT) execution does not meter compute. Wasmtime remains a later engine behind the same interface; bringing it forward for fuel/epochs is an open option, not a decision. Cross-engine state-hash comparison is a required conformance goal, not an established guarantee for arbitrary guests.
 - What WAMR gives up: Wasmtime's heavier fuzzing and auditing, some speed when interpreted, and newest-WASI features. None matter much for small decision-making coglets.
-- The spike findings below constrain engine admission; they do not implement the production engine or freeze the ABI. ADRs 0001 and [0002](../adr/0002-engine-findings-platforms.md) remain Proposed.
+- The spike findings below constrain engine admission; they do not implement the production engine or freeze the ABI. ADRs 0001 and [0008](../adr/0008-engine-findings-platforms.md) remain Proposed.
 
 ### Budgets and engine conformance
 
@@ -233,8 +233,8 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 ### Platform notes
 
 - **Macs and hub:** WAMR interpreter in v0 so both the compute cap and deadline are available. Earlier Wasmtime adoption remains an open option.
-- **iOS:** planned WAMR interpreter-only execution, avoiding runtime machine-code generation/loading. **Unverified:** ADR 0002's Linux host had no Apple SDK, `xcrun` or Apple linker, so no iOS archive/link, simulator or device result exists. Archive/link on Xcode and a signed device harness remain open verification items. When suspended, the phone is intended to become a remote surface with coglets on the hub; distribution/downloaded-code policy needs separate validation, not a blanket personal/TestFlight assurance.
-- **32-bit ARM (EO1) and other small devices:** WAMR interpreter. **ARMv7 verified only under QEMU**, not on a real EO1. ADR 0002's modern-sysroot binary requires GLIBC_2.34 and is not suitable for the frame's unmodified Ubuntu 18.04 baseline. An EO1-compatible sysroot/artifact and an identified physical EO1 run (including realistic native RSS/peak and runtime conformance) remain open verification items. Emulator memory measurements are not native-device guarantees.
+- **iOS:** planned WAMR interpreter-only execution, avoiding runtime machine-code generation/loading. **Unverified:** ADR 0008's Linux host had no Apple SDK, `xcrun` or Apple linker, so no iOS archive/link, simulator or device result exists. Archive/link on Xcode and a signed device harness remain open verification items. When suspended, the phone is intended to become a remote surface with coglets on the hub; distribution/downloaded-code policy needs separate validation, not a blanket personal/TestFlight assurance.
+- **32-bit ARM (EO1) and other small devices:** WAMR interpreter. **ARMv7 verified only under QEMU**, not on a real EO1. ADR 0008's modern-sysroot binary requires GLIBC_2.34 and is not suitable for the frame's unmodified Ubuntu 18.04 baseline. An EO1-compatible sysroot/artifact and an identified physical EO1 run (including realistic native RSS/peak and runtime conformance) remain open verification items. Emulator memory measurements are not native-device guarantees.
 - **Devices too small for a runtime:** become remote surfaces, with reflexes on the device and decisions on the hub.
 
 ### Many coglets per surface
@@ -369,7 +369,7 @@ Inspiration now, substrate later. Matching ideas: git trees as values, content-a
 
 - Keep or cut the hub's ledger and motor journal? Pacing and player-wins for acts are likely still needed.
 - Engine-specific compute and deadline budgets per step for each surface; whether to bring Wasmtime fuel/epochs forward (not decided).
-- Physical EO1 verification with a compatible sysroot, and iOS SDK/archive/link plus signed-device verification (ADR 0002).
+- Physical EO1 verification with a compatible sysroot, and iOS SDK/archive/link plus signed-device verification (ADR 0008).
 - Acceptance and qualification of ADR 0003's hub-side publish-time float rewrite, including cross-architecture determinism and resource-limit outcomes.
 - Flush interval and size cap for the in-memory filesystem.
 - Whether steps default to event-driven or fixed rate per surface.

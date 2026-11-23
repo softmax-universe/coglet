@@ -62,6 +62,27 @@ self-tests passed. `codegen/run --check` failed to start its formatter because
 `rustfmt` was missing on this worker, so freshness is not established locally.
 No protocol implementation is registered in `conformance/impls.toml`.
 
+## Repair batch 1 (PR #36, not freeze acceptance)
+
+- Corrected ABI manifest semantics: operation grants and resource leases are
+  independent namespaces; entry names are not operations. Eight source vectors
+  in `spec/fixtures/abi/manifest-admission.fixture` validate through both manifest
+  schemas and the semantic oracle. Generated `abi.manifest_admit` timelines run
+  through the real harness with independently computed responses and flipped
+  admission negatives (`test_manifest_timeline`). No runtime adapter is claimed.
+- Amended ADR-0003 R4 to include the four ABI imports and the recorded grants,
+  budgets and effect ledger. It remains Proposed: the spike linter is explicitly
+  not the new ABI admission implementation, and transform qualification remains
+  unperformed. Existing rehashed trace tests cover host-call precedence/ledger.
+- Renumbered platform ADR 0002 to 0008, fixed design/site/spike references and
+  plan/site freeze references, and indexed all current ADRs (0005 reserved).
+  Status decisions are still pending, not silently changed by the index.
+- Owner ran all 62 then-existing spec tests successfully with Python 3.12,
+  pycddl 0.6.4 and reference Ruby cddl 0.12.14; after adding timeline data, the
+  11 ABI tests and the new timeline test passed again. Codegen `--check` reports
+  all 396 rules / five language outputs current. 27 harness regressions and
+  four loopback self-tests passed. Full final-head checks/review remain required.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.

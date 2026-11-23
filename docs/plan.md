@@ -126,7 +126,7 @@ P0  skeleton ──┬─ conventions spec ─┬─ ABI+journal spec ───�
                │                    ├─ policy draft              │
                │                    ├─ conformance harness ──────┤
                │                    └─ codegen ──────────────────┤
-    spikes (parallel, no parents): WAMR cap+interrupt+event-rate,├─ v0 freeze (ADR-0001)
+    spikes (parallel, no parents): WAMR cap+interrupt+event-rate,├─ v0 freeze (ADR-0009)
                WAMR armv7(QEMU)+iOS interp, cross-engine float hash┘        │
                                                                             ▼
 P2 (all parallel): engine-wamr · mock engine · fs · runtime core(+C ABI) · guest SDK+echo/counter

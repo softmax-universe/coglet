@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-23
 - Authors: Coglet cross-spec freeze review
-- Related PR: pending
+- Related PR: https://github.com/softmax-universe/coglet/pull/36
 - Supersedes / superseded by: none
 
 ## Context

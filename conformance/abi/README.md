@@ -56,6 +56,23 @@ required signatures and unshared memory; the no-op functions are never executed.
 Fixture tests inspect the encoded memory limits and expectations; actual loader
 conformance remains the harness adapter's responsibility.
 
+## Catalog admission profile: abi.manifest_admit
+
+`manifest-admission.json` checks the operation/resource distinction before
+instantiation. Each case starts fresh and supplies a manifest, a trusted catalog
+projection (`name`, `events`, `reads`, `actions`, `exclusive`) and a current,
+unexpired grant projection (`coglet`, `operations`, `resources`). These are adapter
+setup inputs, NOT surface wire messages; expiry/epoch checks are covered by the
+surface suite. The adapter independently performs catalog and permission checks
+and returns `admitted`, `reason` and `instantiated=false`; no guest runs. `reason`
+is null on success, or the normalized admission reason from the test oracle.
+The corpus includes a distinct `speech.speak_chunk`/`audio.speaker` positive and
+unknown names, wrong kind, missing lease/operation grant and wrong-owner controls.
+Regenerate with `python spec/tests/build_manifest_admission.py`; `--check` checks
+freshness. `test_manifest_catalog_and_resource_admission` validates both manifest
+schemas and the independent semantic oracle against the source vectors. This is
+case-data validation, not proof that a runtime adapter implements the profile.
+
 Schema/fixture tests check internal consistency, golden encodings and hashes;
 these are **not** a claim that a real runtime has passed the black-box harness.
 See [the ABI](../../spec/abi.md) and its [fixture coverage](../../spec/fixtures/abi/README.md).

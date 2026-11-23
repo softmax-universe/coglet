@@ -34,8 +34,28 @@ def check_manifest(man):
     for key in ('subscriptions', 'required_capabilities', 'exclusive_outputs'):
         if len(set(man[key])) != len(man[key]):
             raise ValueError('duplicate capability')
-    if not set(man['exclusive_outputs']) <= set(man['required_capabilities']):
-        raise ValueError('exclusive output not required')
+    # Resource leases and operation grants are separate namespaces. Catalog and
+    # grant admission is checked separately, never by comparing these arrays.
+
+
+def check_manifest_admission(man, entries, grant):
+    """Test oracle for catalog/grant admission, not a runtime implementation."""
+    check_manifest(man)
+    operations = {op for entry in entries for kind in ('events', 'reads', 'actions')
+                  for op in entry[kind]}
+    events = {op for entry in entries for op in entry['events']}
+    resources = {name for entry in entries for name in entry['exclusive']}
+    required = set(man['required_capabilities']) | set(man['subscriptions'])
+    if not set(man['required_capabilities']) <= operations:
+        raise ValueError('unknown operation')
+    if not set(man['subscriptions']) <= events:
+        raise ValueError('unknown event')
+    if not set(man['exclusive_outputs']) <= resources:
+        raise ValueError('unknown resource')
+    if grant['coglet'] != man['id'] or not required <= set(grant['operations']):
+        raise ValueError('missing operation grant')
+    if not set(man['exclusive_outputs']) <= set(grant['resources']):
+        raise ValueError('missing resource lease')
 
 
 def check_inbox(raw):
@@ -398,10 +418,28 @@ class AbiFixtures(unittest.TestCase):
     def test_manifest_semantics(self):
         man = next(c['value'] for c in self.cases if c['type'] == 'manifest' and c['valid'])
         check_manifest(man)
-        for field, value in [('exclusive_outputs', ['other.write']), ('subscriptions', ['sensor.tick']*2)]:
-            bad = dict(man, **{field: value})
+        for field in ('exclusive_outputs', 'subscriptions', 'required_capabilities'):
+            bad = dict(man, **{field: ['test.duplicate'] * 2})
             with self.assertRaises(ValueError):
                 check_manifest(bad)
+
+    def test_manifest_catalog_and_resource_admission(self):
+        vectors = json.loads((SPEC / 'fixtures/abi/manifest-admission.fixture').read_text())
+        from build_manifest_admission import cases
+        timelines = json.loads((SPEC.parent / 'conformance/abi/manifest-admission.json').read_text())
+        self.assertEqual(timelines, cases())
+        self.assertEqual(len(timelines), len(vectors['cases']))
+        for case in vectors['cases']:
+            with self.subTest(case=case['name']):
+                man = dict(vectors['manifest'], **case['manifest'])
+                grant = dict(vectors['grant'], **case['grant'])
+                self.validator('manifest').validate(man)
+                Schema('fixture = manifest\n' + self.cddl).validate_cbor(cbor2.dumps(man))
+                if case['error'] is None:
+                    check_manifest_admission(man, vectors['entries'], grant)
+                else:
+                    with self.assertRaisesRegex(ValueError, case['error']):
+                        check_manifest_admission(man, vectors['entries'], grant)
 
     def test_admission_memory_vectors(self):
         cases = json.loads((SPEC.parent / 'conformance/abi/admission.json').read_text())
