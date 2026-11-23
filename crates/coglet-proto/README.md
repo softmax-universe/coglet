@@ -44,11 +44,27 @@ server, mock hub and registry claims are not yet implemented.
   terminal marker; `revoke_peer` removes all peer/scoped grants and invalidates
   outstanding invites. Authorization is a check, **not** a lease or atomic kernel
   boundary application; callers repeat it at every disclosure/transfer/effect.
-  This does not yet implement persistent monotonic delegation-generation fences,
-  delegation signatures/bindings, per-grant replacement/revocation, kernel policy,
+  `accept_delegation` verifies the coglet-key signature, hub/device/target binding,
+  trusted expiry and exact methods. It pins an initial statement or retries the
+  identical active statement; no valid signature can replace a current binding.
+  `replace_delegation` is **local operator approval only** and atomically requires
+  a strictly higher uint64 generation. `revoke_delegation` retains a durable
+  tombstone (an absent binding returns permission_denied, not a claimed fence).
+  `revoke_peer` also tombstones its current device bindings, so re-enrollment
+  cannot restore those statements. State is scoped by (hub,coglet,delegation),
+  survives restart and never wraps generation. `authorize_delegation` rechecks
+  current binding, generation, method and trusted expiry. Its generation is
+  independent of the enrollment/scoped grant generation, not implicitly equal.
+  Supply a trusted clock callback returning current Unix seconds or None; it is
+  sampled again before registration commit, after any transaction lock wait.
+  Do not provide a cached request timestamp or call back into this Authority.
+  These APIs are synchronous: production dispatch must use **bounded** blocking
+  execution, never block an async reactor on SQLite. A successful check remains
+  no lease: kernel integration must serialize rechecks with application/dispatch.
+  This does not yet implement per-grant replacement/revocation, kernel policy,
   path/ref/surface limits, or atomic cancellation of kernel-owned pending writes.
-  Those remain mandatory integration work. All provisioning is local operator
-  configuration, never a new remotely self-authorizing method.
+  Those remain mandatory integration work. All provisioning/replacement is local
+  operator configuration, never a new remotely self-authorizing method.
 - `transfer::Receiver` tracks cumulative credit, contiguous offsets, correlation,
   bounded hex chunks and complete transfer SHA-256. Call `consumed()` only after
   all accepted bytes have reached durable bounded quarantine storage. This is
@@ -68,7 +84,10 @@ cargo clippy -j 2 -p coglet-proto --all-targets -- -D warnings
 
 The component tests exercise atomic SQLite rollback, concurrent one-use invite
 redemption, expiry after transaction-lock contention, restart/closed-window
-fencing, exact grants, ticket omission/ending, and live revocation on real iroh,
+fencing, exact grants, ticket omission/ending, signed delegation binding,
+operator-only monotonic replacement with cross-handle concurrency, durable
+revocation/re-enrollment tombstones, expiry/clock-loss transaction rollback,
+uint64 exhaustion without wrap and live binding replacement on real iroh,
 as well as frozen common/hub golden CBOR, frozen invalid profile
 and framing vectors, uint64/int64 limits, oversize rejection before reading a
 body, frozen signing preimages/signatures and tampering, raw-byte transfer
