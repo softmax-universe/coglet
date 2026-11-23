@@ -16,9 +16,10 @@ final class FaceTests: XCTestCase, @unchecked Sendable {
         device.onStop = { clock.time += 0.004 }
         let keys = FaceTestKeys(); let audio = FaceTestAudio()
         let ptt = PushToTalk(keys: keys, audio: audio, now: { clock.time })
+        let session = FacePlaybackSession(ptt: ptt, speech: sink)
         ptt.permissions = .init(microphone: .granted, inputMonitoring: .granted)
         ptt.start(); ptt.setState(.speaking)
-        ptt.stopPlayback = { sink.stop() }
+        ptt.stopPlayback = { session.stop() }
         let before = clock.time
         keys.send(.press)
         XCTAssertLessThanOrEqual(clock.time - before, 0.100)
@@ -29,6 +30,50 @@ final class FaceTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(ptt.state, .listening)
         XCTAssertFalse(sink.active)
         ptt.shutdown()
+    }
+
+    @MainActor
+    func testPlaybackSessionReplacementAndLateCompletionCannotStopNewAudioOrCapture() async throws {
+        let keys = FaceTestKeys(); let audio = FaceTestAudio(); let device = FakeFacePlayback()
+        let ptt = PushToTalk(keys: keys, audio: audio)
+        ptt.permissions = .init(microphone: .granted, inputMonitoring: .granted)
+        ptt.start()
+        let sink = FaceSpeechSink(device: device)
+        let session = FacePlaybackSession(ptt: ptt, speech: sink)
+        ptt.stopPlayback = { session.stop() }
+        let first = session.begin()
+        let pcm = PCMFrame(samples: [0.5, -0.5], sampleRate: 16000, timestamp: 0)
+        try sink.enqueue(pcm, token: first)
+        let oldCompletion = device.completions[0]
+        let replacement = session.begin()
+        try sink.enqueue(pcm, token: replacement)
+        oldCompletion()
+        XCTAssertTrue(sink.active)
+        XCTAssertTrue(device.playing)
+        XCTAssertEqual(ptt.state, .speaking)
+        try sink.finish(token: replacement)
+        XCTAssertTrue(sink.active, "finish waits for actual playback")
+        keys.send(.press)
+        XCTAssertFalse(device.playing)
+        XCTAssertFalse(sink.active)
+        device.completions.last?()
+        XCTAssertEqual(ptt.state, .listening)
+        XCTAssertThrowsError(try sink.enqueue(pcm, token: replacement))
+        ptt.shutdown()
+    }
+
+    @MainActor
+    func testFinishAfterRenderAndPCMValidation() async throws {
+        let device = FakeFacePlayback(); let sink = FaceSpeechSink(device: device)
+        let token = sink.begin()
+        XCTAssertThrowsError(try sink.enqueue(PCMFrame(samples: [.nan], sampleRate: 16000, timestamp: 0), token: token))
+        try sink.enqueue(PCMFrame(samples: [0.25, -0.25], sampleRate: 16000, timestamp: 0), token: token)
+        var finished = false
+        sink.onFinish = { cancelled in XCTAssertFalse(cancelled); finished = true }
+        try sink.finish(token: token)
+        XCTAssertFalse(finished)
+        device.renderedFrames = 2; device.completions[0]()
+        XCTAssertTrue(finished); XCTAssertFalse(sink.active); XCTAssertEqual(sink.level, 0)
     }
 
     @MainActor

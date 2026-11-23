@@ -16,7 +16,7 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(face.staticTexts["Simulated demo · no audio"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "native-face-panel"; screenshot.lifetime = .keepAlways; add(screenshot)
-        face.buttons["Hide Face"].click()
+        face.typeKey(.escape, modifierFlags: [])
         XCTAssertFalse(face.exists)
         app.terminate()
     }

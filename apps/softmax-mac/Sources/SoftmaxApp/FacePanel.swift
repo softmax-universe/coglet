@@ -14,26 +14,26 @@ final class FaceHost: ObservableObject {
     @Published var demo = false
     private var timer: Timer?
     private var demoStart = 0.0
-    private var operation: UInt64?
+    private let playback: FacePlaybackSession
     private weak var shell: ShellModel?
     init(shell: ShellModel, driver: any FaceDriver = LocalFaceDriver()) {
         self.shell = shell; self.driver = driver
         speech = FaceSpeechSink(device: EngineFacePlayback())
+        playback = FacePlaybackSession(ptt: shell.ptt, speech: speech)
         driver.onChange = { [weak self] in self?.revision &+= 1 }
         speech.onChange = { [weak self] in
             guard let self, speech.active else { return }
             driver.setState(.speaking(level: speech.level))
         }
-        speech.onFinish = { [weak self] _ in
+        playback.onFinish = { [weak self] in
             guard let self else { return }
-            if let operation { shell.finishFacePlayback(operation: operation) }
-            operation = nil; driver.setState(.idle)
+            driver.setState(.idle)
         }
     }
     func beginSpeech() -> UUID {
         stopDemo()
-        let token = speech.begin()
-        operation = shell?.beginFacePlayback(stop: { [weak self] in self?.speech.stop() })
+        let token = playback.begin()
+        shell?.stopFacePlayback = { [weak self] in self?.playback.stop() }
         return token
     }
     func startDemo() {
@@ -73,7 +73,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
     private let persist: Bool
     init(shell: ShellModel) {
         host = FaceHost(shell: shell); persist = !shell.testing
-        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 280, height: 330),
+        panel = FacePanel(contentRect: NSRect(x: 0, y: 0, width: 280, height: 330),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
         panel.title = "Softmax Face"; panel.level = .floating
@@ -87,6 +87,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
                 panel.setFrameOrigin(CGPoint(x: frame.maxX - 300, y: frame.maxY - 350))
             }
         }
+        panel.setContentSize(NSSize(width: 280, height: 330))
         clampToScreen()
     }
     func show() {
@@ -95,7 +96,8 @@ final class FacePanelController: NSObject, NSWindowDelegate {
         localEscape = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.hide(); return nil }; return event
         }
-        // Non-intercepting observation; no new permission request. Global PTT also handles Escape.
+        // Requires an existing keyboard-observation grant; never requests one.
+        // Escape dismisses this transient Face while another app keeps focus.
         globalEscape = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { Task { @MainActor in self?.hide() } }
         }
@@ -119,6 +121,12 @@ final class FacePanelController: NSObject, NSWindowDelegate {
         panel.setFrameOrigin(CGPoint(x: max(frame.minX, min(panel.frame.minX, frame.maxX - panel.frame.width)),
                                      y: max(frame.minY, min(panel.frame.minY, frame.maxY - panel.frame.height))))
     }
+}
+
+@MainActor
+private final class FacePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }
 
 struct FacePanelView: View {
