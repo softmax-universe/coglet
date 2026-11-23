@@ -65,9 +65,18 @@ JIT and AOT remain disabled in CMake; Apple support does not weaken that rule.
 
 | Target | Evidence / boundary |
 |---|---|
-| arm64 macOS | [Run 45280558907](https://github.com/softmax-universe/coglet/actions/runs/45280558907), head `3fbe853`: full engine/runtime default and native-engine package tests passed, zero ignored. This run later failed in guest tooling; it is not a green end-to-end Apple gate. |
-| x86_64 macOS | Cross-build on the arm64 runner is pending; no Intel execution claimed. |
-| arm64 iOS | Interpreter archive/SDK link is pending; no simulator, signed app or device execution claimed. |
+| arm64 macOS | [Run 45286035005 / apple job 138082473507](https://github.com/softmax-universe/coglet/actions/runs/45286035005/job/138082473507), head `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: full engine/runtime default and native-engine package tests, AOT refusal, and production echo C-ABI smoke passed, zero ignored. |
+| x86_64 macOS | Same green Apple job cross-built engine/runtime with native-engine on the arm64 runner; no Intel execution claimed. |
+| arm64 iOS | Same green Apple job built the interpreter runtime static archive and linked the C configure/start/stop probe against the iPhoneOS SDK (arm64, minimum iOS 15.0); no simulator, signed app or device execution claimed. |
+| ARMv7 Linux | [Same run / armv7-qemu job 138082473860](https://github.com/softmax-universe/coglet/actions/runs/45286035005/job/138082473860) passed the spike and real engine suites under QEMU; not physical EO1 evidence. |
+
+This is a source-head evidence snapshot; final PR-head checks are recorded on
+[PR #62](https://github.com/softmax-universe/coglet/pull/62). The earlier
+[run 45282117394](https://github.com/softmax-universe/coglet/actions/runs/45282117394)
+passed the package suites but failed the echo smoke with C-ABI send `-2`.
+It did not reproduce in the run above after adding per-message status/timing
+diagnostics; no runtime timeout or authorization policy was weakened, and the
+cause of that earlier failure is not established.
 
 The same recovery policy runs on Linux and Apple. Linux samples boot_id and
 CLOCK_BOOTTIME; Apple samples `kern.bootsessionuuid` and

@@ -39,6 +39,12 @@ The snapshot filesystem seam is still separate from `coglet-fs`.
 
 See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
 trusted supervisor configuration and its remaining qualification limits.
+Apple evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005),
+source head `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: native arm64 macOS
+engine/runtime default + native-engine suites and compiled echo C-ABI smoke
+passed with zero ignored tests. x86_64 macOS was cross-built; arm64 iOS was
+archive-built and SDK-linked (minimum 15.0), **not executed on a device**.
+The evidence table distinguishes this snapshot from final PR-head checks.
 
 ```sh
 cargo test -p coglet-runtime
