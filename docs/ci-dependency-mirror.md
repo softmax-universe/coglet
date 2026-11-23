@@ -8,8 +8,11 @@ consumers are Java, Rust and conformance. Local contributor builds are unchanged
 Before any registry command, CI restores dependency-only release assets named
 `<job>-<ecosystem>-<input-sha256>.{json,tar.gz}` from `dependency-mirror-v1`.
 Each manifest records the source checkout SHA, compressed bytes and archive digest.
-Keys include the platform/tool versions, nested manifests/locks, codegen dependency
-logic and mirror setup/workflow code. Compiled `target/` outputs are not restored.
+Keys include the platform, pinned language-tool versions, actual Maven executable
+version, nested manifests/locks, codegen dependency logic and mirror setup/workflow
+code. Whole hosted-image versions are deliberately excluded: GitHub rolls multiple
+images out concurrently, including within one preparation/proof run. Compiled
+`target/` outputs are not restored.
 Missing, corrupt or unavailable assets are logged; ordinary CI uses upstream with
 PR #59's existing Maven retries/cache. A simultaneous GitHub/upstream outage or
 an unpublished dependency addition is not covered.

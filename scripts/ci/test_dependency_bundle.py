@@ -62,7 +62,13 @@ class BundleTests(unittest.TestCase):
             initial = bundle.input_key(root, 'rust', 'cargo')
             from unittest.mock import patch
             with patch.dict(bundle.os.environ, {'ImageVersion': 'new-runner-image'}):
-                self.assertNotEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
+                self.assertEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
+            with patch.object(bundle.subprocess, 'check_output', return_value='Apache Maven 3.9.11\nMaven home: /opt/a\n'):
+                maven = bundle.input_key(root, 'java', 'maven')
+            with patch.object(bundle.subprocess, 'check_output', return_value='\x1b[1mApache Maven 3.9.11\x1b[0m\nMaven home: /opt/b\n'):
+                self.assertEqual(maven, bundle.input_key(root, 'java', 'maven'))
+            with patch.object(bundle.subprocess, 'check_output', return_value='Apache Maven 3.9.12\nMaven home: /opt/a\n'):
+                self.assertNotEqual(maven, bundle.input_key(root, 'java', 'maven'))
             (root / 'unrelated.rs').write_text('changed')
             self.assertEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
             (root / 'Cargo.lock').write_text('new lock')

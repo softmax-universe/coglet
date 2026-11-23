@@ -68,10 +68,17 @@ def input_key(root, job, ecosystem):
         'gems': ['**/Gemfile', '**/Gemfile.lock'],
     }[ecosystem]
     hashed = hashlib.sha256(f'v1|ubuntu-24.04|x86_64|java21|py312|ruby32|{job}|{ecosystem}'.encode())
-    # Hosted image identity pins preinstalled Maven/JDK/bootstrap tool versions.
-    # A new image deliberately starts cold instead of selecting an incompatible
-    # immutable Maven plugin closure. The daily refresh publishes the new set.
-    hashed.update(os.environ.get('ImageVersion', 'local').encode())
+    # Hosted image versions roll out concurrently: prepare and proof can receive
+    # different images in the same run. Key only on dependency-relevant tools.
+    # Java 21 is selected by setup-java; Maven itself comes from the hosted image.
+    if ecosystem == 'maven':
+        import re
+        version = subprocess.check_output(['mvn', '--version'], text=True, timeout=30)
+        version = re.sub(r'\x1b\[[0-9;]*m', '', version)
+        match = re.search(r'^Apache Maven (\S+)', version, re.MULTILINE)
+        if not match:
+            raise ValueError('cannot determine Maven version for bundle identity')
+        hashed.update(f'maven:{match[1]}'.encode())
     tracked = None
     if (root / '.git').exists():
         tracked = set(subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode().split('\0'))
