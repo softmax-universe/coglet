@@ -1,0 +1,1 @@
+{"name":"journal-state-hash","steps":[{"send":{"loopback":"hash","state":{"counter":3}}},{"journal_hash":"177d25006a3130f2f488c1e7a0734e877017ce650e84f2cb0667622e1bc9a36a","within_ms":200}]}
