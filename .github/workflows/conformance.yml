@@ -25,7 +25,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: false
-      - uses: dtolnay/rust-toolchain@1.100.0
+      # rust-toolchain.toml pins 1.100.0 with rustfmt/clippy/wasm32-wasip1; let rustup
+      # install it once (as rust.yml does). A second installer made rustup hit
+      # "detected conflict: 'bin/cargo-clippy'" and fail the job before any build.
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
@@ -47,6 +51,8 @@ jobs:
       - run: python3 -m unittest discover -s spec/tests -v
       - name: Build real engine conformance adapter
         run: cargo build --locked -p coglet-engine-wamr --example wamr-conformance
+      - name: Build cooperative native engine conformance adapter
+        run: cargo build --locked -p coglet-mock --example mock-conformance
       - name: Build surface adapters
         run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
       - run: python3 -m unittest discover -s conformance/tests -v
