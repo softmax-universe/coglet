@@ -24,6 +24,8 @@ jobs:
       - run: python3 -m pip install -r spec/tests/requirements.txt
       - name: Generated types are current
         run: codegen/run --check
+      - name: Resolve Jackson before Python test collection
+        run: mvn --batch-mode --no-transfer-progress -f sdk/surface-java/pom.xml dependency:resolve
       - name: Generator regression tests
         run: python3 -m unittest discover -s codegen -v
       - name: Generated validator agrees with CDDL and JSON Schema
