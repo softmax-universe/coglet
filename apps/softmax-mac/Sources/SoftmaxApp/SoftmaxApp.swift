@@ -219,6 +219,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             do { try DesignSnapshots.run(to: arguments[index + 1]); exit(0) }
             catch { print("Native snapshot render failed: \(error)"); exit(1) }
         }
+        if model.testing && arguments.contains("--contrast-calibration") {
+            let probe = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 760, height: 540), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            probe.title = "Contrast calibration"
+            probe.isReleasedWhenClosed = false
+            probe.contentView = NSHostingView(rootView: ContrastCalibrationView())
+            settingsWindow = probe
+            NSApp.activate(ignoringOtherApps: true)
+            probe.makeKeyAndOrderFront(nil)
+            return
+        }
         NSApp.setActivationPolicy(.accessory)
         orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
             self?.orbOverlay.setVisible(enabled)

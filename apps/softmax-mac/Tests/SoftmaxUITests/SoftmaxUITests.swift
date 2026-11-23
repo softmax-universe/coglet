@@ -65,6 +65,21 @@ final class SoftmaxUITests: XCTestCase {
     }
 
     @MainActor
+    func testContrastCalibration() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--contrast-calibration"]
+        app.launch()
+        defer { app.terminate() }
+        XCTAssertTrue(app.windows["Contrast calibration"].waitForExistence(timeout: 10))
+        let image = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        image.name = "contrast-calibration"; image.lifetime = .keepAlways; add(image)
+        try app.performAccessibilityAudit(for: .contrast) { issue in
+            print("CALIBRATION: \(issue.detailedDescription); identifier=\(issue.element?.identifier ?? "nil"); frame=\(String(describing: issue.element?.frame))")
+            return false
+        }
+    }
+
+    @MainActor
     func testFacePanelExpandDemoAndEscape() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--show-face"]
