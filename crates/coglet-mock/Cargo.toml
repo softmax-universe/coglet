@@ -5,6 +5,7 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+coglet-engine = { path = "../coglet-engine" }
 coglet-llm = { path = "../coglet-llm" }
 coglet-surface-rust = { path = "../../sdk/surface-rust" }
 serde = { version = "1", features = ["derive"] }

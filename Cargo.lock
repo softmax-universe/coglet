@@ -413,6 +413,7 @@ dependencies = [
 name = "coglet-mock"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
  "coglet-llm",
  "coglet-surface-rust",
  "coglet-types",

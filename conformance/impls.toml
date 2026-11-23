@@ -1,5 +1,11 @@
 # Only self-test claims exist until real/mock protocol implementations register.
 [[implementations]]
+name = "native-mock-engine"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/mock-conformance"]
+
+[[implementations]]
 name = "loopback"
 suites = ["self-test"]
 transport = "stdio"
