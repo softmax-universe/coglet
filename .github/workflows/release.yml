@@ -1,0 +1,204 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths: ['release/**', '.github/workflows/release.yml', 'Package.swift', 'docs/releasing.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  # PR/manual builds exercise the exact same inventory, but cannot publish.
+  RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.0.0-rc1' }}
+  CARGO_BUILD_JOBS: '2'
+jobs:
+  binaries:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: linux-x86_64, target: x86_64-unknown-linux-gnu, runner: ubuntu-24.04}
+          - {platform: linux-aarch64, target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm}
+          - {platform: linux-armv7, target: armv7-unknown-linux-gnueabihf, runner: ubuntu-24.04}
+          - {platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-15}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Rust and target
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup show active-toolchain
+          rustup target add "$TARGET"
+      - name: ARMv7 cross compiler and execution adapter
+        if: matrix.platform == 'linux-armv7'
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user
+      - name: Build reference-engine daemon and hub
+        env:
+          TARGET: ${{ matrix.target }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          if [ "$PLATFORM" = linux-armv7 ]; then
+            export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+            export CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc
+            export CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
+          fi
+          cargo build --locked --release --target "$TARGET" -p coglet-runtime --bin cogletd -p coglet-hub --bin coglet-hub
+          python3 release/assemble.py binaries --tag "$RELEASE_TAG" --platform "$PLATFORM" --bins "target/$TARGET/release" --out dist
+      - name: Execute built binary smoke checks
+        env:
+          TARGET: ${{ matrix.target }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          RUNNER=()
+          if [ "$PLATFORM" = linux-armv7 ]; then RUNNER=(qemu-arm -L /usr/arm-linux-gnueabihf); fi
+          "${RUNNER[@]}" "target/$TARGET/release/cogletd" --version
+          "${RUNNER[@]}" "target/$TARGET/release/coglet-hub" identity "$RUNNER_TEMP/hub-smoke"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+  packages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/surface-go/go.mod
+          cache: false
+      - name: Release tooling regression tests
+        run: python3 -m unittest discover -s release -v
+      - name: Archive committed Rust workspace, SDKs and runnable harness
+        run: |
+          python3 release/assemble.py sources --tag "$RELEASE_TAG" --sha "$(git rev-parse HEAD)" --out dist
+          python3 release/assemble.py python-stage --tag "$RELEASE_TAG" --sha "$(git rev-parse HEAD)" --out "$RUNNER_TEMP/python-stage"
+          uv build --project "$RUNNER_TEMP/python-stage/sdk/surface-python" --out-dir "$GITHUB_WORKSPACE/dist"
+      - name: Exercise extracted harness and installed wheel
+        run: |
+          mkdir "$RUNNER_TEMP/harness"
+          tar -xzf "dist/coglet-$RELEASE_TAG-harness.tar.gz" -C "$RUNNER_TEMP/harness"
+          uv run --with cbor2 --with jsonschema python3 "$RUNNER_TEMP/harness/coglet-$RELEASE_TAG/conformance/run" --self-test --junit "$RUNNER_TEMP/harness-selftest.xml"
+          uv venv "$RUNNER_TEMP/wheel-smoke"
+          uv pip install --python "$RUNNER_TEMP/wheel-smoke/bin/python" dist/*.whl
+          "$RUNNER_TEMP/wheel-smoke/bin/python" release/wheel_smoke.py
+      - name: Go module tests
+        run: go test ./...
+        working-directory: sdk/surface-go
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+  swift-package:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build root release-tag SwiftPM entry and test SDK
+        run: |
+          swift build
+          swift test --package-path sdk/surface-swift
+      - name: Resolve exact v-prefixed tag as an external SwiftPM consumer
+        run: |
+          git clone --no-hardlinks "$GITHUB_WORKSPACE" "$RUNNER_TEMP/coglet"
+          SOURCE_SHA=$(git rev-parse HEAD)
+          if git -C "$RUNNER_TEMP/coglet" rev-parse --verify -q "refs/tags/$RELEASE_TAG"; then
+            test "$(git -C "$RUNNER_TEMP/coglet" rev-parse "$RELEASE_TAG^{commit}")" = "$SOURCE_SHA"
+          else
+            git -C "$RUNNER_TEMP/coglet" tag "$RELEASE_TAG" "$SOURCE_SHA"
+          fi
+          COGLET_RELEASE_SOURCE="file://$RUNNER_TEMP/coglet" swift run --package-path release/swift-consumer --scratch-path "$RUNNER_TEMP/swift-consumer-build" PinProbe
+  inventory:
+    needs: [binaries, packages, swift-package]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Require complete inventory and hash every asset
+        run: python3 release/assemble.py seal --tag "$RELEASE_TAG" --sha "$(git rev-parse HEAD)" --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sealed-release
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-release
+          path: dist
+      - name: Verify immutable source tag and main ancestry
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          test "$(jq -r .commit dist/release.json)" = "$SOURCE_SHA"
+          test "$(jq -r .tag dist/release.json)" = "$RELEASE_TAG"
+          git fetch origin main:refs/remotes/origin/main "refs/tags/$RELEASE_TAG:refs/tags/release-publish-candidate"
+          test "$(git rev-parse 'refs/tags/release-publish-candidate^{commit}')" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main
+      - name: Upload complete draft and verify downloaded hashes
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          (cd dist && sha256sum -c SHA256SUMS)
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --target "$SOURCE_SHA" --draft --title "Coglet $RELEASE_TAG" --notes "Source commit: $SOURCE_SHA. Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. See docs/releasing.md in this tag for pinning and qualification limits. These are reference-engine cogletd builds, not WAMR/product qualification. Rust crates are distributed as a complete path-preserving source workspace; nothing is uploaded to package registries."
+          gh release download "$RELEASE_TAG" --dir downloaded
+          cmp dist/SHA256SUMS downloaded/SHA256SUMS
+          (cd downloaded && sha256sum -c ../dist/SHA256SUMS)
+      - name: Publish matching Go module tag and release
+        run: |
+          SOURCE_SHA=$(git rev-parse HEAD)
+          GO_TAG="sdk/surface-go/$RELEASE_TAG"
+          if git rev-parse --verify -q "refs/tags/$GO_TAG"; then
+            test "$(git rev-parse "$GO_TAG^{commit}")" = "$SOURCE_SHA"
+          else
+            git tag "$GO_TAG" "$SOURCE_SHA"
+            git push origin "refs/tags/$GO_TAG"
+          fi
+          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/release-final-candidate" "refs/tags/$GO_TAG:refs/tags/release-go-candidate"
+          test "$(git rev-parse 'refs/tags/release-final-candidate^{commit}')" = "$SOURCE_SHA"
+          test "$(git rev-parse 'refs/tags/release-go-candidate^{commit}')" = "$SOURCE_SHA"
+          PRERELEASE=false
+          if [[ "$RELEASE_TAG" == *-rc* ]]; then PRERELEASE=true; fi
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease="$PRERELEASE"
