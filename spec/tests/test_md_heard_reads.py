@@ -54,6 +54,7 @@ class MDHeardReads(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([s['items'][0]['heard'] for s in states],
                          ['', 'Hé', 'Héllo', 'Héllo', 'Héllo', 'Héllo', 'Héllo!'])
         self.assertEqual([s['items'][0]['duration_ms'] for s in states], [0,100,200,250,270,280,300])
+        self.assertEqual([s['items'][0]['played_ms'] for s in states], [0,100,200,250,270,280,300])
         for old, read, state in zip([None]+states[:-1], reads, states, strict=True):
             check_owner_read_archive(None if old is None else encode(old).hex(), encode(state).hex(),
                                      surface, read, stopped=state['items'][0]['stopped'])
@@ -102,12 +103,15 @@ class MDHeardReads(unittest.IsolatedAsyncioTestCase):
         from heard_archive import check_transition
         with self.assertRaisesRegex(ValueError, 'heard stopped item advanced'):
             check_transition(raw, encode(bad).hex())
+        zero = decode(bytes.fromhex(collect_owner_read(None, surface, dict(reads[0], text='not heard'))))['items'][0]
+        self.assertEqual((zero['spans'], zero['heard'], zero['played_ms'], zero['duration_ms']), ([], '', 0, 0))
         raw = encode(states[1]).hex()
         with self.assertRaisesRegex(ValueError, 'heard position regressed'):
             collect_owner_read(raw, surface, dict(reads[1],played_ms=99))
         for text in ['Hé', 'H', 'He\u0301llo', 'revision', '']:
             new = decode(bytes.fromhex(collect_owner_read(raw,surface,dict(reads[1],played_ms=150,text=text))))
             self.assertEqual(new['items'][0]['spans'],states[1]['items'][0]['spans'])
+            self.assertEqual((new['items'][0]['played_ms'], new['items'][0]['duration_ms']), (150, 150))
         # Extension at the same end is not new alignment evidence.
         new = decode(bytes.fromhex(collect_owner_read(raw,surface,dict(reads[1],text='Héllo'))))
         self.assertEqual(new,states[1])
