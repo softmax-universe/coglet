@@ -103,18 +103,31 @@ private final class OrbButton: NSButton {
     var onVoice: (() -> Void)?
     var onDrop: (() -> Void)?
 
+    private var dragStart: CGPoint?
+    private var windowStart: CGPoint?
+    private var moved = false
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
     override func mouseDown(with event: NSEvent) {
         guard let window else { return }
-        let start = NSEvent.mouseLocation
-        let origin = window.frame.origin
-        var moved = false
-        while let next = window.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
-            let pointer = NSEvent.mouseLocation
-            let delta = CGPoint(x: pointer.x - start.x, y: pointer.y - start.y)
-            if hypot(delta.x, delta.y) > 4 { moved = true }
-            if moved { window.setFrameOrigin(CGPoint(x: origin.x + delta.x, y: origin.y + delta.y)) }
-            if next.type == .leftMouseUp { break }
-        }
+        dragStart = window.convertPoint(toScreen: event.locationInWindow)
+        windowStart = window.frame.origin
+        moved = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let window, let dragStart, let windowStart else { return }
+        let pointer = window.convertPoint(toScreen: event.locationInWindow)
+        let delta = CGPoint(x: pointer.x - dragStart.x, y: pointer.y - dragStart.y)
+        if hypot(delta.x, delta.y) > 4 { moved = true }
+        if moved { window.setFrameOrigin(CGPoint(x: windowStart.x + delta.x, y: windowStart.y + delta.y)) }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard dragStart != nil else { return }
+        dragStart = nil
+        windowStart = nil
         if moved { onDrop?() } else { onClick?() }
     }
 

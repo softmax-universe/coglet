@@ -16,7 +16,9 @@ final class SoftmaxUITests: XCTestCase {
         toggle.click()
         let orb = app.buttons["Open Softmax chat"]
         XCTAssertTrue(orb.waitForExistence(timeout: 5))
+        print("ORB BEFORE CLICK: \(app.debugDescription)")
         orb.click()
+        print("ORB AFTER CLICK: \(app.debugDescription)")
         let chat = app.windows["Softmax Conversation"]
         XCTAssertTrue(chat.waitForExistence(timeout: 5))
         XCTAssertTrue(chat.textViews["Message draft"].exists)
