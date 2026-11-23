@@ -85,6 +85,25 @@ CDDL occurrence bounds have no internal whitespace (RFC 8610 Appendix B:
 starts an unbounded occurrence followed by an integer. Spec owners must correct
 invalid spaced bounds; the backend does not silently repair source syntax.
 
+## Cross-spec lexical guards
+
+`test_schema_lint.SchemaLintTests.test_repository_schema_lexical_guards` runs in
+normal CI. It scans every `spec/**/*.json` pattern using the actual
+Python/jsonschema search semantics (not a replacement full-match engine).
+Positive witnesses come from all schema/fixture strings plus 32 reproducibly
+seeded `rstr==3.2.2` generations per pattern. A matched witness plus appended LF
+must reject; inability to produce a positive witness is a coverage error. This
+is deterministic witness testing, not a proof for every possible string.
+`python3 spec/tests/schema_lint.py --output lint.json` reports concrete witnesses
+and hit counts per file; each spec owner fixes its own source text.
+
+The same guard rejects spaced occurrence bounds outside CDDL literals/comments
+in `spec/**/*.cddl`, and in generated Rust/Python/Swift/Go/Java sources and
+`schema.json` IR outputs. The generated source scan retains target-language
+strings, which may carry CDDL text. Tests demonstrate unsafe `$` RED versus
+absolute-end GREEN, zero bound spacing, lexical exclusions, generated-source
+coverage and fail-closed missing witnesses.
+
 ## Recursive audit
 
 `test_reference_cddl.py` includes the original repro, 100 scalar/container
