@@ -1,0 +1,23 @@
+; Draft 0.1; not frozen v0. Import messages/common.cddl unchanged.
+; Timing relations and gate-kind uniqueness are semantic, not shape checks.
+policy = {
+  version: "0.1", status: "DRAFT", coglet: coglet-id, revision: correlation-id,
+  policy-role, gates: policy-gates, probation: policy-probation
+}
+policy-role = (control_role: "application", human_approval: bool //
+  control_role: "fast_loop" / "factory", human_approval: true)
+policy-positive-uint64 = 1..18446744073709551615
+policy-gate-fields = (
+  suite: tstr .size (1..18446744073709551615), max_age_ms: policy-positive-uint64
+)
+policy-replay = {kind: "journal_replay", policy-gate-fields}
+policy-game = {kind: "headless_game", policy-gate-fields}
+policy-gates = [policy-replay] / [policy-replay, policy-replay / policy-game] /
+  [policy-game, policy-replay]
+policy-probation = {
+  window_ms: policy-positive-uint64, health_interval_ms: policy-positive-uint64,
+  health_timeout_ms: policy-positive-uint64,
+  max_consecutive_failures: policy-positive-uint64,
+  max_step_failures: policy-positive-uint64,
+  max_budget_violations: policy-positive-uint64
+}
