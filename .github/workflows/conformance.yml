@@ -45,14 +45,14 @@ jobs:
       - name: Generated validator agrees with CDDL and JSON Schema
         run: python3 codegen/cross_check.py
       - run: python3 -m unittest discover -s spec/tests -v
+      - name: Build surface adapters
+        run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
       - run: python3 -m unittest discover -s conformance/tests -v
       - run: cargo fmt --manifest-path conformance/iroh-driver/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path conformance/iroh-driver/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --locked --manifest-path conformance/iroh-driver/Cargo.toml
       - name: Harness self-test
         run: conformance/run --self-test --junit target/conformance-self-test.xml
-      - name: Build surface adapters
-        run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
       - name: Surface SDK and mock regressions
         run: cargo test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint
