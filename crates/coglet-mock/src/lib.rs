@@ -1,2 +1,3 @@
-//! Deterministic test doubles; not production provider adapters.
+//! Deterministic protocol mocks; not production device/provider adapters.
 pub mod llm;
+pub mod surface;
