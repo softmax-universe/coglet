@@ -1,0 +1,27 @@
+; Per-coglet policy — DRAFT 0.1 (freezes at M3, not v0).
+; Import messages/common.cddl unchanged by concatenation.
+; Uniqueness by gate kind and timing relations are semantic checks in policy.md.
+policy = {
+  version: "0.1", status: "DRAFT", coglet: coglet-id, revision: correlation-id,
+  policy-role, gates: policy-gates, probation: policy-probation
+}
+policy-role = (control_role: "application", human_approval: bool //
+  control_role: "fast_loop" / "factory", human_approval: true)
+; Positive subset of common uint64 (range controls on aliases are not portable).
+policy-positive-uint64 = 1..18446744073709551615
+policy-gate-fields = (
+  suite: tstr .size (1..18446744073709551615), max_age_ms: policy-positive-uint64
+)
+; Explicit empty wildcard enforces closed array-element maps in pycddl 0.6.4.
+policy-replay = {kind: "journal_replay", policy-gate-fields, * tstr => nil .and false}
+policy-game = {kind: "headless_game", policy-gate-fields, * tstr => nil .and false}
+; Two replay records are shape-valid but fail semantic gate-kind uniqueness.
+policy-gates = [policy-replay] / [policy-replay, policy-replay / policy-game] /
+  [policy-game, policy-replay]
+policy-probation = {
+  window_ms: policy-positive-uint64, health_interval_ms: policy-positive-uint64,
+  health_timeout_ms: policy-positive-uint64,
+  max_consecutive_failures: policy-positive-uint64,
+  max_step_failures: policy-positive-uint64,
+  max_budget_violations: policy-positive-uint64
+}

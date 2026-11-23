@@ -137,7 +137,6 @@
         "$ref": "#/$defs/gate"
       },
       "minItems": 1,
-      "uniqueItems": true,
       "maxItems": 2
     },
     "human_approval": {

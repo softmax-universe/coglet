@@ -3,7 +3,11 @@
 **Status: DRAFT; revisit with policy at M3, not frozen at v0.**
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md), [PR #10](https://github.com/softmax-universe/coglet/pull/10).
 Imports [common conventions](conventions.md) and shared control definitions from
-`messages/promotion.schema.json`. `messages/tickets.schema.json` defines shapes.
+`messages/promotion.schema.json`. `messages/tickets.schema.json` and
+`messages/tickets.cddl` define shapes. Concatenate tickets, promotion and common
+CDDL once each, in that order; select `tickets` or `ticket-<definition>` (the
+ticket record is `ticket-ticket`). Edit-path uniqueness is checked separately as
+a semantic invariant in both representations, including submit/amend payloads.
 Wire is deterministic CBOR; JSON is a debugging/fixture view. These are payloads
 on authenticated hub operations, not a provider API. Methods are `ticket.submit`,
 `ticket.update` (subscription), `ticket.answer`, `ticket.amend`, `ticket.cancel`,
@@ -132,8 +136,11 @@ The factory may be restarted/replaced without changing any of these semantics.
 
 `fixtures/tickets/cases.json` includes all six requests, receipts, progress,
 conditional result branches, scoped paths and invalid provider-field injections.
-`spec/tests/test_control.py` validates shape and local cross-field invariants,
-plus golden CBOR. It does not execute a scheduler. The future factory/mock shared
+`regressions.json` covers final-newline lexical rejection with positive controls
+and duplicate edit paths. `spec/tests/test_control.py` validates every shape using
+both actual CDDL and JSON Schema, then checks local cross-field invariants and
+golden CBOR. Nested-map mutations separately verify closed records.
+It does not execute a scheduler. The future factory/mock shared
 black-box suite must test durable submit retry, progress reconnect, question
 revision races, amendment fencing, cancellation quiescence, result-vs-cancel,
 budget exhaustion including in-flight spend and revoked debug grants.

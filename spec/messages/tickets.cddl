@@ -1,0 +1,125 @@
+; Generic factory tickets — DRAFT 0.1 (M3 freeze, not frozen at v0).
+; Import common.cddl and promotion.cddl by concatenation, once each.
+; Validate the tickets root (or the selected ticket-* message rule).
+; Maps are closed. Cross-field/temporal checks remain in tickets.md.
+; edit_paths uniqueness is a semantic check; CDDL has no array uniqueness operator.
+;
+; Closure is restated explicitly with ticket-never (the empty type) because
+; pycddl 0.6.4 (cddl-rs) leaks closure in two places: a map that is an array
+; element accepts unknown keys, and inside a type choice of maps a key that an
+; earlier, failed alternative matched is accepted by a later one. Both forms
+; below are no-ops under RFC 8610 for an already-closed map:
+; "* tstr => ticket-never" matches no entry, and "? key: ticket-never" only
+; admits the key's absence. Each alternative forbids its siblings' keys.
+tickets = ticket-request / ticket-response / ticket-update / ticket-result
+
+ticket-never = nil .and false
+
+; Positive subset of common uint64 (range controls on aliases are not portable).
+ticket-positive-uint64 = 1..18446744073709551615
+ticket-text = tstr .size (1..18446744073709551615)
+ticket-edit-path = tstr .regexp "^(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+)(?:/(?:[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.[A-Za-z0-9_-][A-Za-z0-9_.-]*|\\.\\.[A-Za-z0-9_.-]+))*$"
+ticket-currency = tstr .regexp "^[A-Z]{3}$"
+ticket-required-gates = ["journal_replay"] /
+  ["journal_replay", "headless_game"] / ["headless_game", "journal_replay"]
+ticket-progress-state = "queued" / "planning" / "building" / "gate_running" /
+  "cancelling" / "done" / "failed" / "abandoned"
+ticket-state = ticket-progress-state / "needs_input"
+ticket-op = "submit" / "update" / "answer" / "amend" / "cancel" / "result"
+
+ticket-ticket = {
+  target: {coglet: coglet-id, repo: ticket-text, base: promotion-commit},
+  goal: {description: ticket-text, acceptance: [+ ticket-text]},
+  context: [* ticket-context],
+  capabilities: {
+    edit_paths: [* ticket-edit-path], debug_read: bool, debug_write: bool
+  },
+  gates: {required: ticket-required-gates, human_approval: bool},
+  budget: {
+    time_ms: ticket-positive-uint64, spend_microunits: ticket-positive-uint64,
+    currency: ticket-currency
+  }
+}
+; Array element: closure restated (see header).
+ticket-context = {
+  kind: "world_snapshot" / "transcript" / "trace" / "document", ref: ticket-text,
+  * tstr => ticket-never
+}
+ticket-question = {id: correlation-id, prompt: ticket-text}
+
+; Groups share fields only; each alternative below is its own closed map.
+ticket-envelope = (version: "0.1", correlation_id: correlation-id)
+ticket-mutation = (
+  ticket_id: correlation-id, expected_revision: ticket-positive-uint64
+)
+ticket-request = ticket-submit-request / ticket-update-request /
+  ticket-answer-request / ticket-amend-request / ticket-cancel-request /
+  ticket-result-request
+ticket-submit-request = {
+  ticket-envelope, op: "submit", ticket: ticket-ticket,
+  ? ticket_id: ticket-never, ? expected_revision: ticket-never,
+  ? after_seq: ticket-never, ? question_id: ticket-never,
+  ? answer: ticket-never, ? reason: ticket-never
+}
+ticket-update-request = {
+  ticket-envelope, op: "update", ticket_id: correlation-id, after_seq: uint64,
+  ? ticket: ticket-never, ? expected_revision: ticket-never,
+  ? question_id: ticket-never, ? answer: ticket-never, ? reason: ticket-never
+}
+ticket-answer-request = {
+  ticket-envelope, op: "answer", ticket-mutation,
+  question_id: correlation-id, answer: ticket-text,
+  ? ticket: ticket-never, ? after_seq: ticket-never, ? reason: ticket-never
+}
+ticket-amend-request = {
+  ticket-envelope, op: "amend", ticket-mutation, ticket: ticket-ticket,
+  ? after_seq: ticket-never, ? question_id: ticket-never,
+  ? answer: ticket-never, ? reason: ticket-never
+}
+ticket-cancel-request = {
+  ticket-envelope, op: "cancel", ticket-mutation, reason: ticket-text,
+  ? ticket: ticket-never, ? after_seq: ticket-never,
+  ? question_id: ticket-never, ? answer: ticket-never
+}
+ticket-result-request = {
+  ticket-envelope, op: "result", ticket_id: correlation-id,
+  ? ticket: ticket-never, ? expected_revision: ticket-never,
+  ? after_seq: ticket-never, ? question_id: ticket-never,
+  ? answer: ticket-never, ? reason: ticket-never
+}
+
+ticket-receipt = {
+  ticket_id: correlation-id, revision: ticket-positive-uint64,
+  state: ticket-state, seq: ticket-positive-uint64
+}
+ticket-response = {
+  ticket-envelope, op: "submit" / "answer" / "amend" / "cancel",
+  ok: true, receipt: ticket-receipt, ? error: ticket-never
+} / {
+  ticket-envelope, op: ticket-op, ok: false, error: error,
+  ? receipt: ticket-never
+}
+
+ticket-progress = (
+  ticket-envelope, ticket_id: correlation-id,
+  revision: ticket-positive-uint64, seq: ticket-positive-uint64,
+  summary: ticket-text
+)
+ticket-needs-input = {
+  ticket-progress, state: "needs_input", question: ticket-question,
+  ? candidate: ticket-never, ? gates: ticket-never, ? error: ticket-never
+}
+ticket-update = {
+  ticket-progress, state: ticket-progress-state,
+  ? question: ticket-never
+} / ticket-needs-input
+
+ticket-result = {
+  ticket-progress, state: "done",
+  candidate: {commit: promotion-commit, signature_ref: ticket-text},
+  gates: [+ promotion-gate-report],
+  ? question: ticket-never, ? error: ticket-never
+} / ticket-needs-input / {
+  ticket-progress, state: "failed" / "abandoned", error: error,
+  ? question: ticket-never, ? candidate: ticket-never, ? gates: ticket-never
+}

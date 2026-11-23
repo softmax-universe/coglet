@@ -3,8 +3,9 @@
 **Status: DRAFT. Freezes at M3, not v0.** Decision:
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md) ([PR #10](https://github.com/softmax-universe/coglet/pull/10)).
 MUST/SHOULD are normative. [Common conventions](conventions.md) govern encoding,
-identities, errors and version compatibility. `policy.schema.json` is the shape
-contract. JSON files are configuration/debug views; signed/hashed representations
+identities, errors and version compatibility. `policy.schema.json` and `policy.cddl`
+are the shape contracts. Concatenate `messages/common.cddl` after `policy.cddl`
+and select the `policy` entry rule. JSON files are configuration/debug views; signed/hashed representations
 use common deterministic CBOR. This draft is not a kernel implementation.
 
 ## Ownership and resolution
@@ -115,8 +116,12 @@ See [promotion](promotion.md) for generation fencing and audit custody.
 
 `fixtures/policy/cases.json` includes application and control-role policies,
 invalid gates, forbidden fields, timing bounds and missing approval requirements.
-`spec/tests/test_control.py` validates shapes, semantic constraints and golden
-CBOR. These tests are fixture validation, not gate execution or implementation
+`spec/tests/test_control.py` validates every fixture's shape with both actual
+CDDL and JSON Schema validators, then separately checks semantic constraints and
+golden CBOR. Gate-kind uniqueness (including identical records) is a semantic
+constraint, not a shape constraint in either schema. `regressions.json` and
+nested-map mutation tests cover closure and duplicate handling.
+These tests are fixture validation, not gate execution or implementation
 conformance. Later black-box suites must inject health timeouts, threshold equality,
 restart during probation, invalid attestations, state incompatibility and boundary
 races into both the real kernel and mock.

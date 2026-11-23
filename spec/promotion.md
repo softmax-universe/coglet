@@ -3,8 +3,10 @@
 **Status: DRAFT; policy/promotion freezes at M3, not v0.**
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md), [PR #10](https://github.com/softmax-universe/coglet/pull/10).
 Imports: [common](conventions.md), [policy](policy.md).
-`messages/promotion.schema.json` defines closed message records and shared
-control definitions. Deterministic CBOR is normative, JSON is a debug view.
+`messages/promotion.schema.json` and `messages/promotion.cddl` define closed
+message records and shared control definitions. Concatenate `common.cddl` after
+`promotion.cddl`; select `promotion` for the message union or `promotion-<name>`
+for a specific definition. Deterministic CBOR is normative, JSON is a debug view.
 This defines operation payloads; the hub protocol owns framing, negotiation,
 authentication and per-method grants, not a second ALPN. Method names are
 `promotion.propose`, `promotion.promote`, `promotion.rollback`, `promotion.status`.
@@ -144,7 +146,10 @@ during activation/probation is a fail-closed recovery condition.
 ## Fixtures and future black-box cases
 
 `fixtures/promotion/cases.json` covers every request/response operation, gate and
-audit records and malformed shapes. `test_control.py` also checks binding and
+audit records and malformed shapes. `regressions.json` tests absolute-end lexical
+matching with valid controls, including every inherited commit location.
+`test_control.py` validates every fixture against both actual CDDL and JSON Schema,
+checks nested-map closure, and separately checks binding and
 status invariants, not signatures or real runtime behavior. A future shared hub
 suite MUST exercise competing propose/promote, stale base/generation/policy,
 forged/expired evidence, duplicate requests across restart, delayed boundary acks,
