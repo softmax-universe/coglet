@@ -68,6 +68,11 @@ class RunnerTests(unittest.TestCase):
     def case(self, steps, **options):
         return dict(name='test-case', steps=steps, **options)
 
+    def test_implicit_runtime_role_skips_for_guest_adapter(self):
+        result = self.direct(self.case([{'send': {}}]), peer_roles=['guest-reference'])
+        self.assertIsNone(result[3])
+        self.assertEqual(result[4], 'peer_role unsupported: runtime')
+
     def test_self_test_and_junit_counts(self):
         result, report = self.invoke('--self-test')
         self.assertEqual(result.returncode, 0, result.stderr)

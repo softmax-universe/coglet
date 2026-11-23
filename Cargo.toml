@@ -1,5 +1,6 @@
 [workspace]
 resolver = "3"
+exclude = ["coglets/echo", "coglets/counter"]
 members = [
     "crates/coglet-types",
     "crates/coglet-engine",
