@@ -1,0 +1,30 @@
+[
+  {
+    "name": "promote-forbids-propose-candidate-at-root",
+    "type": "promote",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "op": "promote",
+      "proposal_id": "11111111111111111111111111111111",
+      "expected_generation": 1,
+      "candidate": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "promote-forbids-audit-array-at-root",
+    "type": "promote",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "op": "promote",
+      "proposal_id": "11111111111111111111111111111111",
+      "expected_generation": 1,
+      "evidence_refs": ["gate:report"]
+    }
+  }
+]
