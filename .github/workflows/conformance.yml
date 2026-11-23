@@ -52,7 +52,7 @@ jobs:
       - name: Harness self-test
         run: conformance/run --self-test --junit target/conformance-self-test.xml
       - name: Build surface adapters
-        run: cargo build --locked -p coglet-surface-rust -p coglet-mock --bins
+        run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
       - name: Surface SDK and mock regressions
         run: cargo test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint

@@ -27,7 +27,7 @@ impl Drop for Dir {
     }
 }
 fn wire(j: Value) -> Vec<u8> {
-    coglet_types::encode_typed("surface::surface-message", &j).unwrap()
+    coglet_surface_rust::codec::encode("surface::surface-message", &j).unwrap()
 }
 fn decode(frames: Vec<Vec<u8>>) -> Vec<Value> {
     frames
