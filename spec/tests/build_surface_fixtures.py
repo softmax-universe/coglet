@@ -84,6 +84,7 @@ err = {'code': 'permission_denied', 'message': 'No grant', 'retryable': False}
 exprs = enum('neutral', 'listening', 'thinking', 'speaking', 'happy', 'concerned')
 
 surface = {
+    'empty-map': record(),
     'hello': record(surface=ref('surface-id'), offer=ref('version-offer'), clock=u, correlation_id=rid),
     'hello-reply': record(selection=ref('version-selection'), correlation_id=rid),
     'schema-refs': {'type':'object','propertyNames':ref('capability-name'),'additionalProperties':text(1,2048)},

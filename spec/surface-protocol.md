@@ -34,9 +34,23 @@ Empty lists are allowed. Schema URIs describe data, not executable URLs; never
 fetch untrusted schemas during dispatch. Unknown capabilities may be ignored,
 never assumed available. Capability removal revokes affected grants first.
 Clock samples map runtime deadlines into the surface epoch; elapsed time is
-advanced on the surface's monotonic clock. Reconnection invalidates that mapping;
-no action is sent until a fresh sample has been established. Clock rollback is a
-fatal protocol error. Cross-source event clocks are not compared numerically.
+advanced on the surface's monotonic clock. Before FIRST dispatch, translate the
+guest runtime-epoch deadline once and durably retain the complete surface `act`
+envelope, including `grant_epoch` and mapped deadline, before sending. The original
+ABI intent remains immutable in its journal. Retries MUST use those identical
+core-deterministic CBOR bytes; new clock samples do not alter an old action ID.
+Reconnection invalidates the mapping for NEW actions; no new action is sent until
+a fresh sample exists. Reconcile old requests with their retained envelopes,
+never retranslate/re-admit them. A terminal rejection permits a new ID under the
+recovery rules below. Actual durable retention/crash behavior is runtime M1 gate
+R-retry in the [freeze inventory](../docs/reviews/spec-v0-m1-gates.md).
+Clock rollback is a fatal protocol error. Cross-source event clocks are not
+compared numerically.
+
+Built-in operation direction and exact argument/payload/read/result rules come
+from [capability bindings](capabilities/bindings.md) and its pinned catalog.
+Generic envelope acceptance does not validate a selected operation; validate both.
+Reserved runtime/test names cannot acquire authority through advertisement.
 
 ## Message directions
 

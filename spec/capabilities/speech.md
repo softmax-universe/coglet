@@ -3,7 +3,9 @@
 Imports [conventions](../conventions.md) and [surface protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
 `speech.cddl` and `speech.schema.json` define the CLOSED typed payload/args
-records used inside common envelopes. The surface still checks temporal rules
+records. Records used inside common envelopes are selected by the normative
+[operation bindings](bindings.md) and [catalog](bindings.json), including empty
+read arguments and successful action results. The surface still checks temporal rules
 and grants; an arbitrary common payload map is not a valid speech message.
 Native capture, echo cancellation, VAD and playback run outside the Wasm step.
 No raw audio/base64 or provider credentials are carried by these messages.

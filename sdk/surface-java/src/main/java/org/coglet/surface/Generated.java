@@ -1136,6 +1136,12 @@ m.put("value", this.value);
 return m; }
 public static WorkCancelled fromCbor(byte[] raw) { return Codec.decodeRecord("work-cancelled", raw, WorkCancelled.class); }
 }
+public record EmptyMap() implements Message {
+public String rule() { return "empty-map"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+return m; }
+public static EmptyMap fromCbor(byte[] raw) { return Codec.decodeRecord("empty-map", raw, EmptyMap.class); }
+}
 public record Hello(String surface, VersionOffer offer, BigInteger clock, String correlation_id) implements Message {
 public String rule() { return "hello"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
@@ -1469,6 +1475,7 @@ Codec.register("work-intent", WorkIntent.class, "{\"op\":\"record\",\"fields\":[
 Codec.register("work-result", WorkResult1.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"turn\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"succeeded\"}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::profile-map\"}}]}", new String[]{"turn","call","epoch","status","value"});
 Codec.register("work-result", WorkResult2.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"turn\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"failed\"}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"turn","call","epoch","status","value"});
 Codec.register("work-cancelled", WorkCancelled.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"turn\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"call\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"epoch\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"status\",\"optional\":false,\"type\":{\"op\":\"literal\",\"value\":\"cancelled\"}},{\"name\":\"value\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::error\"}}]}", new String[]{"turn","call","epoch","status","value"});
+Codec.register("empty-map", EmptyMap.class, "{\"op\":\"record\",\"fields\":[]}", new String[]{});
 Codec.register("hello", Hello.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"surface\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::surface-id\"}},{\"name\":\"offer\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::version-offer\"}},{\"name\":\"clock\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"surface","offer","clock","correlation_id"});
 Codec.register("hello-reply", HelloReply.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"selection\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::version-selection\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"selection","correlation_id"});
 Codec.register("cap-entry", CapEntry.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"name\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::capability-name\"}},{\"name\":\"events\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"reads\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"actions\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"exclusive\",\"optional\":false,\"type\":{\"op\":\"array\",\"item\":{\"op\":\"ref\",\"name\":\"common::capability-name\"},\"min\":0}},{\"name\":\"schemas\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"surface::schema-refs\"}}]}", new String[]{"name","events","reads","actions","exclusive","schemas"});
@@ -1593,6 +1600,7 @@ Codec.alias("speech::work-state", "work-state");
 Codec.alias("surface::act", "act");
 Codec.alias("surface::cap-entry", "cap-entry");
 Codec.alias("surface::capabilities", "capabilities");
+Codec.alias("surface::empty-map", "empty-map");
 Codec.alias("surface::grant", "grant");
 Codec.alias("surface::grants", "grants");
 Codec.alias("surface::health", "health");

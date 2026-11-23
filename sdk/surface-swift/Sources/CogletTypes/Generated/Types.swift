@@ -189,6 +189,7 @@ internal enum GeneratedSchema {
         "speech::work-done": .union([.reference("speech::work-result"), .reference("speech::work-cancelled")]),
         "speech::speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result"), .reference("speech::heard-query"), .reference("speech::heard-record"), .reference("speech::work-state"), .reference("speech::work-intent"), .reference("speech::work-result"), .reference("speech::work-cancelled"), .reference("speech::work-done")]),
         "surface::surface-entry": .reference("surface::surface-message"),
+        "surface::empty-map": .record([]),
         "surface::hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface::hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface::schema-refs": .boundedMap(0, nil, .reference("common::capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
@@ -389,6 +390,7 @@ internal enum GeneratedSchema {
         "work-done": .union([.reference("speech::work-result"), .reference("speech::work-cancelled")]),
         "speech-profile": .union([.reference("speech::speech-start"), .reference("speech::speech-partial"), .reference("speech::speech-end"), .reference("speech::speech-position"), .reference("speech::speech-barge-in"), .reference("speech::speak-chunk"), .reference("speech::stop"), .reference("speech::backchannel"), .reference("speech::speech-route"), .reference("speech::speech-config"), .reference("speech::session-open"), .reference("speech::session-close"), .reference("speech::tool-call"), .reference("speech::tool-result"), .reference("speech::heard-query"), .reference("speech::heard-record"), .reference("speech::work-state"), .reference("speech::work-intent"), .reference("speech::work-result"), .reference("speech::work-cancelled"), .reference("speech::work-done")]),
         "surface-entry": .reference("surface::surface-message"),
+        "empty-map": .record([]),
         "hello": .record([.init(name: "surface", optional: false, node: .reference("common::surface-id")), .init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "hello-reply": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "schema-refs": .boundedMap(0, nil, .reference("common::capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
@@ -696,6 +698,7 @@ internal enum GeneratedSchema {
         case "speech::work-done": typed = try SpeechWorkDone.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-profile": typed = try SpeechSpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::surface-entry": typed = try SurfaceSurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface::empty-map": typed = try SurfaceEmptyMap.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::hello": typed = try SurfaceHello.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::hello-reply": typed = try SurfaceHelloReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::schema-refs": typed = try SurfaceSchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -896,6 +899,7 @@ internal enum GeneratedSchema {
         case "work-done": typed = try WorkDone.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-profile": typed = try SpeechProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface-entry": typed = try SurfaceEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "empty-map": typed = try EmptyMap.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hello": typed = try Hello.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hello-reply": typed = try HelloReply.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "schema-refs": typed = try SchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -5827,6 +5831,24 @@ public indirect enum SpeechSpeechProfile: CBORMessage, Sendable {
 }
 
 public typealias SurfaceSurfaceEntry = SurfaceSurfaceMessage
+
+public struct SurfaceEmptyMap: CBORMessage, Sendable {
+    public static let schemaRule = "surface::empty-map"
+    public init() {
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
 
 public struct SurfaceHello: CBORMessage, Sendable {
     public static let schemaRule = "surface::hello"
@@ -11239,6 +11261,24 @@ public indirect enum SpeechProfile: CBORMessage, Sendable {
 }
 
 public typealias SurfaceEntry = SurfaceSurfaceMessage
+
+public struct EmptyMap: CBORMessage, Sendable {
+    public static let schemaRule = "empty-map"
+    public init() {
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
 
 public struct Hello: CBORMessage, Sendable {
     public static let schemaRule = "hello"

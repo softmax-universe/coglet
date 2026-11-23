@@ -2,8 +2,10 @@
 
 Decision: [ADR-0006](../docs/adr/0006-coglet-abi.md), [PR #8](https://github.com/softmax-universe/coglet/pull/8), amended before freeze by [ADR-0009](../docs/adr/0009-spec-v0-freeze.md).
 Imports [common conventions](conventions.md) unchanged; MUST/SHOULD are normative.
-Core Wasm, not the component model. This is not the v0 freeze: engine budget
-and determinism qualifications remain explicitly TBD-by-ADR below.
+Core Wasm, not the component model. Engine budget and determinism requirements
+are specified below; real implementation qualification remains fail-closed under
+the [owned M1 gates](../docs/reviews/spec-v0-m1-gates.md). This document's presence
+on a proposal branch is not final freeze acceptance.
 
 ## Guest exports and imports
 
@@ -47,8 +49,10 @@ guests SHOULD derive IDs from seed, step and call index. Duplicate IDs return 4.
 Timers cannot replace/cancel in 0.1; past-due timers wake only after commit, in a
 later step. Timer events use `runtime.timer`, payload `{id, at}`, correlation_id=id.
 
-LLM requires a granted capability (usually llm.complete), routing model name,
-id, correlation_id and profile-map input. Success/failure arrives in a later
+LLM requires the granted built-in capability `llm.complete`, routing model name,
+id, correlation_id and profile-map input. The exact operation and upstream adapter
+boundary are specified in [capability bindings](capabilities/bindings.md); this is
+not a surface action or an implicit hub RPC. Success/failure arrives in a later
 inbox message whose event kind is `llm.reply`, payload is llm-reply and request_id
 matches the request id. Correlation id is retained. Provider timeout/cancellation
 is a recorded failure reply. Spend policy belongs to the gateway, not this ABI.
@@ -190,14 +194,28 @@ pending and cannot receive terminals. A later failed guest wake consumes its
 wake but does not restore the pending action or erase the immutable inbox line.
 Replay checks all these transitions and never dispatches or synthesizes results.
 
-## Budgets — TBD-by-ADR-0001
+## Budgets and engine qualification
 
 Positive per-step limits: compute with explicit engine-specific compute_mode,
 linear memory pages (64 KiB), wall_time_us, max_events and aggregate host_bytes.
 Zero never means unlimited. Record effective limits; lowering manifest limits
 requires explicit recorded admission. Reject unsupported modes before execution.
-Compute units, safe points and total host-memory/stack accounting remain
-TBD-by-ADR-0001 (proposed findings PR #6), not portable fuel. The budget fields
+
+One admitted attempt has ONE compute allowance and ONE absolute wall deadline,
+covering initialization, `abi_alloc` and `handle` together. Before entering each
+subsequent call, the qualified engine MUST enforce the exact remaining allowance,
+not reset it to the original step limit. Exhaustion prevents further guest calls.
+The absolute deadline is established before initialization and is never extended
+by allocation, export transition or host work. Record aggregate observed usage;
+all failed attempts retain the existing atomic-abort semantics. A WAMR mode must
+qualify exact consumption/remaining-budget accounting and positive signed-i32 FFI
+limits (no zero, overflow or truncation), or reject admission before execution.
+The spike's per-call setter is evidence, not proof of this cumulative contract.
+
+Compute units and safe points are engine/build-specific, not portable fuel;
+separate host-memory/stack bounds are required (linear pages do not cap total RSS).
+These are explicit [engine M1 qualification gates](../docs/reviews/spec-v0-m1-gates.md),
+not unspecified v0 behavior. The budget fields
 are engine-neutral: compute_mode selects a qualified engine/build accounting
 policy, not a WAMR API name; a future fuel/epochs engine fits without new fields.
 Compute caps AND deadlines require an interpreter or another qualified metering
@@ -220,9 +238,10 @@ Host calls are bounded/cancellable and never wait on network. Compute, memory
 or host-byte exhaustion aborts with resource_exhausted; wall expiry aborts with
 deadline_exceeded. Record failure kind and observed usage, with no partial effects.
 Wall deadlines are nondeterministic; no cross-engine cutoff equality claim.
-Frozen budget conformance requires the ADR decisions, not just this shape schema.
+Real budget conformance requires the owned qualification gates, not just a shape
+schema or a mock reporting the desired usage.
 
-## Determinism — TBD-by-ADR-0003
+## Determinism and publication qualification
 
 Inputs, boundary changes, seeds, grants, budgets, code, manifest and filesystem
 are pinned and recorded. No ambient randomness/time/network/environment. Record
@@ -230,10 +249,12 @@ LLM replies verbatim; missing recordings fail closed, never query a live model.
 Replay checks call order/results, outputs and hashes, stopping at first mismatch.
 Wall-time aborted steps replay as recorded failures, not a cutoff instruction
 promise. Engine metadata records build, feature/NaN policy and compute mode.
-Cross-engine float/NaN transform, opcode allowlist and resource cutoff equality
-are TBD-by-ADR-0003 (proposed PR #5); do not hash-normalize arbitrary file bytes.
-Both proposed engine findings and the platform ADR were read; neither pending
-proposal is silently adopted as frozen ABI here.
+ADR-0003 R1–R5, including its amended ABI import/recorded-state rule, define the
+proposed publication policy under ADR-0009; actual cross-architecture float/NaN
+rewrite and opcode-allowlist qualification remain explicit engine/hub M1 gates.
+Do not hash-normalize arbitrary file bytes. No cross-engine resource-cutoff
+equality is promised. Formal ADR status acceptance remains with the freeze owner;
+passing test-only identity-transform provenance is not real transform qualification.
 
 ## Journal and trace: one format
 

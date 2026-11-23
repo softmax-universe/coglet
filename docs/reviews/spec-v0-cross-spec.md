@@ -205,6 +205,32 @@ The freeze owner retains independent exact-head integration review, all required
 CI, merge/postmerge verification, spec-v0 tag and final inventory. No M-A merge,
 tag, real engine execution, or production qualification is claimed.
 
+## Repair milestone M-B (PR #36, not freeze acceptance)
+
+The authoritative residual disposition inventory is now
+[spec-v0-m1-gates.md](spec-v0-m1-gates.md). It supersedes the open M-B list above:
+each residual subrow has exactly one A (specified/tested) or B (explicit M1 gate)
+disposition, with named tests or one existing Phase 2 primary owner. No runtime
+MUST is waived. ADR-0009's M-B amendment was published before these edits; Core
+accepted the cumulative-budget semantics in its 08:10Z card comment.
+
+- Added the normative operation catalog and binding prose; selected schema rules
+  close empty read args/successful action results and prevent a generic root union
+  from accepting a sibling payload. LLM is an ABI/gateway boundary, not a surface
+  act or undeclared hub RPC. Reserved runtime/test names confer no authority.
+- `test_contract_bindings` executes selected JSON/CDDL vectors, golden bytes,
+  missing/unknown-field and valid-sibling negatives; exact direction, LLM selected
+  capability mismatch, generic-envelope bypass, reserved/test exclusions and the
+  inventory's one-disposition/owner-per-row assertions. This is contract data
+  checking, not implementation conformance.
+- One cumulative allowance and absolute deadline are normative for init/alloc/
+  handle. Real metering/platform/transform, immutable translated-dispatch retry,
+  LLM dispatch, native speech/expression and authenticated relay authority remain
+  fail-closed qualification gates with existing owner IDs and required controls.
+- Corrected stale messages scaffold, ABI TBD and design placeholder/per-call-reset
+  wording. Formal ADR statuses and final independent whole-spec review, merge,
+  postmerge CI, tag and final acceptance remain with the freeze owner.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.
