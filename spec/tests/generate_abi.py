@@ -93,7 +93,8 @@ for op, name in [('timer', 'timer-request'), ('emit', 'action'), ('llm', 'llm-re
     texts.append('{op: "' + op + '", argument: ' + name + ', result: 0..4}')
 variants.append(obj({'op': {'enum': ['timer', 'emit', 'llm', 'log']}, 'argument_hex': local('hex'), 'result': {'const': 1}}))
 texts.append('{op: "timer" / "emit" / "llm" / "log", argument_hex: hex, result: 1}')
-rule('call', {'oneOf': variants}, ' / '.join(texts))
+# Equivalent map group choices avoid pycddl's nested map-union backtracking bug.
+rule('call', {'oneOf': variants}, '{ ' + ' // '.join('(' + text[1:-1] + ')' for text in texts) + ' }')
 record('boundary-change', [('actor', ref('source-id'), 'source-id'), ('audit_id', ref('correlation-id'), 'correlation-id'),
                             ('ticket', {'anyOf': [ref('correlation-id'), {'type': 'null'}]}, 'correlation-id / null'),
                             ('method', ref('method-name'), 'method-name'), ('target', ref('coglet-id'), 'coglet-id'),
@@ -118,7 +119,8 @@ for status in ['committed', 'aborted']:
     branches.append(obj(p))
 basecddl = ', '.join(k + ': ' + c for k, s, c in stepfields)
 rule('step-record', {'oneOf': branches}, '{' + basecddl + ', status: "committed"} / {' + basecddl + ', status: "aborted", failure: failure}')
-record('trace', fields + [('initial_hash', local('hash'), 'hash'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record'), 1), '[+ step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
+record('effect-ledger', [(k, arr(ref('correlation-id')), '[* correlation-id]') for k in ['actions', 'timers', 'llm_requests']])
+record('trace', fields + [('initial_effect_ids', local('effect-ledger'), 'effect-ledger'), ('initial_inbox_wakes', arr(U), '[* uint64]'), ('initial_hash', local('hash'), 'hash'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record'), 1), '[+ step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
 manifest = obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'),
                 **{k: dict(arr(ref('capability-name')), uniqueItems=True) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']},
                 'budgets': {'$ref': ABI + '#/$defs/budgets'}})
@@ -126,8 +128,9 @@ manifest.update({'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id
 write('spec/manifest.schema.json', manifest)
 # Manifest CDDL is an imported ABI fixture rule, sharing common definitions.
 rule('manifest', obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'), **{k: arr(ref('capability-name')) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']}, 'budgets': local('budgets')}), '{version: "0.1", id: coglet-id, subscriptions: [* capability-name], required_capabilities: [* capability-name], exclusive_outputs: [* capability-name], budgets: budgets}')
-write('spec/messages/abi.schema.json', {'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': ABI, 'anyOf': [local(k) for k in DEFS], '$defs': DEFS})
-(ROOT / 'spec/messages/abi.cddl').write_text('; Import common.cddl after this file. Shapes only; semantic invariants are in abi.md.\nabi = trace / step-record / inbox-message / timer-request / llm-request / llm-reply / log-entry / manifest\n' + '\n'.join(CDDL) + '\n')
+ROOT_RULES = ['trace', 'step-record', 'inbox-message', 'timer-request', 'llm-request', 'llm-reply', 'log-entry', 'manifest']
+write('spec/messages/abi.schema.json', {'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': ABI, 'anyOf': [local(k) for k in ROOT_RULES], '$defs': DEFS})
+(ROOT / 'spec/messages/abi.cddl').write_text('; Import common.cddl after this file. Shapes only; semantic invariants are in abi.md.\nabi = ' + ' / '.join(ROOT_RULES) + '\n' + '\n'.join(CDDL) + '\n')
 
 COG = 'coglet:' + '1'*64
 SURFACE = 'surface:' + '2'*64
@@ -160,8 +163,9 @@ log = dict(level='info', message='wake', fields={})
 action = dict(id=ID, coglet=COG, capability='motor.move', args=dict(x=1), deadline=100, correlation_id=ID)
 llm_reply = dict(request_id=ID, status='succeeded', output=dict(text='hello'))
 inbox = dict(index=0, id=ID, sender=HUB, event=dict(event, source=HUB, kind='hub.steer', payload=dict(text='hello')))
-trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_hash=base['before_hash'], initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
-valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='debug.data.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
+empty_ledger = dict(actions=[], timers=[], llm_requests=[])
+trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
+valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='debug.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
 cases = []
 for typ, value in valids.items():
     cases.append(dict(name=typ+'-valid', type=typ, valid=True, value=value, cbor_hex=encode(value).hex()))
@@ -177,9 +181,11 @@ write('spec/fixtures/abi/cases.json', cases)
 # are the language-neutral mock-engine input; adapters supply equivalent guests.
 timelines = []
 records = []
-for name in ['no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
+for name in ['debug-step', 'no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
     rec = copy.deepcopy(base)
-    if name == 'invalid-call':
+    if name == 'debug-step':
+        rec['events'] = [dict(event, source=COG, kind='runtime.debug_step', payload={})]
+    elif name == 'invalid-call':
         rec['calls'] = [dict(op='timer', argument_hex='ff', result=1)]
     elif name == 'duplicate-timer':
         rec['calls'] = [dict(op='timer', argument=timer, result=0), dict(op='timer', argument=timer, result=4)]
@@ -202,7 +208,7 @@ for name in ['no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort
     elif name == 'inbox-boundary':
         out = dict(files)
         out['/data/inbox.jsonl'] = (json.dumps(inbox, sort_keys=True, separators=(',', ':'), ensure_ascii=False)+'\n').encode().hex()
-        rec['boundary'] = [dict(actor=HUB, audit_id=ID, ticket=None, method='inbox.append', target=COG, path='/data/inbox.jsonl', before=None, after=out['/data/inbox.jsonl'])]
+        rec['boundary'] = [dict(actor=HUB, audit_id=ID, ticket=None, method='hub.inbox', target=COG, path='/data/inbox.jsonl', before=None, after=out['/data/inbox.jsonl'])]
         rec.update(input_files=out, output_files=out, input_hash=digest(out), output_hash=digest(out))
         rec['events'] = [dict(event, kind='runtime.inbox', payload=dict(index=0, id=ID))]
     rec = seal(rec)
@@ -250,7 +256,7 @@ reply_files['/data/inbox.jsonl'] = (json.dumps(reply_inbox, sort_keys=True, sepa
 reply_record.update(step=1, logical_time=20, previous=request_record['record_hash'], input_files=reply_files,
                     output_files=reply_files, input_hash=digest(reply_files), output_hash=digest(reply_files),
                     events=[dict(event, seq=1, kind='runtime.inbox', payload=dict(index=0, id=ID), logical_time=20)],
-                    boundary=[dict(actor=HUB, audit_id='6'*32, ticket=None, method='inbox.append', target=COG, path='/data/inbox.jsonl', before=None, after=reply_files['/data/inbox.jsonl'])])
+                    boundary=[dict(actor=HUB, audit_id='6'*32, ticket=None, method='hub.inbox', target=COG, path='/data/inbox.jsonl', before=None, after=reply_files['/data/inbox.jsonl'])])
 reply_record = seal(reply_record)
 reply_trace = dict(trace, records=[request_record, reply_record])
 write('spec/fixtures/abi/llm-reply-trace.json', reply_trace)
@@ -262,4 +268,103 @@ for index, rec in enumerate(reply_trace['records']):
     reply_case['steps'].extend([dict(send=send), dict(expect=dict(journal=rec, state_hash=rec['output_hash'], record_hash=rec['record_hash']), within_ms=200), dict(journal_hash=rec['record_hash'], path='record_hash')])
 timelines.append(reply_case)
 write('conformance/abi/cases.json', timelines)
-print(f'generated {len(cases)} shape cases, {len(semantics)} semantic cases, {len(timelines)} conformance timelines')
+# Rehashed semantic regressions: container shapes/hashes stay valid.
+trace_cases = []
+def trace_case(name, value, valid=True, error=None):
+    item = dict(name=name, value=copy.deepcopy(value), valid=valid)
+    if error:
+        item['error'] = error
+    trace_cases.append(item)
+
+trace_case('async-reply-control', reply_trace)
+debug_trace = dict(trace, records=[dict(records)['debug-step']])
+trace_case('debug-step-control', debug_trace)
+for field, value in [('source', SURFACE), ('logical_time', 9), ('payload', {'untrusted': True})]:
+    bad = copy.deepcopy(debug_trace)
+    bad['records'][0]['events'][0][field] = value
+    bad['records'][0] = seal(bad['records'][0])
+    trace_case('debug-step-wrong-'+field, bad, False, 'debug step wake binding')
+for name, error in [('reply-missing-output', 'embedded llm-reply'),
+                    ('inbox-missing-sender', 'embedded inbox-message'),
+                    ('inbox-spaces', 'noncanonical inbox'),
+                    ('inbox-crlf', 'noncanonical inbox'),
+                    ('wake-wrong-id', 'inbox wake binding'),
+                    ('wake-wrong-correlation', 'inbox wake binding'),
+                    ('wake-duplicate', 'unscheduled inbox wake')]:
+    bad = json.loads(json.dumps(reply_trace))
+    rec = bad['records'][1]
+    message = json.loads(bytes.fromhex(rec['input_files']['/data/inbox.jsonl']))
+    if name == 'reply-missing-output':
+        del message['event']['payload']['output']
+    if name == 'inbox-missing-sender':
+        del message['sender']
+    text = json.dumps(message, sort_keys=True, separators=(',', ':') if name != 'inbox-spaces' else (', ', ': '), ensure_ascii=False)
+    raw = (text + ('\r\n' if name == 'inbox-crlf' else '\n')).encode().hex()
+    rec['input_files']['/data/inbox.jsonl'] = raw
+    rec['output_files']['/data/inbox.jsonl'] = raw
+    rec['boundary'][0]['after'] = raw
+    if name == 'wake-wrong-id':
+        rec['events'][0]['payload']['id'] = '0'*32
+    if name == 'wake-wrong-correlation':
+        rec['events'][0]['correlation_id'] = '0'*32
+    if name == 'wake-duplicate':
+        rec['events'].append(copy.deepcopy(rec['events'][0]))
+    rec['input_hash'] = digest(rec['input_files'])
+    rec['output_hash'] = digest(rec['output_files'])
+    bad['records'][1] = seal(rec)
+    trace_case(name, bad, False, error)
+
+# A full batch may defer an appended line's wake to a subsequent step.
+deferred = copy.deepcopy(reply_trace)
+deferred['records'][1]['events'] = [dict(event, seq=1, logical_time=20)]
+deferred['records'][1] = seal(deferred['records'][1])
+later = copy.deepcopy(reply_record)
+later.update(step=2, previous=deferred['records'][1]['record_hash'], boundary=[], before_hash=later['input_hash'])
+later['events'][0]['seq'] = 2
+deferred['records'].append(seal(later))
+trace_case('deferred-inbox-wake', deferred)
+# Same deferred wake when a trace starts after the append (e.g. promotion).
+initial_wake = copy.deepcopy(trace)
+rec = copy.deepcopy(later)
+rec.update(step=0, previous=None)
+initial_wake.update(initial_hash=rec['before_hash'], initial_inbox_wakes=[0], records=[seal(rec)])
+trace_case('initial-pending-inbox-wake', initial_wake)
+missing = copy.deepcopy(initial_wake)
+missing['initial_inbox_wakes'] = []
+trace_case('initial-wake-not-pending', missing, False, 'unscheduled inbox wake')
+
+# Completed effects survive promotion even though pending timer/LLM arrays are empty.
+for op, kind, argument in [('emit', 'actions', action), ('timer', 'timers', timer), ('llm', 'llm_requests', llm)]:
+    for historical in (False, True):
+        name = ('historical-' if historical else 'fresh-') + op + '-id'
+        ledger = copy.deepcopy(empty_ledger)
+        if historical:
+            ledger[kind] = [ID]
+        rec = copy.deepcopy(base)
+        rec['calls'] = [dict(op=op, argument=argument, result=4 if historical else 0)]
+        rec[kind] = [] if historical else [argument]
+        rec = seal(rec)
+        sample = dict(trace, initial_effect_ids=ledger, records=[rec])
+        trace_case(name, sample)
+        bad = copy.deepcopy(sample)
+        bad['records'][0]['calls'][0]['result'] = 0 if historical else 4
+        bad['records'][0][kind] = [argument] if historical else []
+        bad['records'][0] = seal(bad['records'][0])
+        trace_case(name+'-wrong-return', bad, False, 'duplicate effect id accepted' if historical else 'conflict without prior effect id')
+        send = dict(operation='abi.step', initial_files=files, manifest=man,
+                    initial_effect_ids=ledger, initial_inbox_wakes=[], initial_timers=[], initial_llm_requests=[],
+                    inputs={k: rec[k] for k in ['trace_id', 'coglet', 'step', 'logical_time', 'seed', 'previous', 'engine', 'budgets', 'grants', 'events', 'boundary']},
+                    guest_script=dict(calls=rec['calls'], writes={}, termination=rec['status'], usage=rec['usage']))
+        timelines.append(dict(name=name, steps=[dict(send=send), dict(expect=dict(journal=rec, state_hash=rec['output_hash'], record_hash=rec['record_hash']), within_ms=200), dict(journal_hash=rec['record_hash'], path='record_hash')]))
+# Initial pending work must be present in the complete historical ledger.
+invalid = dict(trace, initial_timers=[timer])
+trace_case('pending-timer-missing-ledger', invalid, False, 'initial pending work')
+valid_pending = dict(invalid, initial_effect_ids=dict(empty_ledger, timers=[ID]))
+trace_case('pending-timer-ledger-control', valid_pending)
+for timeline in timelines:
+    first = timeline['steps'][0]['send']
+    for key, value in [('initial_effect_ids', empty_ledger), ('initial_inbox_wakes', []), ('initial_timers', []), ('initial_llm_requests', [])]:
+        first.setdefault(key, copy.deepcopy(value))
+write('conformance/abi/cases.json', timelines)
+write('spec/fixtures/abi/trace-cases.json', trace_cases)
+print(f'generated {len(cases)} shape cases, {len(semantics)} semantic cases, {len(trace_cases)} trace cases, {len(timelines)} conformance timelines')

@@ -1,5 +1,137 @@
 [
   {
+    "name": "debug-step-valid",
+    "valid": true,
+    "value": {
+      "version": "0.1",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+      "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+      "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+          "kind": "runtime.debug_step",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "committed",
+      "record_hash": "32b883d548d770b4afd7fe3055099abd9d82c5cf611c64aec1d76180be127ad0"
+    }
+  },
+  {
+    "name": "debug-step-bad-tree-hash",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "trace_id": "55555555555555555555555555555555",
+      "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "step": 0,
+      "logical_time": 10,
+      "seed": 7,
+      "previous": null,
+      "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+      "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+      "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+      "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+      "output_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "engine": {
+        "build": "fixture-v1",
+        "policy": "TBD-by-ADR-0003"
+      },
+      "budgets": {
+        "compute": 10000,
+        "compute_mode": "fixture.interpreter",
+        "memory_pages": 2,
+        "wall_time_us": 100000,
+        "max_events": 16,
+        "host_bytes": 65536
+      },
+      "grants": [
+        "motor.move",
+        "llm.complete"
+      ],
+      "events": [
+        {
+          "source": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+          "kind": "runtime.debug_step",
+          "seq": 0,
+          "logical_time": 10,
+          "payload": {},
+          "correlation_id": "44444444444444444444444444444444"
+        }
+      ],
+      "boundary": [],
+      "calls": [],
+      "actions": [],
+      "timers": [],
+      "llm_requests": [],
+      "logs": [],
+      "input_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30"
+      },
+      "output_files": {
+        "/code/bin/step.wasm": "0061736d01000000",
+        "/data/count": "30"
+      },
+      "usage": {
+        "compute": 10,
+        "memory_pages": 1,
+        "wall_time_us": 20,
+        "host_bytes": 0
+      },
+      "status": "committed",
+      "record_hash": "fe051c01626f23cb751a3c29faf5929ab61ae1cad79e2e50907c5c2bb09c996b"
+    }
+  },
+  {
     "name": "no-effects-valid",
     "valid": true,
     "value": {
@@ -1583,7 +1715,7 @@
           "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
           "audit_id": "44444444444444444444444444444444",
           "ticket": null,
-          "method": "inbox.append",
+          "method": "hub.inbox",
           "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
           "path": "/data/inbox.jsonl",
           "before": null,
@@ -1612,7 +1744,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "17ef939ec3f864581e694a58c88992c2a2a7bfc2d124d1606c0df60f8b94036a"
+      "record_hash": "bf28cf84881c15807fcce544330d8606c6c4378739b8cffe688d8283af5aa17e"
     }
   },
   {
@@ -1665,7 +1797,7 @@
           "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
           "audit_id": "44444444444444444444444444444444",
           "ticket": null,
-          "method": "inbox.append",
+          "method": "hub.inbox",
           "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
           "path": "/data/inbox.jsonl",
           "before": null,
@@ -1694,7 +1826,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "02995ae4c57dec86cd0e9a6ebcc5155312238060f10b3769d4a27cd6a7ec0562"
+      "record_hash": "498d6d988e37c5bec3bec7efd8b301756d9d009ceb2893941c66a2a02be66c83"
     }
   },
   {
@@ -2456,7 +2588,7 @@
           "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
           "audit_id": "44444444444444444444444444444444",
           "ticket": null,
-          "method": "debug.data.write",
+          "method": "debug.write",
           "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
           "path": "/data/count",
           "before": "30",
@@ -2483,7 +2615,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "78601d8297ecfaae474e71b9745d45177a5918492c7b0efc60676adf024e9583"
+      "record_hash": "64c08ed346c461bb4a2f191345704524db521af17f4cdf03624b5ff79064749a"
     }
   },
   {

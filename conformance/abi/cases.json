@@ -1,5 +1,168 @@
 [
   {
+    "name": "debug-step",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                "kind": "runtime.debug_step",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                "kind": "runtime.debug_step",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [],
+            "actions": [],
+            "timers": [],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "32b883d548d770b4afd7fe3055099abd9d82c5cf611c64aec1d76180be127ad0"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "32b883d548d770b4afd7fe3055099abd9d82c5cf611c64aec1d76180be127ad0"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "32b883d548d770b4afd7fe3055099abd9d82c5cf611c64aec1d76180be127ad0",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
     "name": "no-effects",
     "steps": [
       {
@@ -76,7 +239,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -246,7 +417,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -436,7 +615,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -619,7 +806,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -808,7 +1003,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1003,7 +1206,15 @@
                 "retryable": false
               }
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1204,7 +1415,15 @@
                 "retryable": false
               }
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1405,7 +1624,15 @@
                 "retryable": false
               }
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1606,7 +1833,15 @@
                 "retryable": false
               }
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1780,7 +2015,7 @@
                 "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
                 "audit_id": "44444444444444444444444444444444",
                 "ticket": null,
-                "method": "inbox.append",
+                "method": "hub.inbox",
                 "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
                 "path": "/data/inbox.jsonl",
                 "before": null,
@@ -1798,7 +2033,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -1850,7 +2093,7 @@
                 "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
                 "audit_id": "44444444444444444444444444444444",
                 "ticket": null,
-                "method": "inbox.append",
+                "method": "hub.inbox",
                 "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
                 "path": "/data/inbox.jsonl",
                 "before": null,
@@ -1879,15 +2122,15 @@
               "host_bytes": 0
             },
             "status": "committed",
-            "record_hash": "17ef939ec3f864581e694a58c88992c2a2a7bfc2d124d1606c0df60f8b94036a"
+            "record_hash": "bf28cf84881c15807fcce544330d8606c6c4378739b8cffe688d8283af5aa17e"
           },
           "state_hash": "4587aa921cfdc40dfc7cfd05a17d66105be319b17428175979c5081cd25d837f",
-          "record_hash": "17ef939ec3f864581e694a58c88992c2a2a7bfc2d124d1606c0df60f8b94036a"
+          "record_hash": "bf28cf84881c15807fcce544330d8606c6c4378739b8cffe688d8283af5aa17e"
         },
         "within_ms": 200
       },
       {
-        "journal_hash": "17ef939ec3f864581e694a58c88992c2a2a7bfc2d124d1606c0df60f8b94036a",
+        "journal_hash": "bf28cf84881c15807fcce544330d8606c6c4378739b8cffe688d8283af5aa17e",
         "path": "record_hash"
       }
     ]
@@ -1975,7 +2218,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -2153,7 +2404,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -2345,7 +2604,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -2529,7 +2796,15 @@
               "wall_time_us": 20,
               "host_bytes": 0
             }
-          }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": []
         }
       },
       {
@@ -2699,7 +2974,7 @@
                 "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
                 "audit_id": "66666666666666666666666666666666",
                 "ticket": null,
-                "method": "inbox.append",
+                "method": "hub.inbox",
                 "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
                 "path": "/data/inbox.jsonl",
                 "before": null,
@@ -2769,7 +3044,7 @@
                 "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
                 "audit_id": "66666666666666666666666666666666",
                 "ticket": null,
-                "method": "inbox.append",
+                "method": "hub.inbox",
                 "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
                 "path": "/data/inbox.jsonl",
                 "before": null,
@@ -2798,15 +3073,1177 @@
               "host_bytes": 0
             },
             "status": "committed",
-            "record_hash": "b3f5cc0242c89a73d92472b721552f515eab1795baa59210e447a64c4b73fe1c"
+            "record_hash": "c108d8079d391063c207ab8cc6d0ee71058cd92488657e350449fa4770e56f31"
           },
           "state_hash": "d121d02c414caaefd3f25655d700427cb472f782384c983537df6193090d5945",
-          "record_hash": "b3f5cc0242c89a73d92472b721552f515eab1795baa59210e447a64c4b73fe1c"
+          "record_hash": "c108d8079d391063c207ab8cc6d0ee71058cd92488657e350449fa4770e56f31"
         },
         "within_ms": 200
       },
       {
-        "journal_hash": "b3f5cc0242c89a73d92472b721552f515eab1795baa59210e447a64c4b73fe1c",
+        "journal_hash": "c108d8079d391063c207ab8cc6d0ee71058cd92488657e350449fa4770e56f31",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "fresh-emit-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "emit",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                  "capability": "motor.move",
+                  "args": {
+                    "x": 1
+                  },
+                  "deadline": 100,
+                  "correlation_id": "44444444444444444444444444444444"
+                },
+                "result": 0
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "emit",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                  "capability": "motor.move",
+                  "args": {
+                    "x": 1
+                  },
+                  "deadline": 100,
+                  "correlation_id": "44444444444444444444444444444444"
+                },
+                "result": 0
+              }
+            ],
+            "actions": [
+              {
+                "id": "44444444444444444444444444444444",
+                "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                "capability": "motor.move",
+                "args": {
+                  "x": 1
+                },
+                "deadline": 100,
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "timers": [],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "c35cf298fad32eedba7a0fa862d1d00c459df3729e0c4e347b0c9cdb7aa03de1"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "c35cf298fad32eedba7a0fa862d1d00c459df3729e0c4e347b0c9cdb7aa03de1"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "c35cf298fad32eedba7a0fa862d1d00c459df3729e0c4e347b0c9cdb7aa03de1",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "historical-emit-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [
+              "44444444444444444444444444444444"
+            ],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "emit",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                  "capability": "motor.move",
+                  "args": {
+                    "x": 1
+                  },
+                  "deadline": 100,
+                  "correlation_id": "44444444444444444444444444444444"
+                },
+                "result": 4
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "emit",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+                  "capability": "motor.move",
+                  "args": {
+                    "x": 1
+                  },
+                  "deadline": 100,
+                  "correlation_id": "44444444444444444444444444444444"
+                },
+                "result": 4
+              }
+            ],
+            "actions": [],
+            "timers": [],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "c65c9cf55538ee61aaf8bd5e038855281172cdcfe6224df0844ebcea2e5036a3"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "c65c9cf55538ee61aaf8bd5e038855281172cdcfe6224df0844ebcea2e5036a3"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "c65c9cf55538ee61aaf8bd5e038855281172cdcfe6224df0844ebcea2e5036a3",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "fresh-timer-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "timer",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "at": 500010
+                },
+                "result": 0
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "timer",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "at": 500010
+                },
+                "result": 0
+              }
+            ],
+            "actions": [],
+            "timers": [
+              {
+                "id": "44444444444444444444444444444444",
+                "at": 500010
+              }
+            ],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "6fe57d14308fc7b8ce5dd4847bced80ce04f9d03e532f28979d1fbf68b64ac6e"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "6fe57d14308fc7b8ce5dd4847bced80ce04f9d03e532f28979d1fbf68b64ac6e"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "6fe57d14308fc7b8ce5dd4847bced80ce04f9d03e532f28979d1fbf68b64ac6e",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "historical-timer-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [
+              "44444444444444444444444444444444"
+            ],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "timer",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "at": 500010
+                },
+                "result": 4
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "timer",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "at": 500010
+                },
+                "result": 4
+              }
+            ],
+            "actions": [],
+            "timers": [],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "97010876fd61eec610779441466d7ef51fa39f4f62fb06d0d07f1f9e59b58398"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "97010876fd61eec610779441466d7ef51fa39f4f62fb06d0d07f1f9e59b58398"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "97010876fd61eec610779441466d7ef51fa39f4f62fb06d0d07f1f9e59b58398",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "fresh-llm-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": []
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "llm",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "correlation_id": "44444444444444444444444444444444",
+                  "capability": "llm.complete",
+                  "model": "small",
+                  "input": {
+                    "prompt": "hello"
+                  }
+                },
+                "result": 0
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "llm",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "correlation_id": "44444444444444444444444444444444",
+                  "capability": "llm.complete",
+                  "model": "small",
+                  "input": {
+                    "prompt": "hello"
+                  }
+                },
+                "result": 0
+              }
+            ],
+            "actions": [],
+            "timers": [],
+            "llm_requests": [
+              {
+                "id": "44444444444444444444444444444444",
+                "correlation_id": "44444444444444444444444444444444",
+                "capability": "llm.complete",
+                "model": "small",
+                "input": {
+                  "prompt": "hello"
+                }
+              }
+            ],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "40c9b955981879a46967d9e4a3905d659c224036383edc16e99ca564405a51c6"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "40c9b955981879a46967d9e4a3905d659c224036383edc16e99ca564405a51c6"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "40c9b955981879a46967d9e4a3905d659c224036383edc16e99ca564405a51c6",
+        "path": "record_hash"
+      }
+    ]
+  },
+  {
+    "name": "historical-llm-id",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.step",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "initial_effect_ids": {
+            "actions": [],
+            "timers": [],
+            "llm_requests": [
+              "44444444444444444444444444444444"
+            ]
+          },
+          "initial_inbox_wakes": [],
+          "initial_timers": [],
+          "initial_llm_requests": [],
+          "inputs": {
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": []
+          },
+          "guest_script": {
+            "calls": [
+              {
+                "op": "llm",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "correlation_id": "44444444444444444444444444444444",
+                  "capability": "llm.complete",
+                  "model": "small",
+                  "input": {
+                    "prompt": "hello"
+                  }
+                },
+                "result": 4
+              }
+            ],
+            "writes": {},
+            "termination": "committed",
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            }
+          }
+        }
+      },
+      {
+        "expect": {
+          "journal": {
+            "version": "0.1",
+            "trace_id": "55555555555555555555555555555555",
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "step": 0,
+            "logical_time": 10,
+            "seed": 7,
+            "previous": null,
+            "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
+            "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
+            "before_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "input_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "output_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+            "engine": {
+              "build": "fixture-v1",
+              "policy": "TBD-by-ADR-0003"
+            },
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            },
+            "grants": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "events": [
+              {
+                "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+                "kind": "sensor.tick",
+                "seq": 0,
+                "logical_time": 10,
+                "payload": {},
+                "correlation_id": "44444444444444444444444444444444"
+              }
+            ],
+            "boundary": [],
+            "calls": [
+              {
+                "op": "llm",
+                "argument": {
+                  "id": "44444444444444444444444444444444",
+                  "correlation_id": "44444444444444444444444444444444",
+                  "capability": "llm.complete",
+                  "model": "small",
+                  "input": {
+                    "prompt": "hello"
+                  }
+                },
+                "result": 4
+              }
+            ],
+            "actions": [],
+            "timers": [],
+            "llm_requests": [],
+            "logs": [],
+            "input_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "output_files": {
+              "/code/bin/step.wasm": "0061736d01000000",
+              "/data/count": "30"
+            },
+            "usage": {
+              "compute": 10,
+              "memory_pages": 1,
+              "wall_time_us": 20,
+              "host_bytes": 0
+            },
+            "status": "committed",
+            "record_hash": "c8dfd2c4c59b0d77ea9d5b1f3ff7a056c7bd6f1a7c2806ab0f71eb47f22d4e54"
+          },
+          "state_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
+          "record_hash": "c8dfd2c4c59b0d77ea9d5b1f3ff7a056c7bd6f1a7c2806ab0f71eb47f22d4e54"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "c8dfd2c4c59b0d77ea9d5b1f3ff7a056c7bd6f1a7c2806ab0f71eb47f22d4e54",
         "path": "record_hash"
       }
     ]

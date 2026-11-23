@@ -2,6 +2,12 @@
   "version": "0.1",
   "trace_id": "55555555555555555555555555555555",
   "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+  "initial_effect_ids": {
+    "actions": [],
+    "timers": [],
+    "llm_requests": []
+  },
+  "initial_inbox_wakes": [],
   "initial_hash": "7c2bdc45b3dffdedfc3d5c5630ba72817fd375b60a09fb21ff483ba4c6d3672d",
   "initial_timers": [],
   "initial_llm_requests": [],
@@ -139,7 +145,7 @@
           "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
           "audit_id": "66666666666666666666666666666666",
           "ticket": null,
-          "method": "inbox.append",
+          "method": "hub.inbox",
           "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
           "path": "/data/inbox.jsonl",
           "before": null,
@@ -168,7 +174,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "b3f5cc0242c89a73d92472b721552f515eab1795baa59210e447a64c4b73fe1c"
+      "record_hash": "c108d8079d391063c207ab8cc6d0ee71058cd92488657e350449fa4770e56f31"
     }
   ],
   "blobs": {

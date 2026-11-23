@@ -3,19 +3,13 @@
   "$id": "https://coglet.dev/spec/messages/abi.schema.json",
   "anyOf": [
     {
-      "$ref": "#/$defs/hash"
+      "$ref": "#/$defs/trace"
     },
     {
-      "$ref": "#/$defs/hex"
+      "$ref": "#/$defs/step-record"
     },
     {
-      "$ref": "#/$defs/path"
-    },
-    {
-      "$ref": "#/$defs/snapshot"
-    },
-    {
-      "$ref": "#/$defs/budgets"
+      "$ref": "#/$defs/inbox-message"
     },
     {
       "$ref": "#/$defs/timer-request"
@@ -24,34 +18,10 @@
       "$ref": "#/$defs/llm-request"
     },
     {
-      "$ref": "#/$defs/log-entry"
-    },
-    {
       "$ref": "#/$defs/llm-reply"
     },
     {
-      "$ref": "#/$defs/inbox-message"
-    },
-    {
-      "$ref": "#/$defs/call"
-    },
-    {
-      "$ref": "#/$defs/boundary-change"
-    },
-    {
-      "$ref": "#/$defs/engine"
-    },
-    {
-      "$ref": "#/$defs/usage"
-    },
-    {
-      "$ref": "#/$defs/failure"
-    },
-    {
-      "$ref": "#/$defs/step-record"
-    },
-    {
-      "$ref": "#/$defs/trace"
+      "$ref": "#/$defs/log-entry"
     },
     {
       "$ref": "#/$defs/manifest"
@@ -820,6 +790,38 @@
         }
       ]
     },
+    "effect-ledger": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+          },
+          "minItems": 0
+        },
+        "timers": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+          },
+          "minItems": 0
+        },
+        "llm_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "actions",
+        "timers",
+        "llm_requests"
+      ],
+      "additionalProperties": false
+    },
     "trace": {
       "type": "object",
       "properties": {
@@ -831,6 +833,16 @@
         },
         "coglet": {
           "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "initial_effect_ids": {
+          "$ref": "#/$defs/effect-ledger"
+        },
+        "initial_inbox_wakes": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+          },
+          "minItems": 0
         },
         "initial_hash": {
           "$ref": "#/$defs/hash"
@@ -867,6 +879,8 @@
         "version",
         "trace_id",
         "coglet",
+        "initial_effect_ids",
+        "initial_inbox_wakes",
         "initial_hash",
         "initial_timers",
         "initial_llm_requests",

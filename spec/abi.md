@@ -70,7 +70,14 @@ drop events. The recorded batch is the replay ordering authority; arrival ordina
 are durable router metadata, not reconstructed from source clocks by replay.
 Record the exact batch, a nondecreasing runtime-epoch microsecond
 logical_time and seed. Preserve source event clocks unchanged. Replay uses the
-recording, not a new scheduling decision.
+recording, not a new scheduling decision. An authorized hub debug.step with no
+queued event injects one recorded common `runtime.debug_step` event: source is
+the target coglet, seq uses that source's shared durable sequence, logical_time
+is the step's runtime logical time, payload is `{}`, and correlation_id is the
+hub operation ID. It bypasses subscriptions like runtime.inbox/runtime.timer.
+With pending events, debug.step consumes the ordinary batch instead; it never
+calls handle with an empty batch. Hub authorization/receipt/audit binds the
+operation; an external producer cannot self-authorize a runtime-generated wake.
 
 Apply authenticated debug writes/inbox appends between steps only, in recorded
 order. Pin code, manifest, grants and input snapshot before instantiation.
@@ -79,7 +86,15 @@ ticket, method, target coglet, path and before/after bytes (null means absent).
 The enclosing step supplies boundary step and before/input tree hashes; a recorded
 boundary change is the successful apply outcome. Rejected hub operations belong
 to the hub audit, not the guest mutation list. Initial_hash is before boundary changes; input_hash is after them.
-Boundary reconstruction must produce the recorded input snapshot.
+Boundary reconstruction must produce the recorded input snapshot. Method names
+match hub wire methods: hub.inbox for inbox appends and debug.write for debug
+writes. Journal origin is structural: each boundary change is origin `hub`
+(including hub-relayed provider replies); guest input-to-output writes and calls
+are origin `coglet`. Exporters MUST preserve or explicitly materialize that origin,
+never flatten both into unattributed state deltas. The boundary audit_id equals
+the hub operation_id; actor/ticket/target are unchanged. The record step and
+before_hash/input_hash supply the boundary step and snapshot hashes; only applied
+mutations appear here, with failed/queued outcomes retained in hub receipts/audit.
 
 - /code: read-only pinned revision, including prompts and step.wasm.
 - /data: private read-write persistent state, never git-synced; inbox exception below.
@@ -118,6 +133,13 @@ precision. index starts at zero, increases by one; id is deduplicated across the
 trace. sender is authenticated and equals enclosed event.source. Sequence numbers
 are common source seq, independent of index. All appends happen at boundaries;
 the exact resulting bytes are recorded (replay does not reserialize JSON).
+Consumers MUST decode and validate each embedded inbox-message and its event,
+including the llm-reply schema for llm.reply and common action-outcome schema
+for action.outcome (with matching correlation_id), not just the hex container.
+Canonical JSONL validation compares to sorted-key, no-space serialization with
+literal UTF-8 Unicode, lowercase `\\u00xx` for otherwise unescaped controls,
+short escapes for backspace/tab/LF/form-feed/CR, and escapes only quote/backslash
+otherwise. No CRLF, blank lines or alternate whitespace/escape spellings.
 
 Every append produces one runtime.inbox event, payload `{index,id}`, retaining
 the enclosed event's correlation_id. Batch contains that wake, not a second copy
@@ -158,12 +180,46 @@ proposal is silently adopted as frozen ABI here.
 ## Journal and trace: one format
 
 Schemas: [CDDL](messages/abi.cddl), [JSON Schema](messages/abi.schema.json).
-A trace contains version, trace_id, coglet, initial_hash, initial_timers,
-initial_llm_requests, records and blobs. Initial pending timer/LLM arrays capture
-requests committed before this recording began, so a promotion does not orphan
-future wakes/replies. Step counters are trace-local; effect IDs remain unique
-across the coglet lifetime, including earlier traces. A runtime must retain its
-dedup ledger; trace validation only verifies identities visible in the recording.
+A trace contains version, trace_id, coglet, initial_hash, initial_effect_ids,
+initial_inbox_wakes, initial_timers, initial_llm_requests, records and blobs.
+Initial pending timer/LLM arrays capture requests committed before this recording
+began whose timer has not fired / reply has not been appended. They have unique
+IDs and each ID MUST occur in the corresponding initial_effect_ids array.
+Step counters are trace-local; effect IDs remain unique across the coglet lifetime.
+
+initial_effect_ids is `{actions:[id,...], timers:[id,...], llm_requests:[id,...]}`:
+the COMPLETE per-kind set of IDs committed before the recording, including
+completed/dispatched effects, not only pending work. Each array is sorted ASCII
+and duplicate-free. Empty arrays explicitly mean no history, not unknown history.
+Do not expire this ledger while the coglet identity exists. A trace producer MUST
+snapshot it atomically with initial_hash and pending work; unavailable history
+makes the trace incomplete and ineligible for replay/gates. IDs suffice because
+any reuse, including an identical argument, returns conflict; original effect
+arguments are not needed to decide that return. A replay runtime seeds its ledger
+from this field, never from an unavailable live runtime.
+
+For each step, copy that ledger into a staging set. Each successful typed
+emit/timer/llm call reserves its ID immediately; a subsequent same-kind call in
+the step returns 4. Rejected calls reserve nothing. Commit merges staged IDs;
+abort discards reservations. Completion, timer firing and LLM replies do NOT
+remove IDs. A recorded 4 without a prior same-kind ID, or 0 with one, is invalid.
+Replay MUST calculate/check the result, not inject the recorded return. Validate
+argument shape and permissions before dedup, and dedup before resource admission.
+This ledger is host state, not part of the filesystem tree hash; retain it in the
+trace header and bind the entire header with any authenticated archive/trace-store
+receipt (record_hash alone authenticates neither this header nor its provenance).
+
+initial_inbox_wakes is the ordered, unique ascending list of indices already in
+the initial inbox whose runtime.inbox events remain queued. All other initial
+lines have consumed wakes, regardless of the guest cursor. New boundary appends
+add their indices to this queue. A batch may consume an oldest prefix of these
+wakes interleaved with other events, leaving the rest pending for later steps or
+the next trace. Verify each consumed wake's exact `{index,id}` and correlation_id
+against its line; reject nonexistent, repeated, out-of-order or mismatched wakes.
+An aborted durable attempt also consumes its wakes. A finite trace may end with
+pending wakes; it must not invent delivery to drain them. LLM pending requests
+are consumed when the reply is appended, not when its wake is delivered.
+Promotion carries this queue and the effect ledger forward, not merely the tree.
 Journal streams frame each deterministic-CBOR step-record with u32be byte length;
 archive JSON is a fixture view. Storage policy bounds frame size. Each record
 retains exact events, boundary audit, input/output snapshots, code/manifest hashes,
@@ -197,8 +253,8 @@ pair; a promotion starts a new trace from the previous durable output snapshot.
 /logs/events.jsonl is reserved for host log imports (guest read-only); other log
 files permit raw append. Log calls must append their exact JSON lines, in order.
 The explicit effective budgets field records admission limits; it must not exceed
-the pinned manifest limits or change compute_mode. Runtime-generated inbox/timer
-wakes bypass subscription filtering, but external events must match subscriptions.
+the pinned manifest limits or change compute_mode. Runtime-generated inbox/timer/
+debug_step wakes bypass subscription filtering, but external events must match subscriptions.
 proc_exit/nonzero handle map to guest_return; memory access traps to trap; invalid
 host buffer addresses to invalid_argument. Wall failures use deadline_exceeded;
 compute/memory/host_bytes use resource_exhausted.

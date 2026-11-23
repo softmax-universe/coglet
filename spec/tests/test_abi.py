@@ -38,6 +38,43 @@ def check_manifest(man):
         raise ValueError('exclusive output not required')
 
 
+def check_inbox(raw):
+    """Validate decoded messages, not merely their hex container."""
+    abi = json.loads((SPEC / 'messages/abi.schema.json').read_text())
+    common = json.loads((SPEC / 'messages/common.schema.json').read_text())
+    registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in [abi, common])
+    def validate(rule, value, common_rule=False):
+        schema = {'$ref': BASE + 'messages/' + ('common' if common_rule else 'abi') + '.schema.json#/$defs/' + rule}
+        if not Draft202012Validator(schema, registry=registry).is_valid(value):
+            raise ValueError('embedded ' + rule + ' schema')
+    if raw and not raw.endswith(b'\n'):
+        raise ValueError('partial inbox line')
+    messages, ids = [], set()
+    for index, line in enumerate(raw[:-1].split(b'\n') if raw else []):
+        def pairs(items):
+            out = dict(items)
+            if len(out) != len(items):
+                raise ValueError('duplicate JSON key')
+            return out
+        message = json.loads(line.decode('utf-8'), object_pairs_hook=pairs)
+        encode(message)
+        if json.dumps(message, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8') != line:
+            raise ValueError('noncanonical inbox JSONL')
+        validate('inbox-message', message)
+        event = message['event']
+        if message['index'] != index or message['sender'] != event['source'] or message['id'] in ids:
+            raise ValueError('inbox sequence, sender or duplicate')
+        if event['kind'] == 'llm.reply':
+            validate('llm-reply', event['payload'])
+        elif event['kind'] == 'action.outcome':
+            validate('action-outcome', event['payload'], True)
+            if event['correlation_id'] != event['payload']['correlation_id']:
+                raise ValueError('action outcome correlation')
+        ids.add(message['id'])
+        messages.append(message)
+    return messages
+
+
 def check_record(rec):
     """Cross-field invariants independent of either shape validator."""
     if record_hash(rec) != rec['record_hash']:
@@ -84,24 +121,7 @@ def check_record(rec):
         raise ValueError('read-only create')
     for side in ('input', 'output'):
         raw = bytes.fromhex(rec[side + '_files'].get('/data/inbox.jsonl', ''))
-        if raw and not raw.endswith(b'\n'):
-            raise ValueError('partial inbox line')
-        ids = set()
-        for index, line in enumerate(raw.splitlines()):
-            def pairs(items):
-                out = dict(items)
-                if len(out) != len(items):
-                    raise ValueError('duplicate JSON key')
-                return out
-            message = json.loads(line, object_pairs_hook=pairs)
-            encode(message)  # integer-only profile, including nested maps
-            if message['index'] != index or message['sender'] != message['event']['source'] or message['id'] in ids:
-                raise ValueError('inbox sequence, sender or duplicate')
-            if message['event']['kind'] == 'llm.reply':
-                reply = message['event']['payload']
-                if reply['status'] not in ('succeeded', 'failed'):
-                    raise ValueError('reply status')
-            ids.add(message['id'])
+        check_inbox(raw)
     if len(rec['events']) > rec['budgets']['max_events']:
         raise ValueError('batch cap')
     if rec['status'] == 'aborted':
@@ -124,7 +144,7 @@ def check_record(rec):
     for change in rec['boundary']:
         if change['target'] != rec['coglet']:
             raise ValueError('boundary target')
-        if change['path'] == '/data/inbox.jsonl' and change['method'] != 'inbox.append':
+        if change['path'] == '/data/inbox.jsonl' and change['method'] != 'hub.inbox':
             raise ValueError('inbox method')
     return before
 
@@ -133,10 +153,19 @@ def check_trace(trace, manifest_validator=None):
     previous = None
     files = None
     ids = set()
+    for kind, values in trace['initial_effect_ids'].items():
+        if values != sorted(set(values)):
+            raise ValueError('noncanonical initial effect ledger')
+        ids.update((kind, value) for value in values)
     requests = {r['id']: r for r in trace['initial_llm_requests']}
     timers = {t['id']: t for t in trace['initial_timers']}
-    ids.update(('llm_requests', key) for key in requests)
-    ids.update(('timers', key) for key in timers)
+    for kind, pending, entries in [('llm_requests', requests, trace['initial_llm_requests']),
+                                   ('timers', timers, trace['initial_timers'])]:
+        if len(pending) != len(entries) or any((kind, key) not in ids for key in pending):
+            raise ValueError('initial pending work absent from effect ledger or duplicated')
+    pending_wakes = list(trace['initial_inbox_wakes'])
+    if pending_wakes != sorted(set(pending_wakes)):
+        raise ValueError('initial inbox wake order')
     replies = set()
     for index, rec in enumerate(trace['records']):
         before = check_record(rec)
@@ -164,22 +193,31 @@ def check_trace(trace, manifest_validator=None):
             raise ValueError('compute mode changed')
         if any(rec['budgets'][k] > man['budgets'][k] for k in man['budgets'] if k != 'compute_mode'):
             raise ValueError('budget exceeds manifest')
-        if any(e['kind'] not in man['subscriptions'] and e['kind'] not in ('runtime.inbox', 'runtime.timer') for e in rec['events']):
+        if any(e['kind'] not in man['subscriptions'] and e['kind'] not in ('runtime.inbox', 'runtime.timer', 'runtime.debug_step') for e in rec['events']):
             raise ValueError('unsubscribed event')
         if index and any(rec[k] != trace['records'][0][k] for k in ('code_hash', 'manifest_hash')):
             raise ValueError('trace code/manifest changed')
-        for key in ('actions', 'timers', 'llm_requests'):
-            for value in rec[key]:
-                identity = (key, value['id'])
-                if identity in ids:
-                    raise ValueError('duplicate effect id')
-                ids.add(identity)
-        old_lines = len(bytes.fromhex(before.get('/data/inbox.jsonl', '')).splitlines())
-        lines = bytes.fromhex(rec['input_files'].get('/data/inbox.jsonl', '')).splitlines()
-        # All historical lines remain recorded; only newly appended replies may
-        # consume a pending request. Pending requests span steps, never live calls.
-        for line in lines[old_lines:]:
-            message = json.loads(line)
+        staged = set(ids)
+        for call in rec['calls']:
+            kind = {'emit': 'actions', 'timer': 'timers', 'llm': 'llm_requests'}.get(call['op'])
+            if kind is None or 'argument' not in call:
+                continue
+            identity = (kind, call['argument']['id'])
+            if call['result'] == 4 and identity not in staged:
+                raise ValueError('conflict without prior effect id')
+            if call['result'] == 0:
+                if identity in staged:
+                    raise ValueError('duplicate effect id accepted')
+                staged.add(identity)
+        if rec['status'] == 'committed':
+            ids = staged
+        old_messages = check_inbox(bytes.fromhex(before.get('/data/inbox.jsonl', '')))
+        messages = check_inbox(bytes.fromhex(rec['input_files'].get('/data/inbox.jsonl', '')))
+        if index == 0 and any(i >= len(old_messages) for i in pending_wakes):
+            raise ValueError('initial inbox wake absent')
+        pending_wakes.extend(range(len(old_messages), len(messages)))
+        # Appends consume pending LLM requests even when their wake is deferred.
+        for message in messages[len(old_messages):]:
             event = message['event']
             if event['kind'] == 'llm.reply':
                 reply = event['payload']
@@ -188,6 +226,15 @@ def check_trace(trace, manifest_validator=None):
                     raise ValueError('uncorrelated or duplicate LLM reply')
                 replies.add(reply['request_id'])
         for event in rec['events']:
+            if event['kind'] == 'runtime.debug_step' and (event['payload'] != {} or event['source'] != rec['coglet'] or event['logical_time'] != rec['logical_time']):
+                raise ValueError('debug step wake binding')
+            if event['kind'] == 'runtime.inbox':
+                payload = event['payload']
+                if not pending_wakes:
+                    raise ValueError('unscheduled inbox wake')
+                message = messages[pending_wakes.pop(0)]
+                if payload != {'index': message['index'], 'id': message['id']} or event['correlation_id'] != message['event']['correlation_id']:
+                    raise ValueError('inbox wake binding')
             if event['kind'] == 'runtime.timer':
                 payload = event['payload']
                 timer = timers.pop(payload['id'], None)
@@ -220,6 +267,23 @@ class AbiFixtures(unittest.TestCase):
         schema = dict(schema)
         schema.pop('anyOf', None)
         return Draft202012Validator(schema, registry=self.registry)
+
+    def test_actual_schema_roots(self):
+        root = Draft202012Validator(self.abi, registry=self.registry)
+        cddl = Schema(self.cddl)
+        roots = {'trace', 'step-record', 'inbox-message', 'timer-request',
+                 'llm-request', 'llm-reply', 'log-entry', 'manifest'}
+        values = [(c['value'], True) for c in self.cases if c['valid'] and c['type'] in roots]
+        values += [(v, False) for v in [{}, {'/data/count': '30'}, [], 0, None, {'unknown': True}]]
+        for value, expected in values:
+            with self.subTest(value=value):
+                self.assertEqual(root.is_valid(value), expected)
+                try:
+                    cddl.validate_cbor(cbor2.dumps(value))
+                    accepted = True
+                except ValidationError:
+                    accepted = False
+                self.assertEqual(accepted, expected)
 
     def test_shapes_and_golden_cbor(self):
         covered = {}
@@ -289,6 +353,25 @@ class AbiFixtures(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'LLM reply'):
             check_trace(bad, self.validator('manifest'))
 
+    def test_trace_semantic_regressions(self):
+        cases = json.loads((SPEC / 'fixtures/abi/trace-cases.json').read_text())
+        for case in cases:
+            with self.subTest(case=case['name']):
+                trace = case['value']
+                self.validator('trace').validate(trace)
+                Schema('fixture = trace\n' + self.cddl).validate_cbor(cbor2.dumps(trace))
+                # Hashes are valid even in semantic negatives.
+                for rec in trace['records']:
+                    self.assertEqual(record_hash(rec), rec['record_hash'])
+                    for side in ('input', 'output'):
+                        self.assertEqual(digest(rec[side + '_files']), rec[side + '_hash'])
+                if case['valid']:
+                    check_trace(trace, self.validator('manifest'))
+                else:
+                    with self.assertRaisesRegex(ValueError, case['error']):
+                        check_trace(trace, self.validator('manifest'))
+        print(f'abi: {len(cases)} rehashed trace fixtures')
+
     def test_journal_frame_roundtrip_and_partial_tail(self):
         rec = next(c['value'] for c in self.cases if c['type'] == 'step-record' and c['valid'])
         raw = encode(rec)
@@ -311,6 +394,17 @@ class AbiFixtures(unittest.TestCase):
         self.assertEqual(len(cases), len({c['name'] for c in cases}))
         for case in cases:
             with self.subTest(case=case['name']):
+                first = case['steps'][0]['send']
+                records = [step['expect']['journal'] for step in case['steps'] if 'expect' in step]
+                manifest_bytes = encode(first['manifest'])
+                code_bytes = bytes.fromhex(first['initial_files']['/code/bin/step.wasm'])
+                trace = dict(version='0.1', trace_id=records[0]['trace_id'], coglet=records[0]['coglet'],
+                             initial_hash=digest(first['initial_files']), records=records,
+                             blobs={hashlib.sha256(code_bytes).hexdigest(): code_bytes.hex(),
+                                    hashlib.sha256(manifest_bytes).hexdigest(): manifest_bytes.hex()},
+                             **{k: first[k] for k in ['initial_effect_ids', 'initial_inbox_wakes', 'initial_timers', 'initial_llm_requests']})
+                self.validator('trace').validate(trace)
+                check_trace(trace, self.validator('manifest'))
                 self.assertEqual(len(case['steps']) % 3, 0)
                 for start in range(0, len(case['steps']), 3):
                     send, expect, assertion = case['steps'][start:start+3]

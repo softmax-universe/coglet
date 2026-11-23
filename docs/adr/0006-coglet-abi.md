@@ -20,6 +20,12 @@ Use wasm32 offsets and deterministic CBOR for host calls; expose a transactional
 filesystem and ordered asynchronous effects. Commit a durable journal/outbox
 before dispatch; retain recorded inputs and replies so replay never invokes a
 live provider. Hash file-tree snapshots and journal records with SHA-256.
+Trace headers include the complete per-kind initial committed effect-ID ledger
+(including completed effects) and pending inbox-wake indices, alongside pending
+timers/LLM requests. Standalone replay reconstructs host conflict returns and
+wake consumption without consulting live runtime history. Validate decoded
+inbox envelopes/replies and canonical JSONL bytes, not merely snapshot hashes.
+The ABI root union excludes internal helper types in both schema languages.
 
 Budget enforcement and cross-engine determinism remain **TBD-by-ADR-0001** and
 **TBD-by-ADR-0003** until the engine findings are accepted at freeze. In particular

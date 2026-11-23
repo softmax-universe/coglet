@@ -16,7 +16,13 @@ Regenerate data/schemas with `python3 spec/tests/generate_abi.py`.
 
 `cases.json` contains dual-schema shape cases and valid deterministic-CBOR hex.
 `semantic-cases.json` contains cross-field positive/negative records; tests also
-exercise rehashed trace corruptions and framing. `llm-reply-trace.json` is a
+exercise rehashed trace corruptions and framing. `trace-cases.json` contains
+rehashed malformed inbox/reply/JSONL/wake cases, batching and trace-boundary wake
+controls, plus historical completed effect-ID conflicts and fresh-ID controls for
+all three effect kinds. Both schemas validate the trace containers; semantic
+validation must then reject each negative for its named reason, not a hash error.
+The actual ABI schema roots are tested separately from selected helper rules.
+`llm-reply-trace.json` is a
 self-contained two-step recording with blobs, not invented provider measurements.
 Its reply text is deliberately synthetic fixture data. Engine-specific budgets
 and NaN/feature behavior remain TBD-by-ADR; no runtime has been certified here.
