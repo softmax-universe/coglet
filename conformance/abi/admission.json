@@ -1,0 +1,252 @@
+[
+  {
+    "name": "initial-memory-at-cap",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.admit",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010202071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "budgets": {
+            "compute": 10000,
+            "compute_mode": "fixture.interpreter",
+            "memory_pages": 2,
+            "wall_time_us": 100000,
+            "max_events": 16,
+            "host_bytes": 65536
+          },
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ]
+        }
+      },
+      {
+        "expect": {
+          "admitted": true,
+          "instantiated": true,
+          "handle_calls": 0,
+          "effective_memory_pages": 2,
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ],
+          "journal": null,
+          "record_hash": null,
+          "state_hash": "ac34479f51955de44580737bdf1b3932309e3d25b951a6b3e64867f2f410b523"
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "ac34479f51955de44580737bdf1b3932309e3d25b951a6b3e64867f2f410b523",
+        "path": "state_hash"
+      }
+    ]
+  },
+  {
+    "name": "initial-memory-over-cap",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.admit",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010303071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "budgets": {
+            "compute": 10000,
+            "compute_mode": "fixture.interpreter",
+            "memory_pages": 2,
+            "wall_time_us": 100000,
+            "max_events": 16,
+            "host_bytes": 65536
+          },
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ]
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "instantiated": false,
+          "handle_calls": 0,
+          "effective_memory_pages": 2,
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ],
+          "journal": null,
+          "record_hash": null,
+          "state_hash": "33a6443dc41a38f62dc28c93105077df45ca84904151caaa031e278d46531bf8",
+          "error": {
+            "code": "resource_exhausted",
+            "message": "module memory exceeds granted cap",
+            "retryable": false
+          }
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "33a6443dc41a38f62dc28c93105077df45ca84904151caaa031e278d46531bf8",
+        "path": "state_hash"
+      }
+    ]
+  },
+  {
+    "name": "maximum-memory-over-cap",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.admit",
+          "initial_files": {
+            "/code/bin/step.wasm": "0061736d01000000010f0260017f017f60057f7f7e7e7e017f0303020001050401010203071f03066d656d6f72790200096162695f616c6c6f6300000668616e646c6500010a0b02040041000b040041000b",
+            "/data/count": "30"
+          },
+          "manifest": {
+            "version": "0.1",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "sensor.tick"
+            ],
+            "required_capabilities": [
+              "motor.move",
+              "llm.complete"
+            ],
+            "exclusive_outputs": [
+              "motor.move"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "budgets": {
+            "compute": 10000,
+            "compute_mode": "fixture.interpreter",
+            "memory_pages": 2,
+            "wall_time_us": 100000,
+            "max_events": 16,
+            "host_bytes": 65536
+          },
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ]
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "instantiated": false,
+          "handle_calls": 0,
+          "effective_memory_pages": 2,
+          "pending_events": [
+            {
+              "source": "surface:2222222222222222222222222222222222222222222222222222222222222222",
+              "kind": "sensor.tick",
+              "seq": 0,
+              "logical_time": 10,
+              "payload": {},
+              "correlation_id": "44444444444444444444444444444444"
+            }
+          ],
+          "journal": null,
+          "record_hash": null,
+          "state_hash": "3c47b7dd9fe0f3875f94b473525f06583749200df8cfb20c1e4a828c79e3d75a",
+          "error": {
+            "code": "resource_exhausted",
+            "message": "module memory exceeds granted cap",
+            "retryable": false
+          }
+        },
+        "within_ms": 200
+      },
+      {
+        "journal_hash": "3c47b7dd9fe0f3875f94b473525f06583749200df8cfb20c1e4a828c79e3d75a",
+        "path": "state_hash"
+      }
+    ]
+  }
+]

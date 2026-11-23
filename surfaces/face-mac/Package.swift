@@ -4,6 +4,14 @@ import PackageDescription
 let package = Package(
     name: "FaceMac",
     platforms: [.macOS(.v14)],
-    products: [.library(name: "FaceMac", targets: ["FaceMac"])],
-    targets: [.target(name: "FaceMac")]
+    products: [
+        .library(name: "FaceMac", targets: ["FaceMac"]),
+        .library(name: "FaceAudioKit", targets: ["FaceAudioKit"])
+    ],
+    targets: [
+        .target(name: "FaceMac", dependencies: [.target(name: "FaceAudioKit", condition: .when(platforms: [.macOS]))]),
+        .target(name: "CAudioRing", publicHeadersPath: "include"),
+        .target(name: "FaceAudioKit", dependencies: ["CAudioRing"]),
+        .testTarget(name: "FaceAudioKitTests", dependencies: ["FaceAudioKit", "CAudioRing"])
+    ]
 )

@@ -155,9 +155,25 @@ linear memory pages (64 KiB), wall_time_us, max_events and aggregate host_bytes.
 Zero never means unlimited. Record effective limits; lowering manifest limits
 requires explicit recorded admission. Reject unsupported modes before execution.
 Compute units, safe points and total host-memory/stack accounting remain
-TBD-by-ADR-0001 (proposed findings PR #6), not portable fuel. AOT must not silently
-claim interpreter metering/interruption. Reject modules with initial/maximum
-memory above page budget before instantiation; growth beyond budget returns -1.
+TBD-by-ADR-0001 (proposed findings PR #6), not portable fuel. The budget fields
+are engine-neutral: compute_mode selects a qualified engine/build accounting
+policy, not a WAMR API name; a future fuel/epochs engine fits without new fields.
+Compute caps AND deadlines require an interpreter or another qualified metering
+engine. For v0 WAMR, admit only the metered interpreter, including on Mac/hub.
+Ordinary and shared-memory AOT ignore instruction metering; ordinary AOT also
+ignores the terminate call. Shared-memory AOT's separately qualified deadline-only
+path is NOT admission for this ABI (which requires both limits and unshared memory).
+Reject unsupported modes before instantiation, never silently downgrade limits.
+
+A module whose initial OR declared maximum memory exceeds the granted page
+budget MUST be refused before instantiation; the runtime MUST NOT silently raise
+the cap to the module's initial memory. An engine page-limit setter that raises
+it is insufficient: inspect the module first. Initial memory equal to the cap is
+admissible when all other checks pass; growth beyond budget returns -1 without
+changing memory size. Admission refusal does not call abi_alloc/handle, consume
+a queued batch, mutate state, or create a step journal; the admission API reports
+resource_exhausted. Once an admitted attempt begins, failures use the journal
+semantics below.
 Host calls are bounded/cancellable and never wait on network. Compute, memory
 or host-byte exhaustion aborts with resource_exhausted; wall expiry aborts with
 deadline_exceeded. Record failure kind and observed usage, with no partial effects.

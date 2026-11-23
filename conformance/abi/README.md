@@ -37,6 +37,25 @@ record_hash asserts the journal contents/chain independently. No-effects, action
 timer, async LLM request, logging, wall and compute abort rollback, inbox boundary,
 and two-wake LLM reply scenarios are included. No fixture performs a live LLM call.
 
+## Adapter admission profile: abi.admit
+
+[`admission.json`](admission.json) contains real core-Wasm module bytes in
+initial_files, a manifest, effective budgets and pending_events. Each case resets
+the fixture. The adapter inspects/admits the module through its real loader or
+mock loader, **without running abi_alloc or handle**. It reports admitted,
+instantiated, handle_calls, effective_memory_pages, pending_events, journal,
+record_hash, state_hash and, on refusal, the common error shown in the fixture.
+The error message is normalized at this adapter boundary; native engine text is
+not compared. instantiated is measured at the engine seam, not inferred from the
+error. Reject before allocation when initial or maximum memory exceeds the cap;
+never raise effective_memory_pages. Initial=maximum=cap is the positive control.
+Both accepted admission and refusal leave pending events and files unchanged,
+with journal/record_hash null (no step attempted). The hash assertion targets the
+unchanged state_hash, not a nonexistent record. These tiny modules export the
+required signatures and unshared memory; the no-op functions are never executed.
+Fixture tests inspect the encoded memory limits and expectations; actual loader
+conformance remains the harness adapter's responsibility.
+
 Schema/fixture tests check internal consistency, golden encodings and hashes;
 these are **not** a claim that a real runtime has passed the black-box harness.
 See [the ABI](../../spec/abi.md) and its [fixture coverage](../../spec/fixtures/abi/README.md).

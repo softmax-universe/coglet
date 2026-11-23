@@ -367,4 +367,35 @@ for timeline in timelines:
         first.setdefault(key, copy.deepcopy(value))
 write('conformance/abi/cases.json', timelines)
 write('spec/fixtures/abi/trace-cases.fixture', trace_cases)
-print(f'generated {len(cases)} shape cases, {len(semantics)} semantic cases, {len(trace_cases)} trace cases, {len(timelines)} conformance timelines')
+# Real core-Wasm bytes for pre-instantiation admission (not scripted outcomes).
+# Two functions: abi_alloc(i32)->i32 and handle(i32,i32,i64,i64,i64)->i32.
+# Both return zero; these cases never call them. Each section fits one-byte LEB.
+def admission_module(initial, maximum):
+    def section(number, payload):
+        return bytes([number, len(payload)]) + payload
+    types = bytes.fromhex('0260017f017f60057f7f7e7e7e017f')
+    exports = bytes.fromhex('03066d656d6f72790200096162695f616c6c6f6300000668616e646c650001')
+    return (bytes.fromhex('0061736d01000000') + section(1, types)
+            + section(3, bytes([2, 0, 1]))
+            + section(5, bytes([1, 1, initial, maximum]))
+            + section(7, exports) + section(10, bytes.fromhex('02040041000b040041000b')))
+
+admission_cases = []
+for name, initial, maximum, admitted in [('initial-memory-at-cap', 2, 2, True),
+                                        ('initial-memory-over-cap', 3, 3, False),
+                                        ('maximum-memory-over-cap', 2, 3, False)]:
+    module = admission_module(initial, maximum)
+    initial_files = dict(files, **{'/code/bin/step.wasm': module.hex()})
+    response = dict(admitted=admitted, instantiated=admitted, handle_calls=0,
+                    effective_memory_pages=budget['memory_pages'],
+                    pending_events=[event], journal=None, record_hash=None,
+                    state_hash=digest(initial_files))
+    if not admitted:
+        response['error'] = dict(code='resource_exhausted', message='module memory exceeds granted cap', retryable=False)
+    admission_cases.append(dict(name=name, steps=[
+        dict(send=dict(operation='abi.admit', initial_files=initial_files, manifest=man,
+                       budgets=budget, pending_events=[event])),
+        dict(expect=response, within_ms=200),
+        dict(journal_hash=response['state_hash'], path='state_hash')]))
+write('conformance/abi/admission.json', admission_cases)
+print(f'generated {len(cases)} shape cases, {len(semantics)} semantic cases, {len(trace_cases)} trace cases, {len(timelines)} step timelines, {len(admission_cases)} admission timelines')

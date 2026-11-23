@@ -389,6 +389,45 @@ class AbiFixtures(unittest.TestCase):
             with self.assertRaises(ValueError):
                 check_manifest(bad)
 
+    def test_admission_memory_vectors(self):
+        cases = json.loads((SPEC.parent / 'conformance/abi/admission.json').read_text())
+        self.assertEqual({case['name'] for case in cases}, {
+            'initial-memory-at-cap', 'initial-memory-over-cap', 'maximum-memory-over-cap'})
+        for case in cases:
+            with self.subTest(case=case['name']):
+                send, expect, assertion = case['steps']
+                request, response = send['send'], expect['expect']
+                self.assertEqual(request['operation'], 'abi.admit')
+                self.validator('manifest').validate(request['manifest'])
+                self.assertEqual(request['budgets'], request['manifest']['budgets'])
+                raw = bytes.fromhex(request['initial_files']['/code/bin/step.wasm'])
+                self.assertEqual(raw[:8], bytes.fromhex('0061736d01000000'))
+                # Fixture-only section inspection, NOT a general Wasm validator.
+                sections, offset = {}, 8
+                while offset < len(raw):
+                    tag, size = raw[offset:offset + 2]
+                    self.assertLess(size, 128)
+                    sections[tag] = raw[offset + 2:offset + 2 + size]
+                    offset += 2 + size
+                self.assertEqual(offset, len(raw))
+                self.assertEqual(set(sections), {1, 3, 5, 7, 10})
+                self.assertEqual(sections[5][:2], bytes([1, 1]))
+                initial, maximum = sections[5][2:]
+                cap = request['budgets']['memory_pages']
+                admitted = initial <= maximum <= cap
+                self.assertEqual(response['admitted'], admitted)
+                self.assertEqual(response['instantiated'], admitted)
+                self.assertEqual(response['effective_memory_pages'], cap)
+                self.assertEqual(response['handle_calls'], 0)
+                self.assertEqual(response['pending_events'], request['pending_events'])
+                self.assertIsNone(response['journal'])
+                self.assertIsNone(response['record_hash'])
+                self.assertEqual(response['state_hash'], digest(request['initial_files']))
+                self.assertEqual(assertion, {'journal_hash': response['state_hash'], 'path': 'state_hash'})
+                if not admitted:
+                    self.assertEqual(response['error']['code'], 'resource_exhausted')
+        print(f'abi: {len(cases)} admission vectors (not engine execution)')
+
     def test_data_only_harness_timelines(self):
         cases = json.loads((SPEC.parent / 'conformance/abi/cases.json').read_text())
         self.assertEqual(len(cases), len({c['name'] for c in cases}))

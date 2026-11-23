@@ -9,7 +9,7 @@ Regenerate data/schemas with `python3 spec/tests/generate_abi.py`.
 | Imports/exports contract | call-valid, action/timer/LLM/log timelines | call unknown fields, malformed timer time |
 | Filesystem | snapshot-valid, log append | odd hex, unsafe-path-rehashed, code-write, missing log bytes |
 | Inbox | inbox-message-valid, inbox-boundary | unknown fields, uncorrelated LLM reply (rehash control) |
-| Budgets | budgets-valid, compute/wall recorded aborts | zero-compute, oversized-batch, wall-error-code |
+| Budgets | budgets-valid, compute/wall recorded aborts, admission initial-memory-at-cap | zero-compute, oversized-batch, wall-error-code, admission initial/maximum-memory-over-cap |
 | Determinism | golden CBOR, chained two-wake recording | corrupted tree/record/previous/initial/code/manifest hashes |
 | Journal/trace | step-record-valid, trace-valid, llm-reply-trace | effect-on-abort, wrong effect list, partial frame tail |
 | Manifest | manifest-valid | unknown fields, duplicate subscription, exclusive output not required |
