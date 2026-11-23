@@ -1,0 +1,14 @@
+# Surface-under-test roles only; the two runtime-under-test scripts are reported
+# as role skips. Every surface case is executed, not copied into this registry.
+[[implementations]]
+name = "swift-reference-surface"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["sdk/surface-swift/.build/debug/coglet-swift-reference"]
+
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_MS = "100"
