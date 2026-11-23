@@ -3,7 +3,9 @@
 Imports [conventions](../conventions.md) and [surface protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
 `speech.cddl` and `speech.schema.json` define the CLOSED typed payload/args
-records used inside common envelopes. The surface still checks temporal rules
+records. Records used inside common envelopes are selected by the normative
+[operation bindings](bindings.md) and [catalog](bindings.json), including empty
+read arguments and successful action results. The surface still checks temporal rules
 and grants; an arbitrary common payload map is not a valid speech message.
 Native capture, echo cancellation, VAD and playback run outside the Wasm step.
 No raw audio/base64 or provider credentials are carried by these messages.
@@ -38,6 +40,9 @@ reflex stopping remains local even if recognition/synthesis is remote.
 Every event is a common event sourced by the surface, with monotonically
 increasing seq. IDs below use the common 32-hex correlation-id grammar. Capture
 and playback `position_ms` refer to their own media timeline, not logical_time.
+These speech events are private owner-unicast observations. Hub relay preserves
+the surface envelope and payload unchanged and MUST retain the same owner-only
+visibility; delegation or subscription alone cannot widen their audience.
 
 | kind | payload | Meaning |
 |---|---|---|
@@ -158,20 +163,38 @@ before the next reasoning step consumes conversation history. Its transcript and
 conversation/model-context projection MUST contain only the heard prefix. The
 immutable ABI journal still records proposed actions and received events for audit
 and replay: a speak intent's full text is a proposal, NOT evidence it was heard.
-No rewriting journal hashes or existing ABI records is required. Replay rebuilds
-the same heard projection using recorded positions/alignment, without calling TTS.
-
 Optional `speech.history` advertises read `speech.heard` with args `heard-query
 {item}` and result `heard-record {item, played_ms, text}`. Only the item's speaker
 owner may read; retain records for the action-retention interval and remove them
 on owner revocation. Unknown/evicted items return not_found. Playback milliseconds
-and text apply to exactly that item. Text MUST be a conservative prefix assembled
-only from aligned spans whose **end** is at or before played_ms. Do not estimate
-character counts by a duration ratio. If alignment is unavailable the prefix is
-empty, not the entire generated text. Limit the prefix to 16,384 UTF-8 bytes
-without splitting a character. Native alignment evidence belongs in the private
-replay recording, under the same privacy rules as transcript text, not raw audio
-in CBOR. An extension-aware runtime requiring history MUST refuse to run without
+and text apply to exactly that item. The surface's text MUST be a conservative
+prefix assembled only from aligned spans whose **end** is at or before played_ms.
+Unknown alignment yields empty text, never generated text or a duration-ratio
+estimate. Limit the prefix to 16,384 UTF-8 bytes without splitting a character.
+No fields are added to this read, speech.position or speech.barge_in.
+
+The runtime constructs the private ABI `heard-state` from these owner reads
+(ADR-0009 M-D), separately from offline replay. For each live (surface,item),
+duration_ms MUST be the maximum played_ms observed so far: known media extent
+at that recording, never decreasing. When played_ms exceeds the last archived
+span end (zero if none), and the read text strictly extends the concatenation of
+archived span text as an exact UTF-8 byte prefix, append ONE span
+`{end_ms: played_ms, text: <new suffix>}`. Unchanged text, revision or shrink
+appends no span; played_ms/duration still advance under the stopped/no-regress
+rules. Zero played_ms or empty text gives no span. Existing spans never change.
+A stop may capture a final read, then freezes the item: no later spans or advances.
+Derived heard is exactly the concatenation of spans ending at/before played_ms,
+with the ABI UTF-8 cap; it need not equal a later revised read's text.
+
+Before consumption, the runtime writes the ABI `runtime.heard` boundary record
+and reserved `/data/runtime/heard.cbor` state. This is runtime-authored, not a
+read converted into a guest event. No rewriting existing ABI records is permitted.
+Offline replay reads ONLY the archive's initial state and hashed boundaries, not
+TTS, live surface reads or oracle state. Richer native per-item alignment is NOT
+required for v0; M1 qualification belongs to the Phase 2 Rust and Swift surface
+cards named in the ledger. It may only append spans consistently with these
+rules. Private heard archives follow transcript privacy and contain no raw audio.
+An extension-aware runtime requiring history MUST refuse to run without
 speech.history; it cannot treat an older peer's missing read as full playback.
 
 ## Bounded speech-to-agent work (ADR-0010)

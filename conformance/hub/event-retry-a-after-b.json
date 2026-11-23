@@ -1,0 +1,95 @@
+{
+  "name": "event-retry-a-after-b",
+  "peer_role": "device",
+  "fixtures": [
+    "hub.event-retry-a-after-b"
+  ],
+  "steps": [
+    {
+      "send": {
+        "method": "hub.events",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "00000000000000000000000000000013",
+        "timeout_ms": 2000,
+        "params": {
+          "offset": 0,
+          "events": [
+            {
+              "source": "surface:ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+              "kind": "test.event",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "11111111111111111111111111111111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "00000000000000000000000000000013",
+        "result.next_offset": 1
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.events",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "22222222222222222222222222222222",
+        "timeout_ms": 2000,
+        "params": {
+          "offset": 1,
+          "events": [
+            {
+              "source": "surface:ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+              "kind": "test.event",
+              "seq": 1,
+              "logical_time": 0,
+              "payload": {
+                "batch": "B"
+              },
+              "correlation_id": "11111111111111111111111111111111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "22222222222222222222222222222222",
+        "result.next_offset": 2
+      },
+      "within_ms": 2000
+    },
+    {
+      "send": {
+        "method": "hub.events",
+        "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "correlation_id": "33333333333333333333333333333333",
+        "timeout_ms": 2000,
+        "params": {
+          "offset": 0,
+          "events": [
+            {
+              "source": "surface:ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+              "kind": "test.event",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "11111111111111111111111111111111"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "match": {
+        "correlation_id": "33333333333333333333333333333333",
+        "result.next_offset": 1
+      },
+      "within_ms": 2000
+    }
+  ]
+}

@@ -46,6 +46,30 @@ def record(name, fields):
 def write(path, value):
     path = ROOT / path
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Upgrade all generated trace views together, including nested timelines.
+    def complete(item):
+        if isinstance(item, dict):
+            if 'initial_hash' in item and isinstance(item.get('records'), list) and 'blobs' in item:
+                item.setdefault('initial_actions', [])
+                item.setdefault('trailing_boundary', None)
+                if item['records']:
+                    first = item['records'][0]
+                    before = dict(first['input_files'])
+                    for change in reversed(first['boundary']):
+                        if change['before'] is None:
+                            before.pop(change['path'], None)
+                        else:
+                            before[change['path']] = change['before']
+                    item['initial_files'] = before
+                    for key in ('code_hash', 'manifest_hash'):
+                        item[key] = first[key]
+                    item['final_hash'] = item['records'][-1]['output_hash']
+            for child in item.values():
+                complete(child)
+        elif isinstance(item, list):
+            for child in item:
+                complete(child)
+    complete(value)
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
 
 
@@ -57,10 +81,13 @@ U = ref('uint64')
 S = {'type': 'string', 'minLength': 1}
 HEX = {'type': 'string', 'pattern': '^([0-9a-f]{2})*(?![\\s\\S])'}
 H = {'type': 'string', 'pattern': '^[0-9a-f]{64}(?![\\s\\S])'}
-PATH = {'type': 'string', 'pattern': '^/(code|data|logs)(/[^/\u0000]+)+(?![\\s\\S])'}
+PATH_PATTERN = r'^/(code|data|logs)(/[^/\u0000-\u001f\u007f\\]+)+'
+PATH = {'type': 'string', 'pattern': PATH_PATTERN + r'(?![\s\S])'}
 rule('hash', H, 'tstr .regexp "^[0-9a-f]{64}$"')
 rule('hex', HEX, 'tstr .regexp "^([0-9a-f]{2})*$"')
-rule('path', PATH, 'tstr .regexp "^/(code|data|logs)(/[^/]+)+$"')
+# CDDL regex consumers include Go RE2, which accepts \\xHH but not \\uHHHH.
+# Keep JSON Schema's ECMA spelling and express the same ASCII range portably.
+rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN.replace(r'\u00', r'\x') + '$'))
 # Path-key grammar and blob digest keys are cross-field semantic checks. pycddl
 # 0.6.4 incorrectly applies a regex key control to the entire enclosing map.
 rule('snapshot', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')
@@ -71,6 +98,17 @@ record('budgets', [('compute', positive, '1..18446744073709551615'),
                    ('wall_time_us', positive, '1..18446744073709551615'),
                    ('max_events', positive, '1..18446744073709551615'),
                    ('host_bytes', positive, '1..18446744073709551615')])
+# Runtime-authored heard-state is embedded as deterministic CBOR in the reserved
+# boundary file, not admitted as a standalone ABI root or guest event.
+record('heard-span', [('end_ms', positive, '1..18446744073709551615'),
+                      ('text', {'type': 'string'}, 'tstr')])
+record('heard-item', [('surface', ref('surface-id'), 'surface-id'),
+                      ('item', ref('correlation-id'), 'correlation-id'),
+                      ('duration_ms', U, 'uint64'), ('played_ms', U, 'uint64'),
+                      ('stopped', {'type': 'boolean'}, 'bool'),
+                      ('spans', arr(local('heard-span')), '[* heard-span]'),
+                      ('heard', {'type': 'string'}, 'tstr')])
+record('heard-state', [('items', arr(local('heard-item')), '[* heard-item]')])
 record('timer-request', [('id', ref('correlation-id'), 'correlation-id'), ('at', U, 'uint64')])
 record('llm-request', [('id', ref('correlation-id'), 'correlation-id'),
                        ('correlation_id', ref('correlation-id'), 'correlation-id'),
@@ -120,7 +158,16 @@ for status in ['committed', 'aborted']:
 basecddl = ', '.join(k + ': ' + c for k, s, c in stepfields)
 rule('step-record', {'oneOf': branches}, '{' + basecddl + ', status: "committed"} / {' + basecddl + ', status: "aborted", failure: failure}')
 record('effect-ledger', [(k, arr(ref('correlation-id')), '[* correlation-id]') for k in ['actions', 'timers', 'llm_requests']])
-record('trace', fields + [('initial_effect_ids', local('effect-ledger'), 'effect-ledger'), ('initial_inbox_wakes', arr(U), '[* uint64]'), ('initial_hash', local('hash'), 'hash'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record'), 1), '[+ step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
+record('boundary-record', fields + [
+    ('logical_time', U, 'uint64'),
+    ('previous', {'anyOf': [local('hash'), {'type': 'null'}]}, 'hash / null'),
+    *[(k, local('hash'), 'hash') for k in ['before_hash', 'output_hash', 'record_hash']],
+    ('boundary', arr(local('boundary-change'), 1), '[+ boundary-change]'),
+    ('output_files', local('snapshot'), 'snapshot')])
+# Import the common accept envelope and constrain it to terminal rejection.
+rule('action-rejection', {'allOf': [ref('action-accept'), {'properties': {'accepted': {'const': False}}}]},
+     'action-accept .and ({id: action-id, correlation_id: correlation-id, accepted: false, error: error})')
+record('trace', fields + [('initial_effect_ids', local('effect-ledger'), 'effect-ledger'), ('initial_actions', arr(ref('action')), '[* action]'), ('initial_inbox_wakes', arr(U), '[* uint64]'), ('initial_hash', local('hash'), 'hash'), ('initial_files', local('snapshot'), 'snapshot'), ('code_hash', local('hash'), 'hash'), ('manifest_hash', local('hash'), 'hash'), ('final_hash', local('hash'), 'hash'), ('trailing_boundary', {'anyOf': [local('boundary-record'), {'type': 'null'}]}, 'boundary-record / null'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record')), '[* step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
 manifest = obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'),
                 **{k: dict(arr(ref('capability-name')), uniqueItems=True) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']},
                 'budgets': {'$ref': ABI + '#/$defs/budgets'}})
@@ -128,7 +175,7 @@ manifest.update({'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id
 write('spec/manifest.schema.json', manifest)
 # Manifest CDDL is an imported ABI fixture rule, sharing common definitions.
 rule('manifest', obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'), **{k: arr(ref('capability-name')) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']}, 'budgets': local('budgets')}), '{version: "0.1", id: coglet-id, subscriptions: [* capability-name], required_capabilities: [* capability-name], exclusive_outputs: [* capability-name], budgets: budgets}')
-ROOT_RULES = ['trace', 'step-record', 'inbox-message', 'timer-request', 'llm-request', 'llm-reply', 'log-entry', 'manifest']
+ROOT_RULES = ['trace', 'step-record', 'boundary-record', 'inbox-message', 'timer-request', 'llm-request', 'llm-reply', 'log-entry', 'manifest']
 write('spec/messages/abi.schema.json', {'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': ABI, 'anyOf': [local(k) for k in ROOT_RULES], '$defs': DEFS})
 (ROOT / 'spec/messages/abi.cddl').write_text('; Import common.cddl after this file. Shapes only; semantic invariants are in abi.md.\nabi = ' + ' / '.join(ROOT_RULES) + '\n' + '\n'.join(CDDL) + '\n')
 
@@ -144,6 +191,13 @@ code = bytes.fromhex(files['/code/bin/step.wasm'])
 manifest_bytes = encode(man)
 codehash = hashlib.sha256(code).hexdigest()
 manhash = hashlib.sha256(manifest_bytes).hexdigest()
+# Test-only identity transform provenance, not a qualified production build.
+provenance = dict(version='0.1', source_commit='a'*40,
+                  recipe_sha256=hashlib.sha256(b'fixture recipe').hexdigest(),
+                  policy_sha256=hashlib.sha256(b'test-only policy').hexdigest(),
+                  transform_sha256=hashlib.sha256(b'test-only identity transform').hexdigest(),
+                  original_sha256=codehash, rewritten_sha256=codehash)
+files['/code/build/provenance.cbor'] = encode(provenance).hex()
 base = dict(version='0.1', trace_id='5'*32, coglet=COG, step=0, logical_time=10, seed=7, previous=None,
             code_hash=codehash, manifest_hash=manhash, before_hash=digest(files), input_hash=digest(files), output_hash=digest(files),
             engine=dict(build='fixture-v1', policy='TBD-by-ADR-0003'), budgets=budget, grants=man['required_capabilities'], events=[event],
@@ -164,8 +218,14 @@ action = dict(id=ID, coglet=COG, capability='motor.move', args=dict(x=1), deadli
 llm_reply = dict(request_id=ID, status='succeeded', output=dict(text='hello'))
 inbox = dict(index=0, id=ID, sender=HUB, event=dict(event, source=HUB, kind='hub.steer', payload=dict(text='hello')))
 empty_ledger = dict(actions=[], timers=[], llm_requests=[])
-trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
+trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_actions=[], initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_files=files, code_hash=codehash, manifest_hash=manhash, final_hash=base['output_hash'], trailing_boundary=None, initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
 valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='debug.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
+valids['action-rejection'] = dict(id=ID, correlation_id=ID, accepted=False,
+    error=dict(code='permission_denied', message='grant revoked', retryable=False))
+valids['boundary-record'] = seal(dict(version='0.1', trace_id=base['trace_id'], coglet=COG,
+    logical_time=20, previous=None, before_hash=digest(files),
+    output_hash=digest(dict(files, **{'/data/count': '31'})),
+    boundary=[valids['boundary-change']], output_files=dict(files, **{'/data/count': '31'})))
 cases = []
 for typ, value in valids.items():
     cases.append(dict(name=typ+'-valid', type=typ, valid=True, value=value, cbor_hex=encode(value).hex()))
@@ -175,6 +235,13 @@ for typ, value in valids.items():
     cases.append(dict(name=typ+'-unknown-or-path-invalid', type=typ, valid=False, value=bad))
 for name, typ, value in [('zero-compute', 'budgets', dict(budget, compute=0)), ('float-time', 'timer-request', dict(timer, at=0.5)), ('odd-file-hex', 'snapshot', {'/data/count': '0'}), ('failed-reply-with-output', 'llm-reply', dict(inbox['event']['payload'], status='failed'))]:
     cases.append(dict(name=name, type=typ, valid=False, value=value))
+for label, path in [('ascii', '/data/count'), ('utf8', '/data/café')]:
+    cases.append(dict(name='path-' + label, type='path', valid=True, value=path, cbor_hex=encode(path).hex()))
+for codepoint in list(range(32)) + [127, 92]:
+    path = '/data/a' + chr(codepoint) + 'b'
+    cases.append(dict(name=f'path-forbidden-{codepoint}', type='path', valid=False, value=path))
+    change = dict(valids['boundary-change'], path=path)
+    cases.append(dict(name=f'boundary-path-forbidden-{codepoint}', type='boundary-change', valid=False, value=change))
 write('spec/fixtures/abi/cases.json', cases)
 
 # Each timeline is an isolated adapter reset/step invocation. The scripted calls
@@ -210,7 +277,7 @@ for name in ['debug-step', 'no-effects', 'action', 'timer', 'llm', 'log', 'abort
         out['/data/inbox.jsonl'] = (json.dumps(inbox, sort_keys=True, separators=(',', ':'), ensure_ascii=False)+'\n').encode().hex()
         rec['boundary'] = [dict(actor=HUB, audit_id=ID, ticket=None, method='hub.inbox', target=COG, path='/data/inbox.jsonl', before=None, after=out['/data/inbox.jsonl'])]
         rec.update(input_files=out, output_files=out, input_hash=digest(out), output_hash=digest(out))
-        rec['events'] = [dict(event, kind='runtime.inbox', payload=dict(index=0, id=ID))]
+        rec['events'] = [dict(event, source=COG, kind='runtime.inbox', payload=dict(index=0, id=ID))]
     rec = seal(rec)
     records.append((name, rec))
     send = dict(operation='abi.step', initial_files=files, manifest=man,
@@ -255,7 +322,7 @@ reply_files = dict(files)
 reply_files['/data/inbox.jsonl'] = (json.dumps(reply_inbox, sort_keys=True, separators=(',', ':'), ensure_ascii=False)+'\n').encode().hex()
 reply_record.update(step=1, logical_time=20, previous=request_record['record_hash'], input_files=reply_files,
                     output_files=reply_files, input_hash=digest(reply_files), output_hash=digest(reply_files),
-                    events=[dict(event, seq=1, kind='runtime.inbox', payload=dict(index=0, id=ID), logical_time=20)],
+                    events=[dict(event, source=COG, seq=1, kind='runtime.inbox', payload=dict(index=0, id=ID), logical_time=20)],
                     boundary=[dict(actor=HUB, audit_id='6'*32, ticket=None, method='hub.inbox', target=COG, path='/data/inbox.jsonl', before=None, after=reply_files['/data/inbox.jsonl'])])
 reply_record = seal(reply_record)
 reply_trace = dict(trace, records=[request_record, reply_record])
@@ -275,6 +342,37 @@ def trace_case(name, value, valid=True, error=None):
     if error:
         item['error'] = error
     trace_cases.append(item)
+
+# Provenance negatives rehash every enclosing tree/record: digest failures must
+# not conceal absent, malformed or wrong-output provenance.
+provenance_cases = [dict(name='provenance-control', value=copy.deepcopy(trace), valid=True)]
+for name, replacement in [
+    ('missing', None),
+    ('wrong-output', encode(dict(provenance, rewritten_sha256='0'*64)).hex()),
+    ('missing-policy', encode({k: v for k, v in provenance.items() if k != 'policy_sha256'}).hex()),
+    ('unknown-field', encode(dict(provenance, unknown=True)).hex()),
+    ('malformed-cbor', 'a1'),
+    ('trailing-cbor', encode(provenance).hex() + '00'),
+    ('noncanonical-cbor', 'b807' + encode(provenance).hex()[2:]),
+]:
+    sample = json.loads(json.dumps(trace))
+    rec = sample['records'][0]
+    for side in ('input', 'output'):
+        snapshot = rec[side + '_files']
+        if replacement is None:
+            snapshot.pop('/code/build/provenance.cbor')
+        else:
+            snapshot['/code/build/provenance.cbor'] = replacement
+        rec[side + '_hash'] = digest(snapshot)
+    rec['before_hash'] = rec['input_hash']
+    sample['initial_hash'] = rec['before_hash']
+    sample['records'][0] = seal(rec)
+    provenance_cases.append(dict(name='provenance-' + name, value=sample, valid=False))
+write('spec/fixtures/abi/provenance-cases.fixture', provenance_cases)
+write('conformance/abi/provenance.json', [dict(name=c['name'], steps=[
+    dict(send=dict(operation='abi.validate_trace', trace=c['value'])),
+    dict(expect=dict(valid=c['valid'], dispatched=False), within_ms=200),
+]) for c in provenance_cases])
 
 trace_case('async-reply-control', reply_trace)
 debug_trace = dict(trace, records=[dict(records)['debug-step']])
@@ -422,7 +520,10 @@ for name, initial, maximum, admitted in [('initial-memory-at-cap', 2, 2, True),
                                         ('initial-memory-over-cap', 3, 3, False),
                                         ('maximum-memory-over-cap', 2, 3, False)]:
     module = admission_module(initial, maximum)
-    initial_files = dict(files, **{'/code/bin/step.wasm': module.hex()})
+    initial_files = dict(files, **{'/code/bin/step.wasm': module.hex(),
+        '/code/build/provenance.cbor': encode(dict(provenance,
+            original_sha256=hashlib.sha256(module).hexdigest(),
+            rewritten_sha256=hashlib.sha256(module).hexdigest())).hex()})
     response = dict(admitted=admitted, instantiated=admitted, handle_calls=0,
                     effective_memory_pages=budget['memory_pages'],
                     pending_events=[event], journal=None, record_hash=None,

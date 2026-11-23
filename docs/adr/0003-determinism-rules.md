@@ -58,12 +58,26 @@ Wasmtime's `cranelift_nan_canonicalization` is optional once R3 is applied (equa
 and must not be relied on alone.
 
 **R4. Time, randomness and I/O ordering come only from inputs.** The module may import only an
-allowlist: WASI `args_*`, `environ_*`, `proc_exit`, and file operations on `/code`, `/data`, `/logs`
-(`fd_*`, `path_*`). Everything else is rejected, in particular `clock_time_get`, `clock_res_get`,
-`random_get`, `poll_oneoff`, `sched_yield`. Logical time and the seed arrive as `handle` arguments.
-Any future coglet host function must be a pure function of its arguments and of the files in the
-coglet's own tree. The runtime must not expose wall clock, randomness, directory iteration order that
-isn't sorted, or environment-dependent values.
+allowlist: the restricted WASI `args_*`, `environ_*`, `proc_exit`, and file operations
+on `/code`, `/data`, `/logs` (`fd_*`, `path_*`) specified in the ABI, plus exactly
+`coglet_v0.timer`, `coglet_v0.emit`, `coglet_v0.llm` and `coglet_v0.log` with the
+ABI's signatures. Everything else is rejected, in particular `clock_time_get`,
+`clock_res_get`, `random_get`, `poll_oneoff`, `sched_yield`. Logical time and the
+seed arrive as `handle` arguments. Host-call results depend on arguments, the
+pinned file tree and the complete recorded admission state: grants, budgets,
+committed effect-ID ledger and same-step reservations. Replay recomputes results
+in the ABI's validation/permission/dedup/resource order; it MUST NOT inject a
+recorded return to conceal a mismatch or call an ambient provider. Wall-time
+failures retain the ABI's recorded-failure exception, not a deterministic cutoff
+promise. The runtime must not expose ambient wall clock, randomness, unsorted
+directory iteration or environment-dependent values.
+
+**Freeze amendment (ADR-0009):** R4 originally allowed WASI only and required
+argument/file-only host returns. That contradicted the already specified ABI
+imports and dedup ledger; the explicit allowlist and recorded-state rule above
+replace it. The spike linter remains evidence for the original spike, not a
+qualified ABI admission validator. Its allowlist must be extended and tested in
+the production engine/build implementation before admitting those imports.
 
 **R5. Pinned feature set.** The module must validate with exactly: mutable globals,
 sign-extension, saturating float-to-int, multi-value, bulk memory, reference types. Both engines

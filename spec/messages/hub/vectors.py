@@ -209,12 +209,24 @@ case('inbox-conflicting-id', exchange(inbox, {'result.state': 'applied'}) + err(
 case('queue-backpressure', err(inbox, 'resource_exhausted'))
 case('unknown-receipt', err(request('hub.receipt', {'operation_id': '9' * 32}), 'not_found'))
 case('cross-owner-receipt', err(request('hub.receipt', {'operation_id': '8' * 32}), 'permission_denied'))
-event = {'source': cid, 'kind': 'test.event', 'seq': 0, 'logical_time': 0, 'payload': {}, 'correlation_id': '1' * 32}
-events = request('hub.events', {'events': [event]})
-case('event-batch-dedup', exchange(events, {'result.next_seq': 1}) + exchange(events, {'result.next_seq': 1}))
+event = {'source': 'surface:' + device, 'kind': 'test.event', 'seq': 0, 'logical_time': 0, 'payload': {}, 'correlation_id': '1' * 32}
+events = request('hub.events', {'offset': 0, 'events': [event]})
+case('event-batch-dedup', exchange(events, {'result.next_offset': 1}) + exchange(events, {'result.next_offset': 1}))
 gap = copy.deepcopy(event)
 gap['seq'] = 2
-case('event-gap', err(request('hub.events', {'events': [gap]}), 'conflict'))
+case('event-gap', err(request('hub.events', {'offset': 2, 'events': [gap]}), 'conflict'))
+case('event-source-gap', exchange(events, {'result.next_offset': 1}) +
+     exchange(request('hub.events', {'offset': 1, 'events': [gap]}), {'result.next_offset': 2}))
+case('event-source-repeat', exchange(events, {'result.next_offset': 1}) +
+     err(request('hub.events', {'offset': 1, 'events': [event]}), 'conflict'))
+case('event-offset-conflict', exchange(events, {'result.next_offset': 1}) +
+     err(request('hub.events', {'offset': 0, 'events': [gap]}), 'conflict'))
+for name, forbidden in [('runtime-wake', dict(event, kind='runtime.debug_step', source=cid)),
+                        ('foreign-coglet', dict(event, source='coglet:' + 'f' * 64)),
+                        ('coglet-forged-event', dict(event, source=cid))]:
+    case('event-' + name, err(request('hub.events', {'offset': 0, 'events': [forbidden]}), 'permission_denied'))
+case('event-empty-probe', exchange(request('hub.events', {'offset': 0, 'events': []}), {'result.next_offset': 0}) +
+     exchange(events, {'result.next_offset': 1}))
 action = {'id': '2' * 32, 'coglet': cid, 'capability': 'test.move', 'args': {}, 'deadline': 0, 'correlation_id': '2' * 32}
 case('action-expired', exchange(request('hub.actions', {'action': action}), {'result.accepted': False, 'result.error.code': 'deadline_exceeded'}))
 case('health-minimal', exchange(request('hub.health', {'device': device, 'uptime_ms': 1, 'queue_depth': 0,

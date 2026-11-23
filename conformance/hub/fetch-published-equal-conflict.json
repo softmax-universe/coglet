@@ -10,7 +10,7 @@
       "send": {
         "method": "hub.enroll",
         "target": null,
-        "correlation_id": "0000000000000000000000000000002c",
+        "correlation_id": "00000000000000000000000000000033",
         "timeout_ms": 2000,
         "params": {
           "offer": {
@@ -24,7 +24,7 @@
     },
     {
       "match": {
-        "correlation_id": "0000000000000000000000000000002c",
+        "correlation_id": "00000000000000000000000000000033",
         "type": "reply",
         "result.selection.version": "0.1"
       },

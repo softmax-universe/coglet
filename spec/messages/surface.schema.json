@@ -3,6 +3,12 @@
   "$id": "https://coglet.dev/spec/messages/surface.schema.json",
   "$ref": "#/$defs/surface-message",
   "$defs": {
+    "empty-map": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
     "hello": {
       "type": "object",
       "properties": {
