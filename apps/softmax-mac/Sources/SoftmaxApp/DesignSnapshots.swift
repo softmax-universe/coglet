@@ -55,16 +55,23 @@ import SoftmaxCore
                     window.close()
                 }
                 let model = ShellModel()
+                let commands = SoftmaxCommand.catalog(settings: { _ in }, face: {}, chat: { _ in }, about: {})
+                for query in ["", "microphone", "no-such-command"] {
+                    let name = query.isEmpty ? "commands" : query == "microphone" ? "commands-filtered" : "commands-empty"
+                    try capture(name, NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: query))
+                    try capture(name + "-large", NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: query).environment(\.softmaxTextScale, 1.6))
+                }
                 for step in 0..<3 {
-                    try capture("onboarding-\(step)", NSSize(width: 620, height: 500), OnboardingView(model: model, openSettings: {}, finish: {}, step: step))
+                    try capture("onboarding-\(step)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: step))
+                    try capture("onboarding-\(step)-large", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: step).environment(\.softmaxTextScale, 1.6))
                 }
                 for permission in PermissionStatus.allCases {
                     model.permissions = PermissionSnapshot(microphone: permission, inputMonitoring: permission)
-                    try capture("onboarding-voice-\(permission.rawValue)", NSSize(width: 620, height: 500), OnboardingView(model: model, openSettings: {}, finish: {}, step: 1))
+                    try capture("onboarding-voice-\(permission.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: 1))
                 }
                 for status in [LoginItemStatus.disabled, .enabled, .requiresApproval, .unavailable, .unknown] {
                     model.loginItem = status
-                    try capture("onboarding-login-\(status.rawValue)", NSSize(width: 620, height: 500), OnboardingView(model: model, openSettings: {}, finish: {}, step: 2))
+                    try capture("onboarding-login-\(status.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: 2))
                 }
                 for tab in SettingsTab.allCases {
                     model.selectedTab = tab
@@ -73,24 +80,31 @@ import SoftmaxCore
                 }
                 for state in HUDPresentation.allCases {
                     try capture("hud-\(state.rawValue)", NSSize(width: 320, height: 88), TalkHUDView(state: state, level: 0.4, elapsed: 8, hotkey: "Right Option"))
+                    try capture("hud-\(state.rawValue)-large", NSSize(width: 320, height: 141), TalkHUDView(state: state, level: 0.4, elapsed: 8, hotkey: "Right Option").environment(\.softmaxTextScale, 1.6))
                 }
                 for state in MenuPresentation.allCases {
                     try capture("menu-\(state.rawValue)", NSSize(width: 322, height: 440), SoftmaxMenuView(model: model, showFace: {}, showChat: { _ in }, settings: {}, about: {}, quit: {}, presentation: state))
+                    try capture("menu-\(state.rawValue)-large", NSSize(width: 322, height: 704), SoftmaxMenuView(model: model, showFace: {}, showChat: { _ in }, settings: {}, about: {}, quit: {}, presentation: state).environment(\.softmaxTextScale, 1.6))
                     try capture("template-\(state.rawValue)", NSSize(width: 36, height: 36), MenuTemplate(state: state, animate: false).padding(9).modifier(SoftmaxTheme()))
                 }
                 let host = FaceHost(shell: model)
                 try capture("face-idle", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                try capture("face-idle-large", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}).environment(\.softmaxTextScale, 1.6))
                 for (name, state) in [("listening", FaceState.listening(level: 0.4)), ("thinking", .thinking), ("speaking", .speaking(level: 0.4))] {
                     host.driver.setState(state)
                     try capture("face-\(name)", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                    try capture("face-\(name)-large", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}).environment(\.softmaxTextScale, 1.6))
                 }
                 for expression in ["happy", "concerned"] {
                     host.driver.setState(.idle)
                     try host.driver.setExpression(expression, intensity: 1000, durationMS: 60000)
                     try capture("face-\(expression)", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}))
+                    try capture("face-\(expression)-large", NSSize(width: 280, height: 330), FacePanelView(host: host, hide: {}, resize: {}).environment(\.softmaxTextScale, 1.6))
                 }
                 try capture("about", NSSize(width: 420, height: 420), AboutView())
                 try capture("about-licenses", NSSize(width: 420, height: 480), AboutView(licenses: true))
+                try capture("about-large", NSSize(width: 420, height: 420), AboutView().environment(\.softmaxTextScale, 1.6))
+                try capture("about-licenses-large", NSSize(width: 420, height: 480), AboutView(licenses: true).environment(\.softmaxTextScale, 1.6))
             }
         }
         try JSONSerialization.data(withJSONObject: manifest.sorted(), options: [.prettyPrinted]).write(to: root.appendingPathComponent("manifest.json"))

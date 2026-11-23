@@ -55,6 +55,7 @@ struct SoftmaxMenuView: View {
     var about: () -> Void
     var quit: () -> Void
     var presentation: MenuPresentation? = nil
+    var searchCommands: () -> Void = {}
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
             HStack { MenuTemplate(state: presentation ?? model.menuPresentation); Text((presentation ?? model.menuPresentation).label).fontWeight(.semibold) }
@@ -67,6 +68,7 @@ struct SoftmaxMenuView: View {
             Button("Open Chat") { dismiss(); showChat(false) }
             Button("Open Voice") { dismiss(); showChat(true) }
             Divider()
+            Button("Commands…  ⌘K") { dismiss(); searchCommands() }
             Button("Settings…") { dismiss(); settings() }.keyboardShortcut(",")
             Button("Check for Updates…") { model.updates.checkForUpdates() }.disabled(!model.updates.enabled)
             Button("About Softmax") { dismiss(); about() }

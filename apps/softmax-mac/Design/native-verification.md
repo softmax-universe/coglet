@@ -65,6 +65,39 @@ ink pairing is an experiment pending native confirmation. Explicit token fonts
 now follow the text-size preference, and selected Settings rows use the designed
 accent with an increased-contrast outline; these changes need new native review.
 
+## Live audit diagnosis and next revision (not acceptance)
+
+Run `45118684325` at `b3e4db5` still failed eight product contrast findings.
+Its exported audit crops, not just the fixture renderer, contain actual ink
+`#17231D` on white (16.22:1) and danger `#A12C35` on white (7.17:1).
+The offscreen Input Monitoring paragraph's audit crop instead contains the
+footer, so changing its ink cannot repair that sample. Adding foregroundColor
+at the group boundary did not change the failures.
+
+Run `45119838830` at `6811a4d` isolated nine identical Appearance labels, with no
+product theme or nested stateful controls. Exactly `token-13-regular`,
+`black-13-regular` and `token-13-leaf-background` failed. The 14/15/17 pt regular,
+13 pt medium/semibold, and native semantic body rows passed. This establishes a
+font/raster-sensitive audit failure, not a bad token colour or opaque-surface
+inheritance. It does not establish the audit engine's internal algorithm.
+
+The next revision therefore raises the body token to 14 pt, keeps a native
+body-token/diagnostic-red regression, and runs unchanged fail-closed product
+audits in **both light and dark**. Onboarding is 620×600 with smaller voice art
+and horizontal permission actions (vertical fallback at large text), so its
+ordinary permission copy is no longer deliberately below the fold. Largest-text
+scrolling and Back round trips have explicit XCUITests. No contrast exemption
+was added. This revision still needs native compilation, real rasters and audit
+results; it is not baseline approval.
+
+The matrix now requires 360 captures, extending 1.6× coverage beyond Settings to
+onboarding, HUD, menu, Face, About, and the global command palette's default,
+filtered and empty states. The HUD grows with its text preference instead of
+retaining an 88 pt clip. Cmd-K now searches actual app destinations and Settings
+synonyms; / or typing on Settings filters locally, with literal match emphasis.
+No unimplemented coglet or hub object is invented for search results. Native
+keyboard tests exercise arrows, activation, dismissal and focus return.
+
 ## Intentional differences from the design study
 
 - Keep Right Option and near-menu-bar HUD from the more-specific PTT acceptance.

@@ -21,7 +21,11 @@ def expected_keys():
     for state in ['idle', 'listening', 'thinking', 'speaking', 'offline', 'update', 'error']:
         names += ['menu-' + state, 'template-' + state]
     names += ['face-' + s for s in ['idle', 'listening', 'thinking', 'speaking', 'happy', 'concerned']]
-    names += ['about', 'about-licenses']
+    names += ['about', 'about-licenses', 'commands', 'commands-filtered', 'commands-empty']
+    # Settings already have largest-text coverage. Exercise every other text surface
+    # at 1.6x, not just its ordinary-size bitmap at a larger capture geometry.
+    names += [n + '-large' for n in list(names)
+              if not n.startswith(('settings-', 'template-', 'onboarding-voice-', 'onboarding-login-'))]
     return {theme + '-' + n for theme in ['light', 'dark', 'light-contrast', 'dark-contrast'] for n in names}
 
 def compare(actual, baseline, output):

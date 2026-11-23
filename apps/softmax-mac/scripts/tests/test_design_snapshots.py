@@ -11,6 +11,21 @@ gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
 
 class SnapshotGateTests(unittest.TestCase):
+    def test_largest_text_covers_every_text_surface(self):
+        keys = gate.expected_keys()
+        for theme in ['light', 'dark', 'light-contrast', 'dark-contrast']:
+            for surface in ['onboarding-0', 'onboarding-1', 'onboarding-2',
+                            'settings-general', 'settings-hotkey', 'settings-audio',
+                            'settings-hub', 'settings-coglets', 'settings-updates', 'settings-privacy',
+                            'hud-idle', 'hud-listening', 'hud-thinking', 'hud-speaking',
+                            'hud-cancelled', 'hud-microphone-denied', 'hud-offline', 'hud-error',
+                            'menu-idle', 'menu-listening', 'menu-thinking', 'menu-speaking',
+                            'menu-offline', 'menu-update', 'menu-error',
+                            'face-idle', 'face-listening', 'face-thinking', 'face-speaking',
+                            'face-happy', 'face-concerned', 'about', 'about-licenses']:
+                self.assertIn(f'{theme}-{surface}-large', keys)
+        self.assertEqual(len(keys), 360)
+
     def test_missing_baseline_and_manifest_mutation_fail(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

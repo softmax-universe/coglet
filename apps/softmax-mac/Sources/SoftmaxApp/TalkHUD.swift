@@ -65,9 +65,11 @@ enum HUDPresentation: String, CaseIterable {
         }
         presentation.state = state; presentation.level = model.level
         presentation.elapsed = model.elapsed; presentation.hotkey = model.hotkeyName
+        let scale = max(1, UserDefaults.standard.double(forKey: "textScale"))
+        panel?.setContentSize(NSSize(width: 320, height: ceil(88 * scale)))
         if let screen = NSScreen.main ?? NSScreen.screens.first {
             let area = screen.visibleFrame
-            panel?.setFrameOrigin(NSPoint(x: area.maxX - 344, y: area.maxY - 104))
+            panel?.setFrameOrigin(NSPoint(x: area.maxX - 344, y: area.maxY - ceil(88 * scale) - 16))
         }
         if changed, let panel, !panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             panel.alphaValue = 0; panel.orderFrontRegardless()
@@ -107,6 +109,7 @@ struct TalkHUDView: View {
     var level: Float
     var elapsed: TimeInterval
     var hotkey: String
+    @Environment(\.softmaxTextScale) private var scale
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[1]) {
             HStack {
@@ -119,7 +122,7 @@ struct TalkHUDView: View {
             if state == .listening {
                 ProgressView(value: Double(min(1, max(0, level))), total: 1).accessibilityLabel("Microphone level")
             } else { Text(state == .idle ? hotkey : state.hint).softmaxFont(SoftmaxDesignTokens.fontCaption) }
-        }.padding(SoftmaxDesignTokens.spacing[3]).frame(width: 320, height: 88)
+        }.padding(SoftmaxDesignTokens.spacing[3]).frame(width: 320, height: ceil(88 * scale))
             .modifier(SoftmaxTheme()).clipShape(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusWindow))
     }
 }

@@ -152,7 +152,7 @@ struct FacePanelView: View {
             HStack {
                 Button(host.compact ? "Expand Face" : "Compact Face") { host.compact.toggle(); resize() }
                 Button("Hide Face", action: hide).keyboardShortcut(.escape, modifiers: [])
-            }.font(.caption)
+            }.softmaxFont(SoftmaxDesignTokens.fontCaption)
         }.padding(SoftmaxDesignTokens.spacing[1]).modifier(SoftmaxTheme())
     }
 }

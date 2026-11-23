@@ -18,22 +18,28 @@ final class SoftmaxUITests: XCTestCase {
 
     @MainActor
     func testOnboardingAndEverySettingsSectionAccessibilityAudit() throws {
+        try auditOnboardingAndSettings(appearance: "Light")
+        try auditOnboardingAndSettings(appearance: "Dark")
+    }
+
+    @MainActor
+    private func auditOnboardingAndSettings(appearance: String) throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "-appearance", "System"]
+        app.launchArguments = ["--ui-testing", "-appearance", appearance, "-textScale", "1.0"]
         app.launch()
         defer { app.terminate() }
         let onboarding = app.windows["Welcome to Softmax"]
         XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
         for step in 0..<3 {
             let beforeAudit = XCTAttachment(screenshot: onboarding.screenshot())
-            beforeAudit.name = "before-audit-onboarding-\(step)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
+            beforeAudit.name = "\(appearance)-before-audit-onboarding-\(step)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
             print("AX onboarding chapter \(step):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
                 return self.isSystemChrome(issue)
             }
             let image = XCTAttachment(screenshot: onboarding.screenshot())
-            image.name = "onboarding-step-\(step)"; image.lifetime = .keepAlways; add(image)
+            image.name = "\(appearance)-onboarding-step-\(step)"; image.lifetime = .keepAlways; add(image)
             if step < 2 { onboarding.buttons["Continue"].click() }
         }
         onboarding.buttons["Back"].click()
@@ -45,16 +51,16 @@ final class SoftmaxUITests: XCTestCase {
             XCTAssertFalse(onboarding.exists, "Settings must not occlude unfinished onboarding")
             settings.buttons[section].click()
             let beforeAudit = XCTAttachment(screenshot: settings.screenshot())
-            beforeAudit.name = "before-audit-settings-\(section)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
+            beforeAudit.name = "\(appearance)-before-audit-settings-\(section)"; beforeAudit.lifetime = .keepAlways; add(beforeAudit)
             print("AX settings \(section):\n\(app.debugDescription)")
             try app.performAccessibilityAudit { issue in
                 print("AX audit issue: \(issue.detailedDescription); element: \(String(describing: issue.element))")
                 return self.isSystemChrome(issue)
             }
             let image = XCTAttachment(screenshot: settings.screenshot())
-            image.name = "settings-\(section)"; image.lifetime = .keepAlways; add(image)
+            image.name = "\(appearance)-settings-\(section)"; image.lifetime = .keepAlways; add(image)
         }
-        settings.typeKey("k", modifierFlags: .command)
+        settings.typeText("/")
         settings.typeText("microphone")
         XCTAssertTrue(settings.buttons["Audio"].exists)
         XCTAssertFalse(settings.buttons["General"].exists)
@@ -62,6 +68,80 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.buttons["Microphone Settings"].exists)
         settings.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(settings.buttons["General"].exists)
+    }
+
+    @MainActor
+    private func reveal(_ element: XCUIElement, in scroll: XCUIElement) {
+        for _ in 0..<8 {
+            if scroll.frame.contains(element.frame) { break }
+            let old = element.frame
+            scroll.scroll(byDeltaX: 0, deltaY: element.frame.minY < scroll.frame.minY ? 200 : -200)
+            if element.frame == old { break }
+        }
+        XCTAssertTrue(scroll.frame.contains(element.frame), "Text/control must be fully reachable, not clipped: \(element)")
+        XCTAssertTrue(element.isHittable)
+    }
+
+    @MainActor
+    func testLargestTextScrolling() {
+        for appearance in ["Light", "Dark"] {
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "-appearance", appearance, "-textScale", "1.6"]
+            app.launch()
+            let onboarding = app.windows["Welcome to Softmax"]
+            XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+            onboarding.buttons["Continue"].click()
+            let scroll = onboarding.scrollViews.firstMatch
+            reveal(onboarding.buttons["Request Input Monitoring"], in: scroll)
+            let image = XCTAttachment(screenshot: onboarding.screenshot())
+            image.name = "\(appearance)-largest-voice-scrolled"; image.lifetime = .keepAlways; add(image)
+            onboarding.buttons["Back"].click()
+            onboarding.buttons["Continue"].click()
+            XCTAssertTrue(onboarding.staticTexts["Let Softmax hear you."].exists)
+            onboarding.buttons["Open Settings…"].click()
+            let settings = app.windows["Softmax Settings"]
+            XCTAssertTrue(settings.waitForExistence(timeout: 5))
+            reveal(settings.buttons["Login Item Settings"], in: settings.scrollViews.firstMatch)
+            let general = XCTAttachment(screenshot: settings.screenshot())
+            general.name = "\(appearance)-largest-general-scrolled"; general.lifetime = .keepAlways; add(general)
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testGlobalCommandsAndFocusReturn() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+        app.launch()
+        defer { app.terminate() }
+        let onboarding = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+        onboarding.typeKey("k", modifierFlags: .command)
+        let palette = app.descendants(matching: .any).matching(identifier: "Softmax Commands").firstMatch
+        XCTAssertTrue(palette.waitForExistence(timeout: 5))
+        palette.typeText("privacy")
+        XCTAssertTrue(palette.buttons["Settings → Privacy"].exists)
+        XCTAssertFalse(palette.buttons["Settings → General"].exists)
+        palette.typeKey(.escape, modifierFlags: [])
+        XCTAssertFalse(palette.exists)
+        onboarding.typeKey("k", modifierFlags: .command)
+        XCTAssertTrue(palette.waitForExistence(timeout: 5))
+        palette.typeKey(.downArrow, modifierFlags: [])
+        palette.typeKey(.return, modifierFlags: [])
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        XCTAssertTrue(settings.buttons["Record Hotkey…"].exists)
+        settings.typeKey("k", modifierFlags: .command)
+        palette.typeText("version")
+        XCTAssertTrue(palette.buttons["Settings → Updates"].exists)
+        XCTAssertTrue(palette.buttons["About Softmax"].exists)
+        palette.typeKey(.downArrow, modifierFlags: [])
+        palette.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(app.windows["About Softmax"].waitForExistence(timeout: 5))
+        app.windows["About Softmax"].typeKey("k", modifierFlags: .command)
+        palette.typeKey(.escape, modifierFlags: [])
+        XCTAssertFalse(palette.exists)
+        XCTAssertTrue(app.windows["About Softmax"].exists)
     }
 
     @MainActor

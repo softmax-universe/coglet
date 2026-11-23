@@ -16,7 +16,7 @@ struct SoftmaxApp: App {
             SoftmaxWindowRoot {
                 SoftmaxMenuView(model: delegate.model, showFace: { delegate.showFace() },
                     showChat: { delegate.showConversation(voice: $0) }, settings: { delegate.showSettings() },
-                    about: { delegate.showAbout() }, quit: { delegate.quit() })
+                    about: { delegate.showAbout() }, quit: { delegate.quit() }, searchCommands: { delegate.showCommands() })
             }
         } label: {
             StatusLabel(model: delegate.model)
@@ -212,6 +212,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
     private var orbSubscription: AnyCancellable?
+    private let commands = CommandPaletteController()
+    private var commandMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let arguments = ProcessInfo.processInfo.arguments
@@ -230,6 +232,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
         NSApp.setActivationPolicy(.accessory)
+        commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if modifiers == .command && event.charactersIgnoringModifiers == "k" {
+                self.showCommands(); return nil
+            }
+            // Type-ahead belongs only to the key Settings window and must never
+            // steal input from an editor or observe another application's keys.
+            guard self.settingsWindow?.isKeyWindow == true,
+                  !(self.settingsWindow?.firstResponder is NSTextView),
+                  modifiers.isEmpty || modifiers == .shift,
+                  let characters = event.characters, !characters.isEmpty,
+                  characters == "/" || characters.allSatisfy({ $0.isLetter || $0.isNumber }) else { return event }
+            NotificationCenter.default.post(name: .softmaxFilterInput, object: characters == "/" ? "" : characters)
+            return nil
+        }
         orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
             self?.orbOverlay.setVisible(enabled)
         }
@@ -250,7 +268,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             model.ptt.start()
         }
     }
-    func applicationWillTerminate(_ notification: Notification) { face.hide(); model.ptt.shutdown() }
+    func applicationWillTerminate(_ notification: Notification) {
+        if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
+        face.hide(); model.ptt.shutdown()
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showSettings(tab: SettingsTab? = nil) {
@@ -273,7 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func showOnboarding() {
-        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 620, height: 500),
+        onboardingWindow = window(title: "Welcome to Softmax", size: NSSize(width: 620, height: 600),
             view: OnboardingView(model: model, openSettings: { [weak self] in self?.showSettings() },
                 finish: { [weak self] in
                     self?.model.finishOnboarding()
@@ -288,6 +309,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
+
+    func showCommands() {
+        commands.show(commands: SoftmaxCommand.catalog(
+            settings: { [weak self] in self?.showSettings(tab: $0) },
+            face: { [weak self] in self?.showFace() },
+            chat: { [weak self] in self?.showConversation(voice: $0) },
+            about: { [weak self] in self?.showAbout() }))
+    }
 
     func showAbout() {
         if aboutWindow == nil { aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView()) }

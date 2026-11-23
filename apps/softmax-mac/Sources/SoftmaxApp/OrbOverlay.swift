@@ -179,8 +179,16 @@ struct MicrophoneControls: View {
             if model.permissions.microphone == .notDetermined {
                 Button("Allow Microphone") { Task { await model.requestMicrophone() } }
             }
-            Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
-            Button("Refresh Permissions") { model.refreshPermissions() }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
+                    Button("Refresh Permissions") { model.refreshPermissions() }
+                }
+                VStack(alignment: .leading) {
+                    Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
+                    Button("Refresh Permissions") { model.refreshPermissions() }
+                }
+            }
         }
     }
 }

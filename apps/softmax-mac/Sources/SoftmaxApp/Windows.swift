@@ -35,7 +35,7 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
-                TextField("Search settings  ⌘K", text: $query).focused($searchFocused)
+                TextField("Filter settings  /", text: $query).focused($searchFocused)
                     .accessibilityLabel("Search settings").onSubmit {
                         if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
                     }
@@ -48,7 +48,7 @@ struct SettingsView: View {
                 Text("\(tabs.count) sections").softmaxFont(SoftmaxDesignTokens.fontCaption)
                 ForEach(tabs) { tab in
                     Button { model.selectedTab = tab } label: {
-                        Text(tab.rawValue).frame(maxWidth: .infinity, alignment: .leading).padding(6)
+                        highlightedMatch(tab.rawValue, query: query).frame(maxWidth: .infinity, alignment: .leading).padding(6)
                             .background(model.selectedTab == tab ? accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl))
                             .overlay(RoundedRectangle(cornerRadius: SoftmaxDesignTokens.radiusControl)
                                 .strokeBorder(model.selectedTab == tab && (contrast == .increased || forceContrast) ? accent : .clear, lineWidth: 2))
@@ -108,14 +108,15 @@ struct SettingsView: View {
                 }.padding(SoftmaxDesignTokens.spacing[4]).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.frame(minWidth: 760, minHeight: 540).modifier(SoftmaxTheme())
-            .background {
-                Button("Search", action: { searchFocused = true }).keyboardShortcut("k").hidden()
+            .onReceive(NotificationCenter.default.publisher(for: .softmaxFilterInput)) { notification in
+                guard let characters = notification.object as? String else { return }
+                query += characters; searchFocused = true
             }
             .onExitCommand { if !query.isEmpty { query = "" } else { searchFocused = false } }
             .sheet(isPresented: $shortcuts) {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Keyboard shortcuts").softmaxFont(SoftmaxDesignTokens.fontTitle)
-                    Text("⌘K  Search settings\n↑ ↓  Select section\nReturn  Open first match\nEsc  Clear search or cancel speech\n⌘,  Settings\n\(model.hotkeyName)  Push-to-talk")
+                    Text("⌘K  Commands and settings\n/ or type  Filter settings\n↑ ↓  Select section\nReturn  Open first match\nEsc  Clear search or cancel speech\n⌘,  Settings\n\(model.hotkeyName)  Push-to-talk")
                     Button("Done") { shortcuts = false }.keyboardShortcut(.cancelAction)
                 }.padding(24)
             }
@@ -147,7 +148,7 @@ struct OnboardingView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
                 Image("onboarding-\(["welcome", "permissions", "hub"][step])").resizable().scaledToFit()
-                    .frame(height: 100).frame(maxWidth: .infinity).accessibilityHidden(true)
+                    .frame(height: step == 1 ? 48 : 100).frame(maxWidth: .infinity).accessibilityHidden(true)
                 DesignGroup(label: titles[step]) {
                     switch step {
                     case 0:
@@ -161,8 +162,16 @@ struct OnboardingView: View {
                         Divider()
                         Text("Input Monitoring lets Right Option activate push-to-talk outside Softmax. Typed text is not retained.")
                         Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
-                        Button("Request Input Monitoring") { model.requestInputMonitoring() }
-                        Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+                        ViewThatFits(in: .horizontal) {
+                            HStack {
+                                Button("Request Input Monitoring") { model.requestInputMonitoring() }
+                                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+                            }
+                            VStack(alignment: .leading) {
+                                Button("Request Input Monitoring") { model.requestInputMonitoring() }
+                                Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+                            }
+                        }
                     default:
                         Text("Hub disconnected").fontWeight(.semibold)
                         Text("Enrollment is not implemented yet. Voice delivery requires a runtime connection; microphone permission alone does not make voice ready.")
@@ -180,6 +189,6 @@ struct OnboardingView: View {
                 Button(step < 2 ? "Continue" : "Finish") { if step < 2 { step += 1 } else { finish() } }
                     .keyboardShortcut(.defaultAction)
             }
-        }.padding(SoftmaxDesignTokens.spacing[4]).frame(minWidth: 620, minHeight: 500).modifier(SoftmaxTheme())
+        }.padding(SoftmaxDesignTokens.spacing[4]).frame(minWidth: 620, minHeight: 600).modifier(SoftmaxTheme())
     }
 }
