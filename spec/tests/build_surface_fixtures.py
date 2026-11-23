@@ -126,6 +126,19 @@ speech = {
     'tool-result': alternatives(record(session=rid, call=rid, ok=enum(True), value=ref('profile-map')),
                                 record(session=rid, call=rid, ok=enum(False), value=ref('error'))),
 }
+# ADR-0010: additive records; existing 0.1 shapes remain unchanged.
+speech.update({
+    'heard-query': record(item=rid),
+    'heard-record': record(item=rid, played_ms=u, text=text()),
+    'work-state': record(epoch=integer(1, 2**64-1), pending=integer(0, 4)),
+    'work-intent': record(turn=rid, call=rid, epoch=integer(1, 2**64-1),
+                          name=ref('method-name'), arguments=ref('profile-map')),
+    'work-result': alternatives(
+        record(turn=rid, call=rid, epoch=integer(1, 2**64-1), status=enum('succeeded'), value=ref('profile-map')),
+        record(turn=rid, call=rid, epoch=integer(1, 2**64-1), status=enum('failed'), value=ref('error'))),
+    'work-cancelled': record(turn=rid, call=rid, epoch=integer(1, 2**64-1), status=enum('cancelled'), value=ref('error')),
+    'work-done': alternatives(ref('work-result'), ref('work-cancelled')),
+})
 expression = {
     'set-expression': record(expression=exprs, intensity=integer(0,1000), duration_ms=integer(0,60000)),
     'expression-state': record(expression=exprs, intensity=integer(0,1000), remaining_ms=integer(0,60000)),
@@ -178,6 +191,15 @@ values = {
  'expression': {'set-expression': {'expression':'listening','intensity':500,'duration_ms':1000},
                 'expression-state': {'expression':'listening','intensity':500,'remaining_ms':900}},
 }
+values['speech'].update({
+    'heard-query': {'item':cid},
+    'heard-record': {'item':cid, 'played_ms':1200, 'text':'Hello'},
+    'work-state': {'epoch':1, 'pending':0},
+    'work-intent': {'turn':cid, 'call':cid, 'epoch':1, 'name':'game.inspect', 'arguments':{'request':'Inspect'}},
+    'work-result': {'turn':cid, 'call':cid, 'epoch':1, 'status':'succeeded', 'value':{'summary':'Inspected'}},
+    'work-cancelled': {'turn':cid, 'call':cid, 'epoch':1, 'status':'cancelled', 'value':dict(err, code='cancelled')},
+    'work-done': {'turn':cid, 'call':cid, 'epoch':1, 'status':'succeeded', 'value':{'summary':'Inspected'}},
+})
 values['surface']['capabilities'] = {'revision':1,'clock':0,'entries':[values['surface']['cap-entry']],'correlation_id':cid}
 values['surface']['grants'] = {'epoch':1,'entries':[values['surface']['grant']],'correlation_id':cid}
 values['surface']['surface-message'] = {'type':'hello','body':values['surface']['hello']}

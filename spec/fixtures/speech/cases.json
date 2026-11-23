@@ -462,6 +462,267 @@
     }
   },
   {
+    "name": "heard-query-valid",
+    "type": "heard-query",
+    "valid": true,
+    "value": {
+      "item": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a1646974656d78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "heard-query-unknown-field",
+    "type": "heard-query",
+    "valid": false,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "heard-query-missing-field",
+    "type": "heard-query",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "heard-record-valid",
+    "type": "heard-record",
+    "valid": true,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "played_ms": 1200,
+      "text": "Hello"
+    },
+    "cbor_hex": "a3646974656d7820313131313131313131313131313131313131313131313131313131313131313164746578746548656c6c6f69706c617965645f6d731904b0"
+  },
+  {
+    "name": "heard-record-unknown-field",
+    "type": "heard-record",
+    "valid": false,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "played_ms": 1200,
+      "text": "Hello",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "heard-record-missing-field",
+    "type": "heard-record",
+    "valid": false,
+    "value": {
+      "played_ms": 1200,
+      "text": "Hello"
+    }
+  },
+  {
+    "name": "work-state-valid",
+    "type": "work-state",
+    "valid": true,
+    "value": {
+      "epoch": 1,
+      "pending": 0
+    },
+    "cbor_hex": "a26565706f6368016770656e64696e6700"
+  },
+  {
+    "name": "work-state-unknown-field",
+    "type": "work-state",
+    "valid": false,
+    "value": {
+      "epoch": 1,
+      "pending": 0,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "work-state-missing-field",
+    "type": "work-state",
+    "valid": false,
+    "value": {
+      "pending": 0
+    }
+  },
+  {
+    "name": "work-intent-valid",
+    "type": "work-intent",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131646e616d656c67616d652e696e7370656374647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f63680169617267756d656e7473a1677265717565737467496e7370656374"
+  },
+  {
+    "name": "work-intent-unknown-field",
+    "type": "work-intent",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "work-intent-missing-field",
+    "type": "work-intent",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      }
+    }
+  },
+  {
+    "name": "work-result-valid",
+    "type": "work-result",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f6368016576616c7565a16773756d6d61727969496e737065637465646673746174757369737563636565646564"
+  },
+  {
+    "name": "work-result-unknown-field",
+    "type": "work-result",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "work-result-missing-field",
+    "type": "work-result",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    }
+  },
+  {
+    "name": "work-cancelled-valid",
+    "type": "work-cancelled",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "cancelled",
+      "value": {
+        "code": "cancelled",
+        "message": "No grant",
+        "retryable": false
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f6368016576616c7565a364636f64656963616e63656c6c6564676d657373616765684e6f206772616e7469726574727961626c65f4667374617475736963616e63656c6c6564"
+  },
+  {
+    "name": "work-cancelled-unknown-field",
+    "type": "work-cancelled",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "cancelled",
+      "value": {
+        "code": "cancelled",
+        "message": "No grant",
+        "retryable": false
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "work-cancelled-missing-field",
+    "type": "work-cancelled",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "cancelled",
+      "value": {
+        "code": "cancelled",
+        "message": "No grant",
+        "retryable": false
+      }
+    }
+  },
+  {
+    "name": "work-done-valid",
+    "type": "work-done",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f6368016576616c7565a16773756d6d61727969496e737065637465646673746174757369737563636565646564"
+  },
+  {
+    "name": "work-done-unknown-field",
+    "type": "work-done",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "work-done-missing-field",
+    "type": "work-done",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    }
+  },
+  {
     "name": "tool-result-error",
     "type": "tool-result",
     "valid": true,

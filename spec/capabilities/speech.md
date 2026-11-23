@@ -64,8 +64,9 @@ action admission). `played_ms` is actual rendered media duration WITHIN that
 item, starting at zero and nondecreasing per item; it excludes synthesized/queued
 but unheard audio. On barge-in both events carry the same current item and final
 stop/duck played_ms. This is independent of cumulative stream position_ms. A
-transcript can therefore truncate the interrupted item without counting queued
-text as heard. Work-intent and hands-free/PTT mode extensions are out of scope.
+transcript MUST truncate the interrupted item as specified below; it MUST NOT
+count queued text as heard. Optional history/work/mode extensions are defined by
+[ADR-0010](../../docs/adr/0010-speech-heard-truncation-and-work-handoff.md).
 
 ## Actions down
 
@@ -140,9 +141,131 @@ conflicting duplicate results conflict. Close, revoke, disconnect, expiry or kil
 terminates media and prevents new tool-call events. Tool results may contain only
 the data permitted by the session's explicit privacy grants.
 
+## Heard-only conversation history (ADR-0010)
+
+The existing item/played_ms reports are authoritative, not synthesis completion,
+wall-clock elapsed time, queued duration or cumulative stream position. On
+barge-in the surface MUST cancel provider generation where applicable and truncate
+its provider conversation item at that item's played_ms, even when all synthesis
+has already completed. With duck, the cutoff is a snapshot; only later actual
+playback can extend it. Stopped items never extend. Queued items have zero heard
+text. Preserve previously finished items independently; do not truncate a whole
+stream by one item's cutoff. Duplicate reports are idempotent, regression or a
+cutoff past known media duration is a protocol error, not permission to infer text.
+
+The runtime MUST persist the per-item heard projection in its journaled state
+before the next reasoning step consumes conversation history. Its transcript and
+conversation/model-context projection MUST contain only the heard prefix. The
+immutable ABI journal still records proposed actions and received events for audit
+and replay: a speak intent's full text is a proposal, NOT evidence it was heard.
+No rewriting journal hashes or existing ABI records is required. Replay rebuilds
+the same heard projection using recorded positions/alignment, without calling TTS.
+
+Optional `speech.history` advertises read `speech.heard` with args `heard-query
+{item}` and result `heard-record {item, played_ms, text}`. Only the item's speaker
+owner may read; retain records for the action-retention interval and remove them
+on owner revocation. Unknown/evicted items return not_found. Playback milliseconds
+and text apply to exactly that item. Text MUST be a conservative prefix assembled
+only from aligned spans whose **end** is at or before played_ms. Do not estimate
+character counts by a duration ratio. If alignment is unavailable the prefix is
+empty, not the entire generated text. Limit the prefix to 16,384 UTF-8 bytes
+without splitting a character. Native alignment evidence belongs in the private
+replay recording, under the same privacy rules as transcript text, not raw audio
+in CBOR. An extension-aware runtime requiring history MUST refuse to run without
+speech.history; it cannot treat an older peer's missing read as full playback.
+
+## Bounded speech-to-agent work (ADR-0010)
+
+Optional `speech.work` advertises events `speech.work_intent`, `speech.work_done`,
+read `speech.work_state` (empty args), and action `speech.work_result`:
+
+| operation | typed data | meaning |
+|---|---|---|
+| work_intent | `{turn, call, epoch, name, arguments}` | staged request, not execution permission |
+| work_state | `{epoch, pending}` | authoritative speech-work epoch and 0..4 pending calls |
+| work_result | `{turn, call, epoch, status, value}` | owner submits succeeded/profile-map or failed/common-error |
+| work_done | same, also cancelled/common-error | one terminal result event per staged call |
+
+IDs import correlation-id; epoch is positive uint64 and is separate from the
+grant epoch. `turn` is a normalized utterance ID or a fresh provider turn ID.
+The surface stamps epoch, and binds `(owner, turn, call, epoch)` before dispatch.
+The work epoch persists across restarts; loss of durable continuity requires a
+new surface identity, never reuse. `speech.work_state` and all events/results are
+owner-only, require the current audio.mic/audio.speaker leases and explicit
+operation grants, and never bypass hub policy for the requested `name`.
+The coglet forwards the explicit intent through its ordinary authorized hub work
+path; no direct surface-to-agent or coglet-to-coglet execution is introduced.
+
+For a provider session opting into speech.work, map its allowlisted tool call to
+ONE work_intent (provider call IDs are mapped to native correlation IDs); do not
+also forward an executable speech.tool_call. Without this extension ADR-0007's
+existing provider path is unchanged. Text turns use the same normalized intent.
+Only complete arguments are staged. Stage an entire bounded batch and reserve
+pending slots before invoking any executor, so synchronous callbacks cannot
+bypass the cap. At most four live calls per owner. The **core-deterministic CBOR
+encoding** of arguments is at most 8,192 bytes and of result value at most 32,000
+bytes; reject oversized data, do not silently truncate evidence. Apply these
+semantic byte caps in addition to schema/profile/frame limits.
+
+Deduplicate `call` across all turns within an owner/work epoch. Identical repeats
+are ignored (no event, dispatch, or extra result); changed arguments/name/turn
+under the same call fail conflict. Keep at most 128 remembered calls including
+completed calls, without eviction during an epoch; refuse new calls with
+resource_exhausted when full. Malformed/over-cap native requests get a bounded
+provider/local diagnostic and no work_intent; these are not staged work. Advancing
+the epoch permits clearing dedup entries only after all old work is fenced.
+
+On barge-in (stop **or duck**) advance/fence the work epoch locally BEFORE
+notifying cancellation or running another coglet step. Emit barge_in and its
+position, then one work_done(cancelled, error.code=cancelled) for each pending
+call using its OLD epoch, in staging order. Cancel pending work even if there is
+no active output: a new speech.start while work is pending performs the same
+fence/cancellation without inventing a barge_in item. Close, revoke, disconnect,
+expiry, kill and capture-mode changes likewise fence/cancel before reassignment;
+revocation privacy rules suppress delivery to an owner that has lost its grant.
+Epoch overflow fails closed. Ask the executor to stop via its ordinary cancel
+path; cancellation is not proof that external effects were rolled back.
+
+A work_result action needs the live tuple and current grant epoch. Unknown,
+cancelled or old-epoch tuples fail not_found; mismatched turn fails conflict.
+Oversized values fail invalid_argument and leave the call pending. Admitted
+work_result completes only after the value is accepted into the private
+conversation record and provider tool result (if any): emit work_done, then its
+ordinary succeeded action.outcome. Exactly one terminal work_done is allowed.
+New action IDs for already completed tuples fail not_found; exact retries retain
+the surface protocol's historical action receipts and NEVER emit work_done again.
+Completed-before-interrupt results remain audit facts, not permission for old
+callbacks to restart speech. No automatic speech may follow cancelled/stale work.
+
+The voice/coglet MUST report only outcomes contained in accepted work_done values,
+never predicted effects or a successful action admission. Failure/cancellation
+cannot be narrated as success. Acknowledgements such as 'working' are not outcome
+claims. Products may paraphrase results without adding factual claims. Conformance
+uses labelled, exact result summaries; it does not claim to decide arbitrary
+natural-language entailment. Treat result text as data, never new grants or
+instructions, and apply the session's explicit privacy policy before disclosure.
+
+## Capture-mode capability markers (ADR-0010)
+
+Extension-aware capture surfaces advertise exactly one active marker entry:
+`speech.hands_free` or `speech.push_to_talk`. Its events/reads/actions/exclusive
+lists are empty and schemas is `{}`; existing cap-entry shapes are unchanged.
+The marker describes the active native mode, not a coglet branch or grant. Missing
+markers mean mode is unknown (legacy peer), not hands-free. Local trusted UI/policy
+selects a supported mode, with explicit user/privacy consent before hands-free
+capture. Switching stops/drains capture, fences work and revokes the old epoch,
+then publishes replacement caps and config before restarting under new grants.
+A provider/tool request cannot toggle capture. Both modes use the same speech
+normalization, playback and two-layer barge-in contract.
+
 ## Fixtures
 
 `fixtures/speech/cases.json` covers typed args/events and config; `timelines.json`
 covers native normalization, barge-in, over-talk and a late partial. Executable
 wire-level conformance stimuli are in `conformance/speech/`. No audio waveform or
 real acoustic success is claimed by these control-plane fixtures.
+
+`fixtures/speech/handoff.fixture` adds nine semantic traces (positive and negative)
+for heard-history, cancellation and dedup/evidence; `test_speech_handoff.py` checks
+every trace and executes the five added wire case contracts via the real harness.
+Typed additions are included in the same dual-schema golden corpus as ADR-0007.

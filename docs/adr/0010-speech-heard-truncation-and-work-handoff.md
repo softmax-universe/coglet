@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-23
 - Authors: Coglet speech profile worker
-- Related PR: pending publication
+- Related PR: https://github.com/softmax-universe/coglet/pull/34
 - Supersedes / superseded by: extends ADR-0007; no replacement
 
 ## Context
