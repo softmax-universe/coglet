@@ -154,6 +154,16 @@ final class PushToTalkTests: XCTestCase, @unchecked Sendable {
         XCTAssertTrue(ptt.complete(operation: ptt.operationID, state: .thinking))
         XCTAssertEqual(ptt.state, .idle)
     }
+    func testCancelDuringPlaybackStopsAndDoesNotLeaveSpeaking() async {
+        let (ptt, _, _, _) = fixture()
+        var stops = 0
+        ptt.setState(.speaking); let id = ptt.operationID
+        ptt.stopPlayback = { stops += 1 }
+        ptt.cancel()
+        XCTAssertEqual(ptt.state, .idle)
+        XCTAssertEqual(stops, 1)
+        XCTAssertFalse(ptt.complete(operation: id, state: .speaking))
+    }
     func testHoldReleaseEmitsTimestampedPCM() async {
         let keys = FakeKeys()
         let audio = FakeAudio()

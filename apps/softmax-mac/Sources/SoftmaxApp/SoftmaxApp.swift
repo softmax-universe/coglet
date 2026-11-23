@@ -65,8 +65,8 @@ final class ShellModel: ObservableObject {
     var stopFacePlayback: (() -> Void)?
     @discardableResult
     func beginFacePlayback(stop: @escaping () -> Void) -> UInt64 {
-        stopFacePlayback = stop
         ptt.setState(.speaking)
+        stopFacePlayback = stop
         return ptt.operationID
     }
     func finishFacePlayback(operation: UInt64) {

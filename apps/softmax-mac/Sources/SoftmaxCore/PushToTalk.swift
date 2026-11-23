@@ -122,10 +122,12 @@ public struct Utterance: Sendable, Equatable {
     }
     public func cancel() {
         operationID &+= 1
+        let wasSpeaking = state == .speaking
         timer?.cancel(); timer = nil
         if startedAt != nil { _ = audio.stop() }
-        if state == .listening || state == .thinking { state = .idle }
+        if state == .listening || state == .thinking || wasSpeaking { state = .idle }
         startedAt = nil; elapsed = 0; keyDown = false; onChange?()
+        if wasSpeaking { stopPlayback?() }
     }
     private func finish(at timestamp: TimeInterval? = nil) {
         guard let start = startedAt else { return }
