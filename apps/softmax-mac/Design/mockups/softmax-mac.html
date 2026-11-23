@@ -1110,7 +1110,9 @@
               check("Sound cues", true),
             ) +
             `<div class="callout">${settingsStatus === "missing-device" ? "Selected microphone disconnected. Choose another device." : settingsStatus === "denied" ? "Microphone access is off. Open System Settings → Privacy & Security → Microphone." : "No audio is being captured in this prototype."}</div>`;
-        if (state === "hub-account")
+        if (state === "hub-account") {
+          const connected = settingsStatus === 'default';
+          const connecting = settingsStatus === 'connecting';
           body =
             row(
               "Hub address",
@@ -1119,25 +1121,25 @@
             ) +
             row(
               "Account",
-              "No account is connected in this demo.",
-              btn("Connect…", "connect"),
+              connected ? "Sample account · connected to sample hub." : connecting ? "Waiting for sample hub identity confirmation." : "No account is connected.",
+              connected ? btn("Disconnect…", "disconnect") : connecting ? btn("Cancel", "settings-cancel-connect") : btn(settingsStatus === 'error' ? "Retry connection" : "Connect…", "connect"),
             ) +
-            row(
-              "Connection",
-              "Verify identity before enrollment.",
-              btn("Disconnect…", "disconnect"),
-            ) +
-            `<div class="callout">${settingsStatus === "connecting" ? "Connecting… Cancel to return." : settingsStatus === "error" ? "Could not verify this hub. Check the invitation and try again." : "Example connection: connected. No real credentials or requests are used."}</div>`;
+            (connecting ? row("Verify identity", "Sample identity only; no enrollment or network request occurs.", btn("Confirm sample hub identity", "settings-confirm-hub")) : '') +
+            `<div class="callout" role="status">${connecting ? "Connecting… Confirm the sample identity or cancel to return to disconnected." : settingsStatus === "error" ? "Could not verify this hub. Check the invitation and retry connection." : connected ? "Example connection: connected. No real credentials or requests are used." : "Hub disconnected. Reconnect to use hub actions."}</div>`;
+        }
         if (state === "coglets")
-          body =
+          body = settingsStatus === 'loading'
+            ? '<div class="callout" role="status">Loading coglets… Lifecycle is unknown until loading completes.</div>' + btn('Complete sample load', 'coglets-loaded')
+            : settingsStatus === 'error'
+              ? '<div class="callout error" role="status">Could not load coglets. Lifecycle is unknown.</div>' + btn('Retry', 'retry-coglets')
+              : settingsStatus === 'empty'
+                ? '<div class="callout" role="status">No installed coglets. Connect a hub to receive one.</div>'
+                :
             '<input id="list-filter" aria-label="Filter coglets" placeholder="Filter coglets /"><small id="filter-count"></small><div class="fi" data-search="face conversation avatar"><div class="row"><div><b>Face</b><p>Sample · running · microphone, speaker, expression</p></div>' +
             btn("Inspect", "inspect") +
             '</div></div><div class="fi" data-search="echo test local"><div class="row"><div><b>Echo</b><p>Sample · paused · no audio grants</p></div>' +
             btn("Inspect", "inspect-echo") +
-            '</div></div><p id="filter-empty" hidden>No matching coglets. Clear the filter to see all.</p>' +
-            (settingsStatus === "empty"
-              ? '<div class="callout">No installed coglets. Connect a hub to receive one.</div>'
-              : "");
+            '</div></div><p id="filter-empty" hidden>No matching coglets. Clear the filter to see all.</p>';
         if (state === "updates")
           body =
             row(
@@ -1332,7 +1334,7 @@
               toast("Saved for this preview only."),
             ),
           );
-        if (view === "settings" && settingsStatus !== "default") {
+        if (view === "settings" && settingsStatus !== "default" && !['hub-account', 'coglets'].includes(state)) {
           const extra = document.createElement("div");
           extra.className = "callout";
           extra.setAttribute("role", "status");
@@ -1366,10 +1368,6 @@
               `../MenuBar/animated/${state}-${f++ % 4}-18@2x.svg`;
           }, 160);
         }
-        if (state === "coglets" && settingsStatus === "empty")
-          document
-            .querySelectorAll(".settings-main .fi")
-            .forEach((e) => e.remove());
       }
       $("#scenario").onchange = (e) => {
         settingsStatus = e.target.value;
@@ -1391,6 +1389,21 @@
       };
       let previousOnboarding = ["welcome"];
       function action(a) {
+        if (view === 'settings' && state === 'hub-account') {
+          const transitions = { connect: 'connecting', 'settings-cancel-connect': 'disconnected', 'settings-confirm-hub': 'default' };
+          if (a in transitions) { settingsStatus = transitions[a]; render(); return; }
+          if (a === 'disconnect') {
+            toast('Disconnecting stops hub actions, not local coglets.');
+            $('.notice').insertAdjacentHTML('beforeend', btn('Confirm disconnect', 'settings-confirm-disconnect') + btn('Keep connected', 'settings-keep-connected'));
+            return;
+          }
+          if (a === 'settings-confirm-disconnect' || a === 'settings-keep-connected') {
+            settingsStatus = a === 'settings-confirm-disconnect' ? 'disconnected' : 'default'; render(); return;
+          }
+        }
+        if (view === 'settings' && state === 'coglets' && ['retry-coglets', 'coglets-loaded'].includes(a)) {
+          settingsStatus = a === 'retry-coglets' ? 'loading' : 'default'; render(); return;
+        }
         if (a === 'confirm-sample-hub') { setup.hub = true; return go('onboarding', 'hub-connected'); }
         if (a === 'test-mic') { settingsStatus = settingsStatus === 'testing' ? 'default' : 'testing'; render(); return; }
         if (a === 'hud' && view === 'face' && state === 'speaking') return go('face', 'idle');
