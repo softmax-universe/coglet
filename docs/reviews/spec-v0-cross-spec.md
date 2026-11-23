@@ -150,6 +150,61 @@ No protocol implementation is registered in `conformance/impls.toml`.
   regressions and four loopback self-tests also passed. Final-head CI and
   independent review remain outstanding; no tag is authorized yet.
 
+## Repair milestone M-A (PR #36, not freeze acceptance)
+
+- ADR-0009 explicitly amends ADR-0006/#8's step-only trace representation.
+  Traces now pin initial_files/code/manifest, final_hash and nullable separately
+  hashed trailing_boundary. Zero-step standalone exports are valid; boundary
+  records contain no fake event/step/engine usage. Mount/inbox/log rules, exact
+  mutations, provenance, chain identity and final-tree binding remain checked.
+  Sealed trailing records end a segment; continuation carries derived pending
+  state into a new trace without rewriting history.
+- Guest terminals use only durable inbox materialization: runtime.action_rejected
+  imports common action-accept constrained to accepted=false; action.outcome uses
+  common action-outcome. Runtime.receipt is structural runtime-origin audit, not
+  a hub RPC. Complete initial_actions pending arguments join the lifetime ID
+  ledger. Terminal append consumes pending state atomically; its wake may remain
+  queued, fail durably, or cross a trace boundary without duplicate terminals.
+- Added build_boundary_receipts.py and 46 regenerated, shape-valid/rehashed
+  boundary-receipts.fixture vectors plus executable conformance/abi case contracts.
+  test_boundary_receipts checks both actual schemas, recomputed hashes, pending
+  state with a separate terminal-ID projection, real harness matching, and corrupt
+  valid/dispatched/engine_invocations responses. Includes standalone/trailing and
+  ordered/delete writes, wrong chain/time/final/hidden mutations, terminal rejection
+  and all outcome statuses, initial pending state, post-commit/pre-step delivery,
+  aborts, trace-crossing wakes, unknown IDs/correlation/source/origin and duplicate
+  delivery with fresh inbox IDs/source seq. This is archive/case-contract testing,
+  NOT engine/runtime conformance; engine_invocations=0 means validation only.
+- Regenerated both ABI schemas, legacy fixture chains and all five consumers.
+  Local verification: pytest spec/tests: 72 passed; codegen --check: 400 rules,
+  all five targets current; cross_check: 765 fixtures agree across independent
+  Ruby CDDL/JSON/generated validator; 27 harness regressions and four loopback
+  self-tests pass. Exact-head hosted CI is recorded in the card handoff.
+- Read-only review found stale generated vectors during development (regenerated,
+  generator-equality/full-suite checks now pass) and asked to distinguish source
+  binding from authority. ABI now explicitly states the archive authority gate.
+
+### Remaining rows for M-B / final freeze
+
+M-A closes the journal boundary export and guest terminal/pending-action format
+rows, not the whole ledger. Existing repairs close manifest/path/provenance and
+relay payload/offset representation. M-B still owns:
+
+1. Cumulative alloc/handle budgets, bounded ADR-0001/0008/0003 decisions and stale
+   TBD/design/scaffold wording, with explicit unperformed engine qualification.
+2. Exact capability argument/read/result bindings; immutable translated dispatch
+   envelope/retry clock mapping; llm.complete upstream boundary; reserved runtime
+   and test capability names.
+3. Speech behavioral gaps and relay grant/private-owner/synthesized-outcome
+   authority cases. M-A's source checks and synthetic-outcome vector assume the
+   separate retained authority audit; they do not prove authorization.
+4. Adjudicate every residual ledger row with a tested spec disposition or explicit
+   noncontradictory M1 qualification gate naming its Phase 2 owner.
+
+The freeze owner retains independent exact-head integration review, all required
+CI, merge/postmerge verification, spec-v0 tag and final inventory. No M-A merge,
+tag, real engine execution, or production qualification is claimed.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.
