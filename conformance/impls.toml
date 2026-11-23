@@ -6,6 +6,12 @@ transport = "stdio"
 command = ["python3", "conformance/loopback.py"]
 
 [[implementations]]
+name = "wamr-interpreter"
+suites = ["engine"]
+transport = "stdio"
+command = ["python3", "conformance/engine/adapter.py", "target/debug/examples/wamr-conformance"]
+
+[[implementations]]
 name = "surface-rust-reference"
 suites = ["surface"]
 peer_roles = ["runtime"]
