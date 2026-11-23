@@ -67,10 +67,10 @@ tools are pinned to 2.10.1; the tools tarball is SHA-256 checked.
    run `codesign --verify --deep --strict --verbose=2`.
 3. Submit a ZIP of the app with `notarytool submit --wait`, require **Accepted**,
    staple and validate the app, and assess the executable with `spctl`.
-4. Build `Softmax-X.Y.Z.dmg` with create-dmg and Applications drop link. If the
-   design supplies `apps/softmax-mac/assets/dmg-background.png`, include it.
-   CI skips Finder scripting (`--skip-jenkins`), so Finder-specific icon layout
-   is not an acceptance claim; polish can add a prebuilt `.DS_Store` later.
+4. Build `Softmax-X.Y.Z.dmg` with create-dmg and Applications drop link. Use
+   `apps/softmax-mac/Design/DMG/background@1x.png` when available, 660×440 content,
+   app at (180,230) and Applications at (480,230), matching the design record.
+   Native proof exercises Finder layout scripting; visual inspection remains useful.
 5. Sign the DMG, notarize it separately, staple and validate it, and run
    `spctl -a -vvv -t open --context context:primary-signature`. Apple documents
    this DMG policy in [Testing a Notarised Product](https://developer.apple.com/forums/thread/130560);
@@ -122,7 +122,7 @@ The feed is public and needs no GitHub credentials in the client. Before the fir
 stable release, the stable-feed URL is intentionally unavailable; RC users can
 manually test their release's appcast but are not silently enrolled in a beta feed.
 Keep the feed release as a prerelease so it does not become GitHub's "latest"
-product release. Release builds are serialized per tag; do not concurrently publish
-two stable versions out of order. To roll back, publish a **higher bundle build**
+product release. Tag builds share one global publication concurrency group; do not
+publish older stable semantic versions after a newer one. To roll back, publish a **higher bundle build**
 containing the known-good source; Sparkle rejects downgrades. Never replace the
 public update key in installed apps without Sparkle's supported key migration.

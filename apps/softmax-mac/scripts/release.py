@@ -137,13 +137,11 @@ def main():
         stage.mkdir()
         run('ditto',app,stage/'Softmax.app')
         dmg=out/f'Softmax-{version}.dmg'
-        background=ROOT/'assets/dmg-background.png'
+        background=ROOT/'Design/DMG/background@1x.png'
         flags=['--background',background] if background.is_file() else []
-        # --skip-jenkins avoids Finder AppleScript on headless CI; layout assets
-        # still ship, and the app-drop link remains functional.
-        run('create-dmg','--volname','Softmax','--window-size','660','420',
-            '--icon-size','128','--icon','Softmax.app','170','180',
-            '--app-drop-link','490','180','--skip-jenkins',*flags,dmg,stage)
+        run('create-dmg','--volname','Softmax','--window-size','660','440',
+            '--icon-size','128','--icon','Softmax.app','180','230',
+            '--app-drop-link','480','230',*flags,dmg,stage)
         if args.mode=='developer-id':
             run('codesign','--force','--sign',identity,'--timestamp',dmg)
             notarize(dmg,temp)
