@@ -4,3 +4,47 @@ name = "loopback"
 suites = ["self-test"]
 transport = "stdio"
 command = ["python3", "conformance/loopback.py"]
+
+[[implementations]]
+name = "surface-rust-reference"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/debug/coglet-reference-surface", "--stdio"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "mock-surface"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/debug/coglet-mock-surface", "--stdio"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "surface-rust-reference-in-process"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/debug/coglet-reference-surface", "--stdio", "--transport", "in-process"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
+[[implementations]]
+name = "mock-surface-in-process"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/debug/coglet-mock-surface", "--stdio", "--transport", "in-process"]
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
