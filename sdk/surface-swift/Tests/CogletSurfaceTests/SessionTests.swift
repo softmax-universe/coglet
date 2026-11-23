@@ -58,6 +58,34 @@ private func drainedSurfaceMessages(_ session: SurfaceSession) throws -> [CBORVa
 }
 
 final class SessionTests: XCTestCase {
+    func testDisconnectedKillIsDurableWithoutClockProgress() throws {
+        let store = MemoryLedger(), backend = Backend(), clock = Clock()
+        let session = try make(store, backend, clock)
+        try negotiate(session)
+        session.disconnect()
+        let epoch = session.grantEpoch
+        try session.kill(reason: "hardware kill after link loss")
+        XCTAssertTrue(session.isKilled)
+        XCTAssertEqual(session.grantEpoch, epoch + 1)
+        XCTAssertTrue(session.drain().isEmpty)
+        XCTAssertTrue(try make(store, backend, clock).isKilled)
+    }
+    func testGrantReplacementAndKillPreserveQueuedHandshake() throws {
+        for kill in [false, true] {
+            let session = try make(MemoryLedger(), Backend(), Clock())
+            try session.start()
+            if kill {
+                try session.kill(reason: "hardware kill")
+                XCTAssertEqual(try drainedSurfaceMessages(session).map { $0["type"]! }, [.text("hello")])
+            } else {
+                _ = session.drain()
+                try session.receive(SurfaceWire.encode(.message("hello_reply", .record([
+                    ("selection", .record([("version", .text("0.1"))])), ("correlation_id", .text(requestID))])), from: .runtime))
+                try session.installGrants([])
+                XCTAssertEqual(try drainedSurfaceMessages(session).map { $0["type"]! }, [.text("capabilities"), .text("grants"), .text("grants")])
+            }
+        }
+    }
     func testNativeObservationsShareSequenceNormalizeAndFenceSessionAndEpoch() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
         let operations = SurfaceOperation.builtins.filter { $0.entry == "speech.control" || $0.entry == "expression.control" }

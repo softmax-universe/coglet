@@ -234,7 +234,7 @@ public final class SurfaceSession {
             let now = try sample()
             guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
             backend.stop(owner: nil)
-            output = []
+            output.removeAll { $0.observationOwner != nil }
             observationTokens = [:]; normalizers = [:]
             try cancelPending(status: "cancelled", code: "cancelled", now: now, deliver: false)
             ledger.epoch += 1; grants = replacement
@@ -296,15 +296,15 @@ public final class SurfaceSession {
         // control queue. Repeat it here as a defense in depth.
         backend.stop(owner: nil)
         try guarded {
-            guard connected else { throw SurfaceFailure.closed }
             ledger.killed = true; grants = []
-            guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
-            ledger.epoch += 1
-            let now = try sample()
-            output = [] // private queued observations never survive revocation
+            // Local kill remains durable even after link loss or a bad clock.
+            if ledger.epoch < UInt64.max { ledger.epoch += 1 }
+            let now = lastClock
+            output.removeAll { $0.observationOwner != nil }
+            observationTokens = [:]; normalizers = [:]
             try cancelPending(status: "cancelled", code: "cancelled", now: now, deliver: false)
             try ledger.save()
-            if negotiated {
+            if connected && negotiated {
                 try emit(.message("kill", .record([("reason", .text(reason)), ("correlation_id", .text(correlation()))])))
                 try emitHealth(now: now)
             }
