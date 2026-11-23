@@ -1,5 +1,6 @@
-"""Coglet generated message dataclasses and deterministic CBOR codec.
+"""Coglet surface SDK; generated records live in ``coglet_surface.generated``."""
+from .surface import Operation, ProtocolError, Rejection, RequestContext, Surface
+from .transport import Frames, UnixListener, serve
 
-Import types from ``coglet_surface.generated`` and generic wire helpers from
-``coglet_surface.codec``. This package does not yet implement a surface transport.
-"""
+__all__ = ['Frames', 'Operation', 'ProtocolError', 'Rejection', 'RequestContext',
+           'Surface', 'UnixListener', 'serve']
