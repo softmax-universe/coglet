@@ -1,0 +1,8 @@
+[package]
+name = "wamr-cap-spike"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+# Remain standalone even after the root workspace lands.
+[workspace]
