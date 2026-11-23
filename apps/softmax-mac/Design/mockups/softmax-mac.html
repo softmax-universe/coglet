@@ -929,13 +929,17 @@
           "welcome",
           "microphone",
           "microphone-denied",
+          "microphone-granted",
           "hotkey",
           "hotkey-denied",
+          "hotkey-granted",
           "login-item",
           "hub",
           "connecting",
           "hub-error",
+          "hub-connected",
           "ready",
+          "voice-not-set-up",
         ],
         about: ["default", "licenses"],
       };
@@ -976,6 +980,7 @@
         ptt = false,
         returnState = "idle";
       let settingsStatus = params.get("scenario") || "default";
+      const setup = { microphone: false, hotkey: false, login: false, hub: false };
       const scenarios = {
         general: ["default", "login-denied"],
         hotkey: ["default", "conflict", "denied"],
@@ -1097,7 +1102,7 @@
             row(
               "Test microphone",
               "Explicitly starts capture; stop to finish.",
-              btn("Start test", "test-mic"),
+              btn(settingsStatus === 'testing' ? "Stop test" : "Start test", "test-mic"),
             ) +
             row(
               "Sound cues",
@@ -1192,7 +1197,7 @@
             "Softmax runs your coglets on this Mac and connects them to your hub. Let’s set up voice and your shortcut.";
           next = "microphone";
         }
-        if (state === "microphone" || state === "microphone-denied") {
+        if (state === "microphone" || state === "microphone-denied" || state === "microphone-granted") {
           heading = "Let Softmax hear you.";
           copy =
             "Microphone access is used when you hold to talk. Release the shortcut to send. No always-on listening in v1.";
@@ -1209,8 +1214,9 @@
               ? '<div class="callout error">Access is off. Privacy & Security → Microphone → Softmax. You can continue without voice.</div>'
               : "");
           next = "hotkey";
+          if (state === 'microphone-granted') body = '<div class="callout">Microphone allowed (sample). Capture starts only when you talk.</div>';
         }
-        if (state === "hotkey" || state === "hotkey-denied") {
+        if (state === "hotkey" || state === "hotkey-denied" || state === "hotkey-granted") {
           heading = "One shortcut, from anywhere.";
           copy =
             "Hold ⌥Space to talk, release to send. Choose toggle mode in Settings if holding a key is difficult.";
@@ -1225,6 +1231,7 @@
               ? '<div class="callout error">Access denied. Use the on-screen Talk button, or enable Softmax in the requested Input Monitoring or Accessibility pane.</div>'
               : "<p>Input Monitoring and Accessibility are separate permissions; don’t request both by default.</p>");
           next = "login-item";
+          if (state === 'hotkey-granted') body = '<div class="callout">Global shortcut ready (sample). Hold ⌥Space or use the Talk button.</div>';
         }
         if (state === "login-item") {
           heading = "Ready when you sign in?";
@@ -1234,11 +1241,11 @@
           body = row(
             "Start at login",
             "Off until you choose it.",
-            check("Start Softmax at login"),
+            check("Start Softmax at login", setup.login),
           );
           next = "hub";
         }
-        if (["hub", "connecting", "hub-error"].includes(state)) {
+        if (["hub", "connecting", "hub-error", "hub-connected"].includes(state)) {
           heading = "Connect your coglet hub.";
           copy =
             "Paste a trusted invitation. Verify the hub identity before giving this Mac access.";
@@ -1257,6 +1264,8 @@
                 ? '<div class="callout">Connecting… No live request is made.</div>'
                 : "");
           next = "ready";
+          if (state === 'connecting') body += btn('Confirm sample hub identity', 'confirm-sample-hub');
+          if (state === 'hub-connected') body = '<div class="callout">Sample hub identity confirmed. No live connection was made.</div>';
         }
         if (state === "ready") {
           heading = "You’re ready to talk.";
@@ -1265,7 +1274,12 @@
           body = btn("Try Face", "face", true);
           next = "";
         }
-        return `<section class="window onboard" aria-label="First-run setup"><div class="titlebar"><b>Welcome to Softmax</b><div class="grow"></div><small>Setup · ${title(state)}</small></div><div class="content"><img class="illustration" src="../Onboarding/${ill}.svg" alt=""><h2>${heading}</h2><p>${copy}</p><div style="margin-top:18px">${body}</div><p class="notice" role="status"></p><div class="footer">${btn("Back", "onboard-back")}<span class="grow"></span>${state !== "welcome" && state !== "ready" ? btn("Not now", "onboard-" + next) : ""}${next ? btn("Continue", "onboard-" + next, true) : btn("Open menu", "menu")}</div></div></section>`;
+        if (state === 'voice-not-set-up') {
+          heading = 'Voice not set up';
+          copy = 'Softmax is in your menu bar. Finish microphone and hub setup in Settings before talking. The global shortcut is optional; the Talk button remains available.';
+          body = btn('Finish setup in Settings', 'settings', true);
+        }
+        return `<section class="window onboard" aria-label="First-run setup"><div class="titlebar"><b>Welcome to Softmax</b><div class="grow"></div><small>Setup · ${title(state)}</small></div><div class="content"><img class="illustration" src="../Onboarding/${ill}.svg" alt=""><h2>${heading}</h2><p>${copy}</p><div style="margin-top:18px">${body}</div><p class="notice" role="status"></p><div class="footer">${btn("Back", "onboard-back")}<span class="grow"></span>${state !== "welcome" && next ? btn("Not now", "onboard-" + next) : ""}${next ? btn("Continue", "onboard-" + next, true) : btn("Open menu", "menu")}</div></div></section>`;
       }
       function about() {
         return `<section class="window about" aria-label="About Softmax"><div class="content"><img class="app-icon" src="../AppIcon.appiconset/icon-128@2x.png" alt="Softmax app icon"><h2>Softmax for Mac</h2><p>One Mac. Your coglets. A familiar face.</p><small>Version 1.0 (design sample)<br>Developer ID distribution · notarized DMG · Sparkle updates</small>${state === "licenses" ? '<div class="callout">Attribution inventory to be generated from shipped dependencies. No license claims in this prototype.</div>' : ""}<div class="footer">${btn("Licenses", "licenses")}${btn("Updates", "updates")}${btn("Back", "menu")}</div></div></section>`;
@@ -1273,6 +1287,14 @@
       function render() {
         if (!states[view]) view = "menu";
         if (!states[view].includes(state)) state = states[view][0];
+        if (view === 'onboarding') {
+          if (state === 'microphone-denied') setup.microphone = false;
+          if (state === 'microphone-granted') setup.microphone = true;
+          if (state === 'hotkey-denied') setup.hotkey = false;
+          if (state === 'hotkey-granted') setup.hotkey = true;
+          if (state === 'hub-connected') setup.hub = true;
+          if (state === 'hub-error') setup.hub = false;
+        }
         document.documentElement.dataset.theme = theme;
         document.body.dataset.direction = direction;
         $("#theme").value = theme;
@@ -1369,6 +1391,8 @@
       };
       let previousOnboarding = ["welcome"];
       function action(a) {
+        if (a === 'confirm-sample-hub') { setup.hub = true; return go('onboarding', 'hub-connected'); }
+        if (a === 'test-mic') { settingsStatus = settingsStatus === 'testing' ? 'default' : 'testing'; render(); return; }
         if (a === 'hud' && view === 'face' && state === 'speaking') return go('face', 'idle');
         if (["menu", "face", "hud", "about"].includes(a)) return go(a);
         if (a === "settings") return go("settings", "general");
@@ -1381,15 +1405,16 @@
             return go("onboarding", previousOnboarding.at(-1) || "welcome");
           }
           const n = a.slice(8);
-          previousOnboarding.push(n);
-          return go("onboarding", n);
+          const target = n === 'ready' && !(setup.microphone && setup.hub) ? 'voice-not-set-up' : n;
+          previousOnboarding.push(target);
+          return go("onboarding", target);
         }
         if (a === "cancel") {
           if (view === "face") return go("face", "idle");
           return go("hud", "cancelled");
         }
-        if (a === "allow-mic") return go("onboarding", "microphone-denied");
-        if (a === "allow-hotkey") return go("onboarding", "hotkey-denied");
+        if (a === "allow-mic") { setup.microphone = true; return go("onboarding", "microphone-granted"); }
+        if (a === "allow-hotkey") { setup.hotkey = true; return go("onboarding", "hotkey-granted"); }
         if (a === "onboard-connect") return go("onboarding", "connecting");
         if (a === "cancel-connect") return go("onboarding", "hub");
         const text = {
@@ -1419,7 +1444,7 @@
       }
       document.addEventListener("click", (e) => {
         const b = e.target.closest(
-          "[data-action],[data-setting],[data-direction]",
+          "[data-action],[data-setting],button[data-direction]",
         );
         if (!b) return;
         if (b.dataset.action) action(b.dataset.action);
@@ -1547,6 +1572,9 @@
         if (["settings-filter", "list-filter"].includes(e.target.id))
           filterList(e.target);
       });
+      document.addEventListener('change', e => {
+        if (view === 'onboarding' && e.target.getAttribute('aria-label') === 'Start Softmax at login') setup.login = e.target.checked;
+      });
       document.addEventListener("keydown", (e) => {
         if (e.key === "Meta") document.body.classList.add("command");
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -1599,8 +1627,9 @@
           return;
         }
         if (editing && document.activeElement.id === "command-search") return;
+        if (document.activeElement.tagName === 'BUTTON' && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) return;
         const listFilter = $("#list-filter") || $("#settings-filter");
-        if (listFilter && ["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
+        if (listFilter && (!editing || document.activeElement === listFilter) && ["ArrowDown", "ArrowUp", "Enter"].includes(e.key)) {
           const scope =
             listFilter.id === "settings-filter"
               ? $(".sidebar")

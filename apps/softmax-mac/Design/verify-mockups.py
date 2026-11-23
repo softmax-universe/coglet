@@ -88,6 +88,12 @@ with sync_playwright() as p:
     key(page,'Enter')
     assert page.locator('#state').input_value()=='audio'
     report['keyboard'].append('type-anywhere settings filter, highlighted match, count, Return, menu Back round trip')
+    page.select_option('#state','general')
+    page.locator('[aria-label="App appearance"]').focus()
+    key(page,'ArrowDown');key(page,'Enter')
+    assert page.locator('[aria-label="App appearance"]').input_value()=='Light'
+    assert page.locator('#state').input_value()=='general'
+    report['keyboard'].append('native select ArrowDown and Enter preserved; sidebar does not steal form input')
     page.select_option('#state','coglets')
     page.locator('#list-filter').fill('face')
     assert page.locator('.settings-main .fi:visible').count()==1
@@ -97,7 +103,7 @@ with sync_playwright() as p:
     assert page.locator('.settings-main .fi:visible').count()==2
     key(page,'?');assert page.locator('#help').evaluate('(e)=>e.open')
     key(page,'Escape');assert not page.locator('#help').evaluate('(e)=>e.open')
-    page.locator('[data-action="menu"]').first.click();page.locator('#palette-open').focus()
+    page.locator('[data-action="menu"]').first.click();page.locator('.other-app').click()
     owned(page);page.keyboard.down('Space')
     assert page.locator('#state').input_value()=='listening'
     owned(page);page.keyboard.up('Space')
@@ -107,20 +113,49 @@ with sync_playwright() as p:
     load(page,view='onboarding',state='welcome',theme='light',still=1)
     page.locator('[data-action="onboard-microphone"]').click()
     page.locator('[data-action="allow-mic"]').click()
+    assert page.locator('#state').input_value()=='microphone-granted'
+    page.select_option('#state','microphone-denied')
     assert page.locator('#state').input_value()=='microphone-denied'
     page.locator('[data-action="onboard-hotkey"]').last.click()
     page.locator('[data-action="allow-hotkey"]').click()
+    assert page.locator('#state').input_value()=='hotkey-granted'
+    page.select_option('#state','hotkey-denied')
     assert page.locator('#state').input_value()=='hotkey-denied'
     page.locator('[data-action="onboard-login-item"]').last.click()
+    login=page.locator('[aria-label="Start Softmax at login"]')
+    login.click()
+    assert login.is_checked()
+    page.locator('[data-action="onboard-hub"]').last.click()
+    page.locator('[data-action="onboard-back"]').click()
+    assert page.locator('[aria-label="Start Softmax at login"]').is_checked()
     page.locator('[data-action="onboard-hub"]').last.click()
     page.locator('[data-action="onboard-connect"]').click()
     assert page.locator('#state').input_value()=='connecting'
     page.locator('[data-action="cancel-connect"]').click()
     assert page.locator('#state').input_value()=='hub'
     page.locator('[data-action="onboard-ready"]').last.click()
+    assert page.locator('#state').input_value()=='voice-not-set-up'
+    assert page.locator('.onboard h2').inner_text()=='Voice not set up'
+    report['keyboard'].append('denied/skipped setup is not ready; login choice retained across Back')
+    load(page,view='onboarding',state='microphone',theme='light',still=1)
+    page.locator('[data-action="allow-mic"]').click()
+    page.locator('[data-action="onboard-hotkey"]').last.click()
+    page.locator('[data-action="allow-hotkey"]').click()
+    page.locator('[data-action="onboard-login-item"]').last.click()
+    page.locator('[data-action="onboard-hub"]').last.click()
+    page.locator('[data-action="onboard-connect"]').click()
+    page.locator('[data-action="confirm-sample-hub"]').click()
+    page.locator('[data-action="onboard-ready"]').last.click()
+    assert page.locator('#state').input_value()=='ready'
     page.locator('[data-action="face"]').click()
     assert page.locator('#surface').input_value()=='face'
     report['keyboard'].append('first-run path: denied permission recovery, skip, connect/cancel, ready, Face')
+    load(page,view='settings',state='audio',theme='light',still=1)
+    page.locator('[data-action="test-mic"]').click()
+    assert page.locator('[data-action="test-mic"]').inner_text()=='Stop test'
+    page.locator('[data-action="test-mic"]').click()
+    assert page.locator('[data-action="test-mic"]').inner_text()=='Start test'
+    report['keyboard'].append('simulated microphone test exposes Stop and returns to idle')
     for direction in ['rail','companion','stage']:
         load(page,view='face',state='idle',theme='dark',dir=direction,still=1)
         page.locator('#desktop').screenshot(path=str(OUT/f'direction-{direction}.jpg'),type='jpeg',quality=85)

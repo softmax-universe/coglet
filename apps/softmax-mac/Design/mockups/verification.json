@@ -172,12 +172,22 @@
     },
     {
       "view": "onboarding",
+      "state": "microphone-granted",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
       "state": "hotkey",
       "theme": "light"
     },
     {
       "view": "onboarding",
       "state": "hotkey-denied",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-granted",
       "theme": "light"
     },
     {
@@ -202,7 +212,17 @@
     },
     {
       "view": "onboarding",
+      "state": "hub-connected",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
       "state": "ready",
+      "theme": "light"
+    },
+    {
+      "view": "onboarding",
+      "state": "voice-not-set-up",
       "theme": "light"
     },
     {
@@ -387,12 +407,22 @@
     },
     {
       "view": "onboarding",
+      "state": "microphone-granted",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
       "state": "hotkey",
       "theme": "dark"
     },
     {
       "view": "onboarding",
       "state": "hotkey-denied",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "hotkey-granted",
       "theme": "dark"
     },
     {
@@ -417,7 +447,17 @@
     },
     {
       "view": "onboarding",
+      "state": "hub-connected",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
       "state": "ready",
+      "theme": "dark"
+    },
+    {
+      "view": "onboarding",
+      "state": "voice-not-set-up",
       "theme": "dark"
     },
     {
@@ -686,8 +726,11 @@
   "keyboard": [
     "palette: real typing, synonym search, arrows, Return activation",
     "type-anywhere settings filter, highlighted match, count, Return, menu Back round trip",
+    "native select ArrowDown and Enter preserved; sidebar does not steal form input",
     "coglet filter clear, help focus restoration, PTT hold/release/cancel",
+    "denied/skipped setup is not ready; login choice retained across Back",
     "first-run path: denied permission recovery, skip, connect/cancel, ready, Face",
+    "simulated microphone test exposes Stop and returns to idle",
     "menu frame playback and reduced-motion static fallback"
   ],
   "errors": [],
@@ -695,6 +738,6 @@
     "missing icon rejected",
     "wrong-dimension icon rejected"
   ],
-  "stateCount": 86,
+  "stateCount": 94,
   "scenarioCount": 50
 }
