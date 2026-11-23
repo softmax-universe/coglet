@@ -23,6 +23,8 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
     struct Config {
         wal: std::path::PathBuf,
         setup: serde_json::Value,
+        #[serde(default)]
+        native_schedule: Option<serde_json::Value>,
     }
     let Ok(config) = serde_json::from_slice::<Config>(unsafe { slice::from_raw_parts(config, n) })
     else {
@@ -40,6 +42,16 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
     let result =
         crate::RuntimeService::open(&config.wal, &config.setup, 128).and_then(|mut service| {
             service.supervised_now()?;
+            if let Some(schedule) = config.native_schedule {
+                #[cfg(feature = "native-engine")]
+                service
+                    .enable_native(serde_json::from_value(schedule).map_err(|e| e.to_string())?)?;
+                #[cfg(not(feature = "native-engine"))]
+                {
+                    let _ = schedule;
+                    return Err("native-engine feature unavailable".into());
+                }
+            }
             Ok(service)
         });
     match result {

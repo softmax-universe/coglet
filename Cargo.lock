@@ -159,12 +159,16 @@ version = "0.1.0"
 name = "coglet-runtime"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
+ "coglet-engine-wamr",
  "coglet-types",
  "hex",
  "libc",
  "serde",
  "serde_json",
  "sha2",
+ "wasmparser 0.245.1",
+ "wat",
 ]
 
 [[package]]

@@ -194,6 +194,60 @@ impl SurfaceSession {
         self.expire_reads(now);
         Ok(())
     }
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn execution_grants(
+        &self,
+        manifest: &Value,
+        now: u64,
+    ) -> Result<Option<Vec<String>>> {
+        if self.stopped || self.killed || self.surface_now(now).is_err() {
+            return Ok(None);
+        }
+        let coglet = manifest["id"].as_str().ok_or("manifest id")?;
+        let Some(grant) = self.grants.get(coglet) else {
+            return Ok(None);
+        };
+        let clock = self.surface_now(now)?;
+        if grant["expires"].as_u64().ok_or("grant expiry")? <= clock {
+            return Ok(None);
+        }
+        for resource in manifest["exclusive_outputs"]
+            .as_array()
+            .ok_or("exclusive outputs")?
+        {
+            if !grant["resources"]
+                .as_array()
+                .ok_or("resources")?
+                .contains(resource)
+            {
+                return Ok(None);
+            }
+        }
+        let allowed: Vec<String> = self
+            .operations
+            .iter()
+            .filter_map(|(op, direction)| {
+                self.authorize(coglet, op, direction, now)
+                    .ok()
+                    .map(|_| op.clone())
+            })
+            .collect();
+        for op in manifest["required_capabilities"]
+            .as_array()
+            .ok_or("required capabilities")?
+            .iter()
+            .chain(
+                manifest["subscriptions"]
+                    .as_array()
+                    .ok_or("subscriptions")?,
+            )
+        {
+            if !allowed.iter().any(|name| op == name) {
+                return Ok(None);
+            }
+        }
+        Ok(Some(allowed))
+    }
     pub(crate) fn authorize(
         &self,
         coglet: &str,

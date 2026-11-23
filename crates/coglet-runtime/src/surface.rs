@@ -118,7 +118,24 @@ impl SurfaceSession {
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
+        #[cfg(feature = "native-engine")]
+        service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .run_native(self, now)?;
         while self.output.len() < SURFACE_QUEUE {
+            // Guest execution and fsync can outlive the admission lease. Native
+            // routes recheck the supervised clock for EACH new dispatch, never
+            // authorize with the pre-execution transport sample.
+            #[cfg(feature = "native-engine")]
+            let now = {
+                let mut guard = service.lock().map_err(|_| "runtime service poisoned")?;
+                if guard.native_enabled() {
+                    guard.supervised_now()?
+                } else {
+                    now
+                }
+            };
             let next = service
                 .lock()
                 .map_err(|_| "runtime service poisoned")?

@@ -72,8 +72,21 @@ fn main() {
                 let setup: Value =
                     serde_json::from_slice(&std::fs::read(setup).map_err(|e| e.to_string())?)
                         .map_err(|e| e.to_string())?;
-                let service =
+                let mut service =
                     coglet_runtime::RuntimeService::open(std::path::Path::new(wal), &setup, 128)?;
+                if let Some(schedule) = setup.get("native_schedule") {
+                    #[cfg(feature = "native-engine")]
+                    service.enable_native(
+                        serde_json::from_value(schedule.clone()).map_err(|e| e.to_string())?,
+                    )?;
+                    #[cfg(not(feature = "native-engine"))]
+                    {
+                        let _ = schedule;
+                        return Err("native-engine feature unavailable".to_string());
+                    }
+                }
+                // Activate the coherent clock even without an attached scheduler.
+                service.supervised_now()?;
                 let server = coglet_runtime::socket::SurfaceListener::bind(
                     std::path::Path::new(path),
                     uid.parse::<u32>().map_err(|e| e.to_string())?,

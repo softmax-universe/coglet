@@ -13,6 +13,10 @@ int32_t coglet_runtime_configure(const uint8_t *config, size_t n);
 /* Start/recover the durable service before opening surface links. UTF-8 JSON
  * {"wal":"/absolute/private/state.wal","setup":{...}} pins initial runtime
  * configuration. Linux BOOTTIME continuity only; other hosts fail closed.
+ * Optional native_schedule: {trace_id, seed, runtime_bytes, stack_bytes};
+ * requires native-engine build feature and qualified Wasm, no WASI imports.
+ * With native scheduling, send/recv may synchronously execute a bounded guest
+ * step; never call from an audio/reflex thread. See native-engine.md.
  * 0 success, -1 invalid config/already started, -2 recovery/clock failure.
  * Without start, surface_open retains the negotiation-only probe behavior. */
 int32_t coglet_runtime_start(const uint8_t *config, size_t n);

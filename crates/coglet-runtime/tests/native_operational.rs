@@ -12,6 +12,10 @@ use std::{
 };
 const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const S: &str = "surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+#[cfg(feature = "native-engine")]
+#[path = "support/native_engine_cases.rs"]
+mod native_engine_cases;
+
 static FFI_LOCK: Mutex<()> = Mutex::new(());
 fn decode(raw: &[u8]) -> Value {
     coglet_types::decode("surface-message", raw)
@@ -75,8 +79,9 @@ impl Host {
     fn start(&mut self) {
         if self.ffi {
             let raw =
-                serde_json::to_vec(&json!({"wal":self.dir.join("state.wal"),"setup":self.setup}))
-                    .unwrap();
+                serde_json::to_vec(&json!({"wal":self.dir.join("state.wal"),"setup":self.setup,
+                        "native_schedule":self.setup.get("native_schedule")}))
+                .unwrap();
             assert_eq!(unsafe { coglet_runtime_start(raw.as_ptr(), raw.len()) }, 0);
         } else {
             self.child = Some(

@@ -27,11 +27,16 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 
 `Runtime::from_fixture` and `MockEngine` implement the data-only engine seam in
 `conformance/abi/README.md`. Scripted engine usage is not a real Wasm measurement.
-The crate currently owns its `Engine` and snapshot seams because the shared
-`coglet-engine` and `coglet-fs` APIs were empty at implementation start. Those
-seams must now be integrated with the published engine API (PR #47).
+The mock seam remains for fixture execution. Opt-in `native-engine` connects
+the shared `coglet-engine` API to transactional `StepHost` imports and the
+qualified WAMR interpreter. It is a bounded, real-Wasm route, not full ABI
+qualification: WASI-importing modules are refused before input consumption.
+The snapshot filesystem seam is still separate from `coglet-fs`.
 
 ## Verification
+
+See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
+trusted supervisor configuration and its remaining qualification limits.
 
 ```sh
 cargo test -p coglet-runtime
@@ -97,9 +102,12 @@ The unimplemented boundaries remain explicit:
 - Close/disconnect with real device I/O and complete speech temporal normalization
   remain unqualified. The native operational test backend is a deterministic receipt
   ledger, not a physical device/provider or production surface SDK qualification.
-- Production guest scheduling/admission in `cogletd`. Its new explicit
-  --surface-service-socket mode serves committed intent/receipts from pinned setup and
-  WAL, but does not execute a guest. No arguments still prints the version and exits.
+- Opt-in native scheduling is operational over socket and C ABI, with real Wasm
+  tests for commit-before-dispatch call order, trap rollback, one-time batch
+  consumption and byte-identical reconciliation after WAL reopen. The default
+  feature-free service mode only hosts the outbox. Native execution currently
+  refuses all WASI imports; full transactional WASI is the serial ABI qualification
+  gate. No arguments still prints the version and exits.
 - Engine admission/attempt-error contract and full recovery-invariant validation.
   Recovery checks all code files, pending-ledger membership, inbox wake indices,
   trace identity and journal head/chain, but not a full reconstruction of all host

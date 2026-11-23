@@ -11,6 +11,8 @@ mod router;
 #[cfg(target_os = "linux")]
 pub mod socket;
 mod surface;
+#[cfg(feature = "native-engine")]
+pub use execution::native_engine::{NativeEngine, NativeSchedule};
 pub use execution::{Engine, EngineReport, MockEngine, Runtime, RuntimeService};
 pub use filesystem::{Snapshot, digest, valid_path};
 pub use host::{EffectLedger, StepHost};

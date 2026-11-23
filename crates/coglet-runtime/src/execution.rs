@@ -9,14 +9,20 @@ use std::path::Path;
 mod clock;
 #[path = "dispatch.rs"]
 mod dispatch;
+#[cfg(feature = "native-engine")]
+#[path = "native_engine.rs"]
+pub mod native_engine;
 #[path = "speech_temporal.rs"]
 mod speech_temporal;
 #[path = "surface_events.rs"]
 mod surface_events;
 
 /// Engine implementations must start a fresh instance for every attempt. This
-/// runtime-owned seam awaits integration with the now-published coglet-engine API.
+/// fixture seam also adapts the shared Engine API through opt-in NativeEngine.
 pub trait Engine {
+    fn metadata(&self) -> Option<Value> {
+        None
+    }
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport>;
 }
 
@@ -58,6 +64,8 @@ struct StagedBoundary {
 pub struct RuntimeService {
     state: ServiceState,
     store: DurableStore,
+    #[cfg(feature = "native-engine")]
+    native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
@@ -168,7 +176,12 @@ impl RuntimeService {
                 None,
             )?;
         }
-        Ok(Self { state, store })
+        Ok(Self {
+            state,
+            store,
+            #[cfg(feature = "native-engine")]
+            native: None,
+        })
     }
 
     /// The authenticated surface/router must have authorized external events
@@ -548,6 +561,11 @@ impl Runtime {
     /// Compute an attempted step. No dispatch occurs here. Integration with the
     /// durable store must commit returned state + record before external effects.
     pub fn step(&mut self, inputs: &Value, engine: &mut impl Engine) -> Result<Value> {
+        let mut pinned_inputs = inputs.clone();
+        if let Some(metadata) = engine.metadata() {
+            pinned_inputs["engine"] = metadata;
+        }
+        let inputs = &pinned_inputs;
         if self.sealed {
             return Err("trace is sealed; start a new segment".into());
         }
