@@ -14,6 +14,8 @@ mod live_heard;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
+#[path = "playback.rs"]
+mod playback;
 #[path = "speech_temporal.rs"]
 mod speech_temporal;
 #[path = "surface_events.rs"]

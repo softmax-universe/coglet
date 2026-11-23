@@ -6,6 +6,8 @@ const MAX_IDENTITIES: usize = 4096;
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct SpeechTemporal {
+    #[serde(default)]
+    pub(super) playback: playback::Playback,
     utterances: BTreeMap<String, Utterance>,
     calls: BTreeMap<String, Value>,
     #[serde(default)]
@@ -23,7 +25,30 @@ struct Utterance {
     ended: bool,
 }
 impl SpeechTemporal {
+    pub(super) fn check_tool_result(
+        &self,
+        surface: &str,
+        args: &Value,
+        dispatches: &BTreeMap<String, dispatch::Dispatch>,
+    ) -> Result<()> {
+        let key = format!(
+            "{surface}/{}/{}",
+            args["session"].as_str().ok_or("missing session")?,
+            args["call"].as_str().ok_or("missing call")?
+        );
+        if !self.calls.contains_key(&key) {
+            return Err("not_found: no live provider call".into());
+        }
+        if dispatches
+            .values()
+            .any(|d| d.matches_tool_result(surface, args))
+        {
+            return Err("conflict: provider result already dispatched".into());
+        }
+        Ok(())
+    }
     pub(super) fn validate(&self, epochs: &BTreeMap<String, u64>, owner: &Value) -> Result<()> {
+        self.playback.validate(epochs, owner)?;
         if self.utterances.len() > MAX_IDENTITIES || self.calls.len() > MAX_IDENTITIES {
             return Err("recovered speech identity bound exceeded".into());
         }
@@ -73,6 +98,9 @@ impl SpeechTemporal {
         epoch: u64,
         event: &Value,
     ) -> Result<bool> {
+        if self.playback.duplicate_barge(surface, event)? {
+            return Ok(false);
+        }
         let payload = &event["payload"];
         let kind = event["kind"].as_str().ok_or("missing speech kind")?;
         let key = |id: &str| format!("{surface}/{id}");
@@ -126,6 +154,18 @@ impl SpeechTemporal {
                     utterance.ended = true;
                 }
                 utterance.revision = revision;
+            }
+            "speech.barge_in" => {
+                let id = key(payload["utterance"]
+                    .as_str()
+                    .ok_or("missing barge utterance")?);
+                let utterance = self
+                    .utterances
+                    .get(&id)
+                    .ok_or("barge without capture start")?;
+                if utterance.owner != owner || utterance.epoch != epoch || utterance.ended {
+                    return Err("barge belongs to closed/revoked capture".into());
+                }
             }
             "speech.tool_call" => {
                 let id = format!(

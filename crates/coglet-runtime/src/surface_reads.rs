@@ -214,7 +214,13 @@ impl SurfaceSession {
             service
                 .lock()
                 .map_err(|_| "runtime service poisoned")?
-                .record_heard_read(self, id, &body["value"], now)?;
+                .record_heard_read(
+                    self,
+                    id,
+                    &body["value"],
+                    body["snapshot"].as_u64().ok_or("missing read snapshot")?,
+                    now,
+                )?;
             self.heard_reads.remove(id);
             self.reads.remove(id);
             return Ok(());

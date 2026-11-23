@@ -99,8 +99,9 @@ The unimplemented boundaries remain explicit:
   Native reads never invent guest events; pending+completed observations are bounded
   to 128 with 4096 non-evicting correlation tombstones per connection. Stale durable
   epochs purge read replies/results. Heard reads require a retained accepted speaker
-  item and current speaker lease; provider-native items without retained ownership
-  currently fail closed. Both native transports initiate heard reads from authenticated
+  item and current speaker lease; provider-native items bind conservatively to an
+  unambiguous retained live session (see live-heard.md for lifecycle restrictions).
+  Both native transports initiate heard reads from authenticated
   position/barge observations when speech.history is advertised. An atomic durable
   barrier prevents reasoning until the corresponding runtime.heard boundary is
   committed; revoke, expiry, disconnect and restart purge abandoned barriers with

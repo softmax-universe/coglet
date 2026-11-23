@@ -54,12 +54,31 @@ impl RuntimeService {
         if kind == "speech.tool_call" {
             self.check_provider_session(session, coglet, &event["payload"]["session"])?;
         }
+        let playback = matches!(kind, "speech.position" | "speech.barge_in");
+        let provider = if playback {
+            self.playback_owner(session, coglet, &event["payload"])?
+        } else {
+            None
+        };
         let mut next = self.state.clone();
         Self::advance_surface_sequence(&mut next, event)?;
-        let deliver =
+        let mut deliver =
             next.speech_temporal
                 .admit(session.surface(), coglet, session.grant_epoch(), event)?;
-        let heard = Self::stage_heard_observation(&mut next, session, event, expires)?;
+        if playback {
+            deliver &= next.speech_temporal.playback.admit(
+                session.surface(),
+                coglet,
+                session.grant_epoch(),
+                provider,
+                event,
+            )?;
+        }
+        let heard = if deliver {
+            Self::stage_heard_observation(&mut next, session, event, expires)?
+        } else {
+            None
+        };
         if deliver
             && self.state.runtime.manifest["subscriptions"]
                 .as_array()

@@ -53,7 +53,7 @@ fn program_delay(abort: bool, delay: bool) -> Vec<u8> {
         ));
     }
     if delay {
-        data.push_str("(func (export \"_initialize\") (local $n i32) i32.const 10000000 local.set $n (loop $again local.get $n i32.const 1 i32.sub local.tee $n br_if $again))");
+        data.push_str("(func (export \"_initialize\") (local $n i32) i32.const 100000000 local.set $n (loop $again local.get $n i32.const 1 i32.sub local.tee $n br_if $again))");
     }
     wat::parse_str(format!("(module (import \"coglet_v0\" \"emit\" (func $emit (param i32 i32) (result i32)))
         (memory (export \"memory\") 1 2) {data}

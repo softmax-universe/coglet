@@ -68,6 +68,7 @@ impl RuntimeService {
         session: &SurfaceSession,
         id: &str,
         read: &Value,
+        snapshot: u64,
         now: u64,
     ) -> Result<()> {
         let pending = self
@@ -93,6 +94,11 @@ impl RuntimeService {
             return Err("heard reply does not match playback cutoff".into());
         }
         let mut next = self.state.clone();
+        let current_snapshot = next.speech_temporal.playback.observe_snapshot(
+            session.surface(),
+            &pending.item,
+            snapshot,
+        )?;
         let mut staged = next
             .staged_boundary
             .take()
@@ -104,6 +110,26 @@ impl RuntimeService {
             return Err("cannot materialize heard in sealed/past segment".into());
         }
         let before = staged.runtime.files.files().get(heard::PATH).cloned();
+        let archive = heard::decode(before.as_deref())?;
+        let superseded = !current_snapshot
+            || archive["items"].as_array().unwrap().iter().any(|v| {
+                v["surface"] == session.surface()
+                    && v["item"] == pending.item
+                    && (v["played_ms"].as_u64().is_some_and(|p| played < p)
+                        || (v["stopped"] == true && !pending.stopped))
+            });
+        // Concurrent reads may complete out of order. An authenticated older
+        // snapshot releases its own barrier, never rolls back/fills frozen history.
+        if superseded {
+            next.staged_boundary = Some(staged);
+            next.heard_pending.remove(id);
+            self.store.commit(
+                &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+                None,
+            )?;
+            self.state = next;
+            return Ok(());
+        }
         let after = heard::collect(before.as_deref(), session.surface(), read, pending.stopped)?;
         if before.as_ref() != Some(&after) {
             let change = json!({"actor":owner,"audit_id":id,"ticket":null,"method":"runtime.heard","target":owner,"path":heard::PATH,"before":before,"after":after});

@@ -17,6 +17,8 @@ const S: &str = "surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 mod native_engine_cases;
 #[path = "support/native_heard.rs"]
 mod native_heard;
+#[path = "support/native_playback.rs"]
+mod native_playback;
 
 static FFI_LOCK: Mutex<()> = Mutex::new(());
 fn decode(raw: &[u8]) -> Value {

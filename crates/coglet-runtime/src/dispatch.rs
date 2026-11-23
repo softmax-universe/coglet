@@ -3,6 +3,9 @@
 //! This is dispatch metadata, not a replacement for the immutable ABI intent.
 use super::*;
 use crate::{SurfaceSession, catalog};
+#[cfg(test)]
+#[path = "dispatch_tests.rs"]
+mod tests;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -16,6 +19,13 @@ pub(super) struct Dispatch {
     outcome: Option<Value>,
 }
 impl Dispatch {
+    pub(super) fn matches_tool_result(&self, surface: &str, args: &Value) -> bool {
+        self.surface == surface
+            && self.accept.as_ref().is_none_or(|v| v["accepted"] != false)
+            && self.intent["capability"] == "speech.tool_result"
+            && self.intent["args"]["session"] == args["session"]
+            && self.intent["args"]["call"] == args["call"]
+    }
     fn validate(&self, id: &str, runtime: &Runtime) -> Result<()> {
         validate("action", &self.intent)?;
         validate("surface-id", &json!(self.surface))?;
@@ -132,7 +142,9 @@ impl RuntimeService {
                 {
                     return Ok(None);
                 }
-                if session.translate_action(&action, now).is_err() {
+                if session.translate_action(&action, now).is_err()
+                    || self.check_new_provider_action(session, &action).is_err()
+                {
                     self.reject_undispatched(&action, now, "invalid_argument")?;
                     continue;
                 }
@@ -246,6 +258,7 @@ impl RuntimeService {
             return Err("stale surface grant epoch".into());
         }
         let envelope = session.translate_action(intent, now)?;
+        self.check_new_provider_action(session, intent)?;
         let raw = cbor(&envelope)?;
         if raw.len() > crate::SURFACE_MAX_FRAME {
             return Err(
@@ -361,6 +374,20 @@ impl RuntimeService {
         coglet: &str,
         id: &str,
     ) -> Result<()> {
+        if let Some(provider) = self
+            .state
+            .speech_temporal
+            .playback
+            .provider(session.surface(), id)
+        {
+            self.state.speech_temporal.playback.check_provider_owner(
+                session.surface(),
+                id,
+                coglet,
+                session.grant_epoch(),
+            )?;
+            return self.check_provider_session(session, coglet, &json!(provider));
+        }
         let d = self
             .state
             .dispatches
@@ -382,6 +409,79 @@ impl RuntimeService {
             .map_err(|e| e.to_string())?;
         if envelope["body"]["grant_epoch"] != session.grant_epoch() {
             return Err("permission_denied: item owner revoked".into());
+        }
+        Ok(())
+    }
+    pub(super) fn playback_owner(
+        &self,
+        session: &SurfaceSession,
+        coglet: &str,
+        payload: &Value,
+    ) -> Result<Option<String>> {
+        let id = payload["item"].as_str().ok_or("missing playback item")?;
+        if let Some(d) = self.state.dispatches.get(id) {
+            self.check_heard_owner(session, coglet, id)?;
+            if d.intent["args"]["stream"] != payload["stream"]
+                || (payload.get("chunk").is_some()
+                    && payload["chunk"]
+                        != d.intent["args"].get("chunk").cloned().unwrap_or(json!(0)))
+            {
+                return Err("playback does not match admitted stream/chunk".into());
+            }
+            return Ok(None);
+        }
+        if let Some(provider) = self
+            .state
+            .speech_temporal
+            .playback
+            .provider(session.surface(), id)
+        {
+            self.check_provider_session(session, coglet, &json!(provider))?;
+            return Ok(Some(provider.to_owned()));
+        }
+        // Frozen playback has no session field. Only an unambiguous live retained
+        // provider session may establish native ownership; never invent admission.
+        let candidates: Vec<String> = self
+            .state
+            .dispatches
+            .values()
+            .filter(|d| {
+                d.surface == session.surface() && d.intent["capability"] == "speech.session_open"
+            })
+            .filter_map(|d| d.intent["args"]["session"].as_str())
+            .map(str::to_owned)
+            .collect();
+        if candidates.len() != 1 {
+            return Err("native item has no unambiguous live provider owner".into());
+        }
+        let provider = candidates.into_iter().next().unwrap();
+        self.check_provider_session(session, coglet, &json!(provider))?;
+        Ok(Some(provider))
+    }
+    fn check_new_provider_action(&self, session: &SurfaceSession, intent: &Value) -> Result<()> {
+        if self
+            .state
+            .speech_temporal
+            .playback
+            .provider(
+                session.surface(),
+                intent["id"].as_str().ok_or("missing action ID")?,
+            )
+            .is_some()
+        {
+            return Err("conflict: action ID reuses a native provider item".into());
+        }
+        if intent["capability"] == "speech.tool_result" {
+            self.check_provider_session(
+                session,
+                intent["coglet"].as_str().unwrap(),
+                &intent["args"]["session"],
+            )?;
+            self.state.speech_temporal.check_tool_result(
+                session.surface(),
+                &intent["args"],
+                &self.state.dispatches,
+            )?;
         }
         Ok(())
     }

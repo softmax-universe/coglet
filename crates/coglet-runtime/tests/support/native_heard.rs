@@ -1,5 +1,16 @@
 use super::*;
+#[test]
+fn ffi_out_of_order_reads_do_not_rewrite_stopped_history_or_duplicate_observations() {
+    exercise_heard_order(true, "heard-reverse-ffi", false, true);
+}
+#[test]
+fn socket_out_of_order_reads_do_not_rewrite_stopped_history_or_duplicate_observations() {
+    exercise_heard_order(false, "heard-reverse-socket", false, true);
+}
 fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
+    exercise_heard_order(ffi, name, revoke, false);
+}
+fn exercise_heard_order(ffi: bool, name: &str, revoke: bool, reverse: bool) {
     let _guard = FFI_LOCK.lock().unwrap();
     let mut host = Host::new(ffi, name);
     drop(host.connect());
@@ -35,6 +46,7 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
         "accept",
         json!({"id":"4".repeat(32),"correlation_id":"5".repeat(32),"accepted":true}),
     );
+    let mut delayed = Vec::new();
     for (index, (played, text)) in [(10, "hé"), (20, "revision"), (30, "héllo")]
         .into_iter()
         .enumerate()
@@ -53,10 +65,21 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
                 json!({"epoch":2,"entries":[],"correlation_id":"7".repeat(32)}),
             );
         }
-        link.send("read_reply",json!({"correlation_id":read["body"]["correlation_id"],"ok":true,"value":{"item":"4".repeat(32),"played_ms":if index < 2 {played+2} else {played},"text":text},"snapshot":index+1}));
+        let reply = json!({"correlation_id":read["body"]["correlation_id"],"ok":true,"value":{"item":"4".repeat(32),"played_ms":if index < 2 {played+2} else {played},"text":text},"snapshot":index+1});
+        if reverse {
+            delayed.push(reply);
+        } else {
+            link.send("read_reply", reply);
+        }
         if revoke {
             break;
         }
+    }
+    for reply in delayed.into_iter().rev() {
+        link.send("read_reply", reply);
+    }
+    if reverse {
+        link.send("event",json!({"source":S,"seq":4,"logical_time":1300,"kind":"speech.position","payload":{"stream":"a".repeat(32),"chunk":0,"item":"4".repeat(32),"played_ms":30,"position_ms":30,"state":"stopped"},"correlation_id":"6".repeat(32)}));
     }
     link.send(
         "health",
@@ -93,13 +116,15 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
             .unwrap()
             .clone()
     } else {
-        assert_eq!(service.records().len(), 3);
+        assert_eq!(service.records().len(), if reverse { 1 } else { 3 });
         assert!(
             service
                 .records()
                 .iter()
-                .all(|r| r["events"].as_array().unwrap().len() == 1
-                    && r["events"][0]["kind"] == "speech.position")
+                .all(
+                    |r| r["events"].as_array().unwrap().len() == if reverse { 3 } else { 1 }
+                        && r["events"][0]["kind"] == "speech.position"
+                )
         );
         service
             .records()
@@ -107,7 +132,16 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
             .flat_map(|r| r["boundary"].as_array().unwrap().iter().cloned())
             .collect()
     };
-    assert_eq!(changes.len(), if revoke { 0 } else { 3 });
+    assert_eq!(
+        changes.len(),
+        if revoke {
+            0
+        } else if reverse {
+            1
+        } else {
+            3
+        }
+    );
     assert!(
         changes
             .iter()
@@ -122,7 +156,11 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
         assert_eq!(heard["items"][0]["heard"], "héllo");
         assert_eq!(
             heard["items"][0]["spans"],
-            json!([{"end_ms":12,"text":"hé"},{"end_ms":30,"text":"llo"}])
+            if reverse {
+                json!([{"end_ms":30,"text":"héllo"}])
+            } else {
+                json!([{"end_ms":12,"text":"hé"},{"end_ms":30,"text":"llo"}])
+            }
         );
         assert_eq!(heard["items"][0]["stopped"], true);
     }
