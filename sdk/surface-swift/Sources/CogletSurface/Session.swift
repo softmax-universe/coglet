@@ -59,6 +59,14 @@ public enum NativeSurfaceResult: Sendable {
     case failed(NativeSurfaceError)
 }
 
+/// Opaque callback custody captured when a native/provider generation STARTS.
+/// Product code must never obtain a new token inside an old callback.
+public struct NativeObservationToken: Equatable, Sendable {
+    fileprivate let owner: String
+    fileprivate let epoch: UInt64
+    fileprivate let session: UUID
+}
+
 /// Native callbacks are explicit. preflight MUST be side-effect-free; begin runs
 /// only after durable admission. Returning nil leaves the action pending until
 /// complete() with the captured epoch. Stop MUST synchronously fence native I/O.
@@ -92,7 +100,9 @@ public final class SurfaceSession {
     private var helloCorrelation: String?
     private var revision: UInt64 = 1
     private var grants: [EffectiveSurfaceGrant] = []
-    private var output: [[UInt8]] = []
+    private var output: [(bytes: [UInt8], observationOwner: String?)] = []
+    private var observationTokens: [String: NativeObservationToken] = [:]
+    private var normalizers: [String: SpeechObservations] = [:]
     public var grantEpoch: UInt64 { ledger.epoch }
     public var isKilled: Bool { ledger.killed }
 
@@ -138,7 +148,51 @@ public final class SurfaceSession {
                 ("clock", .unsigned(now)), ("correlation_id", .text(id))])))
         }
     }
-    public func drain() -> [[UInt8]] { let bytes = output; output = []; return bytes }
+    public func drain() -> [[UInt8]] { let bytes = output.map(\.bytes); output = []; return bytes }
+
+    /// Called before capture/provider generation begins. Replacing the token
+    /// fences a native session even within the SAME grant epoch.
+    public func openNativeObservationSession(owner: String, epoch: UInt64) throws -> NativeObservationToken {
+        guard connected, negotiated, !ledger.killed, epoch == ledger.epoch,
+              boundCoglets.contains(owner), let grant = grants.first(where: { $0.coglet == owner }),
+              grant.expires > clock() else { throw NativeSurfaceError("permission_denied") }
+        backend.stop(owner: owner)
+        output.removeAll { $0.observationOwner == owner }
+        let token = NativeObservationToken(owner: owner, epoch: epoch, session: UUID())
+        observationTokens[owner] = token; normalizers[owner] = SpeechObservations()
+        return token
+    }
+    public func closeNativeObservationSession(_ token: NativeObservationToken) {
+        guard observationTokens[token.owner] == token else { return }
+        backend.stop(owner: token.owner)
+        observationTokens[token.owner] = nil; normalizers[token.owner] = nil
+        output.removeAll { $0.observationOwner == token.owner }
+    }
+
+    /// false = fenced session or stale/late transcript, with no event/sequence.
+    /// Uses the SAME durable sequence allocator and bounded queue as outcomes.
+    @discardableResult
+    public func publishObservation(_ token: NativeObservationToken, kind: String, payload: CBORValue) throws -> Bool {
+        guard connected, negotiated, !ledger.killed, token.epoch == ledger.epoch,
+              observationTokens[token.owner] == token else { return false }
+        var published = false
+        try guarded {
+            let now = try sample()
+            guard let operation = operations[kind], operation.direction == .event else { throw NativeSurfaceError("permission_denied") }
+            try authorize(owner: token.owner, operation: operation, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+            try CBORCodec.validate(operation.inputRule, payload)
+            let normalizer = normalizers[token.owner]!
+            if kind == "speech.start" {
+                try normalizer.start(utterance: payload["utterance"]!.textValue!)
+            } else if kind == "speech.partial" || kind == "speech.end" {
+                guard try normalizer.transcript(utterance: payload["utterance"]!.textValue!,
+                    revision: payload["revision"]!.uintValue!, text: payload["text"]!.textValue!, final: kind == "speech.end") else { return }
+            }
+            try emitEvent(kind: kind, payload: payload, correlationID: correlation(), now: now, observationOwner: token.owner)
+            published = true
+        }
+        return published
+    }
 
     public func receive(_ bytes: [UInt8]) throws {
         try guarded {
@@ -181,6 +235,7 @@ public final class SurfaceSession {
             guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
             backend.stop(owner: nil)
             output = []
+            observationTokens = [:]; normalizers = [:]
             try cancelPending(status: "cancelled", code: "cancelled", now: now, deliver: false)
             ledger.epoch += 1; grants = replacement
             try ledger.save()
@@ -259,6 +314,7 @@ public final class SurfaceSession {
         backend.stop(owner: nil)
         guard connected else { return }
         connected = false; grants = []; output = []
+        observationTokens = [:]; normalizers = [:]
         // Even on storage failure, never resume effects. Reopen must reconcile.
         do {
             try cancelPending(status: "cancelled", code: "cancelled", now: lastClock, deliver: false)
@@ -286,9 +342,9 @@ public final class SurfaceSession {
         guard now >= lastClock else { throw SurfaceFailure.protocolViolation("surface clock rollback") }
         lastClock = now; return now
     }
-    private func emit(_ value: CBORValue) throws {
+    private func emit(_ value: CBORValue, observationOwner: String? = nil) throws {
         guard output.count < SurfaceWire.maximumQueuedMessages else { throw SurfaceFailure.exhausted }
-        output.append(try SurfaceWire.encode(value, from: .surface))
+        output.append((try SurfaceWire.encode(value, from: .surface), observationOwner))
     }
     private func publishCapabilities(now: UInt64) throws {
         let entries = Set(operations.values.map(\.entry)).sorted().map { entry in
@@ -342,6 +398,9 @@ public final class SurfaceSession {
             catch { throw NativeSurfaceError("invalid_argument") }
             let value = try backend.read(operation: name, args: body["args"]!, owner: owner, now: now)
             try CBORCodec.validate(operation.outputRule!, value)
+            if name == "speech.heard", value["item"] != body["args"]?["item"] {
+                throw SurfaceFailure.protocolViolation("heard result item does not match retained query")
+            }
             try emit(.message("read_reply", .record([("correlation_id", id), ("ok", .boolean(true)),
                 ("value", value), ("snapshot", .unsigned(revision))])))
         } catch let error as NativeSurfaceError {
@@ -416,12 +475,15 @@ public final class SurfaceSession {
         if deliver { try emitOutcome(outcome, now: now) }
     }
     private func emitOutcome(_ outcome: CBORValue, now: UInt64) throws {
+        try emitEvent(kind: "action.outcome", payload: outcome, correlationID: outcome["correlation_id"]!.textValue!, now: now)
+    }
+    private func emitEvent(kind: String, payload: CBORValue, correlationID: String, now: UInt64, observationOwner: String? = nil) throws {
         guard ledger.sequence < UInt64.max else { throw SurfaceFailure.exhausted }
         let seq = ledger.sequence; ledger.sequence += 1
         try ledger.save()
-        try emit(.message("event", .record([("source", .text(ledger.identity)), ("kind", .text("action.outcome")),
-            ("seq", .unsigned(seq)), ("logical_time", .unsigned(now)), ("payload", outcome),
-            ("correlation_id", outcome["correlation_id"]!)])))
+        try emit(.message("event", .record([("source", .text(ledger.identity)), ("kind", .text(kind)),
+            ("seq", .unsigned(seq)), ("logical_time", .unsigned(now)), ("payload", payload),
+            ("correlation_id", .text(correlationID))])), observationOwner: observationOwner)
     }
     private func cancelPending(status: String, code: String, now: UInt64, deliver: Bool = true) throws {
         for (key, record) in ledger.records where record.accept["accepted"] == .boolean(true) && record.outcome == nil {

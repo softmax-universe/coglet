@@ -19,7 +19,15 @@ it contains no Mindister/legacy implementation code or third-party transport.
    or provider completion. Synthesis/queueing is not proof of playback. Stop must
    synchronously fence capture/output/provider callbacks and clear private data.
 4. Construct `SurfaceSession` with monotonic microsecond clock and the authenticated
-   binding. `start`, send drained CBOR to the runtime, feed received CBOR to
+   binding. Before native capture/provider generation, call
+   `openNativeObservationSession(owner:epoch:)` and capture its opaque token in
+   every callback. `publishObservation` validates the selected payload, current
+   owner/resources/epoch and native-session token; transcripts also pass the
+   revision/final normalizer. All events share the durable sequence allocator and
+   bounded queue with outcomes. Replacing/closing the native session fences its
+   old callbacks without needing a grant transfer. Never mint a token on arrival
+   of a delayed callback. Close it on provider session close or capture restart.
+   `start`, send drained CBOR to the runtime, feed received CBOR to
    `receive`, and call `tick` on the non-audio control queue (at least every 10ms
    while active). `tick` checks health, grants and action deadlines. Native hardware
    timers/off-switches remain independent of a hung control queue.

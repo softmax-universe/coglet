@@ -21,13 +21,14 @@ private final class Clock { var now: UInt64 = 0 }
 private final class Backend: SurfaceNativeBackend {
     var begins = 0, stops = 0
     var result: NativeSurfaceResult? = .succeeded(.map([]))
+    var readValue: CBORValue?
     var onBegin: (() throws -> Void)?
     func preflight(action: CBORValue, now: UInt64) throws {}
     func begin(action: CBORValue, epoch: UInt64, now: UInt64) throws -> NativeSurfaceResult? {
         try onBegin?(); begins += 1; return result
     }
     func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
-        .record([("expression", .text("neutral")), ("intensity", .unsigned(0)), ("remaining_ms", .unsigned(0))])
+        readValue ?? .record([("expression", .text("neutral")), ("intensity", .unsigned(0)), ("remaining_ms", .unsigned(0))])
     }
     func stop(owner: String?) { stops += 1 }
 }
@@ -57,6 +58,47 @@ private func values(_ session: SurfaceSession) throws -> [CBORValue] {
 }
 
 final class SessionTests: XCTestCase {
+    func testNativeObservationsShareSequenceNormalizeAndFenceSessionAndEpoch() throws {
+        let store = MemoryLedger(), backend = Backend(), clock = Clock()
+        let operations = SurfaceOperation.builtins.filter { $0.entry == "speech.control" || $0.entry == "expression.control" }
+        let grant = EffectiveSurfaceGrant(coglet: owner, operations: Set(operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)
+        let session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: operations,
+            store: store, backend: backend, initialGrants: [grant], clock: { clock.now }, correlation: { requestID })
+        try negotiate(session)
+        let token = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
+        let start = CBORValue.record([("utterance", .text(requestID)), ("position_ms", .unsigned(0))])
+        let final = CBORValue.record([("utterance", .text(requestID)), ("revision", .unsigned(1)), ("text", .text("final")), ("position_ms", .unsigned(10))])
+        XCTAssertTrue(try session.publishObservation(token, kind: "speech.start", payload: start))
+        XCTAssertTrue(try session.publishObservation(token, kind: "speech.end", payload: final))
+        XCTAssertFalse(try session.publishObservation(token, kind: "speech.partial", payload: .record([
+            ("utterance", .text(requestID)), ("revision", .unsigned(2)), ("text", .text("late"))])))
+        try session.receive(action())
+        let events = try values(session).filter { $0["type"] == .text("event") }
+        XCTAssertEqual(events.map { $0["body"]!["seq"]! }, [.unsigned(0), .unsigned(1), .unsigned(2)])
+        let replacement = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
+        XCTAssertFalse(try session.publishObservation(token, kind: "speech.start", payload: start))
+        XCTAssertTrue(try session.publishObservation(replacement, kind: "speech.start", payload: start))
+        session.closeNativeObservationSession(replacement)
+        XCTAssertTrue(session.drain().isEmpty) // close purges queued private observation
+        XCTAssertFalse(try session.publishObservation(replacement, kind: "speech.end", payload: final))
+        let latest = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
+        try session.installGrants([]); _ = session.drain()
+        XCTAssertFalse(try session.publishObservation(latest, kind: "speech.start", payload: start))
+    }
+    func testHeardResponseMustMatchRetainedQueryItem() throws {
+        let store = MemoryLedger(), backend = Backend(), clock = Clock()
+        let operations = SurfaceOperation.builtins.filter { $0.name == "speech.heard" }
+        let grant = EffectiveSurfaceGrant(coglet: owner, operations: ["speech.heard"], resources: ["audio.speaker"], expires: 10_000_000)
+        let session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: operations,
+            store: store, backend: backend, initialGrants: [grant], clock: { clock.now }, correlation: { requestID })
+        try negotiate(session)
+        backend.readValue = .record([("item", .text(String(repeating: "2", count: 32))), ("played_ms", .unsigned(10)), ("text", .text("wrong item"))])
+        let query = CBORValue.message("read", .record([("coglet", .text(owner)), ("capability", .text("speech.heard")),
+            ("args", .record([("item", .text(requestID))])), ("grant_epoch", .unsigned(1)),
+            ("deadline", .unsigned(1_000_000)), ("correlation_id", .text(requestID))]))
+        XCTAssertThrowsError(try session.receive(SurfaceWire.encode(query, from: .runtime)))
+        XCTAssertTrue(session.drain().isEmpty)
+    }
     func testAdmissionDurableBeforeEffectAndHistoricalRetry() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
         let session = try make(store, backend, clock)
