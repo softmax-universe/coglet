@@ -76,6 +76,16 @@ fail generation instead of silently changing the wire shape. Compiler extension
 tests compile and execute a synthetic keyword-heavy schema with Swift itself.
 Swift-specific naming validation lives in `codegen/swift.py`, not the parser.
 
+The Swift consumer also supports the compiler's additive IR: qualified
+`file::rule` names, intersections, metadata-only defaults, bounded arrays/maps,
+text-key constraints, tuple occurrences and record rest constraints. Tuples
+retain all legal match positions instead of greedily consuming repeated entries;
+matching work is bounded. Intersections use `CBORValue`, tuples use arrays of
+`CBORValue`, and records with rest fields use map entries; these retain full
+validation rather than pretending to be closed structs. Unproductive recursive
+aliases/unions and struct-only recursive layouts fail Swift generation; recursive
+containers behind indirect enums remain supported.
+
 All three runtimes enforce the `spec/conventions.md` CBOR profile before shape
 validation: no bytes/tags/floats, no duplicate/non-text keys, no indefinite or
 non-shortest forms, no trailing data, and exact UTF-8/integer bounds. Map keys

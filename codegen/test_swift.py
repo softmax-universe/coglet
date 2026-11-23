@@ -43,6 +43,71 @@ class SwiftEmitterTests(unittest.TestCase):
             generate_swift({'thing': {'op': 'future-node'}})
 
     @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
+    def test_expanded_ir_compiles_and_enforces_constraints(self):
+        text = {'op': 'primitive', 'name': 'tstr'}
+        boolean = {'op': 'primitive', 'name': 'bool'}
+        literal = lambda value: {'op': 'literal', 'value': value}
+        rules = {
+            'demo::text': text,
+            'alias': {'op': 'ref', 'name': 'demo::text'},
+            'bounded': {'op': 'array', 'min': 1, 'max': 2, 'item': text},
+            'mapping': {'op': 'map', 'min': 1, 'max': 2, 'key': {'op': 'regexp', 'pattern': '^[a-z]+$'}, 'item': boolean},
+            'empty': {'op': 'intersection', 'items': [literal(None), literal(False)]},
+            'sized': {'op': 'intersection', 'items': [text, {'op': 'size', 'min': 1, 'max': 2}]},
+            'defaulted': {'op': 'default', 'item': text, 'value': 'metadata'},
+            'sequence': {'op': 'tuple', 'items': [{'type': text, 'min': 0, 'max': 2}, {'type': literal('end'), 'min': 1, 'max': 1}]},
+            'open': {'op': 'record', 'fields': [{'name': 'fixed', 'optional': False, 'type': boolean}], 'rest': {'min': 1, 'max': 2, 'key': {'op': 'regexp', 'pattern': '^extra[a-z]$'}, 'item': text}},
+        }
+        main = '''import Foundation
+        func accepted(_ rule: Swift.String, _ value: CBORValue) throws {
+            let raw = try CBORCodec.encode(rule: rule, value: value)
+            let rt = try GeneratedSchema.typedRoundTrip(rule: rule, bytes: raw)
+            precondition(raw == rt)
+        }
+        func rejected(_ rule: Swift.String, _ value: CBORValue) throws {
+            let raw = try CBORCodec.encodeProfile(value)
+            do { _ = try CBORCodec.decode(rule: rule, bytes: raw); fatalError("accepted " + rule) } catch {}
+            do { _ = try CBORCodec.encode(rule: rule, value: value); fatalError("encoded " + rule) } catch {}
+        }
+        try accepted("alias", .text("x"))
+        try accepted("demo::text", .text("x"))
+        try accepted("bounded", .array([.text("a"), .text("b")]))
+        try rejected("bounded", .array([]))
+        try rejected("bounded", .array([.text("a"), .text("b"), .text("c")]))
+        try accepted("mapping", .map([.init("a", .boolean(true))]))
+        try rejected("mapping", .map([]))
+        try rejected("mapping", .map([.init("A", .boolean(true))]))
+        try rejected("mapping", .map([.init("a", .null)]))
+        try rejected("mapping", .map([.init("a", .boolean(true)), .init("b", .boolean(true)), .init("c", .boolean(true))]))
+        try rejected("empty", .null)
+        try rejected("empty", .boolean(false))
+        try accepted("sized", .text("é"))
+        try rejected("sized", .text("abc"))
+        try accepted("defaulted", .text("original"))
+        try rejected("defaulted", .null)
+        try accepted("sequence", .array([.text("end")]))
+        try accepted("sequence", .array([.text("a"), .text("b"), .text("end")]))
+        try rejected("sequence", .array([.text("a")]))
+        try rejected("sequence", .array([.text("a"), .text("b"), .text("c"), .text("end")]))
+        try accepted("open", .map([.init("fixed", .boolean(true)), .init("extraa", .text("x"))]))
+        try rejected("open", .map([.init("fixed", .boolean(true))]))
+        try rejected("open", .map([.init("extraa", .text("x"))]))
+        try rejected("open", .map([.init("fixed", .boolean(true)), .init("other", .text("x"))]))
+        try rejected("open", .map([.init("fixed", .boolean(true)), .init("extraa", .boolean(true))]))
+        try rejected("open", .map([.init("fixed", .boolean(true)), .init("extraa", .text("a")), .init("extrab", .text("b")), .init("extrac", .text("c"))]))
+        print("expanded IR passed")
+        '''
+        with tempfile.TemporaryDirectory(dir=ROOT) as temp:
+            temp = Path(temp)
+            (temp / 'Types.swift').write_text(generate_swift(rules))
+            (temp / 'main.swift').write_text(main)
+            result = subprocess.run(['swiftc', str(ROOT / 'sdk/surface-swift/Sources/CogletTypes/CBOR.swift'), str(temp / 'Types.swift'), str(temp / 'main.swift'), '-o', str(temp / 'test')], text=True, capture_output=True, timeout=120)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            result = subprocess.run([str(temp / 'test')], text=True, capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('expanded IR passed', result.stdout)
+
+    @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
     def test_keywords_wire_mapping_and_inline_types_compile_and_run(self):
         cddl = '''thing = {
           class: tstr, switch: tstr, let: tstr, var: tstr, protocol: tstr,
