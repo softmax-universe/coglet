@@ -15,14 +15,18 @@ Regenerate data/schemas with `python3 spec/tests/generate_abi.py`.
 | Manifest | manifest-valid | unknown fields, duplicate subscription, exclusive output not required |
 
 `cases.json` contains dual-schema shape cases and valid deterministic-CBOR hex.
-`semantic-cases.json` contains cross-field positive/negative records; tests also
-exercise rehashed trace corruptions and framing. `trace-cases.json` contains
+Temporal data uses JSON syntax with the `.fixture` extension, explicitly loaded
+by test_abi in CI. These are not codec shape cases: a semantic-negative trace
+can be schema-valid, and must not be mislabeled invalid to the recursive codegen
+`*.json` corpus. No temporal fixtures are skipped by the ABI tests.
+`semantic-cases.fixture` contains cross-field positive/negative records; tests also
+exercise rehashed trace corruptions and framing. `trace-cases.fixture` contains
 rehashed malformed inbox/reply/JSONL/wake cases, batching and trace-boundary wake
 controls, plus historical completed effect-ID conflicts and fresh-ID controls for
 all three effect kinds. Both schemas validate the trace containers; semantic
 validation must then reject each negative for its named reason, not a hash error.
 The actual ABI schema roots are tested separately from selected helper rules.
-`llm-reply-trace.json` is a
+`llm-reply-trace.fixture` is a
 self-contained two-step recording with blobs, not invented provider measurements.
 Its reply text is deliberately synthetic fixture data. Engine-specific budgets
 and NaN/feature behavior remain TBD-by-ADR; no runtime has been certified here.

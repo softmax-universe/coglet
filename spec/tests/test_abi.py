@@ -307,7 +307,7 @@ class AbiFixtures(unittest.TestCase):
         print(f'abi: {len(self.cases)} dual-schema fixtures')
 
     def test_semantic_fixtures(self):
-        cases = json.loads((SPEC / 'fixtures/abi/semantic-cases.json').read_text())
+        cases = json.loads((SPEC / 'fixtures/abi/semantic-cases.fixture').read_text())
         for case in cases:
             with self.subTest(case=case['name']):
                 if case['valid']:
@@ -333,7 +333,7 @@ class AbiFixtures(unittest.TestCase):
             check_trace(bad)
 
     def test_async_reply_trace(self):
-        trace = json.loads((SPEC / 'fixtures/abi/llm-reply-trace.json').read_text())
+        trace = json.loads((SPEC / 'fixtures/abi/llm-reply-trace.fixture').read_text())
         self.validator('trace').validate(trace)
         check_trace(trace, self.validator('manifest'))
         # Correctly rehashed corruption still fails the semantic request binding.
@@ -354,7 +354,7 @@ class AbiFixtures(unittest.TestCase):
             check_trace(bad, self.validator('manifest'))
 
     def test_trace_semantic_regressions(self):
-        cases = json.loads((SPEC / 'fixtures/abi/trace-cases.json').read_text())
+        cases = json.loads((SPEC / 'fixtures/abi/trace-cases.fixture').read_text())
         for case in cases:
             with self.subTest(case=case['name']):
                 trace = case['value']

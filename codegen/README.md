@@ -13,7 +13,9 @@ All `spec/messages/*.cddl` files are compiled together, sorted by path, into
 one validation IR and language records. The current CDDL subset includes named
 rules/references, inclusive integer ranges, text regex/byte-size constraints,
 literals, unions, closed records with optional fields, open text-key maps and
-homogeneous `[* T]` / `[+ T]` arrays. Unsupported syntax, duplicate rules and
+homogeneous `[* T]` / `[+ T]` arrays. Closed-map alternatives of the form
+`{ (fields) // (fields) }` lower to the same record-union IR as `{fields} / {fields}`;
+shared fields, named groups and occurrence groups remain unsupported. Unsupported syntax, duplicate rules and
 undefined references fail generation rather than silently widening a schema.
 Extend the compiler with tests when a spec needs another CDDL construct.
 This is a subset compiler, not a general CDDL implementation.

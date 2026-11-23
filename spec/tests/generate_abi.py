@@ -244,7 +244,7 @@ for name, source, mutate in [
     mutate(bad)
     bad['output_hash'] = digest(bad['output_files'])
     semantics.append(dict(name=name, valid=False, value=seal(bad)))
-write('spec/fixtures/abi/semantic-cases.json', semantics)
+write('spec/fixtures/abi/semantic-cases.fixture', semantics)
 
 # Full two-wake recording: async request, then inbox reply. No live LLM needed.
 request_record = dict(records)['llm']
@@ -259,7 +259,7 @@ reply_record.update(step=1, logical_time=20, previous=request_record['record_has
                     boundary=[dict(actor=HUB, audit_id='6'*32, ticket=None, method='hub.inbox', target=COG, path='/data/inbox.jsonl', before=None, after=reply_files['/data/inbox.jsonl'])])
 reply_record = seal(reply_record)
 reply_trace = dict(trace, records=[request_record, reply_record])
-write('spec/fixtures/abi/llm-reply-trace.json', reply_trace)
+write('spec/fixtures/abi/llm-reply-trace.fixture', reply_trace)
 reply_case = dict(name='async-llm-two-wakes', steps=[])
 for index, rec in enumerate(reply_trace['records']):
     send = dict(operation='abi.step', initial_files=files if index == 0 else reply_trace['records'][index-1]['output_files'], manifest=man,
@@ -366,5 +366,5 @@ for timeline in timelines:
     for key, value in [('initial_effect_ids', empty_ledger), ('initial_inbox_wakes', []), ('initial_timers', []), ('initial_llm_requests', [])]:
         first.setdefault(key, copy.deepcopy(value))
 write('conformance/abi/cases.json', timelines)
-write('spec/fixtures/abi/trace-cases.json', trace_cases)
+write('spec/fixtures/abi/trace-cases.fixture', trace_cases)
 print(f'generated {len(cases)} shape cases, {len(semantics)} semantic cases, {len(trace_cases)} trace cases, {len(timelines)} conformance timelines')

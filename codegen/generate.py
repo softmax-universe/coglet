@@ -44,6 +44,23 @@ def parse(text):
             items.append(atom())
         return items[0] if len(items) == 1 else {'op': 'union', 'items': items}
 
+    def record_fields(end):
+        fields = []
+        while peek() != end:
+            optional = peek() == '?'
+            if optional:
+                take('?')
+            name = take()
+            if name.startswith('"'):
+                name = json.loads(name)
+            take(':')
+            fields.append({'name': name, 'optional': optional, 'type': expr()})
+            if peek() != ',':
+                break
+            take(',')
+        take(end)
+        return {'op': 'record', 'fields': fields}
+
     def atom():
         token = take()
         if token == '(':
@@ -58,21 +75,20 @@ def parse(text):
                 result = {'op': 'map', 'item': expr()}
                 take('}')
                 return result
-            fields = []
-            while peek() != '}':
-                optional = peek() == '?'
-                if optional:
-                    take('?')
-                name = take()
-                if name.startswith('"'):
-                    name = json.loads(name)
-                take(':')
-                fields.append({'name': name, 'optional': optional, 'type': expr()})
-                if peek() != ',':
-                    break
-                take(',')
-            take('}')
-            return {'op': 'record', 'fields': fields}
+            if peek() == '(':
+                # Closed-map group alternatives lower to the existing union IR.
+                # Common fields, named groups and occurrence groups remain unsupported.
+                variants = []
+                while True:
+                    take('(')
+                    variants.append(record_fields(')'))
+                    if peek() != '/':
+                        break
+                    take('/')
+                    take('/')
+                take('}')
+                return variants[0] if len(variants) == 1 else {'op': 'union', 'items': variants}
+            return record_fields('}')
         if token == '[':
             count = take()
             if count not in ('*', '+'):

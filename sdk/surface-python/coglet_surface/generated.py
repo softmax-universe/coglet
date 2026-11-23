@@ -4,7 +4,209 @@ from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 import json
 from .codec import Message
-SCHEMA = json.loads('{"action":{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"}],"op":"union"},"capability-name":{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"},"coglet-id":{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"},"common":{"items":[{"name":"event","op":"ref"},{"name":"action","op":"ref"},{"name":"action-accept","op":"ref"},{"name":"action-outcome","op":"ref"},{"name":"error","op":"ref"},{"name":"version-offer","op":"ref"},{"name":"version-selection","op":"ref"}],"op":"union"},"correlation-id":{"op":"regexp","pattern":"^[0-9a-f]{32}$"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"error-code","op":"ref"}},{"name":"message","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}}],"op":"record"},"hub-id":{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"},"method-name":{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"},"node-id":{"op":"regexp","pattern":"^[0-9a-f]{64}$"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"profile-value","op":"ref"},"op":"map"},"profile-value":{"items":[{"name":"profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"profile-value","op":"ref"},"min":0,"op":"array"},{"name":"profile-map","op":"ref"}],"op":"union"},"source-id":{"items":[{"name":"coglet-id","op":"ref"},{"name":"surface-id","op":"ref"},{"name":"hub-id","op":"ref"}],"op":"union"},"spec-version":{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"},"surface-id":{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"spec-version","op":"ref"}}],"op":"record"}}')
+SCHEMA = json.loads('{"abi":{"items":[{"name":"trace","op":"ref"},{"name":"step-record","op":"ref"},{"name":"inbox-message","op":"ref"},{"name":"timer-request","op":"ref"},{"name":"llm-request","op":"ref"},{"name":"llm-reply","op":"ref"},{"name":"log-entry","op":"ref"},{"name":"manifest","op":"ref"}],"op":"union"},"action":{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"}],"op":"union"},"boundary-change":{"fields":[{"name":"actor","optional":false,"type":{"name":"source-id","op":"ref"}},{"name":"audit_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"ticket","optional":false,"type":{"items":[{"name":"correlation-id","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"method","optional":false,"type":{"name":"method-name","op":"ref"}},{"name":"target","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"path","optional":false,"type":{"name":"path","op":"ref"}},{"name":"before","optional":false,"type":{"items":[{"name":"hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"after","optional":false,"type":{"items":[{"name":"hex","op":"ref"},{"op":"literal","value":null}],"op":"union"}}],"op":"record"},"budgets":{"fields":[{"name":"compute","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"compute_mode","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"memory_pages","optional":false,"type":{"max":65536,"min":1,"op":"range"}},{"name":"wall_time_us","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"max_events","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}},{"name":"host_bytes","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"range"}}],"op":"record"},"call":{"items":[{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"timer"}},{"name":"argument","optional":false,"type":{"name":"timer-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"emit"}},{"name":"argument","optional":false,"type":{"name":"action","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"llm"}},{"name":"argument","optional":false,"type":{"name":"llm-request","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"op":"literal","value":"log"}},{"name":"argument","optional":false,"type":{"name":"log-entry","op":"ref"}},{"name":"result","optional":false,"type":{"max":4,"min":0,"op":"range"}}],"op":"record"},{"fields":[{"name":"op","optional":false,"type":{"items":[{"op":"literal","value":"timer"},{"op":"literal","value":"emit"},{"op":"literal","value":"llm"},{"op":"literal","value":"log"}],"op":"union"}},{"name":"argument_hex","optional":false,"type":{"name":"hex","op":"ref"}},{"name":"result","optional":false,"type":{"op":"literal","value":1}}],"op":"record"}],"op":"union"},"capability-name":{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"},"coglet-id":{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"},"common":{"items":[{"name":"event","op":"ref"},{"name":"action","op":"ref"},{"name":"action-accept","op":"ref"},{"name":"action-outcome","op":"ref"},{"name":"error","op":"ref"},{"name":"version-offer","op":"ref"},{"name":"version-selection","op":"ref"}],"op":"union"},"correlation-id":{"op":"regexp","pattern":"^[0-9a-f]{32}$"},"effect-ledger":{"fields":[{"name":"actions","optional":false,"type":{"item":{"name":"correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"correlation-id","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"correlation-id","op":"ref"},"min":0,"op":"array"}}],"op":"record"},"engine":{"fields":[{"name":"build","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"policy","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}}],"op":"record"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"error-code","op":"ref"}},{"name":"message","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}}],"op":"record"},"failure":{"fields":[{"name":"kind","optional":false,"type":{"items":[{"op":"literal","value":"compute"},{"op":"literal","value":"memory"},{"op":"literal","value":"wall"},{"op":"literal","value":"host_bytes"},{"op":"literal","value":"trap"},{"op":"literal","value":"guest_return"},{"op":"literal","value":"invalid_argument"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"},"hash":{"op":"regexp","pattern":"^[0-9a-f]{64}$"},"hex":{"op":"regexp","pattern":"^([0-9a-f]{2})*$"},"hub-id":{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"},"inbox-message":{"fields":[{"name":"index","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"sender","optional":false,"type":{"name":"source-id","op":"ref"}},{"name":"event","optional":false,"type":{"name":"event","op":"ref"}}],"op":"record"},"llm-reply":{"items":[{"fields":[{"name":"request_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"output","optional":false,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"request_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"failed"}},{"name":"error","optional":false,"type":{"name":"error","op":"ref"}}],"op":"record"}],"op":"union"},"llm-request":{"fields":[{"name":"id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"capability-name","op":"ref"}},{"name":"model","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"input","optional":false,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},"log-entry":{"fields":[{"name":"level","optional":false,"type":{"items":[{"op":"literal","value":"debug"},{"op":"literal","value":"info"},{"op":"literal","value":"warn"},{"op":"literal","value":"error"}],"op":"union"}},{"name":"message","optional":false,"type":{"max":18446744073709551615,"min":1,"op":"size"}},{"name":"fields","optional":false,"type":{"name":"profile-map","op":"ref"}}],"op":"record"},"manifest":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"id","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"subscriptions","optional":false,"type":{"item":{"name":"capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"required_capabilities","optional":false,"type":{"item":{"name":"capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"exclusive_outputs","optional":false,"type":{"item":{"name":"capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"budgets","optional":false,"type":{"name":"budgets","op":"ref"}}],"op":"record"},"method-name":{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"},"node-id":{"op":"regexp","pattern":"^[0-9a-f]{64}$"},"path":{"op":"regexp","pattern":"^/(code|data|logs)(/[^/]+)+$"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"profile-value","op":"ref"},"op":"map"},"profile-value":{"items":[{"name":"profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"profile-value","op":"ref"},"min":0,"op":"array"},{"name":"profile-map","op":"ref"}],"op":"union"},"snapshot":{"item":{"name":"hex","op":"ref"},"op":"map"},"source-id":{"items":[{"name":"coglet-id","op":"ref"},{"name":"surface-id","op":"ref"},{"name":"hub-id","op":"ref"}],"op":"union"},"spec-version":{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"},"step-record":{"items":[{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"committed"}}],"op":"record"},{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"step","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"seed","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"previous","optional":false,"type":{"items":[{"name":"hash","op":"ref"},{"op":"literal","value":null}],"op":"union"}},{"name":"code_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"manifest_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"before_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"input_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"output_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"record_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"engine","optional":false,"type":{"name":"engine","op":"ref"}},{"name":"budgets","optional":false,"type":{"name":"budgets","op":"ref"}},{"name":"grants","optional":false,"type":{"item":{"name":"capability-name","op":"ref"},"min":0,"op":"array"}},{"name":"events","optional":false,"type":{"item":{"name":"event","op":"ref"},"min":1,"op":"array"}},{"name":"boundary","optional":false,"type":{"item":{"name":"boundary-change","op":"ref"},"min":0,"op":"array"}},{"name":"calls","optional":false,"type":{"item":{"name":"call","op":"ref"},"min":0,"op":"array"}},{"name":"actions","optional":false,"type":{"item":{"name":"action","op":"ref"},"min":0,"op":"array"}},{"name":"timers","optional":false,"type":{"item":{"name":"timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"llm_requests","optional":false,"type":{"item":{"name":"llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"logs","optional":false,"type":{"item":{"name":"log-entry","op":"ref"},"min":0,"op":"array"}},{"name":"input_files","optional":false,"type":{"name":"snapshot","op":"ref"}},{"name":"output_files","optional":false,"type":{"name":"snapshot","op":"ref"}},{"name":"usage","optional":false,"type":{"name":"usage","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"aborted"}},{"name":"failure","optional":false,"type":{"name":"failure","op":"ref"}}],"op":"record"}],"op":"union"},"surface-id":{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"},"timer-request":{"fields":[{"name":"id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"at","optional":false,"type":{"name":"uint64","op":"ref"}}],"op":"record"},"trace":{"fields":[{"name":"version","optional":false,"type":{"op":"literal","value":"0.1"}},{"name":"trace_id","optional":false,"type":{"name":"correlation-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"coglet-id","op":"ref"}},{"name":"initial_effect_ids","optional":false,"type":{"name":"effect-ledger","op":"ref"}},{"name":"initial_inbox_wakes","optional":false,"type":{"item":{"name":"uint64","op":"ref"},"min":0,"op":"array"}},{"name":"initial_hash","optional":false,"type":{"name":"hash","op":"ref"}},{"name":"initial_timers","optional":false,"type":{"item":{"name":"timer-request","op":"ref"},"min":0,"op":"array"}},{"name":"initial_llm_requests","optional":false,"type":{"item":{"name":"llm-request","op":"ref"},"min":0,"op":"array"}},{"name":"records","optional":false,"type":{"item":{"name":"step-record","op":"ref"},"min":1,"op":"array"}},{"name":"blobs","optional":false,"type":{"item":{"name":"hex","op":"ref"},"op":"map"}}],"op":"record"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"usage":{"fields":[{"name":"compute","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"memory_pages","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"wall_time_us","optional":false,"type":{"name":"uint64","op":"ref"}},{"name":"host_bytes","optional":false,"type":{"name":"uint64","op":"ref"}}],"op":"record"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"spec-version","op":"ref"}}],"op":"record"}}')
+Abi = Any
+Hash = str
+Hex = str
+Path = str
+Snapshot = dict[str, Any]
+@dataclass
+class Budgets(Message):
+    _rule: ClassVar[str] = 'budgets'
+    compute: int
+    compute_mode: str
+    memory_pages: int
+    wall_time_us: int
+    max_events: int
+    host_bytes: int
+@dataclass
+class TimerRequest(Message):
+    _rule: ClassVar[str] = 'timer-request'
+    id: CorrelationId
+    at: Uint64
+@dataclass
+class LlmRequest(Message):
+    _rule: ClassVar[str] = 'llm-request'
+    id: CorrelationId
+    correlation_id: CorrelationId
+    capability: CapabilityName
+    model: str
+    input: ProfileMap
+@dataclass
+class LogEntry(Message):
+    _rule: ClassVar[str] = 'log-entry'
+    level: Any
+    message: str
+    fields: ProfileMap
+@dataclass
+class LlmReply1(Message):
+    _rule: ClassVar[str] = 'llm-reply'
+    request_id: CorrelationId
+    status: Literal['succeeded']
+    output: ProfileMap
+@dataclass
+class LlmReply2(Message):
+    _rule: ClassVar[str] = 'llm-reply'
+    request_id: CorrelationId
+    status: Literal['failed']
+    error: Error
+LlmReply = LlmReply1 | LlmReply2
+@dataclass
+class InboxMessage(Message):
+    _rule: ClassVar[str] = 'inbox-message'
+    index: Uint64
+    id: CorrelationId
+    sender: SourceId
+    event: Event
+@dataclass
+class Call1(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['timer']
+    argument: TimerRequest
+    result: int
+@dataclass
+class Call2(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['emit']
+    argument: Action
+    result: int
+@dataclass
+class Call3(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['llm']
+    argument: LlmRequest
+    result: int
+@dataclass
+class Call4(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Literal['log']
+    argument: LogEntry
+    result: int
+@dataclass
+class Call5(Message):
+    _rule: ClassVar[str] = 'call'
+    op: Any
+    argument_hex: Hex
+    result: Literal[1]
+Call = Call1 | Call2 | Call3 | Call4 | Call5
+@dataclass
+class BoundaryChange(Message):
+    _rule: ClassVar[str] = 'boundary-change'
+    actor: SourceId
+    audit_id: CorrelationId
+    ticket: Any
+    method: MethodName
+    target: CogletId
+    path: Path
+    before: Any
+    after: Any
+@dataclass
+class Engine(Message):
+    _rule: ClassVar[str] = 'engine'
+    build: str
+    policy: str
+@dataclass
+class Usage(Message):
+    _rule: ClassVar[str] = 'usage'
+    compute: Uint64
+    memory_pages: Uint64
+    wall_time_us: Uint64
+    host_bytes: Uint64
+@dataclass
+class Failure(Message):
+    _rule: ClassVar[str] = 'failure'
+    kind: Any
+    error: Error
+@dataclass
+class StepRecord1(Message):
+    _rule: ClassVar[str] = 'step-record'
+    version: Literal['0.1']
+    trace_id: CorrelationId
+    coglet: CogletId
+    step: Uint64
+    logical_time: Uint64
+    seed: Uint64
+    previous: Any
+    code_hash: Hash
+    manifest_hash: Hash
+    before_hash: Hash
+    input_hash: Hash
+    output_hash: Hash
+    record_hash: Hash
+    engine: Engine
+    budgets: Budgets
+    grants: list[CapabilityName]
+    events: list[Event]
+    boundary: list[BoundaryChange]
+    calls: list[Call]
+    actions: list[Action]
+    timers: list[TimerRequest]
+    llm_requests: list[LlmRequest]
+    logs: list[LogEntry]
+    input_files: Snapshot
+    output_files: Snapshot
+    usage: Usage
+    status: Literal['committed']
+@dataclass
+class StepRecord2(Message):
+    _rule: ClassVar[str] = 'step-record'
+    version: Literal['0.1']
+    trace_id: CorrelationId
+    coglet: CogletId
+    step: Uint64
+    logical_time: Uint64
+    seed: Uint64
+    previous: Any
+    code_hash: Hash
+    manifest_hash: Hash
+    before_hash: Hash
+    input_hash: Hash
+    output_hash: Hash
+    record_hash: Hash
+    engine: Engine
+    budgets: Budgets
+    grants: list[CapabilityName]
+    events: list[Event]
+    boundary: list[BoundaryChange]
+    calls: list[Call]
+    actions: list[Action]
+    timers: list[TimerRequest]
+    llm_requests: list[LlmRequest]
+    logs: list[LogEntry]
+    input_files: Snapshot
+    output_files: Snapshot
+    usage: Usage
+    status: Literal['aborted']
+    failure: Failure
+StepRecord = StepRecord1 | StepRecord2
+@dataclass
+class EffectLedger(Message):
+    _rule: ClassVar[str] = 'effect-ledger'
+    actions: list[CorrelationId]
+    timers: list[CorrelationId]
+    llm_requests: list[CorrelationId]
+@dataclass
+class Trace(Message):
+    _rule: ClassVar[str] = 'trace'
+    version: Literal['0.1']
+    trace_id: CorrelationId
+    coglet: CogletId
+    initial_effect_ids: EffectLedger
+    initial_inbox_wakes: list[Uint64]
+    initial_hash: Hash
+    initial_timers: list[TimerRequest]
+    initial_llm_requests: list[LlmRequest]
+    records: list[StepRecord]
+    blobs: dict[str, Any]
+@dataclass
+class Manifest(Message):
+    _rule: ClassVar[str] = 'manifest'
+    version: Literal['0.1']
+    id: CogletId
+    subscriptions: list[CapabilityName]
+    required_capabilities: list[CapabilityName]
+    exclusive_outputs: list[CapabilityName]
+    budgets: Budgets
 Common = Any
 Uint64 = int
 ProfileInt = Any
@@ -83,4 +285,4 @@ class Error(Message):
     message: str
     retryable: bool
     details: ProfileMap | None = None
-RECORDS = {'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}
+RECORDS = {'budgets': [Budgets], 'timer-request': [TimerRequest], 'llm-request': [LlmRequest], 'log-entry': [LogEntry], 'llm-reply': [LlmReply1, LlmReply2], 'inbox-message': [InboxMessage], 'call': [Call1, Call2, Call3, Call4, Call5], 'boundary-change': [BoundaryChange], 'engine': [Engine], 'usage': [Usage], 'failure': [Failure], 'step-record': [StepRecord1, StepRecord2], 'effect-ledger': [EffectLedger], 'trace': [Trace], 'manifest': [Manifest], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}

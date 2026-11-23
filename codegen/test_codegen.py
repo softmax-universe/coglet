@@ -16,6 +16,18 @@ class GeneratorTests(unittest.TestCase):
         self.assertEqual(rules['event']['fields'][0]['name'], 'source')
         with self.assertRaises(ValueError):
             module.parse('bad = bstr .cbor any')
+    def test_map_group_choices_lower_to_record_union(self):
+        spec = importlib.util.spec_from_file_location('generate', ROOT / 'codegen/generate.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        group = 'x = { (op: "a", value: tstr) // (op: "b", ? count: 0..10) }'
+        union = 'x = {op: "a", value: tstr} / {op: "b", ? count: 0..10}'
+        self.assertEqual(module.parse(group), module.parse(union))
+        for bad in ['x = { (op: "a") / (op: "b") }',
+                    'x = { (op: "a") // }', 'x = { (op: "a"), common: tstr }']:
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                module.parse(bad)
+
     def test_check_detects_stale_and_is_read_only(self):
         import shutil
         import subprocess
