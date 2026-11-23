@@ -27,6 +27,7 @@ import SoftmaxCore
         var manifest: [String] = []
         var geometryLog: [String] = []
         var predecessor = "none"
+        var probedAnomaly = false
         defer { geometryLog.forEach { print($0) } }
         for scheme in [ColorScheme.light, .dark] {
             for contrast in [ColorSchemeContrast.standard, .increased] {
@@ -53,14 +54,17 @@ import SoftmaxCore
                     var previous: Data?
                     var identicalFrames = 0
                     var stable: Data?
-                    // Preserve original close-after-accept cadence. Prolonging every
-                    // fixture changes the lifetime of preceding SwiftUI hosting graphs.
-                    // Only a captured anomaly enables the same-window intervention.
+                    // Diagnostic oracle from observed native frames (normal25/large35),
+                    // NOT production sizing. Never query intrinsic sizes on good fixtures:
+                    // a query can populate caches used by a later hosting graph.
                     let traceGeometry = name.hasPrefix("commands") || name.hasPrefix("settings-")
-                    var lastGeometry = ""
-                    var finalBytes: Data?
+                    let expectedFieldHeight: CGFloat = name.hasSuffix("-large") ? 35 : 25
+                    func editableFields(_ view: NSView) -> [NSTextField] {
+                        let own = (view as? NSTextField).map { $0.isEditable ? [$0] : [] } ?? []
+                        return own + view.subviews.flatMap { editableFields($0) }
+                    }
                     var probeMismatch = false
-                    var invalidatedGeometry = false
+                    var probeStage = 0
                     while Date().timeIntervalSince(started) < 2 {
                         RunLoop.current.run(until: Date().addingTimeInterval(0.05))
                         // AppKit can initially reserve a legacy scroller gutter before
@@ -74,21 +78,17 @@ import SoftmaxCore
                             for child in view.subviews { normalizeScrollers(child) }
                         }
                         normalizeScrollers(hosting)
-                        // Controlled probe, not a repair: keep the earliest accepted image
-                        // unchanged and test whether invalidating native intrinsic sizing
-                        // repairs the frame/intrinsic mismatch observed in the trace.
-                        if probeMismatch, stable != nil, !invalidatedGeometry {
-                            func invalidateFields(_ view: NSView) {
-                                if let field = view as? NSTextField {
-                                    field.invalidateIntrinsicContentSize()
+                        if probeMismatch, stable != nil {
+                            probeStage += 1
+                            // Stage1 is an untouched extra tick; stage2 queries only;
+                            // stage3 invalidates only the native field (not the host).
+                            if probeStage == 2 {
+                                for field in editableFields(hosting) {
+                                    geometryLog.append("SNAPSHOT-GEOMETRY \(key) queryOnly intrinsic=\(field.intrinsicContentSize)")
                                 }
-                                for child in view.subviews { invalidateFields(child) }
+                            } else if probeStage == 3 {
+                                editableFields(hosting).forEach { $0.invalidateIntrinsicContentSize() }
                             }
-                            invalidateFields(hosting)
-                            hosting.invalidateIntrinsicContentSize()
-                            hosting.needsLayout = true
-                            invalidatedGeometry = true
-                            geometryLog.append("SNAPSHOT-GEOMETRY \(key) invalidated intrinsic sizing")
                         }
                         hosting.layoutSubtreeIfNeeded()
                         if let editor = window.firstResponder as? NSTextView {
@@ -100,39 +100,28 @@ import SoftmaxCore
                         }
                         hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
                         guard let bytes = bitmap.representation(using: NSBitmapImageRep.FileType.png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
-                        finalBytes = bytes
                         identicalFrames = bytes == previous ? identicalFrames + 1 : 1
                         previous = bytes
                         let accepting = stable == nil && identicalFrames >= 3 && Date().timeIntervalSince(started) >= 0.2
                         if accepting { stable = bytes }
-                        // Intrinsic-size queries themselves can populate caches. Do not
-                        // query or log until the original accepted raster is frozen.
                         if traceGeometry, stable != nil {
-                            func fields(_ view: NSView) -> [String] {
-                                var rows: [String] = []
-                                if let field = view as? NSTextField, field.isEditable {
-                                    let mismatch = abs(field.frame.height - field.intrinsicContentSize.height) > 0.5
-                                    if accepting { probeMismatch = probeMismatch || mismatch }
-                                    rows.append("id=\(ObjectIdentifier(field)) type=\(type(of: field)) frame=\(field.frame) intrinsic=\(field.intrinsicContentSize) font=\(String(describing: field.font)) editing=\(field.currentEditor() != nil) heightMismatch=\(mismatch)")
-                                }
-                                return rows + view.subviews.flatMap { fields($0) }
-                            }
-                            let geometry = "keyWindow=\(window.isKeyWindow) responder=\(String(describing: window.firstResponder)) fields=\(fields(hosting))"
-                            if geometry != lastGeometry {
-                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) predecessor=\(predecessor) elapsed=\(Date().timeIntervalSince(started)) \(geometry)")
-                                lastGeometry = geometry
+                            let fields = editableFields(hosting)
+                            let mismatch = fields.contains { abs($0.frame.height - expectedFieldHeight) > 0.5 }
+                            let rows = fields.map { "id=\(ObjectIdentifier($0)) frame=\($0.frame) font=\(String(describing: $0.font))" }
+                            geometryLog.append("SNAPSHOT-GEOMETRY \(key) predecessor=\(predecessor) stage=\(probeStage) heightMismatch=\(mismatch) fields=\(rows)")
+                            if accepting {
+                                probeMismatch = mismatch && !probedAnomaly
+                                if probeMismatch { probedAnomaly = true }
+                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started)) probeMismatch=\(probeMismatch)")
+                            } else if probeMismatch {
+                                let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
+                                try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
+                                try bytes.write(to: diagnostics.appendingPathComponent("\(key)-stage\(probeStage).png"))
+                                geometryLog.append("SNAPSHOT-GEOMETRY \(key) stage=\(probeStage) acceptedEqualsStage=\(stable == bytes)")
+                                if !mismatch || probeStage >= 3 { break }
                             }
                         }
-                        if accepting {
-                            if traceGeometry { geometryLog.append("SNAPSHOT-GEOMETRY \(key) accepted elapsed=\(Date().timeIntervalSince(started)) probeMismatch=\(probeMismatch)") }
-                            if !probeMismatch { break }
-                        }
-                    }
-                    if probeMismatch, let finalBytes {
-                        let diagnostics = root.deletingLastPathComponent().appendingPathComponent("DesignComparisons/GeometryDiagnostics", isDirectory: true)
-                        try FileManager.default.createDirectory(at: diagnostics, withIntermediateDirectories: true)
-                        try finalBytes.write(to: diagnostics.appendingPathComponent(key + ".png"))
-                        geometryLog.append("SNAPSHOT-GEOMETRY \(key) acceptedEqualsFinal=\(stable == finalBytes)")
+                        if accepting && !probeMismatch { break }
                     }
                     guard let bytes = stable else {
                         throw CocoaError(.fileWriteUnknown, userInfo: [NSLocalizedDescriptionKey: "Native snapshot did not settle: \(key)"])
