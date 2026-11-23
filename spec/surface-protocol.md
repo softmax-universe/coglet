@@ -208,7 +208,9 @@ cannot prove these pointer/ownership semantics.
 
 ## Verification
 
-`spec/tests/test_surface_speech.py` validates schemas/goldens and scripted temporal
-case expectations. `conformance/surface/cases.json` supplies transport-independent
-stimuli/expected results, including fragmentation and ABI buffer behavior. These
-are inputs for the black-box harness, not an implemented runtime conformance claim.
+`spec/tests/test_surface_speech.py` validates schemas/goldens, socket framing
+vectors and scripted temporal case expectations. `conformance/surface/*.json`
+supplies executable transport-independent stimuli/expected results for the
+black-box harness. Fragmentation vectors live in `spec/fixtures/surface/framing.json`;
+the native ABI buffer probes above require a native adapter test, not these wire
+scripts. These are inputs for testing, not an implemented runtime conformance claim.

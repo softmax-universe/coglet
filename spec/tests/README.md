@@ -36,3 +36,8 @@ Both accept `--check`; the unittest suite checks generated files are current.
 `fixtures/speech/timelines.json` is hand-authored native callback data and tested
 separately. Real and mock implementation conformance is left to the wire harness
 with explicit fixture labels; empty registries and SKIPs are not protocol proof.
+
+The adapter-config, framing and timeline JSON files have adjacent `.json.format`
+files containing `semantic-vectors-v1`. This explicitly distinguishes them from
+codec case arrays. Their contents remain checked here (including adapter config
+against its actual component schemas); a codec-discovery skip is not validation.

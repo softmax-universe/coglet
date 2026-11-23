@@ -105,6 +105,21 @@ class ProfileFixtures(unittest.TestCase):
         self.assertTrue(self.validate('speech','speak-chunk',args))
         self.assertGreater(len(args['text'].encode()),4096)
 
+    def test_semantic_vector_classification_and_adapter_config(self):
+        # These files are not codec case arrays; their own checks remain mandatory.
+        for relative in ('surface/adapter-config.json', 'surface/framing.json',
+                         'speech/timelines.json'):
+            path = SPEC/'fixtures'/relative
+            self.assertEqual(Path(str(path)+'.format').read_text().strip(),
+                             'semantic-vectors-v1')
+        config = json.loads((SPEC/'fixtures/surface/adapter-config.json').read_text())
+        self.wire(config['hello'])
+        self.assertEqual(config['hello']['body']['surface'], config['surface'])
+        self.assertTrue(self.validate('surface', 'grants', config['grant']))
+        self.assertTrue(self.validate('speech', 'speech-config', config['speech_config']))
+        self.assertTrue(self.validate('expression', 'expression-state', config['initial_expression']))
+        self.assertTrue((ROOT/config['case_audio_timelines']).is_file())
+
     def test_transport_vectors(self):
         vectors=json.loads((SPEC/'fixtures/surface/framing.json').read_text())
         for vector in vectors:
