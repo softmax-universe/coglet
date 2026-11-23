@@ -1,0 +1,1385 @@
+[
+  {
+    "name": "speech.start-input-valid",
+    "operation": "speech.start",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    },
+    "cbor_hex": "a2697574746572616e6365782031313131313131313131313131313131313131313131313131313131313131316b706f736974696f6e5f6d7300"
+  },
+  {
+    "name": "speech.start-input-unknown-field",
+    "operation": "speech.start",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.start-input-missing-field",
+    "operation": "speech.start",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.start-input-wrong-operation",
+    "operation": "speech.start",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "speech.partial-input-valid",
+    "operation": "speech.partial",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "revision": 1,
+      "text": "hello"
+    },
+    "cbor_hex": "a364746578746568656c6c6f687265766973696f6e01697574746572616e636578203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.partial-input-unknown-field",
+    "operation": "speech.partial",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "revision": 1,
+      "text": "hello",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.partial-input-missing-field",
+    "operation": "speech.partial",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "revision": 1,
+      "text": "hello"
+    }
+  },
+  {
+    "name": "speech.partial-input-wrong-operation",
+    "operation": "speech.partial",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.end-input-valid",
+    "operation": "speech.end",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "revision": 2,
+      "text": "hello world",
+      "position_ms": 500
+    },
+    "cbor_hex": "a464746578746b68656c6c6f20776f726c64687265766973696f6e02697574746572616e6365782031313131313131313131313131313131313131313131313131313131313131316b706f736974696f6e5f6d731901f4"
+  },
+  {
+    "name": "speech.end-input-unknown-field",
+    "operation": "speech.end",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "revision": 2,
+      "text": "hello world",
+      "position_ms": 500,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.end-input-missing-field",
+    "operation": "speech.end",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "revision": 2,
+      "text": "hello world",
+      "position_ms": 500
+    }
+  },
+  {
+    "name": "speech.end-input-wrong-operation",
+    "operation": "speech.end",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.position-input-valid",
+    "operation": "speech.position",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "chunk": 0,
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "state": "playing"
+    },
+    "cbor_hex": "a6646974656d78203131313131313131313131313131313131313131313131313131313131313131656368756e6b0065737461746567706c6179696e676673747265616d7820313131313131313131313131313131313131313131313131313131313131313169706c617965645f6d73181e6b706f736974696f6e5f6d73181e"
+  },
+  {
+    "name": "speech.position-input-unknown-field",
+    "operation": "speech.position",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "chunk": 0,
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "state": "playing",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.position-input-missing-field",
+    "operation": "speech.position",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "chunk": 0,
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "state": "playing"
+    }
+  },
+  {
+    "name": "speech.position-input-wrong-operation",
+    "operation": "speech.position",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.barge_in-input-valid",
+    "operation": "speech.barge_in",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "stream": "11111111111111111111111111111111",
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "reflex": "stopped"
+    },
+    "cbor_hex": "a6646974656d78203131313131313131313131313131313131313131313131313131313131313131667265666c65786773746f707065646673747265616d7820313131313131313131313131313131313131313131313131313131313131313169706c617965645f6d73181e697574746572616e6365782031313131313131313131313131313131313131313131313131313131313131316b706f736974696f6e5f6d73181e"
+  },
+  {
+    "name": "speech.barge_in-input-unknown-field",
+    "operation": "speech.barge_in",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "stream": "11111111111111111111111111111111",
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "reflex": "stopped",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.barge_in-input-missing-field",
+    "operation": "speech.barge_in",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "item": "11111111111111111111111111111111",
+      "played_ms": 30,
+      "position_ms": 30,
+      "reflex": "stopped"
+    }
+  },
+  {
+    "name": "speech.barge_in-input-wrong-operation",
+    "operation": "speech.barge_in",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.config-input-valid",
+    "operation": "speech.config",
+    "slot": "input",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.config-input-unknown-field",
+    "operation": "speech.config",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.config-input-wrong-operation",
+    "operation": "speech.config",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.config-output-valid",
+    "operation": "speech.config",
+    "slot": "output",
+    "valid": true,
+    "value": {
+      "stt": {
+        "placement": "surface",
+        "route": "local"
+      },
+      "tts": {
+        "placement": "hub",
+        "route": "voice"
+      },
+      "barge": "stop",
+      "session_mode": "text"
+    },
+    "cbor_hex": "a463737474a265726f757465656c6f63616c69706c6163656d656e74677375726661636563747473a265726f75746565766f69636569706c6163656d656e74636875626562617267656473746f706c73657373696f6e5f6d6f64656474657874"
+  },
+  {
+    "name": "speech.config-output-unknown-field",
+    "operation": "speech.config",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "stt": {
+        "placement": "surface",
+        "route": "local"
+      },
+      "tts": {
+        "placement": "hub",
+        "route": "voice"
+      },
+      "barge": "stop",
+      "session_mode": "text",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.config-output-missing-field",
+    "operation": "speech.config",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "tts": {
+        "placement": "hub",
+        "route": "voice"
+      },
+      "barge": "stop",
+      "session_mode": "text"
+    }
+  },
+  {
+    "name": "speech.config-output-wrong-operation",
+    "operation": "speech.config",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.speak_chunk-input-valid",
+    "operation": "speech.speak_chunk",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "chunk": 0,
+      "text": "Hello",
+      "final": true
+    },
+    "cbor_hex": "a464746578746548656c6c6f656368756e6b006566696e616cf56673747265616d78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.speak_chunk-input-unknown-field",
+    "operation": "speech.speak_chunk",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "chunk": 0,
+      "text": "Hello",
+      "final": true,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.speak_chunk-input-missing-field",
+    "operation": "speech.speak_chunk",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "chunk": 0,
+      "text": "Hello",
+      "final": true
+    }
+  },
+  {
+    "name": "speech.speak_chunk-input-wrong-operation",
+    "operation": "speech.speak_chunk",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.speak_chunk-output-valid",
+    "operation": "speech.speak_chunk",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.speak_chunk-output-unknown-field",
+    "operation": "speech.speak_chunk",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.speak_chunk-output-wrong-operation",
+    "operation": "speech.speak_chunk",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.stop-input-valid",
+    "operation": "speech.stop",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "stream": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a16673747265616d78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.stop-input-unknown-field",
+    "operation": "speech.stop",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.stop-input-missing-field",
+    "operation": "speech.stop",
+    "slot": "input",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "speech.stop-input-wrong-operation",
+    "operation": "speech.stop",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.stop-output-valid",
+    "operation": "speech.stop",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.stop-output-unknown-field",
+    "operation": "speech.stop",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.stop-output-wrong-operation",
+    "operation": "speech.stop",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.backchannel-input-valid",
+    "operation": "speech.backchannel",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "cue": "ack"
+    },
+    "cbor_hex": "a2636375656361636b6673747265616d78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.backchannel-input-unknown-field",
+    "operation": "speech.backchannel",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "stream": "11111111111111111111111111111111",
+      "cue": "ack",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.backchannel-input-missing-field",
+    "operation": "speech.backchannel",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "cue": "ack"
+    }
+  },
+  {
+    "name": "speech.backchannel-input-wrong-operation",
+    "operation": "speech.backchannel",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.backchannel-output-valid",
+    "operation": "speech.backchannel",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.backchannel-output-unknown-field",
+    "operation": "speech.backchannel",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.backchannel-output-wrong-operation",
+    "operation": "speech.backchannel",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.session_open-input-valid",
+    "operation": "speech.session_open",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "route": "configured_provider"
+    },
+    "cbor_hex": "a265726f75746573636f6e666967757265645f70726f76696465726773657373696f6e78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.session_open-input-unknown-field",
+    "operation": "speech.session_open",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "route": "configured_provider",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.session_open-input-missing-field",
+    "operation": "speech.session_open",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "route": "configured_provider"
+    }
+  },
+  {
+    "name": "speech.session_open-input-wrong-operation",
+    "operation": "speech.session_open",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.session_open-output-valid",
+    "operation": "speech.session_open",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.session_open-output-unknown-field",
+    "operation": "speech.session_open",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.session_open-output-wrong-operation",
+    "operation": "speech.session_open",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.session_close-input-valid",
+    "operation": "speech.session_close",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "session": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a16773657373696f6e78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.session_close-input-unknown-field",
+    "operation": "speech.session_close",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.session_close-input-missing-field",
+    "operation": "speech.session_close",
+    "slot": "input",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "speech.session_close-input-wrong-operation",
+    "operation": "speech.session_close",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.session_close-output-valid",
+    "operation": "speech.session_close",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.session_close-output-unknown-field",
+    "operation": "speech.session_close",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.session_close-output-wrong-operation",
+    "operation": "speech.session_close",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.tool_call-input-valid",
+    "operation": "speech.tool_call",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "name": "game.move",
+      "arguments": {
+        "x": 1
+      }
+    },
+    "cbor_hex": "a46463616c6c78203131313131313131313131313131313131313131313131313131313131313131646e616d656967616d652e6d6f76656773657373696f6e7820313131313131313131313131313131313131313131313131313131313131313169617267756d656e7473a1617801"
+  },
+  {
+    "name": "speech.tool_call-input-unknown-field",
+    "operation": "speech.tool_call",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "name": "game.move",
+      "arguments": {
+        "x": 1
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.tool_call-input-missing-field",
+    "operation": "speech.tool_call",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "name": "game.move",
+      "arguments": {
+        "x": 1
+      }
+    }
+  },
+  {
+    "name": "speech.tool_call-input-wrong-operation",
+    "operation": "speech.tool_call",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.tool_result-input-valid",
+    "operation": "speech.tool_result",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {}
+    },
+    "cbor_hex": "a4626f6bf56463616c6c782031313131313131313131313131313131313131313131313131313131313131316576616c7565a06773657373696f6e78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.tool_result-input-unknown-field",
+    "operation": "speech.tool_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "session": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {},
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.tool_result-input-missing-field",
+    "operation": "speech.tool_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "ok": true,
+      "value": {}
+    }
+  },
+  {
+    "name": "speech.tool_result-input-wrong-operation",
+    "operation": "speech.tool_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.tool_result-output-valid",
+    "operation": "speech.tool_result",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.tool_result-output-unknown-field",
+    "operation": "speech.tool_result",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.tool_result-output-wrong-operation",
+    "operation": "speech.tool_result",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.heard-input-valid",
+    "operation": "speech.heard",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "item": "11111111111111111111111111111111"
+    },
+    "cbor_hex": "a1646974656d78203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "speech.heard-input-unknown-field",
+    "operation": "speech.heard",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.heard-input-missing-field",
+    "operation": "speech.heard",
+    "slot": "input",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "speech.heard-input-wrong-operation",
+    "operation": "speech.heard",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.heard-output-valid",
+    "operation": "speech.heard",
+    "slot": "output",
+    "valid": true,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "played_ms": 1200,
+      "text": "Hello"
+    },
+    "cbor_hex": "a3646974656d7820313131313131313131313131313131313131313131313131313131313131313164746578746548656c6c6f69706c617965645f6d731904b0"
+  },
+  {
+    "name": "speech.heard-output-unknown-field",
+    "operation": "speech.heard",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "item": "11111111111111111111111111111111",
+      "played_ms": 1200,
+      "text": "Hello",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.heard-output-missing-field",
+    "operation": "speech.heard",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "played_ms": 1200,
+      "text": "Hello"
+    }
+  },
+  {
+    "name": "speech.heard-output-wrong-operation",
+    "operation": "speech.heard",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_state-input-valid",
+    "operation": "speech.work_state",
+    "slot": "input",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.work_state-input-unknown-field",
+    "operation": "speech.work_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_state-input-wrong-operation",
+    "operation": "speech.work_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_state-output-valid",
+    "operation": "speech.work_state",
+    "slot": "output",
+    "valid": true,
+    "value": {
+      "epoch": 1,
+      "pending": 0
+    },
+    "cbor_hex": "a26565706f6368016770656e64696e6700"
+  },
+  {
+    "name": "speech.work_state-output-unknown-field",
+    "operation": "speech.work_state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "epoch": 1,
+      "pending": 0,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_state-output-missing-field",
+    "operation": "speech.work_state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "pending": 0
+    }
+  },
+  {
+    "name": "speech.work_state-output-wrong-operation",
+    "operation": "speech.work_state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_intent-input-valid",
+    "operation": "speech.work_intent",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131646e616d656c67616d652e696e7370656374647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f63680169617267756d656e7473a1677265717565737467496e7370656374"
+  },
+  {
+    "name": "speech.work_intent-input-unknown-field",
+    "operation": "speech.work_intent",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_intent-input-missing-field",
+    "operation": "speech.work_intent",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "name": "game.inspect",
+      "arguments": {
+        "request": "Inspect"
+      }
+    }
+  },
+  {
+    "name": "speech.work_intent-input-wrong-operation",
+    "operation": "speech.work_intent",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_done-input-valid",
+    "operation": "speech.work_done",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f6368016576616c7565a16773756d6d61727969496e737065637465646673746174757369737563636565646564"
+  },
+  {
+    "name": "speech.work_done-input-unknown-field",
+    "operation": "speech.work_done",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_done-input-missing-field",
+    "operation": "speech.work_done",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    }
+  },
+  {
+    "name": "speech.work_done-input-wrong-operation",
+    "operation": "speech.work_done",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_result-input-valid",
+    "operation": "speech.work_result",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    },
+    "cbor_hex": "a56463616c6c78203131313131313131313131313131313131313131313131313131313131313131647475726e782031313131313131313131313131313131313131313131313131313131313131316565706f6368016576616c7565a16773756d6d61727969496e737065637465646673746174757369737563636565646564"
+  },
+  {
+    "name": "speech.work_result-input-unknown-field",
+    "operation": "speech.work_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "turn": "11111111111111111111111111111111",
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_result-input-missing-field",
+    "operation": "speech.work_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "call": "11111111111111111111111111111111",
+      "epoch": 1,
+      "status": "succeeded",
+      "value": {
+        "summary": "Inspected"
+      }
+    }
+  },
+  {
+    "name": "speech.work_result-input-wrong-operation",
+    "operation": "speech.work_result",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "speech.work_result-output-valid",
+    "operation": "speech.work_result",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "speech.work_result-output-unknown-field",
+    "operation": "speech.work_result",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "speech.work_result-output-wrong-operation",
+    "operation": "speech.work_result",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "expression.set_expression-input-valid",
+    "operation": "expression.set_expression",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "duration_ms": 1000
+    },
+    "cbor_hex": "a369696e74656e736974791901f46a65787072657373696f6e696c697374656e696e676b6475726174696f6e5f6d731903e8"
+  },
+  {
+    "name": "expression.set_expression-input-unknown-field",
+    "operation": "expression.set_expression",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "duration_ms": 1000,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "expression.set_expression-input-missing-field",
+    "operation": "expression.set_expression",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "intensity": 500,
+      "duration_ms": 1000
+    }
+  },
+  {
+    "name": "expression.set_expression-input-wrong-operation",
+    "operation": "expression.set_expression",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "expression.set_expression-output-valid",
+    "operation": "expression.set_expression",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "expression.set_expression-output-unknown-field",
+    "operation": "expression.set_expression",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "expression.set_expression-output-wrong-operation",
+    "operation": "expression.set_expression",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "expression.state-input-valid",
+    "operation": "expression.state",
+    "slot": "input",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "expression.state-input-unknown-field",
+    "operation": "expression.state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "expression.state-input-wrong-operation",
+    "operation": "expression.state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "expression.state-output-valid",
+    "operation": "expression.state",
+    "slot": "output",
+    "valid": true,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "remaining_ms": 900
+    },
+    "cbor_hex": "a369696e74656e736974791901f46a65787072657373696f6e696c697374656e696e676c72656d61696e696e675f6d73190384"
+  },
+  {
+    "name": "expression.state-output-unknown-field",
+    "operation": "expression.state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "expression": "listening",
+      "intensity": 500,
+      "remaining_ms": 900,
+      "unexpected": true
+    }
+  },
+  {
+    "name": "expression.state-output-missing-field",
+    "operation": "expression.state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "intensity": 500,
+      "remaining_ms": 900
+    }
+  },
+  {
+    "name": "expression.state-output-wrong-operation",
+    "operation": "expression.state",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "llm.complete-input-valid",
+    "operation": "llm.complete",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "id": "44444444444444444444444444444444",
+      "correlation_id": "44444444444444444444444444444444",
+      "capability": "llm.complete",
+      "model": "small",
+      "input": {
+        "prompt": "hello"
+      }
+    },
+    "cbor_hex": "a56269647820343434343434343434343434343434343434343434343434343434343434343465696e707574a16670726f6d70746568656c6c6f656d6f64656c65736d616c6c6a6361706162696c6974796c6c6c6d2e636f6d706c6574656e636f7272656c6174696f6e5f696478203434343434343434343434343434343434343434343434343434343434343434"
+  },
+  {
+    "name": "llm.complete-input-unknown-field",
+    "operation": "llm.complete",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "id": "44444444444444444444444444444444",
+      "correlation_id": "44444444444444444444444444444444",
+      "capability": "llm.complete",
+      "model": "small",
+      "input": {
+        "prompt": "hello"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "llm.complete-input-missing-field",
+    "operation": "llm.complete",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "correlation_id": "44444444444444444444444444444444",
+      "capability": "llm.complete",
+      "model": "small",
+      "input": {
+        "prompt": "hello"
+      }
+    }
+  },
+  {
+    "name": "llm.complete-input-wrong-operation",
+    "operation": "llm.complete",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "llm.complete-output-valid",
+    "operation": "llm.complete",
+    "slot": "output",
+    "valid": true,
+    "value": {
+      "request_id": "44444444444444444444444444444444",
+      "status": "succeeded",
+      "output": {
+        "text": "hello"
+      }
+    },
+    "cbor_hex": "a3666f7574707574a164746578746568656c6c6f66737461747573697375636365656465646a726571756573745f696478203434343434343434343434343434343434343434343434343434343434343434"
+  },
+  {
+    "name": "llm.complete-output-unknown-field",
+    "operation": "llm.complete",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "request_id": "44444444444444444444444444444444",
+      "status": "succeeded",
+      "output": {
+        "text": "hello"
+      },
+      "unexpected": true
+    }
+  },
+  {
+    "name": "llm.complete-output-missing-field",
+    "operation": "llm.complete",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "status": "succeeded",
+      "output": {
+        "text": "hello"
+      }
+    }
+  },
+  {
+    "name": "llm.complete-output-wrong-operation",
+    "operation": "llm.complete",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  }
+]

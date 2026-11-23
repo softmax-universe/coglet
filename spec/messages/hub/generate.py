@@ -135,7 +135,7 @@ obj('hub-enroll-params', {'offer': 'version-offer', 'invite': 'hub-maybe-secret'
 obj('hub-install-params', {'delegation': 'hub-signed-delegation', 'initial': 'hub-signed-ref'})
 obj('hub-push-params', {'update': 'hub-signed-ref', 'size': 'hub-size', 'sha256': 'hub-hash'})
 obj('hub-fetch-params', {'ref': 'hub-fetch-ref'})
-obj('hub-events-params', {'events': 'hub-event-batch'})
+obj('hub-events-params', {'offset': 'uint64', 'events': 'hub-event-batch'})
 obj('hub-actions-params', {'action': 'action'})
 obj('hub-read-params', {'path': 'hub-path', 'offset': 'uint64', 'limit': 'hub-read-size'})
 obj('hub-write-params', {'path': 'hub-write-path', 'text': 'hub-text', 'expected_hash': 'hub-hash',
@@ -164,7 +164,7 @@ union('hub-request', requests)
 obj('hub-enroll-result', {'selection': 'version-selection', 'device': 'node-id', 'hub': 'node-id'})
 obj('hub-read-result', {'step': 'uint64', 'snapshot_hash': 'hub-hash', 'text': 'hub-text',
                        'next_offset': 'uint64', 'eof': 'hub-bool'})
-obj('hub-events-result', {'next_seq': 'uint64'})
+obj('hub-events-result', {'next_offset': 'uint64'})
 obj('hub-step-result', {'receipt': 'hub-mutation-receipt', 'step': 'uint64'})
 results = ['hub-enroll-result', 'hub-mutation-receipt', 'hub-status', 'action-accept',
            'hub-read-result', 'hub-events-result', 'hub-step-result', 'hub-empty']

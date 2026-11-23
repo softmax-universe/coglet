@@ -3,6 +3,9 @@
 Imports [conventions](../conventions.md) and [surface protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
 Schema rules are in `messages/expression.cddl` and `expression.schema.json`.
+The normative [operation bindings](bindings.md) select set-expression args,
+closed empty successful action result, closed empty state-read args and
+expression-state read result; generic envelope/root-union validation is insufficient.
 
 `expression.control` advertises action `expression.set_expression` and read
 `expression.state`, with exclusive resource `display.face`. Action args:

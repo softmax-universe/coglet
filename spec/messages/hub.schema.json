@@ -612,11 +612,15 @@
     "hub-events-params": {
       "type": "object",
       "properties": {
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
         "events": {
           "$ref": "#/$defs/hub-event-batch"
         }
       },
       "required": [
+        "offset",
         "events"
       ],
       "additionalProperties": false
@@ -1469,12 +1473,12 @@
     "hub-events-result": {
       "type": "object",
       "properties": {
-        "next_seq": {
+        "next_offset": {
           "$ref": "common.schema.json#/$defs/uint64"
         }
       },
       "required": [
-        "next_seq"
+        "next_offset"
       ],
       "additionalProperties": false
     },

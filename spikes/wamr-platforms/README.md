@@ -38,7 +38,7 @@ from 2026-11-23, not hosted CI evidence; hosted artifacts are authoritative for
 that CI run. Pool stats exclude mmap-backed linear memory, Rust allocations,
 native stack, shared libraries, and emulator overhead. The static pool reserves
 2 MiB BSS whether or not it is all touched. GNU time measures the **host QEMU
-process** (and timeout wrapper), not an EO1's native RSS. See ADR-0002 for results.
+process** (and timeout wrapper), not an EO1's native RSS. See ADR-0008 for results.
 
 **EO1 caveat:** Baby Bear `pods/eo1/` describes an i.MX6/ARMv7 device and inherited
 Ubuntu 18.04 baseline. The spike uses the Ubuntu 24.04 cross sysroot and needs

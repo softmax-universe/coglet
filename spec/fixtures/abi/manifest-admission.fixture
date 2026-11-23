@@ -1,0 +1,23 @@
+{
+  "description": "Catalog/grant semantic vectors; not wire envelopes or engine execution",
+  "manifest": {
+    "version": "0.1",
+    "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+    "subscriptions": [],
+    "required_capabilities": ["speech.speak_chunk"],
+    "exclusive_outputs": ["audio.speaker"],
+    "budgets": {"compute": 10000, "compute_mode": "fixture.interpreter", "memory_pages": 2, "wall_time_us": 100000, "max_events": 16, "host_bytes": 65536}
+  },
+  "entries": [{"name": "speech.output", "events": [], "reads": [], "actions": ["speech.speak_chunk"], "exclusive": ["audio.speaker"]}],
+  "grant": {"coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111", "operations": ["speech.speak_chunk"], "resources": ["audio.speaker"]},
+  "cases": [
+    {"name": "operation-and-independent-resource", "manifest": {}, "grant": {}, "error": null},
+    {"name": "entry-is-not-operation", "manifest": {"required_capabilities": ["speech.output"]}, "grant": {}, "error": "unknown operation"},
+    {"name": "resource-is-not-operation", "manifest": {"required_capabilities": ["audio.speaker"]}, "grant": {}, "error": "unknown operation"},
+    {"name": "unknown-resource", "manifest": {"exclusive_outputs": ["audio.unknown"]}, "grant": {}, "error": "unknown resource"},
+    {"name": "lease-does-not-grant-operation", "manifest": {}, "grant": {"operations": []}, "error": "missing operation grant"},
+    {"name": "operation-does-not-grant-lease", "manifest": {}, "grant": {"resources": []}, "error": "missing resource lease"},
+    {"name": "action-is-not-event", "manifest": {"subscriptions": ["speech.speak_chunk"]}, "grant": {}, "error": "unknown event"},
+    {"name": "another-owner", "manifest": {}, "grant": {"coglet": "coglet:2222222222222222222222222222222222222222222222222222222222222222"}, "error": "missing operation grant"}
+  ]
+}

@@ -70,9 +70,19 @@ Unsolicited events allocate a fresh id. Derived events MAY retain a causal id.
   and epoch mapping belong to the ABI/router, not numeric comparison of clocks.
 - `action`: `id` (action-id), `coglet` (coglet-id), `capability`
   (capability-name), `args` (map), `deadline` (uint64), `correlation_id`.
-  Deadline is the exclusive expiry instant in the executing surface's logical
-  microsecond clock. Dispatch MUST establish the clock mapping first; at or
-  after deadline reject/expire. Zero is already expired, never "unlimited".
+  Deadline is an exclusive expiry instant in logical microseconds, scoped to
+  the boundary carrying the envelope (ADR-0009 M-C): an ABI guest intent uses
+  its runtime epoch and remains immutable in the journal. A surface-wire action
+  uses the executing surface epoch, translated ONCE before first dispatch and
+  durably retained with the complete act envelope. `hub.actions` uses the
+  RECEIVING runtime epoch, not the hub's epoch: the sender establishes that
+  mapping and retains the mapped hub request before first send; the receiver
+  separately translates once at its surface boundary. Never rewrite a journaled
+  intent or retranslate an existing ID on retry/reconnect/new clock samples.
+  Missing/stale mapping refuses new dispatch. At or after deadline reject/expire;
+  zero is already expired, never "unlimited". Translation MUST reject expired
+  input and uint64 overflow rather than wrap/clamp it into a future deadline.
+  Retry lookup/reconciliation precedes fresh admission/expiry checks.
 - `action-accept`: `id`, `correlation_id`, `accepted` (boolean), and `error`
   iff accepted is false. Rejection is terminal and produces no outcome.
 - `action-outcome`: `id`, `correlation_id`, `status` (`succeeded`, `failed`,

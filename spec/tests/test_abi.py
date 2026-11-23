@@ -11,6 +11,7 @@ from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode
+from heard_archive import HEARD_PATH, read_state, check_transition
 
 BASE = 'https://coglet.dev/spec/'
 
@@ -26,7 +27,7 @@ def record_hash(rec):
 def valid_path(path):
     parts = path.split('/')
     return (len(parts) >= 3 and parts[0] == '' and parts[1] in ('code', 'data', 'logs')
-            and all(p not in ('', '.', '..') and '\0' not in p for p in parts[1:])
+            and all(p not in ('', '.', '..') and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
             and str(PurePosixPath(path)) == path)
 
 
@@ -34,8 +35,28 @@ def check_manifest(man):
     for key in ('subscriptions', 'required_capabilities', 'exclusive_outputs'):
         if len(set(man[key])) != len(man[key]):
             raise ValueError('duplicate capability')
-    if not set(man['exclusive_outputs']) <= set(man['required_capabilities']):
-        raise ValueError('exclusive output not required')
+    # Resource leases and operation grants are separate namespaces. Catalog and
+    # grant admission is checked separately, never by comparing these arrays.
+
+
+def check_manifest_admission(man, entries, grant):
+    """Test oracle for catalog/grant admission, not a runtime implementation."""
+    check_manifest(man)
+    operations = {op for entry in entries for kind in ('events', 'reads', 'actions')
+                  for op in entry[kind]}
+    events = {op for entry in entries for op in entry['events']}
+    resources = {name for entry in entries for name in entry['exclusive']}
+    required = set(man['required_capabilities']) | set(man['subscriptions'])
+    if not set(man['required_capabilities']) <= operations:
+        raise ValueError('unknown operation')
+    if not set(man['subscriptions']) <= events:
+        raise ValueError('unknown event')
+    if not set(man['exclusive_outputs']) <= resources:
+        raise ValueError('unknown resource')
+    if grant['coglet'] != man['id'] or not required <= set(grant['operations']):
+        raise ValueError('missing operation grant')
+    if not set(man['exclusive_outputs']) <= set(grant['resources']):
+        raise ValueError('missing resource lease')
 
 
 def check_inbox(raw):
@@ -66,6 +87,10 @@ def check_inbox(raw):
             raise ValueError('inbox sequence, sender or duplicate')
         if event['kind'] == 'llm.reply':
             validate('llm-reply', event['payload'])
+        elif event['kind'] == 'runtime.action_rejected':
+            validate('action-rejection', event['payload'])
+            if event['correlation_id'] != event['payload']['correlation_id']:
+                raise ValueError('action rejection correlation')
         elif event['kind'] == 'action.outcome':
             validate('action-outcome', event['payload'], True)
             if event['correlation_id'] != event['payload']['correlation_id']:
@@ -113,11 +138,11 @@ def check_record(rec):
     # Enforce mount writes and append-only files independently of shape.
     for path, value in rec['input_files'].items():
         after = rec['output_files'].get(path)
-        if (path.startswith('/code/') or path == '/data/inbox.jsonl') and after != value:
+        if (path.startswith('/code/') or path in ('/data/inbox.jsonl', HEARD_PATH)) and after != value:
             raise ValueError('read-only write')
         if path.startswith('/logs/') and (after is None or not after.startswith(value)):
             raise ValueError('log rewrite')
-    if any(p.startswith('/code/') or p == '/data/inbox.jsonl' for p in rec['output_files'].keys() - rec['input_files'].keys()):
+    if any(p.startswith('/code/') or p in ('/data/inbox.jsonl', HEARD_PATH) for p in rec['output_files'].keys() - rec['input_files'].keys()):
         raise ValueError('read-only create')
     for side in ('input', 'output'):
         raw = bytes.fromhex(rec[side + '_files'].get('/data/inbox.jsonl', ''))
@@ -144,14 +169,98 @@ def check_record(rec):
     for change in rec['boundary']:
         if change['target'] != rec['coglet']:
             raise ValueError('boundary target')
-        if change['path'] == '/data/inbox.jsonl' and change['method'] != 'hub.inbox':
+        if change['path'] == '/data/inbox.jsonl' and change['method'] not in ('hub.inbox', 'runtime.receipt'):
             raise ValueError('inbox method')
     return before
 
 
+def check_provenance(files, code_hash):
+    """Replay binding only; admission signatures/qualification are separate."""
+    raw_hex = files.get('/code/build/provenance.cbor')
+    if raw_hex is None:
+        raise ValueError('missing build provenance')
+    try:
+        raw = bytes.fromhex(raw_hex)
+        value = decode(raw)
+        if encode(value) != raw:
+            raise ValueError('noncanonical provenance')
+        hub = json.loads((SPEC / 'messages/hub.schema.json').read_text())
+        common = json.loads((SPEC / 'messages/common.schema.json').read_text())
+        registry = Registry().with_resources((s['$id'], Resource.from_contents(s)) for s in [hub, common])
+        schema = {'$ref': hub['$id'] + '#/$defs/hub-build-record'}
+        if not Draft202012Validator(schema, registry=registry).is_valid(value):
+            raise ValueError('build record shape')
+        if value['rewritten_sha256'] != code_hash:
+            raise ValueError('output digest')
+    except (ValueError, TypeError, KeyError, cbor2.CBORDecodeError) as error:
+        raise ValueError('invalid build provenance: ' + str(error)) from error
+    return value
+
+
+def check_boundary(before, after, changes, coglet):
+    """Apply exact durable interventions, without invoking a guest."""
+    current = dict(before)
+    appended = []
+    for change in changes:
+        path = change['path']
+        if not valid_path(path) or path.startswith('/code/'):
+            raise ValueError('boundary mount')
+        if change['target'] != coglet or current.get(path) != change['before']:
+            raise ValueError('boundary target or before bytes')
+        old, new = change['before'], change['after']
+        if path == HEARD_PATH or change['method'] == 'runtime.heard':
+            if (path != HEARD_PATH or change['method'] != 'runtime.heard' or
+                    change['actor'] != coglet or change['ticket'] is not None):
+                raise ValueError('heard runtime origin')
+            check_transition(old, new)
+        if path.startswith('/logs/') and (new is None or not new.startswith(old or '')):
+            raise ValueError('boundary log rewrite')
+        if path == '/data/inbox.jsonl':
+            if change['method'] not in ('hub.inbox', 'runtime.receipt'):
+                raise ValueError('inbox method')
+            if new is None or not new.startswith(old or ''):
+                raise ValueError('boundary inbox rewrite')
+            old_messages = check_inbox(bytes.fromhex(old or ''))
+            messages = check_inbox(bytes.fromhex(new))
+            new_messages = messages[len(old_messages):]
+            for message in new_messages:
+                terminal = message['event']['kind'] in ('runtime.action_rejected', 'action.outcome')
+                if terminal != (change['method'] == 'runtime.receipt'):
+                    raise ValueError('terminal receipt origin')
+            appended.extend(new_messages)
+        if change['method'] == 'runtime.receipt' and (
+                path != '/data/inbox.jsonl' or change['actor'] != coglet or change['ticket'] is not None):
+            raise ValueError('terminal receipt origin')
+        if new is None:
+            current.pop(path, None)
+        else:
+            current[path] = new
+    if current != after or not all(valid_path(p) for p in after):
+        raise ValueError('boundary snapshot')
+    check_inbox(bytes.fromhex(after.get('/data/inbox.jsonl', '')))
+    return appended
+
+
 def check_trace(trace, manifest_validator=None):
     previous = None
-    files = None
+    files = trace['initial_files']
+    read_state(files.get(HEARD_PATH))
+    if digest(files) != trace['initial_hash']:
+        raise ValueError('initial hash')
+    for key in ('code_hash', 'manifest_hash'):
+        raw = bytes.fromhex(trace['blobs'][trace[key]])
+        if hashlib.sha256(raw).hexdigest() != trace[key]:
+            raise ValueError('blob mismatch')
+    if files.get('/code/bin/step.wasm') != trace['blobs'][trace['code_hash']]:
+        raise ValueError('code not pinned')
+    check_provenance(files, trace['code_hash'])
+    man = decode(bytes.fromhex(trace['blobs'][trace['manifest_hash']]))
+    check_manifest(man)
+    if manifest_validator is not None:
+        manifest_validator.validate(man)
+    if man['id'] != trace['coglet'] or not all(valid_path(p) for p in files):
+        raise ValueError('initial identity or path')
+    initial_messages = check_inbox(bytes.fromhex(files.get('/data/inbox.jsonl', '')))
     ids = set()
     for kind, values in trace['initial_effect_ids'].items():
         if values != sorted(set(values)):
@@ -159,14 +268,43 @@ def check_trace(trace, manifest_validator=None):
         ids.update((kind, value) for value in values)
     requests = {r['id']: r for r in trace['initial_llm_requests']}
     timers = {t['id']: t for t in trace['initial_timers']}
-    for kind, pending, entries in [('llm_requests', requests, trace['initial_llm_requests']),
+    actions = {a['id']: a for a in trace['initial_actions']}
+    for kind, pending, entries in [('actions', actions, trace['initial_actions']),
+                                  ('llm_requests', requests, trace['initial_llm_requests']),
                                    ('timers', timers, trace['initial_timers'])]:
         if len(pending) != len(entries) or any((kind, key) not in ids for key in pending):
             raise ValueError('initial pending work absent from effect ledger or duplicated')
     pending_wakes = list(trace['initial_inbox_wakes'])
     if pending_wakes != sorted(set(pending_wakes)):
         raise ValueError('initial inbox wake order')
-    replies = set()
+    if any(a['coglet'] != trace['coglet'] for a in actions.values()):
+        raise ValueError('initial pending action identity')
+    if any(m['event']['kind'] in ('runtime.action_rejected', 'action.outcome') and
+           m['event']['payload']['id'] in actions for m in initial_messages):
+        raise ValueError('initial action already terminal')
+    if any(i >= len(initial_messages) for i in pending_wakes):
+        raise ValueError('initial inbox wake absent')
+
+    def consume_appends(appended):
+        for message in appended:
+            pending_wakes.append(message['index'])
+            event = message['event']
+            if event['kind'] == 'llm.reply':
+                reply = event['payload']
+                request = requests.pop(reply['request_id'], None)
+                if request is None or event['correlation_id'] != request['correlation_id']:
+                    raise ValueError('uncorrelated or duplicate LLM reply')
+            if event['kind'] in ('runtime.action_rejected', 'action.outcome'):
+                receipt = event['payload']
+                action = actions.pop(receipt['id'], None)
+                if action is None or receipt['correlation_id'] != action['correlation_id']:
+                    raise ValueError('uncorrelated or duplicate terminal action')
+                if event['kind'] == 'runtime.action_rejected' and event['source'] != trace['coglet']:
+                    raise ValueError('terminal rejection source')
+                if event['kind'] == 'action.outcome' and not (
+                        event['source'].startswith('surface:') or event['source'] == trace['coglet']):
+                    raise ValueError('terminal outcome source')
+
     for index, rec in enumerate(trace['records']):
         before = check_record(rec)
         if rec['step'] != index or rec['previous'] != previous or rec['trace_id'] != trace['trace_id'] or rec['coglet'] != trace['coglet']:
@@ -183,6 +321,9 @@ def check_trace(trace, manifest_validator=None):
                 raise ValueError('blob mismatch')
         if rec['input_files'].get('/code/bin/step.wasm') != trace['blobs'][rec['code_hash']]:
             raise ValueError('code not pinned')
+        check_provenance(rec['input_files'], rec['code_hash'])
+        if index and rec['input_files'].get('/code/build/provenance.cbor') != trace['records'][0]['input_files'].get('/code/build/provenance.cbor'):
+            raise ValueError('trace provenance changed')
         man = decode(bytes.fromhex(trace['blobs'][rec['manifest_hash']]))
         check_manifest(man)
         if manifest_validator is not None:
@@ -225,21 +366,13 @@ def check_trace(trace, manifest_validator=None):
                 staged.add(identity)
         if rec['status'] == 'committed':
             ids = staged
-        old_messages = check_inbox(bytes.fromhex(before.get('/data/inbox.jsonl', '')))
         messages = check_inbox(bytes.fromhex(rec['input_files'].get('/data/inbox.jsonl', '')))
-        if index == 0 and any(i >= len(old_messages) for i in pending_wakes):
-            raise ValueError('initial inbox wake absent')
-        pending_wakes.extend(range(len(old_messages), len(messages)))
-        # Appends consume pending LLM requests even when their wake is deferred.
-        for message in messages[len(old_messages):]:
-            event = message['event']
-            if event['kind'] == 'llm.reply':
-                reply = event['payload']
-                request = requests.get(reply['request_id'])
-                if request is None or reply['request_id'] in replies or event['correlation_id'] != request['correlation_id']:
-                    raise ValueError('uncorrelated or duplicate LLM reply')
-                replies.add(reply['request_id'])
+        consume_appends(check_boundary(before, rec['input_files'], rec['boundary'], trace['coglet']))
         for event in rec['events']:
+            if event['kind'] in ('runtime.action_rejected', 'action.outcome'):
+                raise ValueError('terminal must use inbox only')
+            if event['kind'] in ('runtime.inbox', 'runtime.timer') and event['source'] != trace['coglet']:
+                raise ValueError('runtime wake source')
             if event['kind'] == 'runtime.debug_step' and (event['payload'] != {} or event['source'] != rec['coglet'] or event['logical_time'] != rec['logical_time']):
                 raise ValueError('debug step wake binding')
             if event['kind'] == 'runtime.inbox':
@@ -254,14 +387,36 @@ def check_trace(trace, manifest_validator=None):
                 timer = timers.pop(payload['id'], None)
                 if timer != payload or rec['logical_time'] < timer['at'] or event['correlation_id'] != timer['id']:
                     raise ValueError('unrequested, early or duplicate timer')
+        for key in ('code_hash', 'manifest_hash'):
+            if rec[key] != trace[key]:
+                raise ValueError('trace code/manifest changed')
+        for action in rec['actions']:
+            actions[action['id']] = action
         for timer in rec['timers']:
             timers[timer['id']] = timer
         for request in rec['llm_requests']:
             requests[request['id']] = request
         previous, files = rec['record_hash'], rec['output_files']
+    trailing = trace['trailing_boundary']
+    if trailing is not None:
+        if record_hash(trailing) != trailing['record_hash']:
+            raise ValueError('boundary record hash')
+        if any(trailing[k] != trace[k] for k in ('version', 'trace_id', 'coglet')) or trailing['previous'] != previous:
+            raise ValueError('boundary record chain')
+        if trailing['before_hash'] != digest(files) or trailing['output_hash'] != digest(trailing['output_files']):
+            raise ValueError('boundary tree hash')
+        if trace['records'] and trailing['logical_time'] < trace['records'][-1]['logical_time']:
+            raise ValueError('boundary time regressed')
+        consume_appends(check_boundary(files, trailing['output_files'], trailing['boundary'], trace['coglet']))
+        files = trailing['output_files']
+    if digest(files) != trace['final_hash']:
+        raise ValueError('final hash')
     for key, value in trace['blobs'].items():
         if hashlib.sha256(bytes.fromhex(value)).hexdigest() != key:
             raise ValueError('extra blob mismatch')
+    return dict(final_hash=digest(files), pending_actions=sorted(actions),
+                pending_inbox_wakes=pending_wakes, pending_timers=sorted(timers),
+                pending_llm_requests=sorted(requests))
 
 
 class AbiFixtures(unittest.TestCase):
@@ -285,7 +440,7 @@ class AbiFixtures(unittest.TestCase):
     def test_actual_schema_roots(self):
         root = Draft202012Validator(self.abi, registry=self.registry)
         cddl = Schema(self.cddl)
-        roots = {'trace', 'step-record', 'inbox-message', 'timer-request',
+        roots = {'trace', 'step-record', 'boundary-record', 'inbox-message', 'timer-request',
                  'llm-request', 'llm-reply', 'log-entry', 'manifest'}
         values = [(c['value'], True) for c in self.cases if c['valid'] and c['type'] in roots]
         values += [(v, False) for v in [{}, {'/data/count': '30'}, [], 0, None, {'unknown': True}]]
@@ -398,10 +553,28 @@ class AbiFixtures(unittest.TestCase):
     def test_manifest_semantics(self):
         man = next(c['value'] for c in self.cases if c['type'] == 'manifest' and c['valid'])
         check_manifest(man)
-        for field, value in [('exclusive_outputs', ['other.write']), ('subscriptions', ['sensor.tick']*2)]:
-            bad = dict(man, **{field: value})
+        for field in ('exclusive_outputs', 'subscriptions', 'required_capabilities'):
+            bad = dict(man, **{field: ['test.duplicate'] * 2})
             with self.assertRaises(ValueError):
                 check_manifest(bad)
+
+    def test_manifest_catalog_and_resource_admission(self):
+        vectors = json.loads((SPEC / 'fixtures/abi/manifest-admission.fixture').read_text())
+        from build_manifest_admission import cases
+        timelines = json.loads((SPEC.parent / 'conformance/abi/manifest-admission.json').read_text())
+        self.assertEqual(timelines, cases())
+        self.assertEqual(len(timelines), len(vectors['cases']))
+        for case in vectors['cases']:
+            with self.subTest(case=case['name']):
+                man = dict(vectors['manifest'], **case['manifest'])
+                grant = dict(vectors['grant'], **case['grant'])
+                self.validator('manifest').validate(man)
+                Schema('fixture = manifest\n' + self.cddl).validate_cbor(cbor2.dumps(man))
+                if case['error'] is None:
+                    check_manifest_admission(man, vectors['entries'], grant)
+                else:
+                    with self.assertRaisesRegex(ValueError, case['error']):
+                        check_manifest_admission(man, vectors['entries'], grant)
 
     def test_admission_memory_vectors(self):
         cases = json.loads((SPEC.parent / 'conformance/abi/admission.json').read_text())
@@ -456,6 +629,9 @@ class AbiFixtures(unittest.TestCase):
                              blobs={hashlib.sha256(code_bytes).hexdigest(): code_bytes.hex(),
                                     hashlib.sha256(manifest_bytes).hexdigest(): manifest_bytes.hex()},
                              **{k: first[k] for k in ['initial_effect_ids', 'initial_inbox_wakes', 'initial_timers', 'initial_llm_requests']})
+                trace.update(initial_files=first['initial_files'], code_hash=records[0]['code_hash'],
+                             manifest_hash=records[0]['manifest_hash'], initial_actions=[],
+                             trailing_boundary=None, final_hash=records[-1]['output_hash'])
                 self.validator('trace').validate(trace)
                 check_trace(trace, self.validator('manifest'))
                 self.assertEqual(len(case['steps']) % 3, 0)

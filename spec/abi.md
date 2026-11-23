@@ -1,9 +1,11 @@
 # Coglet ABI — 0.1 (proposed)
 
-Decision: [ADR-0006](../docs/adr/0006-coglet-abi.md), [PR #8](https://github.com/softmax-universe/coglet/pull/8).
+Decision: [ADR-0006](../docs/adr/0006-coglet-abi.md), [PR #8](https://github.com/softmax-universe/coglet/pull/8), amended before freeze by [ADR-0009](../docs/adr/0009-spec-v0-freeze.md).
 Imports [common conventions](conventions.md) unchanged; MUST/SHOULD are normative.
-Core Wasm, not the component model. This is not the v0 freeze: engine budget
-and determinism qualifications remain explicitly TBD-by-ADR below.
+Core Wasm, not the component model. Engine budget and determinism requirements
+are specified below; real implementation qualification remains fail-closed under
+the [owned M1 gates](../docs/reviews/spec-v0-m1-gates.md). This document's presence
+on a proposal branch is not final freeze acceptance.
 
 ## Guest exports and imports
 
@@ -47,8 +49,10 @@ guests SHOULD derive IDs from seed, step and call index. Duplicate IDs return 4.
 Timers cannot replace/cancel in 0.1; past-due timers wake only after commit, in a
 later step. Timer events use `runtime.timer`, payload `{id, at}`, correlation_id=id.
 
-LLM requires a granted capability (usually llm.complete), routing model name,
-id, correlation_id and profile-map input. Success/failure arrives in a later
+LLM requires the granted built-in capability `llm.complete`, routing model name,
+id, correlation_id and profile-map input. The exact operation and upstream adapter
+boundary are specified in [capability bindings](capabilities/bindings.md); this is
+not a surface action or an implicit hub RPC. Success/failure arrives in a later
 inbox message whose event kind is `llm.reply`, payload is llm-reply and request_id
 matches the request id. Correlation id is retained. Provider timeout/cancellation
 is a recorded failure reply. Spend policy belongs to the gateway, not this ABI.
@@ -81,27 +85,37 @@ operation; an external producer cannot self-authorize a runtime-generated wake.
 
 Apply authenticated debug writes/inbox appends between steps only, in recorded
 order. Pin code, manifest, grants and input snapshot before instantiation.
-Each boundary change includes actor, audit_id (the hub operation_id), nullable
+Each boundary change includes actor, audit_id (hub operation_id or runtime
+materialization ID as defined below), nullable
 ticket, method, target coglet, path and before/after bytes (null means absent).
-The enclosing step supplies boundary step and before/input tree hashes; a recorded
+The enclosing step or standalone boundary-record supplies before/after tree hashes; a recorded
 boundary change is the successful apply outcome. Rejected hub operations belong
 to the hub audit, not the guest mutation list. Initial_hash is before boundary changes; input_hash is after them.
-Boundary reconstruction must produce the recorded input snapshot. Method names
+Boundary reconstruction must produce the recorded input (or trailing output) snapshot. Method names
 match hub wire methods: hub.inbox for inbox appends and debug.write for debug
-writes. Journal origin is structural: each boundary change is origin `hub`
-(including hub-relayed provider replies); guest input-to-output writes and calls
+writes. Runtime terminal receipt materialization uses `runtime.receipt` (not a hub
+RPC): actor=target coglet, ticket=null, path=/data/inbox.jsonl. It may only append
+terminal action messages. Journal origin is structural: this method is origin
+`runtime`; `runtime.heard` is also runtime-origin as defined below; other boundary
+changes are origin `hub` (including hub-relayed provider
+replies); guest input-to-output writes and calls
 are origin `coglet`. Exporters MUST preserve or explicitly materialize that origin,
 never flatten both into unattributed state deltas. The boundary audit_id equals
-the hub operation_id; actor/ticket/target are unchanged. The record step and
-before_hash/input_hash supply the boundary step and snapshot hashes; only applied
+the hub operation_id for hub-origin changes; runtime.receipt allocates a stable
+materialization audit ID retained across retries. Actor/ticket/target are unchanged.
+The M-C amendment also defines `runtime.heard` below as a runtime-origin boundary
+mutation, not a hub method or guest event. All other origin rules remain unchanged.
+The enclosing record and its before/after hashes identify the boundary; only applied
 mutations appear here, with failed/queued outcomes retained in hub receipts/audit.
 
 - /code: read-only pinned revision, including prompts and step.wasm.
 - /data: private read-write persistent state, never git-synced; inbox exception below.
 - /logs: create/append only, including log imports; no truncate, unlink or rename.
 
-Paths are absolute UTF-8 with no NUL, empty, dot or dot-dot components or trailing
-slash. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
+Paths are absolute UTF-8 with no C0 controls (U+0000–U+001F), DEL
+(U+007F), backslash, empty, dot or dot-dot components or trailing slash.
+No Unicode normalization is performed. Hub debug paths are a bounded ASCII
+subset of these filesystem paths, not a second filesystem namespace. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
 mount escapes forbidden. Mount permissions apply to descriptors too, including
 open/rename operations; no chmod escalation. Denial returns WASI permission errno
 without change. Reads see this step's copy-on-write overlay.
@@ -134,8 +148,9 @@ trace. sender is authenticated and equals enclosed event.source. Sequence number
 are common source seq, independent of index. All appends happen at boundaries;
 the exact resulting bytes are recorded (replay does not reserialize JSON).
 Consumers MUST decode and validate each embedded inbox-message and its event,
-including the llm-reply schema for llm.reply and common action-outcome schema
-for action.outcome (with matching correlation_id), not just the hex container.
+including the llm-reply schema for llm.reply, ABI action-rejection for
+runtime.action_rejected and common action-outcome for action.outcome (with
+matching correlation_id), not just the hex container.
 Canonical JSONL validation compares to sorted-key, no-space serialization with
 literal UTF-8 Unicode, lowercase `\\u00xx` for otherwise unescaped controls,
 short escapes for backspace/tab/LF/form-feed/CR, and escapes only quote/backslash
@@ -148,14 +163,104 @@ enclosed event.kind distinguishes them. The coglet maintains its own cursor file
 in /data; aborted cursor writes roll back. No truncation/rotation in 0.1; storage
 exhaustion backpressures instead. Failed guest steps do not remove inbox lines.
 
-## Budgets — TBD-by-ADR-0001
+## Guest terminal action delivery
+
+A locally staged emit is not a surface acceptance. After commit its complete
+common action enters the durable pending-action set. A terminal dispatch/surface
+rejection is delivered as an inbox event `runtime.action_rejected`, with the
+common `action-accept` constrained by ABI `action-rejection` to accepted=false
+(and required error). Its source is the target coglet, generated by the runtime.
+Accepted actions deliver one common `action-outcome` as inbox `action.outcome`;
+retain the original authenticated surface source. A legitimately synthesized
+runtime outcome uses source=target coglet under surface/hub authority rules;
+a source string alone never authorizes synthesis. Authorization must be verified
+against retained surface/hub admission audit by the archive consumer; the ABI
+trace's semantic checker proves causal/pending-state and structural source binding,
+not transport authentication or grant/private-owner authority. Case-contract
+vectors with synthesized sources assume that separate authority gate and do not
+qualify it. Both payload and envelope
+correlation_id MUST equal the pending action's correlation_id, and payload id
+MUST equal its id. Positive accepts are upstream bookkeeping, not guest terminal
+messages. A rejection produces no outcome.
+
+Only `runtime.receipt` may materialize these terminal inbox messages. The router
+MUST NOT also enqueue the enclosed receipt/outcome as a direct guest event.
+Terminal messages bypass guest subscriptions through the ordinary runtime.inbox
+wake, whose source is the target coglet (as for runtime.timer). Terminal
+materialization atomically appends bytes, consumes the pending action and queues
+one wake, BEFORE acknowledging delivery. Durable dedup/recovery maps upstream
+retries to that same append; a new inbox ID or source seq does not permit a second
+terminal message. Conflicting/repeated terminal attempts fail closed without a
+new append. Retain upstream retry receipts and the action lifetime ID ledger;
+this does not promise exactly-once physical effects. Aborted emits never become
+pending and cannot receive terminals. A later failed guest wake consumes its
+wake but does not restore the pending action or erase the immutable inbox line.
+Replay checks all these transitions and never dispatches or synthesizes results.
+
+## Runtime-authored heard-history journal record (ADR-0009 M-C)
+
+`runtime.heard` is one boundary-change at the reserved path
+`/data/runtime/heard.cbor`, actor=target coglet, ticket=null, with a stable audit_id
+retained across retries. Its before/after hex bytes encode core-deterministic CBOR
+`heard-state` (ABI schema), a complete private snapshot of per-item alignment and
+heard projection. Absence means empty history; after MUST NOT be null. This file
+is guest-read-only and cannot be changed by debug.write/hub.inbox/guest writes;
+only the runtime may replace it at a boundary. It is not an inbox append and
+queues NO wake, guest event or engine invocation. An ordinary later step can read
+it; it must be durable before that step consumes conversation history. It may
+also occur in trailing_boundary, including zero-step exports. Thus it fits the
+closed applied-mutation format above without adding an event or untyped header.
+
+Live construction from owner reads is specified in
+[speech heard-history](capabilities/speech.md#heard-only-conversation-history-adr-0010) and
+[ADR-0009 M-D](../docs/adr/0009-spec-v0-freeze.md#amendment-m-d-heard-state-construction-from-owner-reads).
+
+`heard-state` contains `items`, ordered by (surface,item), unique per pair. Each
+`heard-item` carries surface, item, duration_ms, played_ms, stopped, ordered spans
+`{end_ms,text}` and the derived `heard` text. Span ends strictly increase within
+duration; played_ms cannot exceed duration. Concatenated span text is alignment
+evidence, NOT conversation history. The heard text is exactly the concatenation
+of spans ending at/before played_ms, capped to 16,384 UTF-8 bytes without splitting
+a character. Missing alignment is an empty spans array and empty heard text.
+Duration is the known media extent at that recording, not a prediction of final
+stream length. For a retained item duration cannot decrease and alignment is
+append-only (existing spans never change); later measured alignment may extend
+an empty/partial list. Positions never regress,
+and stopped items cannot advance or become live again. A duck snapshot remains
+live and may later advance; queued items have played_ms=0 and no heard prefix
+(span ends are positive). Previously finished items remain independent. Items
+are not removed from the journal snapshot; revocation denies future live access
+and archive access follows transcript privacy, never rewriting prior audit bytes.
+
+Validate decoded state shape and these semantic invariants at initial_files and
+every mutation, including its runtime origin and read-only mount. Export includes
+the exact initial file and each before/after state in ordinary hashed records.
+Replay rebuilds history solely from those journal bytes, with no TTS, surface
+read, oracle-injected projection or rewritten intent. This establishes an archive
+contract, not authenticated/native alignment or persistence qualification (M1).
+
+## Budgets and engine qualification
 
 Positive per-step limits: compute with explicit engine-specific compute_mode,
 linear memory pages (64 KiB), wall_time_us, max_events and aggregate host_bytes.
 Zero never means unlimited. Record effective limits; lowering manifest limits
 requires explicit recorded admission. Reject unsupported modes before execution.
-Compute units, safe points and total host-memory/stack accounting remain
-TBD-by-ADR-0001 (proposed findings PR #6), not portable fuel. The budget fields
+
+One admitted attempt has ONE compute allowance and ONE absolute wall deadline,
+covering initialization, `abi_alloc` and `handle` together. Before entering each
+subsequent call, the qualified engine MUST enforce the exact remaining allowance,
+not reset it to the original step limit. Exhaustion prevents further guest calls.
+The absolute deadline is established before initialization and is never extended
+by allocation, export transition or host work. Record aggregate observed usage;
+all failed attempts retain the existing atomic-abort semantics. A WAMR mode must
+qualify exact consumption/remaining-budget accounting and positive signed-i32 FFI
+limits (no zero, overflow or truncation), or reject admission before execution.
+The spike's per-call setter is evidence, not proof of this cumulative contract.
+
+Compute units and safe points are engine/build-specific, not portable fuel;
+separate host-memory/stack bounds are required (linear pages do not cap total RSS).
+These are explicit [engine M1 qualification gates](../docs/reviews/spec-v0-m1-gates.md),
+not unspecified v0 behavior. The budget fields
 are engine-neutral: compute_mode selects a qualified engine/build accounting
 policy, not a WAMR API name; a future fuel/epochs engine fits without new fields.
 Compute caps AND deadlines require an interpreter or another qualified metering
@@ -178,9 +283,10 @@ Host calls are bounded/cancellable and never wait on network. Compute, memory
 or host-byte exhaustion aborts with resource_exhausted; wall expiry aborts with
 deadline_exceeded. Record failure kind and observed usage, with no partial effects.
 Wall deadlines are nondeterministic; no cross-engine cutoff equality claim.
-Frozen budget conformance requires the ADR decisions, not just this shape schema.
+Real budget conformance requires the owned qualification gates, not just a shape
+schema or a mock reporting the desired usage.
 
-## Determinism — TBD-by-ADR-0003
+## Determinism and publication qualification
 
 Inputs, boundary changes, seeds, grants, budgets, code, manifest and filesystem
 are pinned and recorded. No ambient randomness/time/network/environment. Record
@@ -188,16 +294,28 @@ LLM replies verbatim; missing recordings fail closed, never query a live model.
 Replay checks call order/results, outputs and hashes, stopping at first mismatch.
 Wall-time aborted steps replay as recorded failures, not a cutoff instruction
 promise. Engine metadata records build, feature/NaN policy and compute mode.
-Cross-engine float/NaN transform, opcode allowlist and resource cutoff equality
-are TBD-by-ADR-0003 (proposed PR #5); do not hash-normalize arbitrary file bytes.
-Both proposed engine findings and the platform ADR were read; neither pending
-proposal is silently adopted as frozen ABI here.
+ADR-0003 R1–R5, including its amended ABI import/recorded-state rule, define the
+proposed publication policy under ADR-0009; actual cross-architecture float/NaN
+rewrite and opcode-allowlist qualification remain explicit engine/hub M1 gates.
+Do not hash-normalize arbitrary file bytes. No cross-engine resource-cutoff
+equality is promised. Formal ADR status acceptance remains with the freeze owner;
+passing test-only identity-transform provenance is not real transform qualification.
 
 ## Journal and trace: one format
 
 Schemas: [CDDL](messages/abi.cddl), [JSON Schema](messages/abi.schema.json).
-A trace contains version, trace_id, coglet, initial_hash, initial_effect_ids,
-initial_inbox_wakes, initial_timers, initial_llm_requests, records and blobs.
+A trace contains version, trace_id, coglet, initial_hash, initial_files,
+code_hash, manifest_hash, final_hash, initial_effect_ids, initial_actions,
+initial_inbox_wakes, initial_timers, initial_llm_requests, records,
+trailing_boundary and blobs. All fields are required, including empty arrays
+and null trailing_boundary. initial_files hashes to initial_hash; header code and
+manifest pins resolve/validate even if records is empty. `initial_actions` is the
+complete set of committed common actions awaiting terminal append, with unique
+IDs included in initial_effect_ids.actions and coglet matching the trace. It
+excludes actions whose terminal line is already in initial_files, even when its
+wake remains pending. Terminal append consumes this pending set; it never removes
+lifetime IDs. Pending arguments, IDs and wakes are captured atomically with the
+initial snapshot. No live state may fill in missing history.
 Initial pending timer/LLM arrays capture requests committed before this recording
 began whose timer has not fired / reply has not been appended. They have unique
 IDs and each ID MUST occur in the corresponding initial_effect_ids array.
@@ -236,8 +354,12 @@ An aborted durable attempt also consumes its wakes. A finite trace may end with
 pending wakes; it must not invent delivery to drain them. LLM pending requests
 are consumed when the reply is appended, not when its wake is delivered.
 Promotion carries this queue and the effect ledger forward, not merely the tree.
-Journal streams frame each deterministic-CBOR step-record with u32be byte length;
-archive JSON is a fixture view. Storage policy bounds frame size. Each record
+Journal streams frame each deterministic-CBOR step-record or boundary-record
+with u32be byte length; archive JSON is a fixture view. Their closed shapes
+are disjoint (boundary-record has no step/events/calls/engine/usage/status).
+Storage policy bounds frame size. A boundary-record seals an exported trace
+segment; later steps start a new trace from its final snapshot and derived pending
+state. Do not rewrite sealed records or duplicate their mutations. Each step record
 retains exact events, boundary audit, input/output snapshots, code/manifest hashes,
 effective grants/budgets, engine metadata, ordered calls/results, committed actions,
 timers, LLM requests, logs, usage and status/failure. Replies are inbox bytes.
@@ -245,16 +367,48 @@ timers, LLM requests, logs, usage and status/failure. Replies are inbox bytes.
 Snapshots map absolute paths to lowercase even-length hex bytes; empty hex is an
 empty file. Include /code, /data and /logs, exclude journal storage and implicit
 roots. tree_hash=lowercase SHA256(core_deterministic_CBOR(snapshot)). No host
-metadata or NaN normalization. record_hash=SHA256(CBOR(record without record_hash)).
+metadata or NaN normalization. record_hash=SHA256(CBOR(record without record_hash))
+for both closed, disjoint record shapes; there is no extra hash domain prefix.
 previous=null at step 0, otherwise the preceding record_hash. Trace begins at
 step 0, snapshots chain exactly, and initial_hash is the first pre-boundary tree
 hash. Successive step input is prior output plus recorded boundary interventions.
+
+`records` may be empty. `trailing_boundary` is null if no later durable change
+exists; otherwise it is a boundary-record with version/trace_id/coglet matching
+the header, previous=last step record_hash (or null with zero steps), nondecreasing
+logical_time (with zero steps, there is no earlier step time to compare), nonempty ordered boundary changes, before_hash, output_hash,
+output_files and record_hash. before_hash MUST equal the preceding output tree
+(or initial_hash); applying every exact before/after mutation MUST produce
+output_files and output_hash. Mount, append-only inbox/log, embedded message,
+pending-work and provenance rules apply just as at a pre-step boundary. It has
+no guest execution and consumes no queued wake or step number. `final_hash`
+MUST equal the trailing output_hash, else last step output_hash, else initial_hash.
+A stopped/paused export MUST include all applied mutations through its durable
+cutoff, even if no guest step has ever run. No future step may be invented or
+required to make the export complete. Neither hashes nor shape validation prove
+that the producer disclosed its full durable log: the authenticated archive
+receipt binds cutoff/completeness and the entire header, including ledgers and
+the trailing record. An initial/trailing boundary may leave pending work for
+the next segment; promotion carries the derived pending sets, not only files.
 
 blobs maps lowercase SHA256(raw bytes) to hex bytes. It must resolve every code_hash
 (exact step.wasm) and manifest_hash (deterministic CBOR manifest), verified against
 manifest schema. All /code auxiliary files are in snapshots. Identity/signatures
 are separately verified at admission; hashes are not signatures. A consumer must
 retain all content, never only expiring URLs or hashes.
+
+Every pinned `/code` snapshot MUST include `/code/build/provenance.cbor`, the
+unchanged core-deterministic CBOR `hub-build-record` from the admitted archive
+(see [hub publication](hub-protocol.md)). Replay validates that shared schema and
+requires `rewritten_sha256 == code_hash == SHA256(/code/bin/step.wasm)`; missing,
+malformed, noncanonical or mismatched provenance fails closed before execution.
+Provenance stays unchanged for the trace's pinned code revision. Do not replace
+it with a new record naming the same output. This binding is not signature or
+transform qualification: the admission audit retains the signed archive statement
+and qualification evidence, while the build service retains original/recipe/
+policy/tool bytes for build reproduction. Pure replay neither recompiles nor
+requires a live build service. Fixture identity transforms are test-only, not
+production policy acceptance.
 
 Committed effect arrays equal successful calls filtered by operation, in order;
 on abort they are empty but calls remain diagnostic. log appends sorted-key compact
@@ -279,9 +433,19 @@ compute/memory/host_bytes use resource_exhausted.
 
 [manifest.schema.json](manifest.schema.json) requires version=0.1, id, exact
 subscriptions, required_capabilities, exclusive_outputs and budgets. No duplicates
-or wildcards. Exclusive outputs must be a subset of required capabilities.
-Before start require subscriptions/grants and exclusive leases; manifest id must
-match runtime identity. Recheck before dispatch; lost grants deny effects.
+or wildcards. `required_capabilities` names individual operations (events, reads
+or actions), NOT capability entry/group names. `subscriptions` names advertised
+event operations. `exclusive_outputs` names advertised exclusive resources;
+resources and operations are independent namespaces, so it is NOT a subset of
+`required_capabilities`. For example, `speech.speak_chunk` requires its operation
+grant and the `audio.speaker` lease, not an `audio.speaker` operation grant.
+Before start resolve every requested operation/event/resource through the trusted
+capability catalog and require the matching current operation grants and resource
+leases. Unknown names fail closed; resource ownership does not imply operation
+permission, or vice versa. Manifest id must match runtime identity. Recheck before
+dispatch; lost grants deny effects. Guest ABI 0.1 has no synchronous surface-read
+import: a requested read operation does not add one; native runtime reads remain
+surface-protocol operations and guest observations arrive as recorded events.
 
 Fixture tests check both schemas, golden CBOR, tree/journal hashes and semantic
 negative cases: `python3 -m unittest discover -s spec/tests -v`. Schemas enforce

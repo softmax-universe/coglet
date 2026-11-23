@@ -9,6 +9,9 @@
       "$ref": "#/$defs/step-record"
     },
     {
+      "$ref": "#/$defs/boundary-record"
+    },
+    {
       "$ref": "#/$defs/inbox-message"
     },
     {
@@ -38,7 +41,7 @@
     },
     "path": {
       "type": "string",
-      "pattern": "^/(code|data|logs)(/[^/\u0000]+)+(?![\\s\\S])"
+      "pattern": "^/(code|data|logs)(/[^/\\u0000-\\u001f\\u007f\\\\]+)+(?![\\s\\S])"
     },
     "snapshot": {
       "type": "object",
@@ -86,6 +89,80 @@
         "wall_time_us",
         "max_events",
         "host_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "heard-span": {
+      "type": "object",
+      "properties": {
+        "end_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "end_ms",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "heard-item": {
+      "type": "object",
+      "properties": {
+        "surface": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/surface-id"
+        },
+        "item": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "duration_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "played_ms": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "stopped": {
+          "type": "boolean"
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/heard-span"
+          },
+          "minItems": 0
+        },
+        "heard": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "surface",
+        "item",
+        "duration_ms",
+        "played_ms",
+        "stopped",
+        "spans",
+        "heard"
+      ],
+      "additionalProperties": false
+    },
+    "heard-state": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/heard-item"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "items"
       ],
       "additionalProperties": false
     },
@@ -822,6 +899,79 @@
       ],
       "additionalProperties": false
     },
+    "boundary-record": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "0.1"
+        },
+        "trace_id": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"
+        },
+        "logical_time": {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/uint64"
+        },
+        "previous": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "output_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "record_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "boundary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/boundary-change"
+          },
+          "minItems": 1
+        },
+        "output_files": {
+          "$ref": "#/$defs/snapshot"
+        }
+      },
+      "required": [
+        "version",
+        "trace_id",
+        "coglet",
+        "logical_time",
+        "previous",
+        "before_hash",
+        "output_hash",
+        "record_hash",
+        "boundary",
+        "output_files"
+      ],
+      "additionalProperties": false
+    },
+    "action-rejection": {
+      "allOf": [
+        {
+          "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action-accept"
+        },
+        {
+          "properties": {
+            "accepted": {
+              "const": false
+            }
+          }
+        }
+      ]
+    },
     "trace": {
       "type": "object",
       "properties": {
@@ -837,6 +987,13 @@
         "initial_effect_ids": {
           "$ref": "#/$defs/effect-ledger"
         },
+        "initial_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/action"
+          },
+          "minItems": 0
+        },
         "initial_inbox_wakes": {
           "type": "array",
           "items": {
@@ -846,6 +1003,28 @@
         },
         "initial_hash": {
           "$ref": "#/$defs/hash"
+        },
+        "initial_files": {
+          "$ref": "#/$defs/snapshot"
+        },
+        "code_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "manifest_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "final_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "trailing_boundary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boundary-record"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "initial_timers": {
           "type": "array",
@@ -866,7 +1045,7 @@
           "items": {
             "$ref": "#/$defs/step-record"
           },
-          "minItems": 1
+          "minItems": 0
         },
         "blobs": {
           "type": "object",
@@ -880,8 +1059,14 @@
         "trace_id",
         "coglet",
         "initial_effect_ids",
+        "initial_actions",
         "initial_inbox_wakes",
         "initial_hash",
+        "initial_files",
+        "code_hash",
+        "manifest_hash",
+        "final_hash",
+        "trailing_boundary",
         "initial_timers",
         "initial_llm_requests",
         "records",

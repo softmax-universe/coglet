@@ -10,7 +10,7 @@
       "send": {
         "method": "debug.read",
         "target": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-        "correlation_id": "0000000000000000000000000000001f",
+        "correlation_id": "00000000000000000000000000000026",
         "timeout_ms": 2000,
         "params": {
           "path": "/data/test.txt",
@@ -25,7 +25,7 @@
     },
     {
       "match": {
-        "correlation_id": "0000000000000000000000000000001f",
+        "correlation_id": "00000000000000000000000000000026",
         "type": "error",
         "error.code": "permission_denied"
       },

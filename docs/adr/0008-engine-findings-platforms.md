@@ -1,4 +1,4 @@
-# ADR 0002: WAMR platform findings (ARMv7 and iOS)
+# ADR-0008: WAMR platform findings (ARMv7 and iOS)
 
 - Status: **proposed**
 - Date: 2026-11-23
