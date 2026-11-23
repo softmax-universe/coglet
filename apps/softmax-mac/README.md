@@ -137,7 +137,7 @@ The automated fake-keychain tests prove selection/pinning and nested-signing ord
 - Sign inner frameworks before the app; verify with `codesign --verify --deep --strict`.
 - For distributable releases use the release pipeline's signing, entitlements,
   notarization, stapling, DMG and update checks, not these development scripts.
-- Brand assets/fonts remain owned by the design card. This delta adds no copied fonts
-  or logo and therefore no new font license payload; if Rubik/Overpass Mono is adopted,
-  bundle its OFL text alongside the font files. Native symbol/material placeholders stay
-  replaceable by the design of record.
+- The design owner selected native SF Pro, not Rubik/Overpass Mono (system mono for
+  future code/shortcut labels). No bundled font files or new font license payload.
+  This delta retains native symbol/material placeholders; `Design/` assets and
+  `docs/design/softmax-app.md` are the design of record and win over these placeholders.
