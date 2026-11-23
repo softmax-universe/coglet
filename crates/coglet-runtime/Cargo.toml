@@ -1,0 +1,9 @@
+[package]
+name = "coglet-runtime"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "cogletd"
+path = "src/main.rs"

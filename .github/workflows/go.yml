@@ -1,0 +1,23 @@
+name: go
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk/surface-go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/surface-go/go.mod
+          cache: false
+      - run: test -z "$(gofmt -l .)"
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...

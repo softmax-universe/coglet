@@ -1,0 +1,14 @@
+name: swift
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  swift:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build --package-path sdk/surface-swift
+      - run: swift build --package-path surfaces/face-mac
