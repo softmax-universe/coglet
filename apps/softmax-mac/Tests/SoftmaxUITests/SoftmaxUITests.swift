@@ -49,6 +49,13 @@ final class SoftmaxUITests: XCTestCase {
         for tab in ["General", "Hotkey", "Audio", "Hub", "Coglets", "Updates", "Privacy"] {
             XCTAssertTrue(settings.buttons[tab].exists, "Missing settings tab: \(tab)")
         }
+        settings.buttons["Updates"].click()
+        let check = settings.buttons["Check for Updates…"]
+        XCTAssertTrue(check.exists)
+        XCTAssertFalse(check.isEnabled, "UI-test/development builds must not start updater requests")
+        let automatic = settings.checkBoxes["Automatically check for updates"]
+        XCTAssertTrue(automatic.exists)
+        XCTAssertFalse(automatic.isEnabled)
         app.terminate()
     }
 }
