@@ -22,12 +22,15 @@ struct SettingsView: View {
             switch model.selectedTab {
             case .general:
                 Text("Softmax lives in your menu bar. Close windows without quitting.")
+                Toggle("Show floating orb", isOn: $model.orbEnabled)
+                    .accessibilityIdentifier("floatingOrbToggle")
+                Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                 LoginItemControls(model: model)
             case .hotkey:
                 Text("Global push-to-talk is not wired in this skeleton. Hotkey configuration will appear here.")
                 Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
             case .audio:
-                Text("Microphone: \(model.permissions.microphone.rawValue)")
+                MicrophoneControls(model: model)
                 Text("Device selection and audio capture are not connected yet.")
             case .hub:
                 Text("Offline — no hub configured. Enrollment and connectivity are not implemented yet.")
@@ -79,9 +82,7 @@ struct OnboardingView: View {
             switch step {
             case 0:
                 Text("Allow the microphone for future push-to-talk conversations. You can continue without access and enable it later in Privacy settings.")
-                Text("Status: \(model.permissions.microphone.rawValue)")
-                Button("Allow Microphone") { Task { await model.requestMicrophone() } }
-                Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
+                MicrophoneControls(model: model)
             case 1:
                 Text("Input Monitoring will allow the global push-to-talk key to work outside Softmax. The hotkey itself is not connected in this skeleton.")
                 Text("Status: \(model.permissions.inputMonitoring.rawValue)")
