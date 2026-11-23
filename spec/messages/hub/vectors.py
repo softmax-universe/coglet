@@ -56,7 +56,19 @@ with tempfile.TemporaryDirectory() as td:
     def git(*args):
         return subprocess.check_output(['git', '-C', str(repo), *args], env=env)
     git('add', '.')
-    git('-c', 'commit.gpgsign=false', 'commit', '-qm', 'Fixture code artifact')
+    git('-c', 'commit.gpgsign=false', 'commit', '-qm', 'Fixture source input')
+    source_oid = git('rev-parse', 'HEAD').decode().strip()
+    # Empty core Wasm is a no-op transform binding fixture, NOT R3 qualification.
+    module = (repo / 'bin/step.wasm').read_bytes()
+    build_inputs = {'recipe': b'fixture recipe v1', 'policy': b'test-only no-op policy',
+                    'transform': b'test-only identity transform'}
+    provenance = dict(version='0.1', source_commit=source_oid,
+        **{name + '_sha256': hashlib.sha256(value).hexdigest() for name, value in build_inputs.items()},
+        original_sha256=hashlib.sha256(module).hexdigest(), rewritten_sha256=hashlib.sha256(module).hexdigest())
+    (repo / 'build').mkdir()
+    (repo / 'build/provenance.cbor').write_bytes(encode(provenance))
+    git('add', '.')
+    git('-c', 'commit.gpgsign=false', 'commit', '-qm', 'Fixture output and provenance')
     oid = git('rev-parse', 'HEAD').decode().strip()
     git('update-ref', 'refs/heads/hub', oid)
     archive = git('archive', '--format=tar', oid)
@@ -71,7 +83,9 @@ with tempfile.TemporaryDirectory() as td:
              '-inkey', str(p / 'hub'), '-rawin', '-in', str(p / 'msg')])
     git_update = {'statement': git_statement, 'signer': hub, 'signature': sig.hex()}
     git_fixture = {'update': git_update, 'size': len(bundle), 'sha256': hashlib.sha256(bundle).hexdigest(),
-                   'bundle_hex': bundle.hex(), 'archive_hex': archive.hex()}
+                   'bundle_hex': bundle.hex(), 'archive_hex': archive.hex(),
+                   'build_inputs': {k: v.hex() for k, v in build_inputs.items()},
+                   'original_hex': module.hex()}
     fetch_vectors = []
     for purpose, refname in [('published-ref', 'refs/published/main'), ('logs-ref', 'refs/heads/logs')]:
         git('checkout', '--orphan', purpose)
@@ -79,6 +93,8 @@ with tempfile.TemporaryDirectory() as td:
         if purpose == 'published-ref':
             (repo / 'bin').mkdir(exist_ok=True)
             (repo / 'bin/step.wasm').write_bytes(bytes.fromhex('0061736d01000000'))
+            (repo / 'build').mkdir(exist_ok=True)
+            (repo / 'build/provenance.cbor').write_bytes(encode(provenance))
         else:
             (repo / 'logs').mkdir(exist_ok=True)
         history = []
@@ -269,6 +285,13 @@ for group in fetch_vectors:
         name = f'fetch-{label}-{mode}'
         cases.append({'name': name, 'peer_role': 'device',
                       'fixtures': ['hub.' + name, 'hub.reverse-fetch-observer'], 'steps': steps})
+# Publication is a kernel build API, not a new remote wire method. The fixture
+# hook drives that API after enrollment and checks the signed transfer/replay.
+for mode in ['record-and-replay', 'failure-no-promotion', 'substitution-rejected']:
+    name = 'publish-rewrite-' + mode
+    case(name, exchange(request('hub.enroll', {'offer': {'versions': ['0.1']}, 'invite': None}, None),
+                        {'type': 'reply', 'result.selection.version': '0.1'}))
+    cases[-1]['fixtures'].append('hub.publish-rewrite-oracle')
 for item in cases:
     (SPEC.parent / 'conformance/hub' / (item['name'] + '.json')).write_text(json.dumps(item, indent=2) + '\n')
 print(f'Generated {len(vectors)} signing vectors, {len(framing)} framing negatives, {len(cases)} harness cases')

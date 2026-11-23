@@ -28,6 +28,134 @@
     "cbor_hex": "784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565"
   },
   {
+    "name": "hub-build-version",
+    "type": "hub-build-version",
+    "valid": true,
+    "value": "0.1",
+    "cbor_hex": "63302e31"
+  },
+  {
+    "name": "hub-build-record",
+    "type": "hub-build-record",
+    "valid": true,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "cbor_hex": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656d7265636970655f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656d736f757263655f636f6d6d69747828646464646464646464646464646464646464646464646464646464646464646464646464646464646f6f726967696e616c5f7368613235367840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565657072657772697474656e5f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565707472616e73666f726d5f736861323536784065656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565"
+  },
+  {
+    "name": "hub-build-record-unknown",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "unknown": true
+    }
+  },
+  {
+    "name": "hub-build-record-missing-version",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-source_commit",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-recipe_sha256",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-policy_sha256",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-transform_sha256",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-original_sha256",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rewritten_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
+    "name": "hub-build-record-missing-rewritten_sha256",
+    "type": "hub-build-record",
+    "valid": false,
+    "value": {
+      "version": "0.1",
+      "source_commit": "dddddddddddddddddddddddddddddddddddddddd",
+      "recipe_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "policy_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "transform_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "original_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  },
+  {
     "name": "hub-signature",
     "type": "hub-signature",
     "valid": true,
@@ -5487,37 +5615,37 @@
     "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163302e3166696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
-    "name": "negative-362",
+    "name": "negative-372",
     "type": "hub-timeout",
     "valid": false,
     "value": 0
   },
   {
-    "name": "negative-363",
+    "name": "negative-373",
     "type": "hub-timeout",
     "valid": false,
     "value": 300001
   },
   {
-    "name": "negative-364",
+    "name": "negative-374",
     "type": "hub-chunk-hex",
     "valid": false,
     "value": "a"
   },
   {
-    "name": "negative-365",
+    "name": "negative-375",
     "type": "hub-signature",
     "valid": false,
     "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   },
   {
-    "name": "negative-366",
+    "name": "negative-376",
     "type": "hub-write-path",
     "valid": false,
     "value": "/code/main"
   },
   {
-    "name": "negative-367",
+    "name": "negative-377",
     "type": "hub-receipt-applied",
     "valid": false,
     "value": {
@@ -5528,7 +5656,7 @@
     }
   },
   {
-    "name": "negative-368",
+    "name": "negative-378",
     "type": "hub-event-batch",
     "valid": false,
     "value": [
@@ -6055,7 +6183,7 @@
     ]
   },
   {
-    "name": "negative-369",
+    "name": "negative-379",
     "type": "hub-ref",
     "valid": false,
     "value": "refs/heads/main"

@@ -17,6 +17,47 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
+    "hub-build-version": {
+      "enum": [
+        "0.1"
+      ]
+    },
+    "hub-build-record": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/hub-build-version"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/hub-oid"
+        },
+        "recipe_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "policy_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "transform_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "original_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "rewritten_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        }
+      },
+      "required": [
+        "version",
+        "source_commit",
+        "recipe_sha256",
+        "policy_sha256",
+        "transform_sha256",
+        "original_sha256",
+        "rewritten_sha256"
+      ],
+      "additionalProperties": false
+    },
     "hub-signature": {
       "type": "string",
       "pattern": "^[0-9a-f]{128}$"

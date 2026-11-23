@@ -164,6 +164,37 @@ class HubFixtures(unittest.TestCase):
                     subprocess.run(['openssl', 'pkeyutl', '-verify', '-pubin', '-keyform', 'DER', '-inkey', str(path / 'key'),
                                     '-rawin', '-in', str(path / 'msg'), '-sigfile', str(path / 'sig')], check=True, capture_output=True)
 
+    def test_build_provenance_binding(self):
+        # Real archive + no-op test transform; not an R3 implementation test.
+        import io
+        import tarfile
+        fixture = json.loads((SPEC / 'fixtures/hub/git.json').read_text())
+        with tarfile.open(fileobj=io.BytesIO(bytes.fromhex(fixture['archive_hex']))) as archive:
+            record_file = archive.extractfile('build/provenance.cbor')
+            output_file = archive.extractfile('bin/step.wasm')
+            assert record_file is not None and output_file is not None
+            raw = record_file.read()
+            output = output_file.read()
+        record = decode(raw)
+        Schema('fixture = hub-build-record\n' + self.cddl).validate_cbor(raw)
+        Draft202012Validator(dict(self.root, **{'$ref': '#/$defs/hub-build-record'}), registry=self.registry).validate(record)
+        def verify(candidate, executable, original):
+            for name, value in fixture['build_inputs'].items():
+                if candidate[name + '_sha256'] != hashlib.sha256(bytes.fromhex(value)).hexdigest():
+                    return False
+            return (candidate['rewritten_sha256'] == hashlib.sha256(executable).hexdigest()
+                    and candidate['original_sha256'] == hashlib.sha256(original).hexdigest())
+        original = bytes.fromhex(fixture['original_hex'])
+        self.assertTrue(verify(record, output, original))
+        self.assertFalse(verify(record, output + b'changed', original))
+        self.assertFalse(verify(record, output, original + b'changed'))
+        for field in ['recipe_sha256', 'policy_sha256', 'transform_sha256', 'original_sha256', 'rewritten_sha256']:
+            altered = dict(record, **{field: '0' * 64})
+            self.assertFalse(verify(altered, output, original), field)
+        # Replay is digest-addressed: a substituted blob cannot match the record.
+        blobs = {record['rewritten_sha256']: output.hex()}
+        self.assertEqual(hashlib.sha256(bytes.fromhex(blobs[record['rewritten_sha256']])).hexdigest(), record['rewritten_sha256'])
+
     def test_signing_vectors(self):
         # openssl is available on the supported CI Linux fixture runner.
         import subprocess

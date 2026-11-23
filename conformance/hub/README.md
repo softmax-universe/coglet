@@ -120,6 +120,42 @@ watermarks, and assert quarantine cleanup for rejected transfers. The current
 harness cannot exercise these reverse-stream/post-run hooks; shape CI and the
 fixture decision oracle are NOT a claim that these scenarios run on a hub.
 
+## Publication/rewrite fixture contract
+
+`publish-rewrite-{record-and-replay,failure-no-promotion,substitution-rejected}`
+requires `hub.publish-rewrite-oracle`. The wire script establishes the enrolled
+device session; **that reply alone is not this test's acceptance**. After enrollment,
+the test-local hook invokes the hub's build/propose API (not a fixture-only ALPN
+method), drives the resulting signed push through the normal device receiver,
+and waits for terminal publication and replay results. The adapter must support
+these post-run observations before advertising the label; otherwise SKIP.
+
+- `record-and-replay`: compile an ABI-valid guest containing a NaN-producing
+  arithmetic operation and bit-exact reinterpret/store of its result. Pin the
+  ADR-0003 tool/policy under test; assert original and rewritten bytes differ.
+  Record actual digests and source commit. Assert lint/rewrite precedes gates,
+  gates name rewritten digest, and signed archive contains exactly that output
+  plus matching `hub-build-record`. Verify hub and later coglet publication
+  signatures. Execute one batch, then replay with compiler/rewriter disabled:
+  ABI code_hash/blob and /code provenance must identify the rewritten bytes,
+  and recorded outputs/state hashes must agree. This case does not qualify
+  every engine/architecture or turn the proposed ADR into accepted policy.
+- `failure-no-promotion`: inject a rewrite failure, then separately a gate
+  failure after successful rewrite. Both must leave prior signed refs, live
+  commit and executable unchanged; no promotion signature for either candidate.
+- `substitution-rejected`: after successful build, substitute original bytes
+  at bin/step.wasm, first under the old signed archive (signature/digest rejection),
+  then in a correctly signed test archive retaining the old provenance (output
+  hash rejection). Both leave live code unchanged. Separately replace or omit
+  the rewritten replay blob; replay must fail closed without compiling, rewriting
+  or loading the original. Assertions must distinguish these rejection stages.
+
+The checked-in Git fixture uses empty core Wasm and a test-only identity transform
+record to test provenance shape/hash/signature binding. It is not the NaN guest,
+an ABI execution guest, a qualified production policy, or execution of these
+future kernel/engine hooks. `test_build_provenance_binding` checks its digests;
+`test_real_git_bundle_and_archive_digest` verifies the actual signed archive.
+
 ## Required stateful observations
 
 The implementation adapter MUST expose test-local journal/dispatch observation

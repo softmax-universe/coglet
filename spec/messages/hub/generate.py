@@ -79,6 +79,10 @@ add('hub-null', 'null', {'type': 'null'}, None)
 add('hub-bool', 'bool', {'type': 'boolean'}, True)
 text('hub-oid', '^[0-9a-f]{40}$', OID)
 text('hub-hash', '^[0-9a-f]{64}$', HASH)
+enum('hub-build-version', ['0.1'])
+obj('hub-build-record', {'version': 'hub-build-version', 'source_commit': 'hub-oid',
+    'recipe_sha256': 'hub-hash', 'policy_sha256': 'hub-hash', 'transform_sha256': 'hub-hash',
+    'original_sha256': 'hub-hash', 'rewritten_sha256': 'hub-hash'})
 text('hub-signature', '^[0-9a-f]{128}$', 'f' * 128)
 text('hub-secret', '^[0-9a-f]{64}$', '1' * 64)
 add('hub-text', 'tstr .size (0..65536)', {'type': 'string', 'maxLength': 65536}, 'hello')

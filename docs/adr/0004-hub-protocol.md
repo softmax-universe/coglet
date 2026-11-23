@@ -43,6 +43,14 @@ different statements and older generations conflict; persist observer watermarks
 atomically with the tracked ref. Requiring the observer's old tip to equal the
 publisher's previous tip would permanently strand disconnected observers.
 
+Publication clarification: integrate ADR-0003's proposed rewrite at hub build time,
+before gates and the signed artifact commit. A closed `hub-build-record` in the
+signed archive binds source, recipe, policy, tool, original and rewritten hashes.
+The executed/replayed hash is the rewritten module; runtime/replay never rewrite.
+This does not change or accept ADR-0003's transform policy or its qualification.
+Fixtures cover record binding and declare future post-run publication/replay
+oracles explicitly; a schema pass is not transform or engine qualification.
+
 ## Alternatives
 
 - Multiple ALPNs duplicate authentication and negotiation; reject.

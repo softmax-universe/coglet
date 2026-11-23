@@ -239,12 +239,63 @@ unfiltered private state. It need not move with every step. Logs commits contain
 only approved log files, no code or data; roughly every 30 seconds or on rotation,
 not each step. Debug live log reads do not require a git commit.
 
-Build-then-commit is a hub responsibility: pin source and build recipe/toolchain,
-compile core Wasm into `bin/step.wasm`, validate and run gates, commit source,
-manifest, prompts and artifact together, then kernel signs the admitted commit
-and transfers it. A build failure cannot update `refs/heads/hub`. Factory or
-builder output is never a promotion signature. Policy/gates and probation remain
-kernel responsibilities, not bypasses granted by `hub.git.push`.
+### Build, rewrite, sign and replay
+
+Build-then-commit is a hub responsibility. Pin source and build recipe/toolchain,
+compile core Wasm into a temporary **original** module, then apply the selected
+publication policy before gates, signing or transfer. When the proposed
+[ADR-0003](../docs/adr/0003-determinism-rules.md) policy is selected, run its
+R1/R2/R4/R5 admission checks and R3 NaN-result rewrite on the hub; validate the
+rewritten module and run gates against those exact output bytes. Commit the
+output as `bin/step.wasm` together with source, manifest, prompts and the build
+record below. Do not commit the original under the executable path, run gates
+only on the original, or rewrite on the device or during replay. Rewriting,
+lint, validation or gate failure leaves authoritative refs and live code unchanged.
+This defines the publication boundary, **not acceptance of ADR-0003** or a claim
+that its transform/cross-architecture behavior has been qualified. Until policy
+qualification, production admission under that policy fails closed.
+
+`build/provenance.cbor` is a core-deterministic CBOR `hub-build-record`, included
+in the signed code archive. Its closed fields are:
+
+- `version`: `"0.1"`;
+- `source_commit`: Git object ID of the pinned source before build;
+- `recipe_sha256`: SHA-256 of the retained build recipe/toolchain lock bytes;
+- `policy_sha256`: SHA-256 of the retained policy document/parameters bytes;
+- `transform_sha256`: SHA-256 of the retained rewrite tool artifact bytes;
+- `original_sha256`: SHA-256 of the exact original compiled Wasm bytes;
+- `rewritten_sha256`: SHA-256 of the exact `bin/step.wasm` bytes.
+
+The build service retains those digest-addressed inputs and original/output bytes
+for gate reproduction. Digests alone do not establish that a rewrite was correct:
+the kernel MUST check the record against the pinned build inputs, qualified policy
+and gate evidence for the rewritten digest before signing. If the selected policy
+performs a no-op (for example a module with no affected float operations), both
+module hashes may be equal; record the tool/policy anyway. Missing provenance or
+an output hash mismatch is `invalid_argument` at code admission, with no activation.
+Older transfer-only fixtures without this record do not establish code admission.
+
+The hub's `hub-ref` signature authenticates the commit **and its SHA-256 archive**,
+which includes the rewritten bytes and provenance binding both original and output
+hashes. There is no separate signature on the original module, and the original
+hash never authorizes execution. The coglet-key `published-ref` signature similarly
+binds the explicitly published archive and its preserved build record; publication
+MUST NOT silently rebuild/rewrite or replace provenance. A new build requires a new
+record, gates and signed ref generation. Logs refs need no build record.
+
+At activation, verify the signed archive and record/output hash before pinning the
+code at the boundary. Record the admitted signed statement and provenance in the
+local admission audit; retain provenance at `/code/build/provenance.cbor` in ABI
+snapshots. ABI `code_hash` and its retained `blobs` entry identify the **rewritten**
+`bin/step.wasm`, not the original or a freshly compiled substitute. Replay loads
+exactly that blob, verifies its SHA-256 and provenance output digest, and never
+re-runs the compiler/transform or substitutes a current ref. Missing/mismatched
+bytes fail replay closed. Promotion starts a new ABI trace with the new code;
+rollback selects a previously admitted rewritten artifact with its provenance,
+not a rebuild. Gate evidence must name that same rewritten digest.
+
+Factory or builder output is never a promotion signature. Policy/gates and
+probation remain kernel responsibilities, not bypasses granted by `hub.git.push`.
 
 All signed values use Ed25519, lowercase 128-hex signature. Sign exactly UTF-8
 `coglet/hub/0:<purpose>\n` followed by core-deterministic CBOR of `statement`,

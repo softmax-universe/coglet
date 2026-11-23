@@ -42,8 +42,8 @@
       "send": {
         "type": "transfer",
         "correlation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "size": 620,
-        "sha256": "c32fc75ad97ca0a780791498718ffa0f7cf090d471ac0768dcf068e96d2f7b58",
+        "size": 946,
+        "sha256": "c1a5c7cdec371d95c568af9bdbd82ea823b8bba0118a75fc60c2858aad51f456",
         "update": {
           "statement": {
             "purpose": "published-ref",
@@ -51,12 +51,12 @@
             "coglet": "coglet:8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
             "generation": 2,
             "ref": "refs/published/main",
-            "old": "546ef5ddfe64d4fe9f7fa0fd3ac55fa16d5411c6",
-            "new": "4ae251b3922e73b0e363e0597f711e6d6ac521d2",
-            "archive_sha256": "4763acd87b945dda96ac19994e3b6ed13599082a520d02e44cb8a17bf39ac4c9"
+            "old": "58944cd57aad0cc3584ef85171d581844025cc57",
+            "new": "13c06d56ade83bd770dc7498d4f37d10f0daf2c7",
+            "archive_sha256": "88d4d55375e1bc0a62be665a06978ab9c312de92539d3f2c9ed52e06113aec98"
           },
           "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-          "signature": "93d4504e992728cd403f2c8510023e9d9313580887eef3a588ff3aa4ad07c1d1b0d7f24770209e5b8149e1af551d57189f298c510a271e6751f7e9fcf262c905"
+          "signature": "36be51fe964bf4da067b26b1f1cc6e7d20589f49e4d7139473119e119cfa8df818b693697da691646c4bdf358f1ed5f2e53458a07a7206a87b240a83c374d702"
         }
       },
       "stream": 100,

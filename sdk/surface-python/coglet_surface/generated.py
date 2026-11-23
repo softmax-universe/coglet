@@ -4,7 +4,7 @@ import dataclasses as _coglet_dataclasses
 from typing import Any, ClassVar, Literal
 import json
 from .codec import Message
-SCHEMA = json.loads('{"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"}}')
+SCHEMA = json.loads('{"action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"action-id":{"name":"common::correlation-id","op":"ref"},"action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::action":{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"capability","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"args","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"deadline","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::action-accept":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":true}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"accepted","optional":false,"type":{"op":"literal","value":false}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::action-id":{"name":"common::correlation-id","op":"ref"},"common::action-outcome":{"items":[{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"op":"literal","value":"succeeded"}},{"name":"result","optional":false,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},{"fields":[{"name":"id","optional":false,"type":{"name":"common::action-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"status","optional":false,"type":{"items":[{"op":"literal","value":"failed"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"expired"}],"op":"union"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"}],"op":"union"},"common::capability-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}\\\\.[a-z][a-z0-9_]{0,31}$"}],"op":"intersection"},"common::coglet-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^coglet:[0-9a-f]{64}$"}],"op":"intersection"},"common::common":{"items":[{"name":"common::event","op":"ref"},{"name":"common::action","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"common::action-outcome","op":"ref"},{"name":"common::error","op":"ref"},{"name":"common::version-offer","op":"ref"},{"name":"common::version-selection","op":"ref"}],"op":"union"},"common::correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"common::error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"common::error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"common::event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"common::hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"common::method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"common::node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"common::profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"common::profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"common::profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"common::source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"common::spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"common::surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"common::uint64":{"max":18446744073709551615,"min":0,"op":"range"},"common::version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"common::version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"correlation-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{32}$"}],"op":"intersection"},"debug-pause-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-pause-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"debug-pause-request-method":{"op":"literal","value":"debug.pause"},"debug-read-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-read-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-read-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"debug-read-request-method":{"op":"literal","value":"debug.read"},"debug-step-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-step-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"debug-step-request-method":{"op":"literal","value":"debug.step"},"debug-write-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-write-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-write-params","op":"ref"}}],"op":"record"},"debug-write-request-method":{"op":"literal","value":"debug.write"},"error":{"fields":[{"name":"code","optional":false,"type":{"name":"common::error-code","op":"ref"}},{"name":"message","optional":false,"type":{"items":[{"name":"tstr","op":"primitive"},{"max":18446744073709551615,"min":1,"op":"size"}],"op":"intersection"}},{"name":"retryable","optional":false,"type":{"name":"bool","op":"primitive"}},{"name":"details","optional":true,"type":{"name":"common::profile-map","op":"ref"}}],"op":"record"},"error-code":{"items":[{"op":"literal","value":"invalid_argument"},{"op":"literal","value":"unsupported_version"},{"op":"literal","value":"unauthenticated"},{"op":"literal","value":"permission_denied"},{"op":"literal","value":"not_found"},{"op":"literal","value":"conflict"},{"op":"literal","value":"resource_exhausted"},{"op":"literal","value":"deadline_exceeded"},{"op":"literal","value":"cancelled"},{"op":"literal","value":"unavailable"},{"op":"literal","value":"internal"}],"op":"union"},"event":{"fields":[{"name":"source","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"kind","optional":false,"type":{"name":"common::capability-name","op":"ref"}},{"name":"seq","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"logical_time","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"payload","optional":false,"type":{"name":"common::profile-map","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-actions-params":{"fields":[{"name":"action","optional":false,"type":{"name":"common::action","op":"ref"}}],"op":"record"},"hub-actions-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-actions-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-actions-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-actions-request-method":{"op":"literal","value":"hub.actions"},"hub-applied":{"op":"literal","value":"applied"},"hub-bool":{"name":"bool","op":"primitive"},"hub-build-record":{"fields":[{"name":"version","optional":false,"type":{"name":"hub::hub-build-version","op":"ref"}},{"name":"source_commit","optional":false,"type":{"name":"hub::hub-oid","op":"ref"}},{"name":"recipe_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"policy_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"transform_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"original_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"rewritten_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}}],"op":"record"},"hub-build-version":{"op":"literal","value":"0.1"},"hub-cancel-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-cancel-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-operation-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-cancel-request-method":{"op":"literal","value":"hub.cancel"},"hub-cancelled":{"op":"literal","value":"cancelled"},"hub-chunk":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-chunk-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"hex","optional":false,"type":{"name":"hub::hub-chunk-hex","op":"ref"}}],"op":"record"},"hub-chunk-hex":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^([0-9a-f]{2}){1,32768}$"}],"op":"intersection"},"hub-chunk-type":{"op":"literal","value":"chunk"},"hub-context":{"fields":[{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-credit":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-credit-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub-credit-type":{"op":"literal","value":"credit"},"hub-delegation-statement":{"fields":[{"name":"purpose","optional":false,"type":{"name":"hub::hub-purpose-delegation","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"generation","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"expires","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"methods","optional":false,"type":{"name":"hub::hub-methods","op":"ref"}}],"op":"record"},"hub-empty":{"item":{"name":"common::profile-value","op":"ref"},"max":0,"min":0,"op":"map"},"hub-end":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-end-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-end-type":{"op":"literal","value":"end"},"hub-enroll-params":{"fields":[{"name":"offer","optional":false,"type":{"name":"common::version-offer","op":"ref"}},{"name":"invite","optional":false,"type":{"name":"hub::hub-maybe-secret","op":"ref"}}],"op":"record"},"hub-enroll-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-enroll-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-enroll-params","op":"ref"}}],"op":"record"},"hub-enroll-request-method":{"op":"literal","value":"hub.enroll"},"hub-enroll-result":{"fields":[{"name":"selection","optional":false,"type":{"name":"common::version-selection","op":"ref"}},{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}}],"op":"record"},"hub-event-batch":{"item":{"name":"common::event","op":"ref"},"max":64,"min":0,"op":"array"},"hub-events-params":{"fields":[{"name":"events","optional":false,"type":{"name":"hub::hub-event-batch","op":"ref"}}],"op":"record"},"hub-events-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-events-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-events-params","op":"ref"}}],"op":"record"},"hub-events-request-method":{"op":"literal","value":"hub.events"},"hub-events-result":{"fields":[{"name":"next_seq","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub-failed":{"op":"literal","value":"failed"},"hub-failure":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-failure-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"hub-failure-type":{"op":"literal","value":"error"},"hub-fetch-params":{"fields":[{"name":"ref","optional":false,"type":{"name":"hub::hub-fetch-ref","op":"ref"}}],"op":"record"},"hub-fetch-ref":{"items":[{"op":"literal","value":"refs/published/main"},{"op":"literal","value":"refs/heads/logs"}],"op":"union"},"hub-frame":{"items":[{"name":"hub::hub-request","op":"ref"},{"name":"hub::hub-success","op":"ref"},{"name":"hub::hub-failure","op":"ref"},{"name":"hub::hub-credit","op":"ref"},{"name":"hub::hub-chunk","op":"ref"},{"name":"hub::hub-end","op":"ref"},{"name":"hub::hub-transfer","op":"ref"}],"op":"union"},"hub-git-fetch-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-git-fetch-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-fetch-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-git-fetch-request-method":{"op":"literal","value":"hub.git.fetch"},"hub-git-push-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-git-push-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-push-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-git-push-request-method":{"op":"literal","value":"hub.git.push"},"hub-hash":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"hub-health-item":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"status","optional":false,"type":{"name":"hub::hub-status","op":"ref"}}],"op":"record"},"hub-health-items":{"item":{"name":"hub::hub-health-item","op":"ref"},"max":256,"min":0,"op":"array"},"hub-health-params":{"fields":[{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"uptime_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"queue_depth","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"available_bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"coglets","optional":false,"type":{"name":"hub::hub-health-items","op":"ref"}}],"op":"record"},"hub-health-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-health-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-health-params","op":"ref"}}],"op":"record"},"hub-health-request-method":{"op":"literal","value":"hub.health"},"hub-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^hub:[0-9a-f]{64}$"}],"op":"intersection"},"hub-inbox-delivery":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"sender","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"event","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},"hub-inbox-params":{"fields":[{"name":"message","optional":false,"type":{"name":"hub::hub-inbox-delivery","op":"ref"}},{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-inbox-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-inbox-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-inbox-params","op":"ref"}}],"op":"record"},"hub-inbox-request-method":{"op":"literal","value":"hub.inbox"},"hub-install-params":{"fields":[{"name":"delegation","optional":false,"type":{"name":"hub::hub-signed-delegation","op":"ref"}},{"name":"initial","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}}],"op":"record"},"hub-install-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-install-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-install-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-install-request-method":{"op":"literal","value":"hub.install"},"hub-maybe-error":{"items":[{"name":"common::error","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub-maybe-oid":{"items":[{"name":"hub::hub-oid","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub-maybe-secret":{"items":[{"name":"hub::hub-secret","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub-maybe-step":{"items":[{"name":"common::uint64","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub-method":{"items":[{"op":"literal","value":"hub.enroll"},{"op":"literal","value":"hub.install"},{"op":"literal","value":"hub.start"},{"op":"literal","value":"hub.stop"},{"op":"literal","value":"hub.status"},{"op":"literal","value":"hub.git.push"},{"op":"literal","value":"hub.git.fetch"},{"op":"literal","value":"hub.events"},{"op":"literal","value":"hub.actions"},{"op":"literal","value":"debug.read"},{"op":"literal","value":"debug.write"},{"op":"literal","value":"debug.pause"},{"op":"literal","value":"debug.step"},{"op":"literal","value":"hub.inbox"},{"op":"literal","value":"hub.health"},{"op":"literal","value":"hub.receipt"},{"op":"literal","value":"hub.cancel"}],"op":"union"},"hub-methods":{"item":{"name":"hub::hub-method","op":"ref"},"max":17,"min":0,"op":"array"},"hub-mutation-receipt":{"items":[{"name":"hub::hub-receipt-queued","op":"ref"},{"name":"hub::hub-receipt-applied","op":"ref"},{"name":"hub::hub-receipt-cancelled","op":"ref"},{"name":"hub::hub-receipt-failed","op":"ref"}],"op":"union"},"hub-null":{"op":"literal","value":null},"hub-oid":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{40}$"}],"op":"intersection"},"hub-operation-params":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}$|^@step/[0-9]{1,20}$"}],"op":"intersection"},"hub-purpose-delegation":{"op":"literal","value":"delegation"},"hub-push-params":{"fields":[{"name":"update","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}},{"name":"size","optional":false,"type":{"name":"hub::hub-size","op":"ref"}},{"name":"sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}}],"op":"record"},"hub-queue":{"max":256,"min":0,"op":"range"},"hub-queued":{"op":"literal","value":"queued"},"hub-read-params":{"fields":[{"name":"path","optional":false,"type":{"name":"hub::hub-path","op":"ref"}},{"name":"offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"limit","optional":false,"type":{"name":"hub::hub-read-size","op":"ref"}}],"op":"record"},"hub-read-result":{"fields":[{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"snapshot_hash","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"text","optional":false,"type":{"name":"hub::hub-text","op":"ref"}},{"name":"next_offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"eof","optional":false,"type":{"name":"hub::hub-bool","op":"ref"}}],"op":"record"},"hub-read-size":{"max":65536,"min":1,"op":"range"},"hub-receipt-applied":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-applied","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub-receipt-cancelled":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-cancelled","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub-receipt-failed":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-failed","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"hub-receipt-queued":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-queued","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub-receipt-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-receipt-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-operation-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-receipt-request-method":{"op":"literal","value":"hub.receipt"},"hub-ref":{"items":[{"op":"literal","value":"refs/heads/hub"},{"op":"literal","value":"refs/published/main"},{"op":"literal","value":"refs/heads/logs"}],"op":"union"},"hub-ref-purpose":{"items":[{"op":"literal","value":"hub-ref"},{"op":"literal","value":"published-ref"},{"op":"literal","value":"logs-ref"}],"op":"union"},"hub-ref-statement":{"fields":[{"name":"purpose","optional":false,"type":{"name":"hub::hub-ref-purpose","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"ref","optional":false,"type":{"name":"hub::hub-ref","op":"ref"}},{"name":"old","optional":false,"type":{"name":"hub::hub-maybe-oid","op":"ref"}},{"name":"new","optional":false,"type":{"name":"hub::hub-oid","op":"ref"}},{"name":"archive_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"generation","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub-request":{"items":[{"name":"hub::hub-enroll-request","op":"ref"},{"name":"hub::hub-install-request","op":"ref"},{"name":"hub::hub-start-request","op":"ref"},{"name":"hub::hub-stop-request","op":"ref"},{"name":"hub::hub-status-request","op":"ref"},{"name":"hub::hub-git-push-request","op":"ref"},{"name":"hub::hub-git-fetch-request","op":"ref"},{"name":"hub::hub-events-request","op":"ref"},{"name":"hub::hub-actions-request","op":"ref"},{"name":"hub::debug-read-request","op":"ref"},{"name":"hub::debug-write-request","op":"ref"},{"name":"hub::debug-pause-request","op":"ref"},{"name":"hub::debug-step-request","op":"ref"},{"name":"hub::hub-inbox-request","op":"ref"},{"name":"hub::hub-health-request","op":"ref"},{"name":"hub::hub-receipt-request","op":"ref"},{"name":"hub::hub-cancel-request","op":"ref"}],"op":"union"},"hub-result":{"items":[{"name":"hub::hub-enroll-result","op":"ref"},{"name":"hub::hub-mutation-receipt","op":"ref"},{"name":"hub::hub-status","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"hub::hub-read-result","op":"ref"},{"name":"hub::hub-events-result","op":"ref"},{"name":"hub::hub-step-result","op":"ref"},{"name":"hub::hub-empty","op":"ref"}],"op":"union"},"hub-secret":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"hub-signature":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{128}$"}],"op":"intersection"},"hub-signed-delegation":{"fields":[{"name":"statement","optional":false,"type":{"name":"hub::hub-delegation-statement","op":"ref"}},{"name":"signer","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"signature","optional":false,"type":{"name":"hub::hub-signature","op":"ref"}}],"op":"record"},"hub-signed-ref":{"fields":[{"name":"statement","optional":false,"type":{"name":"hub::hub-ref-statement","op":"ref"}},{"name":"signer","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"signature","optional":false,"type":{"name":"hub::hub-signature","op":"ref"}}],"op":"record"},"hub-size":{"max":67108864,"min":1,"op":"range"},"hub-start-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-start-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-start-request-method":{"op":"literal","value":"hub.start"},"hub-state":{"items":[{"op":"literal","value":"stopped"},{"op":"literal","value":"running"},{"op":"literal","value":"paused"},{"op":"literal","value":"faulted"}],"op":"union"},"hub-status":{"fields":[{"name":"state","optional":false,"type":{"name":"hub::hub-state","op":"ref"}},{"name":"live_commit","optional":false,"type":{"name":"hub::hub-maybe-oid","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"pending","optional":false,"type":{"name":"hub::hub-queue","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-maybe-error","op":"ref"}}],"op":"record"},"hub-status-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-status-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-status-request-method":{"op":"literal","value":"hub.status"},"hub-step-result":{"fields":[{"name":"receipt","optional":false,"type":{"name":"hub::hub-mutation-receipt","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub-stop-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-stop-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub-stop-request-method":{"op":"literal","value":"hub.stop"},"hub-success":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-success-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"result","optional":false,"type":{"name":"hub::hub-result","op":"ref"}}],"op":"record"},"hub-success-type":{"op":"literal","value":"reply"},"hub-target":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub-text":{"items":[{"name":"tstr","op":"primitive"},{"max":65536,"min":0,"op":"size"}],"op":"intersection"},"hub-timeout":{"max":300000,"min":1,"op":"range"},"hub-transfer":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-transfer-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"size","optional":false,"type":{"name":"hub::hub-size","op":"ref"}},{"name":"sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"update","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}}],"op":"record"},"hub-transfer-type":{"op":"literal","value":"transfer"},"hub-write-params":{"fields":[{"name":"path","optional":false,"type":{"name":"hub::hub-write-path","op":"ref"}},{"name":"text","optional":false,"type":{"name":"hub::hub-text","op":"ref"}},{"name":"expected_hash","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub-write-path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^/data/[a-zA-Z0-9_./-]{1,512}$"}],"op":"intersection"},"hub::debug-pause-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-pause-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::debug-pause-request-method":{"op":"literal","value":"debug.pause"},"hub::debug-read-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-read-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-read-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::debug-read-request-method":{"op":"literal","value":"debug.read"},"hub::debug-step-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-step-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::debug-step-request-method":{"op":"literal","value":"debug.step"},"hub::debug-write-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::debug-write-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-write-params","op":"ref"}}],"op":"record"},"hub::debug-write-request-method":{"op":"literal","value":"debug.write"},"hub::hub-actions-params":{"fields":[{"name":"action","optional":false,"type":{"name":"common::action","op":"ref"}}],"op":"record"},"hub::hub-actions-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-actions-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-actions-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-actions-request-method":{"op":"literal","value":"hub.actions"},"hub::hub-applied":{"op":"literal","value":"applied"},"hub::hub-bool":{"name":"bool","op":"primitive"},"hub::hub-build-record":{"fields":[{"name":"version","optional":false,"type":{"name":"hub::hub-build-version","op":"ref"}},{"name":"source_commit","optional":false,"type":{"name":"hub::hub-oid","op":"ref"}},{"name":"recipe_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"policy_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"transform_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"original_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"rewritten_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}}],"op":"record"},"hub::hub-build-version":{"op":"literal","value":"0.1"},"hub::hub-cancel-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-cancel-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-operation-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-cancel-request-method":{"op":"literal","value":"hub.cancel"},"hub::hub-cancelled":{"op":"literal","value":"cancelled"},"hub::hub-chunk":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-chunk-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"hex","optional":false,"type":{"name":"hub::hub-chunk-hex","op":"ref"}}],"op":"record"},"hub::hub-chunk-hex":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^([0-9a-f]{2}){1,32768}$"}],"op":"intersection"},"hub::hub-chunk-type":{"op":"literal","value":"chunk"},"hub::hub-context":{"fields":[{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub::hub-credit":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-credit-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub::hub-credit-type":{"op":"literal","value":"credit"},"hub::hub-delegation-statement":{"fields":[{"name":"purpose","optional":false,"type":{"name":"hub::hub-purpose-delegation","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"generation","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"expires","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"methods","optional":false,"type":{"name":"hub::hub-methods","op":"ref"}}],"op":"record"},"hub::hub-empty":{"item":{"name":"common::profile-value","op":"ref"},"max":0,"min":0,"op":"map"},"hub::hub-end":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-end-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub::hub-end-type":{"op":"literal","value":"end"},"hub::hub-enroll-params":{"fields":[{"name":"offer","optional":false,"type":{"name":"common::version-offer","op":"ref"}},{"name":"invite","optional":false,"type":{"name":"hub::hub-maybe-secret","op":"ref"}}],"op":"record"},"hub::hub-enroll-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-enroll-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-enroll-params","op":"ref"}}],"op":"record"},"hub::hub-enroll-request-method":{"op":"literal","value":"hub.enroll"},"hub::hub-enroll-result":{"fields":[{"name":"selection","optional":false,"type":{"name":"common::version-selection","op":"ref"}},{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}}],"op":"record"},"hub::hub-event-batch":{"item":{"name":"common::event","op":"ref"},"max":64,"min":0,"op":"array"},"hub::hub-events-params":{"fields":[{"name":"events","optional":false,"type":{"name":"hub::hub-event-batch","op":"ref"}}],"op":"record"},"hub::hub-events-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-events-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-events-params","op":"ref"}}],"op":"record"},"hub::hub-events-request-method":{"op":"literal","value":"hub.events"},"hub::hub-events-result":{"fields":[{"name":"next_seq","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub::hub-failed":{"op":"literal","value":"failed"},"hub::hub-failure":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-failure-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"hub::hub-failure-type":{"op":"literal","value":"error"},"hub::hub-fetch-params":{"fields":[{"name":"ref","optional":false,"type":{"name":"hub::hub-fetch-ref","op":"ref"}}],"op":"record"},"hub::hub-fetch-ref":{"items":[{"op":"literal","value":"refs/published/main"},{"op":"literal","value":"refs/heads/logs"}],"op":"union"},"hub::hub-frame":{"items":[{"name":"hub::hub-request","op":"ref"},{"name":"hub::hub-success","op":"ref"},{"name":"hub::hub-failure","op":"ref"},{"name":"hub::hub-credit","op":"ref"},{"name":"hub::hub-chunk","op":"ref"},{"name":"hub::hub-end","op":"ref"},{"name":"hub::hub-transfer","op":"ref"}],"op":"union"},"hub::hub-git-fetch-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-git-fetch-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-fetch-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-git-fetch-request-method":{"op":"literal","value":"hub.git.fetch"},"hub::hub-git-push-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-git-push-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-push-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-git-push-request-method":{"op":"literal","value":"hub.git.push"},"hub::hub-hash":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"hub::hub-health-item":{"fields":[{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"status","optional":false,"type":{"name":"hub::hub-status","op":"ref"}}],"op":"record"},"hub::hub-health-items":{"item":{"name":"hub::hub-health-item","op":"ref"},"max":256,"min":0,"op":"array"},"hub::hub-health-params":{"fields":[{"name":"device","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"uptime_ms","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"queue_depth","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"available_bytes","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"coglets","optional":false,"type":{"name":"hub::hub-health-items","op":"ref"}}],"op":"record"},"hub::hub-health-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-health-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-health-params","op":"ref"}}],"op":"record"},"hub::hub-health-request-method":{"op":"literal","value":"hub.health"},"hub::hub-inbox-delivery":{"fields":[{"name":"id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"sender","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"event","optional":false,"type":{"name":"common::event","op":"ref"}}],"op":"record"},"hub::hub-inbox-params":{"fields":[{"name":"message","optional":false,"type":{"name":"hub::hub-inbox-delivery","op":"ref"}},{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub::hub-inbox-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-inbox-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-inbox-params","op":"ref"}}],"op":"record"},"hub::hub-inbox-request-method":{"op":"literal","value":"hub.inbox"},"hub::hub-install-params":{"fields":[{"name":"delegation","optional":false,"type":{"name":"hub::hub-signed-delegation","op":"ref"}},{"name":"initial","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}}],"op":"record"},"hub::hub-install-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-install-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-install-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-install-request-method":{"op":"literal","value":"hub.install"},"hub::hub-maybe-error":{"items":[{"name":"common::error","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub::hub-maybe-oid":{"items":[{"name":"hub::hub-oid","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub::hub-maybe-secret":{"items":[{"name":"hub::hub-secret","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub::hub-maybe-step":{"items":[{"name":"common::uint64","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub::hub-method":{"items":[{"op":"literal","value":"hub.enroll"},{"op":"literal","value":"hub.install"},{"op":"literal","value":"hub.start"},{"op":"literal","value":"hub.stop"},{"op":"literal","value":"hub.status"},{"op":"literal","value":"hub.git.push"},{"op":"literal","value":"hub.git.fetch"},{"op":"literal","value":"hub.events"},{"op":"literal","value":"hub.actions"},{"op":"literal","value":"debug.read"},{"op":"literal","value":"debug.write"},{"op":"literal","value":"debug.pause"},{"op":"literal","value":"debug.step"},{"op":"literal","value":"hub.inbox"},{"op":"literal","value":"hub.health"},{"op":"literal","value":"hub.receipt"},{"op":"literal","value":"hub.cancel"}],"op":"union"},"hub::hub-methods":{"item":{"name":"hub::hub-method","op":"ref"},"max":17,"min":0,"op":"array"},"hub::hub-mutation-receipt":{"items":[{"name":"hub::hub-receipt-queued","op":"ref"},{"name":"hub::hub-receipt-applied","op":"ref"},{"name":"hub::hub-receipt-cancelled","op":"ref"},{"name":"hub::hub-receipt-failed","op":"ref"}],"op":"union"},"hub::hub-null":{"op":"literal","value":null},"hub::hub-oid":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{40}$"}],"op":"intersection"},"hub::hub-operation-params":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub::hub-path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}$|^@step/[0-9]{1,20}$"}],"op":"intersection"},"hub::hub-purpose-delegation":{"op":"literal","value":"delegation"},"hub::hub-push-params":{"fields":[{"name":"update","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}},{"name":"size","optional":false,"type":{"name":"hub::hub-size","op":"ref"}},{"name":"sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}}],"op":"record"},"hub::hub-queue":{"max":256,"min":0,"op":"range"},"hub::hub-queued":{"op":"literal","value":"queued"},"hub::hub-read-params":{"fields":[{"name":"path","optional":false,"type":{"name":"hub::hub-path","op":"ref"}},{"name":"offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"limit","optional":false,"type":{"name":"hub::hub-read-size","op":"ref"}}],"op":"record"},"hub::hub-read-result":{"fields":[{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"snapshot_hash","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"text","optional":false,"type":{"name":"hub::hub-text","op":"ref"}},{"name":"next_offset","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"eof","optional":false,"type":{"name":"hub::hub-bool","op":"ref"}}],"op":"record"},"hub::hub-read-size":{"max":65536,"min":1,"op":"range"},"hub::hub-receipt-applied":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-applied","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub::hub-receipt-cancelled":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-cancelled","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub::hub-receipt-failed":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-failed","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"common::error","op":"ref"}}],"op":"record"},"hub::hub-receipt-queued":{"fields":[{"name":"operation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"state","optional":false,"type":{"name":"hub::hub-queued","op":"ref"}},{"name":"step","optional":false,"type":{"name":"hub::hub-null","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-null","op":"ref"}}],"op":"record"},"hub::hub-receipt-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-receipt-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-operation-params","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-receipt-request-method":{"op":"literal","value":"hub.receipt"},"hub::hub-ref":{"items":[{"op":"literal","value":"refs/heads/hub"},{"op":"literal","value":"refs/published/main"},{"op":"literal","value":"refs/heads/logs"}],"op":"union"},"hub::hub-ref-purpose":{"items":[{"op":"literal","value":"hub-ref"},{"op":"literal","value":"published-ref"},{"op":"literal","value":"logs-ref"}],"op":"union"},"hub::hub-ref-statement":{"fields":[{"name":"purpose","optional":false,"type":{"name":"hub::hub-ref-purpose","op":"ref"}},{"name":"hub","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"coglet","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"ref","optional":false,"type":{"name":"hub::hub-ref","op":"ref"}},{"name":"old","optional":false,"type":{"name":"hub::hub-maybe-oid","op":"ref"}},{"name":"new","optional":false,"type":{"name":"hub::hub-oid","op":"ref"}},{"name":"archive_sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"generation","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub::hub-request":{"items":[{"name":"hub::hub-enroll-request","op":"ref"},{"name":"hub::hub-install-request","op":"ref"},{"name":"hub::hub-start-request","op":"ref"},{"name":"hub::hub-stop-request","op":"ref"},{"name":"hub::hub-status-request","op":"ref"},{"name":"hub::hub-git-push-request","op":"ref"},{"name":"hub::hub-git-fetch-request","op":"ref"},{"name":"hub::hub-events-request","op":"ref"},{"name":"hub::hub-actions-request","op":"ref"},{"name":"hub::debug-read-request","op":"ref"},{"name":"hub::debug-write-request","op":"ref"},{"name":"hub::debug-pause-request","op":"ref"},{"name":"hub::debug-step-request","op":"ref"},{"name":"hub::hub-inbox-request","op":"ref"},{"name":"hub::hub-health-request","op":"ref"},{"name":"hub::hub-receipt-request","op":"ref"},{"name":"hub::hub-cancel-request","op":"ref"}],"op":"union"},"hub::hub-result":{"items":[{"name":"hub::hub-enroll-result","op":"ref"},{"name":"hub::hub-mutation-receipt","op":"ref"},{"name":"hub::hub-status","op":"ref"},{"name":"common::action-accept","op":"ref"},{"name":"hub::hub-read-result","op":"ref"},{"name":"hub::hub-events-result","op":"ref"},{"name":"hub::hub-step-result","op":"ref"},{"name":"hub::hub-empty","op":"ref"}],"op":"union"},"hub::hub-secret":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"hub::hub-signature":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{128}$"}],"op":"intersection"},"hub::hub-signed-delegation":{"fields":[{"name":"statement","optional":false,"type":{"name":"hub::hub-delegation-statement","op":"ref"}},{"name":"signer","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"signature","optional":false,"type":{"name":"hub::hub-signature","op":"ref"}}],"op":"record"},"hub::hub-signed-ref":{"fields":[{"name":"statement","optional":false,"type":{"name":"hub::hub-ref-statement","op":"ref"}},{"name":"signer","optional":false,"type":{"name":"common::node-id","op":"ref"}},{"name":"signature","optional":false,"type":{"name":"hub::hub-signature","op":"ref"}}],"op":"record"},"hub::hub-size":{"max":67108864,"min":1,"op":"range"},"hub::hub-start-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-start-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-start-request-method":{"op":"literal","value":"hub.start"},"hub::hub-state":{"items":[{"op":"literal","value":"stopped"},{"op":"literal","value":"running"},{"op":"literal","value":"paused"},{"op":"literal","value":"faulted"}],"op":"union"},"hub::hub-status":{"fields":[{"name":"state","optional":false,"type":{"name":"hub::hub-state","op":"ref"}},{"name":"live_commit","optional":false,"type":{"name":"hub::hub-maybe-oid","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}},{"name":"pending","optional":false,"type":{"name":"hub::hub-queue","op":"ref"}},{"name":"error","optional":false,"type":{"name":"hub::hub-maybe-error","op":"ref"}}],"op":"record"},"hub::hub-status-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-status-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-status-request-method":{"op":"literal","value":"hub.status"},"hub::hub-step-result":{"fields":[{"name":"receipt","optional":false,"type":{"name":"hub::hub-mutation-receipt","op":"ref"}},{"name":"step","optional":false,"type":{"name":"common::uint64","op":"ref"}}],"op":"record"},"hub::hub-stop-request":{"fields":[{"name":"method","optional":false,"type":{"name":"hub::hub-stop-request-method","op":"ref"}},{"name":"target","optional":false,"type":{"name":"common::coglet-id","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"timeout_ms","optional":false,"type":{"name":"hub::hub-timeout","op":"ref"}},{"name":"params","optional":false,"type":{"name":"hub::hub-empty","op":"ref"}},{"name":"context","optional":false,"type":{"name":"hub::hub-context","op":"ref"}}],"op":"record"},"hub::hub-stop-request-method":{"op":"literal","value":"hub.stop"},"hub::hub-success":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-success-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"result","optional":false,"type":{"name":"hub::hub-result","op":"ref"}}],"op":"record"},"hub::hub-success-type":{"op":"literal","value":"reply"},"hub::hub-target":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"hub::hub-null","op":"ref"}],"op":"union"},"hub::hub-text":{"items":[{"name":"tstr","op":"primitive"},{"max":65536,"min":0,"op":"size"}],"op":"intersection"},"hub::hub-timeout":{"max":300000,"min":1,"op":"range"},"hub::hub-transfer":{"fields":[{"name":"type","optional":false,"type":{"name":"hub::hub-transfer-type","op":"ref"}},{"name":"correlation_id","optional":false,"type":{"name":"common::correlation-id","op":"ref"}},{"name":"size","optional":false,"type":{"name":"hub::hub-size","op":"ref"}},{"name":"sha256","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"update","optional":false,"type":{"name":"hub::hub-signed-ref","op":"ref"}}],"op":"record"},"hub::hub-transfer-type":{"op":"literal","value":"transfer"},"hub::hub-write-params":{"fields":[{"name":"path","optional":false,"type":{"name":"hub::hub-write-path","op":"ref"}},{"name":"text","optional":false,"type":{"name":"hub::hub-text","op":"ref"}},{"name":"expected_hash","optional":false,"type":{"name":"hub::hub-hash","op":"ref"}},{"name":"actor","optional":false,"type":{"name":"common::source-id","op":"ref"}},{"name":"ticket","optional":true,"type":{"name":"common::correlation-id","op":"ref"}}],"op":"record"},"hub::hub-write-path":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^/data/[a-zA-Z0-9_./-]{1,512}$"}],"op":"intersection"},"hub::wire":{"name":"hub::hub-frame","op":"ref"},"method-name":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[a-z][a-z0-9_]{0,31}(\\\\.[a-z][a-z0-9_]{0,31}){1,3}$"}],"op":"intersection"},"node-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^[0-9a-f]{64}$"}],"op":"intersection"},"profile-int":{"items":[{"max":-1,"min":-9223372036854775808,"op":"range"},{"name":"common::uint64","op":"ref"}],"op":"union"},"profile-map":{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"map"},"profile-value":{"items":[{"name":"common::profile-int","op":"ref"},{"name":"tstr","op":"primitive"},{"name":"bool","op":"primitive"},{"op":"literal","value":null},{"item":{"name":"common::profile-value","op":"ref"},"min":0,"op":"array"},{"name":"common::profile-map","op":"ref"}],"op":"union"},"source-id":{"items":[{"name":"common::coglet-id","op":"ref"},{"name":"common::surface-id","op":"ref"},{"name":"common::hub-id","op":"ref"}],"op":"union"},"spec-version":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^(0|[1-9][0-9]{0,3})\\\\.(0|[1-9][0-9]{0,3})$"}],"op":"intersection"},"surface-id":{"items":[{"name":"tstr","op":"primitive"},{"op":"regexp","pattern":"^surface:[0-9a-f]{64}$"}],"op":"intersection"},"uint64":{"max":18446744073709551615,"min":0,"op":"range"},"version-offer":{"fields":[{"name":"versions","optional":false,"type":{"item":{"name":"common::spec-version","op":"ref"},"min":1,"op":"array"}}],"op":"record"},"version-selection":{"fields":[{"name":"version","optional":false,"type":{"name":"common::spec-version","op":"ref"}}],"op":"record"},"wire":{"name":"hub::hub-frame","op":"ref"}}')
 CommonCommon = Any
 CommonUint64 = int
 CommonProfileInt = Any
@@ -83,6 +83,432 @@ class CommonError(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
+HubWire = Any
+HubHubNull = Literal[None]
+HubHubBool = bool
+HubHubOid = Any
+HubHubHash = Any
+HubHubBuildVersion = Literal['0.1']
+@_coglet_dataclasses.dataclass
+class HubHubBuildRecord(Message):
+    _rule: ClassVar[str] = 'hub::hub-build-record'
+    version: HubHubBuildVersion = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    source_commit: HubHubOid = _coglet_dataclasses.field(metadata={"wire": 'source_commit'})
+    recipe_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'recipe_sha256'})
+    policy_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'policy_sha256'})
+    transform_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'transform_sha256'})
+    original_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'original_sha256'})
+    rewritten_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'rewritten_sha256'})
+HubHubSignature = Any
+HubHubSecret = Any
+HubHubText = Any
+HubHubPath = Any
+HubHubWritePath = Any
+HubHubChunkHex = Any
+HubHubTimeout = int
+HubHubSize = int
+HubHubReadSize = int
+HubHubQueue = int
+HubHubMaybeOid = Any
+HubHubTarget = Any
+HubHubMaybeStep = Any
+HubHubMaybeError = Any
+HubHubMaybeSecret = Any
+HubHubEmpty = dict[str, Any]
+HubHubState = Any
+HubHubRef = Any
+HubHubFetchRef = Any
+HubHubMethod = Any
+HubHubMethods = Any
+HubHubPurposeDelegation = Literal['delegation']
+@_coglet_dataclasses.dataclass
+class HubHubDelegationStatement(Message):
+    _rule: ClassVar[str] = 'hub::hub-delegation-statement'
+    purpose: HubHubPurposeDelegation = _coglet_dataclasses.field(metadata={"wire": 'purpose'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+    generation: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'generation'})
+    expires: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'expires'})
+    methods: HubHubMethods = _coglet_dataclasses.field(metadata={"wire": 'methods'})
+HubHubRefPurpose = Any
+@_coglet_dataclasses.dataclass
+class HubHubRefStatement(Message):
+    _rule: ClassVar[str] = 'hub::hub-ref-statement'
+    purpose: HubHubRefPurpose = _coglet_dataclasses.field(metadata={"wire": 'purpose'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    ref_: HubHubRef = _coglet_dataclasses.field(metadata={"wire": 'ref'})
+    old: HubHubMaybeOid = _coglet_dataclasses.field(metadata={"wire": 'old'})
+    new: HubHubOid = _coglet_dataclasses.field(metadata={"wire": 'new'})
+    archive_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'archive_sha256'})
+    generation: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'generation'})
+@_coglet_dataclasses.dataclass
+class HubHubSignedDelegation(Message):
+    _rule: ClassVar[str] = 'hub::hub-signed-delegation'
+    statement: HubHubDelegationStatement = _coglet_dataclasses.field(metadata={"wire": 'statement'})
+    signer: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'signer'})
+    signature: HubHubSignature = _coglet_dataclasses.field(metadata={"wire": 'signature'})
+@_coglet_dataclasses.dataclass
+class HubHubSignedRef(Message):
+    _rule: ClassVar[str] = 'hub::hub-signed-ref'
+    statement: HubHubRefStatement = _coglet_dataclasses.field(metadata={"wire": 'statement'})
+    signer: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'signer'})
+    signature: HubHubSignature = _coglet_dataclasses.field(metadata={"wire": 'signature'})
+@_coglet_dataclasses.dataclass
+class HubHubStatus(Message):
+    _rule: ClassVar[str] = 'hub::hub-status'
+    state: HubHubState = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    live_commit: HubHubMaybeOid = _coglet_dataclasses.field(metadata={"wire": 'live_commit'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    pending: HubHubQueue = _coglet_dataclasses.field(metadata={"wire": 'pending'})
+    error: HubHubMaybeError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubQueued = Literal['queued']
+@_coglet_dataclasses.dataclass
+class HubHubReceiptQueued(Message):
+    _rule: ClassVar[str] = 'hub::hub-receipt-queued'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubQueued = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubApplied = Literal['applied']
+@_coglet_dataclasses.dataclass
+class HubHubReceiptApplied(Message):
+    _rule: ClassVar[str] = 'hub::hub-receipt-applied'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubApplied = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubCancelled = Literal['cancelled']
+@_coglet_dataclasses.dataclass
+class HubHubReceiptCancelled(Message):
+    _rule: ClassVar[str] = 'hub::hub-receipt-cancelled'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubCancelled = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubFailed = Literal['failed']
+@_coglet_dataclasses.dataclass
+class HubHubReceiptFailed(Message):
+    _rule: ClassVar[str] = 'hub::hub-receipt-failed'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubFailed = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubMutationReceipt = Any
+@_coglet_dataclasses.dataclass
+class HubHubInboxDelivery(Message):
+    _rule: ClassVar[str] = 'hub::hub-inbox-delivery'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    sender: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'sender'})
+    event: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'event'})
+HubHubEventBatch = Any
+@_coglet_dataclasses.dataclass
+class HubHubHealthItem(Message):
+    _rule: ClassVar[str] = 'hub::hub-health-item'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    status: HubHubStatus = _coglet_dataclasses.field(metadata={"wire": 'status'})
+HubHubHealthItems = Any
+@_coglet_dataclasses.dataclass
+class HubHubEnrollParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-enroll-params'
+    offer: CommonVersionOffer = _coglet_dataclasses.field(metadata={"wire": 'offer'})
+    invite: HubHubMaybeSecret = _coglet_dataclasses.field(metadata={"wire": 'invite'})
+@_coglet_dataclasses.dataclass
+class HubHubInstallParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-install-params'
+    delegation: HubHubSignedDelegation = _coglet_dataclasses.field(metadata={"wire": 'delegation'})
+    initial: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'initial'})
+@_coglet_dataclasses.dataclass
+class HubHubPushParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-push-params'
+    update: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'update'})
+    size: HubHubSize = _coglet_dataclasses.field(metadata={"wire": 'size'})
+    sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'sha256'})
+@_coglet_dataclasses.dataclass
+class HubHubFetchParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-fetch-params'
+    ref_: HubHubFetchRef = _coglet_dataclasses.field(metadata={"wire": 'ref'})
+@_coglet_dataclasses.dataclass
+class HubHubEventsParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-events-params'
+    events: HubHubEventBatch = _coglet_dataclasses.field(metadata={"wire": 'events'})
+@_coglet_dataclasses.dataclass
+class HubHubActionsParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-actions-params'
+    action: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'action'})
+@_coglet_dataclasses.dataclass
+class HubHubReadParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-read-params'
+    path: HubHubPath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'offset'})
+    limit: HubHubReadSize = _coglet_dataclasses.field(metadata={"wire": 'limit'})
+@_coglet_dataclasses.dataclass
+class HubHubWriteParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-write-params'
+    path: HubHubWritePath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    text: HubHubText = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    expected_hash: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'expected_hash'})
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+@_coglet_dataclasses.dataclass
+class HubHubInboxParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-inbox-params'
+    message: HubHubInboxDelivery = _coglet_dataclasses.field(metadata={"wire": 'message'})
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+@_coglet_dataclasses.dataclass
+class HubHubHealthParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-health-params'
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    uptime_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'uptime_ms'})
+    queue_depth: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'queue_depth'})
+    available_bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'available_bytes'})
+    coglets: HubHubHealthItems = _coglet_dataclasses.field(metadata={"wire": 'coglets'})
+@_coglet_dataclasses.dataclass
+class HubHubOperationParams(Message):
+    _rule: ClassVar[str] = 'hub::hub-operation-params'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+@_coglet_dataclasses.dataclass
+class HubHubContext(Message):
+    _rule: ClassVar[str] = 'hub::hub-context'
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+HubHubEnrollRequestMethod = Literal['hub.enroll']
+@_coglet_dataclasses.dataclass
+class HubHubEnrollRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-enroll-request'
+    method: HubHubEnrollRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEnrollParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubHubInstallRequestMethod = Literal['hub.install']
+@_coglet_dataclasses.dataclass
+class HubHubInstallRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-install-request'
+    method: HubHubInstallRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubInstallParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubStartRequestMethod = Literal['hub.start']
+@_coglet_dataclasses.dataclass
+class HubHubStartRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-start-request'
+    method: HubHubStartRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubStopRequestMethod = Literal['hub.stop']
+@_coglet_dataclasses.dataclass
+class HubHubStopRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-stop-request'
+    method: HubHubStopRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubStatusRequestMethod = Literal['hub.status']
+@_coglet_dataclasses.dataclass
+class HubHubStatusRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-status-request'
+    method: HubHubStatusRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubGitPushRequestMethod = Literal['hub.git.push']
+@_coglet_dataclasses.dataclass
+class HubHubGitPushRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-git-push-request'
+    method: HubHubGitPushRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubPushParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubGitFetchRequestMethod = Literal['hub.git.fetch']
+@_coglet_dataclasses.dataclass
+class HubHubGitFetchRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-git-fetch-request'
+    method: HubHubGitFetchRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubFetchParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubEventsRequestMethod = Literal['hub.events']
+@_coglet_dataclasses.dataclass
+class HubHubEventsRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-events-request'
+    method: HubHubEventsRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEventsParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubHubActionsRequestMethod = Literal['hub.actions']
+@_coglet_dataclasses.dataclass
+class HubHubActionsRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-actions-request'
+    method: HubHubActionsRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubActionsParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubDebugReadRequestMethod = Literal['debug.read']
+@_coglet_dataclasses.dataclass
+class HubDebugReadRequest(Message):
+    _rule: ClassVar[str] = 'hub::debug-read-request'
+    method: HubDebugReadRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubReadParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubDebugWriteRequestMethod = Literal['debug.write']
+@_coglet_dataclasses.dataclass
+class HubDebugWriteRequest(Message):
+    _rule: ClassVar[str] = 'hub::debug-write-request'
+    method: HubDebugWriteRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubWriteParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubDebugPauseRequestMethod = Literal['debug.pause']
+@_coglet_dataclasses.dataclass
+class HubDebugPauseRequest(Message):
+    _rule: ClassVar[str] = 'hub::debug-pause-request'
+    method: HubDebugPauseRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubDebugStepRequestMethod = Literal['debug.step']
+@_coglet_dataclasses.dataclass
+class HubDebugStepRequest(Message):
+    _rule: ClassVar[str] = 'hub::debug-step-request'
+    method: HubDebugStepRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubInboxRequestMethod = Literal['hub.inbox']
+@_coglet_dataclasses.dataclass
+class HubHubInboxRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-inbox-request'
+    method: HubHubInboxRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubInboxParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubHubHealthRequestMethod = Literal['hub.health']
+@_coglet_dataclasses.dataclass
+class HubHubHealthRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-health-request'
+    method: HubHubHealthRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubHealthParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubHubReceiptRequestMethod = Literal['hub.receipt']
+@_coglet_dataclasses.dataclass
+class HubHubReceiptRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-receipt-request'
+    method: HubHubReceiptRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubOperationParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubCancelRequestMethod = Literal['hub.cancel']
+@_coglet_dataclasses.dataclass
+class HubHubCancelRequest(Message):
+    _rule: ClassVar[str] = 'hub::hub-cancel-request'
+    method: HubHubCancelRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubOperationParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubHubRequest = Any
+@_coglet_dataclasses.dataclass
+class HubHubEnrollResult(Message):
+    _rule: ClassVar[str] = 'hub::hub-enroll-result'
+    selection: CommonVersionSelection = _coglet_dataclasses.field(metadata={"wire": 'selection'})
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+@_coglet_dataclasses.dataclass
+class HubHubReadResult(Message):
+    _rule: ClassVar[str] = 'hub::hub-read-result'
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    snapshot_hash: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'snapshot_hash'})
+    text: HubHubText = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    next_offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'next_offset'})
+    eof: HubHubBool = _coglet_dataclasses.field(metadata={"wire": 'eof'})
+@_coglet_dataclasses.dataclass
+class HubHubEventsResult(Message):
+    _rule: ClassVar[str] = 'hub::hub-events-result'
+    next_seq: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'next_seq'})
+@_coglet_dataclasses.dataclass
+class HubHubStepResult(Message):
+    _rule: ClassVar[str] = 'hub::hub-step-result'
+    receipt: HubHubMutationReceipt = _coglet_dataclasses.field(metadata={"wire": 'receipt'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+HubHubResult = Any
+HubHubSuccessType = Literal['reply']
+@_coglet_dataclasses.dataclass
+class HubHubSuccess(Message):
+    _rule: ClassVar[str] = 'hub::hub-success'
+    type_: HubHubSuccessType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    result: HubHubResult = _coglet_dataclasses.field(metadata={"wire": 'result'})
+HubHubFailureType = Literal['error']
+@_coglet_dataclasses.dataclass
+class HubHubFailure(Message):
+    _rule: ClassVar[str] = 'hub::hub-failure'
+    type_: HubHubFailureType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubHubCreditType = Literal['credit']
+@_coglet_dataclasses.dataclass
+class HubHubCredit(Message):
+    _rule: ClassVar[str] = 'hub::hub-credit'
+    type_: HubHubCreditType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'bytes'})
+HubHubChunkType = Literal['chunk']
+@_coglet_dataclasses.dataclass
+class HubHubChunk(Message):
+    _rule: ClassVar[str] = 'hub::hub-chunk'
+    type_: HubHubChunkType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'offset'})
+    hex: HubHubChunkHex = _coglet_dataclasses.field(metadata={"wire": 'hex'})
+HubHubEndType = Literal['end']
+@_coglet_dataclasses.dataclass
+class HubHubEnd(Message):
+    _rule: ClassVar[str] = 'hub::hub-end'
+    type_: HubHubEndType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+HubHubTransferType = Literal['transfer']
+@_coglet_dataclasses.dataclass
+class HubHubTransfer(Message):
+    _rule: ClassVar[str] = 'hub::hub-transfer'
+    type_: HubHubTransferType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    size: HubHubSize = _coglet_dataclasses.field(metadata={"wire": 'size'})
+    sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'sha256'})
+    update: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'update'})
+HubHubFrame = Any
 Common = Any
 Uint64 = int
 ProfileInt = Any
@@ -161,4 +587,430 @@ class Error(Message):
     message: str = _coglet_dataclasses.field(metadata={"wire": 'message'})
     retryable: bool = _coglet_dataclasses.field(metadata={"wire": 'retryable'})
     details: CommonProfileMap | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'details'})
-RECORDS = {'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error]}
+Wire = Any
+HubNull = Literal[None]
+HubBool = bool
+HubOid = Any
+HubHash = Any
+HubBuildVersion = Literal['0.1']
+@_coglet_dataclasses.dataclass
+class HubBuildRecord(Message):
+    _rule: ClassVar[str] = 'hub-build-record'
+    version: HubHubBuildVersion = _coglet_dataclasses.field(metadata={"wire": 'version'})
+    source_commit: HubHubOid = _coglet_dataclasses.field(metadata={"wire": 'source_commit'})
+    recipe_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'recipe_sha256'})
+    policy_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'policy_sha256'})
+    transform_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'transform_sha256'})
+    original_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'original_sha256'})
+    rewritten_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'rewritten_sha256'})
+HubSignature = Any
+HubSecret = Any
+HubText = Any
+HubPath = Any
+HubWritePath = Any
+HubChunkHex = Any
+HubTimeout = int
+HubSize = int
+HubReadSize = int
+HubQueue = int
+HubMaybeOid = Any
+HubTarget = Any
+HubMaybeStep = Any
+HubMaybeError = Any
+HubMaybeSecret = Any
+HubEmpty = dict[str, Any]
+HubState = Any
+HubRef = Any
+HubFetchRef = Any
+HubMethod = Any
+HubMethods = Any
+HubPurposeDelegation = Literal['delegation']
+@_coglet_dataclasses.dataclass
+class HubDelegationStatement(Message):
+    _rule: ClassVar[str] = 'hub-delegation-statement'
+    purpose: HubHubPurposeDelegation = _coglet_dataclasses.field(metadata={"wire": 'purpose'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+    generation: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'generation'})
+    expires: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'expires'})
+    methods: HubHubMethods = _coglet_dataclasses.field(metadata={"wire": 'methods'})
+HubRefPurpose = Any
+@_coglet_dataclasses.dataclass
+class HubRefStatement(Message):
+    _rule: ClassVar[str] = 'hub-ref-statement'
+    purpose: HubHubRefPurpose = _coglet_dataclasses.field(metadata={"wire": 'purpose'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    ref_: HubHubRef = _coglet_dataclasses.field(metadata={"wire": 'ref'})
+    old: HubHubMaybeOid = _coglet_dataclasses.field(metadata={"wire": 'old'})
+    new: HubHubOid = _coglet_dataclasses.field(metadata={"wire": 'new'})
+    archive_sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'archive_sha256'})
+    generation: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'generation'})
+@_coglet_dataclasses.dataclass
+class HubSignedDelegation(Message):
+    _rule: ClassVar[str] = 'hub-signed-delegation'
+    statement: HubHubDelegationStatement = _coglet_dataclasses.field(metadata={"wire": 'statement'})
+    signer: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'signer'})
+    signature: HubHubSignature = _coglet_dataclasses.field(metadata={"wire": 'signature'})
+@_coglet_dataclasses.dataclass
+class HubSignedRef(Message):
+    _rule: ClassVar[str] = 'hub-signed-ref'
+    statement: HubHubRefStatement = _coglet_dataclasses.field(metadata={"wire": 'statement'})
+    signer: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'signer'})
+    signature: HubHubSignature = _coglet_dataclasses.field(metadata={"wire": 'signature'})
+@_coglet_dataclasses.dataclass
+class HubStatus(Message):
+    _rule: ClassVar[str] = 'hub-status'
+    state: HubHubState = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    live_commit: HubHubMaybeOid = _coglet_dataclasses.field(metadata={"wire": 'live_commit'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    pending: HubHubQueue = _coglet_dataclasses.field(metadata={"wire": 'pending'})
+    error: HubHubMaybeError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubQueued = Literal['queued']
+@_coglet_dataclasses.dataclass
+class HubReceiptQueued(Message):
+    _rule: ClassVar[str] = 'hub-receipt-queued'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubQueued = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubApplied = Literal['applied']
+@_coglet_dataclasses.dataclass
+class HubReceiptApplied(Message):
+    _rule: ClassVar[str] = 'hub-receipt-applied'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubApplied = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubCancelled = Literal['cancelled']
+@_coglet_dataclasses.dataclass
+class HubReceiptCancelled(Message):
+    _rule: ClassVar[str] = 'hub-receipt-cancelled'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubCancelled = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubFailed = Literal['failed']
+@_coglet_dataclasses.dataclass
+class HubReceiptFailed(Message):
+    _rule: ClassVar[str] = 'hub-receipt-failed'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+    state: HubHubFailed = _coglet_dataclasses.field(metadata={"wire": 'state'})
+    step: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubMutationReceipt = Any
+@_coglet_dataclasses.dataclass
+class HubInboxDelivery(Message):
+    _rule: ClassVar[str] = 'hub-inbox-delivery'
+    id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'id'})
+    sender: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'sender'})
+    event: CommonEvent = _coglet_dataclasses.field(metadata={"wire": 'event'})
+HubEventBatch = Any
+@_coglet_dataclasses.dataclass
+class HubHealthItem(Message):
+    _rule: ClassVar[str] = 'hub-health-item'
+    coglet: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'coglet'})
+    status: HubHubStatus = _coglet_dataclasses.field(metadata={"wire": 'status'})
+HubHealthItems = Any
+@_coglet_dataclasses.dataclass
+class HubEnrollParams(Message):
+    _rule: ClassVar[str] = 'hub-enroll-params'
+    offer: CommonVersionOffer = _coglet_dataclasses.field(metadata={"wire": 'offer'})
+    invite: HubHubMaybeSecret = _coglet_dataclasses.field(metadata={"wire": 'invite'})
+@_coglet_dataclasses.dataclass
+class HubInstallParams(Message):
+    _rule: ClassVar[str] = 'hub-install-params'
+    delegation: HubHubSignedDelegation = _coglet_dataclasses.field(metadata={"wire": 'delegation'})
+    initial: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'initial'})
+@_coglet_dataclasses.dataclass
+class HubPushParams(Message):
+    _rule: ClassVar[str] = 'hub-push-params'
+    update: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'update'})
+    size: HubHubSize = _coglet_dataclasses.field(metadata={"wire": 'size'})
+    sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'sha256'})
+@_coglet_dataclasses.dataclass
+class HubFetchParams(Message):
+    _rule: ClassVar[str] = 'hub-fetch-params'
+    ref_: HubHubFetchRef = _coglet_dataclasses.field(metadata={"wire": 'ref'})
+@_coglet_dataclasses.dataclass
+class HubEventsParams(Message):
+    _rule: ClassVar[str] = 'hub-events-params'
+    events: HubHubEventBatch = _coglet_dataclasses.field(metadata={"wire": 'events'})
+@_coglet_dataclasses.dataclass
+class HubActionsParams(Message):
+    _rule: ClassVar[str] = 'hub-actions-params'
+    action: CommonAction = _coglet_dataclasses.field(metadata={"wire": 'action'})
+@_coglet_dataclasses.dataclass
+class HubReadParams(Message):
+    _rule: ClassVar[str] = 'hub-read-params'
+    path: HubHubPath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'offset'})
+    limit: HubHubReadSize = _coglet_dataclasses.field(metadata={"wire": 'limit'})
+@_coglet_dataclasses.dataclass
+class HubWriteParams(Message):
+    _rule: ClassVar[str] = 'hub-write-params'
+    path: HubHubWritePath = _coglet_dataclasses.field(metadata={"wire": 'path'})
+    text: HubHubText = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    expected_hash: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'expected_hash'})
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+@_coglet_dataclasses.dataclass
+class HubInboxParams(Message):
+    _rule: ClassVar[str] = 'hub-inbox-params'
+    message: HubHubInboxDelivery = _coglet_dataclasses.field(metadata={"wire": 'message'})
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+@_coglet_dataclasses.dataclass
+class HubHealthParams(Message):
+    _rule: ClassVar[str] = 'hub-health-params'
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    uptime_ms: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'uptime_ms'})
+    queue_depth: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'queue_depth'})
+    available_bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'available_bytes'})
+    coglets: HubHubHealthItems = _coglet_dataclasses.field(metadata={"wire": 'coglets'})
+@_coglet_dataclasses.dataclass
+class HubOperationParams(Message):
+    _rule: ClassVar[str] = 'hub-operation-params'
+    operation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'operation_id'})
+@_coglet_dataclasses.dataclass
+class HubContext(Message):
+    _rule: ClassVar[str] = 'hub-context'
+    actor: CommonSourceId = _coglet_dataclasses.field(metadata={"wire": 'actor'})
+    ticket: CommonCorrelationId | None = _coglet_dataclasses.field(default=None, metadata={"wire": 'ticket'})
+HubEnrollRequestMethod = Literal['hub.enroll']
+@_coglet_dataclasses.dataclass
+class HubEnrollRequest(Message):
+    _rule: ClassVar[str] = 'hub-enroll-request'
+    method: HubHubEnrollRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEnrollParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubInstallRequestMethod = Literal['hub.install']
+@_coglet_dataclasses.dataclass
+class HubInstallRequest(Message):
+    _rule: ClassVar[str] = 'hub-install-request'
+    method: HubHubInstallRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubInstallParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubStartRequestMethod = Literal['hub.start']
+@_coglet_dataclasses.dataclass
+class HubStartRequest(Message):
+    _rule: ClassVar[str] = 'hub-start-request'
+    method: HubHubStartRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubStopRequestMethod = Literal['hub.stop']
+@_coglet_dataclasses.dataclass
+class HubStopRequest(Message):
+    _rule: ClassVar[str] = 'hub-stop-request'
+    method: HubHubStopRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubStatusRequestMethod = Literal['hub.status']
+@_coglet_dataclasses.dataclass
+class HubStatusRequest(Message):
+    _rule: ClassVar[str] = 'hub-status-request'
+    method: HubHubStatusRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubGitPushRequestMethod = Literal['hub.git.push']
+@_coglet_dataclasses.dataclass
+class HubGitPushRequest(Message):
+    _rule: ClassVar[str] = 'hub-git-push-request'
+    method: HubHubGitPushRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubPushParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubGitFetchRequestMethod = Literal['hub.git.fetch']
+@_coglet_dataclasses.dataclass
+class HubGitFetchRequest(Message):
+    _rule: ClassVar[str] = 'hub-git-fetch-request'
+    method: HubHubGitFetchRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubFetchParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubEventsRequestMethod = Literal['hub.events']
+@_coglet_dataclasses.dataclass
+class HubEventsRequest(Message):
+    _rule: ClassVar[str] = 'hub-events-request'
+    method: HubHubEventsRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEventsParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubActionsRequestMethod = Literal['hub.actions']
+@_coglet_dataclasses.dataclass
+class HubActionsRequest(Message):
+    _rule: ClassVar[str] = 'hub-actions-request'
+    method: HubHubActionsRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubActionsParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+DebugReadRequestMethod = Literal['debug.read']
+@_coglet_dataclasses.dataclass
+class DebugReadRequest(Message):
+    _rule: ClassVar[str] = 'debug-read-request'
+    method: HubDebugReadRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubReadParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+DebugWriteRequestMethod = Literal['debug.write']
+@_coglet_dataclasses.dataclass
+class DebugWriteRequest(Message):
+    _rule: ClassVar[str] = 'debug-write-request'
+    method: HubDebugWriteRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubWriteParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+DebugPauseRequestMethod = Literal['debug.pause']
+@_coglet_dataclasses.dataclass
+class DebugPauseRequest(Message):
+    _rule: ClassVar[str] = 'debug-pause-request'
+    method: HubDebugPauseRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+DebugStepRequestMethod = Literal['debug.step']
+@_coglet_dataclasses.dataclass
+class DebugStepRequest(Message):
+    _rule: ClassVar[str] = 'debug-step-request'
+    method: HubDebugStepRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubEmpty = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubInboxRequestMethod = Literal['hub.inbox']
+@_coglet_dataclasses.dataclass
+class HubInboxRequest(Message):
+    _rule: ClassVar[str] = 'hub-inbox-request'
+    method: HubHubInboxRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubInboxParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubHealthRequestMethod = Literal['hub.health']
+@_coglet_dataclasses.dataclass
+class HubHealthRequest(Message):
+    _rule: ClassVar[str] = 'hub-health-request'
+    method: HubHubHealthRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: HubHubNull = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubHealthParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+HubReceiptRequestMethod = Literal['hub.receipt']
+@_coglet_dataclasses.dataclass
+class HubReceiptRequest(Message):
+    _rule: ClassVar[str] = 'hub-receipt-request'
+    method: HubHubReceiptRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubOperationParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubCancelRequestMethod = Literal['hub.cancel']
+@_coglet_dataclasses.dataclass
+class HubCancelRequest(Message):
+    _rule: ClassVar[str] = 'hub-cancel-request'
+    method: HubHubCancelRequestMethod = _coglet_dataclasses.field(metadata={"wire": 'method'})
+    target: CommonCogletId = _coglet_dataclasses.field(metadata={"wire": 'target'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    timeout_ms: HubHubTimeout = _coglet_dataclasses.field(metadata={"wire": 'timeout_ms'})
+    params: HubHubOperationParams = _coglet_dataclasses.field(metadata={"wire": 'params'})
+    context: HubHubContext = _coglet_dataclasses.field(metadata={"wire": 'context'})
+HubRequest = Any
+@_coglet_dataclasses.dataclass
+class HubEnrollResult(Message):
+    _rule: ClassVar[str] = 'hub-enroll-result'
+    selection: CommonVersionSelection = _coglet_dataclasses.field(metadata={"wire": 'selection'})
+    device: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'device'})
+    hub: CommonNodeId = _coglet_dataclasses.field(metadata={"wire": 'hub'})
+@_coglet_dataclasses.dataclass
+class HubReadResult(Message):
+    _rule: ClassVar[str] = 'hub-read-result'
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+    snapshot_hash: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'snapshot_hash'})
+    text: HubHubText = _coglet_dataclasses.field(metadata={"wire": 'text'})
+    next_offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'next_offset'})
+    eof: HubHubBool = _coglet_dataclasses.field(metadata={"wire": 'eof'})
+@_coglet_dataclasses.dataclass
+class HubEventsResult(Message):
+    _rule: ClassVar[str] = 'hub-events-result'
+    next_seq: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'next_seq'})
+@_coglet_dataclasses.dataclass
+class HubStepResult(Message):
+    _rule: ClassVar[str] = 'hub-step-result'
+    receipt: HubHubMutationReceipt = _coglet_dataclasses.field(metadata={"wire": 'receipt'})
+    step: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'step'})
+HubResult = Any
+HubSuccessType = Literal['reply']
+@_coglet_dataclasses.dataclass
+class HubSuccess(Message):
+    _rule: ClassVar[str] = 'hub-success'
+    type_: HubHubSuccessType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    result: HubHubResult = _coglet_dataclasses.field(metadata={"wire": 'result'})
+HubFailureType = Literal['error']
+@_coglet_dataclasses.dataclass
+class HubFailure(Message):
+    _rule: ClassVar[str] = 'hub-failure'
+    type_: HubHubFailureType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    error: CommonError = _coglet_dataclasses.field(metadata={"wire": 'error'})
+HubCreditType = Literal['credit']
+@_coglet_dataclasses.dataclass
+class HubCredit(Message):
+    _rule: ClassVar[str] = 'hub-credit'
+    type_: HubHubCreditType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    bytes: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'bytes'})
+HubChunkType = Literal['chunk']
+@_coglet_dataclasses.dataclass
+class HubChunk(Message):
+    _rule: ClassVar[str] = 'hub-chunk'
+    type_: HubHubChunkType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    offset: CommonUint64 = _coglet_dataclasses.field(metadata={"wire": 'offset'})
+    hex: HubHubChunkHex = _coglet_dataclasses.field(metadata={"wire": 'hex'})
+HubEndType = Literal['end']
+@_coglet_dataclasses.dataclass
+class HubEnd(Message):
+    _rule: ClassVar[str] = 'hub-end'
+    type_: HubHubEndType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+HubTransferType = Literal['transfer']
+@_coglet_dataclasses.dataclass
+class HubTransfer(Message):
+    _rule: ClassVar[str] = 'hub-transfer'
+    type_: HubHubTransferType = _coglet_dataclasses.field(metadata={"wire": 'type'})
+    correlation_id: CommonCorrelationId = _coglet_dataclasses.field(metadata={"wire": 'correlation_id'})
+    size: HubHubSize = _coglet_dataclasses.field(metadata={"wire": 'size'})
+    sha256: HubHubHash = _coglet_dataclasses.field(metadata={"wire": 'sha256'})
+    update: HubHubSignedRef = _coglet_dataclasses.field(metadata={"wire": 'update'})
+HubFrame = Any
+RECORDS = {'common::version-offer': [CommonVersionOffer], 'common::version-selection': [CommonVersionSelection], 'common::event': [CommonEvent], 'common::action': [CommonAction], 'common::action-accept': [CommonActionAccept1, CommonActionAccept2], 'common::action-outcome': [CommonActionOutcome1, CommonActionOutcome2], 'common::error': [CommonError], 'hub::hub-build-record': [HubHubBuildRecord], 'hub::hub-delegation-statement': [HubHubDelegationStatement], 'hub::hub-ref-statement': [HubHubRefStatement], 'hub::hub-signed-delegation': [HubHubSignedDelegation], 'hub::hub-signed-ref': [HubHubSignedRef], 'hub::hub-status': [HubHubStatus], 'hub::hub-receipt-queued': [HubHubReceiptQueued], 'hub::hub-receipt-applied': [HubHubReceiptApplied], 'hub::hub-receipt-cancelled': [HubHubReceiptCancelled], 'hub::hub-receipt-failed': [HubHubReceiptFailed], 'hub::hub-inbox-delivery': [HubHubInboxDelivery], 'hub::hub-health-item': [HubHubHealthItem], 'hub::hub-enroll-params': [HubHubEnrollParams], 'hub::hub-install-params': [HubHubInstallParams], 'hub::hub-push-params': [HubHubPushParams], 'hub::hub-fetch-params': [HubHubFetchParams], 'hub::hub-events-params': [HubHubEventsParams], 'hub::hub-actions-params': [HubHubActionsParams], 'hub::hub-read-params': [HubHubReadParams], 'hub::hub-write-params': [HubHubWriteParams], 'hub::hub-inbox-params': [HubHubInboxParams], 'hub::hub-health-params': [HubHubHealthParams], 'hub::hub-operation-params': [HubHubOperationParams], 'hub::hub-context': [HubHubContext], 'hub::hub-enroll-request': [HubHubEnrollRequest], 'hub::hub-install-request': [HubHubInstallRequest], 'hub::hub-start-request': [HubHubStartRequest], 'hub::hub-stop-request': [HubHubStopRequest], 'hub::hub-status-request': [HubHubStatusRequest], 'hub::hub-git-push-request': [HubHubGitPushRequest], 'hub::hub-git-fetch-request': [HubHubGitFetchRequest], 'hub::hub-events-request': [HubHubEventsRequest], 'hub::hub-actions-request': [HubHubActionsRequest], 'hub::debug-read-request': [HubDebugReadRequest], 'hub::debug-write-request': [HubDebugWriteRequest], 'hub::debug-pause-request': [HubDebugPauseRequest], 'hub::debug-step-request': [HubDebugStepRequest], 'hub::hub-inbox-request': [HubHubInboxRequest], 'hub::hub-health-request': [HubHubHealthRequest], 'hub::hub-receipt-request': [HubHubReceiptRequest], 'hub::hub-cancel-request': [HubHubCancelRequest], 'hub::hub-enroll-result': [HubHubEnrollResult], 'hub::hub-read-result': [HubHubReadResult], 'hub::hub-events-result': [HubHubEventsResult], 'hub::hub-step-result': [HubHubStepResult], 'hub::hub-success': [HubHubSuccess], 'hub::hub-failure': [HubHubFailure], 'hub::hub-credit': [HubHubCredit], 'hub::hub-chunk': [HubHubChunk], 'hub::hub-end': [HubHubEnd], 'hub::hub-transfer': [HubHubTransfer], 'version-offer': [VersionOffer], 'version-selection': [VersionSelection], 'event': [Event], 'action': [Action], 'action-accept': [ActionAccept1, ActionAccept2], 'action-outcome': [ActionOutcome1, ActionOutcome2], 'error': [Error], 'hub-build-record': [HubBuildRecord], 'hub-delegation-statement': [HubDelegationStatement], 'hub-ref-statement': [HubRefStatement], 'hub-signed-delegation': [HubSignedDelegation], 'hub-signed-ref': [HubSignedRef], 'hub-status': [HubStatus], 'hub-receipt-queued': [HubReceiptQueued], 'hub-receipt-applied': [HubReceiptApplied], 'hub-receipt-cancelled': [HubReceiptCancelled], 'hub-receipt-failed': [HubReceiptFailed], 'hub-inbox-delivery': [HubInboxDelivery], 'hub-health-item': [HubHealthItem], 'hub-enroll-params': [HubEnrollParams], 'hub-install-params': [HubInstallParams], 'hub-push-params': [HubPushParams], 'hub-fetch-params': [HubFetchParams], 'hub-events-params': [HubEventsParams], 'hub-actions-params': [HubActionsParams], 'hub-read-params': [HubReadParams], 'hub-write-params': [HubWriteParams], 'hub-inbox-params': [HubInboxParams], 'hub-health-params': [HubHealthParams], 'hub-operation-params': [HubOperationParams], 'hub-context': [HubContext], 'hub-enroll-request': [HubEnrollRequest], 'hub-install-request': [HubInstallRequest], 'hub-start-request': [HubStartRequest], 'hub-stop-request': [HubStopRequest], 'hub-status-request': [HubStatusRequest], 'hub-git-push-request': [HubGitPushRequest], 'hub-git-fetch-request': [HubGitFetchRequest], 'hub-events-request': [HubEventsRequest], 'hub-actions-request': [HubActionsRequest], 'debug-read-request': [DebugReadRequest], 'debug-write-request': [DebugWriteRequest], 'debug-pause-request': [DebugPauseRequest], 'debug-step-request': [DebugStepRequest], 'hub-inbox-request': [HubInboxRequest], 'hub-health-request': [HubHealthRequest], 'hub-receipt-request': [HubReceiptRequest], 'hub-cancel-request': [HubCancelRequest], 'hub-enroll-result': [HubEnrollResult], 'hub-read-result': [HubReadResult], 'hub-events-result': [HubEventsResult], 'hub-step-result': [HubStepResult], 'hub-success': [HubSuccess], 'hub-failure': [HubFailure], 'hub-credit': [HubCredit], 'hub-chunk': [HubChunk], 'hub-end': [HubEnd], 'hub-transfer': [HubTransfer]}
