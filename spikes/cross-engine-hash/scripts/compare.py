@@ -8,16 +8,37 @@ hash AND host-side state hash match, the first diverging step, and (when the log
 blob, i.e. XHASH_STATE=1) which state lanes differ and their bit patterns.
 Exit status: 0 if the outcome matches --expect (default equal), 1 otherwise.
 """
+import argparse
+import re
 import struct
 import sys
 
 
+STEPS = 1000
+
+
 def load(path):
+    """Reject incomplete/invalid evidence before testing equality OR divergence."""
     rows = {}
-    for line in open(path):
-        p = line.split()
-        if len(p) >= 3:
-            rows[int(p[0])] = (p[1], p[2], bytes.fromhex(p[3]) if len(p) > 3 else None)
+    with open(path) as stream:
+        for line_no, line in enumerate(stream, 1):
+            p = line.split()
+            if (len(p) not in (3, 4) or not re.fullmatch(r"0|[1-9][0-9]*", p[0])
+                    or any(not re.fullmatch(r"[0-9a-f]{16}", h) for h in p[1:3])):
+                raise ValueError(f"{path}:{line_no}: malformed hash row")
+            step = int(p[0])
+            if step != len(rows):
+                raise ValueError(f"{path}:{line_no}: expected step {len(rows)}, got {step}")
+            if p[1] != p[2]:
+                raise ValueError(f"{path}:{line_no}: guest/host hash mismatch")
+            blob = None
+            if len(p) == 4:
+                if not re.fullmatch(r"[0-9a-f]{832}", p[3]):
+                    raise ValueError(f"{path}:{line_no}: malformed 416-byte state blob")
+                blob = bytes.fromhex(p[3])
+            rows[step] = (p[1], p[2], blob)
+    if len(rows) != STEPS:
+        raise ValueError(f"{path}: expected {STEPS} steps, got {len(rows)}")
     return rows
 
 
@@ -33,17 +54,20 @@ def lanes(blob):
 
 
 def main():
-    a = sys.argv[1:]
-    expect = "equal"
-    label = ""
-    while a and a[0].startswith("--"):
-        if a[0] == "--expect":
-            expect = a[1]
-        elif a[0] == "--label":
-            label = a[1]
-        a = a[2:]
-    cfgs = [x.split("=", 1) for x in a]
-    data = [(n, load(p)) for n, p in cfgs]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--expect", choices=("equal", "differ"), default="equal")
+    parser.add_argument("--label", default="")
+    parser.add_argument("configs", nargs="+")
+    args = parser.parse_args()
+    expect, label = args.expect, args.label
+    if len(args.configs) < 2 or any("=" not in c for c in args.configs):
+        parser.error("provide at least two NAME=FILE configurations")
+    cfgs = [x.split("=", 1) for x in args.configs]
+    try:
+        data = [(n, load(p)) for n, p in cfgs]
+    except (OSError, ValueError) as exc:
+        print(f"INVALID EVIDENCE: {exc}", file=sys.stderr)
+        return 1
     ref_name, ref = data[0]
     all_equal = True
     print(f"### {label}" if label else "###")
@@ -64,7 +88,8 @@ def main():
     got = "equal" if all_equal else "differ"
     verdict = "PASS" if got == expect else "FAIL"
     print(f"=> {got} (expected {expect}): {verdict}")
-    sys.exit(0 if got == expect else 1)
+    return 0 if got == expect else 1
 
 
-main()
+if __name__ == "__main__":
+    sys.exit(main())

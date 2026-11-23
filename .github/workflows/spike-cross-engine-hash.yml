@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - "spikes/cross-engine-hash/**"
+      - ".github/workflows/spike-cross-engine-hash.yml"
   workflow_dispatch:
 
 permissions:
@@ -26,6 +27,9 @@ jobs:
         working-directory: spikes/cross-engine-hash
     steps:
       - uses: actions/checkout@v4
+
+      - name: Evidence gate regression tests (synthetic fixtures)
+        run: python3 scripts/test_evidence.py -v
 
       - name: Toolchain (pinned by rust-toolchain.toml)
         run: rustup show active-toolchain || rustup toolchain install

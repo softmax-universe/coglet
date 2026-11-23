@@ -34,7 +34,19 @@ inputs are special: quiet and signalling NaNs with payloads, +-inf, -0, subnorma
 applies each record to 32 `f32` and 32 `f64` lanes (sqrt of negatives, 0/0, inf-inf, floor/ceil/
 trunc/nearest, promote/demote, sin/cos/exp/ln/pow, fma, copysign), serialises the lanes plus counters
 to a 416-byte state blob as raw bits, and returns FNV-1a-64 of the blob. The host also hashes
-the blob itself; both columns must match across engines.
+the blob itself; both columns must match within each row and across engines.
+
+## Evidence gate regression tests
+
+`python3 scripts/test_evidence.py -v` runs synthetic fixtures, not engine evidence.
+It checks valid equality/divergence controls and rejects empty, truncated, duplicate,
+noncontiguous, extra, malformed, and guest/host-mismatched logs in both comparison modes.
+Every comparison requires exactly steps 0..999; optional state dumps must be 416 bytes.
+Matrix tests inject failed transforms, compilation and engines (including failure after
+printing a complete log), and unexpected rejection status, diagnostics or output.
+The real matrix requires all expected-success commands to exit successfully. Relaxed
+SIMD is a separate narrowly asserted WAMR load rejection, never hash divergence;
+no AOT compilation is expected for that unsupported fixture.
 
 ## Limits of this evidence
 
