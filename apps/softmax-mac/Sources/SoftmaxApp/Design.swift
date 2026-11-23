@@ -30,6 +30,25 @@ extension View {
     }
 }
 
+/// Reviewed search-control geometry. Scale the text region, not the fixed chrome:
+/// the standard/largest design anchors are 25/35 pt, not 25/40 pt.
+enum SoftmaxSearchFieldMetrics {
+    static let standardHeight: CGFloat = 25
+    static let largestHeight: CGFloat = 35
+    static func height(textScale: Double) -> CGFloat {
+        standardHeight + (largestHeight - standardHeight) * (textScale - 1) / 0.6
+    }
+}
+
+struct SoftmaxSearchFieldFrame: ViewModifier {
+    @Environment(\.softmaxTextScale) private var scale
+    func body(content: Content) -> some View {
+        // AppKit intrinsic measurement can retain the previous text scale. Give
+        // both production search surfaces the same explicit layout proposal.
+        content.frame(height: SoftmaxSearchFieldMetrics.height(textScale: scale))
+    }
+}
+
 /// JSON-generated values are compiled directly from Design/DesignTokens.swift.
 /// Increased contrast uses native semantic foregrounds and explicit group outlines.
 struct SoftmaxTheme: ViewModifier {
