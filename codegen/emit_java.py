@@ -5,6 +5,10 @@ from target_ir import require_v1
 
 KEYWORDS = set(('abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while true false null record sealed permits yield var _ clone finalize getClass hashCode notify notifyAll toString wait').split())
 
+# Codec is used as an expression qualifier inside records; rest$ is interpreted
+# specially by Codec.construct even when the schema has no additional fields.
+RESERVED_MEMBERS = {'rule', 'toValue', 'toCbor', 'fromCbor', 'Codec', 'rest$'}
+
 # node op -> (required keys, optional keys). The emitter validates the IR itself so an
 # unfamiliar operation or constraint can never be silently ignored (no weakening).
 SHAPES = {
@@ -92,7 +96,7 @@ def generate(rules):
     canon = lambda n: alias.get(n, n)
     owned = {n: node for n, node in rules.items() if n not in alias}
     names = [title(n) for n in owned]
-    if len(set(names)) != len(names) or any(n in {'Generated','Codec','Message','Presence','Object','String','Boolean','BigInteger','List','Map','LinkedHashMap'} for n in names):
+    if len(set(names)) != len(names) or any(n in {'Generated','Codec','Message','Presence','Object','String','Boolean','BigInteger','List','Map','LinkedHashMap','IllegalArgumentException'} for n in names):
         raise ValueError('ambiguous Java rule names')
     def variants(node):
         vs = node['items'] if node['op'] == 'union' else [node]
@@ -140,7 +144,10 @@ def generate(rules):
             out += [f'public sealed interface {base} extends Message permits '+', '.join(classes)+' {', f'static {base} fromCbor(byte[] raw) {{ return ({base}) Codec.decodeTyped({json.dumps(name)}, raw); }}', '}']
         for cls,v in zip(classes,vs):
             fs=v['fields']; ids=[ident(f['name']) for f in fs]; rest=v.get('rest')
-            if len(set(ids + (['rest$'] if rest else []))) != len(ids) + bool(rest) or any(i in {'rule','toValue','toCbor','fromCbor'} for i in ids): raise ValueError('ambiguous Java field names')
+            if len(set(ids + (['rest$'] if rest else []))) != len(ids) + bool(rest):
+                raise ValueError('ambiguous Java field names')
+            if forbidden := RESERVED_MEMBERS.intersection(ids):
+                raise ValueError(f'reserved Java field names: {sorted(forbidden)}')
             args=[]
             for f,i in zip(fs,ids):
                 t=typ(f['type'])

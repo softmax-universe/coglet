@@ -18,6 +18,7 @@ pub type CommonActionId = CommonCorrelationId;
 pub type CommonSpecVersion = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonVersionOffer {
     pub versions: Vec<CommonSpecVersion>,
 }
@@ -31,6 +32,7 @@ impl CommonVersionOffer {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonVersionSelection {
     pub version: CommonSpecVersion,
 }
@@ -44,6 +46,7 @@ impl CommonVersionSelection {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonEvent {
     pub source: CommonSourceId,
     pub kind: CommonCapabilityName,
@@ -62,6 +65,7 @@ impl CommonEvent {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonAction {
     pub id: CommonActionId,
     pub coglet: CommonCogletId,
@@ -80,6 +84,7 @@ impl CommonAction {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonActionAccept1 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -95,6 +100,7 @@ impl CommonActionAccept1 {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonActionAccept2 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -117,6 +123,7 @@ pub enum CommonActionAccept {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonActionOutcome1 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -133,6 +140,7 @@ impl CommonActionOutcome1 {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonActionOutcome2 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -156,6 +164,7 @@ pub enum CommonActionOutcome {
 pub type CommonErrorCode = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct CommonError {
     pub code: CommonErrorCode,
     pub message: String,
@@ -188,6 +197,7 @@ pub type ActionId = CommonCorrelationId;
 pub type SpecVersion = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct VersionOffer {
     pub versions: Vec<CommonSpecVersion>,
 }
@@ -201,6 +211,7 @@ impl VersionOffer {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct VersionSelection {
     pub version: CommonSpecVersion,
 }
@@ -214,6 +225,7 @@ impl VersionSelection {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct Event {
     pub source: CommonSourceId,
     pub kind: CommonCapabilityName,
@@ -232,6 +244,7 @@ impl Event {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct Action {
     pub id: CommonActionId,
     pub coglet: CommonCogletId,
@@ -250,6 +263,7 @@ impl Action {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct ActionAccept1 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -265,6 +279,7 @@ impl ActionAccept1 {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct ActionAccept2 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -287,6 +302,7 @@ pub enum ActionAccept {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct ActionOutcome1 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -303,6 +319,7 @@ impl ActionOutcome1 {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct ActionOutcome2 {
     pub id: CommonActionId,
     pub correlation_id: CommonCorrelationId,
@@ -326,6 +343,7 @@ pub enum ActionOutcome {
 pub type ErrorCode = String;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[allow(non_snake_case)]
 pub struct Error {
     pub code: CommonErrorCode,
     pub message: String,

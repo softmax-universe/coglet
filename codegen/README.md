@@ -38,7 +38,21 @@ just a broader guard. Go/Java native codecs implement v2 in this change.
 then a unique exporter. Every rule has a `file::rule` selector; unique rules also
 have unqualified selectors. Emitters normalize identifiers and reject collisions
 with generated types, variants, fields or runtime-owned methods. Reserved field
-names are escaped with wire-name metadata. Qualification is not new CDDL syntax.
+keywords are escaped with wire-name metadata. Runtime method/import collisions
+are rejected where escaping would conflict with an existing public API.
+Qualification is not new CDDL syntax.
+
+Python class-body helpers use `_coglet_dataclasses`, a namespace forbidden to
+schema fields. Rust reserves `Result` and serde derive names as well as its
+container types; schema field casing is retained without a lint failure. Go
+exports fields but keeps package/local helpers separate, and rejects fields
+colliding with `ToValue`, `ToCBOR` or synthetic `Rest`. Java rejects Message
+methods, the `Codec` expression qualifier, and `rest$` (the codec's synthetic
+rest component), plus runtime-owned type names. No wire key is renamed.
+`test_identifiers.py` executes generated Python imports and typed roundtrips,
+native Rust (including clippy), Go and Java helper/keyword roundtrips, and
+explicit rejection tests. Required and optional Python `field` precede another
+field to exercise class-body evaluation, not merely syntax compilation.
 
 ## APIs and wire profile
 
