@@ -57,7 +57,8 @@ internal enum GeneratedSchema {
         "database::db-statement": .record([.init(name: "operation", optional: false, node: .literal(.text("statement"))), .init(name: "statement", optional: false, node: .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,63}$")])), .init(name: "mode", optional: false, node: .union([.literal(.text("read")), .literal(.text("write"))])), .init(name: "params", optional: false, node: .boundedArray(0, 32, .reference("database::db-cell"))), .init(name: "max_rows", optional: false, node: .range(.unsigned(1), .unsigned(64))), .init(name: "max_bytes", optional: false, node: .range(.unsigned(256), .unsigned(65536))), .init(name: "cursor", optional: true, node: .reference("database::db-cursor"))]),
         "database::db-enqueue": .record([.init(name: "operation", optional: false, node: .literal(.text("enqueue"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "idempotency_key", optional: false, node: .reference("common::correlation-id")), .init(name: "kind", optional: false, node: .reference("common::capability-name")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "database::db-request": .union([.reference("database::db-statement"), .reference("database::db-enqueue")]),
-        "database::db-page": .record([.init(name: "status", optional: false, node: .literal(.text("page"))), .init(name: "columns", optional: false, node: .boundedArray(0, 16, .intersection([.text, .size(1, 18446744073709551615)]))), .init(name: "rows", optional: false, node: .boundedArray(0, 64, .boundedArray(0, 16, .reference("database::db-cell")))), .init(name: "affected", optional: false, node: .reference("common::uint64")), .init(name: "revision", optional: false, node: .reference("common::uint64")), .init(name: "next_cursor", optional: false, node: .union([.reference("database::db-cursor"), .literal(.null)]))]),
+        "database::db-row": .boundedArray(0, 16, .reference("database::db-cell")),
+        "database::db-page": .record([.init(name: "status", optional: false, node: .literal(.text("page"))), .init(name: "columns", optional: false, node: .boundedArray(0, 16, .intersection([.text, .size(1, 18446744073709551615)]))), .init(name: "rows", optional: false, node: .boundedArray(0, 64, .reference("database::db-row"))), .init(name: "affected", optional: false, node: .reference("common::uint64")), .init(name: "revision", optional: false, node: .reference("common::uint64")), .init(name: "next_cursor", optional: false, node: .union([.reference("database::db-cursor"), .literal(.null)]))]),
         "database::db-enqueued": .record([.init(name: "status", optional: false, node: .literal(.text("enqueued"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "duplicate", optional: false, node: .boolean)]),
         "database::db-failed": .record([.init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "database::db-reply": .union([.reference("database::db-page"), .reference("database::db-enqueued"), .reference("database::db-failed")]),
@@ -278,7 +279,8 @@ internal enum GeneratedSchema {
         "db-statement": .record([.init(name: "operation", optional: false, node: .literal(.text("statement"))), .init(name: "statement", optional: false, node: .intersection([.text, .regexp("^[a-z][a-z0-9_]{0,63}$")])), .init(name: "mode", optional: false, node: .union([.literal(.text("read")), .literal(.text("write"))])), .init(name: "params", optional: false, node: .boundedArray(0, 32, .reference("database::db-cell"))), .init(name: "max_rows", optional: false, node: .range(.unsigned(1), .unsigned(64))), .init(name: "max_bytes", optional: false, node: .range(.unsigned(256), .unsigned(65536))), .init(name: "cursor", optional: true, node: .reference("database::db-cursor"))]),
         "db-enqueue": .record([.init(name: "operation", optional: false, node: .literal(.text("enqueue"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "idempotency_key", optional: false, node: .reference("common::correlation-id")), .init(name: "kind", optional: false, node: .reference("common::capability-name")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "db-request": .union([.reference("database::db-statement"), .reference("database::db-enqueue")]),
-        "db-page": .record([.init(name: "status", optional: false, node: .literal(.text("page"))), .init(name: "columns", optional: false, node: .boundedArray(0, 16, .intersection([.text, .size(1, 18446744073709551615)]))), .init(name: "rows", optional: false, node: .boundedArray(0, 64, .boundedArray(0, 16, .reference("database::db-cell")))), .init(name: "affected", optional: false, node: .reference("common::uint64")), .init(name: "revision", optional: false, node: .reference("common::uint64")), .init(name: "next_cursor", optional: false, node: .union([.reference("database::db-cursor"), .literal(.null)]))]),
+        "db-row": .boundedArray(0, 16, .reference("database::db-cell")),
+        "db-page": .record([.init(name: "status", optional: false, node: .literal(.text("page"))), .init(name: "columns", optional: false, node: .boundedArray(0, 16, .intersection([.text, .size(1, 18446744073709551615)]))), .init(name: "rows", optional: false, node: .boundedArray(0, 64, .reference("database::db-row"))), .init(name: "affected", optional: false, node: .reference("common::uint64")), .init(name: "revision", optional: false, node: .reference("common::uint64")), .init(name: "next_cursor", optional: false, node: .union([.reference("database::db-cursor"), .literal(.null)]))]),
         "db-enqueued": .record([.init(name: "status", optional: false, node: .literal(.text("enqueued"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "duplicate", optional: false, node: .boolean)]),
         "db-failed": .record([.init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
         "db-reply": .union([.reference("database::db-page"), .reference("database::db-enqueued"), .reference("database::db-failed")]),
@@ -638,6 +640,7 @@ internal enum GeneratedSchema {
         case "database::db-statement": typed = try DatabaseDbStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "database::db-enqueue": typed = try DatabaseDbEnqueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "database::db-request": typed = try DatabaseDbRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "database::db-row": typed = try DatabaseDbRow.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "database::db-page": typed = try DatabaseDbPage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "database::db-enqueued": typed = try DatabaseDbEnqueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "database::db-failed": typed = try DatabaseDbFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -859,6 +862,7 @@ internal enum GeneratedSchema {
         case "db-statement": typed = try DbStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "db-enqueue": typed = try DbEnqueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "db-request": typed = try DbRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "db-row": typed = try DbRow.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "db-page": typed = try DbPage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "db-enqueued": typed = try DbEnqueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "db-failed": typed = try DbFailed.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -2672,15 +2676,17 @@ public indirect enum DatabaseDbRequest: CBORMessage, Sendable {
     }
 }
 
+public typealias DatabaseDbRow = [DatabaseDbCell]
+
 public struct DatabaseDbPage: CBORMessage, Sendable {
     public static let schemaRule = "database::db-page"
     public var `status`: Swift.String
     public var `columns`: [CBORValue]
-    public var `rows`: [[DatabaseDbCell]]
+    public var `rows`: [DatabaseDbRow]
     public var `affected`: CommonUint64
     public var `revision`: CommonUint64
     public var `next_cursor`: DatabaseDbPageNextCursor
-    public init(`status`: Swift.String, `columns`: [CBORValue], `rows`: [[DatabaseDbCell]], `affected`: CommonUint64, `revision`: CommonUint64, `next_cursor`: DatabaseDbPageNextCursor) {
+    public init(`status`: Swift.String, `columns`: [CBORValue], `rows`: [DatabaseDbRow], `affected`: CommonUint64, `revision`: CommonUint64, `next_cursor`: DatabaseDbPageNextCursor) {
         self.`status` = `status`
         self.`columns` = `columns`
         self.`rows` = `rows`
@@ -2694,7 +2700,7 @@ public struct DatabaseDbPage: CBORMessage, Sendable {
         let entries = try cborValue.requireMap()
         self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
         self.`columns` = try [CBORValue].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "columns")), depth: depth + 1)
-        self.`rows` = try [[DatabaseDbCell]].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rows")), depth: depth + 1)
+        self.`rows` = try [DatabaseDbRow].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rows")), depth: depth + 1)
         self.`affected` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "affected")), depth: depth + 1)
         self.`revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
         self.`next_cursor` = try DatabaseDbPageNextCursor.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_cursor")), depth: depth + 1)
@@ -8912,15 +8918,17 @@ public indirect enum DbRequest: CBORMessage, Sendable {
     }
 }
 
+public typealias DbRow = [DatabaseDbCell]
+
 public struct DbPage: CBORMessage, Sendable {
     public static let schemaRule = "db-page"
     public var `status`: Swift.String
     public var `columns`: [CBORValue]
-    public var `rows`: [[DatabaseDbCell]]
+    public var `rows`: [DatabaseDbRow]
     public var `affected`: CommonUint64
     public var `revision`: CommonUint64
     public var `next_cursor`: DbPageNextCursor
-    public init(`status`: Swift.String, `columns`: [CBORValue], `rows`: [[DatabaseDbCell]], `affected`: CommonUint64, `revision`: CommonUint64, `next_cursor`: DbPageNextCursor) {
+    public init(`status`: Swift.String, `columns`: [CBORValue], `rows`: [DatabaseDbRow], `affected`: CommonUint64, `revision`: CommonUint64, `next_cursor`: DbPageNextCursor) {
         self.`status` = `status`
         self.`columns` = `columns`
         self.`rows` = `rows`
@@ -8934,7 +8942,7 @@ public struct DbPage: CBORMessage, Sendable {
         let entries = try cborValue.requireMap()
         self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
         self.`columns` = try [CBORValue].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "columns")), depth: depth + 1)
-        self.`rows` = try [[DatabaseDbCell]].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rows")), depth: depth + 1)
+        self.`rows` = try [DatabaseDbRow].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "rows")), depth: depth + 1)
         self.`affected` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "affected")), depth: depth + 1)
         self.`revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
         self.`next_cursor` = try DbPageNextCursor.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_cursor")), depth: depth + 1)
