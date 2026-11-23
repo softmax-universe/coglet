@@ -56,6 +56,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.105"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2cb931c189b85683d69a5cfad41d4d418671e1ac413dd209f3f2fc31e3cfd902"
+
+[[package]]
 name = "arc-swap"
 version = "1.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -305,6 +311,20 @@ name = "coglet-cli"
 version = "0.1.0"
 
 [[package]]
+name = "coglet-counter"
+version = "0.1.0"
+dependencies = [
+ "coglet-guest-rust",
+]
+
+[[package]]
+name = "coglet-echo"
+version = "0.1.0"
+dependencies = [
+ "coglet-guest-rust",
+]
+
+[[package]]
 name = "coglet-engine"
 version = "0.1.0"
 
@@ -340,8 +360,31 @@ name = "coglet-gate"
 version = "0.1.0"
 
 [[package]]
+name = "coglet-guest-macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "coglet-guest-rust"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "coglet-counter",
+ "coglet-echo",
+ "coglet-engine",
+ "coglet-engine-wamr",
+ "coglet-guest-macros",
+ "coglet-mock",
+ "coglet-types",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "wasm-encoder 0.245.1",
+ "wasmparser 0.245.1",
+]
 
 [[package]]
 name = "coglet-hub"
@@ -3536,6 +3579,16 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
+version = "0.245.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f9dca005e69bf015e45577e415b9af8c67e8ee3c0e38b5b0add5aa92581ed5c"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.245.1",
+]
+
+[[package]]
+name = "wasm-encoder"
 version = "0.263.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b883a26aea02eaabe2d2c3fba7eb039ef5cdcb5d5201ae5551e73d5e251a81f"
@@ -3591,7 +3644,7 @@ dependencies = [
  "leb128fmt",
  "memchr",
  "unicode-width",
- "wasm-encoder",
+ "wasm-encoder 0.263.0",
 ]
 
 [[package]]

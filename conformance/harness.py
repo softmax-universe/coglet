@@ -310,7 +310,7 @@ async def run_case(impl, suite, case):
     missing = [label for label in labels if label not in hooks]
     skipped = 'fixture unsupported: ' + ', '.join(missing) if missing else None
     if case.get('peer_role', 'runtime') not in impl.get('peer_roles', ['runtime']):
-        skipped = 'peer_role unsupported: ' + case['peer_role']
+        skipped = 'peer_role unsupported: ' + case.get('peer_role', 'runtime')
     if skipped:
         return (f'{impl["name"]}.{suite}', case['name'], 0, None, skipped)
     env = dict(os.environ, COGLET_CONFORMANCE_CASE=case['name'],

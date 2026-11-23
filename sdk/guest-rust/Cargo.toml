@@ -3,3 +3,24 @@ name = "coglet-guest-rust"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+
+[dependencies]
+coglet-types = { path = "../../crates/coglet-types" }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+coglet-guest-macros = { path = "macros" }
+
+[dev-dependencies]
+coglet-engine = { path = "../../crates/coglet-engine" }
+coglet-engine-wamr = { path = "../../crates/coglet-engine-wamr" }
+coglet-mock = { path = "../../crates/coglet-mock" }
+coglet-echo = { path = "../../coglets/echo" }
+coglet-counter = { path = "../../coglets/counter" }
+serde_json = "1"
+anyhow = "1"
+wasmparser = "0.245"
+wasm-encoder = { version = "0.245", features = ["wasmparser"] }
+
+[[example]]
+name = "entry_probe"
+crate-type = ["cdylib"]

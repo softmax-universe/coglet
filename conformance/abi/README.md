@@ -1,5 +1,17 @@
 # ABI conformance data
 
+## Reference guest profile: guest-reference
+
+`reference-guests.json` executes the SDK echo/counter on both shared Engine
+implementations (native mock closures and actual WAMR Wasm). It uses peer role
+`guest-reference` so runtime/journal adapters do not claim guest execution.
+Requests pin events, unsigned context inputs, input file snapshots and test host
+rejection codes; exact responses assert calls and committed files. Failed steps
+must discard both. Cases never supply expected outputs to the implementation.
+Rebuild/freshness-check with `sdk/guest-rust/tests/build_reference_cases.py`.
+Commands and explicit qualification boundaries: [guest SDK](../../sdk/guest-rust/README.md#proof-boundaries).
+
+
 [`cases.json`](cases.json) uses the harness timeline envelope: name and steps,
 with send, exact expect (within_ms=200) and journal_hash/path assertions. The
 adapter uses u32be-length deterministic CBOR framing by default.

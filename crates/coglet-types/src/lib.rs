@@ -8,7 +8,7 @@ pub use ciborium::Value;
 use regex::Regex;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value as Json;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Mutex, OnceLock};
 
 /// Maximum nesting depth of arrays/maps in a profile value.
@@ -251,7 +251,7 @@ pub fn decode_profile(raw: &[u8]) -> Result<Value, String> {
 // ---------------------------------------------------------------- IR
 
 struct Schema {
-    rules: HashMap<String, Json>,
+    rules: BTreeMap<String, Json>,
 }
 
 fn parse_schema(src: &str) -> Result<Schema, String> {
@@ -272,7 +272,7 @@ fn embedded() -> Result<&'static Schema, String> {
 }
 
 fn regex_for(pattern: &str) -> Result<Regex, String> {
-    static C: OnceLock<Mutex<HashMap<String, Regex>>> = OnceLock::new();
+    static C: OnceLock<Mutex<BTreeMap<String, Regex>>> = OnceLock::new();
     let mut c = C
         .get_or_init(Default::default)
         .lock()
