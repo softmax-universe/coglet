@@ -1,9 +1,14 @@
-//! Shared surface-message boundary. Negotiation/health only for now; operational
-//! messages fail closed until catalog, grant and durable dispatch integration.
+//! Shared surface-message boundary: catalog/grants, private events/reads,
+//! durable receipt authority and native committed-dispatch pumping.
 use crate::{Result, cbor, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+
+#[path = "surface_authority.rs"]
+mod authority;
+#[path = "surface_reads.rs"]
+mod reads;
 
 pub const SURFACE_MAX_FRAME: usize = 1_048_576;
 pub const SURFACE_QUEUE: usize = 128;
@@ -50,8 +55,33 @@ pub struct SurfaceSession {
     last_received: u64,
     last_health: u64,
     output: VecDeque<Vec<u8>>,
+    revision: u64,
+    epoch: u64,
+    operations: BTreeMap<String, String>,
+    resources: BTreeSet<String>,
+    grants: BTreeMap<String, Value>,
+    mapping: Option<(u64, u64)>,
+    killed: bool,
+    reads: BTreeMap<String, reads::PendingRead>,
+    read_ids: BTreeSet<String>,
+    read_results: VecDeque<(String, Value)>,
+    read_result_authority: BTreeMap<String, reads::PendingRead>,
+    heard_reads: BTreeSet<String>,
+    service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
+    sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
+    pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
+        if let Some(service) = &self.service {
+            service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .supervised_now()
+        } else {
+            u64::try_from(probe_clock.elapsed().as_micros())
+                .map_err(|_| "runtime clock overflow".into())
+        }
+    }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
             binding,
@@ -63,10 +93,82 @@ impl SurfaceSession {
             last_received: 0,
             last_health: 0,
             output: VecDeque::new(),
+            revision: 0,
+            epoch: 0,
+            operations: BTreeMap::new(),
+            resources: BTreeSet::new(),
+            grants: BTreeMap::new(),
+            mapping: None,
+            killed: false,
+            reads: BTreeMap::new(),
+            read_ids: BTreeSet::new(),
+            read_results: VecDeque::new(),
+            read_result_authority: BTreeMap::new(),
+            heard_reads: BTreeSet::new(),
+            service: None,
+            sent_dispatches: BTreeSet::new(),
         }
     }
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+    /// Native transport pump. Reconnect automatically reconciles saved IDs.
+    pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
+        if !self.negotiated || self.closed {
+            return Ok(());
+        }
+        let Some(service) = self.service.clone() else {
+            return Ok(());
+        };
+        #[cfg(feature = "native-engine")]
+        service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .run_native(self, now)?;
+        while self.output.len() < SURFACE_QUEUE {
+            // Guest execution and fsync can outlive the admission lease. Native
+            // routes recheck the supervised clock for EACH new dispatch, never
+            // authorize with the pre-execution transport sample.
+            #[cfg(feature = "native-engine")]
+            let now = {
+                let mut guard = service.lock().map_err(|_| "runtime service poisoned")?;
+                if guard.native_enabled() {
+                    guard.supervised_now()?
+                } else {
+                    now
+                }
+            };
+            let next = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .next_dispatch(self, &self.sent_dispatches, now)?;
+            let Some((id, bytes)) = next else {
+                break;
+            };
+            self.output.push_back(bytes);
+            self.sent_dispatches.insert(id);
+        }
+        Ok(())
+    }
+    fn health(&self, now: u64, correlation: &Value) -> Result<Value> {
+        let (state, pending) = if let Some(service) = &self.service {
+            let pending = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .admitted_pending(self.surface());
+            let ready = !self.stopped
+                && !self.killed
+                && self.grants.values().any(|g| {
+                    self.surface_now(now)
+                        .is_ok_and(|clock| g["expires"].as_u64().is_some_and(|e| e > clock))
+                });
+            (if ready { "ready" } else { "stopped" }, pending)
+        } else {
+            ("stopped", 0)
+        };
+        Ok(
+            json!({"type":"health","body":{"state":state,"clock":now,"pending":pending,"correlation_id":correlation}}),
+        )
     }
     pub fn front(&self) -> Option<&[u8]> {
         self.output.front().map(Vec::as_slice)
@@ -75,11 +177,22 @@ impl SurfaceSession {
         self.output.pop_front()
     }
     pub fn disconnect(&mut self) {
+        if let Some(service) = &self.service
+            && let Ok(mut service) = service.lock()
+        {
+            let _ = service.purge_surface_events(self.surface(), self.epoch);
+        }
         self.closed = true;
         self.stopped = true;
         self.negotiated = false;
         self.peer_clock = None;
         self.output.clear();
+        self.grants.clear();
+        self.mapping = None;
+        self.reads.clear();
+        self.read_results.clear();
+        self.read_result_authority.clear();
+        self.heard_reads.clear();
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         validate("surface-message", &message)?;
@@ -110,6 +223,7 @@ impl SurfaceSession {
             return;
         }
         self.runtime_clock = now;
+        self.expire_reads(now);
         if !self.negotiated {
             return;
         }
@@ -128,8 +242,14 @@ impl SurfaceSession {
             let random_ok = unsafe { libc::getentropy(id.as_mut_ptr().cast(), id.len()) } == 0;
             #[cfg(not(unix))]
             let random_ok = false;
-            if !random_ok || self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":hex::encode(id)}})).is_err() {
-                self.disconnect(); return;
+            if !random_ok
+                || self
+                    .health(now, &json!(hex::encode(id)))
+                    .and_then(|h| self.enqueue(h))
+                    .is_err()
+            {
+                self.disconnect();
+                return;
             }
             self.last_health = now;
         }
@@ -194,17 +314,67 @@ impl SurfaceSession {
                         return Err("surface clock rollback".into());
                     }
                     self.peer_clock = Some(clock);
+                    self.mapping = Some((now, clock));
                     self.last_health = now;
-                    self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
+                    self.enqueue(self.health(now, &body["correlation_id"])?)?;
                 }
                 "kill" => {
+                    if let Some(service) = &self.service {
+                        service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .purge_surface_events(self.surface(), self.epoch)?;
+                    }
+                    self.killed = true;
+                    self.grants.clear();
                     self.stopped = true;
+                    self.expire_reads(now);
                     self.enqueue(json!({"type":"health","body":{"state":"stopped","clock":now,"pending":0,"correlation_id":body["correlation_id"]}}))?;
                 }
-                "capabilities" | "grants" | "event" | "read_reply" | "accept" => {
-                    // Never accept unimplemented operations while claiming the
-                    // socket/ABI shell constitutes a working runtime server.
-                    return self.error("unavailable", &body["correlation_id"]);
+                "capabilities" => self.install_capabilities(body, now)?,
+                "grants" => self.install_grants(body, now)?,
+                "accept" => {
+                    let service = self
+                        .service
+                        .clone()
+                        .ok_or("no durable receipt coordinator")?;
+                    service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_accept(self, body, now)?;
+                }
+                "event" if body["kind"] == "action.outcome" => {
+                    let service = self
+                        .service
+                        .clone()
+                        .ok_or("no durable receipt coordinator")?;
+                    service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_outcome(self, body, now)?;
+                }
+                "read_reply" => self.receive_read_reply(body, now)?,
+                "event" => {
+                    let service = self.service.clone().ok_or("no durable event coordinator")?;
+                    let heard = service
+                        .lock()
+                        .map_err(|_| "runtime service poisoned")?
+                        .record_surface_event(self, body, now)?;
+                    if let Some(id) = heard {
+                        let owner = service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .heard_owner();
+                        self.request_read(
+                            &owner,
+                            "speech.heard",
+                            json!({"item":body["payload"]["item"]}),
+                            &id,
+                            now.checked_add(1_000_000).ok_or("read deadline overflow")?,
+                            now,
+                        )?;
+                        self.heard_reads.insert(id);
+                    }
                 }
                 "error" => {
                     self.disconnect();
