@@ -1,0 +1,91 @@
+name: Softmax Mac release
+on:
+  push:
+    tags: ['softmax-mac-v*']
+  pull_request:
+    paths: ['apps/softmax-mac/**', '.github/workflows/softmax-mac-release.yml']
+  workflow_dispatch:
+    inputs:
+      adhoc:
+        description: 'Proof only: ad-hoc signing, no release/feed publication'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: softmax-mac-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  proof:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.adhoc)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release policy tests
+        run: python3 -m unittest discover -s apps/softmax-mac/scripts/tests -v
+      - name: Install packaging tools
+        run: brew install xcodegen create-dmg openssl@3
+      - name: Fetch pinned Sparkle tools
+        run: bash apps/softmax-mac/scripts/sparkle-tools.sh "$RUNNER_TEMP/sparkle"
+      - name: Archive, ad-hoc sign, DMG and Sparkle interoperability proof
+        env:
+          SPARKLE_BIN: ${{ runner.temp }}/sparkle/bin
+          OPENSSL: /opt/homebrew/opt/openssl@3/bin/openssl
+        run: OPENSSL="$(brew --prefix openssl@3)/bin/openssl" python3 apps/softmax-mac/scripts/release.py --mode adhoc --tag softmax-mac-v0.0.1-rc1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Softmax-adhoc-proof
+          path: ${{ runner.temp }}/softmax-output/
+          if-no-files-found: error
+  release:
+    # No PR code ever receives signing material; no implicit ad-hoc fallback.
+    if: startsWith(github.ref, 'refs/tags/softmax-mac-v') && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.adhoc))
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install packaging tools
+        run: brew install xcodegen create-dmg
+      - name: Fetch pinned Sparkle tools
+        run: bash apps/softmax-mac/scripts/sparkle-tools.sh "$RUNNER_TEMP/sparkle"
+      - name: Archive, sign, notarize, staple and verify app and DMG
+        env:
+          CERTIFICATE_P12: ${{ secrets.SOFTMAX_MAC_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.SOFTMAX_MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.SOFTMAX_MAC_APPLE_ID }}
+          TEAM_ID: ${{ secrets.SOFTMAX_MAC_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.SOFTMAX_MAC_NOTARY_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_SPARKLE_PRIVATE_KEY }}
+          SPARKLE_BIN: ${{ runner.temp }}/sparkle/bin
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 apps/softmax-mac/scripts/release.py --mode developer-id --tag "$RELEASE_TAG"
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          args=()
+          if [[ "$RELEASE_TAG" == *-*rc* || "$RELEASE_TAG" == *-*beta* ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "$RUNNER_TEMP"/softmax-output/* \
+            --verify-tag --title "Softmax ${RELEASE_TAG#softmax-mac-v}" \
+            --notes 'Notarized Developer ID release. See verification.json and the workflow log for checks.' "${args[@]}"
+      - name: Advance stable appcast (never RC/beta)
+        if: "!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-beta')"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view softmax-mac-updates >/dev/null 2>&1; then
+            gh release create softmax-mac-updates --target "$GITHUB_SHA" --title 'Softmax Mac updates' --notes 'Stable Sparkle feed; do not delete.' --prerelease
+          fi
+          gh release upload softmax-mac-updates "$RUNNER_TEMP/softmax-output/appcast.xml" --clobber
+          gh release download softmax-mac-updates --pattern appcast.xml --dir "$RUNNER_TEMP/feed-readback"
+          cmp "$RUNNER_TEMP/softmax-output/appcast.xml" "$RUNNER_TEMP/feed-readback/appcast.xml"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Softmax-notarized-release
+          path: ${{ runner.temp }}/softmax-output/
+          if-no-files-found: error
