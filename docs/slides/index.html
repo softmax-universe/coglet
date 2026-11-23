@@ -441,7 +441,7 @@ release/</pre>
     cur = i;
     slides[cur].classList.add('active');
     try { localStorage.setItem(KEY, cur); } catch (e) {}
-    if (location.hash !== '#' + (cur + 1)) history.replaceState(null, '', '#' + (cur + 1));
+    if (location.hash !== '#' + (cur + 1)) { try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {} }
     document.title = slides[cur].dataset.title + ' — Coglet slides';
     slides[cur].querySelectorAll('figure.dg').forEach(function (f) { if (f._dg && f._dg.steps.length > 1) { f._dg.go(0, false); f._dg.play(); } });
   }
