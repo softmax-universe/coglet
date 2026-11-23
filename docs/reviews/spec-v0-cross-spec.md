@@ -83,6 +83,26 @@ No protocol implementation is registered in `conformance/impls.toml`.
   all 396 rules / five language outputs current. 27 harness regressions and
   four loopback self-tests passed. Full final-head checks/review remain required.
 
+## Repair batch 2 (PR #36, not freeze acceptance)
+
+- Resolved the path-control question: ABI filesystem components reject every C0
+  control, DEL and backslash; hub debug paths remain a bounded ASCII subset.
+  Unicode filesystem names remain byte-preserving. Changed generator sources,
+  CDDL/JSON rules, semantic checker and all five generated consumers. Added
+  positive ASCII/Unicode goldens and negatives for every forbidden character in
+  both selected path and enclosing boundary-change rules.
+- `test_path_contract` checks both actual schema validators for ABI/hub paths and
+  rehashed snapshot negatives (so a hash mismatch cannot mask path validation).
+  Owner ran 66 spec tests successfully before adding the corpus vectors; then
+  all 11 ABI tests and three path tests passed after regeneration (104 ABI shape
+  cases). Codegen freshness, 27 harness regressions and four loopback self-tests
+  passed. Final full-head tests remain required.
+- A further read-only design review recommends preserving relayed source/event
+  bytes and introducing a separate relay offset (source seq has legitimate gaps),
+  with private speech ownership keyed by target. This is a design lead, NOT an
+  implemented or accepted fix. Guest receipts also need pending-action header
+  state to verify exactly one terminal rejection/outcome across trace boundaries.
+
 ## Remaining freeze work
 
 1. Publish/link ADR-0009 proposal before changing normative specs.

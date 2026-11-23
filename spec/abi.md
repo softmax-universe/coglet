@@ -100,8 +100,10 @@ mutations appear here, with failed/queued outcomes retained in hub receipts/audi
 - /data: private read-write persistent state, never git-synced; inbox exception below.
 - /logs: create/append only, including log imports; no truncate, unlink or rename.
 
-Paths are absolute UTF-8 with no NUL, empty, dot or dot-dot components or trailing
-slash. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
+Paths are absolute UTF-8 with no C0 controls (U+0000–U+001F), DEL
+(U+007F), backslash, empty, dot or dot-dot components or trailing slash.
+No Unicode normalization is performed. Hub debug paths are a bounded ASCII
+subset of these filesystem paths, not a second filesystem namespace. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
 mount escapes forbidden. Mount permissions apply to descriptors too, including
 open/rename operations; no chmod escalation. Denial returns WASI permission errno
 without change. Reads see this step's copy-on-write overlay.

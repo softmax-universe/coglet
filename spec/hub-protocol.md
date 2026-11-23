@@ -368,7 +368,8 @@ operator reprovisioning; same ID/different message is `conflict`.
 
 `debug.write` replaces a bounded file at a canonical absolute `/data/...` path,
 with UTF-8 text content and an expected pre-write ABI snapshot hash. No traversal,
-empty components, NUL, backslashes, symlink resolution, inbox or runtime cursor/
+empty components, C0 controls (U+0000–U+001F), DEL (U+007F), backslashes,
+symlink resolution, inbox or runtime cursor/
 receipt/audit internals. Permission/path limits and expected hash are checked
 again at application. Failure is atomic `conflict`/`permission_denied`. There is
 no arbitrary command execution or `/code` write via debug. Binary debug writes

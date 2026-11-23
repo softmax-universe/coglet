@@ -725,5 +725,733 @@
       "text": "hello",
       "status": "failed"
     }
+  },
+  {
+    "name": "path-ascii",
+    "type": "path",
+    "valid": true,
+    "value": "/data/count",
+    "cbor_hex": "6b2f646174612f636f756e74"
+  },
+  {
+    "name": "path-utf8",
+    "type": "path",
+    "valid": true,
+    "value": "/data/café",
+    "cbor_hex": "6b2f646174612f636166c3a9"
+  },
+  {
+    "name": "path-forbidden-0",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0000b"
+  },
+  {
+    "name": "boundary-path-forbidden-0",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0000b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-1",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0001b"
+  },
+  {
+    "name": "boundary-path-forbidden-1",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0001b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-2",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0002b"
+  },
+  {
+    "name": "boundary-path-forbidden-2",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0002b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-3",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0003b"
+  },
+  {
+    "name": "boundary-path-forbidden-3",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0003b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-4",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0004b"
+  },
+  {
+    "name": "boundary-path-forbidden-4",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0004b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-5",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0005b"
+  },
+  {
+    "name": "boundary-path-forbidden-5",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0005b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-6",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0006b"
+  },
+  {
+    "name": "boundary-path-forbidden-6",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0006b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-7",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0007b"
+  },
+  {
+    "name": "boundary-path-forbidden-7",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0007b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-8",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\bb"
+  },
+  {
+    "name": "boundary-path-forbidden-8",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\bb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-9",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\tb"
+  },
+  {
+    "name": "boundary-path-forbidden-9",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\tb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-10",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\nb"
+  },
+  {
+    "name": "boundary-path-forbidden-10",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\nb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-11",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u000bb"
+  },
+  {
+    "name": "boundary-path-forbidden-11",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u000bb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-12",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\fb"
+  },
+  {
+    "name": "boundary-path-forbidden-12",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\fb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-13",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\rb"
+  },
+  {
+    "name": "boundary-path-forbidden-13",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\rb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-14",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u000eb"
+  },
+  {
+    "name": "boundary-path-forbidden-14",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u000eb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-15",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u000fb"
+  },
+  {
+    "name": "boundary-path-forbidden-15",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u000fb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-16",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0010b"
+  },
+  {
+    "name": "boundary-path-forbidden-16",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0010b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-17",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0011b"
+  },
+  {
+    "name": "boundary-path-forbidden-17",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0011b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-18",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0012b"
+  },
+  {
+    "name": "boundary-path-forbidden-18",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0012b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-19",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0013b"
+  },
+  {
+    "name": "boundary-path-forbidden-19",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0013b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-20",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0014b"
+  },
+  {
+    "name": "boundary-path-forbidden-20",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0014b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-21",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0015b"
+  },
+  {
+    "name": "boundary-path-forbidden-21",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0015b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-22",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0016b"
+  },
+  {
+    "name": "boundary-path-forbidden-22",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0016b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-23",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0017b"
+  },
+  {
+    "name": "boundary-path-forbidden-23",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0017b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-24",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0018b"
+  },
+  {
+    "name": "boundary-path-forbidden-24",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0018b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-25",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u0019b"
+  },
+  {
+    "name": "boundary-path-forbidden-25",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u0019b",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-26",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001ab"
+  },
+  {
+    "name": "boundary-path-forbidden-26",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001ab",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-27",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001bb"
+  },
+  {
+    "name": "boundary-path-forbidden-27",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001bb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-28",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001cb"
+  },
+  {
+    "name": "boundary-path-forbidden-28",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001cb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-29",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001db"
+  },
+  {
+    "name": "boundary-path-forbidden-29",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001db",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-30",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001eb"
+  },
+  {
+    "name": "boundary-path-forbidden-30",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001eb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-31",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\u001fb"
+  },
+  {
+    "name": "boundary-path-forbidden-31",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\u001fb",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-127",
+    "type": "path",
+    "valid": false,
+    "value": "/data/ab"
+  },
+  {
+    "name": "boundary-path-forbidden-127",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/ab",
+      "before": "30",
+      "after": "31"
+    }
+  },
+  {
+    "name": "path-forbidden-92",
+    "type": "path",
+    "valid": false,
+    "value": "/data/a\\b"
+  },
+  {
+    "name": "boundary-path-forbidden-92",
+    "type": "boundary-change",
+    "valid": false,
+    "value": {
+      "actor": "hub:3333333333333333333333333333333333333333333333333333333333333333",
+      "audit_id": "44444444444444444444444444444444",
+      "ticket": null,
+      "method": "debug.write",
+      "target": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+      "path": "/data/a\\b",
+      "before": "30",
+      "after": "31"
+    }
   }
 ]

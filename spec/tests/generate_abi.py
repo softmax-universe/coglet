@@ -57,10 +57,11 @@ U = ref('uint64')
 S = {'type': 'string', 'minLength': 1}
 HEX = {'type': 'string', 'pattern': '^([0-9a-f]{2})*(?![\\s\\S])'}
 H = {'type': 'string', 'pattern': '^[0-9a-f]{64}(?![\\s\\S])'}
-PATH = {'type': 'string', 'pattern': '^/(code|data|logs)(/[^/\u0000]+)+(?![\\s\\S])'}
+PATH_PATTERN = r'^/(code|data|logs)(/[^/\u0000-\u001f\u007f\\]+)+'
+PATH = {'type': 'string', 'pattern': PATH_PATTERN + r'(?![\s\S])'}
 rule('hash', H, 'tstr .regexp "^[0-9a-f]{64}$"')
 rule('hex', HEX, 'tstr .regexp "^([0-9a-f]{2})*$"')
-rule('path', PATH, 'tstr .regexp "^/(code|data|logs)(/[^/]+)+$"')
+rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN + '$'))
 # Path-key grammar and blob digest keys are cross-field semantic checks. pycddl
 # 0.6.4 incorrectly applies a regex key control to the entire enclosing map.
 rule('snapshot', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')
@@ -175,6 +176,13 @@ for typ, value in valids.items():
     cases.append(dict(name=typ+'-unknown-or-path-invalid', type=typ, valid=False, value=bad))
 for name, typ, value in [('zero-compute', 'budgets', dict(budget, compute=0)), ('float-time', 'timer-request', dict(timer, at=0.5)), ('odd-file-hex', 'snapshot', {'/data/count': '0'}), ('failed-reply-with-output', 'llm-reply', dict(inbox['event']['payload'], status='failed'))]:
     cases.append(dict(name=name, type=typ, valid=False, value=value))
+for label, path in [('ascii', '/data/count'), ('utf8', '/data/café')]:
+    cases.append(dict(name='path-' + label, type='path', valid=True, value=path, cbor_hex=encode(path).hex()))
+for codepoint in list(range(32)) + [127, 92]:
+    path = '/data/a' + chr(codepoint) + 'b'
+    cases.append(dict(name=f'path-forbidden-{codepoint}', type='path', valid=False, value=path))
+    change = dict(valids['boundary-change'], path=path)
+    cases.append(dict(name=f'boundary-path-forbidden-{codepoint}', type='boundary-change', valid=False, value=change))
 write('spec/fixtures/abi/cases.json', cases)
 
 # Each timeline is an isolated adapter reset/step invocation. The scripted calls

@@ -26,7 +26,7 @@ def record_hash(rec):
 def valid_path(path):
     parts = path.split('/')
     return (len(parts) >= 3 and parts[0] == '' and parts[1] in ('code', 'data', 'logs')
-            and all(p not in ('', '.', '..') and '\0' not in p for p in parts[1:])
+            and all(p not in ('', '.', '..') and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
             and str(PurePosixPath(path)) == path)
 
 
