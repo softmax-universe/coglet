@@ -39,11 +39,17 @@ struct SettingsView: View {
                     .accessibilityLabel("Search settings").onSubmit {
                         if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
                     }
-                    .onMoveCommand { direction in
-                        guard !tabs.isEmpty else { return }
+                    .onKeyPress(.downArrow) {
+                        guard !tabs.isEmpty else { return .handled }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
-                        if direction == .down { model.selectedTab = tabs[min(index + 1, tabs.count - 1)] }
-                        if direction == .up { model.selectedTab = tabs[max(index - 1, 0)] }
+                        model.selectedTab = tabs[min(index + 1, tabs.count - 1)]
+                        return .handled
+                    }
+                    .onKeyPress(.upArrow) {
+                        guard !tabs.isEmpty else { return .handled }
+                        let index = tabs.firstIndex(of: model.selectedTab) ?? 0
+                        model.selectedTab = tabs[max(index - 1, 0)]
+                        return .handled
                     }
                 Text("\(tabs.count) sections").softmaxFont(SoftmaxDesignTokens.fontCaption)
                 ForEach(tabs) { tab in

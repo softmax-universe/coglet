@@ -41,6 +41,13 @@ struct CommandPaletteView: View {
         commands.filter { query.isEmpty || ($0.title + " " + $0.keywords).localizedCaseInsensitiveContains(query) }
     }
     private func open(_ command: SoftmaxCommand) { dismiss(); command.action() }
+    private func revealSelection(using proxy: ScrollViewProxy) {
+        guard matches.indices.contains(selected) else { return }
+        // Immediate minimal scrolling keeps keyboard navigation usable with Reduce Motion too.
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { proxy.scrollTo(matches[selected].id) }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             TextField("Search commands and settings", text: $query)
@@ -52,18 +59,23 @@ struct CommandPaletteView: View {
                 .onKeyPress(.upArrow) { selected = max(0, selected - 1); return .handled }
             Text("\(matches.count) results · ↑ ↓ select · Return open · Esc cancel")
                 .softmaxFont(SoftmaxDesignTokens.fontCaption)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(Array(matches.enumerated()), id: \.element.id) { index, command in
-                        Button { open(command) } label: {
-                            highlightedMatch(command.title, query: query).frame(maxWidth: .infinity, alignment: .leading).padding(8)
-                                .background(index == selected ? accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 6))
-                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(index == selected ? accent : .clear, lineWidth: 2))
-                        }.buttonStyle(.plain)
-                            .accessibilityAddTraits(index == selected ? .isSelected : [])
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(Array(matches.enumerated()), id: \.element.id) { index, command in
+                            Button { open(command) } label: {
+                                highlightedMatch(command.title, query: query).frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                                    .background(index == selected ? accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(index == selected ? accent : .clear, lineWidth: 2))
+                            }.buttonStyle(.plain)
+                                .accessibilityAddTraits(index == selected ? .isSelected : [])
+                                .id(command.id)
+                        }
+                        if matches.isEmpty { Text("No matching commands or settings") }
                     }
-                    if matches.isEmpty { Text("No matching commands or settings") }
                 }
+                .onChange(of: selected) { _ in revealSelection(using: proxy) }
+                .onChange(of: matches.map(\.id)) { _ in revealSelection(using: proxy) }
             }
         }.padding(20).frame(width: 460, height: 480)
             .modifier(SoftmaxTheme()).onAppear { DispatchQueue.main.async { focused = true } }
