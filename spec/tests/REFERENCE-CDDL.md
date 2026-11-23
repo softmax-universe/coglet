@@ -92,8 +92,13 @@ normal CI. It scans every `spec/**/*.json` pattern using the actual
 Python/jsonschema search semantics (not a replacement full-match engine).
 Positive witnesses come from all schema/fixture strings plus 32 reproducibly
 seeded `rstr==3.2.2` generations per pattern. A matched witness plus appended LF
-must reject; inability to produce a positive witness is a coverage error. This
-is deterministic witness testing, not a proof for every possible string.
+fails only when search accepts it but `re.fullmatch` of the same pattern rejects
+it: this detects final-LF anchor and partial-match bypasses without rejecting LF
+consumed by a reviewed grammar (including ABI filename character classes). No
+exemptions or schema changes are used. This implements the orchestrator's narrowed
+mandate, replacing the earlier over-broad any-appended-LF rule. Inability to produce
+a positive witness remains a coverage error. This is deterministic witness testing,
+not a proof for every possible string.
 `python3 spec/tests/schema_lint.py --output lint.json` reports concrete witnesses
 and hit counts per file; each spec owner fixes its own source text.
 

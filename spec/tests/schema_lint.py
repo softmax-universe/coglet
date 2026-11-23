@@ -88,9 +88,11 @@ def lint(root):
                     findings.append(dict(ref, kind='pattern-no-positive-witness', pattern=pattern))
                     continue
                 for example in positives:
-                    # Require actual positive and appended-LF acceptance; a
-                    # warning based only on the spelling of '$' is not proof.
-                    if expression.search(example + '\n'):
+                    # Compare actual jsonschema search with whole-string
+                    # matching. LF consumed by the grammar (e.g. a filename
+                    # character class) is valid, not an anchor bypass.
+                    appended = example + '\n'
+                    if expression.search(appended) and not expression.fullmatch(appended):
                         findings.append(dict(ref, kind='pattern-trailing-newline',
                                              pattern=pattern, example=example))
                         break

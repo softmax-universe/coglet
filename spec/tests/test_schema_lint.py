@@ -45,6 +45,26 @@ class SchemaLintTests(unittest.TestCase):
             path.write_text(r'{"pattern":"^[a-z]+(?![\\s\\S])"}')
             self.assertEqual(lint(root), [])
 
+    def test_intrinsic_lf_is_not_an_anchor_bypass(self):
+        import json
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / 'spec').mkdir()
+            path = root / 'spec/path.schema.json'
+            abi = json.loads((Path(__file__).resolve().parents[1] /
+                              'messages/abi.schema.json').read_text())
+            pattern = abi['$defs']['path']['pattern']
+            path.write_text(json.dumps({'pattern': pattern,
+                                        'examples': ['/data/count', '/data/co\nunt']}))
+            self.assertEqual(lint(root), [])
+
+    def test_unanchored_partial_match_is_a_bypass(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / 'spec').mkdir()
+            (root / 'spec/partial.schema.json').write_text('{"pattern":"abc"}')
+            self.assertEqual(lint(root)[0]['kind'], 'pattern-trailing-newline')
+
     def test_spaced_occurrence_bounds_and_lexical_exclusions(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
