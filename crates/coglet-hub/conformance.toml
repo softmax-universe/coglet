@@ -1,0 +1,17 @@
+[[implementations]]
+name = "coglet-hub-event-kernel-real-iroh"
+suites = ["hub"]
+peer_roles = ["device"]
+transport = "stdio"
+command = ["target/debug/examples/conformance_peer"]
+
+[implementations.fixtures."hub.event-batch-dedup"]
+[implementations.fixtures."hub.event-coglet-forged-event"]
+[implementations.fixtures."hub.event-empty-probe"]
+[implementations.fixtures."hub.event-foreign-coglet"]
+[implementations.fixtures."hub.event-gap"]
+[implementations.fixtures."hub.event-offset-conflict"]
+[implementations.fixtures."hub.event-retry-a-after-b"]
+[implementations.fixtures."hub.event-runtime-wake"]
+[implementations.fixtures."hub.event-source-gap"]
+[implementations.fixtures."hub.event-source-repeat"]
