@@ -556,15 +556,13 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
             if let Some(bounds) = pattern
                 .strip_prefix(r"^[\s\S]{")
                 .and_then(|p| p.strip_suffix("}$"))
+                && let Some((lo, hi)) = bounds.split_once(',')
+                && let (Ok(lo), Ok(hi)) = (lo.parse::<usize>(), hi.parse::<usize>())
             {
-                if let Some((lo, hi)) = bounds.split_once(',') {
-                    if let (Ok(lo), Ok(hi)) = (lo.parse::<usize>(), hi.parse::<usize>()) {
-                        return match v {
-                            Value::Text(t) if (lo..=hi).contains(&t.chars().count()) => Ok(()),
-                            _ => Err("regexp bounded text mismatch".into()),
-                        };
-                    }
-                }
+                return match v {
+                    Value::Text(t) if (lo..=hi).contains(&t.chars().count()) => Ok(()),
+                    _ => Err("regexp bounded text mismatch".into()),
+                };
             }
             let re = regex_for(pattern)?;
             match v {

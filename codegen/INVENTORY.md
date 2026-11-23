@@ -66,7 +66,29 @@ main's common row; spec integrations add their frozen generated rows and retain
 policy/promotion/tickets as draft-validated.
 
 ABI `.fixture` files are protocol-owned temporal JSON, not codec case arrays.
-Surface speech timelines/adapter config/framing and hub fetch/framing/git/
-signatures are explicitly marked `semantic-vectors-v1`; their owning suites
-remain responsible for semantic invariants. See README/IR for fail-closed case
-classification and separate skip/semantic counters.
+Surface speech timelines/adapter config/framing carry `semantic-vectors-v1`
+markers. Hub fetch/framing/git/signatures require those same markers in PR13;
+the pinned Hub proof supplies exactly those four agreed metadata files as an
+explicit integration delta (not a claim that PR13 already contains them).
+Their owning suites remain responsible for semantic invariants. See README/IR
+for fail-closed case classification and separate skip/semantic counters.
+
+## Executed merged-snapshot codec proof
+
+Each row includes common. Rust, Python, Go and Java independently produced the
+same shape/wire counters and byte-identical supplied golden encodings. Every
+row also passed `codegen/run --check` and the actual-CDDL/JSON-Schema cross-check.
+Registry additions and generated outputs are explicit integration resolutions;
+no draft is promoted and no unsupported construct is ignored.
+
+| Snapshot | Shape-valid | Shape-invalid | Wire-invalid | Counted vector-file skips |
+|---|---:|---:|---:|---:|
+| Main | 33 | 43 | 17 | 0 |
+| ABI | 48 | 62 | 17 | 0 |
+| Surface | 76 | 109 | 17 | 3 |
+| Hub + four marker metadata files | 143 | 303 | 17 | 4 |
+| Policy (generated common only; drafts retained) | 33 | 43 | 17 | 0 |
+
+Protocol-semantic negatives are shape-valid by definition and remain the spec
+suite's responsibility; rejecting them in a shape codec would be incorrect.
+These are codec/fixture proofs, not behavioral runtime-conformance claims.
