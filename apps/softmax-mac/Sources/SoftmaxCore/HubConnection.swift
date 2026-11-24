@@ -39,7 +39,11 @@ public final class HubConnection {
                 guard let self, self.running, self.generation == current else { return }
                 self.receive(event)
             }
-        } catch { running = false; link.stop(); errorMessage = "Cannot load device identity or start hub connection." }
+        } catch {
+            stopLink()
+            errorMessage = "Cannot load device identity or start hub connection. Retrying…"
+            scheduleRetry(restart: true)
+        }
         changed?()
     }
     public func enroll(_ value: HubPairing) throws {
