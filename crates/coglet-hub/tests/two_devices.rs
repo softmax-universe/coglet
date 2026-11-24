@@ -1,4 +1,6 @@
 use coglet_hub::{ActionGrant, EventGrant, Kernel, Registration};
+#[path = "support/hardening.rs"]
+mod hardening;
 use coglet_proto::{
     authority::Grant,
     signing,
@@ -12,6 +14,41 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+
+#[tokio::test]
+async fn new_dispatch_requires_live_runtime_clock_before_attempt_marking() {
+    let _serial = SERIAL.acquire().await.unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        let dir = tempfile::tempdir().unwrap();
+        let hub = Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
+        let device = Endpoint::builder(presets::Minimal).bind().await.unwrap();
+        let kernel = Kernel::open(dir.path(), hub.id(), Arc::new(|| Some(1))).unwrap();
+        let actor = format!("hub:{}", hub.id());
+        let source = format!("surface:{}", SecretKey::generate().public());
+        let r = registration(&SecretKey::generate(), hub.id(), device.id(), &source, &actor);
+        kernel.open_window(Duration::from_secs(60)).await.unwrap();
+        let invite = kernel.invite(device.id(), Duration::from_secs(60), vec![Grant {method:"hub.actions".into(), target:Some(r.coglet.clone()), expires:10000, generation:0}]).await.unwrap();
+        let (ds, hs, serving) = connect(&device, &hub, kernel.clone()).await;
+        let enroll = json!({"method":"hub.enroll","target":null,"timeout_ms":1000,"correlation_id":"11".repeat(16),"params":{"offer":{"versions":["0.1"]},"invite":invite}});
+        assert_eq!(ds.request(enroll).await.unwrap()["type"], "reply");
+        kernel.register(r.clone()).await.unwrap();
+        let id = "44".repeat(16);
+        let action = json!({"id":id,"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
+        kernel.prepare_action(&r.coglet, action, json!({"actor":actor}), Some(0)).await.unwrap();
+        let receiver = Arc::new(MockSurface(Mutex::new(vec![])));
+        let responder = tokio::spawn(ds.serve(receiver.clone()));
+        assert!(kernel.dispatch_action(&r.coglet, &id, hs).await.is_err(), "new action dispatched without trusted logical time");
+        assert!(receiver.0.lock().unwrap().is_empty());
+        let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+        let attempted: i64 = db.query_row("SELECT attempted FROM deliveries", [], |r| r.get(0)).unwrap();
+        assert_eq!(attempted, 0, "pre-I/O clock refusal poisoned retained action");
+        responder.abort(); serving.abort(); device.close().await; hub.close().await;
+    }).await.unwrap();
+}
+
+// Independent real-network fixtures share host CPU/disk; serialize this test
+// binary without weakening any per-dispatch/control latency assertion.
+static SERIAL: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
 
 struct StalledSurface(tokio::sync::Notify);
 impl OperationHandler for StalledSurface {
@@ -30,6 +67,7 @@ impl OperationHandler for StalledSurface {
 #[tokio::test]
 async fn stalled_dispatch_stops_when_trusted_authority_expires() {
     use std::sync::atomic::{AtomicU64, Ordering};
+    let _serial = SERIAL.acquire().await.unwrap();
     tokio::time::timeout(Duration::from_secs(20), async {
         let dir = tempfile::tempdir().unwrap();
         let hub = Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
@@ -51,20 +89,20 @@ async fn stalled_dispatch_stops_when_trusted_authority_expires() {
         let stalled = Arc::new(StalledSurface(tokio::sync::Notify::new()));
         let responder = tokio::spawn(ds.serve(stalled.clone()));
         let retry_session = hs.clone();
-        let dispatch = tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();async move {kernel.dispatch_action(&target,&"44".repeat(16),hs).await}});
+        let dispatch = tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();async move {kernel.dispatch_action_with_clock(&target,&"44".repeat(16),hs,Arc::new(||Some(0))).await}});
         stalled.0.notified().await;
         let mut extra_dispatches=Vec::new();
         for n in 1..8u8 {
             let id=format!("{n:02x}").repeat(16);
             let action=json!({"id":id,"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
             kernel.prepare_action(&r.coglet,action,json!({"actor":actor}),Some(0)).await.unwrap();
-            extra_dispatches.push(tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();let session=retry_session.clone();async move {kernel.dispatch_action(&target,&id,session).await}}));
+            extra_dispatches.push(tokio::spawn({let kernel=kernel.clone();let target=r.coglet.clone();let session=retry_session.clone();async move {kernel.dispatch_action_with_clock(&target,&id,session,Arc::new(||Some(0))).await}}));
             stalled.0.notified().await;
         }
         let ninth="99".repeat(16);
         let action=json!({"id":ninth,"coglet":r.coglet,"capability":"test.move","args":{},"deadline":200,"correlation_id":"22".repeat(16)});
         kernel.prepare_action(&r.coglet,action,json!({"actor":actor}),Some(0)).await.unwrap();
-        assert!(matches!(kernel.dispatch_action(&r.coglet,&ninth,retry_session).await,Err(coglet_hub::Error::Full)),"capacity saturation poisoned an unsent action");
+        assert!(matches!(kernel.dispatch_action_with_clock(&r.coglet,&ninth,retry_session,Arc::new(||Some(0))).await,Err(coglet_hub::Error::Full)),"capacity saturation poisoned an unsent action");
         let db=rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
         let retained:(i64,Option<String>)=db.query_row("SELECT attempted,reply FROM deliveries WHERE id=?1",[ninth],|r|Ok((r.get(0)?,r.get(1)?))).unwrap();
         assert_eq!(retained,(0,None));
@@ -78,6 +116,7 @@ async fn stalled_dispatch_stops_when_trusted_authority_expires() {
 
 #[tokio::test]
 async fn stalled_peer_does_not_block_other_peer_or_its_own_revocation() {
+    let _serial = SERIAL.acquire().await.unwrap();
     tokio::time::timeout(Duration::from_secs(20), async {
         let dir = tempfile::tempdir().unwrap();
         let hub = Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
@@ -105,14 +144,14 @@ async fn stalled_peer_does_not_block_other_peer_or_its_own_revocation() {
         tasks.push(tokio::spawn({ let s=sessions[0].0.clone(); let handler=stalled.clone(); async move {let _=s.serve(handler).await;} }));
         let other = Arc::new(MockSurface(Mutex::new(vec![])));
         tasks.push(tokio::spawn({let s=sessions[1].0.clone(); async move {let _=s.serve(other).await;} }));
-        let dispatch = tokio::spawn({let k=kernel.clone();let t=ra.coglet.clone();let s=sessions[0].1.clone();async move {k.dispatch_action(&t,&"44".repeat(16),s).await}});
+        let dispatch = tokio::spawn({let k=kernel.clone();let t=ra.coglet.clone();let s=sessions[0].1.clone();async move {k.dispatch_action_with_clock(&t,&"44".repeat(16),s,Arc::new(||Some(0))).await}});
         stalled.0.notified().await;
         // Device-to-hub outcome stream can overtake the action-accept stream.
         let early=json!({"method":"hub.events","target":ra.coglet,"timeout_ms":1000,"correlation_id":"77".repeat(16),"params":{"offset":0,"events":[{"source":ra.coglet,"kind":"action.outcome","seq":1,"logical_time":1,"correlation_id":"22".repeat(16),"payload":{"id":"44".repeat(16),"correlation_id":"22".repeat(16),"status":"succeeded","result":{}}}]}});
         assert_eq!(sessions[0].0.request(early).await.unwrap()["result"]["next_offset"],1,"valid outcome overtook action-accept");
-        let duplicate=tokio::time::timeout(Duration::from_millis(500),kernel.dispatch_action(&ra.coglet,&"44".repeat(16),sessions[0].1.clone())).await.expect("duplicate live attempt queried a receipt before admission");
+        let duplicate=tokio::time::timeout(Duration::from_millis(500),kernel.dispatch_action_with_clock(&ra.coglet,&"44".repeat(16),sessions[0].1.clone(),Arc::new(||Some(0)))).await.expect("duplicate live attempt queried a receipt before admission");
         assert!(duplicate.is_err());
-        let result = tokio::time::timeout(Duration::from_millis(500), kernel.dispatch_action(&rb.coglet, &"44".repeat(16), sessions[1].1.clone())).await.expect("stalled A blocked B").unwrap();
+        let result = tokio::time::timeout(Duration::from_millis(500), kernel.dispatch_action_with_clock(&rb.coglet, &"44".repeat(16), sessions[1].1.clone(),Arc::new(||Some(0)))).await.expect("stalled A blocked B").unwrap();
         assert_eq!(result["result"]["accepted"], true);
         tokio::time::timeout(Duration::from_millis(500), kernel.revoke_peer(a.id())).await.expect("stalled A blocked revoke A").unwrap();
         let cancelled = tokio::time::timeout(Duration::from_millis(500), dispatch).await.expect("revocation did not cancel pending dispatch").unwrap();
@@ -145,6 +184,7 @@ impl OperationHandler for Receipts {
 }
 #[tokio::test]
 async fn crashed_attempt_queries_original_scope_receipt_and_never_replays_unknown_effects() {
+    let _serial = SERIAL.acquire().await.unwrap();
     tokio::time::timeout(Duration::from_secs(20), async {
         let dir=tempfile::tempdir().unwrap();
         let hub=Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
@@ -248,6 +288,7 @@ async fn connect(
 }
 #[tokio::test]
 async fn two_devices_enroll_event_reaches_coglet_and_mapped_action_reaches_other_surface() {
+    let _serial = SERIAL.acquire().await.unwrap();
     tokio::time::timeout(Duration::from_secs(20),async {
         let dir=tempfile::tempdir().unwrap();
         let hub=Endpoint::builder(presets::Minimal).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
@@ -281,10 +322,10 @@ async fn two_devices_enroll_event_reaches_coglet_and_mapped_action_reaches_other
         assert_eq!(kernel.prepare_action(&rb.coglet,action,json!({"actor":actor}),None).await.unwrap(),mapped);
         let surface=Arc::new(MockSurface(Mutex::new(vec![])));
         let serving=tokio::spawn(sessions[1].0.clone().serve(surface.clone()));
-        let result=kernel.dispatch_action(&rb.coglet,&"44".repeat(16),sessions[1].1.clone()).await.unwrap();
+        let result=kernel.dispatch_action_with_clock(&rb.coglet,&"44".repeat(16),sessions[1].1.clone(),Arc::new(||Some(1000))).await.unwrap();
         assert_eq!(result["result"]["accepted"],true);
         assert_eq!(surface.0.lock().unwrap().as_slice(),&[mapped]);
-        kernel.dispatch_action(&rb.coglet,&"44".repeat(16),sessions[1].1.clone()).await.unwrap();
+        kernel.dispatch_action_with_clock(&rb.coglet,&"44".repeat(16),sessions[1].1.clone(),Arc::new(||Some(1000))).await.unwrap();
         assert_eq!(surface.0.lock().unwrap().len(),1);
         let outcome=json!({"source":rb.coglet,"kind":"action.outcome","seq":1,"logical_time":1,"correlation_id":"22".repeat(16),"payload":{"id":"44".repeat(16),"correlation_id":"22".repeat(16),"status":"succeeded","result":{}}});
         let outcome_request=json!({"method":"hub.events","target":rb.coglet,"timeout_ms":1000,"correlation_id":"55".repeat(16),"params":{"offset":0,"events":[outcome.clone()]}});

@@ -75,8 +75,8 @@ Revocation/provisioning are local Kernel APIs. Restart closes old invite windows
 - Shared Authority and exact actor/ticket policy are rechecked before every
   transport poll on a separate bounded blocking executor (no SQLite on the reactor).
   Expiry/clock loss also wakes stalled dispatch through a bounded 25ms check;
-  revocation/control retain independent executor capacity. Buffered stream reset
-  still requires the scheduler producer's Session guard (PR57), not this fence alone.
+  revocation/control retain independent executor capacity. Buffered cancellation
+  consumes the landed shared Session reset guard and is tested below.
 - A late matching authenticated outcome remains admissible after a locally
   persisted unknown-effect observation; uncertainty never becomes a fake runtime
   rejection. Original observation bytes remain stable and outcomes dedupe normally.
@@ -93,26 +93,55 @@ Revocation/provisioning are local Kernel APIs. Restart closes old invite windows
   through atomic rename. A subprocess smoke checks serve startup, concurrent-owner
   refusal, SIGINT shutdown, and stable-identity reopening.
 
-## Scope and follow-up hardening
+## Hardening and trusted runtime adapter
 
-This milestone covers the event-kernel subset and the two-device routing/audit
-integration, not full action/scheduler/Git/runtime/mock conformance. A queued
-receipt now rechecks durable terminal state before return; a deterministic test
-orders ticket-end commit before finalization and verifies restart preservation.
+PR57's shared reset-on-drop guard is now consumed without proto changes. Real
+QUIC tests exhaust all 16 incoming bidi credits (blocked open), and constrain
+send/stream receive windows to 1 KiB while sending a 200 KiB action (blocked first
+write). Tests observe code-1 STOP/reset, not merely cancellation of a Rust task:
 
-Additional hardening is explicitly tracked by **`t_01a20a45653f8fea`**, depending
-on this milestone and the scheduler producer (`t_01a2083fe588e786`, PR57):
+- `blocked_open_cannot_send_after_ticket_end_or_caller_abort`
+- `blocked_first_write_resets_on_abort_ticket_revoke_deadline_and_clock_loss`
+- `ticket_end_during_live_reply_wait_resets_and_survives_restart`
 
-1. Integrate and verify the producer's reset-on-drop guard against blocked stream
-   opening/write and caller abort; the per-poll fence alone is not that proof.
-2. Establish receiving-runtime action-deadline admission without conflating
-   logical epochs with Unix authority expiry, then exercise the broader in-flight
-   ticket, audit rollback, receipt restart, absent/overflowed mapping matrix.
-3. Review ambiguous-action receipt semantics against the frozen protocol before
-   claiming full action conformance.
+New sends must use `dispatch_action_with_clock`: a **trusted local adapter**
+supplies a bounded, nonblocking callback returning fresh logical time in the
+receiving runtime epoch of the retained envelope. Return `None` when that epoch
+or mapping is no longer verifiable (including receiver restart). No wire clock
+sync is invented, no Unix expiry is translated, and no sampled time is persisted
+as a lease. The callback must not reenter the Kernel. Missing/lost time and
+`now >= mapped_deadline` fail closed, both before attempt marking and immediately
+after blocking Authority checks before each transport poll. A pre-I/O refusal
+leaves the retained action unattempted. After an ambiguous attempt, only original
+scope receipt reconciliation is allowed; this may proceed after the action
+expires. `dispatch_action` without a clock is therefore recovery-only, not a
+way to send new actions. The receiving runtime still owns final admission;
+reset cannot undo bytes/effects already delivered. This is local policy enforcing
+`spec/hub-protocol.md` lines 356–372, not an alternative remote authority.
 
-Final independent exact-head review, green CI, merge and the card's final review
-handoff remain landing gates for this milestone.
+Named deadline/mapping regressions:
+
+- `new_dispatch_requires_live_runtime_clock_before_attempt_marking`
+- `deadline_admission_is_exclusive_and_lost_clock_never_marks_attempt`
+- `mapping_absence_overflow_and_restart_never_create_or_remap_intent`
+- `grant_expiring_during_delegation_check_is_denied`: re-intersect the shared
+  Authority grant at the later clock sample owned by delegation verification.
+  The two Authority APIs are not an atomic lease; the kernel's poll/control fence
+  and receiving-side authorization remain necessary.
+
+The restart/negative matrix includes
+`cancellation_audit_failure_rolls_back_ticket_reply_and_live_fence` and
+`queued_failed_cancelled_receipt_finalization_survives_restart`. Queued receipt
+observations remain nonterminal/reconcilable after reopening; failed/cancelled
+receipts are durable and cannot be replaced by a stale queued observation.
+`queued_receipt_cannot_mask_committed_ticket_end` retains the deterministic
+commit-before-finalization race. Real-network fixtures in the two-device test
+binary serialize against one another to avoid unrelated fixture fsync/crypto
+contention; each existing 500 ms control assertion is unchanged.
+
+This is still the event-kernel subset and local action-adapter hardening, **not
+full action/scheduler/Git/runtime/mock conformance**. Final independent exact-head
+review, green CI, merge and this card's final review handoff remain landing gates.
 
 Full scheduler/Git/reference+mock integration stays with the producer-split owners
 listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
