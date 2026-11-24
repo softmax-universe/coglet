@@ -5,6 +5,26 @@
 use super::*;
 
 impl AcceptedRefStore {
+    /// Sample SQL custody and publish the scheduler fence while holding the
+    /// same writer guard as admission. A callback may touch only its runtime WAL.
+    pub fn sync_installed_push_fence(
+        &self,
+        peer: EndpointId,
+        target: &str,
+        sync: impl FnOnce(bool) -> std::result::Result<(), String>,
+    ) -> Result<()> {
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state
+            .db
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let pending: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM proto_git_operations WHERE peer=?1 AND target=?2 AND json_extract(receipt,'$.state')='queued')",
+            params![peer.to_string(), target], |r| r.get(0),
+        )?;
+        sync(pending).map_err(|_| StoreError::Storage)?;
+        tx.commit()?;
+        Ok(())
+    }
     /// Retain even superseded queued intents: each must fail or reconcile its
     /// own WAL completion, rather than disappearing behind the newest tip.
     pub fn pending_installed_pushes(
@@ -137,7 +157,20 @@ impl AcceptedRefStore {
                 .to_owned()
             })
         };
-        let terminal = complete(&gate).map_err(|_| StoreError::Storage)?;
+        let terminal = match complete(&gate) {
+            Ok(receipt) => receipt,
+            // Contract: resource_exhausted is returned only BEFORE any effect
+            // and only after checking for an existing WAL receipt. The bounded
+            // WAL ledger cannot retain another receipt (its last slot is for
+            // stop), so retain this no-effect refusal in original SQL custody.
+            // A crash before SQL commit can only repeat the no-effect refusal;
+            // a confirmed WAL completion is still mirrored above this path.
+            Err(error) if error.starts_with("resource_exhausted: ") => serde_json::json!({
+                "operation_id":operation.id,"state":"failed","step":null,
+                "error":{"code":"resource_exhausted","message":"Router code application receipt capacity exhausted","retryable":false}
+            }),
+            Err(_) => return Err(StoreError::Storage),
+        };
         if !valid("hub-mutation-receipt", &terminal)
             || terminal["operation_id"] != operation.id
             || !matches!(terminal["state"].as_str(), Some("applied" | "failed"))

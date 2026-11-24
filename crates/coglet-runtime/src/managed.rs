@@ -16,6 +16,10 @@ pub(super) struct ManagedState {
     install_receipt: Value,
     live_commit: Value,
     running: bool,
+    /// Persisted before SQL push admission: no next-step pinning until the
+    /// authority-serialized recovery driver has drained admitted code work.
+    #[serde(default)]
+    code_pending: bool,
     // Unknown attempts cannot be changed to fabricate a cancellation receipt.
     // Retain the stop obligation until authoritative reconciliation permits it.
     cancellation_pending: bool,
@@ -147,6 +151,32 @@ impl ManagedState {
 }
 
 impl RuntimeService {
+    pub(crate) fn code_pending(&self) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| m.code_pending)
+    }
+
+    #[cfg(any(feature = "device", test))]
+    pub(crate) fn fence_code(&mut self, pending: bool) -> Result<()> {
+        if self.code_pending() == pending {
+            return Ok(());
+        }
+        let mut next = self.state.clone();
+        next.managed.as_mut().ok_or("not installed")?.code_pending = pending;
+        self.commit_managed(next)
+    }
+    #[cfg(feature = "device")]
+    pub(crate) fn fence_new_code(&mut self, id: &str) -> Result<()> {
+        if self
+            .state
+            .managed
+            .as_ref()
+            .is_some_and(|m| m.operations.contains_key(id))
+        {
+            return Ok(());
+        }
+        self.fence_code(true)
+    }
+
     /// Immutable verified install metadata, including signed delegation/ref and
     /// caller configuration. Correlation IDs belong to the receipt, not identity.
     pub fn managed_identity(&self) -> Option<&Value> {
@@ -273,6 +303,7 @@ impl RuntimeService {
             install_receipt: receipt.clone(),
             live_commit,
             running: false,
+            code_pending: false,
             cancellation_pending: false,
             stopped_at: 0,
             operations: BTreeMap::new(),

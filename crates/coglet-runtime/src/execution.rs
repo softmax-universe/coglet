@@ -531,6 +531,9 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if self.code_pending() {
+            return Ok(None);
+        }
         self.require_deliverable()?;
         let Some((inputs, events, mut next)) = self.begin_attempt(context)? else {
             return Ok(None);

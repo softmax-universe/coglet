@@ -402,10 +402,20 @@ impl Env {
     /// Real signed Git bundle containing manifest.json, bin/step.wasm and
     /// build/provenance.cbor. `old` is the previous signed tip for generation > 1.
     fn bundle(&self, generation: u64, old: Option<&str>, extra: &[(&str, &[u8])]) -> Bundle {
+        self.bundle_wasm(generation, old, extra, WASM_WAT)
+    }
+
+    fn bundle_wasm(
+        &self,
+        generation: u64,
+        old: Option<&str>,
+        extra: &[(&str, &[u8])],
+        wasm_wat: &str,
+    ) -> Bundle {
         let work = self.root.join(format!("git-{generation}"));
         std::fs::create_dir_all(&work).unwrap();
         git(&work, &["init", "--initial-branch=hub"]);
-        let wasm = wat::parse_str(WASM_WAT).unwrap();
+        let wasm = wat::parse_str(wasm_wat).unwrap();
         let mode = native_compute_mode();
         let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
             "required_capabilities":[],"exclusive_outputs":[],
@@ -1149,7 +1159,7 @@ async fn start_refuses_when_accepted_ref_advances_past_installed_commit() {
         // resurrect either the old or the new commit. Status is independent of the
         // newest pushed bytes and still reports the original installed identity.
         let next = env.bundle(2, Some(&bundle.tip), &[("next.txt", b"n")]);
-        assert_eq!(env.push(&next).await["result"]["state"], "queued");
+        assert_eq!(env.push(&next).await["result"]["state"], "failed");
         denied(&env.simple("hub.start").await);
         assert_eq!(
             state(&env.simple("hub.status").await),
@@ -2901,10 +2911,38 @@ async fn installed_push_original_id_queued_then_applied() {
         let mut env = Env::new(0x48, options).await.unwrap();
         let (initial, installed) = pushed_and_installed(&mut env).await;
         let bundle = env.bundle(2, Some(&initial.tip), &[]);
-        let pushed = env.push(&bundle).await;
+        let barrier = InitialBoundaryBarrier::install(&mut env).await;
+        let (original_id, pushing) = begin_push(&mut env, &bundle);
+        barrier.wait().await;
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &original_id).await)["state"],
+            "queued"
+        );
+        // Verification is outside the step mutex, but durable admission must
+        // prevent any next-step input/code pinning while it is pending.
+        {
+            let service = env
+                .handler
+                .as_ref()
+                .unwrap()
+                .share_service(&env.coglet)
+                .unwrap();
+            let mut locked = service.lock().unwrap();
+            assert!(
+                locked
+                    .run_next(
+                        &Value::Null,
+                        &mut coglet_runtime::MockEngine::new(Value::Null)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        barrier.release();
+        let pushed = pushing.await.unwrap();
         applied(&installed);
-        assert_eq!(pushed["result"]["state"], "queued");
-        let original_id = operation_id(&pushed);
+        assert_eq!(pushed["result"]["state"], "applied");
+        assert_eq!(operation_id(&pushed), original_id);
         let mut terminal = Value::Null;
         for _ in 0..2 {
             let polled = receipt_of(&mut env, &original_id).await;

@@ -1089,7 +1089,7 @@ impl OperationHandler for DeviceHandler {
                                 let service = handler
                                     .open_service(&acceptance.coglet, &setup)
                                     .map_err(|_| StoreError::Storage)?;
-                                let locked = service.lock().map_err(|_| StoreError::Storage)?;
+                                let mut locked = service.lock().map_err(|_| StoreError::Storage)?;
                                 if locked.managed_push_conflicts(
                                     request_for_accept["correlation_id"].as_str().unwrap(),
                                     &handler
@@ -1099,6 +1099,11 @@ impl OperationHandler for DeviceHandler {
                                 ) {
                                     return Err(StoreError::Conflict);
                                 }
+                                locked
+                                    .fence_new_code(
+                                        request_for_accept["correlation_id"].as_str().unwrap(),
+                                    )
+                                    .map_err(|_| StoreError::Storage)?;
                             }
                             Ok(())
                         },
@@ -1109,7 +1114,17 @@ impl OperationHandler for DeviceHandler {
             .map_err(transport)?;
             let receipt = match receipt {
                 Ok(receipt) => receipt,
-                Err(error) => return Ok(fail(&request, wire(&error))),
+                Err(error) => {
+                    let handler = self.clone();
+                    let coglet = target.clone();
+                    // A failed SQL admission may have left a conservative WAL
+                    // fence. Clear it only against SQL custody, never blindly.
+                    tokio::task::spawn_blocking(move || handler.sync_code_fence(&coglet))
+                        .await
+                        .map_err(transport)?
+                        .map_err(transport)?;
+                    return Ok(fail(&request, wire(&error)));
+                }
             };
             let driver = self.clone();
             let id = request["correlation_id"]
@@ -1125,7 +1140,32 @@ impl OperationHandler for DeviceHandler {
                 // Admission is durable even when boundary authority is absent.
                 eprintln!("cogletd initial-push remains queued: {error}");
             }
-            Ok(reply(&request, receipt))
+            let handler = self.clone();
+            let lookup = request.clone();
+            let terminal = tokio::task::spawn_blocking(move || {
+                let target = lookup["target"].as_str().ok_or("invalid_argument")?;
+                // Keep the initial-deploy path's admission response unchanged.
+                if handler.original_setup(target)?.is_none() {
+                    return Ok::<_, String>(None);
+                }
+                handler
+                    .inner
+                    .store
+                    .push_receipt_for_scope(
+                        handler.inner.config.hub,
+                        target,
+                        lookup["correlation_id"]
+                            .as_str()
+                            .ok_or("invalid_argument")?,
+                        &Self::scope(&lookup),
+                        generation,
+                        handler.clock_fn(),
+                    )
+                    .map_err(store_text)
+            })
+            .await
+            .map_err(transport)?;
+            Ok(reply(&request, terminal.ok().flatten().unwrap_or(receipt)))
         })
     }
 }

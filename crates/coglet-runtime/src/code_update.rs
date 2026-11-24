@@ -166,11 +166,24 @@ impl RuntimeService {
             )
         });
         let boundary = if let Some(staged) = next.staged_boundary.take() {
-            Some(next.runtime.seal_boundary(
-                &old_trace,
-                staged.runtime.time.max(next.runtime.time),
-                &staged.changes,
-            )?)
+            // A superseded heard read may leave an empty materialized stage.
+            // It carries coordinator reservations, not an ABI mutation: do not
+            // manufacture an illegal empty trailing boundary for it.
+            let boundary = if staged.changes.is_empty() {
+                None
+            } else {
+                Some(next.runtime.seal_boundary(
+                    &old_trace,
+                    staged.runtime.time.max(next.runtime.time),
+                    &staged.changes,
+                )?)
+            };
+            next.runtime.next_source_seq = next
+                .runtime
+                .next_source_seq
+                .max(staged.runtime.next_source_seq);
+            next.runtime.time = next.runtime.time.max(staged.runtime.time);
+            boundary
         } else {
             None
         };
@@ -226,7 +239,8 @@ impl RuntimeService {
                     &next.runtime.manifest["budgets"],
                     config.runtime_bytes,
                     config.stack_bytes,
-                )?;
+                )
+                .map_err(|e| format!("invalid_argument: replacement native module: {e}"))?;
                 Ok::<_, String>((config, engine))
             })
             .transpose()?;

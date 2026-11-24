@@ -6,6 +6,134 @@ fn request(h: &Harness, bytes: &[u8], m: &VerifiedRef) -> serde_json::Value {
 }
 
 #[tokio::test]
+async fn installed_receipt_pressure_terminalizes_original_sql_id_after_failed_commit() {
+    let root = Root::new();
+    let h = Harness::new(&root.0);
+    let source = Root::new();
+    source.git(&["init", "--initial-branch=hub"]);
+    fs::create_dir(source.0.join("bin")).unwrap();
+    let wasm = b"\0asm\x01\0\0\0";
+    fs::write(source.0.join("bin/step.wasm"), wasm).unwrap();
+    let record = coglet_types::HubBuildRecord {
+        version: "0.1".into(),
+        source_commit: "ab".repeat(20),
+        recipe_sha256: "11".repeat(32),
+        policy_sha256: "22".repeat(32),
+        transform_sha256: "33".repeat(32),
+        original_sha256: hex::encode(Sha256::digest(wasm)),
+        rewritten_sha256: hex::encode(Sha256::digest(wasm)),
+    }
+    .to_cbor()
+    .unwrap();
+    fs::create_dir(source.0.join("build")).unwrap();
+    fs::write(source.0.join("build/provenance.cbor"), record).unwrap();
+    source.git(&["add", "."]);
+    source.git(&["commit", "-m", "code"]);
+    let tip = String::from_utf8(source.git(&["rev-parse", "HEAD"])).unwrap();
+    let archive = source.git(&["archive", "--format=tar", "HEAD"]);
+    source.git(&["bundle", "create", "transfer.bundle", "refs/heads/hub"]);
+    let bytes = fs::read(source.0.join("transfer.bundle")).unwrap();
+    let key = SecretKey::from([1; 32]);
+    let statement = json!({"purpose":"hub-ref","hub":h.hub.to_string(),"coglet":h.coglet(),"ref":"refs/heads/hub","old":null,"new":tip.trim(),"archive_sha256":hex::encode(Sha256::digest(&archive)),"generation":1});
+    let signed = json!({"signature":hex::encode(key.sign(&signing::preimage("hub-ref", &statement).unwrap()).to_bytes()),"signer":key.public().to_string(),"statement":statement});
+    let m = VerifiedRef::verify(&signed, RefKind::Hub, &h.hub.to_string(), &h.coglet()).unwrap();
+    let grant = Grant {
+        method: "hub.git.push".into(),
+        target: Some(h.coglet()),
+        expires: 100,
+        generation: 7,
+    };
+    let invite = h
+        .authority
+        .issue_invite(h.hub, Duration::from_secs(30), vec![grant.clone()])
+        .unwrap();
+    h.authority.enroll(h.hub, Some(&invite)).unwrap();
+    h.authority
+        .provision_scope(h.hub, &h.scope, &grant)
+        .unwrap();
+    let context = Acceptance {
+        hub: h.hub,
+        coglet: h.coglet(),
+        kind: RefKind::Hub,
+        mode: Mode::Authoritative,
+        peer: h.hub,
+        scope: &h.scope,
+        grant_generation: 7,
+        delegation_generation: None,
+    };
+    let r = request(&h, &bytes, &m);
+    let op = PushOperation::new(h.hub, &r).unwrap();
+    h.store
+        .accept_push(validated(&root, &bytes, &m).await, &context, &op, || {
+            Some(1)
+        })
+        .unwrap();
+    let db = Connection::open(&h.path).unwrap();
+    db.execute_batch("CREATE TRIGGER fail_terminal BEFORE UPDATE ON proto_git_operations BEGIN SELECT RAISE(ABORT,'disk full'); END;").unwrap();
+    assert!(
+        h.store
+            .reconcile_installed_push(
+                None,
+                &context,
+                &op,
+                h.peer,
+                0,
+                || Some(1),
+                |_| Err("resource_exhausted: lifecycle receipt ledger full".into())
+            )
+            .is_err()
+    );
+    assert_eq!(
+        h.store
+            .push_receipt(&m, &context, &op, || Some(1))
+            .unwrap()
+            .unwrap()["state"],
+        "queued"
+    );
+    db.execute_batch("DROP TRIGGER fail_terminal;").unwrap();
+    let terminal = h
+        .store
+        .reconcile_installed_push(
+            None,
+            &context,
+            &op,
+            h.peer,
+            0,
+            || Some(1),
+            |_| Err("resource_exhausted: lifecycle receipt ledger full".into()),
+        )
+        .unwrap();
+    assert_eq!(terminal["state"], "failed");
+    assert_eq!(terminal["operation_id"], r["correlation_id"]);
+    assert_eq!(terminal["error"]["code"], "resource_exhausted");
+    let other = Harness::open(&root.0);
+    assert_eq!(
+        other
+            .store
+            .reconcile_installed_push(
+                None,
+                &context,
+                &op,
+                h.peer,
+                0,
+                || Some(1),
+                |_| panic!("terminal SQL refusal must not retry application")
+            )
+            .unwrap(),
+        terminal
+    );
+    let mut pending = true;
+    other
+        .store
+        .sync_installed_push_fence(h.hub, &h.coglet(), |value| {
+            pending = value;
+            Ok(())
+        })
+        .unwrap();
+    assert!(!pending);
+}
+
+#[tokio::test]
 async fn operation_receipt_failure_and_final_expiry_roll_back_ref_audit_and_receipt() {
     let root = Root::new();
     let h = Harness::new(&root.0);

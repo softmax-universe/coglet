@@ -9,6 +9,34 @@ fn options() -> Options {
     options.delegation_methods.push("hub.git.push");
     options
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn installed_push_drains_more_than_one_recovery_batch() {
+    timed!(async {
+        let mut env = Env::new(0x88, options()).await.unwrap();
+        let (initial, _) = pushed_and_installed(&mut env).await;
+        let barrier = InitialBoundaryBarrier::install(&mut env).await;
+        let bundle = env.bundle(2, Some(&initial.tip), &[]);
+        let (id, pushing) = begin_push(&mut env, &bundle);
+        barrier.wait().await;
+        // Test-local recovery backlog: every row retains a genuine verified
+        // bundle and original intent; distinct IDs must get their own terminal
+        // disposition, never vanish behind the first query's LIMIT 128.
+        let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();
+        for n in 0..130 {
+            let child = correlation(500_000 + n);
+            db.execute("INSERT INTO proto_git_operations SELECT peer,?1,target,digest,json_set(receipt,'$.operation_id',?1),audit_id FROM proto_git_operations WHERE operation_id=?2", rusqlite::params![child,id]).unwrap();
+            db.execute("INSERT INTO proto_git_intents SELECT peer,?1,target,json_set(request,'$.correlation_id',?1) FROM proto_git_intents WHERE operation_id=?2", rusqlite::params![child,id]).unwrap();
+        }
+        barrier.release();
+        assert_eq!(pushing.await.unwrap()["result"]["state"], "applied");
+        let queued: i64 = db.query_row("SELECT count(*) FROM proto_git_operations WHERE json_extract(receipt,'$.state')='queued'", [], |r| r.get(0)).unwrap();
+        assert_eq!(queued, 0);
+        let failed: i64 = db.query_row("SELECT count(*) FROM proto_git_operations WHERE json_extract(receipt,'$.state')='failed'", [], |r| r.get(0)).unwrap();
+        assert_eq!(failed, 130);
+    });
+}
+
 fn context() -> Value {
     let cases: Value =
         serde_json::from_str(include_str!("../../../../conformance/abi/cases.json")).unwrap();
@@ -123,7 +151,7 @@ async fn installed_push_applies_at_step_boundary() {
             journal["usage"]["compute"].as_u64().unwrap() > 0,
             "actual WAMR step executed"
         );
-        assert_eq!(push.await.unwrap()["result"]["state"], "queued");
+        assert_eq!(push.await.unwrap()["result"]["state"], "applied");
         let terminal = result_of(&receipt_of(&mut env, &id).await);
         assert_eq!(terminal["state"], "applied", "{terminal}");
         assert_eq!(state(&env.simple("hub.status").await).1, bundle.tip);
@@ -183,7 +211,7 @@ async fn installed_push_stale_authority_fails_closed() {
                 }
             }
             barrier.release();
-            assert_eq!(push.await.unwrap()["result"]["state"], "queued");
+            assert_eq!(push.await.unwrap()["result"]["state"], "failed");
             // Local authorized audit oracle: revocation also correctly denies
             // remote hub.receipt, so never bypass its disclosure checks.
             let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();

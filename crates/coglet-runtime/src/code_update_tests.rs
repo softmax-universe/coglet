@@ -1,5 +1,7 @@
 use super::*;
 use tempfile::TempDir;
+#[path = "code_update_fence_tests.rs"]
+mod fence_tests;
 
 fn setup() -> Value {
     let cases: Value =
@@ -44,15 +46,34 @@ fn service(root: &TempDir, setup: &Value) -> RuntimeService {
 fn installed_push_preserves_private_data() {
     let root = TempDir::new().unwrap();
     let setup = setup();
+    #[cfg(feature = "native-engine")]
+    let setup = fence_tests::data_writer_setup(setup);
     let mut service = service(&root, &setup);
     service.managed_start().unwrap();
     service
         .enqueue(setup["inputs"]["events"][0].clone())
         .unwrap();
-    let mut script = setup["guest_script"].clone();
-    script["writes"]["/data/private"] = json!(hex::encode("keep me"));
+    #[cfg(not(feature = "native-engine"))]
+    let mut engine = {
+        let mut script = setup["guest_script"].clone();
+        script["writes"]["/data/private"] = json!(hex::encode("keep me"));
+        MockEngine::new(script)
+    };
+    #[cfg(feature = "native-engine")]
+    let mut engine = native_engine::NativeEngine::new(
+        hex::decode(
+            setup["initial_files"]["/code/bin/step.wasm"]
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+        &setup["manifest"]["budgets"],
+        8_388_608,
+        65_536,
+    )
+    .unwrap();
     service
-        .run_next(&setup["inputs"], &mut MockEngine::new(script))
+        .run_next(&setup["inputs"], &mut engine)
         .unwrap()
         .unwrap();
     let old_trace = setup["inputs"]["trace_id"].clone();
