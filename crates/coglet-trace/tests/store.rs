@@ -99,7 +99,7 @@ fn concurrent_writers_share_the_total_byte_budget() {
     let bytes = serde_json::to_vec(&recording().0).unwrap();
     let limits = Limits {
         archive_bytes: bytes.len() + 1,
-        total_bytes: bytes.len() as u64,
+        total_bytes: bytes.len() as u64 + 1,
         ..Limits::default()
     };
     drop(Store::open(&path, limits).unwrap());
