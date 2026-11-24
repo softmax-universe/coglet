@@ -1,10 +1,10 @@
 # ADR-0019: M3 policy freeze and trusted-local promotion kernel
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-24
 - Authors: Coglet contributors
 - Related PR: this PR
-- Supersedes / superseded by: accepts the policy/promotion portion of ADR-0005 on acceptance; ticket scheduler implementation remains separate
+- Supersedes / superseded by: none yet; the later qualified freeze accepts the policy/promotion portion of ADR-0005; ticket scheduler implementation remains separate
 
 ## Context
 
@@ -15,6 +15,21 @@ selection, rejection, probation and rollback. The draft contracts are in
 [tickets](../../spec/tickets.md). The frozen hub protocol has no promotion or
 ticket methods. Neither a successful gate nor a factory result grants deployment
 authority. An accepted-ref store alone is not runtime activation.
+
+## Acceptance scope
+
+Accepted here as the M3 **design and component foundation**, not as evidence that
+M3 is implemented or that policy-v0 is qualified. PR #95 delivers policy parsing,
+gate-binding verification, durable policy installation, the pure probation reducer
+and reusable sim evaluation. The native evidence authority (card A), durable
+proposal/receipt/outbox integration (card B), and clock/probation/rollback runtime
+integration (card C) remain separate implementation work under the M3 integration
+owner. The native sim result is unsigned testbed evidence, not a production gate.
+
+Acceptance of this ADR fixes the design below. It does not freeze schemas, accept
+the policy/promotion portion of ADR-0005, publish policy-v0, qualify activation,
+or satisfy the six end-to-end tests below. Those gates remain mandatory before
+the later freeze. Policy documents/schemas/fixtures remain DRAFT in this PR.
 
 ## Decision
 
@@ -31,8 +46,8 @@ authority. An accepted-ref store alone is not runtime activation.
    activate message. A configured adapter incapable of building that command
    makes promote admission fail `unavailable` without changing live state.
    Tickets stay draft; their existing candidate and terminal-result shapes are
-   consumed without inventing provider fields. On acceptance, reconcile ADR0005
-   and the ADR index. Keep `draft-validated` generator classifications until their
+   consumed without inventing provider fields. At the later qualified freeze,
+   reconcile ADR0005 and the ADR index. Keep `draft-validated` generator classifications until their
    syntax is compiler-supported: a freeze is not generated-code qualification.
    Add executable shared conformance cases for the local promotion boundary and
    run the same cases against real kernel and test adapter, labelled local-only.
@@ -169,7 +184,7 @@ These are additional acceptance requirements, not fields added to frozen hub 0.1
   rollback audit when a write failed. This fence/stop producer is itself required
   adapter qualification, not a best-effort callback.
 
-Before acceptance, update promotion's acknowledgment/recovery text to reference
+Before the qualified freeze, update promotion's acknowledgment/recovery text to reference
 these trusted-local obligations (network integration still needs a separate ADR),
 policy status and both policy schemas/fixtures, ADR0005 and the ADR index. **The
 freeze tag remains blocked until real activation, health and emergency-fence
@@ -199,7 +214,8 @@ The annotated freeze tag is immutable; later changes require an ADR and a new ta
 
 ## Verification
 
-Required named tests (unexecuted at proposal time):
+Required named integration tests for the later qualified freeze (not executed or
+claimed by the foundation PR):
 
 - `gridbot_candidate_promotes_after_native_evaluation`: real sandbox execution and
   independent replay, policy-bound evidence, admission != boundary activation.
@@ -224,5 +240,8 @@ qualification gap explicitly; do not publish policy-v0 or close M3 as delivered.
 
 ## Approval
 
-Proposed: no freeze tag or deployment is authorized by this text. Record the
-independent exact-head review and accepting merge here before tag publication.
+Accepted as a design/component foundation through PR #95, subject to its
+independent exact-head review and green queue landing. No freeze tag or deployment
+is authorized by this acceptance. The later integration owner must record qualified
+native evidence, promotion, rollback and audit proofs and the accepting freeze
+merge before tag publication.

@@ -29,8 +29,9 @@ No product, mindister or legacy/v0 implementation was copied.
 
 ## M3 components (not freeze or activation qualification)
 
-Draft PR95 / Proposed ADR0019 adds closed draft-policy validation, explicit gate
-artifact authority and a pure probation reducer. `bind_policy_registry` and
+PR95 / Accepted ADR0019 establishes the design and component foundation: closed
+draft-policy validation, explicit gate artifact authority and a pure probation
+reducer. `bind_policy_registry` and
 `install_policy` are **trusted-local operator APIs only**, not wire/factory
 methods. They retain immutable role/repository metadata and exact deterministic
 CBOR revisions in this Store, CAS replacements and atomically audit installation.
