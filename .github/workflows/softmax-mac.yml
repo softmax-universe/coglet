@@ -2,9 +2,9 @@ name: Softmax Mac
 on:
   push:
     branches: [main, feat/softmax-mac-shell, feat/softmax-embedded-runtime]
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
   pull_request:
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,6 +27,10 @@ jobs:
         run: |
           cargo check --locked -p coglet-proto --target aarch64-apple-darwin
           cargo test --locked -p coglet-proto --test bundle_envelope unsupported_platform_refuses_validator_execution -- --exact
+      - name: Darwin ADAPTER SDK randomness
+        run: |
+          cargo check --locked -p coglet-surface-rust --target aarch64-apple-darwin
+          cargo test --locked -p coglet-surface-rust --lib ids::tests::
       - name: Build real hub helper and mock launcher
         run: |
           cargo build --locked --manifest-path apps/softmax-mac/HubTransport/Cargo.toml -j 2
