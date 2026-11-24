@@ -18,8 +18,16 @@ Read docs/plan.md first, especially the Ground rules section. Specs in spec/ are
   `profile.test` `debug = 0` and `incremental = false` while keeping
   `debug-assertions` and `overflow-checks` on. Do not change
   `[profile.release]` or `[profile.bench]`. Named check (must pass in both
-  modes; `--release` uses bench defaults and must not be given assertions):
+  modes; `cargo test --release` uses release, `cargo bench` uses bench):
   `cargo test --locked -p coglet-types --test disposable_verify_profile` and
   `cargo test --locked -p coglet-types --release --test disposable_verify_profile`.
+  Ordinary tests do not require ELF tools and allow intentional symbol builds
+  (`CARGO_PROFILE_TEST_DEBUG=2` for tests; `CARGO_PROFILE_DEV_DEBUG=2` for builds).
+  Before approving disposable Linux worker defaults, provision binutils (`readelf`)
+  and run the separate artifact gate without symbol overrides:
+  `cargo test --locked -p coglet-types --test disposable_verify_profile -- --ignored --exact compiling_profile_strips_dwarf`.
+  This gate is Linux-only and deliberately ignored in ordinary portable runs;
+  when explicitly selected, missing tools, invalid ELF output, or DWARF fail it.
+  Do not interpret a zero-test run on another platform as artifact verification.
   After a disposable run, `cargo clean` unused private target dirs; never share
   writable target directories across concurrent owners.

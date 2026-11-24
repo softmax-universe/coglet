@@ -1,12 +1,14 @@
 //! Disposable dev/test Cargo profile contract.
 //!
 //! `cargo test` compiles this with `profile.test`. `cargo test --release`
-//! compiles it with `profile.bench`. Release and bench stay at Cargo defaults,
+//! compiles it with `profile.release`. Release and bench stay at Cargo defaults,
 //! so this file must compile and pass in both modes without requiring
 //! debug-assertions or overflow panics.
 
 use std::collections::BTreeMap;
+#[cfg(target_os = "linux")]
 use std::path::Path;
+#[cfg(target_os = "linux")]
 use std::process::Command;
 
 const CONFIG: &str = include_str!("../../../.cargo/config.toml");
@@ -86,10 +88,11 @@ fn disposable_profiles_drop_debug_output_without_release_overrides() {
     );
     assert!(
         !tables.contains_key("profile.bench"),
-        "cargo test --release uses bench; do not override it"
+        "do not override [profile.bench]; Cargo defaults must stay"
     );
 }
 
+#[cfg(target_os = "linux")]
 fn section_names(readelf_stdout: &str) -> Vec<&str> {
     readelf_stdout
         .lines()
@@ -102,14 +105,20 @@ fn section_names(readelf_stdout: &str) -> Vec<&str> {
         .collect()
 }
 
-/// External flag-effect check. `debug = 0` reaches rustc as `-C strip=debuginfo`;
-/// gating that on `cfg!(debug_assertions)` would not observe the disk flag.
-/// Bench (release tests) already defaults to no debuginfo, so this passes
-/// there without a release override.
+/// Opt-in artifact gate for Linux workers provisioned with binutils.
+/// Ordinary tests must work without readelf and with deliberate symbol overrides.
+/// Run this gate explicitly with --ignored --exact compiling_profile_strips_dwarf;
+/// a missing/broken tool or a symbol-enabled build must fail, never silently skip.
+#[cfg(target_os = "linux")]
 #[test]
+#[ignore = "explicit Linux disposable-artifact gate; requires readelf and debug=0"]
 fn compiling_profile_strips_dwarf() {
     let exe = std::env::current_exe().expect("test executable");
     let names = readelf_sections(&exe);
+    assert!(
+        names.iter().any(|name| name == ".text"),
+        "missing ELF .text section"
+    );
     for forbidden in [".debug_info", ".debug_line", ".debug_abbrev"] {
         assert!(
             !names.iter().any(|name| *name == forbidden),
@@ -119,6 +128,7 @@ fn compiling_profile_strips_dwarf() {
     }
 }
 
+#[cfg(target_os = "linux")]
 fn readelf_sections(exe: &Path) -> Vec<String> {
     let output = Command::new("readelf")
         .args(["-S", "--wide"])
