@@ -203,6 +203,7 @@ bounded fsck/archive validation and durable same-Authority acceptance. It checks
 retained bundle bytes, identical-statement full revalidation, separate-connection
 reopen visibility, changed-tip skipped-generation observation, corrupted-pack and
 expanded-limit rejection/cleanup, stale/equal-different pre-credit rejection,
+a newer independent connection committing between validation and local commit,
 and revocation after validated custody but before commit. The latter proves that
 terminal transport FIN does not replace the commit-time authority check.
 

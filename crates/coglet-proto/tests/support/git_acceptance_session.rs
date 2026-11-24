@@ -225,7 +225,25 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         }
         assert_eq!(source.completed.load(Ordering::SeqCst),completed);
         assert_eq!(h.count("proto_ref_audit"),2);
-        *source.snapshot.lock().unwrap()=(newer,newer_bytes.clone());
+        *source.snapshot.lock().unwrap()=(newer.clone(),newer_bytes.clone());
+        assert_quarantines(&quarantine.0,0).await;
+        // A newer independent connection commits after pre-credit and validation
+        // but before this observer's commit: the late completion must not rewind.
+        let race_gate=Arc::new(Gate{entered:tokio::sync::Semaphore::new(0),release:tokio::sync::Semaphore::new(0)});
+        let racing=Consumer{pause:Some(race_gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let session=hs.clone(); let r=request.clone(); let path=quarantine.0.clone();
+        let race=tokio::spawn(async move {session.fetch_git(r,&path,&racing).await});
+        race_gate.entered.acquire().await.unwrap().forget();
+        let newest=metadata(&newer_bytes,5,None);
+        let reopened=Harness::open(&root.0);
+        let mut independent_context=reopened.context(Mode::Observation);
+        independent_context.delegation_generation=Some(10);
+        reopened.store.accept(validated(&quarantine,&newer_bytes,&newest).await,&independent_context,||clock(Instant::now()+Duration::from_secs(5))).unwrap();
+        race_gate.release.add_permits(1);
+        assert!(race.await.unwrap().unwrap_err().0.contains("conflict"));
+        assert_eq!(h.current().unwrap().metadata.generation(),5);
+        assert_eq!(h.count("proto_ref_audit"),3);
+        *source.snapshot.lock().unwrap()=(newest,newer_bytes.clone());
         assert_quarantines(&quarantine.0,0).await;
         let gate=Arc::new(Gate{entered:tokio::sync::Semaphore::new(0),release:tokio::sync::Semaphore::new(0)});
         let paused=Consumer{pause:Some(gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
@@ -239,7 +257,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         assert_quarantines(&quarantine.0,0).await;
         assert!(hs.fetch_git(request.clone(),&quarantine.0.join("absent"),&consumer).await.unwrap_err().0.contains("permission_denied"));
         assert!(!quarantine.0.join("absent").exists());
-        assert_eq!(h.count("proto_ref_audit"),2);
+        assert_eq!(h.count("proto_ref_audit"),3);
         hub_job.abort(); device_job.abort(); let _=hub_job.await; let _=device_job.await;
         hub.close().await; device.close().await;
     }).await.unwrap();
