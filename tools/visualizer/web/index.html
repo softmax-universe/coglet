@@ -5,6 +5,18 @@
 <article><div class="heading"><h1>Committed state</h1><span id="step"></span></div><p id="provenance" class="muted">Waiting for a complete exported record. Runtime readiness is unknown.</p>
 <div class="heading"><span data-testid="mode">Following latest export</span><button id="live">Follow live</button></div><nav data-testid="timeline" aria-label="State history"></nav>
 <section id="simulation-panel" aria-label="Offline world replay">
+<h2>Native archive / independent replay</h2>
+<p class="muted">Startup-selected private canonical archive. Fresh native guest execution; no live effects or provider calls. Receipt-result forks reuse recorded continuations only when generated requests still match. The M2 pilot ignores receipt results: divergence proves inbox/tree state, not changed decisions or physics.</p>
+<button id="load-native">Load native archive</button><button id="replay-native">Replay native baseline</button>
+<p data-testid="native-status" role="status">Select an archive and prebuilt helper at server startup.</p>
+<div id="native-controls" hidden>
+<label>Native step<input id="native-step" type="range" min="0" max="0" value="0" step="1"></label>
+<p>Native final hash <code data-testid="native-final"></code></p>
+<p>Verified baseline <code data-testid="native-baseline"></code></p>
+</div>
+<label>Receipt index<input id="native-receipt" type="number" min="0" step="1" value="0"></label>
+<label>Edited receipt result JSON<textarea id="native-result" rows="3">{"what_if":true}</textarea></label>
+<button id="fork-native">Fork native receipt</button>
 <h2>Simulated mode / offline world replay</h2>
 <p data-testid="simulation-scope" class="muted">Seeded world dynamics only. Guest hashes are recorded, not verified. No guest execution, live effects, or provider calls.</p>
 <label>Load simulation archive<input id="simulation-file" type="file" accept=".json,application/json"></label>

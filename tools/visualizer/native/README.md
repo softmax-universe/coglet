@@ -1,8 +1,8 @@
-# Native simulated-mode helper (WIP)
+# Native simulated-mode replay
 
-This directory adds an **offline** WAMR verifier/fork engine. It is not yet wired
-into the HTTP server or browser and is not full simulated-mode acceptance.
-Do not merge the draft PR based on these command-line tests alone.
+This directory adds an **offline** WAMR verifier/fork engine, with a private
+loopback HTTP facade and browser scrub/receipt-result controls. Native browser
+acceptance runs explicitly in the Rust CI lane, not the display-only Python lane.
 
 ```sh
 # From repository root. The standalone workspace does not modify root Cargo.
@@ -78,9 +78,31 @@ edits separately. WASI remains unqualified and refused by `NativeEngine`.
 
 Input files are regular/no-follow on Unix and bounded to 128 MiB before reading;
 requests are 64 KiB, recursively duplicate-free, integer-only JSON. These are
-CLI bounds, **not** a server process sandbox. HTTP integration still needs a
-startup-selected source, fixed prebuilt executable, independent CPU/memory/time/
-concurrency/output bounds, cancellation and late-response fencing. Neither a
-Cargo build in a request nor an arbitrary browser-supplied filesystem path is
-acceptable. Native tests currently run only via the explicit command above;
-required hosted native/browser CI still needs integration.
+CLI bounds, not a general guest security sandbox. The Linux HTTP facade pins a
+startup-selected regular/no-follow source and prebuilt executable descriptor,
+refuses changed source identities, copies a bounded private request snapshot,
+and executes the pinned helper without Cargo or browser-selected paths.
+`prlimit` enforces 15 CPU seconds, 2 GiB address space, 2 MiB each stdout/stderr,
+64 descriptors and no core files; a single non-queuing slot and 30-second wall
+deadline bound work. Shutdown kills/reaps the active process group. A browser
+disconnect does not start replacement work: the slot remains held until worker
+completion or deadline; Follow live suppresses stale results by generation.
+These limits do not qualify the native WASI host or isolate a hostile executable.
+
+```sh
+# Keep TRACE_JSON and its parent private; archive must be uncompressed.
+uv run --project tools/visualizer --locked tools/visualizer/server.py --records /private/empty.jsonl \
+  --native-trace /private/trace.json \
+  --native-helper "$PWD/target/release/coglet-visualizer-native"
+# Full native lane, including browser, kernel limit and cancellation tests:
+bash tools/visualizer/check-native.sh
+```
+
+Open the private launch URL, **Load native archive**, use **Native step** with
+Home/End/arrows to scrub, then **Fork native receipt** with an index/result JSON.
+**Replay native baseline** independently reruns the immutable original.
+`test_native_m2_load_scrub_replay_same_hash_and_receipt_what_if_divergence`
+asserts the canonical final hash, exact nonempty historical/latest inbox files,
+native receipt edit divergence preserved through all four later receipts,
+baseline reset, malformed recovery, late replies and desktop/390px rendering.
+Proof artifacts contain JUnit and screenshots, never the private complete source.

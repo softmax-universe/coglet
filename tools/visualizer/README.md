@@ -132,9 +132,10 @@ sequences fail closed rather than inventing continuation states.
 not re-execute Wasm, verify guest `output_hash` values, rerun the coglet policy,
 authenticate producer identity or replace a complete private ABI archive.
 The guest timeline/files remain explicitly recorded observations and do not
-change when world inputs are edited. Native guest replay/what-if remains a
-separate unfinished portion of the simulated-mode card; do not present this
-world-model subset as full card acceptance.
+change when world inputs are edited. For complete canonical archives, the
+separate [native replay panel](native/README.md) re-executes the guest and forks
+successful action receipt result inputs, comparing actual native tree hashes.
+Do not present the world-model panel alone as native verification.
 
 Named browser acceptance:
 `test_recorded_m2_upload_scrub_step_replay_same_final_hash_and_edited_input_divergence`

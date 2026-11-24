@@ -5,6 +5,56 @@ history.replaceState(null, '', location.pathname);
 const decode = hex => new TextDecoder('utf-8', {fatal: true}).decode(Uint8Array.from(hex.match(/../g) || [], b => parseInt(b, 16)));
 let snapshot = {records: []}, selected = null, pinned = null, signature = '';
 let simulation = null, simulationRaw = null, originalActions = [], worldIndex = 0, generation = 0, offline = false;
+let nativeReport = null;
+function clearNative(message = 'No current native replay.') {
+  nativeReport = null;
+  q('#native-controls').hidden = true;
+  q('[data-testid=native-final]').textContent = '';
+  q('[data-testid=native-baseline]').textContent = '';
+  q('[data-testid=native-status]').textContent = message;
+}
+async function runNative(fork = false) {
+  const ticket = ++generation;
+  offline = true; simulationRaw = null; originalActions = [];
+  clearSimulation('World replay inactive.');
+  clearNative('Re-executing native archive…');
+  snapshot = {records: []}; signature = ''; selected = null; pinned = null;
+  q('[data-testid=coglets]').replaceChildren(); clearDetail();
+  q('#provenance').textContent = 'Native verification pending; previous state hidden.';
+  q('#updated').textContent = '';
+  q('[data-testid=connection]').textContent = 'Offline native replay pending';
+  try {
+    const index = q('#native-receipt').value;
+    if (fork && !/^(0|[1-9][0-9]*)$/.test(index)) throw new Error('Invalid receipt index');
+    const body = fork ? `{"receipt_index":${index},"result":${q('#native-result').value}}` : '{}';
+    const response = await fetch('/api/native', {method: 'POST', headers: {Authorization: `Bearer ${token}`, 'Content-Type': 'application/json'}, body});
+    if (ticket !== generation) return;
+    if (!response.ok) throw new Error('Archive/input refused, no startup source, worker busy, or resource limit');
+    const data = await response.json();
+    if (ticket !== generation) return;
+    nativeReport = data.native;
+    render(data);
+    q('#native-controls').hidden = false;
+    q('#native-step').max = String(data.records.length - 1);
+    q('#native-step').value = String(data.records.length - 1);
+    q('[data-testid=native-final]').textContent = nativeReport.final_hash;
+    q('[data-testid=native-baseline]').textContent = nativeReport.baseline_final_hash || nativeReport.final_hash;
+    q('[data-testid=native-status]').textContent = nativeReport.first_divergence == null ? 'All native state hashes match recorded run' : `First native divergence: step ${nativeReport.first_divergence}`;
+    q('[data-testid=connection]').textContent = 'Offline archive · verified native replay';
+  } catch (error) {
+    if (ticket !== generation) return;
+    clearNative(`Native replay unavailable · ${error.message}`);
+    q('[data-testid=connection]').textContent = 'Offline native replay unavailable';
+    q('#provenance').textContent = 'Previous state hidden. Replay a valid baseline or Follow live.';
+  }
+}
+q('#load-native').onclick = () => runNative();
+q('#replay-native').onclick = () => runNative();
+q('#fork-native').onclick = () => runNative(true);
+q('#native-step').oninput = () => {
+  const record = snapshot.records[Number(q('#native-step').value)];
+  if (record && nativeReport) { pinned = key(record); draw(); }
+};
 function clearSimulation(message) {
   simulation = null;
   q('#simulation-controls').hidden = true;
@@ -33,6 +83,7 @@ function drawSimulation() {
   q('#world-action').value = originalActions[worldIndex] || choices[0];
 }
 async function runSimulation(actions = null, ticket = ++generation) {
+  clearNative();
   clearSimulation('Re-executing offline world…');
   snapshot = {records: []}; signature = ''; selected = null; pinned = null;
   q('[data-testid=coglets]').replaceChildren(); clearDetail();
@@ -64,6 +115,7 @@ async function runSimulation(actions = null, ticket = ++generation) {
   }
 }
 q('#simulation-file').onchange = async () => {
+  clearNative();
   const ticket = ++generation;
   offline = true;
   simulationRaw = null;
@@ -119,7 +171,7 @@ function draw() {
   q('[data-testid=mode]').textContent = offline ? (pinned ? `Recorded guest history · step ${record.step}` : 'Recorded guest archive · latest step') : (pinned ? `History · step ${record.step}` : 'Following latest export');
   if (!record) { q('#provenance').textContent = 'Waiting for a complete exported record. Runtime readiness is unknown.'; return; }
   q('#step').textContent = `Step ${record.step} · ${record.status}`;
-  q('#provenance').textContent = `Trace ${record.trace_id} · logical time ${record.logical_time} · exported record; not independent replay verification`;
+  q('#provenance').textContent = `Trace ${record.trace_id} · logical time ${record.logical_time} · ${nativeReport ? 'independently re-executed native state' : 'exported record; not independent replay verification'}`;
   q('[data-testid=hash]').textContent = record.output_hash;
   const timeline = q('[data-testid=timeline]');
   for (const item of records) {
@@ -173,6 +225,7 @@ q('#filter').addEventListener('input', draw);
 q('#live').onclick = () => {
   if (offline) {
     generation++; offline = false; simulationRaw = null; originalActions = [];
+    clearNative();
     clearSimulation('Select a private M2 world replay archive.');
     q('#simulation-file').value = '';
     snapshot = {records: []}; signature = ''; selected = null;
