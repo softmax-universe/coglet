@@ -22,7 +22,9 @@ public protocol HubKeychain: AnyObject {
 @MainActor
 public final class SecurityHubKeychain: HubKeychain {
     public init() {}
-    private func query(_ service: String) -> [String: Any] {
+    // Internal so the backend selection policy can be tested without touching
+    // a user's Keychain. All three SecItem operations share this base query.
+    func query(_ service: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service, kSecAttrAccount as String: "iroh-device",
          kSecAttrSynchronizable as String: false]

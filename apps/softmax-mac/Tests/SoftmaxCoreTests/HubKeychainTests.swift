@@ -1,9 +1,23 @@
 import Foundation
+import Security
 import XCTest
 @testable import SoftmaxCore
 
 @MainActor
 final class HubKeychainTests: XCTestCase {
+    func testSecurityBackendSelectsDeviceLocalDataProtectionKeychain() {
+        let query = SecurityHubKeychain().query("test.hub.policy")
+        // Accessibility classes apply to the Data Protection implementation,
+        // not macOS's default legacy file-based Keychain shim (Apple TN3137).
+        XCTAssertEqual(query[kSecUseDataProtectionKeychain as String] as? Bool, true)
+        XCTAssertEqual(query[kSecAttrSynchronizable as String] as? Bool, false)
+        XCTAssertEqual(query[kSecAttrService as String] as? String, "test.hub.policy")
+        XCTAssertEqual(query[kSecAttrAccount as String] as? String, "iroh-device")
+        XCTAssertEqual(HubKeyAccessibility.afterFirstUnlockThisDeviceOnly.secAttr,
+                       kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+        // Let the signed app's default private access group apply.
+        XCTAssertNil(query[kSecAttrAccessGroup as String])
+    }
     func testDeviceOnlyKeychainPolicyAndSignOutWithMemoryBackend() throws {
         let backend = MemoryKeychain()
         let suite = "HubKeychainTests." + UUID().uuidString
