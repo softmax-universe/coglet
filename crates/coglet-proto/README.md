@@ -76,7 +76,8 @@ server, mock hub and registry claims are not yet implemented.
   watermarks before the first credit, enforce deadlines and reset-on-abandon,
   check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
   authority/watermarks and commit durable refs/receipts before terminal success.
-  Session streaming dispatch is not implemented yet.
+  Responder-side Session streaming dispatch is available through `handle_git`
+  and `GitStream` (below); initiator-side integration remains incomplete.
   `quarantine::BundleSink` supplies a private bounded raw bundle file, with
   <=32 KiB writes fsynced off-reactor before returning. The limit is checked
   before writing; I/O failure poisons the file. Drop removes its generated
@@ -312,6 +313,40 @@ replay), streaming integration, build qualification/policy and boundary activati
 remain with the streaming/kernel integration owners. A replayed authoritative
 statement on a new operation conflicts; an exact duplicate **operation** must be
 intercepted by its original durable operation receipt before calling this API.
+
+## Streaming responder transport (integration in progress)
+
+`OperationHandler::handle_git` is dispatched for both Git methods without waiting
+for unary request FIN: push needs credit before sending data; fetch needs its
+request direction open for credit. The default rejects with permission_denied
+without invoking the legacy unary handler. Explicit implementations receive a
+restricted `GitStream`, not an escapable raw iroh connection/stream pair.
+
+`GitStream::receive_push` binds already-verified metadata to the exact request,
+router peer and target, writes to fsync-backed private `BundleSink`, checks the
+transfer SHA-256 and requires end + FIN before returning raw custody. The handler
+must authorize and precheck CAS **before** calling (the helper issues credit),
+then perform envelope/Git validation and durable acceptance before returning its
+receipt. `send_fetch` pins metadata to the requested ref/target/router, sends
+metadata, reads source bytes only after credit, and requires initiator FIN after
+end before success. The sender must separately authorize snapshot disclosure.
+These helpers are one-shot; a failed/cancelled transfer cannot resume.
+
+The Session holds the shared two-Git admission permit, operation deadline and
+code-1 reset guard over the entire handler future, including validation/commit
+and terminal transmission. Errors can reject without consuming the input; unread
+input is stopped with code 1. A handler cannot return a successful terminal frame
+without completing its streaming helper. This transport gate does not prevent a
+custom handler from violating its own authority/transaction contract; never
+perform mutations before verified input or bypass the durable store checks.
+
+`tests/git_session_iroh.rs` exercises 150000-byte push/fetch through actual Session
+dispatch over real iroh, push success withheld until FIN, missing-FIN timeout,
+trailing-end rejection with quarantine cleanup and code-1 reset, and fail-closed
+legacy dispatch (mutation counter stays zero). These are **raw transport** tests,
+not real Git admission. The unary `Session::request` is still not a Git client.
+Initiator integration, pre-credit durable watermark checks, operation receipts,
+full validator/store integration and end-to-end restart/replay/limit proofs remain.
 
 ## Remaining before full protocol acceptance
 

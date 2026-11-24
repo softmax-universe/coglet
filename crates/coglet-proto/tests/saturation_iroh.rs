@@ -15,6 +15,20 @@ struct Handler {
     release: Semaphore,
 }
 impl OperationHandler for Handler {
+    // This scheduler fixture deliberately stalls Git dispatch and returns an
+    // error without any transfer or mutation. Production defaults reject Git.
+    fn handle_git<'a>(
+        &'a self,
+        ctx: RequestContext,
+        request: Value,
+        _stream: coglet_proto::transport::GitStream<'a>,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Value, coglet_proto::transport::TransportError>> + Send + 'a,
+        >,
+    > {
+        Box::pin(async move { Ok(self.handle(ctx, request).await) })
+    }
     fn handle<'a>(
         &'a self,
         ctx: RequestContext,

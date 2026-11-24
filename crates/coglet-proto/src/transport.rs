@@ -65,6 +65,118 @@ pub trait OperationHandler: Send + Sync + 'static {
         context: RequestContext,
         request: Value,
     ) -> Pin<Box<dyn Future<Output = Value> + Send + 'a>>;
+
+    /// Git dispatch retains the peer's Git permit and reset guard through this
+    /// entire future, including validation and durable commit. Authorize current
+    /// grants and CAS BEFORE issuing credit, and recheck in the commit transaction.
+    /// `receive_push` fences the input FIN before returning raw quarantine custody.
+    /// A successful push requires that helper; merely returning a receipt cannot
+    /// accept an unread transfer. Returning an error stops unread input with 1.
+    fn handle_git<'a>(
+        &'a self,
+        _context: RequestContext,
+        request: Value,
+        _stream: GitStream<'a>,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, TransportError>> + Send + 'a>> {
+        // Never invoke a legacy unary mutation handler before receiving its
+        // transfer. A post-handler success gate cannot undo those side effects.
+        Box::pin(async move { Ok(failure(&request, "permission_denied")) })
+    }
+}
+
+/// Restricted responder-side streaming phase. Raw iroh streams never escape the
+/// Session guard. A received file is NOT a verified Git artifact or an authority
+/// grant: envelope validation, bounded Git validation and transactional acceptance
+/// must still happen inside `handle_git`, before returning a success receipt.
+pub struct GitStream<'a> {
+    send: &'a mut iroh::endpoint::SendStream,
+    recv: &'a mut iroh::endpoint::RecvStream,
+    request: &'a Value,
+    peer: EndpointId,
+    input_finished: &'a mut bool,
+    started: bool,
+}
+impl GitStream<'_> {
+    /// Receive exactly the signed push's declared bytes into fsync-backed private
+    /// storage, then require end + FIN. Caller must have authorized this request
+    /// and prechecked latest CAS before calling: the first credit is emitted here.
+    /// Cancellation discards all custody; no partial resume is permitted.
+    pub async fn receive_push(
+        &mut self,
+        metadata: &crate::git_metadata::VerifiedRef,
+        root: &std::path::Path,
+    ) -> Result<crate::quarantine::BundleSink, TransportError> {
+        if self.started || self.request["method"] != "hub.git.push" {
+            return Err(error("not an unused push stream"));
+        }
+        self.started = true;
+        if metadata.signed() != &self.request["params"]["update"]
+            || metadata.signed()["statement"]["coglet"] != self.request["target"]
+            || metadata.signed()["statement"]["hub"] != self.peer.to_string()
+            || metadata.signed()["statement"]["ref"] != "refs/heads/hub"
+        {
+            return Err(error("push metadata pins mismatch"));
+        }
+        let params = &self.request["params"];
+        let size = params["size"]
+            .as_u64()
+            .ok_or_else(|| error("missing size"))?;
+        let mut sink = crate::quarantine::BundleSink::create(root, size)
+            .await
+            .map_err(error)?;
+        crate::transfer::receive_chunks(
+            self.send,
+            self.recv,
+            self.request["correlation_id"].as_str().unwrap(),
+            size,
+            params["sha256"].as_str().unwrap(),
+            &mut sink,
+        )
+        .await
+        .map_err(error)?;
+        if self.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+            return Err(error("trailing push data"));
+        }
+        *self.input_finished = true;
+        Ok(sink)
+    }
+
+    /// Send an authorized snapshot. Caller obtains current metadata and retained
+    /// bundle bytes from trusted storage, not a request-supplied path. No source
+    /// bytes are read before credit. Require initiator FIN after all credit and
+    /// end, before allowing a terminal success. This is transport, not permission
+    /// to disclose logs/code or proof that the supplied source is valid Git.
+    pub async fn send_fetch<B: tokio::io::AsyncRead + Unpin>(
+        &mut self,
+        metadata: &crate::git_metadata::VerifiedRef,
+        size: u64,
+        hash: &str,
+        source: &mut B,
+    ) -> Result<(), TransportError> {
+        if self.started || self.request["method"] != "hub.git.fetch" {
+            return Err(error("not an unused fetch stream"));
+        }
+        self.started = true;
+        if metadata.signed()["statement"]["coglet"] != self.request["target"]
+            || metadata.signed()["statement"]["hub"] != self.peer.to_string()
+            || metadata.signed()["statement"]["ref"] != self.request["params"]["ref"]
+        {
+            return Err(error("fetch metadata pins mismatch"));
+        }
+        let id = self.request["correlation_id"].as_str().unwrap();
+        let transfer = json!({"type":"transfer", "correlation_id":id,
+            "size":size,"sha256":hash,"update":metadata.signed()});
+        validate("hub-transfer", &transfer)?;
+        write_frame(self.send, &transfer).await.map_err(error)?;
+        crate::transfer::send_chunks(self.send, self.recv, id, size, source)
+            .await
+            .map_err(error)?;
+        if self.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+            return Err(error("trailing fetch credit"));
+        }
+        *self.input_finished = true;
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -276,9 +388,14 @@ impl Session {
             let deadline =
                 received + Duration::from_millis(request["timeout_ms"].as_u64().unwrap());
             timeout_at(deadline, async {
-                let mut extra = [0];
-                if recv.read(&mut extra).await.map_err(error)?.is_some() {
-                    return Err(error("trailing request"));
+                let push = request["method"] == "hub.git.push";
+                let git = push || request["method"] == "hub.git.fetch";
+                let mut input_finished = false;
+                if !git {
+                    if recv.read(&mut [0]).await.map_err(error)?.is_some() {
+                        return Err(error("trailing request"));
+                    }
+                    input_finished = true;
                 }
                 let enroll = request["method"] == "hub.enroll";
                 let offers = request["params"]["offer"]["versions"].as_array();
@@ -296,6 +413,25 @@ impl Session {
                             && offers.unwrap().iter().any(|v| v != "0.1")))
                 {
                     failure(&request, "unsupported_version")
+                } else if git {
+                    handler
+                        .handle_git(
+                            RequestContext {
+                                peer: self.peer(),
+                                local: self.local,
+                                deadline,
+                            },
+                            request.clone(),
+                            GitStream {
+                                send,
+                                recv,
+                                request: &request,
+                                peer: self.peer(),
+                                input_finished: &mut input_finished,
+                                started: false,
+                            },
+                        )
+                        .await?
                 } else {
                     handler
                         .handle(
@@ -309,6 +445,12 @@ impl Session {
                         .await
                 };
                 self.check_reply(&request, &reply)?;
+                if !input_finished {
+                    if reply["type"] != "error" {
+                        return Err(error("Git success before verified input FIN"));
+                    }
+                    let _ = recv.stop(1u32.into());
+                }
                 if enroll && reply["type"] == "reply" {
                     self.selected.store(true, Ordering::Release);
                 }
