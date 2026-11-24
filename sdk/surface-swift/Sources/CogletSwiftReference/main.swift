@@ -113,6 +113,10 @@ func run() throws {
         for bytes in session.drain() { try FileHandle.standardOutput.write(contentsOf: Data(SurfaceWire.frame(bytes))) }
     }
     try session.start(); try flush()
+    // Harness-only stderr handshake, after durable initialization and the first
+    // wire frames. Loader/ledger startup uses the bounded connection budget,
+    // not step zero's response budget. This is not a surface-protocol frame.
+    try FileHandle.standardError.write(contentsOf: Data("COGLET_CONFORMANCE_READY\n".utf8))
     clock.started = DispatchTime.now().uptimeNanoseconds
     var decoder = SurfaceFrameDecoder()
     var killed = false
