@@ -12,6 +12,10 @@ pub(super) struct ManagedState {
     install_receipt: Value,
     live_commit: Value,
     running: bool,
+    #[serde(default)]
+    recovery: Option<StartRecovery>,
+    #[serde(default)]
+    recovery_fault: Option<Value>,
     // Unknown attempts cannot be changed to fabricate a cancellation receipt.
     // Retain the stop obligation until authoritative reconciliation permits it.
     cancellation_pending: bool,
@@ -36,6 +40,18 @@ pub(crate) struct ReceiptScope {
 }
 
 type Operation<'a> = (&'a str, &'a str, &'a ReceiptScope);
+
+/// Authority retained atomically with the original running transition.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StartRecovery {
+    pub(crate) operation_id: String,
+    pub(crate) intent: String,
+    pub(crate) scope: ReceiptScope,
+    pub(crate) grant_generation: u64,
+    pub(crate) delegation_generation: u64,
+    pub(crate) delegation: Value,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -173,6 +189,8 @@ impl RuntimeService {
             install_receipt: receipt.clone(),
             live_commit,
             running: false,
+            recovery: None,
+            recovery_fault: None,
             cancellation_pending: false,
             stopped_at: 0,
             operations: BTreeMap::new(),
@@ -186,10 +204,14 @@ impl RuntimeService {
     /// Native scheduling, when configured with enable_native, resumes without
     /// resetting its durable step or seed identity.
     pub fn managed_start(&mut self) -> Result<()> {
-        self.managed_start_inner(None)
+        self.managed_start_inner(None, None)
     }
 
-    fn managed_start_inner(&mut self, operation: Option<Operation<'_>>) -> Result<()> {
+    fn managed_start_inner(
+        &mut self,
+        operation: Option<Operation<'_>>,
+        recovery: Option<&StartRecovery>,
+    ) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -216,6 +238,8 @@ impl RuntimeService {
             Self::cancel_managed_undelivered(&mut next, now)?;
         }
         next.managed.as_mut().unwrap().running = true;
+        next.managed.as_mut().unwrap().recovery = recovery.cloned();
+        next.managed.as_mut().unwrap().recovery_fault = None;
         Self::record_operation(&mut next, operation, None)?;
         self.commit_managed(next)
     }
@@ -301,7 +325,7 @@ impl RuntimeService {
             return Ok(receipt);
         }
         let outcome = if start {
-            self.managed_start_inner(Some((id, intent, scope)))
+            self.managed_start_inner(Some((id, intent, scope)), None)
         } else {
             self.managed_stop_inner(now, Some((id, intent, scope)))
         };
@@ -312,6 +336,83 @@ impl RuntimeService {
         }
         outcome?;
         Err("unavailable: lifecycle receipt missing".into())
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_start_authorized(&mut self, recovery: &StartRecovery) -> Result<Value> {
+        if let Some(receipt) =
+            self.managed_operation_receipt(&recovery.operation_id, &recovery.intent)?
+        {
+            return Ok(receipt);
+        }
+        self.managed_start_inner(
+            Some((&recovery.operation_id, &recovery.intent, &recovery.scope)),
+            Some(recovery),
+        )?;
+        self.managed_operation_receipt(&recovery.operation_id, &recovery.intent)?
+            .ok_or_else(|| "unavailable: lifecycle receipt missing".into())
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_recovery(&self) -> Result<StartRecovery> {
+        let managed = self.state.managed.as_ref().ok_or("not installed")?;
+        let recovery = managed
+            .recovery
+            .as_ref()
+            .ok_or("missing start recovery context")?;
+        let saved = managed
+            .operations
+            .get(&recovery.operation_id)
+            .ok_or("missing original start receipt")?;
+        if saved.intent != recovery.intent
+            || saved.scope.as_ref() != Some(&recovery.scope)
+            || recovery.scope.method != "hub.start"
+            || saved.receipt["state"] != "applied"
+            || self.state.runtime.unresolved_attempt.is_some()
+            || self.state.staged_boundary.is_some()
+            || managed.cancellation_pending
+            || managed.recovery_fault.is_some()
+        {
+            return Err("invalid or fenced start recovery context".into());
+        }
+        Ok(recovery.clone())
+    }
+
+    /// Match recovered executable bytes to the newly verified installed archive,
+    /// not merely to a hash retained in the same WAL as those bytes.
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_verify_code(&self, setup: &Value) -> Result<()> {
+        let verified = setup["initial_files"]
+            .as_object()
+            .ok_or("invalid verified setup")?;
+        let recovered = self.state.runtime.files.files();
+        if self.state.runtime.manifest != setup["manifest"]
+            || verified
+                .iter()
+                .any(|(path, bytes)| recovered.get(path).map(String::as_str) != bytes.as_str())
+            || recovered
+                .keys()
+                .any(|path| path.starts_with("/code/") && !verified.contains_key(path))
+        {
+            return Err("recovered code differs from installed artifact".into());
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_recovery_fault(&mut self) -> Result<()> {
+        let mut next = self.state.clone();
+        let managed = next.managed.as_mut().ok_or("not installed")?;
+        managed.running = false;
+        managed.recovery_fault = Some(
+            json!({"code":"unavailable","message":"Restart admission refused; fresh authorized start required","retryable":false}),
+        );
+        self.commit_managed(next)?;
+        #[cfg(feature = "native-engine")]
+        {
+            self.native = None;
+        }
+        Ok(())
     }
 
     /// Receipt of an operation admitted by exactly this actor/ticket, with the
@@ -382,7 +483,14 @@ impl RuntimeService {
             .iter()
             .rev()
             .find(|r| r.get("step").is_some());
-        let error = if self.state.runtime.unresolved_attempt.is_some() {
+        let fault = self
+            .state
+            .managed
+            .as_ref()
+            .and_then(|m| m.recovery_fault.as_ref());
+        let error = if let Some(fault) = fault {
+            fault.clone()
+        } else if self.state.runtime.unresolved_attempt.is_some() {
             json!({"code":"unavailable","message":"Unresolved engine attempt requires authoritative reconciliation","retryable":false})
         } else {
             last.and_then(|r| r.pointer("/failure/error"))
@@ -390,7 +498,7 @@ impl RuntimeService {
                 .cloned()
                 .unwrap_or(Value::Null)
         };
-        json!({"state":if self.managed_running() {"running"} else {"stopped"},
+        json!({"state":if fault.is_some() {"faulted"} else if self.managed_running() {"running"} else {"stopped"},
             "live_commit":self.state.managed.as_ref().map(|m| &m.live_commit),
             "step":last.and_then(|r| r["step"].as_u64()).unwrap_or(0),
             // This seam has no queued router mutation API. Runtime receipts and
@@ -402,7 +510,7 @@ impl RuntimeService {
         self.state
             .managed
             .as_ref()
-            .is_none_or(|m| m.running && !m.cancellation_pending)
+            .is_none_or(|m| m.running && !m.cancellation_pending && m.recovery_fault.is_none())
     }
     pub(super) fn require_managed_running(&self) -> Result<()> {
         if self.managed_running() {
@@ -445,6 +553,10 @@ impl RuntimeService {
 }
 
 #[cfg(all(test, feature = "device"))]
+#[path = "managed_restart_tests.rs"]
+mod restart_tests;
+
+#[cfg(all(test, feature = "device"))]
 mod tests {
     use super::*;
 
@@ -460,7 +572,7 @@ mod tests {
         fixture("no-effects")
     }
 
-    fn fixture(name: &str) -> Value {
+    pub(super) fn fixture(name: &str) -> Value {
         let cases: Value =
             serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
         let mut setup = cases
