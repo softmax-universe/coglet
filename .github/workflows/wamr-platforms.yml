@@ -8,6 +8,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  # macOS runners are the scarcest CI resource (org-wide concurrency cap). A new
+  # head on a PR cancels that PR's older run; pushes and dispatches never cancel.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   apple:
     runs-on: macos-latest
