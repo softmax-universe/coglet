@@ -591,11 +591,16 @@ name = "coglet-mock"
 version = "0.1.0"
 dependencies = [
  "coglet-engine",
+ "coglet-hub",
  "coglet-llm",
+ "coglet-proto",
  "coglet-surface-rust",
  "coglet-types",
+ "iroh",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
