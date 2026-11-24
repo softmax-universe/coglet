@@ -26,6 +26,9 @@ mod live_heard;
 mod managed;
 pub(crate) use managed::ReceiptScope;
 #[cfg(feature = "native-engine")]
+#[path = "detached.rs"]
+mod detached;
+#[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
 #[path = "playback.rs"]
@@ -165,6 +168,8 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    #[cfg(feature = "native-engine")]
+    detached_execution: bool,
     #[cfg(feature = "device")]
     debug_executing: bool,
     #[cfg(test)]
@@ -409,6 +414,8 @@ impl RuntimeService {
             )?;
         }
         let mut service = Self {
+            #[cfg(feature = "native-engine")]
+            detached_execution: false,
             #[cfg(feature = "device")]
             debug_executing: false,
             #[cfg(test)]
@@ -465,6 +472,13 @@ impl RuntimeService {
 
     /// Gate shared by every live delivery path (ordinary and database).
     fn require_deliverable(&self) -> Result<()> {
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
+        self.require_deliverable_inner()
+    }
+    fn require_deliverable_inner(&self) -> Result<()> {
         #[cfg(feature = "device")]
         let stepping = self.receiver_step_active();
         #[cfg(not(feature = "device"))]

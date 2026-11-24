@@ -30,6 +30,107 @@ impl BackChannelLimits {
 }
 
 impl DeviceHandler {
+    #[cfg(feature = "native-engine")]
+    fn receiver_step_unlocked(
+        &self,
+        coglet: &str,
+        pin: &TargetPin,
+        request: &Value,
+        service: &std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
+        setup: &Value,
+    ) -> Result<()> {
+        let original = receiver_scope(request);
+        let scope = Scope {
+            actor: original.actor,
+            ticket: original.ticket,
+        };
+        let id = request["correlation_id"]
+            .as_str()
+            .ok_or("invalid_argument")?;
+        let grant = Self::grant("debug.step", coglet, pin.grant_generation);
+        let prepared = self.inner.authority.runtime_boundary_operation(
+            self.inner.config.hub,
+            self.inner.config.device,
+            coglet,
+            &scope,
+            &grant,
+            pin.delegation_generation,
+            None,
+            Some(id),
+            self.clock_fn(),
+            |_, recheck| {
+                recheck()?;
+                let mut locked = service.lock().map_err(|_| "unavailable")?;
+                let preflight = self.require_kill_clear().and_then(|()| {
+                    admit_manifest(
+                        &setup["manifest"],
+                        &self.inner.config.catalog,
+                        &self.inner.config.grants,
+                    )
+                });
+                if let Err(error) = preflight {
+                    locked.receiver_apply(id, &|| Err(error.clone()))?;
+                    return Ok(None);
+                }
+                if self.enable_native(coglet, &mut locked).is_err() {
+                    locked.receiver_apply(id, &|| Err("unavailable".into()))?;
+                    return Ok(None);
+                }
+                locked.receiver_prepare_native_step(
+                    id,
+                    &self.inner.config.grants["operations"],
+                    &|| {
+                        recheck()?;
+                        self.require_kill_clear()
+                    },
+                )
+            },
+        );
+        let prepared = match prepared {
+            Err(error) if error == "permission_denied" => {
+                service
+                    .lock()
+                    .map_err(|_| "unavailable")?
+                    .receiver_apply(id, &|| Err("permission_denied".into()))?;
+                return Ok(());
+            }
+            other => other?,
+        };
+        let Some((run, config, mut engine)) = prepared else {
+            return Ok(());
+        };
+        let outcome = crate::RuntimeService::execute_detached(
+            service,
+            run,
+            &mut engine,
+            &|fence| {
+                self.inner.authority.runtime_boundary_operation(
+                    self.inner.config.hub,
+                    self.inner.config.device,
+                    coglet,
+                    &scope,
+                    &grant,
+                    pin.delegation_generation,
+                    None,
+                    Some(id),
+                    self.clock_fn(),
+                    |_, recheck| {
+                        recheck()?;
+                        self.require_kill_clear()?;
+                        fence()?;
+                        recheck().map(|_| ())
+                    },
+                )
+            },
+            &|_, _| Ok(()),
+        );
+        service
+            .lock()
+            .map_err(|_| "unavailable")?
+            .receiver_restore_native(id, config, engine)?;
+        outcome
+    }
+
     pub(super) async fn back_channel(
         &self,
         context: RequestContext,
@@ -135,6 +236,11 @@ impl DeviceHandler {
                     .as_str()
                     .ok_or("invalid_argument")?
                     .to_owned();
+                #[cfg(feature = "native-engine")]
+                if method == "debug.step" {
+                    handler.receiver_step_unlocked(&coglet, &pin, &request, &service, &setup)?;
+                    continue;
+                }
                 let outcome = handler.inner.authority.runtime_boundary_operation(
                     handler.inner.config.hub,
                     handler.inner.config.device,
@@ -172,16 +278,6 @@ impl DeviceHandler {
                             if handler.enable_native(&coglet, &mut locked).is_err() {
                                 return locked.receiver_apply(&id, &|| Err("unavailable".into()));
                             }
-                            #[cfg(feature = "native-engine")]
-                            return locked.receiver_native_step(
-                                &id,
-                                &handler.inner.config.grants["operations"],
-                                &|| {
-                                    gate()?;
-                                    handler.require_kill_clear()
-                                },
-                            );
-                            #[cfg(not(feature = "native-engine"))]
                             return locked.receiver_apply(&id, &|| Err("unavailable".into()));
                         }
                         locked.receiver_apply(&id, &gate)

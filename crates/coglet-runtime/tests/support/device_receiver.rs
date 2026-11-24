@@ -5,6 +5,9 @@ use super::*;
 mod fetch_tests;
 
 async fn receiver_env(seed: u8) -> Env {
+    receiver_env_guest(seed, WASM_WAT, 10000).await
+}
+async fn receiver_env_guest(seed: u8, wat: &str, compute: u64) -> Env {
     let mut options = Options {
         back_channel: true,
         extra_scopes: true,
@@ -22,7 +25,7 @@ async fn receiver_env(seed: u8) -> Env {
     ]);
     let methods = options.delegation_methods.clone();
     let mut env = Env::new(seed, options).await.unwrap();
-    let bundle = env.bundle(1, None, &[]);
+    let bundle = env.bundle_guest(1, None, &[], wat, compute);
     assert_eq!(env.push(&bundle).await["type"], "reply");
     let delegation = Env::delegation_for(
         &env.coglet_key,
@@ -247,6 +250,92 @@ async fn back_channel_pause_is_durable_and_single_step_requires_pause() {
     assert_eq!(env.simple("hub.status").await["result"]["state"], "paused");
     env.restart_handler().await;
     assert_eq!(env.simple("hub.status").await["result"]["state"], "paused");
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn real_bounded_guest_allows_durable_inbox_cancel_while_running() {
+    // This guest actually enters handle and runs until its pinned deadline.
+    // No host/fault hook fabricates the in-progress step or its observation.
+    let wat = r#"(module (memory (export "memory") 1 2)
+        (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+          (loop $busy br $busy) i32.const 0))"#;
+    let mut env = receiver_env_guest(208, wat, 2_000_000_000).await;
+    assert_eq!(
+        env.simple("debug.pause").await["result"]["state"],
+        "applied"
+    );
+    let step = env.request("debug.step", json!({}));
+    let session = env.session.clone();
+    let running = tokio::spawn(async move { session.request(step).await.unwrap() });
+    let shared = env
+        .handler
+        .as_ref()
+        .unwrap()
+        .share_service(&env.coglet)
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if shared
+                .try_lock()
+                .is_ok_and(|locked| locked.has_unresolved_attempt())
+            {
+                break;
+            }
+            assert!(
+                !running.is_finished(),
+                "must observe real preguest fence while guest is still in progress"
+            );
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let message = json!({"id":correlation(820),"sender":env.actor,
+        "event":{"source":env.actor,"kind":"test.note","seq":0,"logical_time":T0,"payload":{},"correlation_id":correlation(821)}});
+    let inbox = intervention(&mut env, "hub.inbox", json!({"message":message}));
+    let id = inbox["correlation_id"].as_str().unwrap().to_owned();
+    let queued = env.call(inbox.clone()).await;
+    assert_eq!(queued["result"]["state"], "queued", "{queued}");
+    assert!(
+        !running.is_finished(),
+        "admission must not wait for guest completion"
+    );
+    let cancel = env.request("hub.cancel", json!({"operation_id":id}));
+    let cancelled = env.call(cancel.clone()).await;
+    assert_eq!(cancelled["result"]["state"], "cancelled", "{cancelled}");
+    assert!(
+        !running.is_finished(),
+        "cancel must not wait for guest completion"
+    );
+    let result = running.await.unwrap();
+    assert_eq!(
+        result["result"]["receipt"]["state"], "failed",
+        "bounded real guest abort is a known terminal observation: {result}"
+    );
+    {
+        let locked = shared.lock().unwrap();
+        assert!(!locked.has_unresolved_attempt());
+        assert_eq!(locked.records().len(), 1);
+        assert_eq!(locked.records()[0]["status"], "aborted");
+        assert_eq!(locked.records()[0]["events"].as_array().unwrap().len(), 1);
+        assert_eq!(locked.queued(), 0, "cancelled inbox created no wake");
+    }
+    drop(shared);
+    env.restart_handler().await;
+    assert_eq!(env.call(cancel).await, cancelled);
+    let receipt = env.request("hub.receipt", json!({"operation_id":id}));
+    assert_eq!(env.call(receipt).await["result"]["state"], "cancelled");
+    let read = env.request(
+        "debug.read",
+        json!({"path":"/data/inbox.jsonl","offset":0,"limit":65536}),
+    );
+    assert_eq!(
+        env.call(read).await["error"]["code"],
+        "not_found",
+        "cancel did not create an inbox file"
+    );
 }
 
 #[cfg(feature = "native-engine")]

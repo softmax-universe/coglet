@@ -55,11 +55,20 @@ checkpoint. It contains no spec or wire changes, and no Factory DB/WASI edits.
 
 ## Acceptance work still required
 
-1. **Real in-progress guest concurrency.** Current guest execution holds the
-   service mutex; back-channel step also holds Authority SQL for the full guest.
-   This prevents inbox admission/cancel DURING a real in-progress step. Do not
-   qualify frozen inbox-boundary-queued by a stopped-guest reply, synthesized
-   queued fixture, sender refusal, or permanently unresolved fake guest.
+1. **Real in-progress guest concurrency now implemented, frozen harness pending.**
+   `detached.rs` releases SQL/service locks around the actual guest for normal
+   adapter pumping and debug.step. Exact preguest reservation is fenced in the
+   same WAL, and the original worker observation reconciles against current
+   state. The real bounded-WAMR encrypted-iroh admission/cancel test passes.
+   Internal review found pre-fence staged publication loss, stale surface epoch
+   authority and nonatomic engine/reservation restore; all three were corrected.
+   New coordinator tests preserve a concurrent staged inbox across preguest
+   refusal/reopen and ensure a live authority gate refuses before the fence and
+   prevents another entry until original caller restore. Native receiver unit
+   group11, wire group9 and native_operational36 tests pass after these fixes.
+   The whole native suite passed before the three review fixes, not after them;
+   run final whole-suite qualification on the published exact head.
+   None of this registers/qualifies the unchanged frozen case names yet.
 2. Add a bounded completion/retry driver: head work after a transient failure or
    attempt reconciliation must not remain indefinitely stranded. Preactivation
    step kill-switch/manifest failures now become durable failed receipts and
@@ -78,10 +87,10 @@ checkpoint. It contains no spec or wire changes, and no Factory DB/WASI edits.
 Git-push cancellation remains outside this card's withdrawn Git receipt slice;
 the installed-push owner explicitly leaves that refused pending separate scope.
 
-## Next implementation recommendation (unimplemented, inspect before applying)
+## Execution architecture (implemented; complete final qualification still required)
 
-Prefer a two-phase device/native guest API in the SAME WAL, not a sidecar queue.
-Keep the existing in-lock run_next/DurableAttempt and ABI 0.2 DB path unchanged.
+The two-phase device/native guest API below is now in `detached.rs`. Keep the
+existing in-lock run_next/DurableAttempt and ABI 0.2 DB path unchanged.
 Prepare inputs/candidate under service lock; run the candidate Runtime on the
 same blocking thread without service or SQL locks. A custom Engine wrapper can
 perform native admission, then acquire original scope SQL -> service, persist the
@@ -101,7 +110,8 @@ as explicit debug.step must use the unlocked route; only fixing debug.step leave
 the ordinary guest lock wall. Never hold the Authority SQL callback across guest
 execution. Preserve installed code_pending fence before ANY fresh guest entry.
 
-The alternative suggested by internal design review was splitting Runtime.step
-at admit/execute; the wrapper avoids that large split if its admission callback
-receives fully pinned inputs and preguest reservations prevent concurrent entry.
-This recommendation has NOT been implemented or independently qualified.
+The wrapper pins the original base tree, manifest and exact staged change list;
+a concurrent preguest publication refuses entry without losing that publication.
+The original caller restores engine/debug ownership and releases its reservation
+under one lock. Surface entry rechecks original epoch and fresh supervised grants.
+These internal review fixes still need final whole-head qualification and review.

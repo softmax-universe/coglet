@@ -23,6 +23,105 @@ fn prepared(service: &mut RuntimeService, setup: &Value) -> Value {
     step
 }
 
+#[cfg(feature = "native-engine")]
+#[test]
+fn detached_preguest_boundary_change_refuses_without_guest_and_preserves_publication() {
+    struct NoEntry;
+    impl Engine for NoEntry {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+            panic!("changed boundary must refuse BEFORE guest entry")
+        }
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = setup();
+    let mut original = service(&path, &setup, 8);
+    prepared(&mut original, &setup);
+    original.debug_executing = true;
+    let run = original
+        .prepare_detached(&setup["inputs"])
+        .unwrap()
+        .unwrap();
+    // Models a real separately staged terminal adapter inbox publication
+    // between unlocked native admission and its preguest WAL fence.
+    let mut changed = original.state.clone();
+    RuntimeService::receiver_stage(&mut changed, &inbox(&setup, 90, 900)).unwrap();
+    original.commit_receiver(changed).unwrap();
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(original));
+    let error =
+        RuntimeService::execute_detached(&shared, run, &mut NoEntry, &|f| f(), &|_, _| Ok(()))
+            .unwrap_err();
+    assert_eq!(error, "detached attempt reservation changed");
+    let mut locked = shared.lock().unwrap();
+    assert!(locked.state.runtime.unresolved_attempt.is_none());
+    assert!(locked.records().is_empty());
+    assert!(
+        locked.detached_execution,
+        "caller retains engine/reservation custody until atomic restore"
+    );
+    assert_eq!(
+        locked.state.staged_boundary.as_ref().unwrap().changes.len(),
+        1
+    );
+    locked.detached_execution = false;
+    locked.debug_executing = false;
+    drop(locked);
+    drop(shared);
+    let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(
+        crate::boundary::inbox(&reopened.receiver_snapshot().files)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        reopened.queued(),
+        2,
+        "old selected wake and separately committed new wake survive"
+    );
+}
+
+#[cfg(feature = "native-engine")]
+#[test]
+fn detached_live_gate_refuses_before_fence_and_custody_is_released_only_by_caller() {
+    struct NoEntry;
+    impl Engine for NoEntry {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+            panic!("fresh authority refused");
+        }
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let setup = setup();
+    let mut original = service(&dir.path().join("state.wal"), &setup, 8);
+    prepared(&mut original, &setup);
+    original.debug_executing = true;
+    let run = original
+        .prepare_detached(&setup["inputs"])
+        .unwrap()
+        .unwrap();
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(original));
+    let called = std::cell::Cell::new(false);
+    assert_eq!(
+        RuntimeService::execute_detached(&shared, run, &mut NoEntry, &|f| f(), &|locked, _| {
+            assert!(locked.detached_execution);
+            called.set(true);
+            Err("permission_denied".into())
+        })
+        .unwrap_err(),
+        "permission_denied"
+    );
+    assert!(called.get());
+    let mut locked = shared.lock().unwrap();
+    assert!(locked.state.runtime.unresolved_attempt.is_none());
+    assert!(locked.detached_execution);
+    assert!(locked.receiver_pending().is_none());
+    assert!(
+        locked.prepare_detached(&setup["inputs"]).is_err(),
+        "no second attempt before original caller's atomic restore"
+    );
+    assert!(locked.records().is_empty());
+}
+
 #[test]
 fn prepared_step_revocation_and_cancel_retire_source_reservations_atomically() {
     for cancel in [false, true] {

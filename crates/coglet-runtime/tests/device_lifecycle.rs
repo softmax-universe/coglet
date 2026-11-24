@@ -424,14 +424,24 @@ impl Env {
     /// Real signed Git bundle containing manifest.json, bin/step.wasm and
     /// build/provenance.cbor. `old` is the previous signed tip for generation > 1.
     fn bundle(&self, generation: u64, old: Option<&str>, extra: &[(&str, &[u8])]) -> Bundle {
+        self.bundle_guest(generation, old, extra, WASM_WAT, 10000)
+    }
+    fn bundle_guest(
+        &self,
+        generation: u64,
+        old: Option<&str>,
+        extra: &[(&str, &[u8])],
+        wat: &str,
+        compute: u64,
+    ) -> Bundle {
         let work = self.root.join(format!("git-{generation}"));
         std::fs::create_dir_all(&work).unwrap();
         git(&work, &["init", "--initial-branch=hub"]);
-        let wasm = wat::parse_str(WASM_WAT).unwrap();
+        let wasm = wat::parse_str(wat).unwrap();
         let mode = native_compute_mode();
         let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
             "required_capabilities":[],"exclusive_outputs":[],
-            "budgets":{"compute":10000,"compute_mode":mode,"memory_pages":2,
+            "budgets":{"compute":compute,"compute_mode":mode,"memory_pages":2,
                 "wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}});
         std::fs::write(
             work.join("manifest.json"),

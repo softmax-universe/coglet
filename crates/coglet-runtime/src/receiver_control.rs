@@ -91,25 +91,33 @@ impl RuntimeService {
     }
 
     #[cfg(feature = "native-engine")]
-    pub(crate) fn receiver_native_step(
+    pub(crate) fn receiver_prepare_native_step(
         &mut self,
         id: &str,
         grants: &Value,
         authorized: &dyn Fn() -> Result<()>,
-    ) -> Result<()> {
+    ) -> Result<
+        Option<(
+            super::super::detached::DetachedRun,
+            native_engine::NativeSchedule,
+            native_engine::NativeEngine,
+        )>,
+    > {
         authorized()?;
         if self.state.receiver.pending.first().map(String::as_str) != Some(id) {
             return Err("conflict".into());
         }
         if !self.managed_paused() {
-            return self.receiver_apply(id, &|| Err("conflict".into()));
+            self.receiver_apply(id, &|| Err("conflict".into()))?;
+            return Ok(None);
         }
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("unavailable".into());
         }
-        let Some((config, mut engine)) = self.native.take() else {
+        let Some((config, _)) = self.native.as_ref() else {
             return Err("unavailable".into());
         };
+        let config = config.clone();
         let result = (|| {
             let now = self.supervised_now()?;
             let mut next = self.state.clone();
@@ -148,21 +156,35 @@ impl RuntimeService {
                 "budgets":self.state.runtime.manifest["budgets"],"grants":grants,"boundary":[]});
             authorized()?;
             self.debug_executing = true;
-            let outcome = self.run_next(&context, &mut engine);
-            self.debug_executing = false;
-            match outcome {
-                Ok(Some(_)) => Ok(()),
-                Ok(None) => Err("unavailable".into()),
-                Err(e) => Err(e),
-            }
+            let run = self.prepare_detached(&context)?.ok_or("unavailable")?;
+            let (config, engine) = self.native.take().ok_or("unavailable")?;
+            Ok(Some((run, config, engine)))
         })();
-        self.debug_executing = false;
-        self.native = Some((config, engine));
         // An entered/unreported attempt is never retried or converted into a
         // fabricated terminal result. Reconciliation owns that original attempt.
         if result.is_err() && self.state.runtime.unresolved_attempt.is_none() {
-            return self.receiver_apply(id, &|| Err("unavailable".into()));
+            self.debug_executing = false;
+            self.receiver_apply(id, &|| Err("unavailable".into()))?;
+            return Ok(None);
         }
         result
+    }
+
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn receiver_restore_native(
+        &mut self,
+        id: &str,
+        config: native_engine::NativeSchedule,
+        engine: native_engine::NativeEngine,
+    ) -> Result<()> {
+        self.debug_executing = false;
+        self.native = Some((config, engine));
+        self.detached_execution = false;
+        if self.state.runtime.unresolved_attempt.is_none()
+            && self.state.receiver.pending.first().map(String::as_str) == Some(id)
+        {
+            self.receiver_apply(id, &|| Err("unavailable".into()))?;
+        }
+        Ok(())
     }
 }

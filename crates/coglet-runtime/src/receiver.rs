@@ -462,6 +462,13 @@ impl RuntimeService {
     }
 
     pub(crate) fn receiver_pending(&self) -> Option<Value> {
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return None;
+        }
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return None;
+        }
         self.state
             .receiver
             .pending
@@ -476,6 +483,10 @@ impl RuntimeService {
         id: &str,
         authorized: &dyn Fn() -> Result<()>,
     ) -> Result<()> {
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return Err("unavailable".into());
+        }
         if self.state.receiver.pending.first().map(String::as_str) != Some(id) {
             return Err("conflict".into());
         }
