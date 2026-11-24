@@ -227,6 +227,47 @@ pub fn handle<H: Host + DbHost>(
     context: &mut Context<'_, H>,
     event: &coglet_guest_rust::Event,
 ) -> Result<()> {
+    // runtime.inbox is the sole authenticated transport for provider replies.
+    // Resolve exactly the immutable line named by the wake, never trust an
+    // independently injected llm.reply event or a guest-writable mailbox.
+    if event.kind == "runtime.inbox" {
+        let bytes = context.read_file("/data/inbox.jsonl")?.ok_or_else(bad)?;
+        let index = event
+            .payload
+            .get("index")
+            .and_then(coglet_types::Value::as_integer)
+            .and_then(|i| usize::try_from(i).ok())
+            .ok_or_else(bad)?;
+        let line = bytes.split(|b| *b == b'\n').nth(index).ok_or_else(bad)?;
+        if line.len() > MAX_JSON {
+            return Err(HostError::ResourceExhausted);
+        }
+        let message: serde_json::Value = serde_json::from_slice(line).map_err(|_| bad())?;
+        if serde_json::to_vec(&message).map_err(|_| bad())? != line {
+            return Err(bad());
+        }
+        let value = coglet_types::Value::serialized(&message).map_err(|_| bad())?;
+        coglet_types::validate("abi::inbox-message", &value).map_err(|_| bad())?;
+        let enclosed: coglet_guest_rust::Event =
+            serde_json::from_value(message["event"].clone()).map_err(|_| bad())?;
+        if message["index"].as_u64() != Some(index as u64)
+            || message["id"].as_str()
+                != event
+                    .payload
+                    .get("id")
+                    .and_then(coglet_types::Value::as_text)
+            || message["sender"].as_str() != Some(enclosed.source.as_str())
+            || enclosed.correlation_id != event.correlation_id
+        {
+            return Err(bad());
+        }
+        if enclosed.kind == "llm.reply" {
+            let payload = coglet_types::Value::serialized(&enclosed.payload).map_err(|_| bad())?;
+            coglet_types::validate("abi::llm-reply", &payload).map_err(|_| bad())?;
+            return handle(context, &enclosed);
+        }
+        return Ok(());
+    }
     let kind = event.kind.as_str();
     if !matches!(
         kind,

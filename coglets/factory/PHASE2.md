@@ -72,11 +72,18 @@ also be exercised with executive events before final acceptance.
 ## Still required before merge
 
 1. Green exact-head required CI for this head, then independent review.
-   `wasm_task_failed_stages_llm_and_survives_reopen` is the Wasm executive
-   proof for `task.failed` → staged LLM request → reopen. The runtime delivers
-   `llm.reply` only as an authenticated `runtime.inbox` wake, and this database
-   harness has no public inbox-append seam, so the reply-to-dispatch half stays
-   on the native executive test plus the host dispatcher tests.
+   The phase-2A `factory_wasm_*` tests compile the actual WASI guest and run it
+   on WAMR: `task.failed` → durable `coglet-llm` / `MockLlm` reply → authenticated
+   boundary fixture → `runtime.inbox` → diagnostic + hypothesis + dispatch intent.
+   Runtime/DB and gateway reopen between boundaries; stale context is refused,
+   duplicate provider delivery cannot append again, and offline recorded-result
+   replay runs after deleting the DB. Router authentication is supplied by the
+   embedding fixture, not qualified by this test (the receiver owns that gate).
+   Database live/replay hosts reuse the restricted transactional WASI implementation;
+   the immutable inbox and its wake binding retain ABI 0.1 semantics. No new import,
+   wire method, schema migration or direct reply-injection seam is introduced.
+   The remaining phase-2B gate is outbox dispatch → persisted result → Wasm guest
+   consumption, plus authoritative Hermes public API compatibility.
 2. Guest does not write `work_queue`. It can read one row through
    `work_queue_get`. The host dispatcher remains the scheduler.
 3. No waiver is claimed. The implementation review is not ship approval.
