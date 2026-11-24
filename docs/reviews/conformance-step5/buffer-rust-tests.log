@@ -1,0 +1,229 @@
+   Compiling coglet-surface-rust v0.1.0 (/home/ubuntu/.hermes/kanban/workspaces/t_01a20c1cd3eea88a/repo/sdk/surface-rust)
+   Compiling coglet-mock v0.1.0 (/home/ubuntu/.hermes/kanban/workspaces/t_01a20c1cd3eea88a/repo/crates/coglet-mock)
+    Finished `test` profile [unoptimized] target(s) in 4.40s
+     Running unittests src/lib.rs (target/debug/build/coglet-mock/4c2f7ab14880346f/out/coglet_mock-4c2f7ab14880346f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/coglet-mock-surface.rs (target/debug/build/coglet-mock/c9964a6c52438bb3/out/coglet_mock_surface-c9964a6c52438bb3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/engine.rs (target/debug/build/coglet-mock/fcf62f93a880f182/out/engine-fcf62f93a880f182)
+
+running 12 tests
+test exact_identity_and_duplicate_registration_fail_closed ... ok
+test admission_and_instantiation_never_call_factory_and_recheck_limits ... ok
+test rejects_unknown_bytes_modes_zero_limits_and_signed_envelope_overflow ... ok
+test all_four_imports_share_aggregate_host_bytes_and_copy ... ok
+test fresh_closure_state_memory_and_full_width_inputs ... ok
+test simulated_runtime_and_stack_bounds_are_distinct_from_linear_pages ... ok
+test invalid_import_pointers_never_reach_host_or_charge_bytes ... ok
+test linear_memory_cap_growth_and_checked_copy_bounds ... ok
+test one_allowance_spans_all_phases_and_exact_exhaustion_blocks_next_call ... ok
+test nonzero_exit_trap_and_panic_abort_and_next_step_recovers ... ok
+test deadline_is_not_renewed_after_initialization ... ok
+test expired_absolute_deadline_blocks_factory ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/engine_faults.rs (target/debug/build/coglet-mock/dcde2b12a5f5c873/out/engine_faults-dcde2b12a5f5c873)
+
+running 5 tests
+test input_copy_alone_can_exhaust_host_bytes_before_handle ... ok
+test proc_exit_zero_cannot_be_accepted_by_host_or_swallowed ... ok
+test swallowed_compute_and_reservation_errors_cannot_commit ... ok
+test wasi_result_copies_are_metered_and_ignored_faults_still_abort ... ok
+test exact_exhaustion_then_ignored_safe_point_aborts_but_final_exact_charge_succeeds ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hub.rs (target/debug/build/coglet-mock/e8d81c3bf8353e94/out/hub-e8d81c3bf8353e94)
+
+running 5 tests
+test disconnect_updates_kernel_connection_status ... ok
+test connect_requires_authenticated_enrollment ... ok
+test revoked_and_unknown_identities_are_refused ... ok
+test enrollment_is_identity_bound_and_one_use ... ok
+test reconnect_recovers_same_identity_without_reusing_invite ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/llm_gateway.rs (target/debug/build/coglet-mock/d88d495ad5755199/out/llm_gateway-d88d495ad5755199)
+
+running 6 tests
+test invalid_requests_grants_routes_duplicates_and_receipts_fail_closed ... ok
+test concurrent_connections_share_reservations_and_durable_claims ... ok
+test recorded_reply_and_exact_inbox_replay_offline_after_reopen ... ok
+test uncertainty_survives_restart_no_resend_or_double_debit ... ok
+test reservations_prevent_overspend_and_ledger_sums_per_coglet ... ok
+test definitive_timeout_and_cancellation_are_journaled_failures ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/surface.rs (target/debug/build/coglet-mock/f814cee1d934ff68/out/surface-f814cee1d934ff68)
+
+running 9 tests
+test invalid_script_data_rejected ... ok
+test timeline_json_roundtrip_and_order_bounds ... ok
+test captured_native_timeline_flows_through_core_normalizer ... ok
+test actual_admission_then_semantic_effect_and_completion ... ok
+test in_process_pair_routes_real_core_and_disconnect_cancels ... ok
+test revoke_cancels_effect_and_fences_captured_native_epoch ... ok
+test kill_before_completion_and_deadline_at_completion_have_no_effect ... ok
+test install_is_atomic_and_case_only_selects_startup_epoch ... ok
+test binary_both_transports_clock_zero_kill_and_cleanup ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+
+     Running unittests src/lib.rs (target/debug/build/coglet-surface-rust/4a2f7e49c810485e/out/coglet_surface_rust-4a2f7e49c810485e)
+
+running 33 tests
+test catalog::tests::pinned_copy_matches_spec_when_checked_out ... ok
+test codec::tests::integer_precision_and_profile_are_feature_independent ... ok
+test fixture_clock::tests::ack_echoes_exact_current_microseconds ... ok
+test fixture_clock::tests::logical_clock_starts_at_zero_and_rejects_rollback ... ok
+test ids::tests::grammars ... ok
+test speech::tests::utf8_bound_is_bytes_not_code_points ... ok
+test speech::tests::utterance_filter_discards_stale_and_late ... ok
+test speech::tests::contiguous_chunks_limit_and_final ... ok
+test catalog::tests::parses_and_pins_rules ... ok
+test config::tests::grant_snapshot_rules ... ok
+test config::tests::invalid_configs_are_rejected ... ok
+test transport::tests::fragmented_frame_round_trip ... ok
+test transport::tests::native_adapter_buffer_and_return_code_probes ... ok
+test transport::tests::native_adapter_rejects_broken_n_and_query_dequeue ... ok
+test transport::tests::native_nonempty_short_buffer_and_close_pending_probe ... ok
+test config::tests::parses_public_fixture ... ok
+test transport::tests::paired_bytes_are_validated_and_bounded ... ok
+test transport::tests::pair_health_drop_and_outgoing_overflow_stop_core ... ok
+test catalog::tests::closed_records_and_direction ... ok
+test transport::tests::unix_partial_eof_and_service_stop_disconnect ... ok
+test transport::tests::frame_limits_eof_coalescing_and_poison ... ok
+test transport::tests::unix_authenticated_roundtrip_and_timeout ... ok
+test store::tests::open_directory_is_tightened_to_private ... ok
+test store::tests::exclusive_ownership_and_identity ... ok
+test store::tests::lost_ledger_fails_closed ... ok
+test store::tests::terminal_batch_failure_does_not_publish_memory_state ... ok
+test store::tests::recovery_retains_unknown_clock_deadline_for_full_maximum_window ... ok
+test store::tests::terminal_reserves_delivery_sequence_before_returning ... ok
+test store::tests::torn_tail_dropped_but_midfile_corruption_fails_closed ... ok
+test store::tests::live_pruning_preserves_pending_and_reclaims_expired_receipts ... ok
+test store::tests::seq_epoch_and_pending_recovery_persist ... ok
+test store::tests::retention_prunes_and_compacts_after_24h ... ok
+test store::tests::terminal_batch_replay_accepts_a_torn_sequence_tail ... ok
+
+test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running unittests src/bin/coglet-reference-surface.rs (target/debug/build/coglet-surface-rust/81f22eb5f7e37851/out/coglet_reference_surface-81f22eb5f7e37851)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adversarial.rs (target/debug/build/coglet-surface-rust/c803e5f707732b1c/out/adversarial-c803e5f707732b1c)
+
+running 11 tests
+test cannot_connect_if_running_marker_cannot_be_persisted ... ok
+test unclean_restart_without_pending_work_still_stays_stopped ... ok
+test kill_inside_preflight_never_dispatches ... ok
+test old_native_sender_and_queued_start_are_fenced_across_epochs ... ok
+test old_dispatch_fence_remains_stopped_after_operator_reset ... ok
+test failed_latch_write_is_observed_and_cannot_be_reset_blindly ... ok
+test admitted_action_killed_at_native_boundary_is_cancelled_without_effect ... ok
+test provider_callback_must_match_captured_session_not_current_session ... ok
+test same_wire_id_for_two_owners_has_distinct_native_identity ... ok
+test rejected_stream_does_not_restore_as_admitted_tombstone ... ok
+test live_receipt_pruning_releases_ledger_capacity_without_restart ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/completion_expiry.rs (target/debug/build/coglet-surface-rust/b7dcdd813374bd41/out/completion_expiry-b7dcdd813374bd41)
+
+running 6 tests
+test queued_completion_at_deadline_expires ... ok
+test queued_completion_after_deadline_expires ... ok
+test queued_completion_at_grant_expiry_is_cancelled ... ok
+test queued_completion_before_deadline_succeeds ... ok
+test queued_completion_after_grant_expiry_is_cancelled ... ok
+test queued_completion_before_grant_expiry_succeeds ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/core.rs (target/debug/build/coglet-surface-rust/42a860496d2d9ee3/out/core-42a860496d2d9ee3)
+
+running 23 tests
+test adapter_config_fixture_drives_the_surface ... ok
+test deadline_equal_to_now_is_expired ... ok
+test outbound_bytes_are_core_deterministic ... ok
+test accept_then_outcome_and_expression_readback ... ok
+test local_kill_helper_flushes_wire_notification ... ok
+test hello_and_negotiation_shape ... ok
+test grant_expiry_revokes_and_bumps_epoch ... ok
+test malformed_bytes_never_reach_dispatch ... ok
+test duplicate_conflict_and_receipt_semantics ... ok
+test pending_retry_is_not_executed_twice ... ok
+test operator_install_and_revoke_fence_before_new_epoch ... ok
+test start_twice_is_refused ... ok
+test health_cadence_silence_and_clock_rollback ... ok
+test disconnect_cancels_pending_clears_grants_and_requires_new_negotiation ... ok
+test reads_check_grants_epoch_args_and_deadline ... ok
+test unadvertised_operations_fail_closed_and_are_not_granted ... ok
+test unqualified_optional_operations_are_never_advertised ... ok
+test queue_bound_rejects_with_resource_exhausted ... ok
+test rejected_retry_returns_stored_rejection_even_if_now_valid ... ok
+test kill_is_local_latched_and_not_clearable_by_wire ... ok
+test admission_failures_use_the_right_error_and_no_outcome ... ok
+test lifecycle_violations_close_before_effects ... ok
+test wrong_direction_messages_are_fatal ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+
+     Running tests/durability_speech.rs (target/debug/build/coglet-surface-rust/533f7a3530f4b874/out/durability_speech-533f7a3530f4b874)
+
+running 9 tests
+test second_instance_on_the_same_state_is_refused ... ok
+test identity_mismatch_and_lost_ledger_fail_closed ... ok
+test native_utterance_events_are_normalized_and_owner_scoped ... ok
+test chunk_success_only_comes_from_the_backend ... ok
+test out_of_order_completion_fails_the_chunk_closed ... ok
+test latch_survives_restart_and_blocks_grants ... ok
+test stop_unknown_stream_is_not_found_and_known_stream_cancels_chunks ... ok
+test chunk_gap_duplicate_and_stream_rules ... ok
+test restart_turns_pending_into_failed_unavailable_and_never_replays ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/media_ids.rs (target/debug/build/coglet-surface-rust/80912e85bbbb3cd9/out/media_ids-80912e85bbbb3cd9)
+
+running 3 tests
+test speak_item_is_original_action_id_not_native_token ... ok
+test backchannel_item_is_original_action_id_not_native_token ... ok
+test reused_owner_scoped_wire_id_remains_bound_to_its_stream_and_native_token ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/socket_surface.rs (target/debug/build/coglet-surface-rust/89597d36929f58b8/out/socket_surface-89597d36929f58b8)
+
+running 2 tests
+test real_surface_rejects_wrong_socket_uid_before_hello ... ok
+test real_surface_over_authenticated_fragmented_unix_socket ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Doc-tests coglet_mock
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests coglet_surface_rust
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

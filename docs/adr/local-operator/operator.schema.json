@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/docs/adr/local-operator/operator.schema.json",
+  "title": "ADR-0018 local admin messages (not the hub ALPN)",
+  "oneOf": [{"$ref": "#/$defs/request"}, {"$ref": "#/$defs/response"}],
+  "$defs": {
+    "id": {"$ref": "../../../spec/messages/common.schema.json#/$defs/correlation-id"},
+    "node": {"$ref": "../../../spec/messages/common.schema.json#/$defs/node-id"},
+    "target": {"$ref": "../../../spec/messages/common.schema.json#/$defs/coglet-id"},
+    "uint": {"$ref": "../../../spec/messages/common.schema.json#/$defs/uint64"},
+    "oid": {"$ref": "../../../spec/messages/hub.schema.json#/$defs/hub-oid"},
+    "hash": {"$ref": "../../../spec/messages/hub.schema.json#/$defs/hub-hash"},
+    "method": {"$ref": "../../../spec/messages/hub.schema.json#/$defs/hub-method"},
+    "error": {"$ref": "../../../spec/messages/common.schema.json#/$defs/error"},
+    "receipt": {"$ref": "../../../spec/messages/hub.schema.json#/$defs/hub-mutation-receipt"},
+    "status": {"$ref": "../../../spec/messages/hub.schema.json#/$defs/hub-status"},
+    "local-ref": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{1,64}(?![\\s\\S])"},
+    "op": {"enum": ["deploy", "push", "stop", "status", "grant.provision", "grant.revoke", "enrollment.window", "enrollment.invite"]},
+    "grant": {
+      "type": "object", "additionalProperties": false,
+      "required": ["peer", "method", "target", "generation", "expires_unix_s"],
+      "properties": {
+        "peer": {"$ref": "#/$defs/node"}, "method": {"$ref": "#/$defs/method"},
+        "target": {"oneOf": [{"$ref": "#/$defs/target"}, {"type": "null"}]},
+        "generation": {"$ref": "#/$defs/uint"}, "expires_unix_s": {"$ref": "#/$defs/uint"}
+      }
+    },
+    "build": {
+      "type": "object", "additionalProperties": false,
+      "required": ["device", "target", "source_commit", "build_profile", "delegation_id"],
+      "properties": {
+        "device": {"$ref": "#/$defs/node"}, "target": {"$ref": "#/$defs/target"},
+        "source_commit": {"$ref": "#/$defs/oid"}, "build_profile": {"$ref": "#/$defs/local-ref"},
+        "delegation_id": {"$ref": "#/$defs/local-ref"}
+      }
+    },
+    "lifecycle": {
+      "type": "object", "additionalProperties": false, "required": ["device", "target"],
+      "properties": {"device": {"$ref": "#/$defs/node"}, "target": {"$ref": "#/$defs/target"}}
+    },
+    "revoke": {
+      "type": "object", "additionalProperties": false, "required": ["peer", "method", "target", "generation"],
+      "properties": {
+        "peer": {"$ref": "#/$defs/node"}, "method": {"$ref": "#/$defs/method"},
+        "target": {"oneOf": [{"$ref": "#/$defs/target"}, {"type": "null"}]},
+        "generation": {"$ref": "#/$defs/uint"}
+      }
+    },
+    "window": {
+      "type": "object", "additionalProperties": false, "required": ["duration_ms"],
+      "properties": {"duration_ms": {"type": "integer", "minimum": 0, "maximum": 300000}},
+      "description": "Zero closes the current window; positive opens/replaces it. Window ID is this operation ID; replacement invalidates old-window invites."
+    },
+    "invite": {
+      "type": "object", "additionalProperties": false,
+      "required": ["window_id", "expected_device", "secret_sha256", "ttl_ms", "grants"],
+      "properties": {
+        "window_id": {"$ref": "#/$defs/id"}, "expected_device": {"$ref": "#/$defs/node"},
+        "secret_sha256": {"$ref": "#/$defs/hash"},
+        "ttl_ms": {"type": "integer", "minimum": 1, "maximum": 300000},
+        "grants": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/grant"}}
+      },
+      "description": "Grant peers must equal expected_device; exact scope, increasing generation and expiry/window checks are semantic. Invite ID is this operation ID."
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "operation_id", "op", "timeout_ms", "params"],
+      "properties": {
+        "version": {"const": "local-1"}, "operation_id": {"$ref": "#/$defs/id"},
+        "op": {"$ref": "#/$defs/op"}, "timeout_ms": {"type": "integer", "minimum": 1, "maximum": 300000},
+        "params": {"type": "object"}
+      },
+      "oneOf": [
+        {"properties": {"op": {"enum": ["deploy", "push"]}, "params": {"$ref": "#/$defs/build"}}},
+        {"properties": {"op": {"enum": ["stop", "status"]}, "params": {"$ref": "#/$defs/lifecycle"}}},
+        {"properties": {"op": {"const": "grant.provision"}, "params": {"$ref": "#/$defs/grant"}}},
+        {"properties": {"op": {"const": "grant.revoke"}, "params": {"$ref": "#/$defs/revoke"}}},
+        {"properties": {"op": {"const": "enrollment.window"}, "params": {"$ref": "#/$defs/window"}}},
+        {"properties": {"op": {"const": "enrollment.invite"}, "params": {"$ref": "#/$defs/invite"}}}
+      ]
+    },
+    "response": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "operation_id", "op", "receipt", "result", "error"],
+      "properties": {
+        "version": {"const": "local-1"}, "operation_id": {"$ref": "#/$defs/id"}, "op": {"$ref": "#/$defs/op"},
+        "receipt": {"oneOf": [{"$ref": "#/$defs/receipt"}, {"type": "null"}]},
+        "result": {}, "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]}
+      },
+      "oneOf": [
+        {"properties": {"receipt": {"type": "null"}, "result": {"type": "null"}, "error": {"$ref": "#/$defs/error"}}},
+        {
+          "properties": {"receipt": {"$ref": "#/$defs/receipt"}, "error": {"type": "null"}},
+          "if": {"properties": {"receipt": {"properties": {"state": {"const": "applied"}}}}},
+          "then": {
+            "oneOf": [
+              {"properties": {"op": {"const": "status"}, "result": {"$ref": "#/$defs/status"}}},
+              {"properties": {"op": {"enum": ["enrollment.window", "enrollment.invite"]}, "result": {"$ref": "#/$defs/id"}}},
+              {"properties": {"op": {"enum": ["deploy", "push", "stop", "grant.provision", "grant.revoke"]}, "result": {"type": "null"}}}
+            ]
+          },
+          "else": {"properties": {"result": {"type": "null"}}}
+        }
+      ]
+    }
+  }
+}

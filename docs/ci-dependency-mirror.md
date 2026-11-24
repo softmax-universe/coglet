@@ -38,7 +38,8 @@ secret is required. A later AWS move must use the design's separated OIDC roles.
 
 A mirror-code PR runs read-only `prepare-*` jobs and uploads `dependency-rust`
 and `dependency-conformance` artifacts. It cannot publish shared
-assets. The first `proof-*` attempts fail clearly until the candidate is published.
+assets. The candidate-existence gate skips `proof-*` until the candidate is published;
+that preparation-only success is not proof acceptance.
 An authorized operator must:
 
 1. Independently review the candidate source and preparation workflow. Verify the
@@ -53,7 +54,9 @@ An authorized operator must:
    head, with `--latest=false`. Upload only the named `.json`/`.tar.gz` assets with
    `gh release upload`; never use `--clobber` or the main mirror tag. Record the
    source run URL, merge SHA, PR head and independent review in release notes.
-4. Rerun failed jobs of that same run (`gh run rerun RUN --failed`). The reusable
+4. Rerun the entire same run (`gh run rerun RUN`) so the candidate-existence gate
+   is evaluated again; a failed-only rerun cannot reevaluate a successful gate.
+   The reusable
    `proof-*` jobs restore on new hosted runners, disable Actions dependency caches,
    explicitly remove the pinned preinstalled Rust toolchain, then deny
    crates.io/index/static and rustup distribution hosts for IPv4 and IPv6. They log

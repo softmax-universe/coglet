@@ -4,7 +4,7 @@ name: swift
 on:
   push:
     branches: [main]
-    paths: &swift_paths ['sdk/surface-swift/**', 'surfaces/face-mac/**', 'codegen/**', 'spec/**', 'conformance/**', '.github/workflows/swift.yml']
+    paths: &swift_paths ['sdk/surface-swift/**', 'surfaces/face-mac/**', 'codegen/**', 'spec/**', 'conformance/**', 'crates/coglet-engine-wamr/**', 'scripts/build-ios-runtime-xcframework.sh', '.github/workflows/swift.yml']
   pull_request:
     paths: *swift_paths
 permissions:
