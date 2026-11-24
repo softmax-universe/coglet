@@ -65,10 +65,98 @@ server, mock hub and registry claims are not yet implemented.
   path/ref/surface limits, or atomic cancellation of kernel-owned pending writes.
   Those remain mandatory integration work. All provisioning/replacement is local
   operator configuration, never a new remotely self-authorizing method.
-- `transfer::Receiver` tracks cumulative credit, contiguous offsets, correlation,
-  bounded hex chunks and complete transfer SHA-256. Call `consumed()` only after
-  all accepted bytes have reached durable bounded quarantine storage. This is
-  accounting, not Git validation or a durable storage implementation.
+- `transfer::{Receiver, Sender}` track cumulative raw-byte credit, contiguous
+  offsets, correlation, bounded hex chunks and terminal state. The receiver
+  checks the complete transfer SHA-256. Call `consumed()` only after accepted
+  bytes have reached durable bounded quarantine storage.
+- `transfer::{send_chunks, receive_chunks, DurableSink}` implement the raw data
+  phase on framed async streams, with at most 32 KiB per chunk and a 64 KiB
+  outstanding window. A failed durable sink does not replenish credit. **These
+  are not complete Git operations:** the owner must verify signed metadata and
+  watermarks before the first credit, enforce deadlines and reset-on-abandon,
+  check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
+  authority/watermarks and commit durable refs/receipts before terminal success.
+  Session streaming dispatch is not implemented yet.
+  `quarantine::BundleSink` supplies a private bounded raw bundle file, with
+  <=32 KiB writes fsynced off-reactor before returning. The limit is checked
+  before writing; I/O failure poisons the file. Drop removes its generated
+  quarantine directory; an in-flight worker retains exclusive cleanup custody
+  after future cancellation. A cancelled append now permanently discards the
+  caller's sink. `BundleSink::sweep_orphans` is a startup operation on the private
+  parent: it removes only owned, unlocked directories, never live artifacts or
+  symlinks. Per-artifact leases are inherited by validation subprocesses; Drop
+  defers cleanup to the sweep if a descendant still retains the lease. This raw
+  sink alone does not establish Git validity or code admission.
+  `BundleSink::check_envelope` consumes append custody and returns an immutable
+  `BundleEnvelope` after exact self-contained v2 header/ref/tip binding, complete
+  transfer SHA-256 verification and declared pack-object-count preflight. It reads
+  at most 32 KiB at a time off-reactor and rejects extra refs/prerequisites before
+  import. The count is untrusted until full pack validation; `BundleEnvelope` is
+  NOT a verified Git artifact and cannot authorize ref updates. A real Git-created
+  logs bundle is transferred over real iroh and checked in
+  `real_iroh_git_bundle_envelope_is_bound_to_signed_ref_and_retains_cleanup_custody`;
+  malformed envelope tests include truncated packs, extra refs, prerequisites,
+  wrong tip/ref/version/magic, object over-count and hash mismatch, with cleanup.
+  Raw data-phase tests exercise a 150000-byte transfer and stalled durable
+  consumption over real iroh on the hub ALPN, plus sink failure and source EOF.
+  They do not establish push/fetch/restart/replay acceptance.
+- `BundleEnvelope::validate(&Validator, Limits)` consumes raw custody and returns
+  an immutable `VerifiedBundle`, which retains private bundle/repository custody
+  and exposes only the verified metadata. No pathname, ref-store write, working
+  tree or activation API is exported. Configure `Validator::new` with the trusted
+  **absolute installation path** of the matching `coglet-git-validator` binary;
+  never take executable paths from remote inputs. Install this binary with the
+  service (`cargo build -p coglet-proto --bin coglet-git-validator`). Validation
+  currently requires Linux, `/usr/bin/prlimit`, `/usr/bin/git`, advisory file
+  locks and a private durable filesystem with allocation units <=4 KiB; it fails
+  closed if the required mechanism is unavailable.
+  The helper checks the pack checksum and bounded zlib sizes before retaining
+  output, supports OFS/REF deltas (including forward REF bases), charges both
+  delta programs and reconstructed bytes, and rejects thin/cyclic packs. Every
+  stored object must be reachable from the one requested commit. Unsafe modes,
+  path components and attributes/modules/data are rejected throughout history;
+  logs commits allow only the `logs/` subtree. Expanded tip-tree multiplicity is
+  separately precharged before archive generation to stop tree-DAG bombs.
+  The helper writes its own precharged loose objects (never asks Git to import
+  attacker-compressed bytes), then runs read-only strict fsck and config-scrubbed
+  tar archive hashing. Code refs require a valid core Wasm module and canonical
+  shared `hub-build-record` whose rewritten digest binds the exact module.
+  This checks provenance structure/output binding, **not** retained build-input
+  availability, transform/policy qualification, current authority or promotion.
+  Defaults: 256 MiB expanded-pack budget, 100000 objects, delta depth 50,
+  256 MiB disk reservations, 30 aggregate CPU seconds and 30 seconds wall time.
+  The pack budget includes delta programs/results; expanded archive size has
+  its own ceiling of the same value, including conservative tar overhead. Disk
+  reservations prepay rounded file blocks and per-entry directory growth;
+  conservative reservations can reject before the physical ceiling is reached.
+  CPU uses three kernel per-process shares (helper, one fsck, one archive), with
+  unused integer remainder; configured totals must be 3..30 seconds. A 1 GiB
+  per-process address-space backstop also applies. The parent wall watchdog
+  kills the isolated process group on timeout/cancellation, keeps the leader
+  unreaped until signalling (no recycled-PGID signalling), and retains cleanup
+  custody through worker completion. No extra Git subprocess may be added
+  without revisiting this fixed-topology CPU accounting.
+  Named tests in `bundle_validator` cover real logs/code/delta bundles, all six
+  resource fences, malicious delta/expanded-result/tree-DAG bombs, strict fsck,
+  archive mismatch, forbidden paths/modes, Wasm/component/provenance rejection,
+  cancellation and private cleanup. The CPU-limit oracle uses an intentionally
+  nonterminating trusted test helper, not assumptions about pack-decoding speed;
+  the real compression bomb separately requires bounded rejection in debug and
+  release builds. Cleanup tests exercise the actual lease-aware orphan sweep
+  when kernel descendant teardown defers unlinking. `quarantine_cancel`, `quarantine_sweep` and
+  the inherited-lease unit regression cover the sink/recovery boundaries.
+- `git_metadata::{RefKind, VerifiedRef}` pins signed metadata to the requested
+  purpose/ref and trusted hub/coglet. Hub refs use the hub key; published/logs
+  refs use the coglet key, never the device key or untrusted signer. Pure
+  `check_observation` distinguishes higher-generation snapshots, identical
+  equal-generation statements, and conflicts (including equal-tip but different
+  statements); `check_authoritative` requires exact old tip and higher generation.
+  These prechecks DO NOT persist or accept transfers, and signature verification
+  is not a grant. The owner must intersect current authority/delegation, compare
+  its latest durable watermark before credit, verify the entire quarantine even
+  on Identical, and repeat comparisons in the durable commit transaction.
+  Tests cover foreign hub/target/purpose/ref/key, tampering, skipped generations,
+  uint64 maximum, lower/equal-different conflicts and authoritative old-tip CAS.
 
 Kernel integration must keep registry, relay batch dedupe/audit, private-event
 routing and immutable once-mapped sender action envelopes in `coglet-hub`.
@@ -185,8 +273,9 @@ including waiting for unary FIN, remains bounded by the request deadline.
    lifetime; unary tasks and classification are bounded in this component.
 3. Git push/fetch multi-frame operation integration (the unary API does not
    implement git transfers), sender credit validation, signed metadata/watermark
-   checks before disclosure/credit, bounded Git quarantine/fsck/archive/provenance
-   verification, durable CAS/watermarks and boundary activation.
+   checks before disclosure/credit, integration of the isolated bounded validator,
+   durable CAS/watermarks and boundary activation. Validator component delivery
+   is not Session/end-to-end acceptance.
 4. Reference hub/device test endpoints and `coglet-mock::hub`, lifecycle/debug/
    inbox/action/relay behavior with durable receipts and stateful observations.
 5. Same `conformance/hub/` cases/oracles against reference and mock using the
