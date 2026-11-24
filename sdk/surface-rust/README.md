@@ -84,7 +84,10 @@ loses the identity anchor too: supervisors MUST preserve it externally and must
 not recreate a previously enrolled identity with a fresh directory. The SDK can
 detect partial ledger loss, not destruction of all supervisor state.
 
-Unoptimized fixture startup showed intermittent 200ms first-frame timeouts on
-this shared worker. Release binaries are registered for more timing headroom;
-no test deadline was relaxed. Measured local startup improved, but this is not
-proof of a scheduler-independent latency bound or a proven flake root cause.
+Release fixture adapters emit `COGLET_CONFORMANCE_READY` on stderr after durable
+startup. The registry harness waits under the existing connection/case watchdogs
+before starting the unchanged 200ms first-frame deadline. Release optimization
+alone previously left initialization charged to that protocol deadline. The
+`surface-readiness` CI job proves the budget separation with 50 normal iterations
+and paired slow-initial-fdatasync counterfactual/fixed runs; this does not attribute
+the historical CI stalls to a particular storage or scheduler cause.

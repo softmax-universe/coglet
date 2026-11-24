@@ -18,12 +18,12 @@ class ContractBindings(unittest.TestCase):
     def setUpClass(cls):
         cls.catalog = json.loads((SPEC / 'capabilities/bindings.json').read_text())['operations']
         cls.schemas = {family: json.loads((SPEC / f'messages/{family}.schema.json').read_text())
-                       for family in ('common', 'surface', 'speech', 'expression', 'abi')}
+                       for family in ('common', 'surface', 'speech', 'expression', 'abi', 'sandbox')}
         cls.registry = Registry().with_resources((schema['$id'], Resource.from_contents(schema))
                                                  for schema in cls.schemas.values())
         common = (SPEC / 'messages/common.cddl').read_text()
         cls.cddl = {family: (SPEC / f'messages/{family}.cddl').read_text() + '\n' + common
-                    for family in ('surface', 'speech', 'expression', 'abi')}
+                    for family in ('surface', 'speech', 'expression', 'abi', 'sandbox')}
 
     def valid(self, selected, value):
         family, rule = selected.split(':')
@@ -55,11 +55,13 @@ class ContractBindings(unittest.TestCase):
         # such as speech-route are deliberately not operations.
         expected = {
             'event': {'speech.start', 'speech.partial', 'speech.end', 'speech.position',
-                      'speech.barge_in', 'speech.tool_call', 'speech.work_intent', 'speech.work_done'},
+                      'speech.barge_in', 'speech.tool_call', 'speech.work_intent', 'speech.work_done',
+                      'sim.gridbot_state', 'sim.cartpole_state'},
             'read': {'speech.config', 'speech.heard', 'speech.work_state', 'expression.state'},
             'action': {'speech.speak_chunk', 'speech.stop', 'speech.backchannel',
                        'speech.session_open', 'speech.session_close', 'speech.tool_result',
-                       'speech.work_result', 'expression.set_expression'},
+                       'speech.work_result', 'expression.set_expression',
+                       'sim.gridbot_move', 'sim.cartpole_force'},
             'gateway': {'llm.complete'},
         }
         self.assertEqual(set(self.catalog), set.union(*expected.values()))

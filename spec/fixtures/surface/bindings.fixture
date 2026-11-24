@@ -1277,6 +1277,252 @@
     }
   },
   {
+    "name": "sim.gridbot_state-input-valid",
+    "operation": "sim.gridbot_state",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "cbor_hex": "a961780061790064646f6e65f4657374657073006577696474680866676f616c5f780166676f616c5f790166686569676874086a73746174655f68617368784030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030"
+  },
+  {
+    "name": "sim.gridbot_state-input-unknown-field",
+    "operation": "sim.gridbot_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.gridbot_state-input-missing-field",
+    "operation": "sim.gridbot_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "sim.gridbot_state-input-wrong-operation",
+    "operation": "sim.gridbot_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "sim.gridbot_move-input-valid",
+    "operation": "sim.gridbot_move",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "direction": "east"
+    },
+    "cbor_hex": "a169646972656374696f6e6465617374"
+  },
+  {
+    "name": "sim.gridbot_move-input-unknown-field",
+    "operation": "sim.gridbot_move",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "direction": "east",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.gridbot_move-input-missing-field",
+    "operation": "sim.gridbot_move",
+    "slot": "input",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "sim.gridbot_move-input-wrong-operation",
+    "operation": "sim.gridbot_move",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "sim.gridbot_move-output-valid",
+    "operation": "sim.gridbot_move",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "sim.gridbot_move-output-unknown-field",
+    "operation": "sim.gridbot_move",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.gridbot_move-output-wrong-operation",
+    "operation": "sim.gridbot_move",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "sim.cartpole_state-input-valid",
+    "operation": "sim.cartpole_state",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "cbor_hex": "a761780064646f6e65f465616e676c6501657374657073006876656c6f63697479206a73746174655f6861736878403030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303070616e67756c61725f76656c6f6369747900"
+  },
+  {
+    "name": "sim.cartpole_state-input-unknown-field",
+    "operation": "sim.cartpole_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.cartpole_state-input-missing-field",
+    "operation": "sim.cartpole_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "sim.cartpole_state-input-wrong-operation",
+    "operation": "sim.cartpole_state",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "sim.cartpole_force-input-valid",
+    "operation": "sim.cartpole_force",
+    "slot": "input",
+    "valid": true,
+    "value": {
+      "direction": "right"
+    },
+    "cbor_hex": "a169646972656374696f6e657269676874"
+  },
+  {
+    "name": "sim.cartpole_force-input-unknown-field",
+    "operation": "sim.cartpole_force",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "direction": "right",
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.cartpole_force-input-missing-field",
+    "operation": "sim.cartpole_force",
+    "slot": "input",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "sim.cartpole_force-input-wrong-operation",
+    "operation": "sim.cartpole_force",
+    "slot": "input",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
+    "name": "sim.cartpole_force-output-valid",
+    "operation": "sim.cartpole_force",
+    "slot": "output",
+    "valid": true,
+    "value": {},
+    "cbor_hex": "a0"
+  },
+  {
+    "name": "sim.cartpole_force-output-unknown-field",
+    "operation": "sim.cartpole_force",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "unexpected": true
+    }
+  },
+  {
+    "name": "sim.cartpole_force-output-wrong-operation",
+    "operation": "sim.cartpole_force",
+    "slot": "output",
+    "valid": false,
+    "value": {
+      "utterance": "11111111111111111111111111111111",
+      "position_ms": 0
+    }
+  },
+  {
     "name": "llm.complete-input-valid",
     "operation": "llm.complete",
     "slot": "input",

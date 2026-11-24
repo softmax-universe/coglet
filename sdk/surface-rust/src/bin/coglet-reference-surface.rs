@@ -116,6 +116,8 @@ fn run() -> Result<(), String> {
         })
         .transpose()?;
     let mut output = std::io::stdout().lock();
+    // Durable initialization is complete; hello retains its wire deadline.
+    eprintln!("COGLET_CONFORMANCE_READY");
     emit(&mut output, initial)?;
     let (tx, rx) = mpsc::sync_channel(transport::QUEUE_BOUND);
     std::thread::spawn(move || {

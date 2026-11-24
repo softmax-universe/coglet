@@ -53,7 +53,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "coglet-surface", directory = "../sdk/surface-python" }]
+requires-dist = [{ name = "coglet-surface", editable = "../sdk/surface-python" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8,<10" }]
@@ -61,7 +61,7 @@ dev = [{ name = "pytest", specifier = ">=8,<10" }]
 [[package]]
 name = "coglet-surface"
 version = "0.1.0"
-source = { directory = "../sdk/surface-python" }
+source = { editable = "../sdk/surface-python" }
 dependencies = [
     { name = "cbor2" },
 ]

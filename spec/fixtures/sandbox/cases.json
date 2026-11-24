@@ -1,0 +1,2010 @@
+[
+  {
+    "name": "gridbot-state-valid",
+    "type": "gridbot-state",
+    "valid": true,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "cbor_hex": "a961780061790064646f6e65f4657374657073006577696474680866676f616c5f780166676f616c5f790166686569676874086a73746174655f68617368784030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030"
+  },
+  {
+    "name": "gridbot-state-unknown-field",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "extra": true
+    }
+  },
+  {
+    "name": "gridbot-state-missing-x",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-x-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": null,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-x-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": [],
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-x-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": {},
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-x-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": true,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-x-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": "bad",
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-x--1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": -1,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-x-64",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 64,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-y",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-y-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": null,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-y-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": [],
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-y-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": {},
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-y-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": true,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-y-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": "bad",
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-y--1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": -1,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-y-64",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 64,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-goal_x",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_x-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": null,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_x-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": [],
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_x-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": {},
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_x-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": true,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_x-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": "bad",
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-goal_x--1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": -1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-goal_x-64",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 64,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-goal_y",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_y-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": null,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_y-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": [],
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_y-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": {},
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_y-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": true,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-goal_y-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": "bad",
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-goal_y--1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": -1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-goal_y-64",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 64,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-width",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-width-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": null,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-width-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": [],
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-width-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": {},
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-width-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": true,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-width-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": "bad",
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-width-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 1,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-width-65",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 65,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-height",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-height-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": null,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-height-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": [],
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-height-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": {},
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-height-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": true,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-height-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": "bad",
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-height-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 1,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-height-65",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 65,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-steps",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-steps-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": null,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-steps-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": [],
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-steps-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": {},
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-steps-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": true,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-steps-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": "bad",
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-steps--1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": -1,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-bound-steps-10001",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 10001,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-done",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-done-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": null,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-done-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": [],
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-done-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": {},
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-type-done-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": "bad",
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "gridbot-state-missing-state_hash",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false
+    }
+  },
+  {
+    "name": "gridbot-state-type-state_hash-0",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": null
+    }
+  },
+  {
+    "name": "gridbot-state-type-state_hash-1",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": []
+    }
+  },
+  {
+    "name": "gridbot-state-type-state_hash-2",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": {}
+    }
+  },
+  {
+    "name": "gridbot-state-type-state_hash-3",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": true
+    }
+  },
+  {
+    "name": "gridbot-state-type-state_hash-4",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "bad"
+    }
+  },
+  {
+    "name": "gridbot-state-hash-newline",
+    "type": "gridbot-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "y": 0,
+      "goal_x": 1,
+      "goal_y": 1,
+      "width": 8,
+      "height": 8,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000\n"
+    }
+  },
+  {
+    "name": "gridbot-move-valid",
+    "type": "gridbot-move",
+    "valid": true,
+    "value": {
+      "direction": "east"
+    },
+    "cbor_hex": "a169646972656374696f6e6465617374"
+  },
+  {
+    "name": "gridbot-move-unknown-field",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": "east",
+      "extra": true
+    }
+  },
+  {
+    "name": "gridbot-move-missing-direction",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "gridbot-move-type-direction-0",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": null
+    }
+  },
+  {
+    "name": "gridbot-move-type-direction-1",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": []
+    }
+  },
+  {
+    "name": "gridbot-move-type-direction-2",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": {}
+    }
+  },
+  {
+    "name": "gridbot-move-type-direction-3",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": true
+    }
+  },
+  {
+    "name": "gridbot-move-type-direction-4",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": "bad"
+    }
+  },
+  {
+    "name": "gridbot-move-wrong-direction",
+    "type": "gridbot-move",
+    "valid": false,
+    "value": {
+      "direction": "up"
+    }
+  },
+  {
+    "name": "cartpole-state-valid",
+    "type": "cartpole-state",
+    "valid": true,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "cbor_hex": "a761780064646f6e65f465616e676c6501657374657073006876656c6f63697479206a73746174655f6861736878403030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303070616e67756c61725f76656c6f6369747900"
+  },
+  {
+    "name": "cartpole-state-unknown-field",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "extra": true
+    }
+  },
+  {
+    "name": "cartpole-state-missing-x",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-x-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": null,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-x-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": [],
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-x-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": {},
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-x-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": true,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-x-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": "bad",
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-x--2147483649",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": -2147483649,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-x-2147483648",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 2147483648,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-velocity",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-velocity-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": null,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-velocity-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": [],
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-velocity-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": {},
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-velocity-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": true,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-velocity-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": "bad",
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-velocity--2147483649",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -2147483649,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-velocity-2147483648",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": 2147483648,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-angle",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angle-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": null,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angle-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": [],
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angle-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": {},
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angle-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": true,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angle-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": "bad",
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-angle--2147483649",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": -2147483649,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-angle-2147483648",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 2147483648,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-angular_velocity",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angular_velocity-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": null,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angular_velocity-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": [],
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angular_velocity-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": {},
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angular_velocity-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": true,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-angular_velocity-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": "bad",
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-angular_velocity--2147483649",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": -2147483649,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-angular_velocity-2147483648",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 2147483648,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-steps",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-steps-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": null,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-steps-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": [],
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-steps-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": {},
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-steps-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": true,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-steps-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": "bad",
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-steps--1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": -1,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-bound-steps-10001",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 10001,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-done",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-done-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": null,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-done-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": [],
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-done-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": {},
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-type-done-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": "bad",
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  {
+    "name": "cartpole-state-missing-state_hash",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false
+    }
+  },
+  {
+    "name": "cartpole-state-type-state_hash-0",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": null
+    }
+  },
+  {
+    "name": "cartpole-state-type-state_hash-1",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": []
+    }
+  },
+  {
+    "name": "cartpole-state-type-state_hash-2",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": {}
+    }
+  },
+  {
+    "name": "cartpole-state-type-state_hash-3",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": true
+    }
+  },
+  {
+    "name": "cartpole-state-type-state_hash-4",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "bad"
+    }
+  },
+  {
+    "name": "cartpole-state-hash-newline",
+    "type": "cartpole-state",
+    "valid": false,
+    "value": {
+      "x": 0,
+      "velocity": -1,
+      "angle": 1,
+      "angular_velocity": 0,
+      "steps": 0,
+      "done": false,
+      "state_hash": "0000000000000000000000000000000000000000000000000000000000000000\n"
+    }
+  },
+  {
+    "name": "cartpole-force-valid",
+    "type": "cartpole-force",
+    "valid": true,
+    "value": {
+      "direction": "right"
+    },
+    "cbor_hex": "a169646972656374696f6e657269676874"
+  },
+  {
+    "name": "cartpole-force-unknown-field",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": "right",
+      "extra": true
+    }
+  },
+  {
+    "name": "cartpole-force-missing-direction",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "cartpole-force-type-direction-0",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": null
+    }
+  },
+  {
+    "name": "cartpole-force-type-direction-1",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": []
+    }
+  },
+  {
+    "name": "cartpole-force-type-direction-2",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": {}
+    }
+  },
+  {
+    "name": "cartpole-force-type-direction-3",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": true
+    }
+  },
+  {
+    "name": "cartpole-force-type-direction-4",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": "bad"
+    }
+  },
+  {
+    "name": "cartpole-force-wrong-direction",
+    "type": "cartpole-force",
+    "valid": false,
+    "value": {
+      "direction": "up"
+    }
+  }
+]

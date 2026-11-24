@@ -113,6 +113,9 @@ impl Database {
         {
             return Err("admission pin mismatch".into());
         }
+        if self.compatibility_floor()?.is_some() {
+            self.check_code_compatibility(executing_code_hash)?;
+        }
         if Instant::now() >= admission.deadline {
             return Err("deadline exceeded".into());
         }

@@ -473,6 +473,7 @@ dependencies = [
  "fs2",
  "hex",
  "rusqlite",
+ "serde",
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
@@ -590,11 +591,16 @@ name = "coglet-mock"
 version = "0.1.0"
 dependencies = [
  "coglet-engine",
+ "coglet-hub",
  "coglet-llm",
+ "coglet-proto",
  "coglet-surface-rust",
  "coglet-types",
+ "iroh",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
