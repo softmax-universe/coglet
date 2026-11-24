@@ -93,6 +93,12 @@ impl Kernel {
                 } else { Err(Error::Conflict(0)) };
             }
             if current != expected_revision { return Err(Error::Conflict(0)); }
+            // Never erase an admitted boundary command. Card C owns signed or
+            // attempted activation recovery; until then replacement fails closed.
+            let activating: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM promotion_state WHERE target=?1 AND state IN ('activating','rolling_back'))",[target],|r|r.get(0))?;
+            if activating { return Err(Error::Conflict(0)); }
+            tx.execute("UPDATE promotion_proposals SET state='invalidated' WHERE target=?1 AND state='proposed'",[target])?;
+            tx.execute("UPDATE promotion_state SET proposal=NULL,state=CASE WHEN live_commit IS NULL THEN 'empty' ELSE 'stable' END WHERE target=?1 AND state='proposed'",[target])?;
             tx.execute("INSERT INTO policy_revisions VALUES(?1,?2,?3,?4)", params![target,revision,document,expected_revision])?;
             tx.execute("INSERT INTO policy_current VALUES(?1,?2) ON CONFLICT(target) DO UPDATE SET revision=excluded.revision", params![target,revision])?;
             audit(&tx, json!({"method":"operator.policy_install","target":target,"policy_revision":revision,"previous_revision":current,"outcome":"installed"}))?;
