@@ -16,6 +16,10 @@ pub(super) struct ManagedState {
 }
 
 impl ManagedState {
+    pub(super) fn identity(&self) -> &Value {
+        &self.identity
+    }
+
     pub(super) fn validate(&self) -> Result<()> {
         if !self.identity.is_object() || (self.running && self.cancellation_pending) {
             return Err("invalid recovered managed lifecycle".into());
@@ -42,6 +46,10 @@ impl RuntimeService {
     /// caller configuration. Correlation IDs belong to the receipt, not identity.
     pub fn managed_identity(&self) -> Option<&Value> {
         self.state.managed.as_ref().map(|m| &m.identity)
+    }
+
+    pub(crate) fn managed_install_receipt(&self) -> Option<&Value> {
+        self.state.managed.as_ref().map(|m| &m.install_receipt)
     }
 
     /// Original code/manifest/private-files configuration, not live private data.

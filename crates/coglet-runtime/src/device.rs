@@ -235,9 +235,10 @@ impl DeviceHandler {
             return Err("not_installed".into());
         }
         let store = DurableStore::open(&path)?;
-        store
-            .state()
-            .ok_or("permission_denied")?
+        let Some(state) = store.state() else {
+            return Err("not_installed".into());
+        };
+        state
             .pointer("/managed/identity")
             .cloned()
             .filter(Value::is_object)
@@ -319,13 +320,37 @@ impl DeviceHandler {
                 "wasm_sha256": digest(&wasm)
             }
         });
-        let service = self.open_service(coglet, setup)?;
-        let mut locked = service.lock().map_err(|_| "unavailable".to_owned())?;
-        // The service mutex wait may outlive authority/request windows.
-        gate()?;
-        let receipt =
-            locked.managed_install(&identity, request["correlation_id"].as_str().unwrap())?;
-        drop(locked);
+        let operation_id = request["correlation_id"].as_str().unwrap();
+        let receipt = {
+            let mut services = self.inner.services.lock().map_err(|_| "unavailable")?;
+            if let Some(service) = services.get(coglet) {
+                let mut locked = service.lock().map_err(|_| "unavailable")?;
+                gate()?;
+                // A cached coordinator must already have its immutable install
+                // identity. Never bind new metadata to stale unmanaged bytes.
+                if locked.managed_identity().is_none() {
+                    return Err("permission_denied".into());
+                }
+                locked.managed_install(&identity, operation_id)?
+            } else {
+                let path = self.wal(coglet);
+                create_private_dir(path.parent().ok_or("invalid WAL path")?)?;
+                let opened = RuntimeService::open_for_install(
+                    &path,
+                    setup,
+                    QUEUE,
+                    &identity,
+                    operation_id,
+                    gate,
+                )?;
+                let receipt = opened
+                    .managed_install_receipt()
+                    .ok_or("unavailable")?
+                    .clone();
+                services.insert(coglet.to_owned(), Arc::new(Mutex::new(opened)));
+                receipt
+            }
+        };
         validate("hub-mutation-receipt", &receipt)?;
         self.start_adapter(coglet);
         Ok(receipt)
@@ -474,9 +499,11 @@ impl DeviceHandler {
             return Ok(None);
         }
         let store = DurableStore::open(&path)?;
-        store
-            .state()
-            .and_then(|s| s.pointer("/runtime/initial_setup"))
+        let Some(state) = store.state() else {
+            return Ok(None);
+        };
+        state
+            .pointer("/runtime/initial_setup")
             .cloned()
             .map(Some)
             .ok_or_else(|| "unavailable".into())

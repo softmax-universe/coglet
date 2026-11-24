@@ -1288,7 +1288,7 @@ async fn start_requires_present_well_formed_clear_kill_switch() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
     timed!(async {
-        let mut env = Env::new(0x32, Options::default()).await.unwrap();
+        let mut env = Env::new(0x33, Options::default()).await.unwrap();
         let (bundle, _) = pushed_and_installed(&mut env).await;
         applied(&env.simple("hub.start").await);
         let shared = env
@@ -1382,6 +1382,78 @@ async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
             .join("state.wal");
         let durable = coglet_runtime::DurableStore::open(&wal).unwrap();
         assert_eq!(durable.records(), &[journal]);
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn first_install_expiry_leaves_no_code_identity_and_new_ref_retries_cleanly() {
+    timed!(async {
+        for (seed, restart) in [(0x34, false), (0x35, true)] {
+            let mut env = Env::new(seed, Options::default()).await.unwrap();
+            let first = env.bundle(1, None, &[("marker.txt", b"old")]);
+            assert_eq!(env.push(&first).await["result"]["state"], "queued");
+            // Fourth sample: immediately before the first managed WAL frame,
+            // after construction. The first three authorize and enter callback.
+            let clock = env.clock.clone();
+            *env.trap.lock().unwrap() = Some((
+                env.reads.load(Ordering::SeqCst) + 4,
+                Box::new(move || clock.store(DELEGATION_EXPIRES, Ordering::SeqCst)),
+            ));
+            let rejected = env.install_request(correlation(6000), &first.signed).await;
+            denied(&rejected);
+            assert!(
+                env.trap.lock().unwrap().is_none(),
+                "precommit gate executed"
+            );
+            assert!(
+                env.handler
+                    .as_ref()
+                    .unwrap()
+                    .share_service(&env.coglet)
+                    .is_none()
+            );
+            let wal = env
+                .config
+                .wal_root
+                .join(coglet_runtime::digest(env.coglet.as_bytes()))
+                .join("state.wal");
+            {
+                let store = coglet_runtime::DurableStore::open(&wal).unwrap();
+                assert!(store.state().is_none(), "no unmanaged initial code frame");
+                assert!(store.records().is_empty());
+            }
+            env.clock.store(T0, Ordering::SeqCst);
+            if restart {
+                env.restart_handler().await;
+            }
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), Value::Null)
+            );
+            let next = env.bundle(2, Some(&first.tip), &[("marker.txt", b"new")]);
+            assert_eq!(env.push(&next).await["result"]["state"], "queued");
+            let receipt = env.install_request(correlation(6001), &next.signed).await;
+            applied(&receipt);
+            let shared = env
+                .handler
+                .as_ref()
+                .unwrap()
+                .share_service(&env.coglet)
+                .unwrap();
+            assert_eq!(
+                shared.lock().unwrap().managed_setup()["initial_files"]["/code/marker.txt"],
+                hex::encode(b"new")
+            );
+            drop(shared);
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), json!(next.tip))
+            );
+            assert_eq!(
+                env.install_request(correlation(6002), &next.signed).await["result"],
+                receipt["result"]
+            );
+        }
     });
 }
 
