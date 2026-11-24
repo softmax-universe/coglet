@@ -68,7 +68,18 @@ jobs:
       - name: Generated types are current
         run: codegen/run --check
       - name: Generator regression tests
-        run: python3 -m unittest discover -s codegen -v
+        run: python3 scripts/ci/python-tests.py
+      - name: Quarantined generator tests, repeated (stability only)
+        if: ${{ inputs.stability-repeats > 0 && !cancelled() }}
+        timeout-minutes: 15
+        env:
+          REPEATS: ${{ inputs.stability-repeats }}
+        run: |
+          for iteration in $(seq 1 "$REPEATS"); do
+            echo "::group::quarantined Python iteration $iteration"
+            python3 scripts/ci/python-tests.py --only-quarantined
+            echo "::endgroup::"
+          done
       - name: Generated validator agrees with CDDL and JSON Schema
         run: python3 codegen/cross_check.py
       - run: python3 -m unittest discover -s spec/tests -v

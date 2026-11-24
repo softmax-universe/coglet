@@ -18,3 +18,9 @@
 # card = "t_0123456789abcdef"
 # since = 2026-11-24
 # reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"
+
+[[python]]
+id = "test_go.GoEmitterTests.test_go_module_tests"
+card = "t_01a20f66592ab725"
+since = 2026-11-24
+reason = "Go TestSurfaceConformance fixture scheduler-stall step 4 read_frame TimeoutError in required run 45481909574 attempt 1 at 0f6083bf; attempt 2 passed"

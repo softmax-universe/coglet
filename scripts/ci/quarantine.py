@@ -21,7 +21,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT = ROOT / 'ci' / 'quarantine.toml'
-KINDS = ('conformance', 'rust')
+KINDS = ('conformance', 'rust', 'python')
 FIELDS = {'id', 'card', 'since', 'reason'}
 MAX_AGE_DAYS = 14
 CARD = re.compile(r't_[0-9a-f]{16}')
@@ -31,6 +31,7 @@ CARD = re.compile(r't_[0-9a-f]{16}')
 # exact name in every test binary: prefer a module path that is unique in the workspace.
 IDS = {
     'conformance': re.compile(r'[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+/[A-Za-z0-9_.-]+'),
+    'python': re.compile(r'[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*){2,}'),
     'rust': re.compile(r'[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*'),
 }
 

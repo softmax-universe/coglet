@@ -47,7 +47,7 @@ class QuarantineTests(unittest.TestCase):
 
     def test_missing_file_means_nothing_quarantined(self):
         loaded = quarantine.load(Path(tempfile.gettempdir()) / 'no-such-quarantine.toml')
-        self.assertEqual(loaded, {'conformance': [], 'rust': []})
+        self.assertEqual(loaded, {'conformance': [], 'rust': [], 'python': []})
         self.assertEqual(quarantine.rust_args(loaded), [])
         self.assertEqual(quarantine.rust_args(loaded, only=True), [])
 
@@ -73,7 +73,7 @@ class QuarantineTests(unittest.TestCase):
                                                         'surface-go-reference', 1),
             'rust id with spaces': GOOD.replace('tests::poisoned_lock', 'tests poisoned', 1),
             'extra field': GOOD.replace('since = 2026-11-01', 'since = 2026-11-01\nowner = "x"', 1),
-            'unknown section': GOOD + '\n[[python]]\nid = "x"\n',
+            'unknown section': GOOD + '\n[[unknown]]\nid = "x"\n',
             'duplicate': GOOD + f'\n[[rust]]\nid = "tests::poisoned_lock"\ncard = "{CARD}"\nsince = 2026-11-24\nreason = "dup"\n',
         }
         for name, text in bad.items():
@@ -81,6 +81,13 @@ class QuarantineTests(unittest.TestCase):
                 quarantine.load(self.write(text))
 
     def test_unmatched_rust_ids_are_reported(self):
+        # Python ids need an exact discovery module, class, and method.
+        entry = f'\n[[python]]\nid = "test_go.GoEmitterTests.test_go_module_tests"\ncard = "{CARD}"\nsince = 2026-11-01\nreason = "read timeout"\n'
+        loaded = quarantine.load(self.write(GOOD + entry))
+        self.assertEqual(loaded['python'][0]['id'], 'test_go.GoEmitterTests.test_go_module_tests')
+        self.assertIn(('python', loaded['python'][0]), quarantine.expired(loaded, datetime.date(2026, 11, 24)))
+        with self.assertRaises(ValueError):
+            quarantine.load(self.write(GOOD + entry.replace('test_go.GoEmitterTests.test_go_module_tests', 'test_go')))
         loaded = quarantine.load(self.write(GOOD))
         listing = 'runaway_deadline_then_fresh_success: test\nother::tests::poisoned_lock: test\nm::bench: benchmark\n'
         self.assertEqual(quarantine.rust_unmatched(loaded, listing), ['tests::poisoned_lock'])
