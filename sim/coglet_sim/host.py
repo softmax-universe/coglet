@@ -112,9 +112,22 @@ class MarkerSurface(Surface):
 
     OWNERS = ('speech.control', 'speech.session', 'expression.control')
 
-    def __init__(self, *args, marker=None, **kwargs):
+    def __init__(self, *args, marker=None, revoked=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.marker = marker
+        self.revoked = revoked
+
+    # Every grant snapshot (and kill) moves authority to a new epoch: the SDK
+    # cancels all earlier-epoch work. Heard records of revoked owners go too.
+    def grant(self, entries):
+        super().grant(entries)
+        if self.revoked:
+            self.revoked()
+
+    def kill(self, reason):
+        super().kill(reason)
+        if self.revoked:
+            self.revoked()
 
     def _emit(self, kind, body):
         if kind == 'capabilities':
@@ -144,6 +157,7 @@ class DuplexDevice:
         self.generation = 0
         self.capture_stream = None
         self.captured = False
+        self.native_epoch = None  # grant epoch owning provider-native items
 
     # Native off-switch and callback fencing --------------------------------
 
@@ -152,6 +166,28 @@ class DuplexDevice:
         self.engine.halt()
         self.generation += 1
         self.due.clear()
+
+    def heard_owner(self, item):
+        """(coglet, epoch) whose authority covers this item's heard record."""
+        record = self.engine.items[item]
+        if record['owner'] is None:
+            return COGLET, self.native_epoch
+        return tuple(record['owner'])
+
+    def revoke_heard(self):
+        """Remove heard records whose owner authority was revoked (speech.md:
+        retain for the action-retention interval, remove on owner revocation).
+
+        A regrant to the same coglet is a new epoch, not a continuation: items
+        admitted under an earlier epoch are no longer readable. Tombstones stay
+        in the playback table so stopped streams and fenced callbacks hold."""
+        surface = self.surface()
+        epoch = surface._get('epoch')
+        holders = {g['coglet'] for g in surface.grants if 'speech.heard' in g['operations']}
+        self.engine.forget_heard([
+            item for item, record in self.engine.items.items()
+            if not record.get('heard_removed')
+            and (self.heard_owner(item)[1] != epoch or self.heard_owner(item)[0] not in holders)])
 
     def now_ms(self):
         return (time.monotonic_ns() - self.origin_ns) // 1_000_000
@@ -303,7 +339,7 @@ class DuplexDevice:
             return self.engine.expression_state(now)
         if name == 'speech.heard':
             record = self.engine.heard(args['item'])
-            if record is None or self.owner(args['item'])[0] != context.coglet:
+            if record is None or self.heard_owner(args['item']) != (context.coglet, context.epoch):
                 raise Rejection('not_found', 'unknown item')
             return record
         if name == 'speech.work_state':
@@ -333,6 +369,7 @@ class DuplexDevice:
 
     def configured(self):
         self.started = True
+        self.native_epoch = self.surface()._get('epoch')
         if self.case == 'late-partial-and-stale-revision':
             self._arm_capture(self.now_ms(), _capture(self.case))
         elif self.case == 'work-cancelled':
@@ -400,7 +437,7 @@ def bind_session(case, ledger):
     holder = [None]
     device = DuplexDevice(case, clock, holder)
     surface = MarkerSurface(CONFIG['surface'], {COGLET}, ledger, create=True, clock=clock,
-                            stop=device.stop, marker=marker)
+                            stop=device.stop, marker=marker, revoked=device.revoke_heard)
     holder[0] = surface
     if names:
         device.install(surface, names)

@@ -11,7 +11,7 @@ import pytest
 from coglet_surface.codec import decode, encode
 from coglet_surface.surface import WIRE
 
-from coglet_sim.host import COGLET, HELLO_ID, bind_session
+from coglet_sim.host import COGLET, HELLO_ID, bind_session, grant_entries, operations_for
 
 STREAM = '2' * 32
 
@@ -33,18 +33,21 @@ class Wire:
         self.device.tick()
         self.messages.extend(decode(WIRE, raw) for raw in self.surface.drain())
 
-    def act(self, aid, capability, args, correlation=None, deadline=4_000_000):
-        self.send('act', {'grant_epoch': 1, 'action': {
+    def act(self, aid, capability, args, correlation=None, deadline=4_000_000, epoch=1):
+        self.send('act', {'grant_epoch': epoch, 'action': {
             'id': aid, 'coglet': COGLET, 'capability': capability, 'args': args,
             'deadline': deadline, 'correlation_id': correlation or aid}})
 
-    def speak(self, aid, chunk, text, final, correlation=None, stream=STREAM):
+    def speak(self, aid, chunk, text, final, correlation=None, stream=STREAM, epoch=1):
         self.act(aid, 'speech.speak_chunk', dict(stream=stream, chunk=chunk, text=text, final=final),
-                 correlation)
+                 correlation, epoch=epoch)
 
-    def read(self, item, correlation):
+    def read(self, item, correlation, epoch=1):
         self.send('read', {'coglet': COGLET, 'capability': 'speech.heard', 'args': {'item': item},
-                           'grant_epoch': 1, 'deadline': 4_000_000, 'correlation_id': correlation})
+                           'grant_epoch': epoch, 'deadline': 4_000_000, 'correlation_id': correlation})
+
+    def reply(self):
+        return [m['body'] for m in self.messages if m['type'] == 'read_reply'][-1]
 
     def settle(self, seconds):
         end = time.monotonic() + seconds
@@ -209,3 +212,50 @@ def test_revocation_fences_scheduled_playback(wire):
     before = len(w.messages)
     w.settle(0.2)
     assert [m for m in w.messages[before:] if m['type'] == 'event'] == []
+
+
+def ok_value(reply, correlation):
+    assert reply['correlation_id'] == correlation and reply['ok'] is True, reply
+    return reply['value']
+
+
+@pytest.mark.parametrize('revoke_first', [True, False], ids=['revoke-then-regrant', 'direct-regrant'])
+def test_heard_records_are_removed_on_owner_revocation(wire, revoke_first):
+    """speech.md: heard records are removed on owner revocation; a same-owner
+    regrant is a new epoch and must not read items admitted under the old one."""
+    w = wire('heard-truncation')
+    old, new = '9' * 32, 'b' * 32
+    w.speak(old, 0, 'Hello world', True)
+    w.until(lambda w: old in w.outcomes())
+    w.read(old, 'c' * 32)  # pre-revocation control: the owner reads its heard prefix
+    assert ok_value(w.reply(), 'c' * 32) == {'item': old, 'played_ms': 1200, 'text': 'Hello'}
+
+    entries = grant_entries(operations_for('heard-truncation'))
+    if revoke_first:
+        w.surface.grant([])
+    w.surface.grant(entries)
+    w.pump()
+    epoch = 3 if revoke_first else 2
+    assert w.surface._get('epoch') == epoch
+
+    w.read(old, 'd' * 32, epoch=epoch)  # same owner, new epoch: record is gone
+    reply = w.reply()
+    assert reply['ok'] is False and reply['error']['code'] == 'not_found'
+    assert w.device.engine.heard(old) is None  # removed, not merely hidden
+    assert w.device.engine.items[old]['state'] == 'stopped'  # tombstone kept
+    w.read(old, 'e' * 32)  # stale epoch is not admitted either
+    assert w.reply()['ok'] is False
+
+    # Tombstone fencing survives: the revoked stream stays closed.
+    w.speak('6' * 32, 1, 'more', True, epoch=epoch)
+    assert w.accepts()['6' * 32]['error']['code'] == 'conflict'
+
+    # Post-regrant control: a newly admitted item plays and is readable.
+    w.speak(new, 0, 'Hello world', True, stream='3' * 32, epoch=epoch)
+    assert w.accepts()[new]['accepted'] is True
+    w.until(lambda w: new in w.outcomes())
+    assert w.outcomes()[new]['status'] == 'succeeded'
+    w.read(new, 'f' * 32, epoch=epoch)
+    assert ok_value(w.reply(), 'f' * 32) == {'item': new, 'played_ms': 3000, 'text': 'Hello world'}
+    w.read(old, '7' * 32, epoch=epoch)  # still gone after new playback
+    assert w.reply()['error']['code'] == 'not_found'

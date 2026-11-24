@@ -223,6 +223,19 @@ class DuplexEngine:
             self.output = 'stopped'
         self.pending_play_at = None
 
+    def forget_heard(self, items):
+        """Remove heard records (owner revocation, speech.md heard retention).
+
+        The playback-table entry stays as a tombstone so item identity, stream
+        closure and chunk contiguity keep fencing late callbacks and replays;
+        only the heard projection (aligned spans, played prefix) is erased."""
+        for item in items:
+            record = self.items[item]
+            record['heard_removed'] = True
+            record['spans'] = []
+        if self.item in items:
+            self.spans = []
+
     def active_item(self):
         for item, record in self.items.items():
             if record['state'] in ('playing', 'ducked'):
@@ -350,7 +363,7 @@ class DuplexEngine:
     def heard(self, item):
         """speech.heard record for exactly that item, or None when unknown."""
         record = self.items.get(item)
-        if record is None:
+        if record is None or record.get('heard_removed'):
             return None
         return {
             'item': item,

@@ -102,6 +102,21 @@ def test_heard_history_preserves_items_and_truncates_only_the_interrupted_one():
         engine.feed(9000, 'barge_in', utterance=UTTERANCE, stream=STREAM, item=items[2], played_ms=1300)
 
 
+def test_forget_heard_removes_records_but_keeps_tombstones_across_replay():
+    engine, items, _ = _history_engine()
+    states = {i: engine.items[i]['state'] for i in items}
+    engine.forget_heard(items[:3])
+    assert [engine.heard(i) for i in items[:3]] == [None, None, None]
+    assert engine.heard(items[3]) == {'item': items[3], 'played_ms': 0, 'text': ''}
+    assert {i: engine.items[i]['state'] for i in items} == states  # tombstones stay
+    with pytest.raises(ValueError):
+        engine.enqueue(STREAM, 4, items[0], [], 100)  # identity still known, stream closed
+    replay = DuplexEngine()
+    replay.restore(engine.snapshot())
+    assert replay.snapshot() == engine.snapshot()
+    assert replay.heard(items[0]) is None
+
+
 def test_stop_cancels_queued_and_playing_but_leaves_finished_items():
     engine = DuplexEngine(barge='stop', render_latency_ms=0)
     engine.enqueue(STREAM, 0, 'a' * 32, [], 100)
