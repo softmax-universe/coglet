@@ -55,7 +55,20 @@ impl HttpKanban {
         {
             return Err(failed("invalid board identifier"));
         }
+        // Pin this client's provider rather than changing process-global TLS
+        // configuration. Ring supports the SDK-less Apple cross-check; the
+        // platform verifier still supplies native trust and hostname checks.
+        use rustls_platform_verifier::BuilderVerifierExt;
+        let tls = rustls::ClientConfig::builder_with_provider(std::sync::Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .map_err(|_| failed("TLS protocol initialization"))?
+        .with_platform_verifier()
+        .map_err(|_| failed("TLS platform verifier initialization"))?
+        .with_no_client_auth();
         let client = Client::builder()
+            .tls_backend_preconfigured(tls)
             .timeout(Duration::from_secs(10))
             .redirect(Policy::none())
             .retry(reqwest::retry::never())
