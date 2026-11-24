@@ -186,7 +186,7 @@ fn compiled_face_barge_in_journals_cancelled_action_and_replays_offline() {
         .flat_map(|r| r["boundary"].as_array().into_iter().flatten())
         .filter(|change| change["method"] == "runtime.receipt")
         .filter_map(|change| change["after"].as_str())
-        .last()
+        .next_back()
         .expect("journaled terminal inbox");
     let inbox = String::from_utf8(hex::decode(inbox).unwrap()).unwrap();
     let messages: Vec<Value> = inbox
