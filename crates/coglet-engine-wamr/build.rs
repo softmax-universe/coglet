@@ -54,21 +54,31 @@ fn main() {
     runtime_source.replace_range(begin..end, "static bool\nexecute_post_instantiate_functions(WASMModuleInstance *module_inst, bool is_sub_inst, WASMExecEnv *exec_env_main) {\n    (void)module_inst; (void)is_sub_inst; (void)exec_env_main;\n    return true;\n}\n\n");
     fs::write(&runtime, runtime_source).unwrap();
     let target = env::var("TARGET").unwrap();
-    assert!(
-        target.ends_with("-unknown-linux-gnu") || target == "armv7-unknown-linux-gnueabihf",
-        "unqualified OS: {target}"
-    );
-    let arch = if target.starts_with("x86_64-") {
-        "X86_64"
-    } else if target.starts_with("armv7-") {
-        "ARMV7"
-    } else {
-        panic!("unqualified WAMR target: {target}")
+    let (platform, arch) = match target.as_str() {
+        "x86_64-unknown-linux-gnu" => ("linux", "X86_64"),
+        "armv7-unknown-linux-gnueabihf" => ("linux", "ARMV7"),
+        "x86_64-apple-darwin" => ("darwin", "X86_64"),
+        "aarch64-apple-darwin" | "aarch64-apple-ios" => ("darwin", "AARCH64"),
+        _ => panic!("unqualified WAMR target: {target}"),
     };
-    let dst = cmake::Config::new("native")
+    let mut config = cmake::Config::new("native");
+    config
         .define("WAMR_ROOT", &source)
-        .define("WAMR_BUILD_TARGET", arch)
-        .build();
+        .define("WAMR_BUILD_PLATFORM", platform)
+        .define("WAMR_BUILD_TARGET", arch);
+    if target == "aarch64-apple-ios" {
+        config
+            .define("CMAKE_SYSTEM_NAME", "iOS")
+            .define("CMAKE_OSX_ARCHITECTURES", "arm64")
+            .define("CMAKE_OSX_SYSROOT", "iphoneos")
+            .define("CMAKE_OSX_DEPLOYMENT_TARGET", "15.0");
+    } else if platform == "darwin" {
+        config.define(
+            "CMAKE_OSX_ARCHITECTURES",
+            if arch == "AARCH64" { "arm64" } else { "x86_64" },
+        );
+    }
+    let dst = config.build();
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=coglet_wamr_native");
     for lib in ["pthread", "m", "dl"] {

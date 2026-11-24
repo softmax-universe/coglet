@@ -14,13 +14,13 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - deterministic heard-state validation, monotonic alignment and reserved path protection;
 - trailing boundary seals (including zero-step exports) and offline boundary replay.
 - shared binding-checked surface negotiation, bounded replies and health/inactivity;
-- real embedded C ABI and Linux UID-authenticated private Unix socket framing.
+- real embedded C ABI and Linux/Apple UID-authenticated private Unix socket framing.
 - pinned operation-schema selection, capability replacement and grant/resource checks;
 - one-time clock translation and complete deterministic act bytes fsynced before exposure;
 - durable bound-surface admission/outcomes, terminal dedup and staged inbox boundary mutations.
 - lease-scoped private event routing with durable shared surface sequence/clock highwaters;
 - bounded caller-scoped native reads, timeout/late-reply fencing and revocation purging.
-- Linux boot-identity/BOOTTIME anchored runtime clock persisted in the WAL;
+- Linux boot-identity/BOOTTIME and Apple boot-session UUID/continuous-time clocks persisted in the WAL;
 - service-backed socket and C ABI dispatch pumps, ordered by committed calls;
 - automatic same-envelope reconciliation after native reconnect and WAL reopen.
 - durable speech capture start/revision/end fencing and provider call deduplication.
@@ -39,6 +39,12 @@ The snapshot filesystem seam is still separate from `coglet-fs`.
 
 See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
 trusted supervisor configuration and its remaining qualification limits.
+Apple evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005),
+source head `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: native arm64 macOS
+engine/runtime default + native-engine suites and compiled echo C-ABI smoke
+passed with zero ignored tests. x86_64 macOS was cross-built; arm64 iOS was
+archive-built and SDK-linked (minimum 15.0), **not executed on a device**.
+The evidence table distinguishes this snapshot from final PR-head checks.
 
 ```sh
 cargo test -p coglet-runtime
@@ -96,7 +102,9 @@ The unimplemented boundaries remain explicit:
   The default probe modes remain negotiation-only. Linux native clock continuity uses
   BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
   guesses. A changed boot identity, old unanchored dispatch ledger or poisoned WAL
-  fails closed. Non-Linux supervised clocks (including iOS) remain unimplemented.
+  fails closed. macOS/iOS use `kern.bootsessionuuid` and `mach_continuous_time`;
+  unavailable kernel identity/clock data fails closed without a wall-clock fallback.
+  See [Apple evidence](native-engine.md#apple-platform-evidence) for execution vs link scope.
   Dispatch order is retained/checked against initial intent order and committed action
   arrays, not sorted IDs. Expired undispatched intents receive durable local rejections.
 - Operational private events and reads use the shared library session attached
@@ -253,8 +261,11 @@ To attach the durable service, call `coglet_runtime_start` with UTF-8 JSON
 `setup` is the current runtime configuration shape (code/manifest/files/pending
 ledgers); this is not yet a production signed archive admission API. Stop returns
 would-block while any service-backed link remains live; close links before restart.
-Without start, open remains the existing negotiation probe. Linux only until other
-platforms provide verified supervisor clock continuity.
+Without start, open remains the existing negotiation probe. Linux and Apple clocks
+support supervised start; [Apple evidence](native-engine.md#apple-platform-evidence)
+distinguishes native macOS execution from iOS archive/link only. Startup JSON has a
+separate 16 MiB bound because it carries hex-encoded Wasm; surface frame limits do
+not change. The supervisor remains trusted and signed archive admission is open.
 
 The equivalent Linux daemon transport is:
 `cogletd --surface-service-socket SOCKET BINDING_JSON PEER_UID WAL SETUP_JSON`.

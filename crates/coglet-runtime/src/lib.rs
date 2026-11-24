@@ -10,7 +10,7 @@ mod heard;
 mod host;
 mod journal;
 mod router;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
 pub mod socket;
 mod surface;
 #[cfg(feature = "native-engine")]

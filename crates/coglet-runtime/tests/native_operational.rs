@@ -1,5 +1,5 @@
 //! Actual pointer boundary and actual cogletd socket: no SurfaceSession test shim.
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", target_os = "macos"))]
 use coglet_runtime::{cbor, ffi::*};
 use serde_json::{Value, json};
 use std::{
@@ -53,8 +53,11 @@ struct Host {
 }
 impl Host {
     fn new(ffi: bool, name: &str) -> Self {
-        let dir =
-            std::env::temp_dir().join(format!("native-operational-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "n-{}-{}",
+            std::process::id(),
+            &coglet_runtime::digest(name.as_bytes())[..12]
+        ));
         std::fs::create_dir_all(&dir).unwrap();
         let binding = json!({"surface":S,"permitted_coglets":[C]});
         std::fs::write(
@@ -145,10 +148,15 @@ impl Link {
     fn send(&mut self, kind: &str, body: Value) {
         let raw = cbor(&json!({"type":kind,"body":body})).unwrap();
         match self {
-            Self::Ffi(l) => assert_eq!(
-                unsafe { coglet_surface_send(*l, raw.as_ptr(), raw.len()) },
-                0
-            ),
+            Self::Ffi(l) => {
+                let started = std::time::Instant::now();
+                let status = unsafe { coglet_surface_send(*l, raw.as_ptr(), raw.len()) };
+                eprintln!(
+                    "C ABI send {kind}: status={status}, elapsed={:?}",
+                    started.elapsed()
+                );
+                assert_eq!(status, 0, "C ABI send {kind}");
+            }
             Self::Socket(s) => {
                 s.write_all(&(raw.len() as u32).to_be_bytes()).unwrap();
                 s.write_all(&raw).unwrap();
