@@ -10,8 +10,11 @@ permissions:
   contents: read
 jobs:
   apple:
-    # coglet Mac minis (self-hosted)
-    runs-on: [self-hosted, macOS, coglet-mac]
+    # GitHub-hosted on purpose: its iroh fault test needs incoming UDP to an unsigned
+    # test binary, which the minis' macOS application firewall (stealth mode) drops,
+    # so router_iroh_lost_reply_reorder_... times out there. Move to coglet-mac once
+    # the minis' firewall allows it or the test binds loopback only.
+    runs-on: macos-latest
     timeout-minutes: 25
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '15.0'
