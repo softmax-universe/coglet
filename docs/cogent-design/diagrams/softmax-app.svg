@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="The Softmax app on a Mac: its icon in the menu bar, its menu open, a small indicator inside the Blender window showing the cogent is there too, and the floating orb at the edge of the screen.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="softmax-app-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="softmax-app-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="softmax-app-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="softmax-app-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="softmax-app-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="softmax-app-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="softmax-app-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="softmax-app-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="439" rx="12" class="dg-bg"/>
+<rect x="0.5" y="0.5" width="959" height="439" rx="12" fill="#2F4038"/>
+<path d="M12.5 0.5H947.5A12 12 0 0 1 959.5 12.5V26H0.5V12.5A12 12 0 0 1 12.5 0.5Z" fill="#E9EEEB"/>
+<text x="18" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="700" fill="#1D1D1F" text-anchor="start">Blender</text>
+<text x="86" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">File</text>
+<text x="142" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Edit</text>
+<text x="198" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Render</text>
+<text x="254" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Window</text>
+<text x="310" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Help</text>
+<text x="944" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="end">Mon Nov 23  9:41 AM</text>
+<rect x="754" y="3" width="30" height="20" rx="4" fill="#000" fill-opacity="0.14"/>
+<g transform="translate(760 4)"><rect x="3" y="4" width="12" height="10" rx="5" fill="none" stroke="#1D1D1F" stroke-width="1.5"/><rect x="6" y="7" width="1.5" height="3" rx=".75" fill="#1D1D1F"/><rect x="10.5" y="7" width="1.5" height="3" rx=".75" fill="#1D1D1F"/></g>
+<rect x="30" y="52" width="520" height="350" rx="9" fill="#3D3D3D" stroke="#000" stroke-opacity="0.5" stroke-width="0.6"/>
+<path d="M39 52H541A9 9 0 0 1 550 61V78H30V61A9 9 0 0 1 39 52Z" fill="#2B2B2B"/>
+<circle cx="46" cy="65" r="5.5" fill="#FF5F57"/>
+<circle cx="64" cy="65" r="5.5" fill="#FEBC2E"/>
+<circle cx="82" cy="65" r="5.5" fill="#28C840"/>
+<text x="290" y="70" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="600" fill="#D6D6D6" text-anchor="middle">torus.blend</text>
+<g transform="translate(70 96) scale(0.7)"><path d="M20 330H620M60 290H580M100 258H540M134 232H506" stroke="#4E4E4E" stroke-width="1.4"/><path d="M320 220L40 400M320 220L180 400M320 220V400M320 220L460 400M320 220L600 400" stroke="#4E4E4E" stroke-width="1.4"/><ellipse cx="320" cy="262" rx="176" ry="84" fill="#7C8681"/><ellipse cx="320" cy="250" rx="176" ry="84" fill="#A9B2AD"/><ellipse cx="320" cy="238" rx="74" ry="26" fill="#5C6661"/><ellipse cx="320" cy="244" rx="70" ry="22" fill="#3D3D3D"/><ellipse cx="320" cy="250" rx="176" ry="84" fill="none" stroke="#F5A623" stroke-width="2.6"/></g>
+<rect x="696" y="30" width="250" height="220" rx="9" fill="#F6F6F6" stroke="#000" stroke-opacity="0.22" stroke-width="0.6"/>
+<rect x="708" y="40" width="30" height="30" rx="7" fill="#101917"/>
+<g transform="translate(713 45) scale(0.03333333333333333)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+<text x="748" y="53" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="600" fill="#1D1D1F" text-anchor="start">Softmax</text>
+<text x="748" y="68" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="11" font-weight="400" fill="#5F5F64" text-anchor="start">Ready · hold Right Option to talk</text>
+<path d="M711 84.5H931" stroke="#000" stroke-opacity="0.12"/>
+<rect x="701" y="90" width="240" height="22" rx="5" fill="#0A6CFF"/>
+<text x="725" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#FFFFFF" text-anchor="start">Open Conversation</text>
+<text x="931" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#FFFFFF" text-anchor="end">⌥Space</text>
+<path d="M709 124l2.7 2.8 5.3-6.4" fill="none" stroke="#1D1D1F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="725" y="127" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Show Orb</text>
+<text x="725" y="149" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Mute Microphone</text>
+<path d="M711 161.5H931" stroke="#000" stroke-opacity="0.12"/>
+<text x="725" y="182" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Pause Softmax</text>
+<path d="M711 194.5H931" stroke="#000" stroke-opacity="0.12"/>
+<text x="725" y="215" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Settings…</text>
+<text x="931" y="215" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#5F5F64" text-anchor="end">⌘,</text>
+<text x="725" y="237" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Quit Softmax</text>
+<text x="931" y="237" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#5F5F64" text-anchor="end">⌘Q</text>
+<rect x="408" y="88" width="132" height="26" rx="13" fill="#101917" fill-opacity="0.9" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="0.6"/>
+<g transform="translate(414 92) scale(0.03)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+<text x="438" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="11" font-weight="600" fill="#ECF5EF" text-anchor="start">Softmax is here</text>
+<circle cx="529" cy="101" r="3.2" fill="#87EFBC"/>
+<circle cx="908" cy="362" r="32" fill="#101917" stroke="#FFFFFF" stroke-opacity="0.16"/>
+<g transform="translate(886 340) scale(0.07333333333333333)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+</svg>

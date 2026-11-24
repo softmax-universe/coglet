@@ -20,3 +20,22 @@ jobs:
       - name: Simulator
         working-directory: sim
         run: uv run --locked pytest
+      - name: Download immutable reference runtime for visualizer
+        working-directory: tools/visualizer
+        run: |
+          mkdir -p .runtime
+          curl --fail --location --retry 3 https://github.com/softmax-universe/coglet/releases/download/v0.0.0-rc1/coglet-v0.0.0-rc1-linux-x86_64.tar.gz -o .runtime/runtime.tar.gz
+          printf '%s  %s\n' b284d64cf041a1bf151284f221556c9489317757f9018520fbf9eec15073f50a .runtime/runtime.tar.gz | sha256sum --check
+          tar -xzf .runtime/runtime.tar.gz -C .runtime
+      - name: Headless live visualizer (actual rc1 cogletd)
+        working-directory: tools/visualizer
+        run: |
+          uv sync --locked
+          uv run playwright install --with-deps chromium
+          COGLETD="$PWD/.runtime/cogletd" VISUALIZER_PROOF_DIR="$PWD/proof" uv run pytest --junitxml=proof/visualizer.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visualizer-browser-proof
+          path: tools/visualizer/proof
+          if-no-files-found: warn

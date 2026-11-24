@@ -2,7 +2,12 @@
 //!
 //! Install `coglet-git-validator` alongside the service and configure its trusted
 //! absolute path. Linux is the initial resource-enforced implementation; other
-//! platforms fail closed. Git never imports the attacker pack: the helper first
+//! platforms (including Darwin) refuse subprocess execution with
+//! `ValidationError::Unavailable` before spawning anything. Linux uses
+//! `waitid(WNOWAIT)` to retain the leader PID/process group until group kill;
+//! there is no reaping fallback on unsupported platforms. Porting exit detection
+//! alone is insufficient: the helper also requires Linux resource enforcement.
+//! Git never imports the attacker pack: the helper first
 //! expands it with allocation/depth fences, writes precharged loose objects, and
 //! runs only read-only Git commands. No working tree or accepted ref is created.
 use crate::{git_metadata::VerifiedRef, quarantine::BundleEnvelope};
@@ -106,6 +111,10 @@ impl VerifiedBundle {
     pub fn metadata(&self) -> &VerifiedRef {
         self.envelope.metadata()
     }
+    /// Crate-private copy while exclusive validation custody is still held.
+    pub(crate) fn retained_bundle(&self) -> io::Result<Vec<u8>> {
+        fs::read(self.envelope.directory()?.join("bundle"))
+    }
 }
 struct Cancel(Arc<AtomicBool>);
 impl Drop for Cancel {
@@ -174,16 +183,9 @@ pub(crate) async fn validate(
                 }
                 // Keep the leader unreaped until group termination: its PID/PGID
                 // cannot be recycled and redirect our kill at an unrelated job.
-                use nix::{
-                    sys::wait::{Id, WaitPidFlag, WaitStatus, waitid},
-                    unistd::Pid,
-                };
-                match waitid(
-                    Id::Pid(Pid::from_raw(child.id() as i32)),
-                    WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
-                ) {
-                    Ok(WaitStatus::StillAlive) => std::thread::sleep(Duration::from_millis(2)),
-                    Ok(_) => break,
+                match leader_exited_unreaped(child.id()) {
+                    Ok(false) => std::thread::sleep(Duration::from_millis(2)),
+                    Ok(true) => break,
                     Err(error) => {
                         kill_group(child.id());
                         let _ = child.wait();
@@ -223,6 +225,31 @@ pub(crate) async fn validate(
     result
 }
 
+// This observation must never consume the child's exit status. The caller
+// kills the retained process group before its sole reaping wait.
+#[cfg(target_os = "linux")]
+fn leader_exited_unreaped(pid: u32) -> io::Result<bool> {
+    use nix::{
+        sys::wait::{Id, WaitPidFlag, WaitStatus, waitid},
+        unistd::Pid,
+    };
+    waitid(
+        Id::Pid(Pid::from_raw(pid as i32)),
+        WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
+    )
+    .map(|status| !matches!(status, WaitStatus::StillAlive))
+    .map_err(io::Error::other)
+}
+
+#[cfg(not(target_os = "linux"))]
+fn leader_exited_unreaped(_pid: u32) -> io::Result<bool> {
+    // validate() refuses before spawn; defense in depth, never a reaping poll.
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "non-reaping validator supervision requires Linux",
+    ))
+}
+
 fn kill_group(pid: u32) {
     #[cfg(unix)]
     {
@@ -251,6 +278,53 @@ fn limited_command(executable: &Path, seconds: u64) -> Command {
         .arg(executable)
         .stdin(Stdio::null());
     command
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod supervision_tests {
+    use super::*;
+    use nix::{
+        errno::Errno,
+        sys::wait::{Id, WaitPidFlag, WaitStatus, waitid},
+        unistd::Pid,
+    };
+    use std::os::unix::process::CommandExt;
+
+    #[test]
+    fn leader_is_unreaped_until_group_kill() {
+        let mut child = Command::new("/bin/sh")
+            .args(["-c", "exit 7"])
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let pid = Pid::from_raw(child.id() as i32);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !leader_exited_unreaped(child.id()).unwrap() {
+            if Instant::now() >= deadline {
+                kill_group(child.id());
+                let _ = child.wait();
+                panic!("leader did not exit");
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        // Independent observation fails with ECHILD if the production poll
+        // reaped. Repeated observations must preserve the same exit status.
+        let observe = || {
+            waitid(
+                Id::Pid(pid),
+                WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
+            )
+        };
+        assert_eq!(observe().unwrap(), WaitStatus::Exited(pid, 7));
+        assert!(leader_exited_unreaped(child.id()).unwrap());
+        assert_eq!(observe().unwrap(), WaitStatus::Exited(pid, 7));
+        // The retained zombie pins the PGID, even with no living members.
+        nix::sys::signal::killpg(pid, None).unwrap();
+        kill_group(child.id());
+        assert_eq!(observe().unwrap(), WaitStatus::Exited(pid, 7));
+        assert_eq!(child.wait().unwrap().code(), Some(7));
+        assert_eq!(observe(), Err(Errno::ECHILD));
+    }
 }
 
 #[derive(Serialize, Deserialize)]

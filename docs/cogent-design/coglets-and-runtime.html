@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coglets and runtime</title>
+<style>
+:root {
+  --paper: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b6558;
+  --rule: #e2dccd; --accent: #0b6e69; --accent-soft: #d9ece9;
+  --code-bg: #fbf9f3; --code-ink: #2a2721;
+  --kw: #8a3b12; --cls: #0b6e69; --fn: #1f4e8c; --str: #5d6b1e; --doc: #6b6558;
+  --num: #8c2f5a; --deco: #7a4fa3; --cmt: #9a9384;
+  --frozen-bg: #dfe9f5; --frozen-ink: #1f4e8c;
+  --adr-bg: #f3e6c8; --adr-ink: #7a5200;
+  --draft-bg: #e9e4f3; --draft-ink: #5b3f8f;
+  --proposed-bg: #d9ece9; --proposed-ink: #0b5a56;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161a; --panel: #1b1e24; --ink: #e9e6df; --muted: #9a968c;
+    --rule: #2c3038; --accent: #5cc8bf; --accent-soft: #17302f;
+    --code-bg: #171a1f; --code-ink: #dcd8cf;
+    --kw: #e8a06a; --cls: #5cc8bf; --fn: #8fb8f0; --str: #b9c97a; --doc: #9a968c;
+    --num: #e58fb6; --deco: #c3a2e8; --cmt: #6f6b62;
+    --frozen-bg: #1c2b40; --frozen-ink: #9cc2f2;
+    --adr-bg: #3a2f14; --adr-ink: #ecc56b;
+    --draft-bg: #2b2440; --draft-ink: #c3a2e8;
+    --proposed-bg: #17302f; --proposed-ink: #7fdcd3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--rule); background: var(--panel); }
+nav .brand { font: 600 1.15rem/1.2 var(--serif); letter-spacing: .01em; margin-bottom: .2rem; }
+nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+nav input { width: 100%; padding: .45rem .6rem; margin-bottom: 1rem; font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+nav input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav ul { list-style: none; margin: 0; padding: 0; }
+nav li.h2 > a { display: block; margin-top: .9rem; padding: .15rem .5rem; font-weight: 600;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+nav li.h3 > a { display: block; padding: .12rem .5rem .12rem .9rem; font-size: .84rem;
+  color: var(--muted); border-left: 2px solid transparent; }
+nav li.h3 > a code { font: inherit; font-family: var(--mono); font-size: .78rem; }
+nav a:hover { text-decoration: none; color: var(--accent); }
+nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+main { padding: 3rem clamp(1rem, 4vw, 4rem) 6rem; max-width: 62rem; }
+h1 { font: 600 2.6rem/1.1 var(--serif); margin: 0 0 1rem; letter-spacing: -.01em; }
+h2 { font: 600 1.75rem/1.2 var(--serif); margin: 4rem 0 .8rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink); }
+h3 { font: 600 1.05rem/1.3 var(--sans); margin: 2.4rem 0 .6rem; display: flex;
+  flex-wrap: wrap; align-items: center; gap: .5rem; }
+h3 code { font-family: var(--mono); font-size: 1rem; background: none; padding: 0; color: var(--cls); }
+p, li { max-width: 46rem; }
+p code, li code, td code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft);
+  color: var(--ink); padding: .08em .35em; border-radius: 4px; white-space: nowrap; }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+  padding: .3em .6em; border-radius: 99px; white-space: nowrap; }
+.badge.frozen { background: var(--frozen-bg); color: var(--frozen-ink); }
+.badge.adr { background: var(--adr-bg); color: var(--adr-ink); }
+.badge.draft { background: var(--draft-bg); color: var(--draft-ink); }
+.badge.proposed { background: var(--proposed-bg); color: var(--proposed-ink); }
+.headerlink { opacity: 0; margin-left: .2rem; color: var(--muted); font-weight: 400; }
+h2:hover .headerlink, h3:hover .headerlink { opacity: 1; }
+.codehilite { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 8px; margin: .8rem 0 1.2rem; overflow-x: auto; }
+.codehilite pre { margin: 0; padding: 1rem 1.2rem; font: 13.5px/1.6 var(--mono); color: var(--code-ink); }
+.codehilite .k, .codehilite .kn, .codehilite .kc, .codehilite .kd, .codehilite .kt, .codehilite .ow { color: var(--kw); }
+.codehilite .nc, .codehilite .nn { color: var(--cls); font-weight: 600; }
+.codehilite .nf, .codehilite .fm { color: var(--fn); font-weight: 600; }
+.codehilite .nd { color: var(--deco); }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sr { color: var(--str); }
+.codehilite .sd { color: var(--doc); font-family: var(--sans); font-size: 13.5px; }
+.codehilite .mi, .codehilite .mf, .codehilite .mh { color: var(--num); }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: var(--cmt); font-style: italic; }
+.codehilite .nb, .codehilite .bp { color: var(--fn); }
+.tablewrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--ink); padding: .5rem .8rem .5rem 0; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: .55rem .8rem .55rem 0; vertical-align: top; }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+ol, ul { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+.idl .nc { color: var(--cls); font-weight: 600; }
+.idl .nf { color: var(--fn); font-weight: 600; }
+.idl .na { color: var(--code-ink); }
+.idl .ty { color: var(--kw); }
+.idl .op { color: var(--str); }
+.idl .kw, .idl .rt { color: var(--deco); }
+.idl .sd { color: var(--doc); font-family: var(--sans); }
+.idl .c { color: var(--cmt); font-style: italic; }
+main p > img { display: block; max-width: min(100%, 34rem); height: auto; margin: 1rem 0; border-radius: 14px; }
+figure.diagram { margin: 1.4rem 0 .4rem; }
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram + p { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+nav .pages { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+nav .pages a { padding: .35rem .6rem; font-size: .8rem; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 6px; color: var(--muted); }
+nav .pages a.here { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); max-height: 45vh; }
+  h1 { font-size: 2rem; }
+}
+@media print { nav { display: none; } .layout { display: block; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">Coglets and runtime</div>
+  <div class="sub">Generated from coglets-and-runtime.md. Do not edit.</div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html" class="here">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
+  <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
+  <ul>
+  <li class="h2"><a href="#anatomy-of-a-coglet">Anatomy of a coglet</a></li><li class="h2"><a href="#front-end">Front end</a></li><li class="h3"><a href="#registering-the-manifest">Registering: the manifest</a></li><li class="h3"><a href="#handling-events">Handling events</a></li><li class="h3"><a href="#what-wakes-a-coglet">What wakes a coglet</a></li><li class="h3"><a href="#the-inbox">The inbox</a></li><li class="h3"><a href="#asking-for-things">Asking for things</a></li><li class="h2"><a href="#back-channel">Back channel</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h3"><a href="#where-a-request-goes">Where a request goes</a></li><li class="h3"><a href="#messages-between-coglets">Messages between coglets</a></li><li class="h3"><a href="#runtime-and-router">Runtime and router</a></li><li class="h2"><a href="#shared-types">Shared types</a></li><li class="h3"><a href="#scalars">Scalars</a></li><li class="h3"><a href="#event"><code>Event</code></a></li><li class="h3"><a href="#action"><code>Action</code></a></li><li class="h3"><a href="#accept"><code>Accept</code></a></li><li class="h3"><a href="#outcome"><code>Outcome</code></a></li><li class="h3"><a href="#error"><code>Error</code></a></li><li class="h3"><a href="#versions">Versions</a></li><li class="h2"><a href="#names-used-in-the-spec">Names used in the spec</a></li>
+  </ul>
+</nav>
+<main>
+<h1 id="coglets-and-runtime">Coglets and runtime<a class="headerlink" href="#coglets-and-runtime" title="Permanent link">#</a></h1>
+<p>What a coglet is made of, what a runtime does for it, and the types they share.
+Part of the <a href="index.html">cogent design</a>.</p>
+<h2 id="anatomy-of-a-coglet">Anatomy of a coglet<a class="headerlink" href="#anatomy-of-a-coglet" title="Permanent link">#</a></h2>
+<p>A coglet is a <strong>policy</strong>, a <strong>memory</strong>, an <strong>event loop</strong> and <strong>capabilities</strong>.
+It handles events, and it has a <strong>back channel</strong> for receiving patches and
+streaming logs to its manager.</p>
+<p>The policy is whatever decides what the coglet does: <strong>symbolic code</strong>, <strong>LLM
+prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can change any of it.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="coglet-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="coglet-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="coglet-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="coglet-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="coglet-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="coglet-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="coglet-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="coglet-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="429" rx="12" class="dg-bg"/>
+<text x="280" y="40" text-anchor="middle" class="dg-cap">FRONT END: EVENTS AND CAPABILITIES</text>
+<text x="685" y="40" text-anchor="middle" class="dg-cap">BACK CHANNEL: PATCHES AND LOGS</text>
+<rect x="370" y="64" width="220" height="214" rx="8" class="dg-coglet"/>
+<text x="480" y="90" text-anchor="middle" class="dg-b">Coglet</text>
+<rect x="384" y="104" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="125" text-anchor="start" class="dg-code">policy</text>
+<text x="564" y="125" text-anchor="end" class="dg-m">code, prompts, skills</text>
+<rect x="384" y="146" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="167" text-anchor="start" class="dg-code">memory</text>
+<text x="564" y="167" text-anchor="end" class="dg-m">what it remembers</text>
+<rect x="384" y="188" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="209" text-anchor="start" class="dg-code">event loop</text>
+<text x="564" y="209" text-anchor="end" class="dg-m">handles events</text>
+<rect x="384" y="230" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="251" text-anchor="start" class="dg-code">capabilities</text>
+<text x="564" y="251" text-anchor="end" class="dg-m">what it may use</text>
+<rect x="30" y="86" width="162" height="170" rx="10" class="dg-group"/>
+<text x="44" y="110" text-anchor="start" class="dg-cap">ADAPTERS</text>
+<rect x="44" y="122" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="141" text-anchor="middle" class="dg-t">An app</text>
+<rect x="44" y="162" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="181" text-anchor="middle" class="dg-t">A camera</text>
+<rect x="44" y="202" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="221" text-anchor="middle" class="dg-t">A display</text>
+<line x1="194" y1="142" x2="368" y2="142" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="134" text-anchor="middle" class="dg-code">handle(event)</text>
+<line x1="368" y1="206" x2="194" y2="206" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="198" text-anchor="middle" class="dg-code">actions</text>
+<rect x="232" y="334" width="496" height="76" rx="10" class="dg-group"/>
+<text x="246" y="356" text-anchor="start" class="dg-cap">THE RUNTIME</text>
+<rect x="246" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="301.5" y="385" text-anchor="middle" class="dg-t">LLM</text>
+<rect x="365" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="420.5" y="385" text-anchor="middle" class="dg-t">Database</text>
+<rect x="484" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="539.5" y="385" text-anchor="middle" class="dg-t">Random numbers</text>
+<rect x="603" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="658.5" y="385" text-anchor="middle" class="dg-t">Timer</text>
+<line x1="450" y1="280" x2="450" y2="332" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="440" y="310" text-anchor="end" class="dg-code">requests</text>
+<line x1="510" y1="332" x2="510" y2="280" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="520" y="310" text-anchor="start" class="dg-code">replies, timer wakes</text>
+<rect x="780" y="96" width="150" height="150" rx="8" class="dg-hub"/>
+<text x="855.0" y="168.0" text-anchor="middle" class="dg-b">Its manager</text>
+<text x="855.0" y="184.0" text-anchor="middle" class="dg-m">a person or a coglet</text>
+<line x1="778" y1="124" x2="592" y2="124" class="dg-blue" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="116" text-anchor="middle" class="dg-code">patch</text>
+<line x1="592" y1="174" x2="778" y2="174" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="166" text-anchor="middle" class="dg-code">tail_log</text>
+<line x1="592" y1="224" x2="778" y2="224" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="216" text-anchor="middle" class="dg-code">read_state · status</text>
+<text x="685" y="244" text-anchor="middle" class="dg-m">each needs its own grant</text>
+</svg>
+</figure>
+<p><em>The coglet in the centre. Apps and hardware, reached through adapters, on the
+left. What the runtime provides below. Its manager on the right, with patches
+coming in and logs going out.</em></p>
+<div class="codehilite idl"><pre><span class="nc">Coglet</span>
+  -- front end: how it does its job
+
+  <span class="nf">register</span>(<span class="ty">Manifest</span>)
+      <span class="sd">Declare the capabilities it wants: which events to subscribe to, which actions it</span>
+      <span class="sd">needs, and which resources it must own alone. It runs only once all of them are</span>
+      <span class="sd">granted.</span>
+  <span class="nf">handle</span>(<span class="ty">event</span>)
+      <span class="sd">Process an event. It may read and write its memory and ask for things: an action on an</span>
+      <span class="sd">adapter, a message to another coglet, a model call, a timer, a log line.</span>
+
+  -- back channel: how its manager changes and watches it
+
+  <span class="nf">patch</span>(<span class="ty">change</span>)
+      <span class="sd">Receive a patch to its policy: code, prompts or skills. This is how a coglet learns.</span>
+  <span class="nf">tail_log</span>()
+      <span class="sd">Stream its log to its manager as it is written.</span>
+  <span class="nf">read_state</span>()
+      <span class="sd">Let its manager read its memory.</span>
+  <span class="nf">status</span>()
+      <span class="sd">Whether it is running, paused or faulted.</span>
+  <span class="nf">pause</span>(<span class="ty">), step(</span>)
+      <span class="sd">Stop it, and run it one event at a time, for debugging.</span></pre></div>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Front end</th>
+<th>Back channel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who uses it</td>
+<td>The runtime, on behalf of adapters and other coglets</td>
+<td>Its manager: a person, or a cogent coglet such as the fast loop or the optimizer</td>
+</tr>
+<tr>
+<td>What it is for</td>
+<td>Doing the work</td>
+<td>Changing and inspecting the coglet</td>
+</tr>
+<tr>
+<td>Needs</td>
+<td>The capabilities named in the manifest</td>
+<td>A separate grant for each operation; reads are off unless granted</td>
+</tr>
+<tr>
+<td>The coglet's own code</td>
+<td>Is what runs</td>
+<td>Does nothing; the runtime serves these between events</td>
+</tr>
+</tbody>
+</table></div>
+<p>A coglet is stored as four things: its policy, its memory, its logs, and a
+manifest naming the capabilities it wants.</p>
+<p>A capability is anything a coglet is allowed to use. Some come
+from adapters and some from the runtime itself. A coglet names the ones it
+wants when it registers, and can use only those.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>What it gives the coglet</th>
+<th>Provided by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An app, for example <code>blender.act</code></td>
+<td>See and act in that app.</td>
+<td>The app's adapter</td>
+</tr>
+<tr>
+<td>A camera, a microphone, a display</td>
+<td>Use that piece of hardware.</td>
+<td>The device's adapter</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>Ask a model a question. The answer arrives as a later event.</td>
+<td>The runtime</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Keep structured memory and query it.</td>
+<td>The runtime</td>
+</tr>
+<tr>
+<td>Random number generator</td>
+<td>Random numbers, seeded so a run can be replayed exactly.</td>
+<td>The runtime</td>
+</tr>
+<tr>
+<td>Timer</td>
+<td>Be woken at a later time.</td>
+<td>The runtime</td>
+</tr>
+</tbody>
+</table></div>
+<p>The sections below give the detail of each side.</p>
+<h2 id="front-end">Front end<a class="headerlink" href="#front-end" title="Permanent link">#</a></h2>
+<p>The front end is how a coglet does its job: it registers the capabilities it
+wants, then handles events.</p>
+<h3 id="registering-the-manifest">Registering: the manifest<a class="headerlink" href="#registering-the-manifest" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Manifest</span>
+  <span class="sd">What a coglet wants. It runs only once all of it is granted.</span>
+  <span class="na">id</span>          <span class="ty">CogletId</span>
+  <span class="kw">subscribes</span>  <span class="op">[OpName]   Events it wants to be woken by.</span>
+  <span class="kw">needs</span>       <span class="op">[OpName]   Everything it may ask for: adapter actions, messages to other coglets,</span>
+                         <span class="sd">and runtime capabilities such as the LLM.</span>
+  <span class="kw">owns</span>        <span class="op">[OpName]   Things it must have to itself, for example the speaker.</span>
+  <span class="na">budgets</span>     <span class="ty">Budgets</span>
+
+<span class="nc">Budgets</span>
+  <span class="sd">Limits the runtime enforces on every event the coglet handles.</span>
+  <span class="na">compute</span>     <span class="ty">u64</span>        <span class="sd">How much work one event may take.</span>
+  <span class="na">memory</span>      <span class="ty">u64</span>        <span class="sd">How much memory it may use.</span>
+  <span class="na">time_us</span>     <span class="ty">u64</span>        <span class="sd">How long one event may run.</span>
+  <span class="na">max_events</span>  <span class="ty">u64</span>        <span class="sd">The most events it will take at once.</span></pre></div>
+<h3 id="handling-events">Handling events<a class="headerlink" href="#handling-events" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Handler</span>
+  <span class="nf">handle</span>(<span class="ty">events, step, time, seed</span>)
+      <span class="sd">Run once. `events` is one or more Events, oldest first. `step` counts runs from zero.</span>
+      <span class="sd">`time` is the runtime&#x27;s clock. `seed` is the only source of randomness. If it succeeds,</span>
+      <span class="sd">everything it did is kept; if it fails, none of it is.</span></pre></div>
+<p>Handling an event is all-or-nothing. The coglet reads and writes its memory and
+asks for things as it goes, and nothing leaves the runtime until the whole run
+has succeeded.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="330" viewBox="0 0 960 330" role="img" aria-label="A coglet step stages effects, commits them atomically, and only then are they sent; results return later as new events.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="step-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="step-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="step-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="step-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="step-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="step-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="step-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="step-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="329" rx="12" class="dg-bg"/>
+<rect x="30" y="96" width="130" height="64" rx="8" class="dg-runtime"/>
+<text x="95.0" y="125.0" text-anchor="middle" class="dg-b">Event queue</text>
+<text x="95.0" y="141.0" text-anchor="middle" class="dg-m">per coglet, ordered</text>
+<rect x="220" y="96" width="170" height="64" rx="8" class="dg-coglet"/>
+<text x="305.0" y="125.0" text-anchor="middle" class="dg-code">handle(events)</text>
+<text x="305.0" y="141.0" text-anchor="middle" class="dg-m">reads files, stages effects</text>
+<rect x="450" y="96" width="170" height="64" rx="8" class="dg-runtime"/>
+<text x="535.0" y="125.0" text-anchor="middle" class="dg-b">Commit</text>
+<text x="535.0" y="141.0" text-anchor="middle" class="dg-m">all of it, or none</text>
+<line x1="162" y1="128" x2="218" y2="128" class="dg-ink" stroke-width="1.6" marker-end="url(#step-ink)"/>
+<line x1="392" y1="128" x2="448" y2="128" class="dg-ink" stroke-width="1.6" marker-end="url(#step-ink)"/>
+<rect x="770" y="30" width="160" height="52" rx="8" class="dg-adapter"/>
+<text x="850.0" y="60.0" text-anchor="middle" class="dg-b">Adapter</text>
+<path d="M622 128H690V56H768" class="dg-warm" stroke-width="1.6" marker-end="url(#step-warm)"/>
+<text x="726" y="48" text-anchor="middle" class="dg-code dg-halo">action</text>
+<rect x="770" y="106" width="160" height="52" rx="8" class="dg-hub"/>
+<text x="850.0" y="136.0" text-anchor="middle" class="dg-b">LLM</text>
+<path d="M622 128H690V132H768" class="dg-blue" stroke-width="1.6" marker-end="url(#step-blue)"/>
+<text x="726" y="124" text-anchor="middle" class="dg-code dg-halo">model call</text>
+<rect x="770" y="182" width="160" height="52" rx="8" class="dg-hub"/>
+<text x="850.0" y="212.0" text-anchor="middle" class="dg-b">Router</text>
+<path d="M622 128H690V208H768" class="dg-blue" stroke-width="1.6" marker-end="url(#step-blue)"/>
+<text x="726" y="200" text-anchor="middle" class="dg-code dg-halo">message</text>
+<path d="M850 236V288H95V162" class="dg-ink dg-dash" stroke-width="1.6" marker-end="url(#step-ink)"/>
+<text x="472" y="280" text-anchor="middle" class="dg-m dg-halo">results come back later as new events: outcomes, model replies, messages</text>
+<text x="305" y="190" text-anchor="middle" class="dg-m">nonzero return: nothing is kept</text>
+<text x="535" y="190" text-anchor="middle" class="dg-m">nothing is sent before this</text>
+<text x="30" y="44" text-anchor="start" class="dg-cap">ONE STEP OF ONE COGLET</text>
+</svg>
+</figure>
+<p><em>One run. What the coglet asked for is sent only after the run succeeds, and
+every result comes back later as a new event.</em></p>
+<h3 id="what-wakes-a-coglet">What wakes a coglet<a class="headerlink" href="#what-wakes-a-coglet" title="Permanent link">#</a></h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Carries</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An adapter event it subscribed to</td>
+<td>What the adapter defines</td>
+<td>Something happened in an app or on the device.</td>
+</tr>
+<tr>
+<td><code>runtime.timer</code></td>
+<td><code>{id, at}</code></td>
+<td>A timer it set came due.</td>
+</tr>
+<tr>
+<td><code>runtime.inbox</code></td>
+<td><code>{index, id}</code></td>
+<td>Something arrived in its inbox.</td>
+</tr>
+<tr>
+<td><code>runtime.step</code></td>
+<td><code>{}</code></td>
+<td>Its manager stepped it once while paused.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="the-inbox">The inbox<a class="headerlink" href="#the-inbox" title="Permanent link">#</a></h3>
+<p>Anything addressed to one coglet arrives in its inbox: a message from another
+coglet, the reply to a model call, or the outcome of something it asked for.</p>
+<div class="codehilite idl"><pre><span class="nc">InboxMessage</span>
+  <span class="na">index</span>   <span class="ty">u64</span>       <span class="sd">Position in the inbox, from zero. The coglet keeps its own place.</span>
+  <span class="na">id</span>      <span class="ty">Id</span>        <span class="sd">The same id never appears twice.</span>
+  <span class="na">sender</span>  <span class="ty">SourceId</span>  <span class="sd">Who it is from. Checked by the runtime, never just claimed.</span>
+  <span class="na">event</span>   <span class="ty">Event</span>     <span class="sd">The content.</span></pre></div>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Inbox event</th>
+<th>Carries</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A message name, for example <code>intent.request</code></td>
+<td><code>MessageDelivery</code></td>
+<td>Another coglet sent this.</td>
+</tr>
+<tr>
+<td><code>llm.reply</code></td>
+<td><code>LlmReply</code></td>
+<td>The answer to a model call.</td>
+</tr>
+<tr>
+<td><code>action.outcome</code></td>
+<td><code>Outcome</code></td>
+<td>Something it asked for has finished.</td>
+</tr>
+<tr>
+<td><code>runtime.action_rejected</code></td>
+<td><code>Accept</code> with <code>accepted</code> false</td>
+<td>Something it asked for was refused.</td>
+</tr>
+<tr>
+<td><code>message.undelivered</code></td>
+<td><code>MessageUndelivered</code></td>
+<td>A message it sent could not be delivered.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="asking-for-things">Asking for things<a class="headerlink" href="#asking-for-things" title="Permanent link">#</a></h3>
+<p>What a coglet can ask for while handling an event. Each request is held until
+the run succeeds, so the answer never comes back in the same run.</p>
+<div class="codehilite idl"><pre><span class="nc">Requests</span>
+  <span class="nf">emit</span>(<span class="ty">Action</span>) -&gt; <span class="ty">Staged</span>
+      <span class="sd">Ask an adapter to do something, or send a message to another coglet. Which one is</span>
+      <span class="sd">decided by the action&#x27;s `capability`.</span>
+  <span class="nf">llm</span>(<span class="ty">LlmRequest</span>) -&gt; <span class="ty">Staged</span>
+      <span class="sd">Ask a model. The reply arrives later in the inbox.</span>
+  <span class="nf">timer</span>(<span class="ty">TimerRequest</span>) -&gt; <span class="ty">Staged</span>
+      <span class="sd">Be woken once at a later time.</span>
+  <span class="nf">log</span>(<span class="ty">LogEntry</span>) -&gt; <span class="ty">Staged</span>
+      <span class="sd">Write one log line.</span>
+  <span class="nf">db</span>(<span class="ty">DbRequest</span>) -&gt; <span class="ty">Staged</span>
+      <span class="sd">Query or update the coglet&#x27;s database. The request shape is not written down yet.</span>
+
+<span class="nc">Staged</span>
+  <span class="na">STAGED</span>              <span class="ty">0</span>
+  <span class="na">INVALID_ARGUMENT</span>    <span class="ty">1</span>
+  <span class="na">PERMISSION_DENIED</span>   <span class="ty">2</span>  <span class="sd">The capability was not granted.</span>
+  <span class="na">RESOURCE_EXHAUSTED</span>  <span class="ty">3</span>
+  <span class="na">CONFLICT</span>            <span class="ty">4</span>  <span class="sd">An id was reused.</span>
+
+<span class="nc">TimerRequest</span>
+  <span class="na">id</span>  <span class="ty">Id</span>
+  <span class="na">at</span>  <span class="ty">u64</span>  <span class="sd">When, on the runtime&#x27;s clock. A timer cannot be changed once set.</span>
+
+<span class="nc">LlmRequest</span>
+  <span class="na">id</span>              <span class="ty">Id</span>
+  <span class="na">correlation_id</span>  <span class="ty">Id</span>
+  <span class="na">model</span>           <span class="ty">str</span>         <span class="sd">Which kind of model to use, not a provider&#x27;s model name.</span>
+  <span class="na">input</span>           <span class="ty">ProfileMap</span>
+
+<span class="nc">LlmReply</span>
+  <span class="na">request_id</span>  <span class="ty">Id</span>
+  <span class="na">status</span>      <span class="ty">&quot;succeeded&quot; | &quot;failed&quot;</span>
+  <span class="na">output</span>      <span class="ty">ProfileMap?</span>
+  <span class="na">error</span>       <span class="ty">Error?</span>
+
+<span class="nc">LogEntry</span>
+  <span class="na">level</span>    <span class="ty">&quot;debug&quot; | &quot;info&quot; | &quot;warn&quot; | &quot;error&quot;</span>
+  <span class="na">message</span>  <span class="ty">str</span>
+  <span class="na">fields</span>   <span class="ty">ProfileMap</span></pre></div>
+<h2 id="back-channel">Back channel<a class="headerlink" href="#back-channel" title="Permanent link">#</a></h2>
+<p>The back channel is how a coglet's manager changes it and watches it. The
+manager can be a person, or another coglet such as the fast loop or the
+optimizer applying a patch.</p>
+<p>The coglet's own policy does nothing to serve the back channel. The runtime
+does it, between events, and keeps a record of every change. Each operation
+needs its own grant, and reading is off unless granted.</p>
+<div class="codehilite idl"><pre><span class="nc">BackChannel</span>
+  <span class="nf">patch</span>(<span class="ty">coglet, Patch</span>) -&gt; <span class="ty">ChangeReceipt</span>
+      <span class="sd">Replace part or all of the coglet&#x27;s policy. Takes effect before the next event.</span>
+  <span class="nf">tail_log</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">stream of LogEntry</span>
+      <span class="sd">Follow the coglet&#x27;s log as it is written.</span>
+  <span class="nf">read_state</span>(<span class="ty">coglet, ReadState</span>) -&gt; <span class="ty">StateChunk</span>
+      <span class="sd">Read part of the coglet&#x27;s memory or its log.</span>
+  <span class="nf">status</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">CogletStatus</span>
+  <span class="nf">pause</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">ChangeReceipt</span>
+  <span class="nf">step</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">ChangeReceipt</span>
+      <span class="sd">Handle exactly one event while paused.</span>
+
+<span class="nc">Patch</span>
+  <span class="sd">A change to a coglet&#x27;s policy: code, prompts, skills, or any mix.</span>
+  <span class="na">base</span>       <span class="ty">str?</span>  <span class="sd">The policy revision this was made from. The patch is refused if the</span>
+                   <span class="sd">coglet has moved on.</span>
+  <span class="na">revision</span>   <span class="ty">str</span>   <span class="sd">The new revision.</span>
+  <span class="na">signature</span>  <span class="ty">str</span>   <span class="sd">Proof of who made it.</span>
+
+<span class="nc">ReadState</span>
+  <span class="na">path</span>    <span class="ty">str</span>  <span class="sd">What to read: a place in the coglet&#x27;s memory or log.</span>
+  <span class="na">offset</span>  <span class="ty">u64</span>
+  <span class="na">limit</span>   <span class="ty">int 1..65536</span>
+
+<span class="nc">StateChunk</span>
+  <span class="na">text</span>         <span class="ty">str</span>
+  <span class="na">next_offset</span>  <span class="ty">u64</span>
+  <span class="na">eof</span>          <span class="ty">bool</span>
+
+<span class="nc">CogletStatus</span>
+  <span class="na">state</span>     <span class="ty">&quot;stopped&quot; | &quot;running&quot; | &quot;paused&quot; | &quot;faulted&quot;</span>
+  <span class="na">revision</span>  <span class="ty">str?</span>   <span class="sd">The policy revision it is running.</span>
+  <span class="na">pending</span>   <span class="ty">int</span>    <span class="sd">Events waiting to be handled.</span>
+  <span class="na">error</span>     <span class="ty">Error?</span>
+
+<span class="nc">ChangeReceipt</span>
+  <span class="sd">The answer to anything that changes a coglet.</span>
+  <span class="na">id</span>     <span class="ty">Id</span>
+  <span class="na">state</span>  <span class="ty">&quot;queued&quot; | &quot;applied&quot; | &quot;cancelled&quot; | &quot;failed&quot;</span>
+  <span class="na">error</span>  <span class="ty">Error?</span>
+
+<span class="nc">OnBehalfOf</span>
+  <span class="sd">Sent with every back-channel request.</span>
+  <span class="na">manager</span>  <span class="ty">SourceId</span>  <span class="sd">Who is asking.</span>
+  <span class="na">ticket</span>   <span class="ty">Id?</span>       <span class="sd">The factory ticket that authorizes it, if any.</span></pre></div>
+<h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">#</a></h2>
+<p>A runtime supports running a set of coglets. It manages routing events,
+executing the coglet code, and providing and managing capabilities.</p>
+<div class="codehilite idl"><pre><span class="nc">Runtime</span>
+  <span class="nf">run</span>(<span class="ty">coglet</span>)
+      <span class="sd">Load a coglet and run its event loop.</span>
+  <span class="nf">stop</span>(<span class="ty">coglet</span>)
+  <span class="nf">connect</span>(<span class="ty">adapter</span>)
+      <span class="sd">Open a link to an adapter and learn its capabilities and grants.</span>
+  <span class="nf">join</span>(<span class="ty">router</span>)
+      <span class="sd">Make itself known to a cogent, so the cogent can run coglets here.</span></pre></div>
+<p>A runtime can be its own process next to an app, or be built into one. It can
+be connected to several adapters at once, and it can have several execution
+engines, one per language a policy's code is written in.</p>
+<h3 id="where-a-request-goes">Where a request goes<a class="headerlink" href="#where-a-request-goes" title="Permanent link">#</a></h3>
+<p>After a run succeeds, the runtime sends each thing the coglet asked for to
+whoever provides it.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>The coglet asked for</th>
+<th>The runtime sends it to</th>
+<th>The coglet later sees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>An action on an adapter</td>
+<td>That adapter</td>
+<td>The adapter's outcome</td>
+</tr>
+<tr>
+<td>A message to a coglet in the same runtime</td>
+<td>That coglet's inbox, directly</td>
+<td>The outcome, as soon as it is delivered</td>
+</tr>
+<tr>
+<td>A message to a coglet in another runtime</td>
+<td>The router</td>
+<td>The outcome, as soon as the router accepts it</td>
+</tr>
+<tr>
+<td>A model call</td>
+<td>The LLM capability</td>
+<td>An <code>llm.reply</code></td>
+</tr>
+<tr>
+<td>A timer, a log line, a database query</td>
+<td>Itself</td>
+<td>A timer wake; nothing; the query's rows</td>
+</tr>
+</tbody>
+</table></div>
+<p>A refusal from any of them becomes a <code>runtime.action_rejected</code> in the inbox.</p>
+<h3 id="messages-between-coglets">Messages between coglets<a class="headerlink" href="#messages-between-coglets" title="Permanent link">#</a></h3>
+<p>A message is an <code>Action</code> whose <code>capability</code> is a message name such as
+<code>intent.request</code>. The coglet does not need to know where the other coglet runs.</p>
+<ul>
+<li><strong>Same runtime.</strong> The runtime checks the grant and puts the message straight
+  into the other coglet's inbox.</li>
+<li><strong>Different runtimes.</strong> The runtime hands the message to the router, which
+  checks the grant and delivers it to the other runtime.</li>
+</ul>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1090" height="564" viewBox="0 0 1090 564" role="img" aria-label="A message between runtimes goes from the sender&#x27;s runtime to the router, which accepts it and delivers it to the receiver&#x27;s inbox.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="service-call-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="service-call-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="service-call-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="service-call-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="service-call-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="service-call-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="service-call-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="service-call-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="1089" height="563" rx="12" class="dg-bg"/>
+<line x1="100" y1="64" x2="100" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="32.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="100.0" y="48.0" text-anchor="middle" class="dg-b">Sender coglet</text>
+<line x1="305" y1="64" x2="305" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="237.0" y="24" width="136" height="40" rx="8" class="dg-runtime"/>
+<text x="305.0" y="48.0" text-anchor="middle" class="dg-b">Sender&#x27;s runtime</text>
+<line x1="510" y1="64" x2="510" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="442.0" y="24" width="136" height="40" rx="8" class="dg-hub"/>
+<text x="510.0" y="48.0" text-anchor="middle" class="dg-b">Router</text>
+<line x1="715" y1="64" x2="715" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="647.0" y="24" width="136" height="40" rx="8" class="dg-runtime"/>
+<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">Receiver&#x27;s runtime</text>
+<line x1="920" y1="64" x2="920" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="852.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="920.0" y="48.0" text-anchor="middle" class="dg-b">Receiver coglet</text>
+<line x1="104" y1="108" x2="301" y2="108" class="dg-teal" stroke-width="1.6" marker-end="url(#service-call-teal)"/>
+<circle cx="118" cy="108" r="8" class="dg-num"/>
+<text x="118" y="111.5" text-anchor="middle" class="dg-numt">1</text>
+<text x="211.5" y="100" text-anchor="middle" class="dg-code dg-halo">emit(Action)</text>
+<path d="M305 142h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#service-call-ink)"/>
+<circle cx="291" cy="151" r="8" class="dg-num"/>
+<text x="291" y="154.5" text-anchor="middle" class="dg-numt">2</text>
+<text x="349" y="155" text-anchor="start" class="dg-code dg-halo">run succeeds</text>
+<line x1="309" y1="200" x2="506" y2="200" class="dg-blue" stroke-width="1.6" marker-end="url(#service-call-blue)"/>
+<circle cx="323" cy="200" r="8" class="dg-num"/>
+<text x="323" y="203.5" text-anchor="middle" class="dg-numt">3</text>
+<text x="416.5" y="192" text-anchor="middle" class="dg-code dg-halo">send(message)</text>
+<path d="M510 234h34v18h-27" class="dg-blue" stroke-width="1.6" marker-end="url(#service-call-blue)"/>
+<circle cx="496" cy="243" r="8" class="dg-num"/>
+<text x="496" y="246.5" text-anchor="middle" class="dg-numt">4</text>
+<text x="554" y="247" text-anchor="start" class="dg-code dg-halo">check grant, pick receiver</text>
+<line x1="506" y1="292" x2="309" y2="292" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#service-call-blue)"/>
+<circle cx="492" cy="292" r="8" class="dg-num"/>
+<text x="492" y="295.5" text-anchor="middle" class="dg-numt">5</text>
+<text x="398.5" y="284" text-anchor="middle" class="dg-code dg-halo">Accept</text>
+<line x1="301" y1="338" x2="104" y2="338" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#service-call-teal)"/>
+<circle cx="287" cy="338" r="8" class="dg-num"/>
+<text x="287" y="341.5" text-anchor="middle" class="dg-numt">6</text>
+<text x="193.5" y="330" text-anchor="middle" class="dg-code dg-halo">action.outcome succeeded</text>
+<line x1="514" y1="384" x2="711" y2="384" class="dg-blue" stroke-width="1.6" marker-end="url(#service-call-blue)"/>
+<circle cx="528" cy="384" r="8" class="dg-num"/>
+<text x="528" y="387.5" text-anchor="middle" class="dg-numt">7</text>
+<text x="621.5" y="376" text-anchor="middle" class="dg-code dg-halo">deliver(MessageDelivery)</text>
+<line x1="719" y1="430" x2="916" y2="430" class="dg-teal" stroke-width="1.6" marker-end="url(#service-call-teal)"/>
+<circle cx="733" cy="430" r="8" class="dg-num"/>
+<text x="733" y="433.5" text-anchor="middle" class="dg-numt">8</text>
+<text x="826.5" y="422" text-anchor="middle" class="dg-code dg-halo">wake: new inbox message</text>
+<rect x="60" y="452" width="900" height="30" rx="6" class="dg-group"/>
+<text x="510.0" y="471" text-anchor="middle" class="dg-m">An answer is a new message from the receiver back to the sender, with the same correlation_id.</text>
+<line x1="40" y1="538" x2="74" y2="538" class="dg-teal" stroke-width="1.6" marker-end="url(#service-call-teal)"/>
+<text x="82" y="542" text-anchor="start" class="dg-m">coglet and its runtime</text>
+<line x1="232" y1="538" x2="266" y2="538" class="dg-blue" stroke-width="1.6" marker-end="url(#service-call-blue)"/>
+<text x="274" y="542" text-anchor="start" class="dg-m">runtime and router</text>
+<line x1="400" y1="538" x2="434" y2="538" class="dg-ink dg-dash" stroke-width="1.6" marker-end="url(#service-call-ink)"/>
+<text x="442" y="542" text-anchor="start" class="dg-m">dashed = answer</text>
+</svg>
+</figure>
+<p><em>Between runtimes. The sender gets its outcome as soon as the router accepts.
+Delivery to the receiver is a separate step.</em></p>
+<p>Either way:</p>
+<ol>
+<li>The sender's outcome means the message was accepted for delivery, not that
+   the receiver has acted on it.</li>
+<li>The receiver finds a <code>MessageDelivery</code> in its inbox.</li>
+<li>An answer is a new message back to the sender, carrying the same
+   <code>correlation_id</code>.</li>
+</ol>
+<p>A message reaches its receiver in one of two ways:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Who picks the receiver</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bound</code></td>
+<td>Configuration: for this sender and this message, there is one receiver.</td>
+</tr>
+<tr>
+<td><code>addressed</code></td>
+<td>The message itself, in its <code>to</code> field.</td>
+</tr>
+</tbody>
+</table></div>
+<div class="codehilite idl"><pre><span class="nc">MessageDelivery</span>
+  <span class="sd">What the receiver finds in its inbox. The inbox event&#x27;s name is the message name.</span>
+  <span class="na">caller</span>  <span class="ty">CogletId</span>    <span class="sd">Who sent it. Checked, never just claimed.</span>
+  <span class="na">id</span>      <span class="ty">Id</span>          <span class="sd">The sender&#x27;s action id. `(caller, id)` identifies the message for good.</span>
+  <span class="na">args</span>    <span class="ty">ProfileMap</span>  <span class="sd">What the sender sent.</span>
+
+<span class="nc">MessageUndelivered</span>
+  <span class="sd">Sent back to the sender if an accepted message could not be delivered after all.</span>
+  <span class="na">id</span>     <span class="ty">Id</span>
+  <span class="na">error</span>  <span class="ty">Error</span>
+
+<span class="nc">MessageGrants</span>
+  <span class="sd">Which messages a coglet may send.</span>
+  <span class="na">epoch</span>     <span class="ty">u64</span>       <span class="sd">Rises with every replacement.</span>
+  <span class="na">messages</span>  <span class="ty">[OpName]</span>
+  <span class="na">expires</span>   <span class="ty">u64</span></pre></div>
+<h3 id="runtime-and-router">Runtime and router<a class="headerlink" href="#runtime-and-router" title="Permanent link">#</a></h3>
+<p>What passes between a runtime and the cogent's router.</p>
+<div class="codehilite idl"><pre><span class="nc">RuntimeToRouter</span>
+  <span class="nf">join</span>(<span class="ty">JoinParams</span>) -&gt; <span class="ty">JoinResult</span>
+      <span class="sd">Join a cogent with a one-time invite.</span>
+  <span class="nf">send</span>(<span class="ty">coglet, Action</span>) -&gt; <span class="ty">Accept</span>
+      <span class="sd">Hand over a message for a coglet in another runtime.</span>
+  <span class="nf">relay_events</span>(<span class="ty">coglet, [Event]</span>)
+      <span class="sd">Pass adapter events upward for coglets that subscribed from elsewhere.</span>
+  <span class="nf">report_health</span>(<span class="ty">RuntimeHealth</span>)
+      <span class="sd">Say how the runtime and each of its coglets are doing.</span>
+
+<span class="nc">RouterToRuntime</span>
+  <span class="nf">install</span>(<span class="ty">coglet, Patch</span>) -&gt; <span class="ty">ChangeReceipt</span>
+      <span class="sd">Put a new coglet on this runtime, with its first policy.</span>
+  <span class="nf">start</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">ChangeReceipt</span>
+  <span class="nf">stop</span>(<span class="ty">coglet</span>) -&gt; <span class="ty">ChangeReceipt</span>
+  <span class="nf">deliver</span>(<span class="ty">coglet, InboxMessage</span>) -&gt; <span class="ty">ChangeReceipt</span>
+      <span class="sd">Put a message, or a model&#x27;s reply, into a coglet&#x27;s inbox.</span>
+  <span class="nf">act</span>(<span class="ty">coglet, Action</span>) -&gt; <span class="ty">Accept</span>
+      <span class="sd">Ask the runtime to carry out one action on a coglet&#x27;s behalf.</span>
+  <span class="nf">set_message_grants</span>(<span class="ty">coglet, MessageGrants</span>) -&gt; <span class="ty">ChangeReceipt</span>
+  -- plus every BackChannel operation, each with OnBehalfOf
+
+<span class="nc">JoinParams</span>
+  <span class="na">versions</span>  <span class="ty">[SpecVersion]</span>
+  <span class="na">invite</span>    <span class="ty">str?</span>           <span class="sd">Single use. Absent once the runtime has joined.</span>
+
+<span class="nc">JoinResult</span>
+  <span class="na">version</span>  <span class="ty">SpecVersion</span>
+  <span class="na">runtime</span>  <span class="ty">NodeId</span>
+  <span class="na">router</span>   <span class="ty">RouterId</span>
+
+<span class="nc">RuntimeHealth</span>
+  <span class="na">runtime</span>          <span class="ty">NodeId</span>
+  <span class="na">uptime_ms</span>        <span class="ty">u64</span>
+  <span class="na">waiting</span>          <span class="ty">u64</span>             <span class="sd">Events waiting across all coglets.</span>
+  <span class="na">available_bytes</span>  <span class="ty">u64</span>
+  <span class="na">coglets</span>          <span class="ty">[CogletHealth]</span>
+
+<span class="nc">CogletHealth</span>
+  <span class="na">coglet</span>  <span class="ty">CogletId</span>
+  <span class="na">status</span>  <span class="ty">CogletStatus</span></pre></div>
+<h2 id="shared-types">Shared types<a class="headerlink" href="#shared-types" title="Permanent link">#</a></h2>
+<h3 id="scalars">Scalars<a class="headerlink" href="#scalars" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">u64</span> = <span class="ty">int 0..2^64-1</span>
+  <span class="sd">Every counter, clock and size. There are no floats anywhere on the wire.</span>
+
+<span class="nc">Id</span> = <span class="ty">str /^[0-9a-f]{32}$/</span>
+  <span class="sd">A 128-bit id in lowercase hex. Used for actions, correlations, utterances, streams, tickets</span>
+  <span class="sd">and every other opaque identifier.</span>
+
+<span class="nc">NodeId</span> = <span class="ty">str /^[0-9a-f]{64}$/</span>
+  <span class="sd">A public key in lowercase hex. Identifies one runtime.</span>
+
+<span class="nc">CogletId</span> = <span class="ty">str /^coglet:[0-9a-f]{64}$/</span>
+
+<span class="nc">AdapterId</span> = <span class="ty">str /^adapter:[0-9a-f]{64}$/</span>
+
+<span class="nc">RouterId</span> = <span class="ty">str /^router:[0-9a-f]{64}$/</span>
+
+<span class="nc">SourceId</span> = <span class="ty">CogletId | AdapterId | RouterId</span>
+  <span class="sd">Who produced an event. Always authenticated, never just claimed.</span>
+
+<span class="nc">OpName</span> = <span class="ty">str /^[a-z][a-z0-9_]{0,31}\.[a-z][a-z0-9_]{0,31}$/</span>
+  <span class="sd">An operation or resource name such as `speech.end` or `audio.mic`. The spec calls this a</span>
+  <span class="sd">capability-name.</span>
+
+<span class="nc">ProfileValue</span> = <span class="ty">(int | str | bool | [ProfileValue] | ProfileMap)?</span>
+
+<span class="nc">ProfileMap</span> = <span class="ty">{str: ProfileValue}</span>
+  <span class="sd">Free-form structured data. Integers only, no floats and no byte strings.</span></pre></div>
+<h3 id="event"><code>Event</code><a class="headerlink" href="#event" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Event</span>
+  <span class="sd">Something that happened. The only thing a coglet is ever woken with.</span>
+  <span class="na">source</span>          <span class="ty">SourceId</span>    <span class="sd">The adapter, coglet or router that produced it.</span>
+  <span class="na">kind</span>            <span class="ty">OpName</span>      <span class="sd">What happened, for example `speech.end` or `runtime.timer`.</span>
+  <span class="na">seq</span>             <span class="ty">u64</span>         <span class="sd">Per-source sequence number. Increases on every delivery.</span>
+  <span class="na">logical_time</span>    <span class="ty">u64</span>         <span class="sd">The source&#x27;s own clock in microseconds. Never compared across</span>
+                              <span class="sd">sources.</span>
+  <span class="na">payload</span>         <span class="ty">ProfileMap</span>  <span class="sd">The typed body. Its shape is fixed by `kind`.</span>
+  <span class="na">correlation_id</span>  <span class="ty">Id</span>          <span class="sd">Ties this event to the request or conversation it belongs to.</span></pre></div>
+<h3 id="action"><code>Action</code><a class="headerlink" href="#action" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Action</span>
+  <span class="sd">A request for an effect. A coglet stages one with `emit`.</span>
+  <span class="na">id</span>              <span class="ty">Id</span>          <span class="sd">Unique for the life of the coglet. The key for deduplication.</span>
+  <span class="na">coglet</span>          <span class="ty">CogletId</span>    <span class="sd">The coglet asking. Must match the running coglet&#x27;s identity.</span>
+  <span class="na">capability</span>      <span class="ty">OpName</span>      <span class="sd">The operation, for example `speech.speak_chunk` or `intent.request`.</span>
+  <span class="na">args</span>            <span class="ty">ProfileMap</span>  <span class="sd">The typed arguments. Their shape is fixed by `capability`.</span>
+  <span class="na">deadline</span>        <span class="ty">u64</span>         <span class="sd">Runtime-clock microseconds after which the action must not start.</span>
+  <span class="na">correlation_id</span>  <span class="ty">Id</span>          <span class="sd">Copied onto the accept, the outcome and any reply.</span></pre></div>
+<h3 id="accept"><code>Accept</code><a class="headerlink" href="#accept" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Accept</span>
+  <span class="sd">The provider&#x27;s admission decision. Not completion.</span>
+  <span class="na">id</span>              <span class="ty">Id</span>
+  <span class="na">correlation_id</span>  <span class="ty">Id</span>
+  <span class="na">accepted</span>        <span class="ty">bool</span>    <span class="sd">True means the provider took the work and owes exactly one Outcome.</span>
+  <span class="na">error</span>           <span class="ty">Error?</span>  <span class="sd">Present only when `accepted` is false. A rejected action has no</span>
+                          <span class="sd">outcome.</span></pre></div>
+<h3 id="outcome"><code>Outcome</code><a class="headerlink" href="#outcome" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Outcome</span>
+  <span class="sd">The one terminal result of an accepted action. Reaches the coglet as an inbox event of kind</span>
+  <span class="sd">`action.outcome`.</span>
+  <span class="na">id</span>              <span class="ty">Id</span>
+  <span class="na">correlation_id</span>  <span class="ty">Id</span>
+  <span class="na">status</span>          <span class="ty">&quot;succeeded&quot; | &quot;failed&quot; | &quot;cancelled&quot; | &quot;expired&quot;</span>
+  <span class="na">result</span>          <span class="ty">ProfileMap?</span>                     <span class="sd">Present only when succeeded. Empty for every</span>
+                                                  <span class="sd">operation defined today.</span>
+  <span class="na">error</span>           <span class="ty">Error?</span>                          <span class="sd">Present for failed, cancelled and expired.</span></pre></div>
+<h3 id="error"><code>Error</code><a class="headerlink" href="#error" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">ErrorCode</span> = <span class="ty">&quot;invalid_argument&quot; | &quot;unsupported_version&quot; | &quot;unauthenticated&quot; | &quot;permission_denied&quot; | &quot;not_found&quot; | &quot;conflict&quot; | &quot;resource_exhausted&quot; | &quot;deadline_exceeded&quot; | &quot;cancelled&quot; | &quot;unavailable&quot; | &quot;internal&quot;</span>
+
+<span class="nc">Error</span>
+  <span class="na">code</span>       <span class="ty">ErrorCode</span>
+  <span class="na">message</span>    <span class="ty">str</span>
+  <span class="na">retryable</span>  <span class="ty">bool</span>         <span class="sd">True means the identical request may be sent again.</span>
+  <span class="na">details</span>    <span class="ty">ProfileMap?</span></pre></div>
+<h3 id="versions">Versions<a class="headerlink" href="#versions" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">SpecVersion</span> = <span class="ty">str /^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$/</span>
+
+<span class="nc">VersionOffer</span>
+  <span class="sd">Sent by whoever opens a session.</span>
+  <span class="na">versions</span>  <span class="ty">[SpecVersion] at least 1 items</span>
+
+<span class="nc">VersionSelection</span>
+  <span class="sd">The answer: the one version both sides will speak.</span>
+  <span class="na">version</span>  <span class="ty">SpecVersion</span></pre></div>
+<h2 id="names-used-in-the-spec">Names used in the spec<a class="headerlink" href="#names-used-in-the-spec" title="Permanent link">#</a></h2>
+<p>These pages are a design, written in the names we now use. The files under
+<code>spec/</code> are still the source of truth for what is built today, and they use
+older names for the same things:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Here</th>
+<th>In <code>spec/</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>adapter</td>
+<td>surface</td>
+</tr>
+<tr>
+<td>router</td>
+<td>hub</td>
+</tr>
+<tr>
+<td>runtime</td>
+<td>device, runtime</td>
+</tr>
+<tr>
+<td>message between coglets</td>
+<td>not defined yet</td>
+</tr>
+<tr>
+<td>back channel</td>
+<td>the <code>debug.*</code> and <code>hub.git.*</code> methods</td>
+</tr>
+</tbody>
+</table></div>
+</main>
+</div>
+<script>
+const links = [...document.querySelectorAll('nav a[href^="#"]')];
+const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) {
+    links.forEach(a => a.classList.remove('active'));
+    const a = byId.get(e.target.id);
+    if (a) { a.classList.add('active'); a.scrollIntoView({block: 'nearest'}); }
+  }
+}, {rootMargin: '0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id], main h3[id]').forEach(h => seen.observe(h));
+document.getElementById('filter').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('nav li').forEach(li => {
+    li.hidden = q !== '' && !li.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>

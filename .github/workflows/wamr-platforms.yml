@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +21,10 @@ jobs:
           test "$(uname -m)" = arm64
           rustup show active-toolchain
           rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1
+      - name: Check Darwin proto and prove validator refuses unsupported execution
+        run: |
+          cargo check --locked -p coglet-proto --target aarch64-apple-darwin
+          cargo test --locked -p coglet-proto --test bundle_envelope unsupported_platform_refuses_validator_execution -- --exact
       - name: Build and test default engine/runtime (no ignored tests)
         run: |
           cargo build --locked -p coglet-engine-wamr -p coglet-runtime

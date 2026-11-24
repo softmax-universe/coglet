@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-label="Two ways to do speech. With a realtime provider, audio goes straight from the Softmax app to the provider and the Face coglet gets transcripts and tool calls. With local models, audio never leaves the Mac.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="speech-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="speech-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="speech-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="speech-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="speech-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="speech-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="speech-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="speech-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="499" rx="12" class="dg-bg"/>
+<text x="30" y="34" text-anchor="start" class="dg-cap">REALTIME PROVIDER (FIRST)</text>
+<text x="930" y="34" text-anchor="end" class="dg-m">lowest latency; audio goes to the provider</text>
+<rect x="20" y="48" width="420" height="186" rx="12" class="dg-group"/>
+<text x="34" y="222" text-anchor="start" class="dg-cap">THIS MAC</text>
+<rect x="34" y="66" width="130" height="56" rx="8" class="dg-world"/>
+<text x="99.0" y="98.0" text-anchor="middle" class="dg-b">Mic, speaker</text>
+<rect x="224" y="66" width="200" height="56" rx="8" class="dg-adapter"/>
+<text x="324.0" y="91.0" text-anchor="middle" class="dg-b">Softmax app</text>
+<text x="324.0" y="107.0" text-anchor="middle" class="dg-m">audio, push-to-talk, barge-in</text>
+<rect x="224" y="152" width="200" height="56" rx="8" class="dg-coglet"/>
+<text x="324.0" y="177.0" text-anchor="middle" class="dg-b">Face coglet</text>
+<text x="324.0" y="193.0" text-anchor="middle" class="dg-m">decides what gets done</text>
+<rect x="720" y="66" width="210" height="56" rx="8" class="dg-hub"/>
+<text x="825.0" y="91.0" text-anchor="middle" class="dg-b">Realtime speech model</text>
+<text x="825.0" y="107.0" text-anchor="middle" class="dg-m">hears, speaks, calls tools</text>
+<rect x="720" y="152" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="825.0" y="177.0" text-anchor="middle" class="dg-b">Softmax key service</text>
+<text x="825.0" y="193.0" text-anchor="middle" class="dg-m">holds the real API key</text>
+<line x1="166" y1="94" x2="222" y2="94" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="426" y1="84" x2="718" y2="84" class="dg-blue" stroke-width="1.6" marker-end="url(#speech-blue)" marker-start="url(#speech-blue-s)"/>
+<text x="572" y="76" text-anchor="middle" class="dg-code">audio, direct</text>
+<path d="M718 180H572V108H428" class="dg-ink dg-dash" stroke-width="1.6" marker-end="url(#speech-ink)"/>
+<text x="646" y="172" text-anchor="middle" class="dg-code">short-lived key</text>
+<line x1="294" y1="124" x2="294" y2="150" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<line x1="354" y1="150" x2="354" y2="124" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<text x="214" y="142" text-anchor="end" class="dg-m">transcripts, tool calls</text>
+<text x="434" y="142" text-anchor="start" class="dg-m">instructions, results</text>
+<text x="30" y="288" text-anchor="start" class="dg-cap">ON THIS MAC (LATER)</text>
+<text x="930" y="288" text-anchor="end" class="dg-m">private and offline; audio never leaves the machine</text>
+<rect x="20" y="302" width="720" height="186" rx="12" class="dg-group"/>
+<text x="34" y="476" text-anchor="start" class="dg-cap">THIS MAC</text>
+<rect x="34" y="320" width="130" height="56" rx="8" class="dg-world"/>
+<text x="99.0" y="352.0" text-anchor="middle" class="dg-b">Mic, speaker</text>
+<rect x="224" y="320" width="200" height="56" rx="8" class="dg-adapter"/>
+<text x="324.0" y="345.0" text-anchor="middle" class="dg-b">Softmax app</text>
+<text x="324.0" y="361.0" text-anchor="middle" class="dg-m">audio, push-to-talk, barge-in</text>
+<rect x="224" y="406" width="200" height="56" rx="8" class="dg-coglet"/>
+<text x="324.0" y="431.0" text-anchor="middle" class="dg-b">Face coglet</text>
+<text x="324.0" y="447.0" text-anchor="middle" class="dg-m">decides what to say and do</text>
+<rect x="510" y="320" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="615.0" y="345.0" text-anchor="middle" class="dg-b">Local speech models</text>
+<text x="615.0" y="361.0" text-anchor="middle" class="dg-m">speech-to-text, text-to-speech</text>
+<rect x="510" y="406" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="615.0" y="431.0" text-anchor="middle" class="dg-b">LLM capability</text>
+<text x="615.0" y="447.0" text-anchor="middle" class="dg-m">local or remote</text>
+<line x1="166" y1="348" x2="222" y2="348" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="426" y1="348" x2="508" y2="348" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="294" y1="378" x2="294" y2="404" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<line x1="354" y1="404" x2="354" y2="378" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<text x="214" y="396" text-anchor="end" class="dg-m">transcript</text>
+<text x="434" y="396" text-anchor="start" class="dg-m">text to say</text>
+<line x1="426" y1="434" x2="508" y2="434" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)" marker-start="url(#speech-teal-s)"/>
+</svg>

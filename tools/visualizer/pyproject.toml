@@ -1,0 +1,11 @@
+[project]
+name = "coglet-visualizer"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["cbor2>=5.6,<6"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "playwright>=1.50,<2", "cbor2>=5.6,<6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
