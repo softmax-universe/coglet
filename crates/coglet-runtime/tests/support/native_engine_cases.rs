@@ -6,7 +6,7 @@ mod expiry;
 fn escaped(raw: &[u8]) -> String {
     raw.iter().map(|b| format!("\\{b:02x}")).collect()
 }
-pub(super) fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
+pub fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
     setup["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(wasm));
     let raw = hex::decode(
         setup["initial_files"]["/code/build/provenance.cbor"]
@@ -264,7 +264,9 @@ fn native_admission_refuses_mode_memory_wasi_and_preserves_queued_input() {
     budgets["memory_pages"] = json!(1);
     assert!(NativeEngine::new(code.clone(), &budgets, 8_388_608, 65_536).is_err());
     let wasi = wat::parse_str("(module (import \"wasi_snapshot_preview1\" \"args_sizes_get\" (func (param i32 i32) (result i32))) (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
-    assert!(NativeEngine::new(wasi, &s["manifest"]["budgets"], 8_388_608, 65_536).is_err());
+    assert!(NativeEngine::new(wasi, &s["manifest"]["budgets"], 8_388_608, 65_536).is_ok());
+    let clock = wat::parse_str("(module (import \"wasi_snapshot_preview1\" \"clock_time_get\" (func (param i32 i64 i32) (result i32))) (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
+    assert!(NativeEngine::new(clock, &s["manifest"]["budgets"], 8_388_608, 65_536).is_err());
     // A valid engine with lower per-step memory admission cannot consume the batch.
     let dir = std::env::temp_dir().join(format!("native-admit-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

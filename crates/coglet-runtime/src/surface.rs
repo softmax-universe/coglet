@@ -46,7 +46,7 @@ impl SurfaceBinding {
 }
 
 pub struct SurfaceSession {
-    echo_fixture: bool,
+    catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     binding: SurfaceBinding,
     negotiated: bool,
     closed: bool,
@@ -85,7 +85,7 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
-            echo_fixture: false,
+            catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
             binding,
             negotiated: false,
             closed: false,
@@ -122,6 +122,7 @@ impl SurfaceSession {
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
+        self.pump_supervisor_reads(now)?;
         #[cfg(feature = "native-engine")]
         service
             .lock()

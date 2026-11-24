@@ -387,34 +387,48 @@ fn replay_state_hash() {
 }
 #[test]
 fn production_runtime_rejects_test_echo() {
-    let dir = tempfile::tempdir().unwrap();
-    let setup = setup(&wasm());
-    let service = Arc::new(Mutex::new(
-        RuntimeService::open(&dir.path().join("wal"), &setup, 128).unwrap(),
-    ));
-    assert!(SurfaceSession::with_echo_fixture(binding(), service.clone()).is_err());
-    let mut session = SurfaceSession::with_service(binding(), service).unwrap();
-    let b = backend();
-    assert!(MockSurface::open(config(60_000_000), &dir.path().join("prod"), b.clone()).is_err());
-    let mut surface =
-        MockSurface::open_echo_fixture(config(60_000_000), &dir.path().join("fixture"), b).unwrap();
-    let hello = surface.start().unwrap();
-    assert_eq!(session.send(&hello[0], 0), 0);
-    let reply = session.pop().unwrap();
-    let messages = surface.receive(&reply, 1000).unwrap();
-    let caps = messages
-        .iter()
-        .find(|m| decode(m)["type"] == "capabilities")
-        .unwrap();
-    assert_eq!(session.send(caps, 0), -2);
-    assert!(session.is_closed());
-    // Creating a fixture never activates the process-global production catalog.
-    assert!(
-        coglet_surface_rust::catalog::catalog()
-            .unwrap()
-            .op("test.echo")
-            .is_none()
-    );
+    for fixture_service in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let setup = setup(&wasm());
+        let service = Arc::new(Mutex::new(
+            if fixture_service {
+                RuntimeService::open_echo_fixture(&dir.path().join("wal"), &setup, 128)
+            } else {
+                RuntimeService::open(&dir.path().join("wal"), &setup, 128)
+            }
+            .unwrap(),
+        ));
+        assert_eq!(
+            SurfaceSession::with_echo_fixture(binding(), service.clone()).is_ok(),
+            fixture_service
+        );
+        // Normal adapter construction must refuse echo even beside a fixture runtime.
+        let mut session = SurfaceSession::with_service(binding(), service).unwrap();
+        let b = backend();
+        assert!(
+            MockSurface::open(config(60_000_000), &dir.path().join("prod"), b.clone()).is_err()
+        );
+        let mut surface =
+            MockSurface::open_echo_fixture(config(60_000_000), &dir.path().join("fixture"), b)
+                .unwrap();
+        let hello = surface.start().unwrap();
+        assert_eq!(session.send(&hello[0], 0), 0);
+        let reply = session.pop().unwrap();
+        let messages = surface.receive(&reply, 1000).unwrap();
+        let caps = messages
+            .iter()
+            .find(|m| decode(m)["type"] == "capabilities")
+            .unwrap();
+        assert_eq!(session.send(caps, 0), -2);
+        assert!(session.is_closed());
+        // Creating a fixture never activates the process-global production catalog.
+        assert!(
+            coglet_surface_rust::catalog::catalog()
+                .unwrap()
+                .op("test.echo")
+                .is_none()
+        );
+    }
 }
 #[test]
 fn fixture_catalog_requires_explicit_grant() {

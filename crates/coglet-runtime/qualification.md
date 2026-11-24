@@ -39,9 +39,23 @@ targets without filters or ignores.
   pinned Wasm/provenance/manifest plus optional `native_schedule`. It is an
   operational supervisor-configured daemon, not signed-archive admission, hub
   lifecycle service or disconnected background scheduler.
-- WASI modules fail admission. Full ABI/native replay, transactional WASI, trace
-  import/export and broader recovery reconstruction belong to serial owner
-  `t_01a2085cca051179`. The primary ABI launcher remains a 21-case subset.
+- Restricted WASI preview1 file preopens are hosted on the coglet-fs overlay.
+  Clock/random/poll and symlink/hard-link imports still fail admission. Named
+  evidence: `native_sdk_guest_writes_data_commits_and_reopens`,
+  `native_guest_abort_discards_wasi_writes`,
+  `native_wasi_crash_between_journal_and_commit_recovers_one_state`,
+  `native_wasi_replay_yields_identical_hashes`,
+  `native_forbidden_ops_denied_with_permission_errno`,
+  `native_forbidden_imports_fail_admission_without_instantiation`, and
+  `native_wasi_append_flag_does_not_grant_write_or_renumber_clobber`.
+  The SDK persistence test runs the compiled counter through NativeEngine in
+  two fresh runtime subprocesses: the second reads and increments the first's
+  committed `/data/count`. The crash test truncates the actual atomic WAL frame
+  at header/body/end boundaries; incomplete commits retain the original queue
+  and attempt fence, while the complete frame publishes files and consumes it.
+  Full ABI/native replay, trace import/export and broader recovery reconstruction
+  belong to serial owner `t_01a2085cca051179`. The primary ABI launcher remains a
+  21-case subset.
 - Capture/playback/provider tombstones have explicit non-evicting 4096-entry
   lifecycle bounds; streams admit at most 64 observed chunks. Reads share 128
   outstanding/completed slots and 4096 per-link correlation tombstones. Exhaustion

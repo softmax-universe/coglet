@@ -22,9 +22,11 @@ there is no mock fallback. The guarded Apple builds and their evidence are below
 Setup's existing immutable `/code/bin/step.wasm`, provenance and manifest pins
 are still required. Use the actual WAMR compute mode
 `wamr-2.4.3-fast-cumulative-v1`; unsupported modes and over-budget declared
-maximum memory are refused before input consumption. This first route admits
-only `coglet_v0` imports: `emit`, `timer`, `llm`, `log`. All WASI imports are
-explicitly refused until the transactional filesystem host is qualified. LLM
+maximum memory are refused before input consumption. This first route admits `coglet_v0` imports (`emit`, `timer`, `llm`, `log`) and the
+restricted WASI preview1 file operations defined in `spec/abi.md`. Preopens are
+`/code` (fd 3, read-only), `/data` (fd 4, private read-write) and `/logs` (fd 5,
+create/append only) on the coglet-fs overlay. Clock, random, poll, symlink-create
+and hard-link imports still fail module admission. LLM
 calls can stage requests but this card does not supply a provider/gateway pump.
 
 Each native pump schedules at most one arrival-ordered batch. No guest executes

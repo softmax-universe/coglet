@@ -659,6 +659,7 @@ dependencies = [
  "anyhow",
  "coglet-engine",
  "coglet-engine-wamr",
+ "coglet-fs",
  "coglet-hub",
  "coglet-mock",
  "coglet-proto",
