@@ -16,6 +16,10 @@ public final class ProcessHubLink: HubLink {
     private var callback: ((HubLinkEvent) -> Void)?
     private var generation: UInt64 = 0
     public init(executable: URL) { self.executable = executable }
+    // Kept internal for a deterministic descriptor-lifetime test.
+    nonisolated static func readerDescriptor(for handle: FileHandle) throws -> Int32 {
+        handle.fileDescriptor
+    }
     public func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws {
         stop()
         guard key.count == 32 else { throw HubError.identity }
@@ -38,7 +42,9 @@ public final class ProcessHubLink: HubLink {
         }
         try child.run()
         process = child; input = stdin.fileHandleForWriting; output = stdout.fileHandleForReading
-        let handle = stdout.fileHandleForReading
+        let descriptor: Int32
+        do { descriptor = try Self.readerDescriptor(for: stdout.fileHandleForReading) }
+        catch { stop(); throw HubError.unavailable }
         reader = Task.detached { [weak self] in
             do {
                 var pending = Data()
@@ -47,7 +53,7 @@ public final class ProcessHubLink: HubLink {
                     // read(2) returns currently available bytes from a pipe; a
                     // Foundation fill-to-count read can stall a short ready frame.
                     let count = buffer.withUnsafeMutableBytes { bytes in
-                        read(handle.fileDescriptor, bytes.baseAddress!, bytes.count)
+                        read(descriptor, bytes.baseAddress!, bytes.count)
                     }
                     if count < 0 {
                         if errno == EINTR { continue }

@@ -1,9 +1,31 @@
 import Foundation
 import XCTest
+#if canImport(Darwin)
+import Darwin
+#else
+import Glibc
+#endif
 @testable import SoftmaxCore
 
 @MainActor
 final class HubNativeConnectionTests: XCTestCase {
+    func testReaderDescriptorSurvivesClosingOriginalPipeHandle() throws {
+        let pipe = Pipe()
+        let original = pipe.fileHandleForReading.fileDescriptor
+        let descriptor = try ProcessHubLink.readerDescriptor(for: pipe.fileHandleForReading)
+        defer { if descriptor != original { close(descriptor) } }
+        // Model stop() closing its handle before the detached reader resumes.
+        // No scheduler race or descriptor-reuse lottery is needed.
+        let frame = Data("{\"state\":\"offline\"}\n".utf8)
+        try pipe.fileHandleForWriting.write(contentsOf: frame)
+        try pipe.fileHandleForWriting.close()
+        try pipe.fileHandleForReading.close()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        let count = buffer.withUnsafeMutableBytes { read(descriptor, $0.baseAddress!, $0.count) }
+        XCTAssertEqual(count, frame.count, "Reader must own a descriptor independent of stop()'s handle")
+        if count > 0 { XCTAssertEqual(Data(buffer.prefix(count)), frame) }
+    }
+
     func testHubConnectionTestsEnrollDropOfflineAndRecoverAgainstCogletMock() async throws {
         let env = ProcessInfo.processInfo.environment
         guard let helper = env["SOFTMAX_HUB_HELPER"], let launcher = env["SOFTMAX_MOCK_HUB"] else {
