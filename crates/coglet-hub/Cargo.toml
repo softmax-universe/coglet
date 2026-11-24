@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+test-controls = ["coglet-proto/test-controls"]
+
 [dependencies]
 coglet-proto = { path = "../coglet-proto" }
 coglet-types = { path = "../coglet-types" }
