@@ -32,6 +32,21 @@ Named tests:
 
 Timing: render starts 20 ms (wall) after admission; virtual media then advances
 10x faster than wall time. Wire positions are virtual media milliseconds.
+Expression expiry uses the separate native monotonic clock and runs on every
+device tick, including idle ticks with no reads; media capture never advances it.
+The native stop reflex fences pending work before grant reassignment, kill,
+disconnect or expiry. Cancellation is retained locally without delivering private
+work records to a revoked owner.
+
+Lifecycle/clock regression controls (in `test_duplex_wire.py`):
+- `test_lifecycle_fences_work_before_reassignment` (speech.md:246-258): direct
+  regrant, revoke/regrant, kill, disconnect and expiry; old tuples rejected,
+  cancellation exactly once, private delivery suppressed, fresh work succeeds.
+- `test_expression_expires_on_native_tick_not_media_time` (expression.md:17-21):
+  no-read idle expiry and capture before expiry with exact remaining duration.
+- `test_expression_replacement_fences_old_native_expiry` (expression.md:19-21):
+  replacement survives the old deadline and expires at its own native deadline.
+
 Heard text is the conservative aligned-span prefix (never a duration ratio);
 text without voice alignment has unknown alignment and empty heard text.
 Exclusive resources are advertised only on their owning entry

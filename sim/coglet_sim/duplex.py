@@ -264,18 +264,24 @@ class DuplexEngine:
     # Timeline inputs ----------------------------------------------------
 
     def tick(self, now_ms):
+        """Tick a non-accelerated standalone engine sharing one clock."""
+        self.tick_expression(now_ms)
+        return self.tick_media(now_ms)
+
+    def tick_expression(self, now_ms):
+        """Native monotonic milliseconds, never accelerated media time."""
+        if self.expression_until and now_ms >= self.expression_until:
+            self.reset_expression()
+
+    def tick_media(self, now_ms):
         emitted = []
         if self.pending_play_at is not None and now_ms >= self.pending_play_at:
             self.pending_play_at = None
             emitted.append(self._position(now_ms, 'playing'))
-        if self.expression_until and now_ms >= self.expression_until:
-            self.expression = 'neutral'
-            self.intensity = 0
-            self.expression_until = 0
         return emitted
 
     def feed(self, at_ms, kind, **step):
-        self.tick(at_ms)
+        self.tick_media(at_ms)
         emitted = []
         if kind == 'play':
             item = step['item']
@@ -411,7 +417,7 @@ class DuplexEngine:
         return {}
 
     def expression_state(self, now_ms):
-        self.tick(now_ms)
+        self.tick_expression(now_ms)
         remaining = max(0, self.expression_until - now_ms) if self.expression_until else 0
         return {
             'expression': self.expression,

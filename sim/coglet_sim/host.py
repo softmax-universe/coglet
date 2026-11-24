@@ -181,6 +181,11 @@ class DuplexDevice:
         the surface tick's second complete is a no-op.
         """
         self.engine.halt()
+        if self.started:
+            # The SDK invokes the reflex before replacing authority. Fence work
+            # locally first, but never deliver private work_done to the revoked
+            # owner (or redirect it to a replacement grant).
+            self.engine.cancel_work(self.now_ms() * SPEEDUP)
         self.generation += 1
         self.due.clear()
         surface = self.surface_holder[0]
@@ -233,6 +238,7 @@ class DuplexDevice:
 
     def tick(self):
         now = self.now_ms()
+        self.engine.tick_expression(now)
         due, remain = [], []
         for entry in self.due:
             (due if now >= entry[0] else remain).append(entry)

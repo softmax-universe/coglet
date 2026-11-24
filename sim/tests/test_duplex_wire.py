@@ -507,6 +507,49 @@ def test_chunk_expiry_cancels_later_chunks_and_closes_the_stream(wire):
     assert w.events('speech.position') == []
 
 
+@pytest.mark.parametrize('capture', [False, True], ids=['idle-no-read', 'early-capture'])
+def test_expression_expires_on_native_tick_not_media_time(wire, capture):
+    w = wire()
+    clock = [100]
+    w.device.now_ms = lambda: clock[0]
+    w.act('a' * 32, 'expression.set_expression',
+          {'expression': 'happy', 'intensity': 200, 'duration_ms': 300})
+    assert w.outcomes()['a' * 32]['status'] == 'succeeded'
+    clock[0] = 150
+    if capture:
+        w.device._capture('start', {'utterance': '9' * 32, 'position_ms': 0}, None)
+    w.pump()
+    assert w.device.engine.expression == 'happy'
+    w.query('expression.state', {}, 'b' * 32)
+    assert ok_value(w.reply(), 'b' * 32) == {
+        'expression': 'happy', 'intensity': 200, 'remaining_ms': 250}
+    clock[0] = 399
+    w.pump()
+    assert w.device.engine.expression == 'happy'
+    clock[0] = 400
+    w.pump()  # no read: native renderer must expire on its own tick
+    assert w.device.engine.expression == 'neutral'
+    assert w.device.engine.intensity == 0
+    assert w.device.engine.expression_until == 0
+
+
+def test_expression_replacement_fences_old_native_expiry(wire):
+    w = wire()
+    clock = [100]
+    w.device.now_ms = lambda: clock[0]
+    w.act('a' * 32, 'expression.set_expression',
+          {'expression': 'happy', 'intensity': 200, 'duration_ms': 300})
+    clock[0] = 150
+    w.act('b' * 32, 'expression.set_expression',
+          {'expression': 'thinking', 'intensity': 300, 'duration_ms': 500})
+    clock[0] = 400
+    w.pump()
+    assert w.device.engine.expression == 'thinking'
+    clock[0] = 650
+    w.pump()
+    assert w.device.engine.expression == 'neutral'
+
+
 def test_expression_apply_expiry_fence_and_revocation(wire):
     w = wire()
     w.query('expression.state', {}, 'c' * 32)
@@ -562,6 +605,57 @@ def test_expression_apply_expiry_fence_and_revocation(wire):
                 {'expression': 'thinking', 'intensity': 1, 'duration_ms': 60000})
     dropped.surface.disconnect()
     assert dropped.device.engine.expression == 'neutral'
+
+
+@pytest.mark.parametrize('lifecycle', ['regrant', 'revoke', 'kill', 'disconnect', 'expiry'])
+def test_lifecycle_fences_work_before_reassignment(wire, lifecycle):
+    w = wire('duplicate-call')
+    engine = w.device.engine
+    assert engine.work_state() == {'epoch': 1, 'pending': 1}
+    entries = grant_entries(operations_for('duplicate-call'))
+    if lifecycle == 'regrant':
+        w.surface.grant(entries)
+    elif lifecycle == 'revoke':
+        w.surface.grant([])
+    elif lifecycle == 'kill':
+        w.surface.kill('test')
+    elif lifecycle == 'disconnect':
+        w.surface.disconnect()
+    else:
+        now = w.surface.now()
+        w.surface.clock = lambda: now
+        w.surface.grants[0]['expires'] = now
+        w.surface.tick()
+    w.pump()
+    assert engine.work_epoch > 1
+    assert engine.pending_work == []
+    assert [(d['call'], d['epoch'], d['status']) for d in engine.work_done] == [
+        (CALL, 1, 'cancelled')]
+    assert work_payloads(w) == []  # revoked owner's private cancellation is suppressed
+
+    if lifecycle in ('kill', 'disconnect'):
+        if lifecycle == 'kill':
+            w.surface.disconnect()
+        w.surface.reset()
+        w.surface.open(HELLO_ID)
+        w.send('hello_reply', {'selection': {'version': '0.1'}, 'correlation_id': HELLO_ID})
+    w.surface.grant(entries)
+    w.pump()
+    epoch = w.surface._get('epoch')
+    w.act('a' * 32, 'speech.work_result', {
+        'turn': TURN, 'call': CALL, 'epoch': 1, 'status': 'succeeded', 'value': INSPECTED}, epoch=epoch)
+    assert w.accepts()['a' * 32]['error']['code'] == 'not_found'
+    assert work_payloads(w) == []
+    fresh = 'b' * 32
+    w.device.emit_engine(engine.stage_work(0, TURN, fresh, 'game.inspect', {}))
+    w.pump()
+    w.act('c' * 32, 'speech.work_result', {
+        'turn': TURN, 'call': fresh, 'epoch': engine.work_epoch,
+        'status': 'succeeded', 'value': INSPECTED}, epoch=epoch)
+    assert w.accepts()['c' * 32]['accepted'] is True
+    assert w.outcomes()['c' * 32]['status'] == 'succeeded'
+    assert [(d['call'], d['status']) for d in work_payloads(w)] == [(fresh, 'succeeded')]
+    assert len(engine.work_done) == 2
 
 
 def test_work_state_read_and_rejection(wire):
