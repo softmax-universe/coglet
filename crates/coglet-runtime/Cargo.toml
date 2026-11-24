@@ -13,9 +13,10 @@ default = []
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
 echo-smoke = ["native-engine"]
-native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser"]
+native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser", "dep:coglet-db"]
 
 [dependencies]
+coglet-db = { path = "../coglet-db", optional = true }
 coglet-engine = { path = "../coglet-engine", optional = true }
 coglet-engine-wamr = { path = "../coglet-engine-wamr", optional = true }
 wasmparser = { version = "=0.245.1", optional = true }
@@ -27,6 +28,9 @@ sha2 = "0.10"
 hex = "0.4"
 
 [dev-dependencies]
+coglet-mock = { path = "../coglet-mock" }
+tempfile = "3"
+rusqlite = { version = "0.38", features = ["bundled"] }
 wat = "1.245.1"
 anyhow = "1"
 wasm-encoder = { version = "0.245", features = ["wasmparser"] }

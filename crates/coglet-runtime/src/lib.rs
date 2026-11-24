@@ -3,6 +3,8 @@ mod admission;
 pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
+#[cfg(feature = "native-engine")]
+pub mod database;
 mod execution;
 pub mod ffi;
 mod filesystem;
