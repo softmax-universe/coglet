@@ -17,7 +17,10 @@ async fn installed_push_drains_more_than_one_recovery_batch() {
         let (initial, _) = pushed_and_installed(&mut env).await;
         let barrier = InitialBoundaryBarrier::install(&mut env).await;
         let bundle = env.bundle(2, Some(&initial.tip), &[]);
-        let (id, pushing) = begin_push(&mut env, &bundle);
+        // Revalidating 131 real bundles is intentionally larger than a normal
+        // request. Keep its wire deadline within the supported 300s limit and
+        // the enclosing 120s test bound; do not alter production timeouts.
+        let (id, pushing) = begin_push_with_timeout(&mut env, &bundle, 110_000);
         barrier.wait().await;
         // Test-local recovery backlog: every row retains a genuine verified
         // bundle and original intent; distinct IDs must get their own terminal

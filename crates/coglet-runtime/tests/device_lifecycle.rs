@@ -2340,11 +2340,20 @@ impl InitialBoundaryBarrier {
 }
 
 fn begin_push(env: &mut Env, bundle: &Bundle) -> (String, JoinHandle<Value>) {
-    let request = env.request(
+    begin_push_with_timeout(env, bundle, 30_000)
+}
+
+fn begin_push_with_timeout(
+    env: &mut Env,
+    bundle: &Bundle,
+    timeout_ms: u64,
+) -> (String, JoinHandle<Value>) {
+    let mut request = env.request(
         "hub.git.push",
         json!({"update":bundle.signed,
         "size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
     );
+    request["timeout_ms"] = json!(timeout_ms);
     let id = request["correlation_id"].as_str().unwrap().to_owned();
     let session = env.session.clone();
     let bytes = bundle.bytes.clone();
