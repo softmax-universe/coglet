@@ -18,9 +18,3 @@
 # card = "t_0123456789abcdef"
 # since = 2026-11-24
 # reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"
-
-[[rust]]
-id = "lifecycle_operation_retries_cannot_reverse_later_transitions_after_restart"
-card = "t_01a20bd00f035b09"
-since = 2026-11-24
-reason = "panic at crates/coglet-runtime/tests/device_lifecycle.rs:1496 in required rust, run 45447325830 attempt 1 (job 138634581659) on adb9c03f; attempt 2 on the same tree passed"
