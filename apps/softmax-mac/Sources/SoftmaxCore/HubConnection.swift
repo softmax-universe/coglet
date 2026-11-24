@@ -49,7 +49,16 @@ public final class HubConnection {
     public func enroll(_ value: HubPairing) throws {
         guard running, ready, let deviceID,
               value.device == nil || value.device == deviceID else { throw HubError.pairing }
-        guard pending == nil, pairing == nil else { throw HubError.pairing }
+        guard pairing == nil else { throw HubError.pairing }
+        if pending != nil {
+            guard state == .offline else { throw HubError.pairing }
+            // A replacement must not accept a late success from the original channel.
+            retry?.cancel(); retry = nil
+            stopLink()
+            pending = value; attempts = 0
+            start()
+            return
+        }
         pending = value
         attempts = 0
         try connect(value)
