@@ -164,6 +164,13 @@ func TestSurfaceConformance(t *testing.T) {
 	if out, e := cmd.CombinedOutput(); e != nil {
 		t.Fatalf("build adapter: %s %v", out, e)
 	}
+	// Keep non-opted-in real-time qualification separate from fixture-clock cases.
+	live := exec.Command("python3", "check_live_clock.py", binary)
+	if out, e := live.CombinedOutput(); e != nil {
+		t.Fatalf("real-clock adapter: %s %v", out, e)
+	} else {
+		t.Log(string(out))
+	}
 	cmd = exec.Command("python3", "check_conformance.py", "--binary", binary, "--junit", filepath.Join(dir, "surface.xml"))
 	if out, e := cmd.CombinedOutput(); e != nil {
 		t.Fatalf("shared surface cases: %s %v", out, e)
