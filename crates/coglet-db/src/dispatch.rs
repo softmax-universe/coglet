@@ -430,8 +430,7 @@ impl Database {
                 rusqlite::params![&delivery_id, payload_json, created_at],
             )
             .map_err(sqlite_failure)?;
-            if lease.is_some() {
-                let (token, attempt) = lease.expect("lease checked");
+            if let Some((token, attempt)) = lease {
                 let n = conn
                     .execute(
                         "UPDATE work_queue SET state='done',lease_until=NULL,version=version+1 WHERE task_id=?1 AND state='leased' AND lease_owner=?2 AND attempt=?3",
