@@ -5,7 +5,10 @@ use coglet_proto::{
     signing,
     transport::{ALPN, Role, Session},
 };
-use iroh::{Endpoint, SecretKey, endpoint::presets};
+use iroh::{
+    Endpoint, SecretKey,
+    endpoint::{PortmapperConfig, presets},
+};
 
 /// Loopback-only endpoint. The default binds every interface and advertises LAN
 /// addresses; a host firewall (macOS application firewall in stealth mode) drops
@@ -16,6 +19,8 @@ async fn loopback_endpoint(alpns: Vec<Vec<u8>>) -> Endpoint {
         .clear_ip_transports()
         .bind_addr("127.0.0.1:0")
         .unwrap()
+        // No UPnP/PCP mapping: it could add a public address and probes the gateway.
+        .portmapper_config(PortmapperConfig::Disabled)
         .alpns(alpns)
         .bind()
         .await
@@ -57,10 +62,10 @@ async fn scenario() {
     let dir = tempfile::tempdir().unwrap();
     let hub = loopback_endpoint(vec![ALPN.to_vec()]).await;
     let device = loopback_endpoint(vec![]).await;
+    let advertised: Vec<_> = hub.addr().ip_addrs().copied().collect();
     assert!(
-        hub.addr().ip_addrs().all(|addr| addr.ip().is_loopback()),
-        "hub must advertise loopback only: {:?}",
-        hub.addr()
+        !advertised.is_empty() && advertised.iter().all(|addr| addr.ip().is_loopback()),
+        "hub must advertise at least one address, all loopback: {advertised:?}"
     );
     let key = SecretKey::from_bytes(&[7; 32]);
     let target = format!("coglet:{}", key.public());

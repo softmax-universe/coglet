@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 25
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '15.0'
+      # Pin it: on the minis cc-rs would otherwise target the host's own macOS.
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
     steps:
       - uses: actions/checkout@v4
       - name: Assert native arm64 host and install targets
@@ -60,11 +62,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      # Hosted only: on a persistent self-hosted runner the target dir already
-      # persists, and rust-cache's post-job cleanup of CARGO_HOME/bin deleted the
-      # runner's rustup (2026-11-24, coglet minis).
-      - uses: Swatinem/rust-cache@v2
-        if: runner.environment == 'github-hosted'
+      # No Swatinem/rust-cache: this job runs on persistent self-hosted minis, where
+      # the target dir already persists, and rust-cache's post-job cleanup of
+      # CARGO_HOME/bin deleted the runner's rustup (2026-11-24).
       - name: Test iOS build admission (not native execution)
         run: python3 scripts/tests/test_ios_runtime.py
       - name: Install pinned header generator
