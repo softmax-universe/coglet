@@ -5,7 +5,7 @@ import FaceMac
 @MainActor final class BridgeTestSynthesis: LocalSpeechSynthesis {
     var completions: [@MainActor (Result<[PCMFrame], Error>) -> Void] = []
     var cancels = 0
-    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (() -> Void) {
+    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (@MainActor () -> Void) {
         completions.append(completion)
         return { self.cancels += 1 }
     }

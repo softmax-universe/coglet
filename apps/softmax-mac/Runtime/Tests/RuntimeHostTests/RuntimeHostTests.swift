@@ -1,5 +1,6 @@
 import XCTest
 import CogletTypes
+import CogletSurface
 import SoftmaxCore
 import FaceMac
 @testable import SoftmaxRuntime

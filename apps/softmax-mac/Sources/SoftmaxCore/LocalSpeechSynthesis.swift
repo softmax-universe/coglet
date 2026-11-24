@@ -5,7 +5,7 @@ import FaceMac
 @MainActor
 public protocol LocalSpeechSynthesis: AnyObject {
     func synthesize(_ text: String,
-                    completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (() -> Void)
+                    completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (@MainActor () -> Void)
 }
 
 public enum LocalSpeechSynthesisError: Error, Equatable, Sendable {
@@ -18,7 +18,7 @@ public enum LocalSpeechSynthesisError: Error, Equatable, Sendable {
 }
 
 #if os(macOS)
-import AVFoundation
+@preconcurrency import AVFoundation
 
 /// Uses an explicitly selected, already-installed English system voice.
 @MainActor
@@ -41,7 +41,7 @@ public final class AppleSpeechSynthesis: LocalSpeechSynthesis {
     public func synthesize(
         _ text: String,
         completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void
-    ) -> (() -> Void) {
+    ) -> (@MainActor () -> Void) {
         let request = Request(completion: completion)
         let previous = current
         // Reserve ownership before invoking a possibly reentrant old completion.
@@ -52,10 +52,7 @@ public final class AppleSpeechSynthesis: LocalSpeechSynthesis {
             previous.completion(.failure(LocalSpeechSynthesisError.cancelled))
         }
         let token = request.token
-        let cancel: () -> Void = { [weak self] in
-            // The protocol's cancellation closure is used by its MainActor owner.
-            MainActor.assumeIsolated { self?.cancel(token: token) }
-        }
+        let cancel: @MainActor () -> Void = { [weak self] in self?.cancel(token: token) }
         guard current === request else { return cancel }
         guard text.utf8.count <= 4096,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {

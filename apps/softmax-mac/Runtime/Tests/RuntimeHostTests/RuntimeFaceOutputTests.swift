@@ -24,12 +24,23 @@ import FaceMac
     func stop() -> [PCMFrame] { [] }
 }
 @MainActor final class RuntimeNativeSynthesis: LocalSpeechSynthesis {
-    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (() -> Void) {
+    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (@MainActor () -> Void) {
         completion(.success([PCMFrame(samples: [0.1, -0.1], sampleRate: 16000, timestamp: 0)])); return {}
     }
 }
 
 final class RuntimeFaceOutputTests: XCTestCase {
+    @MainActor func testPlayedBackReceiptSurvivesStopBeforeReconciliation() throws {
+        let output = RuntimeFaceOutput {}
+        output.resume()
+        let request = action(0)
+        try output.admit(request)
+        output.complete(request, error: nil)
+        output.suspend()
+        let receipts = output.drain()
+        XCTAssertEqual(receipts.count, 1)
+        guard case .succeeded = receipts.first?.result else { return XCTFail("Native success is immutable") }
+    }
     private func action(_ index: Int, epoch: UInt64 = 1) -> RuntimeAction {
         RuntimeAction(action: .record([("capability", .text("speech.speak_chunk")),
             ("coglet", .text("coglet:echo")), ("id", .text(String(format: "%032x", index))),

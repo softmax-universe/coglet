@@ -21,7 +21,7 @@ import FaceMac
     private var token: UUID?
     private var frames: [PCMFrame] = []
     private var offset = 0
-    private var cancelSynthesis: (() -> Void)?
+    private var cancelSynthesis: (@MainActor () -> Void)?
     private var feeding: Task<Void, Never>?
     private var idleSince: TimeInterval?
     public var willBegin: (() -> Void)?

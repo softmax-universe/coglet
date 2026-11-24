@@ -44,7 +44,9 @@ final class RuntimeFaceOutput: @unchecked Sendable {
     }
     func stop() {
         lock.lock()
-        for key in pending.keys { completed[key] = .failed(NativeSurfaceError("cancelled")) }
+        for key in pending.keys where completed[key] == nil {
+            completed[key] = .failed(NativeSurfaceError("cancelled"))
+        }
         lock.unlock()
         // SDK stop is synchronous. RuntimeExecutor never runs ABI calls on the
         // main actor, and its callers await it rather than blocking the UI thread.
