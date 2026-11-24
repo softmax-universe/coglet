@@ -19,7 +19,7 @@ struct State {
 #[derive(Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Capture {
-    seq: u64,
+    seq: Option<u64>,
     utterance: Option<String>,
     revision: u64,
     closed: bool,
@@ -90,10 +90,10 @@ pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), H
             return Err(HostError::ResourceExhausted);
         }
         let capture = state.sources.entry(event.source.clone()).or_default();
-        if event.seq <= capture.seq {
+        if capture.seq.is_some_and(|seq| event.seq <= seq) {
             continue;
         }
-        capture.seq = event.seq;
+        capture.seq = Some(event.seq);
         // Native reflex has already stopped/ducked output. Keep no output text,
         // issue no replacement stream, and never infer heard text from playback.
         if event.kind == "speech.barge_in" {

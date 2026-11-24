@@ -4,7 +4,7 @@ name: swift
 on:
   push:
     branches: [main]
-    paths: &swift_paths ['sdk/surface-swift/**', 'surfaces/face-mac/**', 'codegen/**', 'spec/**', 'conformance/**', 'crates/coglet-engine-wamr/**', 'scripts/build-ios-runtime-xcframework.sh', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/swift.yml']
+    paths: &swift_paths ['sdk/surface-swift/**', 'surfaces/face-mac/**', 'coglets/face/**', 'crates/coglet-runtime/tests/face_mac_adapter.rs', 'crates/coglet-runtime/tests/support/face_persisted.rs', 'codegen/**', 'spec/**', 'conformance/**', 'crates/coglet-engine-wamr/**', 'scripts/build-ios-runtime-xcframework.sh', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/swift.yml']
   pull_request:
     paths: *swift_paths
 permissions:
@@ -39,8 +39,16 @@ jobs:
         env:
           FACE_MAC_EXECUTABLE: ${{ github.workspace }}/surfaces/face-mac/.build/debug/face-mac
         run: cargo test --locked -p coglet-runtime --test face_mac_adapter -- --ignored
-      - name: Face guest controller tests and Wasm compilation (not guest-engine qualification)
+      - name: Face guest controller tests and bounded Wasm compilation
         working-directory: coglets/face
         run: |
           cargo test --locked
-          cargo build --locked --release --target wasm32-wasip1
+          cargo rustc --locked --release --target wasm32-wasip1 --lib -- -C link-arg=--max-memory=16777216
+      - name: Persisted Face guest to compiled adapter and executable replay (simulated media)
+        timeout-minutes: 15
+        env:
+          FACE_MAC_EXECUTABLE: ${{ github.workspace }}/surfaces/face-mac/.build/debug/face-mac
+          COGLET_FACE_WASM: ${{ github.workspace }}/coglets/face/target/wasm32-wasip1/release/coglet_face.wasm
+        run: |
+          cargo run --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- "$COGLET_FACE_WASM"
+          cargo test --release --locked -p coglet-runtime --features native-engine --test face_mac_adapter -- --ignored

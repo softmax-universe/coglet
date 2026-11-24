@@ -5,8 +5,9 @@ import CogletTypes
 
 private final class HostLedger: SurfaceLedgerStore {
     var bytes: [UInt8] = [0xa0]
+    var onSave: (() -> Void)?
     func load() throws -> [UInt8] { bytes }
-    func save(_ bytes: [UInt8]) throws { self.bytes = bytes }
+    func save(_ bytes: [UInt8]) throws { self.bytes = bytes; onSave?() }
 }
 @MainActor private final class HostClock { var now: UInt64 = 0 }
 
@@ -28,6 +29,56 @@ private final class HostLedger: SurfaceLedgerStore {
 }
 
 final class FaceHostTests: XCTestCase {
+    func testAdmissionResamplesAfterDurableSaveBeforeSynthesis() async throws {
+        try await MainActor.run {
+            for grantExpiry in [false, true] {
+                let clock = HostClock(), store = HostLedger(), tts = TestSynthesis()
+                let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: store,
+                    backend: FaceSurfaceBackend(audio: TestDuplex(), synthesis: tts, renderer: .init { _ in }),
+                    grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: grantExpiry ? 500 : 10_000_000)], clock: { clock.now })
+                try Self.negotiate(host); try host.activateDuplex(localConsent: true)
+                store.onSave = { clock.now = 1000 }
+                try host.receive(Self.speak(host: host, suffix: "1", chunk: 0, deadline: grantExpiry ? 2000 : 1000))
+                XCTAssertTrue(tts.callbacks.isEmpty, "expired authority must never initiate synthesis")
+                store.onSave = nil; try host.close()
+            }
+        }
+    }
+    func testLateFinalBeforeTimerCannotPublishPrivateTranscript() async throws {
+        try await MainActor.run {
+            let clock = HostClock(), recognition = TestRecognition()
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: TestDuplex(), synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 100_000_000)], clock: { clock.now })
+            try Self.negotiate(host); try host.activateDuplex(localConsent: true)
+            _ = try host.beginCapture(recognition: recognition, positionMS: 0); _ = host.drain()
+            host.finishCapture(); clock.now = 5_000_000
+            try recognition.callbacks[0](.init(revision: 1, text: "too late private", final: true, positionMS: 100))
+            let messages = try host.drain().map { try SurfaceWire.decode($0, from: .surface) }
+            XCTAssertEqual(messages.count, 1)
+            XCTAssertEqual(messages.first?["body"]?["payload"]?["text"], .text(""))
+            try host.close()
+        }
+    }
+    func testOffSwitchNotifiesWritableAttachedPeerAfterNativeStop() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), link = TestControlLink(); link.blocked = false
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try host.attach(link: link); try host.start()
+            let hello = try SurfaceWire.decode(link.sent[0], from: .surface)
+            link.incoming.append(try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])), ("correlation_id", hello["body"]!["correlation_id"]!)])), from: .runtime))
+            try host.pump(); try host.activateDuplex(localConsent: true); link.sent = []
+            try host.localOffSwitch()
+            XCTAssertFalse(io.isRunning); XCTAssertTrue(link.closed)
+            let messages = try link.sent.map { try SurfaceWire.decode($0, from: .surface) }
+            XCTAssertTrue(messages.contains { $0["type"] == .text("kill") })
+            XCTAssertTrue(messages.contains { $0["type"] == .text("health") && $0["body"]?["state"] == .text("stopped") })
+            try host.close()
+        }
+    }
     func testAttachedControlLinkRetriesIdenticalHelloAndDisconnectsNativeOnTransportFailure() async throws {
         try await MainActor.run {
             let io = TestDuplex(), recognition = TestRecognition(), link = TestControlLink()

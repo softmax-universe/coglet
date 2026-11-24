@@ -484,10 +484,17 @@ public final class SurfaceSession {
         try emit(.message("accept", receipt))
         guard rejection == nil else { return }
         let result: NativeSurfaceResult?
-        do { result = try backend.begin(action: action, epoch: ledger.epoch, now: now) }
-        catch {
+        let effectNow = try sample()
+        do {
+            // Durable admission can block. Its old timestamp is not authority
+            // to start a provider or physical effect after expiry.
+            try authorize(owner: owner, operation: operations[name]!, epoch: body["grant_epoch"]!.uintValue!,
+                          deadline: action["deadline"]!.uintValue!, now: effectNow)
+            result = try backend.begin(action: action, epoch: ledger.epoch, now: effectNow)
+        } catch {
             backend.stop(owner: owner)
-            try terminal(key: key, status: "failed", value: NativeSurfaceError("unavailable").value, now: now)
+            let failure = error as? NativeSurfaceError ?? NativeSurfaceError("unavailable")
+            try terminal(key: key, status: failure.code == "deadline_exceeded" ? "expired" : "failed", value: failure.value, now: effectNow)
             return
         }
         if let result {

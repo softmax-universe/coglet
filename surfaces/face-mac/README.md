@@ -104,14 +104,17 @@ The CLI remains simulator-only; there is no native command-line permission UI.
 Native route source and deterministic conversion/callback tests do not establish
 installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
 
-Remaining acceptance work: native route CI qualification,
-history retention/advertisement and heard-state replay, full operation/lifecycle audit,
-production embedded-runtime qualification, final macOS CI and independent exact-head
-review. `FaceEmbeddedTests` still uses an ABI fixture. The Face guest compiles but its
-persisted SDK filesystem imports are rejected by the currently qualified native
-runtime (see `coglets/face/README.md`); no bypass or invented ABI is installed.
-PR #79's exact simulator head is independently approved and stacked here; its merge
-is still a completion gate. This draft is not full M2b delivery or acoustic proof.
+Remaining acceptance work: durable history retention/advertisement and heard-state
+replay, production embedded-runtime qualification, final macOS CI and independent
+exact-head review. `FaceEmbeddedTests` still uses an ABI fixture. The runtime now
+hosts restricted transactional WASI; the additional named test
+`persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes`
+executes the actual Face Wasm with the compiled Swift adapter and independently
+re-executes its archive (see `coglets/face/README.md` for the release-mode command).
+It caught and fixed a source-sequence-zero admission bug: zero is a valid first
+sequence, not an already-seen sentinel. No heard-state or C-ABI qualification is
+inferred from this test. PR #79 has merged; the new native test still needs its
+own macOS CI proof. This draft is not full M2b delivery or acoustic proof.
 
 # FaceAudioKit
 

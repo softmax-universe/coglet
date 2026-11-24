@@ -30,6 +30,7 @@ import CogletTypes
         session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: Self.operations,
             store: store, backend: backend, initialGrants: grants, clock: clock)
         backend.retainClosedStreams(from: try session.retainedAdmittedActions())
+        backend.installCaptureClock(clock)
     }
     public var grantEpoch: UInt64 { session.grantEpoch }
     /// Canonical capture-frame timeline for configured native recognition routes.
@@ -147,9 +148,17 @@ import CogletTypes
     }
     public func localOffSwitch() throws {
         backend.stop(owner: nil) // synchronous native stop before ledger I/O
-        closeLink()
         timer?.cancel(); timer = nil; token = nil
+        defer { closeLink() }
         try session.kill(reason: "local Face off switch")
+        // Best effort on the existing byte stream only. Never discard a partial
+        // frame tail then append a kill frame, nor release private retry backlog.
+        if let link, !writePending, pendingWire.isEmpty {
+            for bytes in session.drain() {
+                guard (try? link.send(bytes)) == true else { break }
+            }
+            _ = try? link.flush()
+        }
     }
     public func disconnect() {
         backend.stop(owner: nil); timer?.cancel(); timer = nil; token = nil

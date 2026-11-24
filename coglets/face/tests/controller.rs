@@ -56,6 +56,14 @@ fn turn(n: u32, seq: u64, text: &str) -> Vec<Event> {
     ]
 }
 #[test]
+fn source_sequence_zero_is_a_valid_first_capture() {
+    let mut h = Memory::default();
+    run(&mut h, 0, &turn(1, 0, "first")).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    run(&mut h, 1, &turn(1, 0, "duplicate")).unwrap();
+    assert_eq!(h.actions.len(), 1);
+}
+#[test]
 fn partial_is_not_input_only_terminal_text_is_echoed() {
     let mut h = Memory::default();
     run(

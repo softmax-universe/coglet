@@ -56,7 +56,8 @@ private final class MemoryLedger: SurfaceLedgerStore {
         }
         let media = Media(), synthesis = Synthesis(), recognition = Recognition()
         var now: UInt64 = 0
-        let owner = "coglet:" + String(repeating: "b", count: 64)
+        let owner = ProcessInfo.processInfo.environment["FACE_SIMULATOR_OWNER"]
+            ?? "coglet:" + String(repeating: "b", count: 64)
         let backend = FaceSurfaceBackend(audio: media, synthesis: synthesis, renderer: .init { _ in }, sttRoute: "simulator", ttsRoute: "simulator")
         let host = try FaceSurfaceHost(identity: "surface:" + String(repeating: "a", count: 64), owner: owner,
             store: MemoryLedger(), backend: backend,

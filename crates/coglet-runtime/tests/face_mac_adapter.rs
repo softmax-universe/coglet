@@ -13,6 +13,9 @@ use std::sync::{Arc, Mutex};
 const S: &str = "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const C: &str = "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const ITEM: &str = "11111111111111111111111111111111";
+#[cfg(feature = "native-engine")]
+#[path = "support/face_persisted.rs"]
+mod persisted;
 struct NoGuest;
 impl Engine for NoGuest {
     fn execute(&mut self, _: &Value, _: &mut StepHost) -> coglet_runtime::Result<EngineReport> {
@@ -26,9 +29,13 @@ struct Face {
 }
 impl Face {
     fn spawn() -> Self {
+        Self::spawn_for(C)
+    }
+    fn spawn_for(owner: &str) -> Self {
         let mut child =
             Command::new(std::env::var("FACE_MAC_EXECUTABLE").expect("compiled face-mac path"))
                 .arg("--simulator")
+                .env("FACE_SIMULATOR_OWNER", owner)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .spawn()

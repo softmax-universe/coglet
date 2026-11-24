@@ -78,6 +78,8 @@ public struct FaceCompletion {
     private var captureStartMS: UInt64 = 0
     private var captureDeadline: UInt64?
     private var lastTick: UInt64 = 0
+    private var captureClock: (() -> UInt64)?
+    func installCaptureClock(_ clock: @escaping () -> UInt64) { captureClock = clock }
     /// Bounded, non-text diagnostics; late callbacks never log transcripts.
     public private(set) var discardedRecognitionUpdates: UInt64 = 0
     public private(set) var recognitionFailures: UInt64 = 0
@@ -126,6 +128,12 @@ public struct FaceCompletion {
                 guard self.captureGeneration == custody, self.owner != nil, self.utterance == utterance else {
                     self.discardedRecognitionUpdates = self.discardedRecognitionUpdates == .max ? .max : self.discardedRecognitionUpdates + 1
                     return
+                }
+                // Native callbacks can run ahead of the timer after a stalled
+                // MainActor. Recheck the capture/finalization cutoff here.
+                if let deadline = self.captureDeadline,
+                   max(self.lastTick, self.captureClock?() ?? self.lastTick) >= deadline {
+                    try self.closeCapture(); return
                 }
                 // Reserve one revision for an empty final on local failure.
                 guard update.revision < UInt64.max, !update.final || update.positionMS >= self.captureStartMS else {
