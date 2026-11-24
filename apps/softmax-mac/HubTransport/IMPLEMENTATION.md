@@ -1,5 +1,19 @@
 # ROUTER enrollment implementation notes
 
+## Current continuation authority (supersedes historical notes below)
+
+PR98 OPEN/DRAFT head b2e72d84776622d553f33c024c457b6d78971934. All six prerequisite DONE receipts reread from authorized replicas (PR12/48/58/74/101/114).
+
+Native45403353278@fa2c304 passed functional account, real mock enrollment/drop/recovery, UI Pair router smoke, universal helper and inside-out signature verification, and render matrix. Only snapshot comparison failed. Prior continuation inspected normal/large/contrast changed renders and updated92 baselines in d5e6175; snapshot-comparison GREEN still pending.
+
+Native45411903969@d5e6175 is a NEW actual SIGPIPE RED: testClosedHelperInputThrowsWithoutTerminatingClient kills xctest with unexpected signal13. Account crash/launch-retry tests succeeded before that step. Production b2e72d8 sets Darwin F_SETNOSIGPIPE on the command pipe descriptor before helper launch; no process-global signal disposition change. Native45417062630 is the GREEN candidate at exact b2e72d8 (queued on last supported --once check); must read actual closed-input test, full mock integration and later UI/signature/snapshot results.
+
+Separate RED-only tracer611fdc3cc9bdff985f76386b224f10df739f12b3 on wip/t_01a205f93f231486-save-red adds testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity plus one fault seam in MemoryHubStore. Native45417257441 dispatched/readback exact611fdc3. No production persistence-recovery fix yet. Expected RED: starts1 rather than2 after saveHub failure; compiler/unrelated failures do not establish this RED. After confirmed RED, add scheduleRetry(restart:true) after stopLink in the save failure catch, preserving pending invitation for null-invite-first recovery and generation fencing. Test also rejects stale callback and checks same identity/recovered persistence.
+
+Local clone migrated with older5d7a009; restored PR d5e6175 before edits. Current source includes both streams; do not restore old wip over it. Fresh Linux at611fdc3: two real-iroh Rust helper integration tests PASS, strict all-target Clippy/fmt PASS, portable packaging1+signing4 PASS, diff-check PASS. No Swift toolchain here; native proofs remain hosted.
+
+Still pending: SIGPIPE GREEN; persistence recovery RED→GREEN; pending invitation replacement and failed-signout UI recovery leads below; final exact-head independent review/all CI/merge queue; then kanban_request_review with published_pr AFTER merge. No acceptance or landing claim.
+
 ## Boundaries
 
 Frozen `spec-v0:spec/hub-protocol.md`: pinned ROUTER identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, null-invite recovery after ambiguous success. Local pairing-envelope and QR-image decoding are provisioning UI, not a new wire method or remote short-code lookup. Code identifiers remain unchanged. All prerequisite DONE receipts recovered through authorized replicas (PR12/48/58/74/101/114). Darwin validator refuses before spawn; Linux custody is unchanged.
