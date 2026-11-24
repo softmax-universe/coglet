@@ -24,3 +24,22 @@ jobs:
           name: swift-surface-conformance
           path: target/swift-surface.xml
       - run: swift test --package-path surfaces/face-mac
+      - run: swift build --package-path surfaces/face-mac --product face-mac
+      - name: Compiled Face adapter speech timelines (simulated media)
+        working-directory: sim
+        env:
+          FACE_MAC_EXECUTABLE: ${{ github.workspace }}/surfaces/face-mac/.build/debug/face-mac
+        run: uv run --locked pytest -q ../surfaces/face-mac/tests/test_executable_timelines.py
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+      - name: Face adapter production-runtime WAL replay (simulated media)
+        timeout-minutes: 5
+        env:
+          FACE_MAC_EXECUTABLE: ${{ github.workspace }}/surfaces/face-mac/.build/debug/face-mac
+        run: cargo test --locked -p coglet-runtime --test face_mac_adapter -- --ignored
+      - name: Face guest controller tests and Wasm compilation (not guest-engine qualification)
+        working-directory: coglets/face
+        run: |
+          cargo test --locked
+          cargo build --locked --release --target wasm32-wasip1

@@ -14,11 +14,13 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .library(name: "FaceMac", targets: ["FaceMac"]),
+        .executable(name: "face-mac", targets: ["FaceMacHost"]),
         .library(name: "FaceAudioKit", targets: ["FaceAudioKit"])
     ],
     dependencies: [.package(path: "../../sdk/surface-swift")],
     targets: [
         .target(name: "FaceMac", dependencies: faceDependencies),
+        .executableTarget(name: "FaceMacHost", dependencies: ["FaceMac", .product(name: "CogletSurface", package: "surface-swift"), .product(name: "CogletTypes", package: "surface-swift")]),
         .testTarget(name: "FaceMacTests", dependencies: ["FaceMac"]),
         .target(name: "CAudioRing", publicHeadersPath: "include"),
         .target(name: "FaceAudioKit", dependencies: ["CAudioRing"]),

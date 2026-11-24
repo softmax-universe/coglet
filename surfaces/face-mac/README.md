@@ -49,16 +49,46 @@ these trusted configuration APIs.
   Provider, work and history extension qualification are **not** claimed. The
   backend's aligned heard projection is tested locally but is not advertised.
 
-Remaining acceptance work: drive the executable Face host through named simulator
-speech timelines and prove runtime journal/offline replay equality. Existing
-`FaceSocketTests` exercise actual SDK peer credentials/framing, speech admission,
-render-position barge-in/cancellation and fatal disconnect on an AF_UNIX socket;
-`FaceEmbeddedTests` exercise the real Face host over an ABI **fixture**, not the
-production runtime. Built-in native recognition/synthesis, a runnable host and
-product embedding example, history retention/advertisement, full op-by-op audit,
-final macOS CI and independent exact-head review remain. Face guest/simulator
-integration is gated on speech PR #79 approval and merge. This draft is not full
-M2b delivery or acoustic proof.
+## Compiled adapter simulator path
+
+`swift build --package-path surfaces/face-mac --product face-mac` produces an
+executable that requires `--simulator`. It runs the real `FaceSurfaceHost`, SDK
+session, backend and normalization with injected render-counted PCM and recognition.
+Its local JSON-lines driver is a test seam, not a wire capability or production
+native route. It does not open audio hardware or select an Apple/provider voice.
+
+Run the named black-box timeline tests from `sim/`:
+
+```sh
+FACE_MAC_EXECUTABLE="$PWD/../surfaces/face-mac/.build/debug/face-mac" \
+  uv run --locked pytest -q ../surfaces/face-mac/tests/test_executable_timelines.py
+```
+
+`test_compiled_face_conformance_timeline` drives the frozen `barge-in-stop` and
+`late-partial-and-stale-revision` timelines through that binary, checking actual
+wire events, render frames, cancellation and late-update diagnostics. The configured
+adapter supports stop only; `over-talk-duck` is not qualified. A third test proves
+synthesis is not success, chunks remain ordered and stop cancels queued audio.
+
+With the same executable path, run:
+`cargo test --locked -p coglet-runtime --test face_mac_adapter -- --ignored`.
+`compiled_face_barge_in_journals_cancelled_action_and_replays_offline` exercises the
+production runtime wire session, receives the real adapter's 1200 ms barge/cancel,
+asserts that exact cancellation in the archived inbox, reopens its WAL and checks
+offline per-record hash equality without invoking a guest. Its initial speak action
+is a runtime fixture proposal, **not** a Face guest emission. It does not establish
+journaled guest consumption of capture, heard-history equality or guest-engine execution.
+The macOS Swift workflow explicitly runs all three executable cases and this runtime
+case, plus the separate Face controller's unit tests and Wasm build.
+
+Remaining acceptance work: native recognition/synthesis and product embedding example,
+history retention/advertisement and heard-state replay, full operation/lifecycle audit,
+production embedded-runtime qualification, final macOS CI and independent exact-head
+review. `FaceEmbeddedTests` still uses an ABI fixture. The Face guest compiles but its
+persisted SDK filesystem imports are rejected by the currently qualified native
+runtime (see `coglets/face/README.md`); no bypass or invented ABI is installed.
+PR #79's exact simulator head is independently approved and stacked here; its merge
+is still a completion gate. This draft is not full M2b delivery or acoustic proof.
 
 # FaceAudioKit
 
