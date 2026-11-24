@@ -1,6 +1,7 @@
 //! Factory repository; every method's result is provisional until host step commit.
 //! There is deliberately no guest commit, DDL, SQL-text or migration capability.
 pub mod catalog;
+pub mod executive;
 pub use coglet_guest_rust::database::DbHost;
 use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
@@ -14,6 +15,7 @@ pub fn wake<H: coglet_guest_rust::Host + DbHost>(
     events: &[coglet_guest_rust::Event],
 ) -> std::result::Result<(), coglet_guest_rust::HostError> {
     for event in events {
+        executive::handle(context, event)?;
         if event.kind == "factory.transact" {
             transact(context, &event.payload)?;
             continue;
