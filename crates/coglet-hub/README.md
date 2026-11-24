@@ -27,6 +27,27 @@ No product, mindister or legacy/v0 implementation was copied.
 - Local `Kernel::status` is an explicit operator-only metadata snapshot, not a
   remotely authorized debug endpoint. It contains no event contents or prompts.
 
+## Local fixture controls (not production)
+
+Enable `coglet-hub/test-controls` explicitly in the test launcher's Cargo
+configuration; it forwards to `coglet-proto/test-controls`. Defaults remain empty.
+`Kernel::test_invite(peer, secret: String, ttl, grants).await` provisions the
+supplied 64-lowercase-hex secret through the same Authority storage and kernel
+health-generation policy as `invite`. `Kernel::test_close_window().await` closes
+the real Authority window. Both use the existing bounded blocking executor.
+No startup flag/config field or remote method enables them.
+
+After `open_window`, use `"11".repeat(32)` for the unchanged enrollment fixtures.
+For expired invites choose a short positive TTL and wait past expiry before
+connecting. For a closed window, provision a live invite then close it. For
+already-used fixtures redeem once through enrollment first; for wrong-node
+fixtures provision against another actual peer key. Use a fresh isolated state
+directory per case. Never translate incoming tokens or provision via SQLite.
+
+```sh
+cargo test --locked -p coglet-hub --features test-controls --test test_controls
+```
+
 ## Build and tests
 
 ```sh
