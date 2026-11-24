@@ -12,6 +12,11 @@ on:
       bundle-release:
         type: string
         default: dependency-mirror-v1
+      stability-repeats:
+        # Set only by stability.yml. Required runs execute the registry once; the
+        # repeated stress runs live in the non-required stability workflow.
+        type: number
+        default: 0
 permissions:
   contents: read
 jobs:
@@ -100,23 +105,39 @@ jobs:
       - run: python3 -m unittest discover -s conformance/tests -v
       - run: cargo fmt --manifest-path conformance/iroh-driver/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path conformance/iroh-driver/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --locked --manifest-path conformance/iroh-driver/Cargo.toml
+      - run: scripts/ci/cargo-test --locked --manifest-path conformance/iroh-driver/Cargo.toml
       - name: Harness self-test
         run: conformance/run --self-test --junit target/conformance-self-test.xml
       - name: Surface SDK and mock regressions
-        run: cargo test --locked -p coglet-surface-rust -p coglet-mock
+        # Quarantined (ci/quarantine.toml) Rust tests are skipped here and run by stability.yml.
+        run: scripts/ci/cargo-test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint
         run: cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
       - name: Full frozen ABI and executable archive WAMR qualification
         run: python3 crates/coglet-runtime/tools/check-abi.py
+      - name: Quarantine list is valid
+        run: python3 scripts/ci/quarantine.py check
       - name: Every registered implementation and claimed suite
         if: ${{ !cancelled() }}
-        run: conformance/run --junit target/conformance-registered.xml
-      - name: Twenty consecutive full registered conformance runs
-        timeout-minutes: 15
+        run: conformance/run --quarantine ci/quarantine.toml --junit target/conformance-registered.xml
+      - name: Repeated full registered conformance runs (stability only)
+        if: ${{ inputs.stability-repeats > 0 && !cancelled() }}
+        timeout-minutes: 30
+        env:
+          REPEATS: ${{ inputs.stability-repeats }}
         run: |
-          for iteration in $(seq 1 20); do
-            conformance/run --junit "target/conformance-repeat-${iteration}.xml"
+          for iteration in $(seq 1 "$REPEATS"); do
+            conformance/run --quarantine ci/quarantine.toml --junit "target/conformance-repeat-${iteration}.xml"
+          done
+      - name: Quarantined conformance cases, repeated (stability only)
+        if: ${{ inputs.stability-repeats > 0 && !cancelled() }}
+        timeout-minutes: 15
+        env:
+          REPEATS: ${{ inputs.stability-repeats }}
+        run: |
+          for iteration in $(seq 1 "$REPEATS"); do
+            conformance/run --quarantine ci/quarantine.toml --only-quarantined \
+              --junit "target/conformance-quarantined-${iteration}.xml"
           done
       - uses: actions/upload-artifact@v4
         if: always()
