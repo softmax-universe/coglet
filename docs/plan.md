@@ -45,7 +45,7 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 | Worker capacity | 3 extra workers through Phase 1, then revisit at the freeze. |
 | Face | Lives in coglet: `surfaces/face-mac/` (Swift) and `coglets/face/`. Persona and voice config stay in the product repos. |
 | Kanban board | The `default` board, tenant `coglet`, with titles prefixed `coglet:`. Pool workers serve the default board. |
-| Java surface SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
+| Java adapter SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
 
 ## Repo layout (`softmax-universe/coglet`)
 
