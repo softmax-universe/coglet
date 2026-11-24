@@ -1,4 +1,5 @@
 import XCTest
+import CogletTypes
 @testable import SoftmaxRuntime
 
 final class RuntimeHostTests: XCTestCase {
@@ -10,6 +11,9 @@ final class RuntimeHostTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: root) }
         func provision(_ directory: URL, from source: String) throws {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            try FileManager.default.createDirectory(at: directory.appendingPathComponent("surface"), withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            try Data(CBORCodec.encodeProfile(.map([]))).write(to: directory.appendingPathComponent("surface/ledger.cbor"))
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: directory.appendingPathComponent("surface/ledger.cbor").path)
             try FileManager.default.copyItem(at: URL(fileURLWithPath: source).appendingPathComponent("binding.json"), to: directory.appendingPathComponent("binding.json"))
             let data = try Data(contentsOf: URL(fileURLWithPath: source).appendingPathComponent("runtime.json"))
             var config = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -24,7 +28,7 @@ final class RuntimeHostTests: XCTestCase {
         XCTAssertEqual(host.coglets.count, 1)
         XCTAssertEqual(host.coglets.first?.version, "0.1")
         let text = "Native Swift SDK → Wasm → speak — 世界"
-        await host.submitTranscript(text)
+        await host.submitTranscript(text, generation: host.generation)
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(host.actions.first?.capability, "speech.speak_chunk")
         XCTAssertEqual(host.actions.first?.text, text)
@@ -34,7 +38,7 @@ final class RuntimeHostTests: XCTestCase {
         XCTAssertEqual(host.state, .error)
         await host.restart()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
-        await host.submitTranscript("After caught panic")
+        await host.submitTranscript("After caught panic", generation: host.generation)
         XCTAssertEqual(host.actions.last?.text, "After caught panic")
         #else
         XCTFail("Native acceptance must enable COGLET_RUNTIME_TEST_HOOKS")
@@ -44,13 +48,46 @@ final class RuntimeHostTests: XCTestCase {
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         await host.stop()
+        let oldGeneration = host.generation
+        await host.start()
+        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        let beforeStale = host.actions.count
+        await host.submitTranscript("Old recognition callback", generation: oldGeneration)
+        XCTAssertEqual(host.actions.count, beforeStale)
+        let beforeRestart = host.generation
+        await host.restart()
+        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        await host.submitTranscript("Pre-restart callback", generation: beforeRestart)
+        XCTAssertEqual(host.actions.count, beforeStale)
+        await host.stop()
+
+        // Simulate the exact durable running marker left by a process crash.
+        let ledger = good.appendingPathComponent("surface/ledger.cbor")
+        let saved = try Data(contentsOf: ledger)
+        guard case .map(var entries) = try CBORCodec.decodeProfile(Array(saved)),
+              let running = entries.firstIndex(where: { $0.key == "running" }) else {
+            return XCTFail("Missing real SDK running marker")
+        }
+        entries[running].value = .boolean(true)
+        try Data(CBORCodec.encodeProfile(.map(entries))).write(to: ledger)
+        await host.start()
+        XCTAssertEqual(host.state, .error, "Unclean restart must fail closed")
+        await host.restart()
+        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        await host.stop()
+        // Loss of the entire ledger directory cannot mean a NEW identity.
+        try FileManager.default.removeItem(at: good.appendingPathComponent("surface"))
+        await host.start()
+        XCTAssertEqual(host.state, .error)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: ledger.path))
+        await host.stop()
 
         let bad = root.appendingPathComponent("trap")
         try provision(bad, from: trap)
         let faultHost = RuntimeHost(directory: bad)
         await faultHost.start()
         XCTAssertEqual(faultHost.state, .running, faultHost.errorMessage ?? "")
-        await faultHost.submitTranscript("This executes unreachable in the guest")
+        await faultHost.submitTranscript("This executes unreachable in the guest", generation: faultHost.generation)
         XCTAssertEqual(faultHost.state, .error)
         XCTAssertTrue(faultHost.actions.isEmpty)
         await faultHost.restart()

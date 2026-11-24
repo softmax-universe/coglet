@@ -84,6 +84,20 @@ def install(output, wal, trap=False):
         path = output / name
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         path.chmod(0o600)
+    surface = output / "surface"
+    surface.mkdir(mode=0o700)
+    ledger = surface / "ledger.cbor"
+    with ledger.open("xb") as file:
+        file.write(encode({}))
+        file.flush()
+        os.fsync(file.fileno())
+    ledger.chmod(0o600)
+    for directory in [surface, output]:
+        fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
     print(json.dumps({"binding": str(output / "binding.json"), "runtime": str(output / "runtime.json"),
                       "wasm": str(guest), "trap_injection": trap}))
     return binding, runtime

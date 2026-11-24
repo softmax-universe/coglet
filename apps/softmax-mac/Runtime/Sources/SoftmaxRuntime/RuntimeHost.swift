@@ -50,7 +50,7 @@ private actor RuntimeExecutor {
     private var queued: [[UInt8]] = []
     private var lockFD: Int32 = -1
     private var active = false
-    private var lastRenewal: UInt64 = 0
+    private var generation: UInt64?
     init(root: URL) { self.root = root }
     private func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds / 1_000 }
     private func log(_ message: String) {
@@ -68,7 +68,7 @@ private actor RuntimeExecutor {
     private func sendJSON(_ data: Data, _ call: (UnsafePointer<UInt8>?, Int) -> Int32) -> Int32 {
         data.withUnsafeBytes { call($0.bindMemory(to: UInt8.self).baseAddress, data.count) }
     }
-    func start(localReset: Bool) throws -> [InstalledCoglet] {
+    func start(localReset: Bool, generation: UInt64) throws -> [InstalledCoglet] {
         guard !active else { throw HostFailure("Runtime already running") }
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -97,8 +97,9 @@ private actor RuntimeExecutor {
             try check(sendJSON(configuration, coglet_runtime_start), "start")
             active = true
             let ledgerDir = root.appendingPathComponent("surface")
-            let exists = fm.fileExists(atPath: ledgerDir.path)
-            let store = try FileSurfaceLedger(directory: ledgerDir, newIdentity: !exists)
+            // Provisioning is an explicit installer operation, never inferred from
+            // missing history at launch (including loss of the whole directory).
+            let store = try FileSurfaceLedger(directory: ledgerDir, newIdentity: false)
             let resources = Set(manifest["exclusive_outputs"] as? [String] ?? []).union(["audio.mic", "audio.speaker"])
             let clock: () -> UInt64 = { DispatchTime.now().uptimeNanoseconds / 1_000 }
             func makeSession() throws -> SurfaceSession {
@@ -108,6 +109,7 @@ private actor RuntimeExecutor {
             var surface = try makeSession()
             if surface.isKilled {
                 guard localReset else { try surface.close(); throw HostFailure("Unclean surface restart: use Restart runtime for explicit local reconciliation") }
+                surface.disconnect()
                 try surface.localOperatorResetForNextConnection()
                 surface = try makeSession()
             }
@@ -115,7 +117,7 @@ private actor RuntimeExecutor {
             link = try EmbeddedSurfaceTransport(abi: .init(open: coglet_surface_open, send: coglet_surface_send, recv: coglet_surface_recv, close: coglet_surface_close))
             try surface.start(); try pump()
             token = try surface.openNativeObservationSession(owner: id, epoch: surface.grantEpoch)
-            lastRenewal = now()
+            self.generation = generation
             log("runtime started")
             return [.init(id: id, version: manifest["version"] as? String ?? "unknown", status: .running)]
         } catch {
@@ -125,9 +127,13 @@ private actor RuntimeExecutor {
     func pump() throws {
         guard let surface = session, let link else { return }
         for _ in 0..<128 {
-            queued += surface.drain()
+            let generated = surface.drain()
+            guard queued.count + generated.count <= 128 else { throw HostFailure("Surface control queue exhausted") }
+            queued += generated
             while let first = queued.first {
-                guard try link.send(first) else { return }
+                // A full runtime outbound queue causes send=would-block. Keep
+                // identical bytes, but drain inbound frames before retrying.
+                guard try link.send(first) else { break }
                 queued.removeFirst()
             }
             if let raw = try link.receive() { try surface.receive(raw) }
@@ -135,8 +141,8 @@ private actor RuntimeExecutor {
         }
         try check(coglet_runtime_status(), "runtime/guest")
     }
-    func tick() throws -> [RuntimeAction] {
-        guard let surface = session else { return [] }
+    func tick(generation expected: UInt64) throws -> [RuntimeAction] {
+        guard generation == expected, let surface = session else { return [] }
         do {
             try pump()
             // Never auto-renew authority: local grants are finite. Operator Restart
@@ -145,7 +151,8 @@ private actor RuntimeExecutor {
             let result = sink.actions; sink.actions = []; return result
         } catch { cleanup(); log("runtime fault; restart required"); throw error }
     }
-    func transcript(_ text: String) throws -> [RuntimeAction] {
+    func transcript(_ text: String, generation expected: UInt64) throws -> [RuntimeAction] {
+        guard generation == expected else { return [] }
         guard let session, let token else { throw HostFailure("Runtime not connected") }
         do {
             let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
@@ -161,7 +168,7 @@ private actor RuntimeExecutor {
         log("runtime stopped")
     }
     private func cleanup() {
-        sink.stop(owner: nil)
+        sink.stop(owner: nil); generation = nil; sink.actions = []
         try? session?.close(); session = nil; token = nil; owner = nil; queued = []
         link?.close(); link = nil
         if active { _ = coglet_runtime_stop() }; active = false
@@ -180,6 +187,8 @@ private actor RuntimeExecutor {
     @Published public private(set) var coglets: [InstalledCoglet] = []
     @Published public private(set) var actions: [RuntimeAction] = []
     public let directory: URL
+    /// Capture BEFORE asynchronous recognition; lifecycle changes fence old input.
+    public private(set) var generation: UInt64 = 0
     public var onAction: ((RuntimeAction) -> Void)?
     private let executor: RuntimeExecutor
     private var polling: Task<Void, Never>?
@@ -190,14 +199,17 @@ private actor RuntimeExecutor {
     public func start() async { await boot(localReset: false) }
     public func restart() async {
         guard !busy else { return }
+        busy = true; generation &+= 1; state = .stopped
         polling?.cancel(); polling = nil
         try? await executor.stop()
+        busy = false
         await boot(localReset: true)
     }
     private func boot(localReset: Bool) async {
         guard !busy else { return }; busy = true; defer { busy = false }
+        generation &+= 1
         do {
-            coglets = try await executor.start(localReset: localReset)
+            coglets = try await executor.start(localReset: localReset, generation: generation)
             state = .running; errorMessage = nil
             polling = Task { [weak self] in
                 while !Task.isCancelled {
@@ -210,17 +222,25 @@ private actor RuntimeExecutor {
     }
     public func stop() async {
         guard !busy else { return }; busy = true; defer { busy = false }
+        generation &+= 1
         polling?.cancel(); polling = nil
         do { try await executor.stop(); state = .stopped; coglets = coglets.map { .init(id: $0.id, version: $0.version, status: .stopped) } }
         catch { fail(error) }
     }
-    public func submitTranscript(_ text: String) async {
-        guard state == .running, !busy else { return }
-        do { deliver(try await executor.transcript(text)) } catch { fail(error) }
+    public func submitTranscript(_ text: String, generation expected: UInt64) async {
+        guard state == .running, !busy, generation == expected else { return }
+        do {
+            let received = try await executor.transcript(text, generation: expected)
+            if generation == expected { deliver(received) }
+        } catch { if generation == expected { fail(error) } }
     }
     public func poll() async {
         guard state == .running, !busy else { return }
-        do { deliver(try await executor.tick()) } catch { fail(error) }
+        let expected = generation
+        do {
+            let received = try await executor.tick(generation: expected)
+            if generation == expected { deliver(received) }
+        } catch { if generation == expected { fail(error) } }
     }
     private func deliver(_ received: [RuntimeAction]) {
         for action in received { actions.append(action); if actions.count > 128 { actions.removeFirst() }; onAction?(action) }

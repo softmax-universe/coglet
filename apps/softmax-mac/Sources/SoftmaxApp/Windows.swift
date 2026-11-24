@@ -107,7 +107,10 @@ struct SettingsView: View {
                             Text("Hub disconnected").fontWeight(.semibold)
                             Text("No hub configured. Enrollment and connectivity are not implemented yet.")
                         case .coglets:
-                            RuntimeSettings(host: model.runtime, openLogs: model.openRuntimeLogs)
+                            RuntimeSettings(host: model.runtime, openLogs: model.openRuntimeLogs, restart: {
+                                model.ptt.cancel(); model.recognizer.cancel()
+                                Task { await model.runtime.restart() }
+                            })
                         case .updates: UpdatesView(updates: model.updates)
                         case .privacy:
                             Text("Audio is captured only while push-to-talk is listening (maximum 120 seconds). Runtime speech delivery is a separate integration.")

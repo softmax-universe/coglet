@@ -18,7 +18,7 @@ lipo -create target/aarch64-apple-darwin/release/libcoglet_runtime.a target/x86_
 printf 'module CogletRuntime { header "coglet_runtime.h" export * }\n' > "$OUT/headers/module.modulemap"
 rm -rf "$OUT/CogletRuntime.xcframework"
 xcodebuild -create-xcframework -library "$OUT/universal/libCogletRuntime.a" -headers "$OUT/headers" -output "$OUT/CogletRuntime.xcframework"
-lipo -verify_arch arm64 x86_64 "$OUT/universal/libCogletRuntime.a"
+lipo "$OUT/universal/libCogletRuntime.a" -verify_arch arm64 x86_64
 # Smoke link each architecture against its SDK, not an execution claim for x86_64.
 for arch in arm64 x86_64; do
   printf '#include "coglet_runtime.h"\nint main(void){return coglet_runtime_status()==1?0:1;}\n' | xcrun clang -arch "$arch" -x c - -I "$OUT/headers" -L "$OUT/universal" -lCogletRuntime -framework Security -framework CoreFoundation -liconv -o "$OUT/universal/link-$arch"

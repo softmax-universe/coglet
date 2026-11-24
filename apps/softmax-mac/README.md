@@ -55,7 +55,8 @@ fixture with real Wasm compilation/provenance, not signed hub publication. No de
 coglet or arbitrary code is silently installed by app launch. The product reads
 trusted operator-owned `binding.json` and `runtime.json`; see `tools/README.md` and
 the config schema. Each start opens the existing WAL and never replays failed work.
-A new surface ledger is created only for a new private directory; ledger loss or
+A new surface ledger is provisioned only by the explicit installer; app startup
+never creates one from missing history. Ledger loss or
 unclean recovery fails closed. **Restart runtime** is the explicit local operator
 reconciliation/reset, then new negotiation and a higher grants epoch. Grants last
 24 hours and are not automatically renewed; Restart is required after expiry.

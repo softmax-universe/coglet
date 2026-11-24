@@ -60,11 +60,13 @@ final class ShellModel: ObservableObject {
         speechDelivery = Task { [weak self] in
             guard let self else { return }
             for await input in ptt.speechInput {
-                guard case .utterance(let utterance) = input else { continue }
+                guard case .utterance(let utterance) = input,
+                      ptt.operationID == utterance.operationID, ptt.state == .thinking else { continue }
+                let generation = runtime.generation
                 do {
                     let text = try await recognizer.transcribe(utterance)
                     guard ptt.operationID == utterance.operationID, ptt.state == .thinking else { continue }
-                    await runtime.submitTranscript(text)
+                    await runtime.submitTranscript(text, generation: generation)
                     if runtime.state == .error { message = runtime.errorMessage }
                     finishSpeechInput(operation: utterance.operationID)
                 } catch { message = error.localizedDescription; finishSpeechInput(operation: utterance.operationID) }

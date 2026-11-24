@@ -6,6 +6,7 @@ import SoftmaxCore
 /// Explicit speech permission, on-device only. Never silently uploads PCM.
 @MainActor final class LocalSpeechInput {
     private var recognition: SFSpeechRecognitionTask?
+    private var revision = UUID()
     private var pending: CheckedContinuation<String, any Error>?
     private var timeout: Task<Void, Never>?
     private enum Failure: LocalizedError {
@@ -13,10 +14,11 @@ import SoftmaxCore
         var errorDescription: String? { "On-device speech recognition unavailable or permission denied. No audio was uploaded." }
     }
     func transcribe(_ utterance: Utterance) async throws -> String {
+        let current = UUID(); revision = current
         let allowed = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
         }
-        guard allowed, let recognizer = SFSpeechRecognizer(), recognizer.supportsOnDeviceRecognition else { throw Failure.unavailable }
+        guard revision == current, allowed, let recognizer = SFSpeechRecognizer(), recognizer.supportsOnDeviceRecognition else { throw Failure.unavailable }
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.requiresOnDeviceRecognition = true
         request.shouldReportPartialResults = false
@@ -38,6 +40,7 @@ import SoftmaxCore
                 let text = result?.bestTranscription.formattedString
                 let failed = error != nil
                 Task { @MainActor in
+                    guard self?.revision == current else { return }
                     if final, let text { self?.finish(.success(text)) }
                     else if failed { self?.finish(.failure(Failure.unavailable)) }
                 }
@@ -49,6 +52,7 @@ import SoftmaxCore
             }
         }
     }
+    public func cancel() { revision = UUID(); finish(.failure(Failure.unavailable)) }
     private func finish(_ result: Result<String, any Error>) {
         guard let pending else { return }; self.pending = nil
         timeout?.cancel(); timeout = nil; recognition?.cancel(); recognition = nil
