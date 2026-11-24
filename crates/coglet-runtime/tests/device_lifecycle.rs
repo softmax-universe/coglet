@@ -2163,6 +2163,301 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
     });
 }
 
+// Test-local validator seam: first pass admits, only the second pass blocks.
+// Later validations remain usable to test a superseding original operation.
+struct InitialBoundaryBarrier {
+    entered: PathBuf,
+    release: PathBuf,
+}
+impl Drop for InitialBoundaryBarrier {
+    fn drop(&mut self) {
+        let _ = std::fs::write(&self.release, b"release");
+    }
+}
+impl InitialBoundaryBarrier {
+    async fn install(env: &mut Env) -> Self {
+        use std::os::unix::fs::PermissionsExt;
+        env.serve.abort();
+        let _ = (&mut env.serve).await;
+        drop(env.handler.take());
+        let wrapper = env.root.join("initial-boundary-validator");
+        let first = env.root.join("validator-first");
+        let entered = env.root.join("validator-second");
+        let release = env.root.join("validator-release");
+        std::fs::write(&wrapper, format!(
+            "#!/bin/sh\nif /bin/mkdir '{}' 2>/dev/null; then :; elif /bin/mkdir '{}' 2>/dev/null; then while [ ! -f '{}' ]; do /bin/sleep 0.01; done; fi\nexec '{}' \"$@\"\n",
+            first.display(), entered.display(), release.display(), validator_path().display()
+        )).unwrap();
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let handler = DeviceHandler::new(
+            env.config.clone(),
+            Authority::open(env.root.join("authority.sqlite")).unwrap(),
+            &wrapper,
+            clock_fn(&env.clock, &env.reads, &env.trap),
+        )
+        .unwrap();
+        env.serve = tokio::spawn(serve(env.device_session.clone(), handler.clone()));
+        env.handler = Some(handler);
+        Self { entered, release }
+    }
+    async fn wait(&self) {
+        tokio::time::timeout(Duration::from_secs(15), async {
+            while !self.entered.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("second validation must follow durable admission");
+    }
+    fn release(&self) {
+        std::fs::write(&self.release, b"release").unwrap();
+    }
+}
+
+fn begin_push(env: &mut Env, bundle: &Bundle) -> (String, JoinHandle<Value>) {
+    let request = env.request(
+        "hub.git.push",
+        json!({"update":bundle.signed,
+        "size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
+    );
+    let id = request["correlation_id"].as_str().unwrap().to_owned();
+    let session = env.session.clone();
+    let bytes = bundle.bytes.clone();
+    (
+        id,
+        tokio::spawn(async move {
+            session
+                .push_git(request, &mut bytes.as_slice())
+                .await
+                .unwrap()
+        }),
+    )
+}
+
+async fn wait_applied(env: &mut Env, id: &str) -> Value {
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            let receipt = result_of(&receipt_of(env, id).await);
+            if receipt["state"] == "applied" {
+                break receipt;
+            }
+            assert_eq!(receipt["state"], "queued");
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_preinstall_rechecks_authority_after_queued_admission() {
+    timed!(async {
+        // Expired signed delegation, revoked delegation, and a new signed
+        // delegation that disagrees with the device's pinned generation.
+        for mode in 0..3u8 {
+            let mut env = Env::new(0x70 + mode, Options::receipts()).await.unwrap();
+            let barrier = InitialBoundaryBarrier::install(&mut env).await;
+            let bundle = env.bundle(1, None, &[]);
+            let (id, push) = begin_push(&mut env, &bundle);
+            barrier.wait().await;
+            assert_eq!(
+                result_of(&receipt_of(&mut env, &id).await)["state"],
+                "queued"
+            );
+            let authority = Authority::open(env.root.join("authority.sqlite")).unwrap();
+            let renewed = Env::delegation_for(
+                &env.coglet_key,
+                &env.coglet,
+                env.hub.id().to_string(),
+                env.endpoint.id().to_string(),
+                DELEGATION_GEN + 1,
+                T0 + 100_000,
+                &Options::receipts().delegation_methods,
+            );
+            match mode {
+                0 => env.clock.store(DELEGATION_EXPIRES, Ordering::SeqCst),
+                1 => authority
+                    .revoke_delegation(env.hub.id(), &env.coglet)
+                    .unwrap(),
+                _ => authority
+                    .replace_delegation(
+                        env.hub.id(),
+                        env.endpoint.id(),
+                        &env.coglet,
+                        &renewed,
+                        || Some(T0),
+                    )
+                    .unwrap(),
+            }
+            barrier.release();
+            assert_eq!(push.await.unwrap()["result"]["state"], "queued");
+            let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM proto_preinstall_boundaries",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                0,
+                "mode {mode}"
+            );
+            let retained: String = db
+                .query_row(
+                    "SELECT receipt FROM proto_git_operations WHERE operation_id=?1",
+                    [&id],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(
+                serde_json::from_str::<Value>(&retained).unwrap()["state"],
+                "queued"
+            );
+            let proof = env.delegation();
+            denied(&env.install(&bundle.signed, &proof).await);
+            {
+                if mode != 2 {
+                    authority
+                        .replace_delegation(
+                            env.hub.id(),
+                            env.endpoint.id(),
+                            &env.coglet,
+                            &renewed,
+                            || Some(env.clock.load(Ordering::SeqCst)),
+                        )
+                        .unwrap();
+                }
+                env.config
+                    .targets
+                    .get_mut(&env.coglet)
+                    .unwrap()
+                    .delegation_generation = DELEGATION_GEN + 1;
+            }
+            env.restart_handler().await;
+            assert_eq!(wait_applied(&mut env, &id).await["operation_id"], id);
+            assert_eq!(
+                db.query_row(
+                    "SELECT count(*) FROM proto_preinstall_boundaries",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                1
+            );
+            assert_eq!(
+                env.simple("hub.status").await["result"]["live_commit"],
+                Value::Null
+            );
+            // Exported quarantine leases may be inherited by unrelated forked
+            // validators. Their documented deferred orphan sweep is not a
+            // completion oracle; boundary/receipt SQL custody above is.
+        }
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_preinstall_superseded_original_never_borrows_new_boundary() {
+    timed!(async {
+        let mut env = Env::new(0x73, Options::receipts()).await.unwrap();
+        let barrier = InitialBoundaryBarrier::install(&mut env).await;
+        let old = env.bundle(1, None, &[]);
+        let (old_id, old_push) = begin_push(&mut env, &old);
+        barrier.wait().await;
+        let latest = env.bundle(2, Some(&old.tip), &[("revision", b"two")]);
+        let (new_id, new_push) = begin_push(&mut env, &latest);
+        assert_eq!(new_push.await.unwrap()["result"]["state"], "queued");
+        let terminal = wait_applied(&mut env, &new_id).await;
+        barrier.release();
+        assert_eq!(old_push.await.unwrap()["result"]["state"], "queued");
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &old_id).await)["state"],
+            "queued"
+        );
+        let proof = env.delegation();
+        denied(&env.install(&old.signed, &proof).await);
+        env.restart_handler().await;
+        assert_eq!(result_of(&receipt_of(&mut env, &new_id).await), terminal);
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &old_id).await)["state"],
+            "queued"
+        );
+        let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();
+        let ids: Vec<String> = db
+            .prepare("SELECT operation_id FROM proto_preinstall_boundaries")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|row| row.unwrap())
+            .collect();
+        assert_eq!(ids, vec![new_id]);
+        applied(&env.install(&latest.signed, &proof).await);
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_git_and_lifecycle_ids_conflict_across_ledgers_and_restart() {
+    timed!(async {
+        let mut env = Env::new(0x74, Options::receipts()).await.unwrap();
+        let initial = env.bundle(1, None, &[]);
+        let push = env.push(&initial).await;
+        let push_id = operation_id(&push);
+        let original = wait_applied(&mut env, &push_id).await;
+        let collision = env.install_request(push_id.clone(), &initial.signed).await;
+        assert_eq!(error_code(&collision), "conflict", "{collision}");
+        assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), original);
+        let proof = env.delegation();
+        let install = env.install(&initial.signed, &proof).await;
+        applied(&install);
+        let stopped = env.simple("hub.stop").await;
+        applied(&stopped);
+        let next = env.bundle(2, Some(&initial.tip), &[("revision", b"next")]);
+        for reopen in [false, true] {
+            if reopen {
+                env.restart_handler().await;
+            }
+            for receipt in [&install, &stopped] {
+                let id = operation_id(receipt);
+                let wal = env
+                    .config
+                    .wal_root
+                    .join(coglet_runtime::digest(env.coglet.as_bytes()))
+                    .join("state.wal");
+                let before = std::fs::read(&wal).unwrap();
+                let request = env.request_with("hub.git.push", id.clone(),
+                    json!({"update":next.signed,"size":next.bytes.len(),"sha256":hex::encode(Sha256::digest(&next.bytes))}),
+                    &env.actor, Some(env.ticket.clone()));
+                let result = env
+                    .session
+                    .push_git(request, &mut next.bytes.as_slice())
+                    .await
+                    .unwrap();
+                assert_eq!(error_code(&result), "conflict", "{result}");
+                assert_eq!(
+                    result_of(&receipt_of(&mut env, &id).await),
+                    receipt["result"]
+                );
+                assert_eq!(std::fs::read(&wal).unwrap(), before);
+            }
+            let conflict = env.install_request(push_id.clone(), &initial.signed).await;
+            assert_eq!(error_code(&conflict), "conflict", "{conflict}");
+            assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), original);
+        }
+        let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM proto_ref_audit", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM proto_git_operations", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+    });
+}
+
 /// `hub.receipt {operation_id}` as `actor`/`ticket`, against `env.coglet`.
 async fn receipt_as(env: &mut Env, id: &str, actor: &str, ticket: Option<&str>) -> Value {
     let correlation_id = env.next();

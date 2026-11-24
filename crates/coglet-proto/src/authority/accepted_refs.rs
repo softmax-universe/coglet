@@ -297,6 +297,9 @@ impl AcceptedRefStore {
     /// observation-mode row, an ended ticket or a caller whose current
     /// `hub.git.push` scope/grant is expired, revoked or of another generation
     /// are all `None`: callers must not distinguish them. Conveys no authority.
+    /// Missing trusted time is also `None`. BEGIN IMMEDIATE serializes this
+    /// snapshot with other connections' commits. The clock is sampled after that
+    /// custody and again before returning a receipt; it must not call Authority.
     pub fn push_receipt_for_scope(
         &self,
         peer: EndpointId,
@@ -306,37 +309,52 @@ impl AcceptedRefStore {
         grant_generation: u64,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Option<Value>> {
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state
+            .db
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let Some(now) = trusted_clock() else {
             return Ok(None);
         };
-        let state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
-        let live: Option<(String, String, String, String)> = state.db.query_row(
+        let live: Option<(String, String, String, String)> = tx.query_row(
             "SELECT g.expires,g.generation,s.expires,s.generation FROM proto_scopes s JOIN proto_grants g ON g.peer=s.peer AND g.method=s.method AND g.target=s.target JOIN proto_peers p ON p.peer=s.peer WHERE s.peer=?1 AND s.actor=?2 AND s.ticket=?3 AND s.method='hub.git.push' AND s.target=?4 AND NOT EXISTS(SELECT 1 FROM proto_ended_tickets e WHERE e.actor=s.actor AND e.ticket=s.ticket)",
             params![peer.to_string(), scope.actor, scope.ticket.as_deref().unwrap_or_default(), target],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         ).optional()?;
-        let authorized = live.is_some_and(|(ge, gg, se, sg)| {
+        let Some((grant_expiry, scope_expiry)) = live
+            .as_ref()
+            .and_then(|(ge, _, se, _)| Some((ge.parse::<u64>().ok()?, se.parse::<u64>().ok()?)))
+        else {
+            return Ok(None);
+        };
+        if !live.is_some_and(|(ge, gg, se, sg)| {
             ge.parse::<u64>().is_ok_and(|e| now < e)
                 && se.parse::<u64>().is_ok_and(|e| now < e)
                 && gg.parse::<u64>() == Ok(grant_generation)
                 && sg.parse::<u64>() == Ok(grant_generation)
-        });
-        if !authorized {
+        }) {
             return Ok(None);
         }
-        let raw: Option<String> = state.db.query_row(
+        let raw: Option<String> = tx.query_row(
             "SELECT o.receipt FROM proto_git_operations o JOIN proto_ref_audit a ON a.id=o.audit_id WHERE o.peer=?1 AND o.operation_id=?2 AND o.target=?3 AND a.mode='authoritative' AND a.actor=?4 AND a.ticket IS ?5",
             params![peer.to_string(), operation_id, target, scope.actor, scope.ticket],
             |r| r.get(0),
         ).optional()?;
-        raw.map(|raw| {
-            let receipt: Value = serde_json::from_str(&raw).map_err(|_| StoreError::Storage)?;
-            if !valid("hub-mutation-receipt", &receipt) {
-                return Err(StoreError::Storage);
-            }
-            Ok(receipt)
-        })
-        .transpose()
+        let Some(raw) = raw else {
+            return Ok(None);
+        };
+        let receipt: Value = serde_json::from_str(&raw).map_err(|_| StoreError::Storage)?;
+        if !valid("hub-mutation-receipt", &receipt) {
+            return Err(StoreError::Storage);
+        }
+        let Some(fresh) = trusted_clock() else {
+            return Ok(None);
+        };
+        if fresh < now || fresh >= grant_expiry || fresh >= scope_expiry {
+            return Ok(None);
+        }
+        drop(tx);
+        Ok(Some(receipt))
     }
 
     /// Retained exact raw bundle for explicit recovery/revalidation. Returning
@@ -360,7 +378,7 @@ impl AcceptedRefStore {
         context: &Acceptance<'_>,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Receipt> {
-        self.accept_inner(bundle, context, None, trusted_clock)
+        self.accept_inner(bundle, context, None, trusted_clock, || Ok(()))
             .map(|r| r.0)
     }
 
@@ -373,8 +391,21 @@ impl AcceptedRefStore {
         operation: &PushOperation,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Value> {
+        self.accept_push_guarded(bundle, context, operation, trusted_clock, || Ok(()))
+    }
+
+    /// Device-owned cross-ledger ID fence. Runs under the admission SQL write
+    /// guard; it may inspect local WAL custody but must never reenter Authority.
+    pub fn accept_push_guarded(
+        &self,
+        bundle: VerifiedBundle,
+        context: &Acceptance<'_>,
+        operation: &PushOperation,
+        trusted_clock: impl Fn() -> Option<u64>,
+        guard: impl FnOnce() -> Result<()>,
+    ) -> Result<Value> {
         operation.check(bundle.metadata(), context)?;
-        self.accept_inner(bundle, context, Some(operation), trusted_clock)?
+        self.accept_inner(bundle, context, Some(operation), trusted_clock, guard)?
             .1
             .ok_or(StoreError::Storage)
     }
@@ -385,6 +416,7 @@ impl AcceptedRefStore {
         context: &Acceptance<'_>,
         operation: Option<&PushOperation>,
         trusted_clock: impl Fn() -> Option<u64>,
+        guard: impl FnOnce() -> Result<()>,
     ) -> Result<(Receipt, Option<Value>)> {
         let metadata = bundle.metadata();
         let statement = &metadata.signed()["statement"];
@@ -404,6 +436,7 @@ impl AcceptedRefStore {
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let now = authorize(&tx, metadata, kind, context, &trusted_clock)?;
+        guard()?;
         if let Some((audit_id, receipt)) = operation
             .map(|op| lookup_operation(&tx, op))
             .transpose()?

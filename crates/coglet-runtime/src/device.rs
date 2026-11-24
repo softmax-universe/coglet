@@ -673,7 +673,7 @@ impl DeviceHandler {
         tokio::task::spawn_blocking(move || {
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.install", &coglet, pin.grant_generation);
-            handler.inner.authority.runtime_boundary(
+            handler.inner.authority.runtime_boundary_operation(
                 handler.inner.config.hub,
                 handler.inner.config.device,
                 &coglet,
@@ -681,6 +681,7 @@ impl DeviceHandler {
                 &grant,
                 pin.delegation_generation,
                 Some(&request["params"]["initial"]),
+                request["correlation_id"].as_str(),
                 handler.clock_fn(),
                 |proof, recheck| {
                     let gate = || deadline_gate(&context, recheck);
@@ -709,7 +710,7 @@ impl DeviceHandler {
             let (identity, setup) = recovered;
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.start", &coglet, pin.grant_generation);
-            handler.inner.authority.runtime_boundary(
+            handler.inner.authority.runtime_boundary_operation(
                 handler.inner.config.hub,
                 handler.inner.config.device,
                 &coglet,
@@ -717,6 +718,7 @@ impl DeviceHandler {
                 &grant,
                 pin.delegation_generation,
                 Some(&identity["initial"]),
+                request["correlation_id"].as_str(),
                 handler.clock_fn(),
                 |proof, recheck| {
                     let gate = || deadline_gate(&context, recheck);
@@ -749,7 +751,7 @@ impl DeviceHandler {
             }
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.stop", &coglet, pin.grant_generation);
-            handler.inner.authority.runtime_boundary(
+            handler.inner.authority.runtime_boundary_operation(
                 handler.inner.config.hub,
                 handler.inner.config.device,
                 &coglet,
@@ -757,6 +759,7 @@ impl DeviceHandler {
                 &grant,
                 pin.delegation_generation,
                 None,
+                request["correlation_id"].as_str(),
                 handler.clock_fn(),
                 |_, recheck| {
                     let gate = || deadline_gate(&context, recheck);
@@ -1045,12 +1048,37 @@ impl OperationHandler for DeviceHandler {
                 handler
                     .inner
                     .store
-                    .accept_push(bundle, &acceptance, &operation, handler.clock_fn())
+                    .accept_push_guarded(
+                        bundle,
+                        &acceptance,
+                        &operation,
+                        handler.clock_fn(),
+                        || {
+                            if let Some(setup) = handler
+                                .original_setup(&acceptance.coglet)
+                                .map_err(|_| StoreError::Storage)?
+                            {
+                                let service = handler
+                                    .open_service(&acceptance.coglet, &setup)
+                                    .map_err(|_| StoreError::Storage)?;
+                                let locked = service.lock().map_err(|_| StoreError::Storage)?;
+                                if locked.managed_contains_operation(
+                                    request_for_accept["correlation_id"].as_str().unwrap(),
+                                ) {
+                                    return Err(StoreError::Conflict);
+                                }
+                            }
+                            Ok(())
+                        },
+                    )
                     .map_err(store_text)
             })
             .await
-            .map_err(transport)?
             .map_err(transport)?;
+            let receipt = match receipt {
+                Ok(receipt) => receipt,
+                Err(error) => return Ok(fail(&request, wire(&error))),
+            };
             let driver = self.clone();
             let id = request["correlation_id"]
                 .as_str()

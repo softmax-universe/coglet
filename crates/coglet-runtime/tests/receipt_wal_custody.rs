@@ -23,6 +23,10 @@ fn retired_wal_owner_releases_lock_while_fork_child_has_not_execed() {
     unsafe {
         libc::close(pipe[0]);
     }
+    // A second opener must still refuse while the real owner is alive.
+    let live_owner_refused = coglet_runtime::DurableStore::open(&path)
+        .err()
+        .is_some_and(|error| error.starts_with("WAL already owned:"));
     drop(store);
     // Child is still blocked, retaining the inherited open-file description.
     let reopened = coglet_runtime::DurableStore::open(&path);
@@ -33,6 +37,10 @@ fn retired_wal_owner_releases_lock_while_fork_child_has_not_execed() {
         assert_eq!(libc::waitpid(child, &mut status, 0), child);
         assert_eq!(status, 0);
     }
+    assert!(
+        live_owner_refused,
+        "live owner's exclusive custody was bypassed"
+    );
     assert!(
         reopened.is_ok(),
         "retired owner's inherited flock: {:?}",

@@ -35,6 +35,14 @@ evidence.
   executes code or sets `live_commit`. Install requires that exact applied stage.
   Pushes to installed targets remain queued: installed code activation is owned
   by the separate step-boundary producer, not this module.
+  Boundary validation/authority failure leaves the admitted operation `queued`,
+  never fabricated `failed` or `applied`: the device has no confirmed effect.
+  Recovery retries the same retained ID only when its audit is still the current
+  staged tip and fresh authority permits completion. A superseded queued push
+  remains historical queued custody, cannot borrow its successor's boundary, and
+  cannot be installed; restart does not rewind the staged tip to complete it.
+  Permanently invalid setup likewise remains fail-closed queued (no automatic
+  cancellation or terminal error policy is introduced by this slice).
 * `step` of an applied receipt is the last committed step at admission, so
   `receipt.step <= hub.status.step`; no snapshot atomicity is claimed.
 
@@ -51,6 +59,8 @@ written without scope cannot be read through `hub.receipt` (fail closed).
 | --- | --- |
 | Original scope, immutable terminal record, receipt step <= status | `hub_receipt_original_scope_roundtrip` |
 | Wrong actor, ticket, target, original-method grant | `hub_receipt_denies_cross_identity` |
+| Cross-ledger push/install/stop ID reuse conflicts without effects, including reopen | `hub_receipt_git_and_lifecycle_ids_conflict_across_ledgers_and_restart` |
+| Push receipt fresh time and cross-connection revoke serialization | `push_receipt_for_scope_samples_clock_after_lock_wait_and_denies_stale_expiry`, `push_receipt_for_scope_cross_connection_revoke_cannot_interleave_authorized_read` (storage component tests) |
 | Same operation ID, differing method/ticket | `hub_receipt_conflicting_intent_typed` |
 | Install retry cannot borrow a different ticket's receipt or reuse a stop ID | `hub_receipt_install_retry_cannot_borrow_scope_or_reuse_stop_id` |
 | Terminal retry does not append another effect | `hub_receipt_identical_retry_no_reexecute` and `hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install` |
@@ -59,6 +69,9 @@ written without scope cannot be read through `hub.receipt` (fail closed).
 | Frozen response-schema corpus and non-vacuous malformed request handling | `hub_receipt_request_validation_and_fixtures` |
 | Initial original push completes before install, without live code | `hub_receipt_preinstall_original_push_completes_before_install` |
 | Original push retry/restart retains exactly one audit, intent and boundary | `hub_receipt_original_push_retry_retains_single_boundary` |
+| Authority expiry/revocation/replacement after queued admission, renewed original-ID recovery | `hub_receipt_preinstall_rechecks_authority_after_queued_admission` |
+| Superseded uninstalled original cannot borrow successor boundary or install | `hub_receipt_preinstall_superseded_original_never_borrows_new_boundary` |
+| WAL owner remains exclusive, retired fork-inherited lock released before exec | `retired_wal_owner_releases_lock_while_fork_child_has_not_execed` |
 | Missing async recovery executor fails startup closed | `hub_receipt_constructor_refuses_missing_recovery_runtime` |
 | Terminal SQL UPDATE/DELETE/REPLACE refusal and missing-state control | `operation_receipt_storage_is_completion_only_and_terminal_immutable` |
 

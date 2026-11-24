@@ -97,6 +97,13 @@ impl RuntimeService {
         self.state.managed.as_ref().map(|m| &m.install_receipt)
     }
 
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_contains_operation(&self, id: &str) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| {
+            m.install_receipt["operation_id"] == id || m.operations.contains_key(id)
+        })
+    }
+
     /// Original code/manifest/private-files configuration, not live private data.
     pub fn managed_setup(&self) -> &Value {
         &self.state.runtime.initial_setup
