@@ -260,6 +260,75 @@ async fn session_restart_child() {
 }
 
 #[tokio::test]
+async fn real_iroh_post_fin_deadline_panic_and_serve_abort_release_custody() {
+    let _fixture = SESSION_FIXTURE_LOCK.lock().await;
+    tokio::time::timeout(Duration::from_secs(40), async {
+        for mode in ["deadline", "panic", "serve_abort", "caller_abort"] {
+            let root = Root::new();
+            let quarantine = Root::new();
+            let h = Arc::new(live_harness(&root.0));
+            let grant = Grant { method: "hub.git.push".into(), target: Some(h.coglet()), expires: clock(Instant::now()+Duration::from_secs(5)).unwrap()+3600, generation: 7 };
+            let invite = h.authority.issue_invite(h.hub, Duration::from_secs(30), vec![grant.clone()]).unwrap();
+            h.authority.enroll(h.hub, Some(&invite)).unwrap();
+            h.authority.provision_scope(h.hub, &h.scope, &grant).unwrap();
+            let hub = Endpoint::builder(presets::Minimal).secret_key(SecretKey::from([1;32])).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
+            let device = Endpoint::builder(presets::Minimal).secret_key(SecretKey::from([2;32])).alpns(vec![ALPN.to_vec()]).bind().await.unwrap();
+            let endpoint = hub.clone();
+            let incoming = tokio::spawn(async move { endpoint.accept().await.unwrap().await.unwrap() });
+            let dc = device.connect(hub.addr(), ALPN).await.unwrap();
+            let hc = incoming.await.unwrap();
+            let ds = Session::new(dc, device.id(), Role::Device).unwrap();
+            let hs = Session::new(hc, hub.id(), Role::Hub).unwrap();
+            let gate = Arc::new(Gate { entered: tokio::sync::Semaphore::new(0), release: tokio::sync::Semaphore::new(0) });
+            let receiver = Arc::new(PushReceiver { h: h.clone(), root: quarantine.0.clone(), pause: Some(gate.clone()), validated: AtomicUsize::new(0) });
+            let hub_job = tokio::spawn(hs.clone().serve(receiver.clone()));
+            ds.request(json!({"method":"hub.enroll","target":null,"correlation_id":"ab".repeat(16),"timeout_ms":5000,"params":{"offer":{"versions":["0.1"]},"invite":null}})).await.unwrap();
+            let device_job = tokio::spawn(ds.clone().serve(receiver.clone()));
+            let (bytes, metadata) = code_fixture(b"\0asm\x01\0\0\0", true);
+            let request = |id: &str, timeout_ms: u64| json!({"method":"hub.git.push","target":h.coglet(),"context":{"actor":h.scope.actor,"ticket":h.scope.ticket},"correlation_id":id.repeat(16),"timeout_ms":timeout_ms,"params":{"update":metadata.signed(),"size":bytes.len(),"sha256":hex::encode(Sha256::digest(&bytes))}});
+            // Hold both responder slots with complete, validated end+FIN custody.
+            let mut calls = Vec::new();
+            for id in ["a1", "a2"] {
+                let session = hs.clone(); let r = request(id, 1800); let b = bytes.clone();
+                calls.push(tokio::spawn(async move { session.push_git(r, &mut b.as_slice()).await }));
+            }
+            for _ in 0..2 { gate.entered.acquire().await.unwrap().forget(); }
+            assert_eq!(fs::read_dir(&quarantine.0).unwrap().count(), 2, "{mode}");
+            match mode {
+                "panic" => gate.release.close(), // deliberate handler panic while owning verified custody
+                "serve_abort" => { device_job.abort(); },
+                "caller_abort" => { for call in &calls { call.abort(); } },
+                "deadline" => {},
+                _ => unreachable!(),
+            }
+            for call in calls {
+                let result = call.await;
+                assert!(result.is_err() || result.unwrap().is_err(), "{mode}");
+            }
+            // Caller cancellation after FIN cannot undo already admitted work;
+            // its bounded responder deadline still guarantees eventual cleanup.
+            if mode == "caller_abort" {
+                tokio::time::sleep(Duration::from_millis(1900)).await;
+            }
+            assert_quarantines(&quarantine.0, 0).await;
+            assert_eq!(h.count("proto_ref_audit"), 0, "{mode}");
+            assert_eq!(h.count("proto_git_operations"), 0, "{mode}");
+            // A fresh successful admission on this same connection proves
+            // responder admission is usable again after the abandoned work.
+            let normal = Arc::new(PushReceiver { h: h.clone(), root: quarantine.0.clone(), pause: None, validated: AtomicUsize::new(0) });
+            device_job.abort(); let _ = device_job.await;
+            let device_job = tokio::spawn(ds.clone().serve(normal));
+            let reply = hs.push_git(request("a3", 5000), &mut bytes.as_slice()).await.unwrap();
+            assert_eq!(reply["result"]["state"], "queued", "{mode}");
+            assert_eq!(h.count("proto_ref_audit"), 1, "{mode}");
+            assert_quarantines(&quarantine.0, 0).await;
+            hub_job.abort(); device_job.abort(); let _ = hub_job.await; let _ = device_job.await;
+            hub.close().await; device.close().await;
+        }
+    }).await.unwrap();
+}
+
+#[tokio::test]
 async fn real_iroh_validated_code_push_provenance_replay_and_post_fin_slots() {
     let _fixture = SESSION_FIXTURE_LOCK.lock().await;
     tokio::time::timeout(Duration::from_secs(30),async {
