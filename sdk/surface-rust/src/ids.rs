@@ -34,32 +34,20 @@ pub fn is_capability_name(s: &str) -> bool {
 }
 
 /// Fresh collision-resistant 128-bit id from the OS CSPRNG.
+///
+/// Uses the `getrandom` crate (Linux `getrandom(2)`, Darwin `getentropy(2)`),
+/// which retries interruption and partial reads internally. Failure is
+/// reported, never replaced by a weaker source.
 pub fn random_id() -> Result<String, String> {
+    random_id_from(|buf| getrandom::fill(buf).map_err(|e| e.to_string()))
+}
+
+/// [`random_id`] over an injectable fallible byte source, so tests can drive
+/// the OS-randomness failure path. The source is called exactly once.
+fn random_id_from(fill: impl FnOnce(&mut [u8]) -> Result<(), String>) -> Result<String, String> {
     let mut buf = [0u8; 16];
-    let mut filled = 0;
-    while filled < buf.len() {
-        #[cfg(target_vendor = "apple")]
-        let n = {
-            // getentropy accepts at most 256 bytes; cap even though IDs need 16.
-            let len = (buf.len() - filled).min(256);
-            // SAFETY: this is a writable tail of buf, bounded by getentropy's limit.
-            let result = unsafe { libc::getentropy(buf[filled..].as_mut_ptr().cast(), len) };
-            if result == 0 { len as isize } else { -1 }
-        };
-        #[cfg(not(target_vendor = "apple"))]
-        // SAFETY: the pointer/length pair describes the unfilled tail of `buf`.
-        let n =
-            unsafe { libc::getrandom(buf[filled..].as_mut_ptr().cast(), buf.len() - filled, 0) };
-        if n < 0 {
-            let e = std::io::Error::last_os_error();
-            if e.kind() == std::io::ErrorKind::Interrupted {
-                continue;
-            }
-            return Err(format!("unavailable: OS randomness: {e}"));
-        }
-        filled += n as usize;
-    }
-    Ok(buf.iter().map(|b| format!("{b:02x}")).collect())
+    fill(&mut buf).map_err(|e| format!("unavailable: OS randomness: {e}"))?;
+    Ok(hex(&buf))
 }
 
 pub fn hex(bytes: &[u8]) -> String {
@@ -100,8 +88,46 @@ mod tests {
         assert!(!is_capability_name("speech.stop.x"));
         assert!(!is_capability_name("Speech.stop"));
         assert!(!is_capability_name("speech."));
-        assert!(is_correlation_id(&random_id().unwrap()));
         assert_eq!(unhex(&hex(b"\x00\xffz")).unwrap(), b"\x00\xffz");
         assert!(unhex("abc").is_none());
+    }
+
+    #[test]
+    fn random_id_grammar_and_freshness() {
+        let ids: Vec<String> = (0..64).map(|_| random_id().unwrap()).collect();
+        for id in &ids {
+            assert_eq!(id.len(), 32);
+            assert!(is_correlation_id(id), "{id}");
+        }
+        let unique: std::collections::BTreeSet<&String> = ids.iter().collect();
+        assert_eq!(unique.len(), ids.len(), "128-bit ids must not repeat");
+        assert!(ids.iter().all(|id| id != &"0".repeat(32)));
+    }
+
+    #[test]
+    fn random_id_formats_source_bytes_as_lowercase_hex() {
+        let id = random_id_from(|buf| {
+            buf.copy_from_slice(&[
+                0x00, 0x0a, 0xab, 0xff, 0x10, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xfe, 0xdc,
+                0xba, 0x98,
+            ]);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(id, "000aabff10cdef0123456789fedcba98");
+        assert!(is_correlation_id(&id));
+    }
+
+    #[test]
+    fn random_id_reports_randomness_failure_without_retrying() {
+        let mut calls = 0;
+        let err = random_id_from(|buf| {
+            calls += 1;
+            buf.fill(0xff);
+            Err("entropy source offline".into())
+        })
+        .unwrap_err();
+        assert_eq!(calls, 1);
+        assert_eq!(err, "unavailable: OS randomness: entropy source offline");
     }
 }
