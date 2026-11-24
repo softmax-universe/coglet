@@ -24,10 +24,11 @@ pub struct Admission {
 pub(super) fn initialize(db: &Connection) -> Result<()> {
     db.execute_batch("CREATE TABLE IF NOT EXISTS _coglet_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1), revision BLOB NOT NULL CHECK(length(revision)=8), attempts BLOB NOT NULL CHECK(length(attempts)=8));
     INSERT OR IGNORE INTO _coglet_state VALUES(1,zeroblob(8),zeroblob(8));
-    CREATE TABLE IF NOT EXISTS _coglet_cursors(token_hash TEXT PRIMARY KEY NOT NULL, binding TEXT NOT NULL, attempt BLOB NOT NULL, position BLOB NOT NULL, last_key TEXT NOT NULL);")
+    CREATE TABLE IF NOT EXISTS _coglet_cursors(token_hash TEXT PRIMARY KEY NOT NULL, binding TEXT NOT NULL, attempt BLOB NOT NULL, position BLOB NOT NULL, last_key TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS _coglet_markers(coglet TEXT NOT NULL, trace_id TEXT NOT NULL, step BLOB NOT NULL CHECK(length(step)=8), record_hash TEXT NOT NULL, catalog_hash TEXT NOT NULL, revision BLOB NOT NULL CHECK(length(revision)=8), published INTEGER NOT NULL CHECK(published IN (0,1)), PRIMARY KEY(coglet,trace_id,step));")
         .map_err(|e| e.to_string())
 }
-fn number(bytes: Vec<u8>) -> Result<u64> {
+pub(super) fn number(bytes: Vec<u8>) -> Result<u64> {
     Ok(u64::from_be_bytes(
         bytes.try_into().map_err(|_| "corrupt host counter")?,
     ))
@@ -118,6 +119,8 @@ impl Database {
         if !self.connection.is_autocommit() {
             return Err("unreconciled database unit".into());
         }
+        // Halted owners and any unreconciled prior decision refuse admission.
+        self.reconciled()?;
         let (revision, attempts) = self.counters()?;
         let attempt = attempts
             .checked_add(1)
