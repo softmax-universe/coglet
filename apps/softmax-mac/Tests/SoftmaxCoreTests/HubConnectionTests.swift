@@ -146,6 +146,30 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertNil(try store.loadKey())
         XCTAssertNil(try store.loadHub())
     }
+    func testStartupIdentityFailureKeepsSignOutReachableWithoutRotatingKey() throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        store.hub = try HubPairing.parse(#"{"name":"Stored router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"]}"#)
+        let hub = HubConnection(account: HubAccount(store: store, generate: {
+            XCTFail("A missing enrolled identity must not silently rotate")
+            return Data(repeating: 1, count: 32)
+        }), link: link)
+        hub.start()
+        defer { hub.stop() }
+        XCTAssertEqual(link.starts, 0)
+        XCTAssertNil(hub.deviceID)
+        XCTAssertNotNil(hub.errorMessage)
+        XCTAssertTrue(hub.canSignOut, "Startup identity errors must expose the explicit local reset action")
+        store.failHubSave = true
+        hub.signOut()
+        XCTAssertTrue(hub.canSignOut, "Failed cleanup must leave the action reachable")
+        store.failHubSave = false
+        hub.signOut()
+        XCTAssertFalse(hub.canSignOut)
+        XCTAssertNil(hub.errorMessage)
+        XCTAssertNil(try store.loadHub())
+        XCTAssertNil(try store.loadKey())
+    }
+
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))

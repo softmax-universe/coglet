@@ -15,6 +15,8 @@ public final class HubConnection {
     public private(set) var deviceID: String?
     public private(set) var pairing: HubPairing?
     public private(set) var errorMessage: String?
+    /// Shared projection of the Settings sign-out action's visibility.
+    public var canSignOut: Bool { deviceID != nil }
     public var changed: (() -> Void)?
     private let account: HubAccount
     private let link: any HubLink

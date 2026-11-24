@@ -34,7 +34,7 @@ struct HubSettings: View {
                 Button("Pair router…") { model.configureHub(); pairing = true }
                     .disabled(model.hubConnection?.state == .connecting)
             }
-            if model.hubConnection?.deviceID != nil {
+            if model.hubConnection?.canSignOut == true {
                 Button("Sign out…") { confirmSignOut = true }
             }
         }
