@@ -10,6 +10,9 @@ use std::path::Path;
 #[path = "clock.rs"]
 mod clock;
 #[cfg(feature = "native-engine")]
+#[path = "database_replay.rs"]
+mod database_replay;
+#[cfg(feature = "native-engine")]
 #[path = "database_service.rs"]
 pub mod database_service;
 #[path = "dispatch.rs"]

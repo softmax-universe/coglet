@@ -112,6 +112,10 @@ fn plan() -> Plan {
     ]
 }
 fn wasm(steps: &Plan) -> Vec<u8> {
+    wasm_returning(steps, "i32.const 0")
+}
+/// `tail` leaves handle's i32 result on the stack after every recorded call.
+fn wasm_returning(steps: &Plan, tail: &str) -> Vec<u8> {
     let (mut data, mut body) = (String::new(), String::new());
     for (i, (op, raw)) in steps[0].iter().enumerate() {
         let ptr = 1024 + i * 2048;
@@ -132,7 +136,7 @@ fn wasm(steps: &Plan) -> Vec<u8> {
       (import "coglet_v0" "emit" (func $emit (param i32 i32) (result i32)))
       (memory (export "memory") 3 3) {data}
       (func (export "abi_alloc") (param i32) (result i32) i32.const 160000)
-      (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) {body} i32.const 0))"#
+      (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) {body} {tail}))"#
     ))
     .unwrap()
 }
@@ -297,8 +301,17 @@ fn wamr() -> (Wamr, Fx, Option<Arc<AtomicUsize>>) {
     )
 }
 fn mock() -> (MockEngine, Fx, Option<Arc<AtomicUsize>>) {
-    let plan = Arc::new(plan());
-    let code = wasm(&plan);
+    mock_with(plan(), false)
+}
+/// `echo` makes handle return the low byte of the last reply length, so the
+/// guest outcome depends on the bytes the host wrote into guest memory.
+fn mock_with(plan: Plan, echo: bool) -> (MockEngine, Fx, Option<Arc<AtomicUsize>>) {
+    let plan = Arc::new(plan);
+    let code = if echo {
+        wasm_returning(&plan, ECHO)
+    } else {
+        wasm(&plan)
+    };
     let runs = Arc::new(AtomicUsize::new(0));
     let counter = runs.clone();
     let mut engine = MockEngine::default();
@@ -320,6 +333,9 @@ fn mock() -> (MockEngine, Fx, Option<Arc<AtomicUsize>>) {
                                 vec![ptr as u64, raw.len() as u64]
                             };
                             cx.call("coglet_v0", op, &args)?;
+                        }
+                        if echo {
+                            return Ok(u32::from(cx.memory.read(65539, 1)?[0]));
                         }
                         Ok(0)
                     },
@@ -786,4 +802,542 @@ fn committed_recovery_preserves_post_fence_host_metadata() {
     );
     drop(store);
     assert_eq!(fx.service().queued(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Offline replay (`Runtime::replay_database`): exact recorded native results,
+// no database/catalog/cursor, mixed call order, sticky divergence, and the
+// recovery-abort overlay only after a reproduced clean success.
+// ---------------------------------------------------------------------------
+const ECHO: &str = "i32.const 65539 i32.load8_u";
+const RECORD: &str = "database::db-step-record";
+
+fn echo_plan() -> Plan {
+    vec![vec![("db", statement("put")), ("db", statement("scan"))]]
+}
+fn wamr_echo() -> (Wamr, Fx) {
+    let code = wasm_returning(&echo_plan(), ECHO);
+    (
+        Wamr::interpreter().allow_db(),
+        Fx::new(code, coglet_engine_wamr::COMPUTE_MODE),
+    )
+}
+
+/// Live-run `events` attempts and return the exact WAL record bytes.
+fn live_frames<E: SharedEngine>(engine: &E, fx: &Fx, events: u64) -> Vec<Vec<u8>> {
+    let mut db = fx.db();
+    let mut service = fx.service();
+    for seq in 0..events {
+        service.enqueue(fx.event(seq)).unwrap();
+        fx.step(&mut service, &mut db, engine, None)
+            .unwrap()
+            .unwrap();
+    }
+    fx.journal(&service)
+}
+/// Marker absent: the exact `db_recovery_abort` record the recovery published.
+fn abort_frames<E: SharedEngine>(engine: &E, fx: &Fx) -> Vec<Vec<u8>> {
+    let mut db = fx.db();
+    let mut service = fx.service();
+    service.enqueue(fx.event(0)).unwrap();
+    fx.observer().execute_batch(BLOCK_MARKER).unwrap();
+    assert!(
+        fx.step(&mut service, &mut db, engine, None)
+            .unwrap_err()
+            .starts_with("held:")
+    );
+    drop((service, db));
+    fx.observer()
+        .execute_batch("DROP TRIGGER block_marker")
+        .unwrap();
+    let mut service = fx.service();
+    let mut db = fx.db();
+    assert!(matches!(
+        service.recover_database(&mut db, None).unwrap(),
+        Recovered::Aborted(_)
+    ));
+    fx.journal(&service)
+}
+fn replay<E: SharedEngine>(fx: &Fx, engine: &E, frames: &[Vec<u8>]) -> Result<Vec<String>, String> {
+    let frames: Vec<&[u8]> = frames.iter().map(Vec::as_slice).collect();
+    coglet_runtime::Runtime::from_fixture(&fx.setup)
+        .unwrap()
+        .replay_database(&frames, engine, 8 * 1024 * 1024, 65536)
+}
+fn entry<'a>(entries: &'a mut [(V, V)], key: &str) -> &'a mut V {
+    &mut entries
+        .iter_mut()
+        .find(|(k, _)| k.as_text() == Some(key))
+        .unwrap()
+        .1
+}
+/// Edit a record's native fields and re-seal it with a correct hash.
+fn reseal(frame: &[u8], edit: impl FnOnce(&mut Vec<(V, V)>)) -> Vec<u8> {
+    let V::Map(mut entries) = coglet_types::decode(RECORD, frame).unwrap() else {
+        panic!("record is not a map")
+    };
+    entries.retain(|(k, _)| k.as_text() != Some("record_hash"));
+    edit(&mut entries);
+    let hash = digest(&coglet_types::encode_profile(&V::Map(entries.clone())).unwrap());
+    entries.push((text("record_hash"), text(&hash)));
+    coglet_types::encode(RECORD, &V::Map(entries)).unwrap()
+}
+fn edit_calls(frame: &[u8], edit: impl FnOnce(&mut Vec<V>)) -> Vec<u8> {
+    reseal(frame, |entries| {
+        let V::Array(calls) = entry(entries, "calls") else {
+            panic!("calls")
+        };
+        edit(calls);
+    })
+}
+fn call_field<'a>(call: &'a mut V, key: &str) -> &'a mut V {
+    let V::Map(entries) = call else {
+        panic!("call")
+    };
+    entry(entries, key)
+}
+fn drop_response(call: &mut V) {
+    let V::Map(entries) = call else {
+        panic!("call")
+    };
+    entries.retain(|(k, _)| k.as_text() != Some("response"));
+}
+fn assert_divergence(error: Result<Vec<String>, String>, what: &str) {
+    let error = error.expect_err(what);
+    assert!(
+        error.contains("replay divergence") || error.contains("replay mismatch"),
+        "{what}: {error}"
+    );
+}
+
+/// Mixed stream [db put, db enqueue(u64::MAX), emit, db scan]: the recorded
+/// results are replayed with NO database present, and every changed, missing,
+/// extra or reordered call is a divergence the guest cannot swallow.
+fn replay_mixed_order<E: SharedEngine>(engine: E, fx: Fx) {
+    let frames = live_frames(&engine, &fx, 2);
+    assert_native_payload(&frames[0]);
+    let hashes = replay(&fx, &engine, &frames).unwrap();
+    assert_eq!(hashes.len(), 2);
+    // The database is gone: replay has no way to consult it, and still agrees.
+    std::fs::remove_file(&fx.db_path).unwrap();
+    assert_eq!(replay(&fx, &engine, &frames).unwrap(), hashes);
+
+    let first = &frames[0];
+    let mutated: Vec<(&str, Vec<u8>)> = vec![
+        // missing: the guest makes a call the record does not have
+        ("missing", edit_calls(first, |c| drop(c.pop()))),
+        ("missing-first", edit_calls(first, |c| drop(c.remove(0)))),
+        // extra: the record holds a call the guest never makes
+        (
+            "extra",
+            edit_calls(first, |c| {
+                let again = c.last().unwrap().clone();
+                c.push(again);
+            }),
+        ),
+        // reordered across the ordinary/database boundary
+        ("reordered", edit_calls(first, |c| c.swap(1, 2))),
+        (
+            "changed-statement",
+            edit_calls(first, |c| {
+                let V::Map(entries) = call_field(&mut c[0], "argument") else {
+                    panic!()
+                };
+                *entry(entries, "statement") = text("scan");
+            }),
+        ),
+        (
+            "changed-enqueue-payload",
+            edit_calls(first, |c| {
+                let V::Map(entries) = call_field(&mut c[1], "argument") else {
+                    panic!()
+                };
+                let V::Map(payload) = entry(entries, "payload") else {
+                    panic!()
+                };
+                *entry(payload, "big") = V::Integer((u64::MAX - 1).into());
+            }),
+        ),
+        (
+            "changed-ordinary-argument",
+            edit_calls(first, |c| {
+                let V::Map(args) = call_field(&mut c[2], "argument") else {
+                    panic!()
+                };
+                let V::Map(argument) = entry(args, "args") else {
+                    panic!()
+                };
+                *entry(argument, "expression") = V::Text("sad".into());
+            }),
+        ),
+        (
+            "changed-result",
+            edit_calls(first, |c| {
+                *call_field(&mut c[0], "result") = V::Integer(4.into());
+                drop_response(&mut c[0]);
+            }),
+        ),
+    ];
+    for (what, frame) in mutated {
+        assert_divergence(replay(&fx, &engine, &[frame]), what);
+    }
+    // Replay is all or nothing: a divergent second record fails the batch.
+    let bad = edit_calls(&frames[1], |c| {
+        let again = c.last().unwrap().clone();
+        c.push(again);
+    });
+    assert_divergence(
+        replay(&fx, &engine, &[frames[0].clone(), bad]),
+        "second record",
+    );
+    // A record that no longer hashes is refused before any guest runs, and a
+    // record cannot be replayed out of its chain position.
+    let mut tampered = first.clone();
+    let last = tampered.len() - 1;
+    tampered[last] ^= 1;
+    assert!(replay(&fx, &engine, &[tampered]).is_err());
+    assert!(replay(&fx, &engine, &[frames[1].clone()]).is_err());
+}
+#[test]
+fn real_wamr_replay_enforces_mixed_call_order_without_database() {
+    let (engine, fx, _) = wamr();
+    replay_mixed_order(engine, fx);
+}
+#[test]
+fn mock_replay_enforces_mixed_call_order_without_database() {
+    let (engine, fx, _) = mock();
+    replay_mixed_order(engine, fx);
+}
+
+/// The guest outcome depends on the reply bytes it reads back from guest
+/// memory. Replay must feed it the RECORDED reply: a record whose reply (and
+/// consequent guest outcome) is edited consistently replays, an inconsistent
+/// edit diverges, and no database exists in either case.
+fn replay_uses_recorded_results<E: SharedEngine>(engine: E, fx: Fx) {
+    let frames = live_frames(&engine, &fx, 1);
+    let record = coglet_types::decode(RECORD, &frames[0]).unwrap();
+    assert_eq!(field(&record, "status").as_text(), Some("aborted"));
+    let old_message = field(field(field(&record, "failure"), "error"), "message")
+        .as_text()
+        .unwrap()
+        .to_owned();
+    let recorded_len = |frame: &[u8]| {
+        let record = coglet_types::decode(RECORD, frame).unwrap();
+        let last = field(&record, "calls").as_array().unwrap().last().unwrap();
+        coglet_types::encode("database::db-reply", field(last, "response"))
+            .unwrap()
+            .len()
+    };
+    let old_len = recorded_len(&frames[0]);
+    assert_eq!(
+        old_message,
+        coglet_engine::Error::GuestReturn((old_len & 0xff) as u32).to_string()
+    );
+    std::fs::remove_file(&fx.db_path).unwrap();
+    replay(&fx, &engine, &frames).unwrap();
+
+    // Lengthen the recorded scan reply by 3 bytes (`value` -> `valueXYZ`).
+    let longer = |failure_message: Option<String>| {
+        reseal(&frames[0], |entries| {
+            let V::Array(calls) = entry(entries, "calls") else {
+                panic!()
+            };
+            let V::Map(response) = call_field(calls.last_mut().unwrap(), "response") else {
+                panic!()
+            };
+            let V::Array(rows) = entry(response, "rows") else {
+                panic!()
+            };
+            let V::Array(row) = &mut rows[0] else {
+                panic!()
+            };
+            row[1] = text("valueXYZ");
+            if let Some(message) = failure_message {
+                // The longer reply is copied (and charged) into guest memory.
+                let V::Map(usage) = entry(entries, "usage") else {
+                    panic!()
+                };
+                let bytes = u64::try_from(entry(usage, "host_bytes").as_integer().unwrap());
+                *entry(usage, "host_bytes") = V::Integer((bytes.unwrap() + 6).into());
+                let V::Map(failure) = entry(entries, "failure") else {
+                    panic!()
+                };
+                let V::Map(error) = entry(failure, "error") else {
+                    panic!()
+                };
+                *entry(error, "message") = text(&message);
+            }
+        })
+    };
+    let edited_message =
+        coglet_engine::Error::GuestReturn(((old_len + 3) & 0xff) as u32).to_string();
+    let consistent = longer(Some(edited_message));
+    assert_eq!(recorded_len(&consistent), old_len + 3);
+    replay(&fx, &engine, &[consistent]).unwrap();
+    assert!(replay(&fx, &engine, &[longer(None)]).is_err());
+}
+#[test]
+fn real_wamr_replay_uses_recorded_results() {
+    let (engine, fx) = wamr_echo();
+    replay_uses_recorded_results(engine, fx);
+}
+#[test]
+fn mock_replay_uses_recorded_results() {
+    let (engine, fx, _) = mock_with(echo_plan(), true);
+    replay_uses_recorded_results(engine, fx);
+}
+
+/// `db_recovery_abort` is applied only after the guest reproduced handle==0
+/// with every recorded call and no poisoned unit.
+fn replay_recovery_abort<E: SharedEngine>(engine: E, fx: Fx) {
+    let frames = abort_frames(&engine, &fx);
+    let record = coglet_types::decode(RECORD, &frames[0]).unwrap();
+    assert_eq!(
+        field(field(&record, "failure"), "kind").as_text(),
+        Some("db_recovery_abort")
+    );
+    assert_eq!(replay(&fx, &engine, &frames).unwrap().len(), 1);
+
+    let first = &frames[0];
+    for (what, frame) in [
+        ("missing", edit_calls(first, |c| drop(c.pop()))),
+        (
+            "extra",
+            edit_calls(first, |c| {
+                let again = c.last().unwrap().clone();
+                c.push(again);
+            }),
+        ),
+        ("reordered", edit_calls(first, |c| c.swap(1, 2))),
+        (
+            "changed-argument",
+            edit_calls(first, |c| {
+                let V::Map(entries) = call_field(&mut c[0], "argument") else {
+                    panic!()
+                };
+                *entry(entries, "statement") = text("scan");
+            }),
+        ),
+        (
+            "changed-result",
+            edit_calls(first, |c| {
+                *call_field(&mut c[0], "result") = V::Integer(2.into());
+                drop_response(&mut c[0]);
+            }),
+        ),
+    ] {
+        assert_divergence(replay(&fx, &engine, &[frame]), what);
+    }
+    // The abort invariants are checked: the revision cannot advance.
+    let advanced = reseal(first, |entries| {
+        let before = u64::try_from(entry(entries, "db_before").as_integer().unwrap()).unwrap();
+        *entry(entries, "db_after") = V::Integer((before + 1).into());
+    });
+    assert!(replay(&fx, &engine, &[advanced]).is_err());
+}
+#[test]
+fn real_wamr_replay_applies_recovery_abort_only_after_clean_success() {
+    let (engine, fx, _) = wamr();
+    replay_recovery_abort(engine, fx);
+}
+#[test]
+fn mock_replay_applies_recovery_abort_only_after_clean_success() {
+    let (engine, fx, _) = mock();
+    replay_recovery_abort(engine, fx);
+}
+
+/// A recovery abort recorded for a guest that does NOT return success (a
+/// poisoned unit) is a divergence, not an alternative justification.
+fn recovery_abort_for_failed_guest<E: SharedEngine>(engine: E, fx: Fx) {
+    let frames = live_frames(&engine, &fx, 1);
+    let record = coglet_types::decode(RECORD, &frames[0]).unwrap();
+    assert_eq!(
+        field(field(&record, "failure"), "kind").as_text(),
+        Some("guest_return")
+    );
+    replay(&fx, &engine, &frames).unwrap();
+    let forged = reseal(&frames[0], |entries| {
+        *entry(entries, "failure") = V::Map(vec![
+            (text("kind"), text("db_recovery_abort")),
+            (text("prepared_record_hash"), text(&"0".repeat(64))),
+        ]);
+    });
+    assert_divergence(replay(&fx, &engine, &[forged]), "forged recovery abort");
+}
+fn poisoned_plan() -> Plan {
+    vec![vec![
+        ("db", statement("missing")),
+        ("db", statement("scan")),
+    ]]
+}
+#[test]
+fn real_wamr_recovery_abort_for_poisoned_guest_diverges() {
+    let fx = Fx::new(wasm(&poisoned_plan()), coglet_engine_wamr::COMPUTE_MODE);
+    recovery_abort_for_failed_guest(Wamr::interpreter().allow_db(), fx);
+}
+#[test]
+fn mock_recovery_abort_for_poisoned_guest_diverges() {
+    let (engine, fx, _) = mock_with(poisoned_plan(), false);
+    recovery_abort_for_failed_guest(engine, fx);
+}
+
+/// Successful `db` then a terminal ABI failure that live does not journal as a
+/// second call: overlapping or out-of-range `db` ranges, or an emit whose
+/// buffer is not in guest memory. Replay must reproduce `invalid_argument`
+/// from the local check, not invent/consume a recorded call. A later successful
+/// extra call is still sticky divergence. Whole-record compare must see failure.
+fn wasm_put_then(kind: &str) -> Vec<u8> {
+    let raw = statement("put");
+    let ptr = 1024;
+    let escaped = raw.iter().map(|b| format!("\\{b:02x}")).collect::<String>();
+    let first = format!(
+        "i32.const {ptr} i32.const {} i32.const 65536 i32.const 65540 call $db drop\n",
+        raw.len()
+    );
+    let second = match kind {
+        "db-overlap" => format!(
+            "i32.const {ptr} i32.const {} i32.const {ptr} i32.const 65540 call $db drop\n",
+            raw.len()
+        ),
+        "db-oor" => format!(
+            "i32.const {ptr} i32.const {} i32.const 196608 i32.const 65540 call $db drop\n",
+            raw.len()
+        ),
+        "emit-oor" => "i32.const 196608 i32.const 4 call $emit drop\n".into(),
+
+        other => panic!("unknown follow-up {other}"),
+    };
+    wat::parse_str(format!(
+        r#"(module
+      (import "coglet_v0" "db" (func $db (param i32 i32 i32 i32) (result i32)))
+      (import "coglet_v0" "emit" (func $emit (param i32 i32) (result i32)))
+      (memory (export "memory") 3 3)
+      (data (i32.const {ptr}) "{escaped}")
+      (func (export "abi_alloc") (param i32) (result i32) i32.const 160000)
+      (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) {first}{second} i32.const 0))"#
+    ))
+    .unwrap()
+}
+fn mock_put_then(kind: &'static str) -> (MockEngine, Fx) {
+    let code = wasm_put_then(kind);
+    let put = statement("put");
+    let mut engine = MockEngine::default();
+    engine.allow_db();
+    engine
+        .register(
+            code.clone(),
+            NativeModule::new(3, 3, move || {
+                let put = put.clone();
+                Box::new(ClosureGuest(
+                    move |_, _: &StepInput, cx: &mut Context<'_>| {
+                        let ptr = 1024u32;
+                        cx.memory.write(ptr, &put)?;
+                        cx.call(
+                            "coglet_v0",
+                            "db",
+                            &[ptr as u64, put.len() as u64, 65536, 65540],
+                        )?;
+                        match kind {
+                            "db-overlap" => {
+                                cx.call(
+                                    "coglet_v0",
+                                    "db",
+                                    &[ptr as u64, put.len() as u64, ptr as u64, 65540],
+                                )?;
+                            }
+                            "db-oor" => {
+                                cx.call(
+                                    "coglet_v0",
+                                    "db",
+                                    &[ptr as u64, put.len() as u64, 196608, 65540],
+                                )?;
+                            }
+                            "emit-oor" => {
+                                cx.call("coglet_v0", "emit", &[196608, 4])?;
+                            }
+
+                            other => panic!("unknown follow-up {other}"),
+                        }
+                        Ok(0)
+                    },
+                ))
+            })
+            .unwrap(),
+        )
+        .unwrap();
+    (engine, Fx::new(code, coglet_mock::engine::COMPUTE_MODE))
+}
+fn wamr_put_then(kind: &str) -> (Wamr, Fx) {
+    (
+        Wamr::interpreter().allow_db(),
+        Fx::new(wasm_put_then(kind), coglet_engine_wamr::COMPUTE_MODE),
+    )
+}
+
+fn replay_terminal_abi_failure<E: SharedEngine>(engine: E, fx: Fx) {
+    let frames = live_frames(&engine, &fx, 1);
+    let record = coglet_types::decode(RECORD, &frames[0]).unwrap();
+    assert_eq!(field(&record, "status").as_text(), Some("aborted"));
+    assert_eq!(
+        field(field(&record, "failure"), "kind").as_text(),
+        Some("invalid_argument")
+    );
+    let calls = field(&record, "calls").as_array().unwrap();
+    assert_eq!(
+        calls.len(),
+        1,
+        "terminal ABI failure must not invent a call"
+    );
+    assert_eq!(field(&calls[0], "op").as_text(), Some("db"));
+    assert_eq!(field(&calls[0], "result").as_integer(), Some(0.into()));
+    // Offline: the live record replays without a database.
+    std::fs::remove_file(&fx.db_path).unwrap();
+    replay(&fx, &engine, &frames).unwrap();
+
+    // Whole-record compare must catch a dropped/changed failure even when calls match.
+    let committed = reseal(&frames[0], |entries| {
+        *entry(entries, "status") = text("committed");
+        entries.retain(|(k, _)| k.as_text() != Some("failure"));
+    });
+    let error = replay(&fx, &engine, &[committed]).expect_err("dropped failure");
+    assert!(
+        error.contains("replay mismatch") || error.contains("replay divergence"),
+        "failure bypassed whole-record compare: {error}"
+    );
+    assert!(
+        !error.contains("extra"),
+        "dropped failure must not be reported as an extra call: {error}"
+    );
+
+    // Sticky: a genuine extra successful call still cannot be swallowed.
+    let extra = edit_calls(&frames[0], |c| {
+        let again = c[0].clone();
+        c.push(again);
+    });
+    assert_divergence(replay(&fx, &engine, &[extra]), "extra successful call");
+}
+
+#[test]
+fn real_wamr_replay_records_invalid_db_ranges_as_invalid_argument() {
+    for kind in ["db-overlap", "db-oor"] {
+        let (engine, fx) = wamr_put_then(kind);
+        replay_terminal_abi_failure(engine, fx);
+    }
+}
+#[test]
+fn mock_replay_records_invalid_db_ranges_as_invalid_argument() {
+    for kind in ["db-overlap", "db-oor"] {
+        let (engine, fx) = mock_put_then(kind);
+        replay_terminal_abi_failure(engine, fx);
+    }
+}
+#[test]
+fn real_wamr_replay_records_invalid_ordinary_ranges_as_invalid_argument() {
+    let (engine, fx) = wamr_put_then("emit-oor");
+    replay_terminal_abi_failure(engine, fx);
+}
+#[test]
+fn mock_replay_records_invalid_ordinary_ranges_as_invalid_argument() {
+    let (engine, fx) = mock_put_then("emit-oor");
+    replay_terminal_abi_failure(engine, fx);
 }
