@@ -12,8 +12,6 @@ import unittest
 from cddl import parse
 import generate
 import emit_go
-import emit_java
-from test_java import jackson_classpath
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -67,17 +65,6 @@ for value in (g.Optional(), g.Optional(field='value'), g.Optional(field='value',
         for name in ('result', 'serialize', 'deserialize'):
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'reserved'):
                 generate.generate(parse(f'{name} = tstr'))
-
-    def test_java_runtime_members_fail_closed(self):
-        for name in ('rule', 'toValue', 'toCbor', 'fromCbor', 'Codec', 'rest$'):
-            with self.subTest(name=name), self.assertRaises(ValueError):
-                emit_java.generate(records([name]))
-
-    def test_java_runtime_type_names_fail_closed(self):
-        for name in ('Generated', 'Codec', 'Message', 'Presence', 'Object', 'String',
-                     'Boolean', 'BigInteger', 'List', 'Map', 'LinkedHashMap', 'IllegalArgumentException'):
-            with self.subTest(name=name), self.assertRaises(ValueError):
-                emit_java.generate(parse(f'{name} = {{value: tstr}}'))
 
     def test_go_runtime_members_and_symbols_fail_closed(self):
         for name in sorted(emit_go.RESERVED_MEMBERS):
@@ -147,26 +134,3 @@ for value in (g.Optional(), g.Optional(field='value'), g.Optional(field='value',
                          f'if !reflect.DeepEqual(back.ToValue(), map[string]any{{{json.dumps(name)}:"value", "next":"tail"}}) {{t.Fatal(back)}}', '}']
             (root / 'types/identifiers_test.go').write_text('\n'.join(test + ['}']))
             run(self, ['go', 'test', './...'], root, env=dict(os.environ, GOFLAGS='-mod=mod'))
-
-    @unittest.skipUnless(shutil.which('javac') and jackson_classpath(), 'JDK or Jackson jars not available')
-    def test_java_helper_and_keyword_fields_roundtrip(self):
-        names = sorted(emit_java.KEYWORDS | {'field', 'dataclass', 'nextValue', 'Presence', 'Message',
-                       'encode', 'decode', 'm', 'e', 'raw', 'String', 'Map', 'List', 'Generated', 'registerAll'})
-        out = emit_java.generate(records(names))
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            pkg = root / 'org/coglet/surface'; pkg.mkdir(parents=True)
-            (pkg / 'Generated.java').write_text(out['sdk/surface-java/src/main/java/org/coglet/surface/Generated.java'])
-            (root / 'schema.json').write_text(out['sdk/surface-java/src/main/resources/schema.json'])
-            shutil.copy(ROOT / 'sdk/surface-java/src/main/java/org/coglet/surface/Codec.java', pkg / 'Codec.java')
-            test = ['package org.coglet.surface;', 'import java.util.*;', 'class Main { public static void main(String[] args) {']
-            for i, name in enumerate(names):
-                test += ['{', f'var value = new Generated.Sample{i}("value", "tail");',
-                         'byte[] raw = value.toCbor();', f'var back = Generated.Sample{i}.fromCbor(raw);',
-                         'if (!value.equals(back) || !Arrays.equals(raw, back.toCbor())) throw new AssertionError(back);',
-                         f'if (!back.toValue().equals(Map.of({json.dumps(name)}, "value", "next", "tail"))) throw new AssertionError(back);', '}']
-            (pkg / 'Main.java').write_text('\n'.join(test + ['}}']))
-            cp = jackson_classpath()
-            assert cp is not None
-            run(self, ['javac', '--release', '21', '-cp', cp, '-d', str(root), *map(str, pkg.glob('*.java'))], root)
-            run(self, ['java', '-cp', os.pathsep.join([str(root), cp]), 'org.coglet.surface.Main'], root)

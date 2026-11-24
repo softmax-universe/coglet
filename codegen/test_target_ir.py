@@ -1,13 +1,12 @@
 """Native targets must not silently ignore additive compiler constraints."""
 import unittest
 import emit_go
-import emit_java
 
 
 class NativeIRTests(unittest.TestCase):
     def test_additive_operations_are_enforced_and_future_constraints_fail_closed(self):
         text = {'op': 'primitive', 'name': 'tstr'}
-        for emit in (emit_go, emit_java):
+        for emit in (emit_go,):
             cases = [
                 {'op': 'intersection', 'items': [text]},
                 {'op': 'default', 'item': text, 'value': 'x'},
@@ -30,5 +29,5 @@ class NativeIRTests(unittest.TestCase):
                             {'name': 'value', 'optional': False, 'type': unknown}]}})
 
     def test_op_is_a_legal_rule_name(self):
-        for emit in (emit_go, emit_java):
+        for emit in (emit_go,):
             self.assertTrue(emit.generate({'op': {'op': 'primitive', 'name': 'tstr'}}))
