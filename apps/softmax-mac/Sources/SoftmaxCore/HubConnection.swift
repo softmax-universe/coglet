@@ -97,7 +97,8 @@ public final class HubConnection {
     }
     private func scheduleRetry(restart: Bool = false) {
         retry?.cancel()
-        guard pending != nil || pairing != nil else { return }
+        // A crashed helper must restore the pairing channel even before enrollment.
+        guard restart || pending != nil || pairing != nil else { return }
         let delay = min(30.0, pow(2.0, Double(min(attempts, 5))) * Double.random(in: 0.8...1.2))
         attempts = min(attempts + 1, 6)
         let current = generation
