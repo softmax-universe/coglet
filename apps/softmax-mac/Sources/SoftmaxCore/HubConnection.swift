@@ -84,6 +84,7 @@ public final class HubConnection {
             } catch {
                 // Keep the pending invitation only in memory for ambiguous-success recovery.
                 state = .offline; errorMessage = "Cannot save hub enrollment."; stopLink()
+                scheduleRetry(restart: true)
             }
         case .offline:
             state = .offline
