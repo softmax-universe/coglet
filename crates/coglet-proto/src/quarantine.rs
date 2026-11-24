@@ -1,25 +1,79 @@
 //! Raw bundle quarantine storage only; this is NOT Git validation or admission.
 //! The owning directory must be private/trusted and on a durable filesystem.
 use crate::transfer::DurableSink;
+
+#[cfg(all(test, target_os = "linux"))]
+mod custody_tests {
+    use super::*;
+    use std::process::{Command, Stdio};
+    struct Child(std::process::Child);
+    impl Drop for Child {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    #[tokio::test]
+    async fn inherited_lease_defers_drop_and_sweep_until_last_process_exits() {
+        let parent = std::env::temp_dir().join(format!(
+            "coglet-lease-{}",
+            iroh::SecretKey::generate().public()
+        ));
+        fs::create_dir(&parent).unwrap();
+        let sink = BundleSink::create(&parent, 1).await.unwrap();
+        let lease = sink
+            .0
+            .as_ref()
+            .unwrap()
+            ._lease
+            .as_ref()
+            .unwrap()
+            .try_clone()
+            .unwrap();
+        let mut child = Child(
+            Command::new("/bin/sleep")
+                .arg("30")
+                .stdin(Stdio::from(lease))
+                .spawn()
+                .unwrap(),
+        );
+        drop(sink);
+        assert_eq!(fs::read_dir(&parent).unwrap().count(), 1);
+        assert_eq!(BundleSink::sweep_orphans(&parent).await.unwrap(), 0);
+        child.0.kill().unwrap();
+        child.0.wait().unwrap();
+        assert_eq!(BundleSink::sweep_orphans(&parent).await.unwrap(), 1);
+        fs::remove_dir(&parent).unwrap();
+    }
+}
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
 };
 
 struct State {
     directory: PathBuf,
     file: File,
+    _lease: Option<File>,
     size: u64,
     limit: u64,
     failed: bool,
 }
 impl Drop for State {
     fn drop(&mut self) {
-        // Only the randomly named directory created by us, never the parent.
-        // A crash leaves an orphan for startup cleanup, not an imported ref.
-        let _ = fs::remove_dir_all(&self.directory);
+        // A helper/descendant inherits our locked open description. Never unlink
+        // while one still owns it (including a killed task stuck in kernel I/O).
+        // If service/helper dies first, startup sweep resumes cleanup only after
+        // the final inherited descriptor closes. No accepted ref exists here.
+        let candidate = File::open(self.directory.join("lease"));
+        drop(self._lease.take());
+        if let Ok(lease) = candidate
+            && lease.try_lock().is_ok()
+        {
+            let _ = fs::remove_dir_all(&self.directory);
+        }
     }
 }
 
@@ -27,8 +81,9 @@ impl Drop for State {
 /// Blocking I/O runs off the reactor. Cancellation cannot unlink a file while
 /// its worker is writing: the worker retains cleanup custody until completion.
 /// No pathname is exported, so callers cannot mistake raw bytes for a verified
-/// Git artifact. Full fsck/archive/provenance validation remains unimplemented.
-pub struct BundleSink(Arc<Mutex<State>>);
+/// Git artifact. Consume its envelope through `BundleEnvelope::validate` for
+/// bounded fsck/archive/provenance validation (never authority or activation).
+pub struct BundleSink(Option<State>);
 
 /// A complete, hash-bound bundle envelope, NOT a validated Git artifact.
 /// The pack remains untrusted: connectivity, decompression limits, fsck, tree,
@@ -40,11 +95,91 @@ pub struct BundleEnvelope {
     objects: u32,
 }
 impl BundleEnvelope {
+    pub(crate) fn directory(&self) -> io::Result<&Path> {
+        self._sink
+            .0
+            .as_ref()
+            .map(|s| s.directory.as_path())
+            .ok_or_else(|| io::Error::other("quarantine discarded"))
+    }
+    pub(crate) fn metadata(&self) -> &crate::git_metadata::VerifiedRef {
+        &self._metadata
+    }
+    pub(crate) fn lease(&self) -> io::Result<File> {
+        self._sink
+            .0
+            .as_ref()
+            .and_then(|s| s._lease.as_ref())
+            .ok_or_else(|| io::Error::other("quarantine discarded"))?
+            .try_clone()
+    }
+
+    /// Consume raw custody. Success proves bounded Git/tree/archive validation,
+    /// not authority, anti-replay persistence, policy qualification or activation.
+    pub async fn validate(
+        self,
+        validator: &crate::validator::Validator,
+        limits: crate::validator::Limits,
+    ) -> Result<crate::validator::VerifiedBundle, crate::validator::ValidationError> {
+        crate::validator::validate(self, validator, limits).await
+    }
+
     pub fn object_count(&self) -> u32 {
         self.objects
     }
 }
 impl BundleSink {
+    /// Run once at service startup (also safe alongside live sinks). The private
+    /// parent directory's advisory lock serializes creation and sweeping; each
+    /// live artifact retains its own lease through finalization. Unrelated files
+    /// and symlinks are never followed or removed.
+    pub async fn sweep_orphans(parent: impl AsRef<Path>) -> io::Result<usize> {
+        let parent = parent.as_ref().to_owned();
+        tokio::task::spawn_blocking(move || {
+            let gate = File::open(&parent)?;
+            gate.lock()?;
+            let mut removed = 0;
+            for entry in fs::read_dir(&parent)? {
+                let entry = entry?;
+                let name = entry.file_name();
+                let Some(name) = name.to_str() else { continue };
+                let Some(id) = name.strip_prefix("git-") else {
+                    continue;
+                };
+                if id.len() != 64
+                    || !id
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                    || !entry.file_type()?.is_dir()
+                {
+                    continue;
+                }
+                let lease = entry.path().join("lease");
+                match fs::symlink_metadata(&lease) {
+                    Ok(meta) if meta.file_type().is_file() => {
+                        let lease = File::open(&lease)?;
+                        match lease.try_lock() {
+                            Ok(()) => {}
+                            Err(std::fs::TryLockError::WouldBlock) => continue,
+                            Err(std::fs::TryLockError::Error(error)) => return Err(error),
+                        }
+                        fs::remove_dir_all(entry.path())?;
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                        fs::remove_dir_all(entry.path())?;
+                    }
+                    Ok(_) => continue,
+                    Err(error) => return Err(error),
+                }
+                removed += 1;
+            }
+            gate.sync_all()?;
+            Ok(removed)
+        })
+        .await
+        .map_err(io::Error::other)?
+    }
+
     /// Consume write custody, bind the entire file hash and exact v2 header to
     /// pinned metadata, and reject the declared pack object count before import.
     /// This is only preflight; forged pack headers cannot establish Git validity.
@@ -76,8 +211,8 @@ impl BundleSink {
             let objects = {
                 let state = self
                     .0
-                    .lock()
-                    .map_err(|_| io::Error::other("quarantine lock poisoned"))?;
+                    .as_ref()
+                    .ok_or_else(|| io::Error::other("quarantine discarded"))?;
                 if state.failed || state.size != state.limit {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -165,6 +300,8 @@ impl BundleSink {
         }
         let parent = parent.as_ref().to_owned();
         tokio::task::spawn_blocking(move || {
+            let gate = File::open(&parent)?;
+            gate.lock()?;
             let directory = parent.join(format!("git-{}", iroh::SecretKey::generate().public()));
             let mut builder = fs::DirBuilder::new();
             #[cfg(unix)]
@@ -174,6 +311,12 @@ impl BundleSink {
             }
             builder.create(&directory)?;
             let initialized = (|| {
+                let lease = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create_new(true)
+                    .open(directory.join("lease"))?;
+                lease.lock()?;
                 let file = OpenOptions::new()
                     .write(true)
                     .create_new(true)
@@ -181,16 +324,17 @@ impl BundleSink {
                 file.sync_all()?;
                 File::open(&directory)?.sync_all()?;
                 File::open(&parent)?.sync_all()?;
-                Ok::<_, io::Error>(file)
+                Ok::<_, io::Error>((file, lease))
             })();
             match initialized {
-                Ok(file) => Ok(Self(Arc::new(Mutex::new(State {
+                Ok((file, lease)) => Ok(Self(Some(State {
                     directory,
                     file,
+                    _lease: Some(lease),
                     size: 0,
                     limit,
                     failed: false,
-                })))),
+                }))),
                 Err(error) => {
                     let _ = fs::remove_dir_all(directory);
                     Err(error)
@@ -209,20 +353,24 @@ impl DurableSink for BundleSink {
                 "invalid chunk size",
             ));
         }
+        let state = self
+            .0
+            .as_ref()
+            .ok_or_else(|| io::Error::other("quarantine discarded"))?;
+        let end = state
+            .size
+            .checked_add(bytes.len() as u64)
+            .filter(|n| *n <= state.limit)
+            .ok_or_else(|| io::Error::other("quarantine byte limit"))?;
         let bytes = bytes.to_owned();
-        let state = self.0.clone();
-        tokio::task::spawn_blocking(move || {
-            let mut state = state
-                .lock()
-                .map_err(|_| io::Error::other("quarantine lock poisoned"))?;
+        // Move exclusive custody into the worker. A cancelled future never
+        // restores the sink: the worker/result drops State after I/O finishes.
+        let mut state = self.0.take().expect("checked state");
+        let state = tokio::task::spawn_blocking(move || {
             if state.failed {
                 return Err(io::Error::other("quarantine write previously failed"));
             }
-            let end = state
-                .size
-                .checked_add(bytes.len() as u64)
-                .filter(|n| *n <= state.limit)
-                .ok_or_else(|| io::Error::other("quarantine byte limit"))?;
+
             // Poison on any I/O failure; a partial write is never retried as if
             // it were an all-or-nothing append.
             state.failed = true;
@@ -230,9 +378,11 @@ impl DurableSink for BundleSink {
             state.file.sync_data()?;
             state.size = end;
             state.failed = false;
-            Ok(())
+            Ok::<_, io::Error>(state)
         })
         .await
-        .map_err(io::Error::other)?
+        .map_err(io::Error::other)??;
+        self.0 = Some(state);
+        Ok(())
     }
 }

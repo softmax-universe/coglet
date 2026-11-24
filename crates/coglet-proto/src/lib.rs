@@ -6,4 +6,5 @@ pub mod scheduler;
 pub mod signing;
 pub mod transfer;
 pub mod transport;
+pub mod validator;
 pub mod wire;

@@ -80,11 +80,13 @@ server, mock hub and registry claims are not yet implemented.
   `quarantine::BundleSink` supplies a private bounded raw bundle file, with
   <=32 KiB writes fsynced off-reactor before returning. The limit is checked
   before writing; I/O failure poisons the file. Drop removes its generated
-  quarantine directory; an in-flight worker retains cleanup custody after future
-  cancellation. Callers MUST discard the sink after cancellation (never resume
-  that append/transfer). Startup orphan cleanup, Git validation/finalization and
-  expanded-object/disk/CPU limits are still missing. This raw sink does not
-  establish secure Git quarantine or code admission.
+  quarantine directory; an in-flight worker retains exclusive cleanup custody
+  after future cancellation. A cancelled append now permanently discards the
+  caller's sink. `BundleSink::sweep_orphans` is a startup operation on the private
+  parent: it removes only owned, unlocked directories, never live artifacts or
+  symlinks. Per-artifact leases are inherited by validation subprocesses; Drop
+  defers cleanup to the sweep if a descendant still retains the lease. This raw
+  sink alone does not establish Git validity or code admission.
   `BundleSink::check_envelope` consumes append custody and returns an immutable
   `BundleEnvelope` after exact self-contained v2 header/ref/tip binding, complete
   transfer SHA-256 verification and declared pack-object-count preflight. It reads
@@ -98,6 +100,47 @@ server, mock hub and registry claims are not yet implemented.
   Raw data-phase tests exercise a 150000-byte transfer and stalled durable
   consumption over real iroh on the hub ALPN, plus sink failure and source EOF.
   They do not establish push/fetch/restart/replay acceptance.
+- `BundleEnvelope::validate(&Validator, Limits)` consumes raw custody and returns
+  an immutable `VerifiedBundle`, which retains private bundle/repository custody
+  and exposes only the verified metadata. No pathname, ref-store write, working
+  tree or activation API is exported. Configure `Validator::new` with the trusted
+  **absolute installation path** of the matching `coglet-git-validator` binary;
+  never take executable paths from remote inputs. Install this binary with the
+  service (`cargo build -p coglet-proto --bin coglet-git-validator`). Validation
+  currently requires Linux, `/usr/bin/prlimit`, `/usr/bin/git`, advisory file
+  locks and a private durable filesystem with allocation units <=4 KiB; it fails
+  closed if the required mechanism is unavailable.
+  The helper checks the pack checksum and bounded zlib sizes before retaining
+  output, supports OFS/REF deltas (including forward REF bases), charges both
+  delta programs and reconstructed bytes, and rejects thin/cyclic packs. Every
+  stored object must be reachable from the one requested commit. Unsafe modes,
+  path components and attributes/modules/data are rejected throughout history;
+  logs commits allow only the `logs/` subtree. Expanded tip-tree multiplicity is
+  separately precharged before archive generation to stop tree-DAG bombs.
+  The helper writes its own precharged loose objects (never asks Git to import
+  attacker-compressed bytes), then runs read-only strict fsck and config-scrubbed
+  tar archive hashing. Code refs require a valid core Wasm module and canonical
+  shared `hub-build-record` whose rewritten digest binds the exact module.
+  This checks provenance structure/output binding, **not** retained build-input
+  availability, transform/policy qualification, current authority or promotion.
+  Defaults: 256 MiB expanded-pack budget, 100000 objects, delta depth 50,
+  256 MiB disk reservations, 30 aggregate CPU seconds and 30 seconds wall time.
+  The pack budget includes delta programs/results; expanded archive size has
+  its own ceiling of the same value, including conservative tar overhead. Disk
+  reservations prepay rounded file blocks and per-entry directory growth;
+  conservative reservations can reject before the physical ceiling is reached.
+  CPU uses three kernel per-process shares (helper, one fsck, one archive), with
+  unused integer remainder; configured totals must be 3..30 seconds. A 1 GiB
+  per-process address-space backstop also applies. The parent wall watchdog
+  kills the isolated process group on timeout/cancellation, keeps the leader
+  unreaped until signalling (no recycled-PGID signalling), and retains cleanup
+  custody through worker completion. No extra Git subprocess may be added
+  without revisiting this fixed-topology CPU accounting.
+  Named tests in `bundle_validator` cover real logs/code/delta bundles, all six
+  resource fences, malicious delta/expanded-result/tree-DAG bombs, strict fsck,
+  archive mismatch, forbidden paths/modes, Wasm/component/provenance rejection,
+  cancellation and private cleanup. `quarantine_cancel`, `quarantine_sweep` and
+  the inherited-lease unit regression cover the sink/recovery boundaries.
 - `git_metadata::{RefKind, VerifiedRef}` pins signed metadata to the requested
   purpose/ref and trusted hub/coglet. Hub refs use the hub key; published/logs
   refs use the coglet key, never the device key or untrusted signer. Pure
@@ -202,8 +245,9 @@ including waiting for unary FIN, remains bounded by the request deadline.
    lifetime; unary tasks and classification are bounded in this component.
 3. Git push/fetch multi-frame operation integration (the unary API does not
    implement git transfers), sender credit validation, signed metadata/watermark
-   checks before disclosure/credit, bounded Git quarantine/fsck/archive/provenance
-   verification, durable CAS/watermarks and boundary activation.
+   checks before disclosure/credit, integration of the isolated bounded validator,
+   durable CAS/watermarks and boundary activation. Validator component delivery
+   is not Session/end-to-end acceptance.
 4. Reference hub/device test endpoints and `coglet-mock::hub`, lifecycle/debug/
    inbox/action/relay behavior with durable receipts and stateful observations.
 5. Same `conformance/hub/` cases/oracles against reference and mock using the
