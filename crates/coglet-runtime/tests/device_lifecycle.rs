@@ -28,7 +28,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
     time::Duration,
@@ -69,9 +69,30 @@ fn key(seed: u8, role: u8) -> SecretKey {
     SecretKey::from_bytes(&bytes)
 }
 
-fn clock_fn(clock: &Clock) -> Arc<dyn Fn() -> Option<u64> + Send + Sync> {
-    let clock = clock.clone();
-    Arc::new(move || Some(clock.load(Ordering::SeqCst)))
+/// One-shot action run inside the handler's N-th trusted-clock sample.
+type Trap = Arc<Mutex<Option<(u64, Box<dyn FnOnce() + Send>)>>>;
+
+fn clock_fn(
+    clock: &Clock,
+    reads: &Clock,
+    trap: &Trap,
+) -> Arc<dyn Fn() -> Option<u64> + Send + Sync> {
+    let (clock, reads, trap) = (clock.clone(), reads.clone(), trap.clone());
+    Arc::new(move || {
+        let n = reads.fetch_add(1, Ordering::SeqCst) + 1;
+        let action = {
+            let mut armed = trap.lock().unwrap();
+            if armed.as_ref().is_some_and(|(at, _)| *at == n) {
+                armed.take().map(|(_, action)| action)
+            } else {
+                None
+            }
+        };
+        if let Some(action) = action {
+            action();
+        }
+        Some(clock.load(Ordering::SeqCst))
+    })
 }
 
 fn git(dir: &Path, args: &[&str]) -> Vec<u8> {
@@ -128,6 +149,10 @@ struct Env {
     _dir: tempfile::TempDir,
     root: PathBuf,
     clock: Clock,
+    /// Number of trusted-clock samples taken by the handler (deterministic
+    /// progress marker for a request blocked after its first authorization).
+    reads: Clock,
+    trap: Trap,
     hub: MockHub,
     hub_key: SecretKey,
     coglet_key: SecretKey,
@@ -150,6 +175,8 @@ impl Env {
         let dir = tempfile::tempdir()?;
         let root = dir.path().to_owned();
         let clock: Clock = Arc::new(AtomicU64::new(T0));
+        let reads: Clock = Arc::new(AtomicU64::new(0));
+        let trap: Trap = Arc::new(Mutex::new(None));
         let hub_key = key(seed, 1);
         let device_key = key(seed, 2);
         let coglet_key = key(seed, 3);
@@ -227,13 +254,15 @@ impl Env {
             config.clone(),
             Authority::open(&authority_path)?,
             validator_path(),
-            clock_fn(&clock),
+            clock_fn(&clock, &reads, &trap),
         )?;
         let (device_session, session, serve) = attach(&hub, &endpoint, &handler).await?;
         Ok(Self {
             _dir: dir,
             root,
             clock,
+            reads,
+            trap,
             hub,
             hub_key,
             coglet_key,
@@ -419,7 +448,7 @@ impl Env {
             self.config.clone(),
             Authority::open(self.root.join("authority.sqlite")).unwrap(),
             validator_path(),
-            clock_fn(&self.clock),
+            clock_fn(&self.clock, &self.reads, &self.trap),
         )
         .unwrap();
         self.serve = tokio::spawn(serve(self.device_session.clone(), handler.clone()));
@@ -1014,13 +1043,19 @@ async fn start_refuses_when_accepted_ref_advances_past_installed_commit() {
             applied(&env.simple("hub.start").await);
             assert_eq!(state(&env.simple("hub.status").await).0, "running");
         }
-        // The router later pushes a newer accepted commit; the installed identity
-        // (and its live commit) no longer matches current accepted state, so start
-        // must not resurrect either the old or the new commit.
+        // The router later pushes a newer accepted commit; start must not
+        // resurrect either the old or the new commit. Status is independent of the
+        // newest pushed bytes and still reports the original installed identity.
         let next = env.bundle(2, Some(&bundle.tip), &[("next.txt", b"n")]);
         assert_eq!(env.push(&next).await["result"]["state"], "queued");
         denied(&env.simple("hub.start").await);
-        denied(&env.simple("hub.status").await);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            (
+                if NATIVE { "running" } else { "stopped" }.into(),
+                json!(bundle.tip)
+            )
+        );
         let conflict = env.install_request(correlation(5000), &next.signed).await;
         assert_eq!(error_code(&conflict), "conflict", "{conflict}");
         // Stop is a safety operation: an accepted replacement must not prevent it.
@@ -1062,13 +1097,20 @@ async fn start_refuses_tampered_retained_bundle_bytes() {
         let started = env.simple("hub.start").await;
         assert_eq!(started["type"], "error", "{started}");
         assert_ne!(started["error"]["code"], "applied");
-        // Not running: install/status re-verify the same retained bytes too.
-        assert_eq!(env.simple("hub.status").await["type"], "error");
+        // Status reads only the original private WAL setup, so tampered retained
+        // bytes do not hide the installed identity.
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
         assert_eq!(env.simple("hub.start").await["type"], "error");
         // After a restart the corrupt bytes still cannot be revalidated.
         env.restart_handler().await;
         assert_eq!(env.simple("hub.start").await["type"], "error");
-        assert_eq!(env.simple("hub.status").await["type"], "error");
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
     });
 }
 
@@ -1076,7 +1118,7 @@ async fn start_refuses_tampered_retained_bundle_bytes() {
 async fn start_refuses_after_authority_loses_the_accepted_ref() {
     timed!(async {
         let mut env = Env::new(0x30, Options::default()).await.unwrap();
-        let (_bundle, _) = pushed_and_installed(&mut env).await;
+        let (bundle, _) = pushed_and_installed(&mut env).await;
         applied(&env.simple("hub.stop").await);
         // The WAL says installed, but the Authority DB no longer has an accepted
         // ref (e.g. replaced/restored): start must not trust the WAL alone.
@@ -1092,7 +1134,107 @@ async fn start_refuses_after_authority_loses_the_accepted_ref() {
             String::from_utf8_lossy(&out.stderr)
         );
         denied(&env.simple("hub.start").await);
-        denied(&env.simple("hub.status").await);
+        // Status needs exact current local authority, not the accepted ref.
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+    });
+}
+
+/// Take the real service mutex exactly when the request samples the clock for
+/// its in-callback gate (after runtime_boundary's two samples, i.e. after the
+/// full initial authority check and while the SQL guard is held). The handler
+/// then blocks on the service mutex; advance the trusted clock to `expiry` and
+/// release. Returns the reply.
+async fn expire_while_service_locked(env: &mut Env, request: Value, expiry: u64) -> Value {
+    let shared = env
+        .handler
+        .as_ref()
+        .unwrap()
+        .share_service(&env.coglet)
+        .expect("installed service");
+    let (release_tx, release_rx) = std::sync::mpsc::channel::<()>();
+    let holder = Arc::new(Mutex::new(None));
+    let holder_slot = holder.clone();
+    let target = env.reads.load(Ordering::SeqCst) + 3;
+    *env.trap.lock().unwrap() = Some((
+        target,
+        Box::new(move || {
+            let (locked_tx, locked_rx) = std::sync::mpsc::channel();
+            *holder_slot.lock().unwrap() = Some(std::thread::spawn(move || {
+                let guard = shared.lock().unwrap();
+                locked_tx.send(()).unwrap();
+                release_rx.recv().unwrap();
+                drop(guard);
+            }));
+            locked_rx.recv().unwrap();
+        }),
+    ));
+    let session = env.session.clone();
+    let call = tokio::spawn(async move { session.request(request).await });
+    for _ in 0..4000 {
+        if holder.lock().unwrap().is_some() && env.reads.load(Ordering::SeqCst) >= target {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    assert!(
+        holder.lock().unwrap().is_some() && env.reads.load(Ordering::SeqCst) >= target,
+        "request never reached the in-callback gate"
+    );
+    // Give the authorized request time to reach its service-mutex wait; the
+    // outcome does not depend on this (any later acquire is rechecked).
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(!call.is_finished(), "request must be blocked on the mutex");
+    env.clock.store(expiry, Ordering::SeqCst);
+    release_tx.send(()).unwrap();
+    holder.lock().unwrap().take().unwrap().join().unwrap();
+    let reply = call.await.unwrap().expect("terminal frame");
+    env.clock.store(T0, Ordering::SeqCst);
+    reply
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn delegation_expiring_while_waiting_for_service_mutex_denies_every_method() {
+    timed!(async {
+        let mut env = Env::new(0x32, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        for method in ["hub.start", "hub.status", "hub.install", "hub.stop"] {
+            // A running coglet makes a wrongly applied stop observable.
+            if NATIVE && method == "hub.stop" {
+                applied(&env.simple("hub.start").await);
+            }
+            let shared = env
+                .handler
+                .as_ref()
+                .unwrap()
+                .share_service(&env.coglet)
+                .unwrap();
+            let before = shared.lock().unwrap().managed_status();
+            let request = if method == "hub.install" {
+                let delegation = env.delegation();
+                env.request(
+                    method,
+                    json!({"initial":bundle.signed,"delegation":delegation}),
+                )
+            } else {
+                env.request(method, json!({}))
+            };
+            // Exactly the delegation expiry: grants/scopes are still valid, so
+            // only the signed delegation window can deny.
+            let reply = expire_while_service_locked(&mut env, request, DELEGATION_EXPIRES).await;
+            denied(&reply);
+            assert_eq!(shared.lock().unwrap().managed_status(), before, "{method}");
+        }
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            (
+                if NATIVE { "running" } else { "stopped" }.into(),
+                json!(bundle.tip)
+            )
+        );
+        applied(&env.simple("hub.stop").await);
     });
 }
 
@@ -1218,10 +1360,21 @@ async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
         );
         // Release all handler/service owners before opening the private WAL;
         // the runtime deliberately enforces a single writer even for this read.
+        // Session::serve drops its per-stream task set on abort. Those aborts
+        // release handler clones asynchronously; wait for actual coordinator
+        // retirement rather than racing its single-writer lock.
+        let retired = Arc::downgrade(&recovered);
         drop(recovered);
         env.serve.abort();
         let _ = (&mut env.serve).await;
         drop(env.handler.take());
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while retired.upgrade().is_some() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("all Session request tasks release the coordinator");
         let wal = env
             .config
             .wal_root

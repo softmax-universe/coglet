@@ -7,6 +7,11 @@ impl Authority {
     /// accepted-ref APIs (the same write lock is held). It receives the current
     /// operator-provisioned delegation, not a proof chosen by the remote caller.
     /// The callback owns its durable runtime receipt; no SQL mutation is implied.
+    /// It also receives a `recheck` gate that samples trusted time again and
+    /// fails closed unless that time is still inside the originally verified
+    /// grant, scope and signed delegation windows. Call it immediately before
+    /// each externally visible effect, after any wait for another lock or
+    /// expensive work: the SQL guard stays held while the callback runs.
     #[allow(clippy::too_many_arguments)]
     pub fn runtime_boundary<T>(
         &self,
@@ -18,7 +23,10 @@ impl Authority {
         delegation_generation: u64,
         expected_ref: Option<&Value>,
         clock: impl Fn() -> Option<u64>,
-        apply: impl FnOnce(&Value) -> std::result::Result<T, String>,
+        apply: impl FnOnce(
+            &Value,
+            &dyn Fn() -> std::result::Result<u64, String>,
+        ) -> std::result::Result<T, String>,
     ) -> std::result::Result<T, String> {
         let denied = || "permission_denied".to_owned();
         if grant.target.as_deref() != Some(coglet)
@@ -76,18 +84,21 @@ impl Authority {
                 return Err(denied());
             }
         }
+        let delegation_expiry = signed["statement"]["expires"].as_u64();
+        let recheck = || -> std::result::Result<u64, String> {
+            let fresh = clock().ok_or_else(denied)?;
+            if fresh < now
+                || fresh >= grant_expiry
+                || fresh >= scope_expiry
+                || !delegation_expiry.is_some_and(|e| fresh < e)
+            {
+                return Err(denied());
+            }
+            Ok(fresh)
+        };
         // Re-sample trusted time after signature work, immediately before apply.
-        let fresh = clock().ok_or_else(denied)?;
-        if fresh < now
-            || fresh >= grant_expiry
-            || fresh >= scope_expiry
-            || !signed["statement"]["expires"]
-                .as_u64()
-                .is_some_and(|e| fresh < e)
-        {
-            return Err(denied());
-        }
-        let result = apply(&signed);
+        recheck()?;
+        let result = apply(&signed, &recheck);
         drop(tx); // rollback read-only transaction releases the cross-connection guard
         result
     }

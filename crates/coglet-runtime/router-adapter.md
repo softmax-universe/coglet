@@ -20,7 +20,9 @@ This is the device path, not the CLI→router deploy path or full protocol quali
   actor/ticket, method, generation, delegation and trusted-expiry checks and the
   synchronous runtime WAL application. Install requires the exact current proof;
   install/start also compare the accepted ref inside this guard. Other authority
-  connections cannot revoke or replace pins halfway through application.
+  connections cannot revoke or replace pins halfway through application. The
+  trusted clock and request deadline are rechecked after coordinator-lock waits
+  and native-engine preparation, immediately before application or disclosure.
 - Start revalidates the signed bundle, manifest grants and explicit kill-switch
   JSON `{ "latched": false }`; absent, unreadable or malformed kill state refuses
   start. It enables the qualified native engine and persists running. Builds

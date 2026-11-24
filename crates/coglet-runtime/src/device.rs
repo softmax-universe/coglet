@@ -32,6 +32,10 @@ use std::{
 pub const MAX_CODE_BYTES: usize = 8 * 1024 * 1024;
 const QUEUE: usize = 128;
 
+/// Immediate-before-effect gate: request deadline plus trusted-time recheck
+/// against the authority windows captured under the SQL guard.
+type Gate<'a> = &'a dyn Fn() -> Result<u64>;
+
 /// Local operator pins. Private keys never belong here.
 #[derive(Clone, Debug)]
 pub struct DeviceConfig {
@@ -282,6 +286,7 @@ impl DeviceHandler {
         request: &Value,
         setup: &Value,
         proof: &Value,
+        gate: Gate<'_>,
     ) -> Result<Value> {
         if request["params"]["delegation"] != *proof {
             return Err("permission_denied".into());
@@ -315,16 +320,24 @@ impl DeviceHandler {
             }
         });
         let service = self.open_service(coglet, setup)?;
-        let receipt = service
-            .lock()
-            .map_err(|_| "unavailable".to_owned())?
-            .managed_install(&identity, request["correlation_id"].as_str().unwrap())?;
+        let mut locked = service.lock().map_err(|_| "unavailable".to_owned())?;
+        // The service mutex wait may outlive authority/request windows.
+        gate()?;
+        let receipt =
+            locked.managed_install(&identity, request["correlation_id"].as_str().unwrap())?;
+        drop(locked);
         validate("hub-mutation-receipt", &receipt)?;
         self.start_adapter(coglet);
         Ok(receipt)
     }
 
-    fn apply_start(&self, coglet: &str, request: &Value, setup: &Value) -> Result<Value> {
+    fn apply_start(
+        &self,
+        coglet: &str,
+        request: &Value,
+        setup: &Value,
+        gate: Gate<'_>,
+    ) -> Result<Value> {
         admit_manifest(
             &setup["manifest"],
             &self.inner.config.catalog,
@@ -336,7 +349,13 @@ impl DeviceHandler {
         if locked.managed_identity().is_none() {
             return Err("permission_denied".into());
         }
+        // Waiting for the service mutex may outlive the authority windows.
+        gate()?;
         self.enable_native(coglet, &mut locked)?;
+        // enable_native can be expensive and the kill switch may latch while
+        // waiting: re-read both immediately before the effect.
+        self.require_kill_clear()?;
+        gate()?;
         locked.managed_start()?;
         let receipt = json!({"operation_id":request["correlation_id"],"state":"applied",
             "step":locked.managed_status()["step"],"error":Value::Null});
@@ -401,9 +420,15 @@ impl DeviceHandler {
         }
     }
 
-    fn apply_stop(&self, coglet: &str, request: &Value, now: u64, setup: &Value) -> Result<Value> {
-        let service = self.open_service(coglet, setup)?;
+    fn apply_stop(&self, coglet: &str, request: &Value, gate: Gate<'_>) -> Result<Value> {
+        // Original private setup (never the newest pushed ref), read only after
+        // authorization, under the same blocking authority boundary.
+        let setup = self
+            .original_setup(coglet)?
+            .ok_or_else(|| "permission_denied".to_owned())?;
+        let service = self.open_service(coglet, &setup)?;
         let mut locked = service.lock().map_err(|_| "unavailable".to_owned())?;
+        let now = gate()?;
         locked.managed_stop(now)?;
         let receipt = json!({"operation_id":request["correlation_id"],"state":"applied",
             "step":locked.managed_status()["step"],"error":Value::Null});
@@ -411,10 +436,12 @@ impl DeviceHandler {
         Ok(receipt)
     }
 
-    fn apply_status(&self, coglet: &str, setup: Option<&Value>) -> Result<Value> {
-        let service = match (self.share_service(coglet), setup) {
+    fn apply_status(&self, coglet: &str, gate: Gate<'_>) -> Result<Value> {
+        // Status reads the original private setup/WAL like stop; it never needs
+        // the newest pushed (or retained-bundle) bytes.
+        let service = match (self.share_service(coglet), self.original_setup(coglet)?) {
             (Some(service), _) => service,
-            (None, Some(setup)) => self.open_service(coglet, setup)?,
+            (None, Some(setup)) => self.open_service(coglet, &setup)?,
             (None, None) => {
                 let status = json!({"state":"stopped","live_commit":Value::Null,"step":0,"pending":0,"error":Value::Null});
                 validate("hub-status", &status)?;
@@ -422,12 +449,37 @@ impl DeviceHandler {
             }
         };
         let locked = service.lock().map_err(|_| "unavailable".to_owned())?;
+        gate()?;
         if locked.managed_identity().is_none() {
             return Err("permission_denied".into());
         }
         let status = locked.managed_status();
         validate("hub-status", &status)?;
         Ok(status)
+    }
+
+    /// Original private setup (never the newest pushed ref). Blocking I/O.
+    fn original_setup(&self, coglet: &str) -> Result<Option<Value>> {
+        if let Some(service) = self.share_service(coglet) {
+            return Ok(Some(
+                service
+                    .lock()
+                    .map_err(|_| "unavailable".to_owned())?
+                    .managed_setup()
+                    .clone(),
+            ));
+        }
+        let path = self.wal(coglet);
+        if !path.is_file() {
+            return Ok(None);
+        }
+        let store = DurableStore::open(&path)?;
+        store
+            .state()
+            .and_then(|s| s.pointer("/runtime/initial_setup"))
+            .cloned()
+            .map(Some)
+            .ok_or_else(|| "unavailable".into())
     }
 
     fn start_adapter(&self, coglet: &str) {
@@ -533,11 +585,10 @@ impl DeviceHandler {
                 pin.delegation_generation,
                 Some(&request["params"]["initial"]),
                 handler.clock_fn(),
-                |proof| {
-                    if tokio::time::Instant::now() >= context.deadline {
-                        return Err("unavailable".into());
-                    }
-                    handler.apply_install(&coglet, &request, &setup, proof)
+                |proof, recheck| {
+                    let gate = || deadline_gate(&context, recheck);
+                    gate()?;
+                    handler.apply_install(&coglet, &request, &setup, proof, &gate)
                 },
             )
         })
@@ -570,14 +621,13 @@ impl DeviceHandler {
                 pin.delegation_generation,
                 Some(&identity["initial"]),
                 handler.clock_fn(),
-                |proof| {
-                    if tokio::time::Instant::now() >= context.deadline {
-                        return Err("unavailable".into());
-                    }
+                |proof, recheck| {
+                    let gate = || deadline_gate(&context, recheck);
+                    gate()?;
                     if identity.get("delegation") != Some(proof) {
                         return Err("permission_denied".into());
                     }
-                    handler.apply_start(&coglet, &request, &setup)
+                    handler.apply_start(&coglet, &request, &setup, &gate)
                 },
             )
         })
@@ -592,33 +642,14 @@ impl DeviceHandler {
         coglet: String,
         pin: TargetPin,
     ) -> Result<Value> {
-        // Stopping must not require accepting or executing replacement code.
-        // Recover the original pinned setup from the private WAL, not the newest
-        // pushed ref (which may have advanced or become unavailable).
-        let setup = if let Some(service) = self.share_service(&coglet) {
-            service
-                .lock()
-                .map_err(|_| "unavailable")?
-                .managed_setup()
-                .clone()
-        } else {
-            let path = self.wal(&coglet);
-            if !path.is_file() {
-                return Err("permission_denied".into());
-            }
-            let store = DurableStore::open(&path)?;
-            store
-                .state()
-                .and_then(|s| s.pointer("/runtime/initial_setup"))
-                .cloned()
-                .ok_or("unavailable")?
-        };
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
+            // Stopping must not require accepting or executing replacement code.
+            // Recover the original pinned setup from the private WAL (blocking
+            // I/O and a possibly contended service mutex), not the newest ref.
             if tokio::time::Instant::now() >= context.deadline {
                 return Err("unavailable".into());
             }
-            let now = (handler.inner.clock)().ok_or("permission_denied")?;
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.stop", &coglet, pin.grant_generation);
             handler.inner.authority.runtime_boundary(
@@ -630,7 +661,11 @@ impl DeviceHandler {
                 pin.delegation_generation,
                 None,
                 handler.clock_fn(),
-                |_| handler.apply_stop(&coglet, &request, now, &setup),
+                |_, recheck| {
+                    let gate = || deadline_gate(&context, recheck);
+                    gate()?;
+                    handler.apply_stop(&coglet, &request, &gate)
+                },
             )
         })
         .await
@@ -644,9 +679,10 @@ impl DeviceHandler {
         coglet: String,
         pin: TargetPin,
     ) -> Result<Value> {
-        let setup = self.recover_setup(&coglet).await?;
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
+            // Status reports the installed identity from the original private
+            // setup; it never depends on the newest pushed/verified bytes.
             if tokio::time::Instant::now() >= context.deadline {
                 return Err("unavailable".into());
             }
@@ -661,7 +697,11 @@ impl DeviceHandler {
                 pin.delegation_generation,
                 None,
                 handler.clock_fn(),
-                |_| handler.apply_status(&coglet, setup.as_ref().map(|(_, setup)| setup)),
+                |_, recheck| {
+                    let gate = || deadline_gate(&context, recheck);
+                    gate()?;
+                    handler.apply_status(&coglet, &gate)
+                },
             )
         })
         .await
@@ -689,6 +729,16 @@ fn bind_adapter(adapter: AdapterConfig, service: Arc<Mutex<RuntimeService>>) -> 
         let _ = (adapter, service);
         Err("adapter listener requires a Unix socket transport".into())
     }
+}
+
+fn deadline_gate(
+    context: &RequestContext,
+    recheck: &dyn Fn() -> std::result::Result<u64, String>,
+) -> Result<u64> {
+    if tokio::time::Instant::now() >= context.deadline {
+        return Err("unavailable".into());
+    }
+    recheck()
 }
 
 fn create_private_dir(path: &Path) -> Result<()> {
