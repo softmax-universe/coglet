@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Softmax app</title>
+<style>
+:root {
+  --paper: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b6558;
+  --rule: #e2dccd; --accent: #0b6e69; --accent-soft: #d9ece9;
+  --code-bg: #fbf9f3; --code-ink: #2a2721;
+  --kw: #8a3b12; --cls: #0b6e69; --fn: #1f4e8c; --str: #5d6b1e; --doc: #6b6558;
+  --num: #8c2f5a; --deco: #7a4fa3; --cmt: #9a9384;
+  --frozen-bg: #dfe9f5; --frozen-ink: #1f4e8c;
+  --adr-bg: #f3e6c8; --adr-ink: #7a5200;
+  --draft-bg: #e9e4f3; --draft-ink: #5b3f8f;
+  --proposed-bg: #d9ece9; --proposed-ink: #0b5a56;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161a; --panel: #1b1e24; --ink: #e9e6df; --muted: #9a968c;
+    --rule: #2c3038; --accent: #5cc8bf; --accent-soft: #17302f;
+    --code-bg: #171a1f; --code-ink: #dcd8cf;
+    --kw: #e8a06a; --cls: #5cc8bf; --fn: #8fb8f0; --str: #b9c97a; --doc: #9a968c;
+    --num: #e58fb6; --deco: #c3a2e8; --cmt: #6f6b62;
+    --frozen-bg: #1c2b40; --frozen-ink: #9cc2f2;
+    --adr-bg: #3a2f14; --adr-ink: #ecc56b;
+    --draft-bg: #2b2440; --draft-ink: #c3a2e8;
+    --proposed-bg: #17302f; --proposed-ink: #7fdcd3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--rule); background: var(--panel); }
+nav .brand { font: 600 1.15rem/1.2 var(--serif); letter-spacing: .01em; margin-bottom: .2rem; }
+nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+nav input { width: 100%; padding: .45rem .6rem; margin-bottom: 1rem; font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+nav input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav ul { list-style: none; margin: 0; padding: 0; }
+nav li.h2 > a { display: block; margin-top: .9rem; padding: .15rem .5rem; font-weight: 600;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+nav li.h3 > a { display: block; padding: .12rem .5rem .12rem .9rem; font-size: .84rem;
+  color: var(--muted); border-left: 2px solid transparent; }
+nav li.h3 > a code { font: inherit; font-family: var(--mono); font-size: .78rem; }
+nav a:hover { text-decoration: none; color: var(--accent); }
+nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+main { padding: 3rem clamp(1rem, 4vw, 4rem) 6rem; max-width: 62rem; }
+h1 { font: 600 2.6rem/1.1 var(--serif); margin: 0 0 1rem; letter-spacing: -.01em; }
+h2 { font: 600 1.75rem/1.2 var(--serif); margin: 4rem 0 .8rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink); }
+h3 { font: 600 1.05rem/1.3 var(--sans); margin: 2.4rem 0 .6rem; display: flex;
+  flex-wrap: wrap; align-items: center; gap: .5rem; }
+h3 code { font-family: var(--mono); font-size: 1rem; background: none; padding: 0; color: var(--cls); }
+p, li { max-width: 46rem; }
+p code, li code, td code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft);
+  color: var(--ink); padding: .08em .35em; border-radius: 4px; white-space: nowrap; }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+  padding: .3em .6em; border-radius: 99px; white-space: nowrap; }
+.badge.frozen { background: var(--frozen-bg); color: var(--frozen-ink); }
+.badge.adr { background: var(--adr-bg); color: var(--adr-ink); }
+.badge.draft { background: var(--draft-bg); color: var(--draft-ink); }
+.badge.proposed { background: var(--proposed-bg); color: var(--proposed-ink); }
+.headerlink { opacity: 0; margin-left: .2rem; color: var(--muted); font-weight: 400; }
+h2:hover .headerlink, h3:hover .headerlink { opacity: 1; }
+.codehilite { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 8px; margin: .8rem 0 1.2rem; overflow-x: auto; }
+.codehilite pre { margin: 0; padding: 1rem 1.2rem; font: 13.5px/1.6 var(--mono); color: var(--code-ink); }
+.codehilite .k, .codehilite .kn, .codehilite .kc, .codehilite .kd, .codehilite .kt, .codehilite .ow { color: var(--kw); }
+.codehilite .nc, .codehilite .nn { color: var(--cls); font-weight: 600; }
+.codehilite .nf, .codehilite .fm { color: var(--fn); font-weight: 600; }
+.codehilite .nd { color: var(--deco); }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sr { color: var(--str); }
+.codehilite .sd { color: var(--doc); font-family: var(--sans); font-size: 13.5px; }
+.codehilite .mi, .codehilite .mf, .codehilite .mh { color: var(--num); }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: var(--cmt); font-style: italic; }
+.codehilite .nb, .codehilite .bp { color: var(--fn); }
+.tablewrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--ink); padding: .5rem .8rem .5rem 0; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: .55rem .8rem .55rem 0; vertical-align: top; }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+ol, ul { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+.idl .nc { color: var(--cls); font-weight: 600; }
+.idl .nf { color: var(--fn); font-weight: 600; }
+.idl .na { color: var(--code-ink); }
+.idl .ty { color: var(--kw); }
+.idl .op { color: var(--str); }
+.idl .kw, .idl .rt { color: var(--deco); }
+.idl .sd { color: var(--doc); font-family: var(--sans); }
+.idl .c { color: var(--cmt); font-style: italic; }
+main p > img { display: block; max-width: min(100%, 34rem); height: auto; margin: 1rem 0; border-radius: 14px; }
+figure.diagram { margin: 1.4rem 0 .4rem; }
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram + p { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+nav .pages { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+nav .pages a { padding: .35rem .6rem; font-size: .8rem; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 6px; color: var(--muted); }
+nav .pages a.here { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); max-height: 45vh; }
+  h1 { font-size: 2rem; }
+}
+@media print { nav { display: none; } .layout { display: block; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">The Softmax app</div>
+  <div class="sub">Generated from softmax-app.md. Do not edit.</div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html" class="here">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
+  <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
+  <ul>
+  <li class="h2"><a href="#what-the-user-sees">What the user sees</a></li><li class="h2"><a href="#capabilities-it-provides">Capabilities it provides</a></li><li class="h2"><a href="#speech">Speech</a></li><li class="h3"><a href="#what-stays-the-same-in-both">What stays the same in both</a></li><li class="h3"><a href="#with-a-realtime-provider">With a realtime provider</a></li><li class="h3"><a href="#with-models-on-this-mac">With models on this Mac</a></li><li class="h3"><a href="#what-a-coglet-sees">What a coglet sees</a></li><li class="h3"><a href="#choosing-and-falling-back">Choosing and falling back</a></li><li class="h3"><a href="#still-to-decide">Still to decide</a></li><li class="h2"><a href="#it-runs-coglets-locally">It runs coglets locally</a></li><li class="h2"><a href="#capability-detail">Capability detail</a></li><li class="h3"><a href="#softmax-app-adapter-speechcontrol">Softmax app adapter: <code>speech.control</code></a></li><li class="h3"><a href="#softmax-app-adapter-expressioncontrol">Softmax app adapter: <code>expression.control</code></a></li>
+  </ul>
+</nav>
+<main>
+<h1 id="the-softmax-app">The Softmax app<a class="headerlink" href="#the-softmax-app" title="Permanent link">#</a></h1>
+<p>What the user installs. Part of the <a href="index.html">cogent design</a>.</p>
+<p>It is one app that does three things:</p>
+<ol>
+<li><strong>It is the user's way in.</strong> A menu bar icon, a floating orb, and
+   push-to-talk.</li>
+<li><strong>It provides capabilities.</strong> Through its adapter, coglets can listen, speak,
+   change the orb's expression and add to the menu.</li>
+<li><strong>It has a runtime and runs coglets locally,</strong> on the user's own machine.</li>
+</ol>
+<h2 id="what-the-user-sees">What the user sees<a class="headerlink" href="#what-the-user-sees" title="Permanent link">#</a></h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="The Softmax app on a Mac: its icon in the menu bar, its menu open, a small indicator inside the Blender window showing the cogent is there too, and the floating orb at the edge of the screen.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="softmax-app-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="softmax-app-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="softmax-app-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="softmax-app-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="softmax-app-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="softmax-app-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="softmax-app-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="softmax-app-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="439" rx="12" class="dg-bg"/>
+<rect x="0.5" y="0.5" width="959" height="439" rx="12" fill="#2F4038"/>
+<path d="M12.5 0.5H947.5A12 12 0 0 1 959.5 12.5V26H0.5V12.5A12 12 0 0 1 12.5 0.5Z" fill="#E9EEEB"/>
+<text x="18" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="700" fill="#1D1D1F" text-anchor="start">Blender</text>
+<text x="86" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">File</text>
+<text x="142" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Edit</text>
+<text x="198" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Render</text>
+<text x="254" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Window</text>
+<text x="310" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Help</text>
+<text x="944" y="18" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="end">Mon Nov 23  9:41 AM</text>
+<rect x="754" y="3" width="30" height="20" rx="4" fill="#000" fill-opacity="0.14"/>
+<g transform="translate(760 4)"><rect x="3" y="4" width="12" height="10" rx="5" fill="none" stroke="#1D1D1F" stroke-width="1.5"/><rect x="6" y="7" width="1.5" height="3" rx=".75" fill="#1D1D1F"/><rect x="10.5" y="7" width="1.5" height="3" rx=".75" fill="#1D1D1F"/></g>
+<rect x="30" y="52" width="520" height="350" rx="9" fill="#3D3D3D" stroke="#000" stroke-opacity="0.5" stroke-width="0.6"/>
+<path d="M39 52H541A9 9 0 0 1 550 61V78H30V61A9 9 0 0 1 39 52Z" fill="#2B2B2B"/>
+<circle cx="46" cy="65" r="5.5" fill="#FF5F57"/>
+<circle cx="64" cy="65" r="5.5" fill="#FEBC2E"/>
+<circle cx="82" cy="65" r="5.5" fill="#28C840"/>
+<text x="290" y="70" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="600" fill="#D6D6D6" text-anchor="middle">torus.blend</text>
+<g transform="translate(70 96) scale(0.7)"><path d="M20 330H620M60 290H580M100 258H540M134 232H506" stroke="#4E4E4E" stroke-width="1.4"/><path d="M320 220L40 400M320 220L180 400M320 220V400M320 220L460 400M320 220L600 400" stroke="#4E4E4E" stroke-width="1.4"/><ellipse cx="320" cy="262" rx="176" ry="84" fill="#7C8681"/><ellipse cx="320" cy="250" rx="176" ry="84" fill="#A9B2AD"/><ellipse cx="320" cy="238" rx="74" ry="26" fill="#5C6661"/><ellipse cx="320" cy="244" rx="70" ry="22" fill="#3D3D3D"/><ellipse cx="320" cy="250" rx="176" ry="84" fill="none" stroke="#F5A623" stroke-width="2.6"/></g>
+<rect x="696" y="30" width="250" height="220" rx="9" fill="#F6F6F6" stroke="#000" stroke-opacity="0.22" stroke-width="0.6"/>
+<rect x="708" y="40" width="30" height="30" rx="7" fill="#101917"/>
+<g transform="translate(713 45) scale(0.03333333333333333)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+<text x="748" y="53" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="600" fill="#1D1D1F" text-anchor="start">Softmax</text>
+<text x="748" y="68" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="11" font-weight="400" fill="#5F5F64" text-anchor="start">Ready · hold Right Option to talk</text>
+<path d="M711 84.5H931" stroke="#000" stroke-opacity="0.12"/>
+<rect x="701" y="90" width="240" height="22" rx="5" fill="#0A6CFF"/>
+<text x="725" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#FFFFFF" text-anchor="start">Open Conversation</text>
+<text x="931" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#FFFFFF" text-anchor="end">⌥Space</text>
+<path d="M709 124l2.7 2.8 5.3-6.4" fill="none" stroke="#1D1D1F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="725" y="127" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Show Orb</text>
+<text x="725" y="149" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Mute Microphone</text>
+<path d="M711 161.5H931" stroke="#000" stroke-opacity="0.12"/>
+<text x="725" y="182" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Pause Softmax</text>
+<path d="M711 194.5H931" stroke="#000" stroke-opacity="0.12"/>
+<text x="725" y="215" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Settings…</text>
+<text x="931" y="215" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#5F5F64" text-anchor="end">⌘,</text>
+<text x="725" y="237" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#1D1D1F" text-anchor="start">Quit Softmax</text>
+<text x="931" y="237" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="13" font-weight="400" fill="#5F5F64" text-anchor="end">⌘Q</text>
+<rect x="408" y="88" width="132" height="26" rx="13" fill="#101917" fill-opacity="0.9" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="0.6"/>
+<g transform="translate(414 92) scale(0.03)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+<text x="438" y="105" font-family="-apple-system,'SF Pro Text','Helvetica Neue',system-ui,sans-serif" font-size="11" font-weight="600" fill="#ECF5EF" text-anchor="start">Softmax is here</text>
+<circle cx="529" cy="101" r="3.2" fill="#87EFBC"/>
+<circle cx="908" cy="362" r="32" fill="#101917" stroke="#FFFFFF" stroke-opacity="0.16"/>
+<g transform="translate(886 340) scale(0.07333333333333333)"><g transform="translate(-212 -212)"><rect x="212" y="212" width="600" height="600" rx="260" fill="#87EFBC"/><rect x="360" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="606" y="390" width="58" height="80" rx="29" fill="#101917"/><rect x="428" y="570" width="168" height="16" rx="8" fill="#101917"/></g></g>
+</svg>
+</figure>
+<p><em>A mock-up using the real app's menu bar icon and face from <code>apps/softmax-mac</code>.
+The icon lives in the menu bar; the orb floats over whatever the user is
+working in.</em></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What it is for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Menu bar icon</td>
+<td>Always there. Shows whether the app is listening, and opens the menu.</td>
+</tr>
+<tr>
+<td>Menu</td>
+<td>Kept short: open the conversation, show or hide the orb, mute, pause, settings, quit. Connected apps and the list of running coglets are not here; they are in Settings.</td>
+</tr>
+<tr>
+<td>In-app indicator</td>
+<td>A small badge in the corner of a connected app's window, showing that the cogent is in there with you.</td>
+</tr>
+<tr>
+<td>Floating orb</td>
+<td>The face the user talks to. It shows expression (listening, thinking, speaking) and what it just said.</td>
+</tr>
+<tr>
+<td>Push-to-talk</td>
+<td>Hold a key to speak. Nothing is heard unless it is held.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="capabilities-it-provides">Capabilities it provides<a class="headerlink" href="#capabilities-it-provides" title="Permanent link">#</a></h2>
+<p>The app's adapter exposes the machine's microphone, speaker and screen presence
+to the coglets it runs. Each is granted separately.</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>What a coglet can do</th>
+<th>What it is told</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Listening</td>
+<td>Nothing to do; the app captures and transcribes.</td>
+<td>When the user starts and stops speaking, and the transcript.</td>
+</tr>
+<tr>
+<td>Speaking</td>
+<td>Say a chunk of text, stop, give a short acknowledgement.</td>
+<td>How much has actually been played, and when the user interrupts.</td>
+</tr>
+<tr>
+<td>Orb</td>
+<td>Set the orb's expression.</td>
+<td>Its current expression.</td>
+</tr>
+<tr>
+<td>Push-to-talk</td>
+<td>Nothing to do.</td>
+<td>When the key is pressed and released.</td>
+</tr>
+<tr>
+<td>Menu</td>
+<td>Add and remove menu items.</td>
+<td>Which item the user chose.</td>
+</tr>
+<tr>
+<td>Connected apps</td>
+<td>Ask to connect an app the user has installed.</td>
+<td>Which apps are installed, and which the user agreed to connect.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Listening, speaking and the orb are defined in detail below. Push-to-talk,
+the menu and connected apps are not defined yet.</p>
+<p>Voice never passes through Softmax infrastructure. The app transcribes locally
+or sends audio straight to the speech provider. The app also stops speaking the moment the user talks over it, without
+waiting for any coglet.</p>
+<h2 id="speech">Speech<a class="headerlink" href="#speech" title="Permanent link">#</a></h2>
+<p>Speech is the main way in, so it has to feel instant. Two speech engines are
+planned. Coglets see the same events from either one, so they can be swapped
+without changing any coglet.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-label="Two ways to do speech. With a realtime provider, audio goes straight from the Softmax app to the provider and the Face coglet gets transcripts and tool calls. With local models, audio never leaves the Mac.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="speech-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="speech-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="speech-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="speech-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="speech-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="speech-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="speech-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="speech-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="499" rx="12" class="dg-bg"/>
+<text x="30" y="34" text-anchor="start" class="dg-cap">REALTIME PROVIDER (FIRST)</text>
+<text x="930" y="34" text-anchor="end" class="dg-m">lowest latency; audio goes to the provider</text>
+<rect x="20" y="48" width="420" height="186" rx="12" class="dg-group"/>
+<text x="34" y="222" text-anchor="start" class="dg-cap">THIS MAC</text>
+<rect x="34" y="66" width="130" height="56" rx="8" class="dg-world"/>
+<text x="99.0" y="98.0" text-anchor="middle" class="dg-b">Mic, speaker</text>
+<rect x="224" y="66" width="200" height="56" rx="8" class="dg-adapter"/>
+<text x="324.0" y="91.0" text-anchor="middle" class="dg-b">Softmax app</text>
+<text x="324.0" y="107.0" text-anchor="middle" class="dg-m">audio, push-to-talk, barge-in</text>
+<rect x="224" y="152" width="200" height="56" rx="8" class="dg-coglet"/>
+<text x="324.0" y="177.0" text-anchor="middle" class="dg-b">Face coglet</text>
+<text x="324.0" y="193.0" text-anchor="middle" class="dg-m">decides what gets done</text>
+<rect x="720" y="66" width="210" height="56" rx="8" class="dg-hub"/>
+<text x="825.0" y="91.0" text-anchor="middle" class="dg-b">Realtime speech model</text>
+<text x="825.0" y="107.0" text-anchor="middle" class="dg-m">hears, speaks, calls tools</text>
+<rect x="720" y="152" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="825.0" y="177.0" text-anchor="middle" class="dg-b">Softmax key service</text>
+<text x="825.0" y="193.0" text-anchor="middle" class="dg-m">holds the real API key</text>
+<line x1="166" y1="94" x2="222" y2="94" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="426" y1="84" x2="718" y2="84" class="dg-blue" stroke-width="1.6" marker-end="url(#speech-blue)" marker-start="url(#speech-blue-s)"/>
+<text x="572" y="76" text-anchor="middle" class="dg-code">audio, direct</text>
+<path d="M718 180H572V108H428" class="dg-ink dg-dash" stroke-width="1.6" marker-end="url(#speech-ink)"/>
+<text x="646" y="172" text-anchor="middle" class="dg-code">short-lived key</text>
+<line x1="294" y1="124" x2="294" y2="150" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<line x1="354" y1="150" x2="354" y2="124" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<text x="214" y="142" text-anchor="end" class="dg-m">transcripts, tool calls</text>
+<text x="434" y="142" text-anchor="start" class="dg-m">instructions, results</text>
+<text x="30" y="288" text-anchor="start" class="dg-cap">ON THIS MAC (LATER)</text>
+<text x="930" y="288" text-anchor="end" class="dg-m">private and offline; audio never leaves the machine</text>
+<rect x="20" y="302" width="720" height="186" rx="12" class="dg-group"/>
+<text x="34" y="476" text-anchor="start" class="dg-cap">THIS MAC</text>
+<rect x="34" y="320" width="130" height="56" rx="8" class="dg-world"/>
+<text x="99.0" y="352.0" text-anchor="middle" class="dg-b">Mic, speaker</text>
+<rect x="224" y="320" width="200" height="56" rx="8" class="dg-adapter"/>
+<text x="324.0" y="345.0" text-anchor="middle" class="dg-b">Softmax app</text>
+<text x="324.0" y="361.0" text-anchor="middle" class="dg-m">audio, push-to-talk, barge-in</text>
+<rect x="224" y="406" width="200" height="56" rx="8" class="dg-coglet"/>
+<text x="324.0" y="431.0" text-anchor="middle" class="dg-b">Face coglet</text>
+<text x="324.0" y="447.0" text-anchor="middle" class="dg-m">decides what to say and do</text>
+<rect x="510" y="320" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="615.0" y="345.0" text-anchor="middle" class="dg-b">Local speech models</text>
+<text x="615.0" y="361.0" text-anchor="middle" class="dg-m">speech-to-text, text-to-speech</text>
+<rect x="510" y="406" width="210" height="56" rx="8" class="dg-runtime"/>
+<text x="615.0" y="431.0" text-anchor="middle" class="dg-b">LLM capability</text>
+<text x="615.0" y="447.0" text-anchor="middle" class="dg-m">local or remote</text>
+<line x1="166" y1="348" x2="222" y2="348" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="426" y1="348" x2="508" y2="348" class="dg-ink" stroke-width="1.6" marker-end="url(#speech-ink)" marker-start="url(#speech-ink-s)"/>
+<line x1="294" y1="378" x2="294" y2="404" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<line x1="354" y1="404" x2="354" y2="378" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)"/>
+<text x="214" y="396" text-anchor="end" class="dg-m">transcript</text>
+<text x="434" y="396" text-anchor="start" class="dg-m">text to say</text>
+<line x1="426" y1="434" x2="508" y2="434" class="dg-teal" stroke-width="1.6" marker-end="url(#speech-teal)" marker-start="url(#speech-teal-s)"/>
+</svg>
+</figure>
+<p><em>Top: a realtime provider, which we build first. Bottom: models running on the
+Mac, which come later.</em></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>Realtime provider</th>
+<th>On this Mac</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What it is</td>
+<td>A speech-to-speech model in the cloud, OpenAI's realtime API first.</td>
+<td>Local speech-to-text and text-to-speech models.</td>
+</tr>
+<tr>
+<td>Where audio goes</td>
+<td>Straight from the app to the provider. Never through Softmax infrastructure.</td>
+<td>Nowhere. It stays on the machine.</td>
+</tr>
+<tr>
+<td>Who writes the reply</td>
+<td>The speech model, guided by instructions and tools from the Face coglet.</td>
+<td>The Face coglet, using its LLM capability.</td>
+</tr>
+<tr>
+<td>Strength</td>
+<td>Lowest latency, natural interruptions.</td>
+<td>Private, works offline, no per-minute cost.</td>
+</tr>
+<tr>
+<td>When</td>
+<td>First.</td>
+<td>Later, as an option in Settings and as the fallback when offline.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="what-stays-the-same-in-both">What stays the same in both<a class="headerlink" href="#what-stays-the-same-in-both" title="Permanent link">#</a></h3>
+<ul>
+<li><strong>The app owns the audio.</strong> It holds the microphone and speaker, handles
+  push-to-talk, and stops speaking the instant the user talks over it. No
+  coglet touches raw audio.</li>
+<li><strong>Push-to-talk decides the turn.</strong> Holding the key starts listening and
+  releasing it ends the turn. We do not rely on the engine to guess when the
+  user has finished. A hands-free mode can come later.</li>
+<li><strong>The Face coglet decides what gets done.</strong> Anything beyond talking (driving
+  an app, remembering something, asking the cogent) goes through it.</li>
+<li><strong>The Face coglet keeps the record.</strong> It receives the text of what the user
+  said and of what was actually spoken back, so its memory holds the
+  conversation whichever engine did the talking.</li>
+<li><strong>Interruptions are honest.</strong> When the user cuts a reply short, the record
+  holds only the part that was really played.</li>
+</ul>
+<h3 id="with-a-realtime-provider">With a realtime provider<a class="headerlink" href="#with-a-realtime-provider" title="Permanent link">#</a></h3>
+<ol>
+<li><strong>Key.</strong> The app asks Softmax for a short-lived key. The real API key stays
+   on our server and never ships in the app.</li>
+<li><strong>Connect.</strong> The app opens a direct, low-latency connection to the provider
+   and keeps it warm while the user is active, so the first word is not slow.</li>
+<li><strong>Set up.</strong> The Face coglet supplies the session's instructions (persona,
+   which apps are connected) and a small set of tools.</li>
+<li><strong>Talk.</strong> While the key is held the app streams the microphone. On release
+   it tells the model the turn is over, and the model answers in audio, which
+   plays as it arrives.</li>
+<li><strong>Act.</strong> When the user asks for something real, the model calls a tool
+   instead of answering. The app passes the call to the Face coglet, which
+   sends the request on to the right coglet and returns the result for the
+   model to say.</li>
+<li><strong>Slow work.</strong> If the work takes a while, the Face coglet answers "started"
+   straight away so the model can say so, and pushes the outcome into the
+   conversation when it is done.</li>
+<li><strong>Interrupt.</strong> If the user talks over a reply, the app stops playback at
+   once and tells the provider how much was actually heard, so both sides
+   agree on what was said.</li>
+</ol>
+<p>The tools are few and general, so adding an app never means changing the
+speech session:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Tool the model can call</th>
+<th>What the Face coglet does with it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>do(app, request)</code></td>
+<td>Sends a <code>UserIntent</code> to a coglet that drives that app.</td>
+</tr>
+<tr>
+<td><code>ask(question)</code></td>
+<td>Asks the cogent, for anything it may know or remember.</td>
+</tr>
+<tr>
+<td><code>remember(note)</code></td>
+<td>Stores a note.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="with-models-on-this-mac">With models on this Mac<a class="headerlink" href="#with-models-on-this-mac" title="Permanent link">#</a></h3>
+<ol>
+<li>While the key is held, a local speech-to-text model turns the audio into a
+   transcript as it goes.</li>
+<li>On release, the app sends the transcript to the Face coglet.</li>
+<li>The Face coglet decides what to say and do, using its LLM capability, which
+   can itself be a local model or a remote one.</li>
+<li>It sends back text in short chunks, and a local text-to-speech model speaks
+   them as they arrive.</li>
+</ol>
+<p>There is no speech model in the middle here, so there are no tool calls: the
+Face coglet does the deciding directly.</p>
+<h3 id="what-a-coglet-sees">What a coglet sees<a class="headerlink" href="#what-a-coglet-sees" title="Permanent link">#</a></h3>
+<p>The same events and actions for either engine:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Direction</th>
+<th>Message</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App to coglet</td>
+<td><code>speech.start</code>, <code>speech.partial</code>, <code>speech.end</code></td>
+<td>The user started, is still, and has finished speaking, with the transcript.</td>
+</tr>
+<tr>
+<td>App to coglet</td>
+<td><code>speech.position</code>, <code>speech.barge_in</code></td>
+<td>How much of a reply has been played, and that the user interrupted.</td>
+</tr>
+<tr>
+<td>App to coglet</td>
+<td><code>speech.tool_call</code></td>
+<td>The speech model wants something done. Realtime only.</td>
+</tr>
+<tr>
+<td>Coglet to app</td>
+<td><code>speech.speak_chunk</code>, <code>speech.stop</code></td>
+<td>Say this; stop talking.</td>
+</tr>
+<tr>
+<td>Coglet to app</td>
+<td><code>speech.session_open</code>, <code>speech.session_close</code></td>
+<td>Start and end a realtime session.</td>
+</tr>
+<tr>
+<td>Coglet to app</td>
+<td><code>speech.tool_result</code></td>
+<td>The answer to a tool call. Realtime only.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="choosing-and-falling-back">Choosing and falling back<a class="headerlink" href="#choosing-and-falling-back" title="Permanent link">#</a></h3>
+<ul>
+<li>Settings has one speech choice: <strong>Realtime</strong> or <strong>On this Mac</strong>.</li>
+<li>If the network or the key service is unavailable, the app falls back to local
+  models when they are installed, and to typing in the conversation window
+  when they are not. It says which.</li>
+<li>The menu bar icon and the orb always show when the microphone is live.</li>
+</ul>
+<h3 id="still-to-decide">Still to decide<a class="headerlink" href="#still-to-decide" title="Permanent link">#</a></h3>
+<ul>
+<li><strong>How much the realtime model says on its own.</strong> The plan above lets it chat
+  freely and call tools for anything real, which is fastest. The stricter
+  alternative is to use it only as ears and a voice, with the Face coglet
+  writing every reply; that is slower but gives full control over what is said.</li>
+<li><strong>How long to keep a realtime session warm</strong> after the user stops talking.
+  Longer is snappier and costs more.</li>
+<li><strong>Which local models,</strong> and whether they ship with the app or download on
+  first use.</li>
+<li><strong>Whether transcripts are kept</strong> by default, and for how long.</li>
+</ul>
+<h2 id="it-runs-coglets-locally">It runs coglets locally<a class="headerlink" href="#it-runs-coglets-locally" title="Permanent link">#</a></h2>
+<p>The app contains a <a href="coglets-and-runtime.html#runtime">runtime</a>. The coglets
+that need to be close to the user run there, on the user's machine:</p>
+<ul>
+<li>the coglet that drives this app's own UI, using the capabilities above;</li>
+<li>the coglets that drive the apps the user has connected, using
+  <a href="app-integration.html#adapter">those apps' adapters</a>.</li>
+</ul>
+<p>Running them locally keeps conversation fast, keeps voice off Softmax
+infrastructure, and
+lets the coglets reach apps that only exist on this computer.</p>
+<p>On first run the orb notices what is installed ("I see you have Blender, can
+I connect to it?"). When the user agrees, the app installs a coglet for it
+into its runtime and links it to the app's adapter. Connecting more apps just
+means more coglets.</p>
+<p>Quitting the app, or choosing Pause Softmax in the menu, stops every coglet it
+runs. The user does not need to know which coglets those are; the list is in
+Settings, under Advanced.</p>
+<h2 id="capability-detail">Capability detail<a class="headerlink" href="#capability-detail" title="Permanent link">#</a></h2>
+<h3 id="softmax-app-adapter-speechcontrol">Softmax app adapter: <code>speech.control</code><a class="headerlink" href="#softmax-app-adapter-speechcontrol" title="Permanent link">#</a></h3>
+<p>Exclusive resources: <code>audio.mic</code>, <code>audio.speaker</code>. Capture, echo cancellation,
+voice detection and the barge-in reflex all run in the adapter, outside any
+coglet step.</p>
+<div class="codehilite idl"><pre><span class="c">-- events, adapter to coglet</span>
+
+<span class="nc">SpeechStart</span>
+  <span class="na">utterance</span>    <span class="ty">Id</span>
+  <span class="na">position_ms</span>  <span class="ty">u64</span>  <span class="sd">Position on the capture timeline.</span>
+
+<span class="nc">SpeechPartial</span>
+  <span class="na">utterance</span>  <span class="ty">Id</span>
+  <span class="na">revision</span>   <span class="ty">u64</span>  <span class="sd">Starts at 1 and strictly rises within an utterance.</span>
+  <span class="na">text</span>       <span class="ty">str</span>  <span class="sd">The whole hypothesis so far, not a delta.</span>
+
+<span class="nc">SpeechEnd</span>
+  <span class="na">utterance</span>    <span class="ty">Id</span>
+  <span class="na">revision</span>     <span class="ty">u64</span>
+  <span class="na">text</span>         <span class="ty">str</span>  <span class="sd">The final transcript. May be empty.</span>
+  <span class="na">position_ms</span>  <span class="ty">u64</span>
+
+<span class="nc">SpeechPosition</span>
+  <span class="na">stream</span>       <span class="ty">Id</span>
+  <span class="na">chunk</span>        <span class="ty">u64</span>
+  <span class="na">item</span>         <span class="ty">Id</span>                              <span class="sd">The action id of the chunk being played.</span>
+  <span class="na">played_ms</span>    <span class="ty">u64</span>                             <span class="sd">Audio actually rendered within this item.</span>
+  <span class="na">position_ms</span>  <span class="ty">u64</span>
+  <span class="na">state</span>        <span class="ty">&quot;playing&quot; | &quot;ducked&quot; | &quot;stopped&quot; | &quot;finished&quot;</span>
+
+<span class="nc">SpeechBargeIn</span>
+  <span class="sd">The user spoke over the output and the adapter already reacted.</span>
+  <span class="na">utterance</span>    <span class="ty">Id</span>
+  <span class="na">stream</span>       <span class="ty">Id</span>
+  <span class="na">item</span>         <span class="ty">Id</span>
+  <span class="na">played_ms</span>    <span class="ty">u64</span>
+  <span class="na">position_ms</span>  <span class="ty">u64</span>
+  <span class="na">reflex</span>       <span class="ty">&quot;stopped&quot; | &quot;ducked&quot;</span>
+
+<span class="c">-- actions, coglet to adapter</span>
+
+<span class="nc">SpeakChunk</span>
+  <span class="sd">`speech.speak_chunk`. Succeeds once the chunk has actually played.</span>
+  <span class="na">stream</span>  <span class="ty">Id</span>
+  <span class="na">chunk</span>   <span class="ty">u64</span>                <span class="sd">Contiguous from 0. At most 64 per stream.</span>
+  <span class="na">text</span>    <span class="ty">str 1..4096 chars</span>
+  <span class="na">final</span>   <span class="ty">bool</span>
+
+<span class="nc">Stop</span>
+  <span class="sd">`speech.stop`. Succeeds when the stream is silent.</span>
+  <span class="na">stream</span>  <span class="ty">Id</span>
+
+<span class="nc">Backchannel</span>
+  <span class="sd">`speech.backchannel`. A short acknowledgement on its own stream.</span>
+  <span class="na">stream</span>  <span class="ty">Id</span>
+  <span class="na">cue</span>     <span class="ty">&quot;ack&quot; | &quot;thinking&quot; | &quot;agree&quot;</span></pre></div>
+<p>The same entry also defines the read <code>speech.config</code>. Three more entries are
+defined in <code>spec/capabilities/speech.md</code> and not written out here:
+<code>speech.session</code>, which the realtime engine above uses, <code>speech.history</code> and
+<code>speech.work</code>.</p>
+<h3 id="softmax-app-adapter-expressioncontrol">Softmax app adapter: <code>expression.control</code><a class="headerlink" href="#softmax-app-adapter-expressioncontrol" title="Permanent link">#</a></h3>
+<p>Exclusive resource: <code>display.face</code>.</p>
+<div class="codehilite idl"><pre><span class="nc">Expression</span> = <span class="ty">&quot;neutral&quot; | &quot;listening&quot; | &quot;thinking&quot; | &quot;speaking&quot; | &quot;happy&quot; | &quot;concerned&quot;</span>
+
+<span class="nc">SetExpression</span>
+  <span class="sd">`expression.set_expression`. A meaning, not an animation id: a Mac draws a face, an Echo Dot</span>
+  <span class="sd">lights its ring.</span>
+  <span class="na">expression</span>   <span class="ty">Expression</span>
+  <span class="na">intensity</span>    <span class="ty">int 0..1000</span>
+  <span class="na">duration_ms</span>  <span class="ty">int 0..60000</span>  <span class="sd">Reverts to neutral afterwards. Zero resets now.</span>
+
+<span class="nc">ExpressionState</span>
+  <span class="sd">Result of the read `expression.state`.</span>
+  <span class="na">expression</span>    <span class="ty">Expression</span>
+  <span class="na">intensity</span>     <span class="ty">int 0..1000</span>
+  <span class="na">remaining_ms</span>  <span class="ty">int 0..60000</span></pre></div>
+<p>The Softmax app's adapter also covers push-to-talk and the menu. Those
+operations are not defined yet.</p>
+</main>
+</div>
+<script>
+const links = [...document.querySelectorAll('nav a[href^="#"]')];
+const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) {
+    links.forEach(a => a.classList.remove('active'));
+    const a = byId.get(e.target.id);
+    if (a) { a.classList.add('active'); a.scrollIntoView({block: 'nearest'}); }
+  }
+}, {rootMargin: '0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id], main h3[id]').forEach(h => seen.observe(h));
+document.getElementById('filter').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('nav li').forEach(li => {
+    li.hidden = q !== '' && !li.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>

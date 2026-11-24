@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="770" height="344" viewBox="0 0 770 344" role="img" aria-label="Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent&#x27;s centre the fast loop and the optimizer use memory and file tickets with the factory.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="calls-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="calls-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="calls-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="calls-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="calls-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="calls-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="calls-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="calls-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="769" height="343" rx="12" class="dg-bg"/>
+<rect x="20" y="30" width="190" height="294" rx="14" class="dg-group"/>
+<text x="38" y="54" text-anchor="start" class="dg-cap">ON A DEVICE</text>
+<rect x="40" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="115.0" y="95.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<text x="115.0" y="111.0" text-anchor="middle" class="dg-m">talks with the user</text>
+<rect x="40" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="115.0" y="275.0" text-anchor="middle" class="dg-b">App coglets</text>
+<text x="115.0" y="291.0" text-anchor="middle" class="dg-m">drive the apps</text>
+<rect x="310" y="30" width="440" height="294" rx="14" class="dg-group"/>
+<text x="328" y="54" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<rect x="330" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="405.0" y="95.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="405.0" y="111.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
+<rect x="580" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="655.0" y="95.0" text-anchor="middle" class="dg-b">Memory</text>
+<text x="655.0" y="111.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
+<rect x="330" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="405.0" y="275.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="405.0" y="291.0" text-anchor="middle" class="dg-m">tickets in, patches out</text>
+<rect x="580" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="655.0" y="275.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="655.0" y="291.0" text-anchor="middle" class="dg-m">watches, improves</text>
+<line x1="110" y1="128" x2="110" y2="248" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="122" y="172" text-anchor="start" class="dg-b">intent</text>
+<text x="122" y="187" text-anchor="start" class="dg-m">request</text>
+<text x="122" y="200" text-anchor="start" class="dg-m">report</text>
+<line x1="192" y1="98" x2="328" y2="98" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="260" y="74" text-anchor="middle" class="dg-b">feature</text>
+<text x="260" y="89" text-anchor="middle" class="dg-m">request · update</text>
+<line x1="482" y1="98" x2="578" y2="98" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="530" y="88" text-anchor="middle" class="dg-b">memory</text>
+<text x="530" y="100" text-anchor="middle" class="dg-b"></text>
+<text x="530" y="115" text-anchor="middle" class="dg-m">write</text>
+<text x="530" y="128" text-anchor="middle" class="dg-m">query</text>
+<line x1="405" y1="128" x2="405" y2="248" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="417" y="152" text-anchor="start" class="dg-b">ticket</text>
+<text x="417" y="167" text-anchor="start" class="dg-m">submit</text>
+<text x="417" y="180" text-anchor="start" class="dg-m">answer</text>
+<text x="417" y="193" text-anchor="start" class="dg-m">amend</text>
+<text x="417" y="206" text-anchor="start" class="dg-m">cancel</text>
+<text x="417" y="219" text-anchor="start" class="dg-m">replay</text>
+<line x1="578" y1="278" x2="482" y2="278" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="530" y="268" text-anchor="middle" class="dg-b">ticket</text>
+<text x="530" y="280" text-anchor="middle" class="dg-b"></text>
+<text x="530" y="295" text-anchor="middle" class="dg-m">submit</text>
+<line x1="655" y1="248" x2="655" y2="128" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="667" y="178" text-anchor="start" class="dg-b">memory</text>
+<text x="667" y="193" text-anchor="start" class="dg-m">query</text>
+<path d="M328 116H270V278H194" class="dg-blue" stroke-width="1.6" marker-end="url(#calls-blue)"/>
+<text x="282" y="204" text-anchor="start" class="dg-b">patch</text>
+<path d="M470 128V190H620V248" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#calls-blue)"/>
+<text x="545" y="182" text-anchor="middle" class="dg-b">logs</text>
+</svg>
