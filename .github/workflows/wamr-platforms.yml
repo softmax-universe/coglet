@@ -15,6 +15,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   apple:
+    # GitHub-hosted on purpose: its iroh fault test needs incoming UDP to an unsigned
+    # test binary, which the minis' macOS application firewall (stealth mode) drops,
+    # so router_iroh_lost_reply_reorder_... times out there. Move to coglet-mac once
+    # the minis' firewall allows it or the test binds loopback only.
     runs-on: macos-latest
     timeout-minutes: 25
     env:
@@ -53,7 +57,7 @@ jobs:
         # Default/native debug suites above still execute unchanged.
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   ios-runtime:
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
