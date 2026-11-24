@@ -66,6 +66,36 @@ then the outer app are signed inside-out with `--options runtime --timestamp`.
 remains unsigned for ordinary CI and development; do not alter development-only
 `build-dev.sh` / `sign-dev.sh` to implement release signing.
 
+## Local development Hub identity (Debug only)
+
+Run `bash apps/softmax-mac/scripts/build-dev.sh`, then open the printed app path.
+`sign-dev.sh` uses the selected stable developer certificate or its explicit ad-hoc
+fallback; neither path claims production Data Protection Keychain entitlement.
+Debug builds instead use the visibly labelled **Development identity** store at
+`~/.softmax-development-hub/` (directory 0700, identity/enrollment files 0600).
+This is an unencrypted, disposable, local developer identity, not a production
+credential store. Use only test routers. It never reads, copies or migrates the
+production Keychain or production enrollment preferences. Release builds compile
+out this backend and select the unchanged `KeychainHubStore`: Data Protection
+only, AfterFirstUnlockThisDeviceOnly, non-synchronizable, no legacy fallback.
+
+The developer store preserves identity across rebuilds/relaunches, refuses key
+replacement and insecure/symlink storage, and fails closed on corrupt identity or
+an enrolled device whose identity is missing. Sign out explicitly to remove that
+development identity/enrollment; it does not revoke router-side authorization.
+Never delete identity alone to repair enrollment. Invitations are not persisted.
+
+For manual local mock enrollment, build `cargo build --locked -p coglet-mock
+--example hub`, copy the public device ID from Settings > Hub, and start
+`target/debug/examples/hub DEVICE_NODE_ID` with stdin held open. Its single stdout
+JSON line is private bootstrap material, not a log. In **Pair router… > Developer:
+manual router address**, enter its hub ID, addresses and invitation, plus a test
+name. Do not paste invitations into bug reports. Sending `d` to the launcher's
+stdin closes the **hub side** of the active connection while preserving enrollment;
+the app must become offline and reconnect with the same public ID. EOF stops the
+mock. `HubNativeConnectionTests` exercises this fault and persisted development
+identity; `DevelopmentHubStoreTests` checks storage isolation/fail-closed behavior.
+
 ## Workflow and proof
 
 `.github/workflows/softmax-mac-release.yml` runs on `softmax-mac-v*` tags.

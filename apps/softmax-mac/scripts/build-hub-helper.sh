@@ -17,6 +17,8 @@ lipo -create \
   "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/softmax-hub-link" \
   "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/softmax-hub-link" \
   -output "$staging"
-lipo "$staging" -verify_arch arm64 x86_64
+for arch in arm64 x86_64; do
+  lipo "$staging" -verify_arch "$arch"
+done
 chmod 755 "$staging"
 mv -f "$staging" "$destination"

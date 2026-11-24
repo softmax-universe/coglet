@@ -32,7 +32,13 @@ final class HubNativeConnectionTests: XCTestCase {
             if env["SOFTMAX_REQUIRE_HUB_TESTS"] == "1" { XCTFail("Native hub executables are required"); return }
             throw XCTSkip("Dedicated native hub lane supplies real Rust executables")
         }
+        #if DEBUG
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DevelopmentHubStore(directory: directory)
+        #else
         let store = MemoryHubStore()
+        #endif
         let link = ProcessHubLink(executable: URL(fileURLWithPath: helper))
         let hub = HubConnection(account: HubAccount(store: store), link: link)
         var states: [HubConnectionState] = []
@@ -76,7 +82,8 @@ final class HubNativeConnectionTests: XCTestCase {
         try await eventually { hub.state == .connected }
         XCTAssertNil(try store.loadHub()?.invite)
         states.removeAll()
-        try link.disconnect()
+        // Fault is initiated at the HUB, not by ProcessHubLink.disconnect().
+        try input.fileHandleForWriting.write(contentsOf: Data("d".utf8))
         try await eventually { states.contains(.offline) }
         try await eventually { hub.state == .connected }
         XCTAssertEqual(try store.loadKey(), identity)

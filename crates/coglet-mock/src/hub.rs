@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use tokio::task::{JoinHandle, JoinSet};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-type Sessions = Arc<Mutex<HashMap<EndpointId, (u64, Session)>>>;
+type Sessions = Arc<Mutex<HashMap<EndpointId, (u64, Session, iroh::endpoint::Connection)>>>;
 
 /// Owns a local-only endpoint, shared authority/kernel and bounded serving tasks.
 /// Call `shutdown` for an orderly close. Dropping aborts the accept task and its
@@ -68,13 +68,13 @@ impl MockHub {
                         let local = server.id();
                         tasks.spawn(async move {
                             if let Ok(Ok(connection)) = tokio::time::timeout(Duration::from_secs(10), incoming).await
-                                && let Ok(session) = Session::new(connection, local, Role::Hub) {
+                                && let Ok(session) = Session::new(connection.clone(), local, Role::Hub) {
                                 let peer = session.peer();
                                 if let Ok(token) = kernel.transport_connected(peer).await {
-                                    active.lock().await.insert(peer, (token, session.clone()));
+                                    active.lock().await.insert(peer, (token, session.clone(), connection));
                                     let _ = session.serve(Arc::new(kernel.clone())).await;
                                     let mut sessions = active.lock().await;
-                                    if sessions.get(&peer).is_some_and(|(current, _)| *current == token) {
+                                    if sessions.get(&peer).is_some_and(|(current, _, _)| *current == token) {
                                         sessions.remove(&peer);
                                     }
                                     drop(sessions);
@@ -113,7 +113,16 @@ impl MockHub {
             .lock()
             .await
             .get(&device)
-            .map(|(_, s)| s.clone())
+            .map(|(_, s, _)| s.clone())
+    }
+    /// Trusted local fault injection: close the HUB side, preserving enrollment.
+    pub async fn disconnect_device(&self, device: EndpointId) -> bool {
+        if let Some((_, _, connection)) = self.sessions.lock().await.get(&device) {
+            connection.close(0u32.into(), b"mock hub fault injection");
+            true
+        } else {
+            false
+        }
     }
     pub fn state_path(&self) -> &Path {
         self._state.path()

@@ -12,6 +12,10 @@ struct HubSettings: View {
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
             Text(model.hubStatus).fontWeight(.semibold)
+            #if DEBUG
+            Text("Development identity — local unencrypted file, separate from production Keychain. Use only test routers.")
+                .font(.caption).foregroundStyle(.secondary)
+            #endif
             if let name = model.hubConnection?.pairing?.name { Text(name).textSelection(.enabled) }
             if let device = model.hubConnection?.deviceID {
                 DisclosureGroup("Device identity") {

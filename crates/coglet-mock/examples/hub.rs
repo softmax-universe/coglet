@@ -41,7 +41,14 @@ async fn main() -> Result<()> {
     let mut bytes = [0; 1];
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {},
-        _ = async { while stdin.read(&mut bytes).await.unwrap_or(0) != 0 {} } => {},
+        _ = async {
+            while stdin.read(&mut bytes).await.unwrap_or(0) != 0 {
+                if bytes[0] == b'd' {
+                    let closed = hub.disconnect_device(device).await;
+                    eprintln!("hub-side disconnect: {closed}");
+                }
+            }
+        } => {},
     }
     hub.shutdown().await;
     Ok(())
