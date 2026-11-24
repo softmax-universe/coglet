@@ -83,10 +83,23 @@ must keep the identity anchor outside this directory and never recreate lost sta
 under an old identity. Reopen refuses absent/corrupt state. This is durable dedup
 storage, not an exactly-once engine transaction or a native execution API.
 
+`AuthorityFence` supplies a separate memory/native-owner fence with instance-bound
+opaque tokens. It validates operation/resource/owner/current-epoch/lease/exclusive
+deadline at admission and again atomically with a bounded native transaction;
+revoke/re-enable, disconnect, kill and reconstruction invalidate old tokens.
+Conjoined operations support an observation's event plus selected-read grants.
+The trusted supervisor must disconnect old authority before blocking on a durable
+epoch update, persist the higher epoch, then install its full effective snapshot.
+No disk, network or control callback may run inside this bounded native fence.
+A successful native call is not timely publication: recheck the token after
+sampling/encoding/native completion and retain any late actual effect as audit.
+Kill is latched and native stop is independent of a blocked ledger commit; durable
+kill state and unclean-start handling still belong to the future session layer.
+
 ### Qualification boundary
 
 Named unit/integration tests: `FrameCodecTest`, `UnixSurfaceListenerTest`,
-`ReceiptLedgerTest`, plus unchanged `CodecTest`. Unix tests use real private AF_UNIX
+`ReceiptLedgerTest`, `AuthorityFenceTest`, plus unchanged `CodecTest`. Unix tests use real private AF_UNIX
 streams, actual peer credentials, fragmented input, fatal disconnects, and a blocked
 control-callback/independent-stop test. Ledger tests reopen actual files, inject
 failures before/after rename and directory force, and verify a separate JVM remains

@@ -28,8 +28,8 @@ public final class ReceiptLedger implements AutoCloseable {
     private static final int MAX_RECEIPTS = 4096;
     // POSIX locks are process-scoped: merely closing a second descriptor can
     // release the first channel's lock. Reject same-JVM aliases before open().
-    private static final Set<Path> JVM_OWNERS = new HashSet<>();
-    private Path ownershipKey;
+    private static final Set<Object> JVM_OWNERS = new HashSet<>();
+    private Object ownershipKey;
     private final Path directory;
     private final String identity;
     private final Runnable stop;
@@ -63,10 +63,11 @@ public final class ReceiptLedger implements AutoCloseable {
                     || !attrs.owner().equals(this.directory.getFileSystem().getUserPrincipalLookupService()
                         .lookupPrincipalByName(System.getProperty("user.name"))))
                 throw new IOException("ledger directory is not private and owned");
-            Path realDirectory = this.directory.toRealPath();
+            Object directoryKey = attrs.fileKey();
+            if (directoryKey == null) throw new IOException("ledger file identity unavailable");
             synchronized (JVM_OWNERS) {
-                if (!JVM_OWNERS.add(realDirectory)) throw new IOException("ledger already owned");
-                ownershipKey = realDirectory;
+                if (!JVM_OWNERS.add(directoryKey)) throw new IOException("ledger already owned");
+                ownershipKey = directoryKey;
             }
             Path lockPath = this.directory.resolve("lock");
             lockChannel = FileChannel.open(lockPath, Set.of(StandardOpenOption.CREATE, StandardOpenOption.WRITE,

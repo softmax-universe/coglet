@@ -138,6 +138,11 @@ class ReceiptLedgerTest {
             externalProcessMustRemainLocked();
             assertThrows(java.io.IOException.class, () -> new ReceiptLedger(ledger, SURFACE, false, () -> {}));
             externalProcessMustRemainLocked();
+            Path alias = parent.resolve("alias");
+            Files.createSymbolicLink(alias, parent);
+            assertThrows(java.io.IOException.class, () -> new ReceiptLedger(alias.resolve("ledger"), SURFACE, false, () -> {}));
+            externalProcessMustRemainLocked();
+            Files.delete(alias);
         }
     }
     @Test void rejectionRetentionUsesDeadlineAndMissingStateNeverInitializes() throws Exception {
