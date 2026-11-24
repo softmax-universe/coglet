@@ -18,3 +18,9 @@
 # card = "t_0123456789abcdef"
 # since = 2026-11-24
 # reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"
+
+[[rust]]
+id = "wal_restart_preserves_installed_and_stopped_state"
+card = "t_01a20bd00f035b09"
+since = 2026-11-24
+reason = "panic at crates/coglet-runtime/tests/device_lifecycle.rs:538 in required rust, main push run 45464727417 attempt 1 on 3fda42277; attempt 2 on the same tree passed"
