@@ -1209,6 +1209,48 @@ m.put("update", this.update);
 return m; }
 public static HubTransfer fromCbor(byte[] raw) { return Codec.decodeRecord("hub-transfer", raw, HubTransfer.class); }
 }
+public record GridbotState(BigInteger x, BigInteger y, BigInteger goal_x, BigInteger goal_y, BigInteger width, BigInteger height, BigInteger steps, Boolean done, String state_hash) implements Message {
+public String rule() { return "gridbot-state"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("x", this.x);
+m.put("y", this.y);
+m.put("goal_x", this.goal_x);
+m.put("goal_y", this.goal_y);
+m.put("width", this.width);
+m.put("height", this.height);
+m.put("steps", this.steps);
+m.put("done", this.done);
+m.put("state_hash", this.state_hash);
+return m; }
+public static GridbotState fromCbor(byte[] raw) { return Codec.decodeRecord("gridbot-state", raw, GridbotState.class); }
+}
+public record GridbotMove(String direction) implements Message {
+public String rule() { return "gridbot-move"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("direction", this.direction);
+return m; }
+public static GridbotMove fromCbor(byte[] raw) { return Codec.decodeRecord("gridbot-move", raw, GridbotMove.class); }
+}
+public record CartpoleState(BigInteger x, BigInteger velocity, BigInteger angle, BigInteger angular_velocity, BigInteger steps, Boolean done, String state_hash) implements Message {
+public String rule() { return "cartpole-state"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("x", this.x);
+m.put("velocity", this.velocity);
+m.put("angle", this.angle);
+m.put("angular_velocity", this.angular_velocity);
+m.put("steps", this.steps);
+m.put("done", this.done);
+m.put("state_hash", this.state_hash);
+return m; }
+public static CartpoleState fromCbor(byte[] raw) { return Codec.decodeRecord("cartpole-state", raw, CartpoleState.class); }
+}
+public record CartpoleForce(String direction) implements Message {
+public String rule() { return "cartpole-force"; }
+public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
+m.put("direction", this.direction);
+return m; }
+public static CartpoleForce fromCbor(byte[] raw) { return Codec.decodeRecord("cartpole-force", raw, CartpoleForce.class); }
+}
 public record SpeechStart(String utterance, BigInteger position_ms) implements Message {
 public String rule() { return "speech-start"; }
 public Object toValue() { Map<String,Object> m = new LinkedHashMap<>();
@@ -1759,6 +1801,10 @@ Codec.register("hub-credit", HubCredit.class, "{\"op\":\"record\",\"fields\":[{\
 Codec.register("hub-chunk", HubChunk.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-chunk-type\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"offset\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}},{\"name\":\"hex\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-chunk-hex\"}}]}", new String[]{"type","correlation_id","offset","hex"});
 Codec.register("hub-end", HubEnd.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-end-type\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}}]}", new String[]{"type","correlation_id"});
 Codec.register("hub-transfer", HubTransfer.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"type\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-transfer-type\"}},{\"name\":\"correlation_id\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"size\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-size\"}},{\"name\":\"sha256\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-hash\"}},{\"name\":\"update\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"hub::hub-signed-ref\"}}]}", new String[]{"type","correlation_id","size","sha256","update"});
+Codec.register("gridbot-state", GridbotState.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"x\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":63}},{\"name\":\"y\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":63}},{\"name\":\"goal_x\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":63}},{\"name\":\"goal_y\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":63}},{\"name\":\"width\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":2,\"max\":64}},{\"name\":\"height\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":2,\"max\":64}},{\"name\":\"steps\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":10000}},{\"name\":\"done\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"state_hash\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"[0-9a-f]{64}\"}]}}]}", new String[]{"x","y","goal_x","goal_y","width","height","steps","done","state_hash"});
+Codec.register("gridbot-move", GridbotMove.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"direction\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"north\"},{\"op\":\"literal\",\"value\":\"south\"},{\"op\":\"literal\",\"value\":\"east\"},{\"op\":\"literal\",\"value\":\"west\"}]}}]}", new String[]{"direction"});
+Codec.register("cartpole-state", CartpoleState.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"x\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":-2147483648,\"max\":2147483647}},{\"name\":\"velocity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":-2147483648,\"max\":2147483647}},{\"name\":\"angle\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":-2147483648,\"max\":2147483647}},{\"name\":\"angular_velocity\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":-2147483648,\"max\":2147483647}},{\"name\":\"steps\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":0,\"max\":10000}},{\"name\":\"done\",\"optional\":false,\"type\":{\"op\":\"primitive\",\"name\":\"bool\"}},{\"name\":\"state_hash\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"[0-9a-f]{64}\"}]}}]}", new String[]{"x","velocity","angle","angular_velocity","steps","done","state_hash"});
+Codec.register("cartpole-force", CartpoleForce.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"direction\",\"optional\":false,\"type\":{\"op\":\"union\",\"items\":[{\"op\":\"literal\",\"value\":\"left\"},{\"op\":\"literal\",\"value\":\"right\"}]}}]}", new String[]{"direction"});
 Codec.register("speech-start", SpeechStart.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"utterance","position_ms"});
 Codec.register("speech-partial", SpeechPartial.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}]}}]}", new String[]{"utterance","revision","text"});
 Codec.register("speech-end", SpeechEnd.class, "{\"op\":\"record\",\"fields\":[{\"name\":\"utterance\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::correlation-id\"}},{\"name\":\"revision\",\"optional\":false,\"type\":{\"op\":\"range\",\"min\":1,\"max\":18446744073709551615}},{\"name\":\"text\",\"optional\":false,\"type\":{\"op\":\"intersection\",\"items\":[{\"op\":\"primitive\",\"name\":\"tstr\"},{\"op\":\"regexp\",\"pattern\":\"^[\\\\s\\\\S]{0,16384}$\"}]}},{\"name\":\"position_ms\",\"optional\":false,\"type\":{\"op\":\"ref\",\"name\":\"common::uint64\"}}]}", new String[]{"utterance","revision","text","position_ms"});
@@ -1899,6 +1945,10 @@ Codec.alias("hub::hub-stop-request", "hub-stop-request");
 Codec.alias("hub::hub-success", "hub-success");
 Codec.alias("hub::hub-transfer", "hub-transfer");
 Codec.alias("hub::hub-write-params", "hub-write-params");
+Codec.alias("sandbox::cartpole-force", "cartpole-force");
+Codec.alias("sandbox::cartpole-state", "cartpole-state");
+Codec.alias("sandbox::gridbot-move", "gridbot-move");
+Codec.alias("sandbox::gridbot-state", "gridbot-state");
 Codec.alias("speech::backchannel", "backchannel");
 Codec.alias("speech::heard-query", "heard-query");
 Codec.alias("speech::heard-record", "heard-record");

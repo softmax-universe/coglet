@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/sandbox.schema.json",
+  "$ref": "#/$defs/sandbox-profile",
+  "$defs": {
+    "gridbot-state": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "goal_x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "goal_y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 64
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 64
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "state_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "goal_x",
+        "goal_y",
+        "width",
+        "height",
+        "steps",
+        "done",
+        "state_hash"
+      ],
+      "additionalProperties": false
+    },
+    "gridbot-move": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "enum": [
+            "north",
+            "south",
+            "east",
+            "west"
+          ]
+        }
+      },
+      "required": [
+        "direction"
+      ],
+      "additionalProperties": false
+    },
+    "cartpole-state": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "velocity": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "angle": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "angular_velocity": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "done": {
+          "type": "boolean"
+        },
+        "state_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+        }
+      },
+      "required": [
+        "x",
+        "velocity",
+        "angle",
+        "angular_velocity",
+        "steps",
+        "done",
+        "state_hash"
+      ],
+      "additionalProperties": false
+    },
+    "cartpole-force": {
+      "type": "object",
+      "properties": {
+        "direction": {
+          "enum": [
+            "left",
+            "right"
+          ]
+        }
+      },
+      "required": [
+        "direction"
+      ],
+      "additionalProperties": false
+    },
+    "sandbox-profile": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/gridbot-state"
+        },
+        {
+          "$ref": "#/$defs/gridbot-move"
+        },
+        {
+          "$ref": "#/$defs/cartpole-state"
+        },
+        {
+          "$ref": "#/$defs/cartpole-force"
+        }
+      ]
+    }
+  }
+}
