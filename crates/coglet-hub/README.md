@@ -107,47 +107,83 @@ artifacts or build authority. Durable promotion/ticket/audit receipts, signed-re
 boundary activation, health/emergency-fence producers, rollback integration,
 clock recovery, final CI/review/merge and `policy-v0` are still unfinished.
 
-## Local operator components (not deployment qualification)
+## Local operator configuration (not deployment qualification)
 
-`operator::Request` validates the closed ADR-0018 JSON contract; the Store retains
-normalized intents, permanent UID-scoped queued/terminal responses, admin sequence
-and audit atomically. `operator::socket::StateLock` provides exclusive state
-ownership and is also used by binary identity/startup. `bind_locked` retains that
-lock and recovers only an owned 0600 socket whose bounded connect probe reports
-`ConnectionRefused`. Live/ambiguous listeners, symlinks, non-socket entries and
-aliased lock files fail closed.
+`serve` now starts the production bounded AF_UNIX Handler at
+`<state-dir>/operator.sock`. OS credentials must match the service UID, including
+for root; the socket retains the exclusive state lock. Framing, capacity,
+permissions and stale-entry refusal use the existing driver. No iroh method,
+ALPN or TCP listener is added for administration.
 
-`operator::server::serve` is a bounded AF_UNIX parser/waiter driver with no iroh or
-TCP listener. Its trusted `Handler` must authenticate explicit UID-to-actor
-provisioning, commit admission and own execution independently of the returned
-receipt observation channel. Wait timeout drops observation only, not execution.
-The driver is **not connected to `serve` startup yet**: no production Handler,
-transactional grant/enrollment configuration, qualified signed builder or durable
-deploy saga is supplied by these components.
+The optional trusted startup `operator` configuration is closed JSON:
+
+```json
+{
+  "operator": {
+    "uid": 1000,
+    "actor": "hub:REPLACE_WITH_PROVISIONED_64_HEX_ID",
+    "operations": ["grant.provision", "grant.revoke", "enrollment.window", "enrollment.invite"],
+    "max_window_ms": 60000,
+    "grants": [{
+      "peer": "REPLACE_WITH_EXACT_RUNTIME_NODE_ID",
+      "method": "hub.status",
+      "target": null,
+      "max_expires_unix_s": 1800000000
+    }]
+  }
+}
+```
+
+Replace the illustrative identity/expiry values with explicit local provisioning.
+The UID must equal the actual service UID; the actor uses the common source-ID
+syntax. There are no ticket grants or wildcard peers/methods/targets. Each exact
+policy ceiling bounds both grant provisioning and initial invite grants; even an
+empty invite needs an allowed peer. Absence of `operator` keeps the listener but
+refuses **all** admissions; it never derives an actor from the UID. A missing
+operation or ceiling denies admission. This producer supports configuration only:
+`deploy`, `push`, `stop` and `status` remain refused until the qualified saga
+producer supplies their executor. No deployment is claimed.
 
 New installations keep shared Authority tables in `kernel.db`. Any existing
 `authority.db` entry fails startup with an explicit offline-migration requirement,
 before creating replacement state; there is no automatic migration or deletion.
-`Authority::configure_grant_in` writes an exact enrolled-peer grant through a
-caller-owned transaction. It requires a usable clock and future expiry, refuses
-same-generation changes/rollback, and leaves actor/ticket scopes independent. It
-does not authenticate the operator, enforce local grant policy or fence in-flight
-dispatch. Production code must supply those before exposing it through a Handler.
+Configuration, terminal receipt and audit use Store's **exact caller-owned SQL
+transaction**, under State → boundary → Authority locks. Shared Authority methods
+never independently commit from inside it. A failed effect rolls back before a
+semantic failure receipt is retained. Storage/audit failure leaves the admitted
+queued receipt available for identical retry, rather than claiming no admission.
 
-`operator_grant_receipt_audit_and_authority_share_one_commit` uses actual Store and
-Authority connections to prove audit-failure rollback of configuration and terminal
-receipt, then exact retry after reopen. This is configuration storage proof, not
-socket-to-runtime deployment. Enrollment-window/hash-only provisioning, revocation
-and production Handler integration remain incomplete.
+Grant revocation retains a strictly higher-generation, expired tombstone. Current
+transport polls recheck exact Authority under State → boundary and are woken after
+commit; a blocked real-iroh write is reset. Old provision IDs/generations do not
+resurrect the grant. Peer grants do not implicitly provision actor/ticket scopes.
+The health-generation index changes in the same transaction; incompatible pending
+health invitations are refused rather than corrupting the first invite.
 
-Named component proofs include `operator_stale_socket_requires_exclusive_state_lock`,
-`operator_state_lock_rejects_hardlink_without_touching_target`,
-`operator_connection_capacity_precedes_admission` and
-`operator_timeout_only_stops_waiting`. The latter uses real local socket framing
-and Store commits with a fixture executor, not a runtime or a simulated remote
-receipt. It also retrieves the exact terminal response over a second connection.
-These do not qualify real-iroh deploy, runtime receipt reconciliation, non-owner
-process rejection, or the remaining ADR acceptance matrix.
+Window configuration and hash-only invitations write through that same transaction.
+Monotonic liveness is staged under the Authority lock and published only after the
+receipt/audit commit. Invites are bounded to their referenced window, one-use and
+expected-runtime-bound; no plaintext enters storage or audit. Replacement/close
+clears old liveness. Restart never reconstructs it, and retrying an old applied
+window/invite returns its retained receipt without reopening it.
+
+Named production-seam proofs in `operator_service` cover socket configuration,
+actual lost-reply retry, missing mapping/local-policy denial, hash-only retention,
+restart/expiry/close, configuration+receipt+audit rollback and grant tombstones.
+`operator_startup_socket_uses_explicit_service_actor` exercises the real binary.
+`hardening::operator_socket_revocation_resets_blocked_real_iroh_write` observes a
+code-1 stream reset after a socket revoke. The privileged Linux negative is explicit:
+
+```sh
+cargo test --locked -p coglet-hub --test operator_peer_process -- --ignored --exact operator_peer_uid_nonowner_subprocess
+```
+
+It requires passwordless sudo to launch a genuine root client against an ordinary
+service UID, verifies credential rejection despite DAC bypass, and includes the
+same request under the owner UID as a positive control. Both privileged test/helper
+are ignored in ordinary portable runs; their skipped presence is not this proof.
+The remaining ADR deploy saga and runtime/mock lifecycle matrix belong to the
+integration producer, not these configuration tests.
 
 ## Local fixture controls (not production)
 

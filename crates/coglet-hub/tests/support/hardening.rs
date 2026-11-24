@@ -178,6 +178,38 @@ impl Fixture {
 }
 
 #[tokio::test]
+async fn operator_socket_revocation_resets_blocked_real_iroh_write() {
+    use coglet_hub::operator::{
+        server,
+        service::{Provisioning, Service},
+        socket::{OperatorSocket, StateLock},
+    };
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let _serial = SERIAL.acquire().await.unwrap();
+    tokio::time::timeout(Duration::from_secs(20),async {
+        let f=Fixture::new().await; f.prepare(true).await;
+        std::fs::set_permissions(f._dir.path(),std::fs::Permissions::from_mode(0o700)).unwrap();
+        let uid=std::fs::metadata(f._dir.path()).unwrap().uid();
+        let lock=StateLock::acquire(f._dir.path()).unwrap();
+        let socket=OperatorSocket::bind_locked(&lock).await.unwrap();
+        let p:Provisioning=serde_json::from_value(json!({"uid":uid,"actor":f.actor,"operations":["grant.revoke"],"max_window_ms":0,"grants":[{"peer":f.device.id().to_string(),"method":"hub.actions","target":f.target,"max_expires_unix_s":10000}]})).unwrap();
+        let service=Arc::new(Service::new(f.kernel.clone(),uid,p).unwrap());
+        let (stop,rx)=tokio::sync::oneshot::channel();let serving=tokio::spawn(server::serve(socket,service,8,async {let _=rx.await;}));
+        let task=f.dispatch();let (send,mut recv)=f.dc.accept_bi().await.unwrap();
+        let mut prefix=[0;4];recv.read_exact(&mut prefix).await.unwrap();assert!(u32::from_be_bytes(prefix)>100_000);assert!(!task.is_finished());
+        let mut client=tokio::net::UnixStream::connect(f._dir.path().join("operator.sock")).await.unwrap();
+        let request=serde_json::to_vec(&json!({"version":"local-1","operation_id":"cc".repeat(16),"op":"grant.revoke","timeout_ms":1000,"params":{"peer":f.device.id().to_string(),"method":"hub.actions","target":f.target,"generation":1}})).unwrap();
+        client.write_u32(request.len() as u32).await.unwrap();client.write_all(&request).await.unwrap();let len=client.read_u32().await.unwrap();let mut b=vec![0;len as usize];client.read_exact(&mut b).await.unwrap();
+        let response:Value=serde_json::from_slice(&b).unwrap();assert_eq!(response["receipt"]["state"],"applied","{response}");
+        assert_eq!(send.stopped().await.unwrap().unwrap().into_inner(),1);
+        assert!(recv.read_to_end(300_000).await.is_err());
+        task.await.unwrap().unwrap();
+        stop.send(()).unwrap();serving.await.unwrap().unwrap();drop(lock);f.close().await;
+    }).await.unwrap();
+}
+
+#[tokio::test]
 async fn blocked_first_write_resets_on_abort_ticket_revoke_deadline_and_clock_loss() {
     let _serial = SERIAL.acquire().await.unwrap();
     tokio::time::timeout(Duration::from_secs(30), async {

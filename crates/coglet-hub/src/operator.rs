@@ -2,6 +2,8 @@
 #[cfg(unix)]
 pub mod server;
 #[cfg(unix)]
+pub mod service;
+#[cfg(unix)]
 pub mod socket;
 use crate::{Error, Result, Store, audit};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
