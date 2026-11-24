@@ -68,6 +68,21 @@ struct State {
     attempts: HashMap<EndpointId, u32>,
     total_attempts: u32,
 }
+/// Shared durable enrollment authority.
+///
+/// Default production builds do not expose deterministic provisioning:
+#[cfg_attr(
+    not(feature = "test-controls"),
+    doc = r#"
+```compile_fail,E0599
+use coglet_proto::authority::Authority;
+use std::time::Duration;
+let a = Authority::open(":memory:").unwrap();
+let peer = iroh::SecretKey::generate().public();
+a.test_issue_invite(peer, &"11".repeat(32), Duration::from_secs(60), vec![]);
+```
+"#
+)]
 #[derive(Clone)]
 pub struct Authority(Arc<Mutex<State>>);
 
@@ -117,6 +132,38 @@ impl Authority {
         ttl: Duration,
         grants: Vec<Grant>,
     ) -> Result<String> {
+        // iroh's secret generator uses its cryptographic OS-seeded RNG.
+        let secret = hex::encode(SecretKey::generate().to_bytes());
+        self.store_invite(peer, &secret, ttl, grants)?;
+        Ok(secret)
+    }
+    /// Trusted LOCAL fixture provisioning, never a wire operation. The supplied
+    /// secret must be 64 lowercase hex characters. Do not use in deployments.
+    /// Validation, hashing, one-use binding and expiry are shared with production.
+    #[cfg(feature = "test-controls")]
+    pub fn test_issue_invite(
+        &self,
+        peer: EndpointId,
+        secret: &str,
+        ttl: Duration,
+        grants: Vec<Grant>,
+    ) -> Result<()> {
+        if secret.len() != 64
+            || !secret
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(AuthorityError::InvalidArgument);
+        }
+        self.store_invite(peer, secret, ttl, grants)
+    }
+    fn store_invite(
+        &self,
+        peer: EndpointId,
+        secret: &str,
+        ttl: Duration,
+        grants: Vec<Grant>,
+    ) -> Result<()> {
         let mut state = self.0.lock().map_err(|_| AuthorityError::Storage)?;
         let now = Instant::now();
         if !state.window.is_some_and(|end| end > now) {
@@ -132,9 +179,7 @@ impl Authority {
             .checked_add(ttl)
             .filter(|end| *end > now)
             .ok_or(AuthorityError::InvalidArgument)?;
-        // iroh's secret generator uses its cryptographic OS-seeded RNG.
-        let secret = hex::encode(SecretKey::generate().to_bytes());
-        let hash = digest(&secret);
+        let hash = digest(secret);
         let grants = serde_json::to_string(&grants).map_err(|_| AuthorityError::InvalidArgument)?;
         state.db.execute(
             "INSERT INTO proto_invites(hash,peer,grants) VALUES(?1,?2,?3)",
@@ -142,7 +187,7 @@ impl Authority {
         )?;
         state.invites.retain(|_, end| *end > now);
         state.invites.insert(hash, expiry);
-        Ok(secret)
+        Ok(())
     }
     /// One transaction consumes the invite, enrolls the authenticated peer and
     /// installs all initial grants. Null invite recovers a lost success only.
