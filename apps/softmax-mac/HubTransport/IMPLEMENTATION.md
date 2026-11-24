@@ -1,58 +1,51 @@
-# Hub enrollment implementation notes
+# ROUTER enrollment implementation notes
 
 ## Contract and boundaries
 
-- Frozen `spec-v0:spec/hub-protocol.md`: pinned hub identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, fresh enrollment on each connection, null-invite recovery after ambiguous success. Short-code lookup and QR encoding are not wire methods.
-- Shell/protocol/kernel/mock part-1 parent receipts recovered as DONE (PR12/48/58/74).
-- Configure surface: preserve Settings sidebar, heading, search and DesignGroup. Replace only Hub placeholder with shared enrollment controls. Preserve onboarding steps, permissions/login controls and footer. Reuse existing tokens and keyboard navigation. Menu connection availability remains independent of voice/activity.
-- No UI implementation or visual acceptance yet. Baseline gate and native rendered comparison remain mandatory.
+- Frozen `spec-v0:spec/hub-protocol.md`: pinned ROUTER identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, fresh enrollment per connection, null-invite recovery after ambiguous success. Short-code lookup and QR encoding are not wire methods. Keep existing code identifiers unchanged.
+- All six prerequisite DONE receipts recovered from authorized replicas (PR12/48/58/74/101/114). Darwin subprocess validation explicitly refuses before spawn; Linux unreaped-leader custody is unchanged. Portable SDK CSPRNG repair is integrated.
+- Configure-only extension: preserve Settings sidebar/search/title/DesignGroup, onboarding stages/illustration/login/voice/footer. Replace only the two enrollment placeholder rows with shared controls. Menu availability is orthogonal to voice/activity.
 
 ## Implemented, partial
 
-`HubTransport/` is a standalone Cargo package. Production helper uses landed coglet-proto Session + real iroh. Key/config arrive only through anonymous pipes, not argv/env/files/logs. Output is sanitized state/public device ID. Commands bounded to16KiB. Null-invite recovery precedes initial invitation; connected only after version selection; QUIC closure yields offline; EOF closes endpoint.
+`HubTransport/` is a standalone Cargo package. The production helper uses landed coglet-proto Session and real iroh. Key/config arrive only through anonymous pipes, never argv/env/files/logs. Output is sanitized state/public device ID. Commands are bounded to16KiB. Null-invite recovery precedes initial invitation; connected only follows version selection; QUIC closure emits offline; EOF closes the endpoint.
 
-Swift HubAccount persists a32-byte generated-once seed before use, fails closed on Keychain errors and never silently rotates it. HubKeychain injection tests use memory backend; Security backend uses generic password and `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Non-secret hub config uses UserDefaults; invite is memory-only. HubConnection provides cancelable, generation-fenced reconnect with30s inclusive jitter cap, and local sign-out deletion. ProcessHubLink bridges anonymous pipes and fences stale callbacks.
+Swift HubAccount persists a32-byte generated-once seed before use, fails closed on Keychain errors and never silently rotates. HubKeychain injection tests use an in-memory backend; Security backend uses a generic password and `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Non-secret configuration uses UserDefaults; invitation stays in memory. HubConnection provides cancelable, generation-fenced reconnect with30s inclusive jitter cap and local sign-out deletion. ProcessHubLink bridges private pipes and fences stale callbacks.
 
-Native run45341075790 and run45342465981 compiled production Swift and passed four HubConnectionTests +two HubKeychainTests. Optional native mock test skipped without executable paths; NOT acceptance. Required real-helper/native test still unexecuted.
+## Verified native transport gate
 
-Rust real MockHub enrollment/drop/offline/recovery/revocation and private-stdio/EOF tests passed locally; strict all-target Clippy/fmt passed on6071ef2. Forward main integration e9e5817 and regenerated standalone helper lock repaired actual transitive reqwest lock conflict.
+Full logs from Softmax Mac run45386256577 at e0c953981e5a19dc367fb67c20b7180808ca0f0d were read independently:
 
-## Native dependency repair integrated; acceptance pending
+- Four HubConnectionTests and two HubKeychainTests pass.
+- Required `testHubConnectionTestsEnrollDropOfflineAndRecoverAgainstCogletMock` passes in1.796s, executing real helper and real coglet-mock launcher, not a fake or skip.
+- Required `testProcessPublishesReadyBeforeItsOutputPipeCloses` passes in0.030s.
+- This verifies the bounded4096-byte POSIX pipe-reader repair after both tests failed at initial deviceID on f441b29. EINTR retry,16KiB parser bound and generation fences are retained.
+- The overall native job still FAILED later during app packaging, so it is not all-green acceptance.
 
-The Darwin compilation failure in run45342465981 is repaired by merged PR101 (parent `t_01a20c2f56d0d2ad`, DONE). Its reviewed repair fcc0490 was integrated as53e2e68. A fresh GitHub DIRTY result and merge-tree reproduced real workflow conflicts; forward merge82ff3ca integrates main6efc352, preserving both app acceptance and Darwin refusal checks plus the newer iOS workflow. No validator enforcement was weakened: non-Linux subprocess validation explicitly refuses before spawn; Linux retains unreaped-leader custody.
+Durable run: https://github.com/softmax-universe/coglet/actions/runs/45386256577/job/138417833696 . Worker raw logs: macos-45386256577-{full,failed}.log.
 
-PR98 remains draft at82ff3cae935a8928b88008f4cecb3595ba8d2c67; backup43f7f33 adds checkpoint documentation only. Native run45363249974 FAILED: four HubConnectionTests and two HubKeychainTests passed, and the Darwin proto check/refusal test passed. The real mock-router launcher build then failed at sdk/surface-rust/src/ids.rs:43 because libc::getrandom is Linux-only and absent on Darwin. Current main6efc352 has the same implementation. The required real-helper/mock test was SKIPPED; optional test skipping earlier is not acceptance. Repair owner t_01a20ce01825149f (alpha-follow, running) is linked as a prerequisite, preserving the portable CSPRNG/error contract rather than weakening the native lane. After it merges, integrate its reviewed repair and rerun the actual native test. Both real-iroh helper integration tests, strict all-target Clippy/fmt and five portable packaging/signing cases passed in the previous run; they were not reexecuted during this failure diagnosis. Settings/onboarding/menu code remains untouched.
+## Packaging repair and UI RED pending
 
-## Packaging slice (portable orchestration verified only)
+The later native failure is `lipo: unknown architecture specification flag: <staging path>`: the input filename followed the variadic `-verify_arch` list. Tightened the portable lipo fake to enforce actual argument grammar; observed RED exit64. Production commit eb605f9 moves the input before `-verify_arch arm64 x86_64`; portable GREEN follows. All five portable packaging/signing tests also pass on5e07553 (portable-run1-5e07553.log). Fake orchestration is not native architecture/signature proof.
 
-- `scripts/build-hub-helper.sh` builds --locked --release for aarch64/x86_64 Apple targets, lipo-merges and verifies both architectures, atomically installs executable under Contents/Helpers/softmax-hub-link.
-- project.yml post-build invokes that script. Rust toolchain/targets are required for Xcode builds.
-- sign-dev.sh signs the helper before outer app. Existing release path recursively signs Mach-O.
-- Tests/test_hub_packaging.py uses explicitly fake cargo/lipo to verify orchestration and paths with spaces; Tests/test_dev_signing.py uses fake signing/keychain to assert inside-out order. Both observed expected RED, then GREEN (1 packaging +4 signing cases). These are NOT native universal binary, codesign or TCC proof. Native build remains blocked above.
+`scripts/build-hub-helper.sh` builds --locked --release for aarch64/x86_64 Apple targets, lipo-merges/verifies and atomically installs an executable under Contents/Helpers/softmax-hub-link. project.yml invokes it post-build. sign-dev.sh signs the helper before the outer app; release recursively signs Mach-O. Native packaged-helper resource/signature proof remains required.
 
-## Portable randomness prerequisite integrated; native proof queued
+PR98 is OPEN/DRAFT at5e07553c39445e5c7f353ba2a812e18c98a5e1c2. Native run45391611490 at that exact head is IN_PROGRESS. It contains the packaging repair and a new test-only UI RED probe, `testRouterEnrollmentConfigurationInOnboardingAndSettings`. The test expects shared `Pair router…` entry points, a pairing sheet with `Pairing code`, `Import QR image…`, a disabled empty `Connect router`, Cancel return, and preserved Settings navigation/onboarding login/footer. Production UI is still unchanged. Read actual failure logs before implementation; packaging/compiler failures do not establish intended UI RED. Earlier packaging-only run45391423072 was superseded/cancelled by this push.
 
-PR114 merged as6838433 after independent review at a87bc198. Integrated the reviewed SDK repair as5772786; the standalone helper lock required exactly one new dependency line (5b2bcaa). GitHub reported DIRTY and merge-tree reproduced the workflow conflict, so forward merge4d8c674 incorporates merged main6838433 while preserving both SDK checks and required app helper/mock acceptance. PR98 and backup branch are read-back verified at4d8c67426a99e34edd3edabcf658548322dad535.
+## Next implementation slice
 
-Native Softmax Mac run45379171349 is QUEUED at that exact head. Supported exact-run waiter returned2. No new native acceptance claim. Fresh local real-iroh helper tests (2), strict all-target Clippy/fmt, diff-check and portable packaging/signing tests (1+4) passed on4d8c674. Logs: workspace rust-run2-4d8c674.log and clippy-run2-4d8c674.log. Portable signing remains fake orchestration, not native signature proof.
+UI baseline gate PASS in Design/hub-enrollment-baseline.md. Prior normal light/dark Settings and final onboarding renders were inspected, capture times unknown, publication provenance recorded, marked stale against newer source. Native post-change large-text/high-contrast comparison remains required; baseline status is unverified.
 
-All eight settings-hub baseline PNGs were opened and inspected this run: light/dark, contrast and large-text variants preserve the180pt sidebar, filter, section list, shortcuts footer, title and DesignGroup. Source Windows.swift and DesignTokens.swift read. Baseline markdown/checker remains unfinished, onboarding renders still need inspection (names use onboarding-2, not hub). No UI edits.
+Use a shared compact connection summary plus `Pair router…` sheet in the existing Settings Hub/onboarding group, not a new wizard/navigation. The sheet progressively discloses developer pinned manual address entry; it imports a local QR image or accepts pasted provisioning JSON. Envelope fields: name/hub/addresses plus optional relay/invite/device. Validate through HubPairing; do not invent a remote short-code lookup. Display/copy public device ID before invite provisioning. Preserve token fonts, cancel/default actions, and optional onboarding completion without enrollment. Clear pasted invitations on cancellation/success; never persist or log them.
 
-## Remaining delivery
+Still required:
 
-1. Obtain dependency repair and real native helper/mock acceptance; read actual test output, not just job status. Required workflow supplies executable paths and SOFTMAX_REQUIRE_HUB_TESTS=1, so it cannot count a skip as success.
-2. UI wiring: local pasted pairing JSON/code, QR image import, pinned manual developer hub/address, public device ID copy, hub name/status and local unenroll. Envelope fields name/hub/addresses plus optional relay/invite/device; validation already in HubPairing. Do not invent remote short-code lookup.
-3. Wire ShellModel lifecycle and existing menu availability; shared controls only in existing Settings Hub and onboarding placeholders. Run baseline gate before UI edits and real native render comparison after.
-4. Verify native Xcode helper bundle architecture, resource lookup and inside-out signing on actual target. Portable fixture tests do not satisfy this.
-5. Revisit ProcessHubLink pipe-write SIGPIPE and crash/restart coverage.
-6. Independent exact-head review, every required check green, native merge queue, then kanban_request_review with published_pr. PR98 remains draft; no merge/delivery claim.
+1. Verify native lipo repair and intended missing-UI RED in45391611490.
+2. Implement shared controls, QR import, manual pinned address, public ID/name/status/sign-out; wire ShellModel startup/stop and existing menu availability independently of voice. UI-testing/snapshot mode must not access real Keychain or network.
+3. Exercise native UI behavior and render comparison (normal/large/contrast), updating only deliberately reviewed changed snapshots.
+4. Verify actual universal helper in the app bundle, resource lookup, inside-out signing; revisit private-pipe SIGPIPE and process-crash/restart regression coverage.
+5. Independent exact-head review, every required check green, repository merge queue, then kanban_request_review with published_pr after merge. No delivery claim yet.
 
 ## TDD provenance
 
-Rust initial library RED then real-iroh GREEN. Swift initial missing core API RED run45337370014; missing process bridge RED run45339321655; missing Keychain injection RED run45339491432. Production Swift six-test GREEN above. Linux worker has no Swift toolchain: native results are hosted evidence, never local execution.
-
-## Persistent-pipe readiness regression (continuation3)
-
-Actual native run45382448795 at f441b29 failed both the isolated helper-ready test and original integration at its initial deviceID wait (line20). Real helper/mock compilation succeeded. Replaced Foundation read(upToCount:4096) with a bounded4096-byte POSIX read, retrying EINTR; parser16KiB bound and generation fences are retained. Production commit e0c953981e5a19dc367fb67c20b7180808ca0f0d is published on PR98 and backup. Native GREEN candidate run45386256577 is in progress; fix effectiveness is not yet proven.
-
-Baseline gate now PASS: Design/hub-enrollment-baseline.md cites current mount/siblings/tokens. Opened normal light/dark Settings and onboarding-final PNGs; capture times unknown, publication provenance recorded and renders marked stale against newer source. No UI has changed. Native post-change rendering is still required. This baseline is documentation-only on the backup branch so the active native run is not canceled. Historical pending prerequisite notes above are superseded: all six prerequisite receipts reread DONE (PR12/48/58/74/101/114).
+Rust initial library RED then real-iroh GREEN. Swift missing core API RED45337370014; missing process bridge RED45339321655; missing Keychain injection RED45339491432; focused native readiness RED45382448795 then GREEN45386256577. UI behavior probe is pending, not a claimed RED. Linux worker has no Swift toolchain; native results are hosted evidence, never local execution. Earlier Rust real-iroh two-test/strict-Clippy/fmt passes at4d8c674 are historical, not rerun during this packaging/UI-probe slice.
