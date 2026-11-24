@@ -190,10 +190,10 @@ intents are eligible. Lease expiry permits reconciliation, NOT unconditional
 redelivery. Each attempt retains the original key and payload. Terminal success,
 failure or cancellation is durable before one inbox `db.outcome`: `db-outcome`
 contains original intent_id, idempotency_key and correlation_id, terminal status,
-and result (profile-map) on success or common error otherwise. Runtime/hub
+and result (profile-map) on success or common error otherwise. Runtime/router
 materialization uses the existing authorized `hub.inbox` path and `runtime.inbox`
 wake, not a new runtime event/audit method. Enclosed source is the authenticated
-dispatcher/hub; correlation IDs must match payload/envelope/intent. Atomically
+dispatcher/router; correlation IDs must match payload/envelope/intent. Atomically
 retain a delivery ledger and stable inbox ID at delivery; retry the same append,
 never mint a new outcome. Uncertain is nonterminal and has no synthetic success.
 If a terminal intent is duplicated the original receipt is reconciled, not sent

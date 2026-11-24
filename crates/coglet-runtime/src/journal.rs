@@ -32,7 +32,9 @@ const MAX_TRANSACTION: usize = 64 * 1024 * 1024;
 /// It participates in the WAL checksum/chain, never the ABI record or export.
 /// Older frames and direct/aborted database writes may omit this receipt.
 pub struct DurableStore {
-    file: File,
+    #[cfg(test)]
+    pub(crate) before_commit: Option<Box<dyn FnMut() + Send>>,
+    file: LockedFile,
     state: Option<Value>,
     journal: Vec<Value>,
     raw: Vec<Option<Vec<u8>>>,
@@ -41,13 +43,30 @@ pub struct DurableStore {
     poisoned: bool,
 }
 
-impl Drop for DurableStore {
+/// The exclusively locked WAL file. The lock is released explicitly on drop
+/// instead of relying on `close`: it belongs to the open file description,
+/// which a concurrently spawned child process shares until its `exec` closes
+/// the inherited descriptor. Closing alone would leave the WAL "already owned"
+/// for that window, so the next open in this process could be refused. Every
+/// path that drops the file, including a failed recovery in `open`, unlocks.
+struct LockedFile(File);
+
+impl Drop for LockedFile {
     fn drop(&mut self) {
-        // A concurrently spawned validator may have inherited this open-file
-        // description between fork and exec. Closing only our descriptor leaves
-        // its flock alive in that child; explicitly release retired custody.
-        // Child processes never own or use this WAL descriptor.
-        let _ = self.file.unlock();
+        let _ = self.0.unlock();
+    }
+}
+
+impl std::ops::Deref for LockedFile {
+    type Target = File;
+    fn deref(&self) -> &File {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for LockedFile {
+    fn deref_mut(&mut self) -> &mut File {
+        &mut self.0
     }
 }
 
@@ -57,9 +76,10 @@ impl DurableStore {
         options.read(true).write(true).create(true).truncate(false);
         #[cfg(unix)]
         options.mode(0o600);
-        let mut file = options.open(path).map_err(|e| e.to_string())?;
+        let file = options.open(path).map_err(|e| e.to_string())?;
         file.try_lock()
             .map_err(|e| format!("WAL already owned: {e}"))?;
+        let mut file = LockedFile(file);
         // Also persist a newly created directory entry before admitting work.
         file.sync_all().map_err(|e| e.to_string())?;
         File::open(path.parent().ok_or("WAL needs a parent directory")?)
@@ -184,12 +204,18 @@ impl DurableStore {
             db_artifacts_hashes,
             previous,
             poisoned: false,
+            #[cfg(test)]
+            before_commit: None,
         })
     }
 
     /// Dispatch is allowed only after this returns Ok. Any ambiguous I/O failure
     /// poisons this handle; reopen and recover identity rather than re-executing.
     pub fn commit(&mut self, state: &Value, record: Option<&Value>) -> Result<()> {
+        #[cfg(test)]
+        if let Some(hook) = &mut self.before_commit {
+            hook();
+        }
         if let Some(record) = record {
             validate_record(record)?;
         }
@@ -393,4 +419,27 @@ pub(crate) fn project(value: &V, depth: usize) -> Result<Value> {
         ),
         _ => return Err("non-profile value".into()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A duplicated descriptor shares the open file description, exactly as
+    /// the copy inherited by a child process does between `fork` and `exec`.
+    /// Releasing the lock by `close` alone would keep the WAL owned for as
+    /// long as that copy lives.
+    #[test]
+    fn dropping_the_store_releases_the_lock_while_a_shared_descriptor_lives() {
+        let dir = tempfile::tempdir().unwrap();
+        let wal = dir.path().join("state.wal");
+        let owner = DurableStore::open(&wal).unwrap();
+        let inherited = owner.file.try_clone().unwrap();
+        let refused = DurableStore::open(&wal).err().expect("one owner");
+        assert!(refused.starts_with("WAL already owned:"), "{refused}");
+        drop(owner);
+        let reopened = DurableStore::open(&wal);
+        assert!(reopened.is_ok(), "{:?}", reopened.err());
+        drop(inherited);
+    }
 }

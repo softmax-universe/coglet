@@ -45,7 +45,7 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 | Worker capacity | 3 extra workers through Phase 1, then revisit at the freeze. |
 | Face | Lives in coglet: `surfaces/face-mac/` (Swift) and `coglets/face/`. Persona and voice config stay in the product repos. |
 | Kanban board | The `default` board, tenant `coglet`, with titles prefixed `coglet:`. Pool workers serve the default board. |
-| Java surface SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
+| Java adapter SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
 
 ## Repo layout (`softmax-universe/coglet`)
 
@@ -76,15 +76,15 @@ crates/                     Cargo workspace
   coglet-engine-wamr        interpreter + AOT; interpreter-only on iOS and the EO1
   coglet-engine-wasmtime    later
   coglet-fs                 copy-on-write, content-addressed FS, tree hashes, flush
-  coglet-runtime            library (C ABI) + bin `cogletd`: router, timers, batching, budgets,
-                            journal/replay, git sync, hub link, debug agent
-  coglet-proto              hub protocol over iroh
+  coglet-runtime            library (C ABI) + bin `cogletd`: event router, timers, batching, budgets,
+                            journal/replay, git sync, router link, debug agent
+  coglet-proto              router protocol over iroh
   coglet-hub                kernel: identity/enroll, registry, routing, promotion, policy,
                             probation, action arbitration, audit
   coglet-llm                LLM gateway: routing, spend ledger, recordings
   coglet-gate               journal replay gates, headless forks
   coglet-trace              trace store + training export
-  coglet-mock               mock engine / surface / hub / LLM
+  coglet-mock               mock engine / adapter / router / LLM
   coglet-cli                coglet new|build|run|replay|attach|push
 sdk/
   guest-rust/               write coglets in Rust → wasm32-wasip1
@@ -95,7 +95,7 @@ surfaces/
 sim/
   worlds/gridbot  cartpole  arm2d  duplex-audio  paint
   scenarios/                recorded traces, fault-injection scripts
-apps/visualizer/            web: live view (hub debug client) + simulated mode
+apps/visualizer/            web: live view (back-channel client) + simulated mode
 coglets/
   echo  counter  gridbot-pilot  face  fast-loop  factory (generic ticket API + mock factory)
 release/                    cogletd binaries, SDK packages, harness, face-mac build; products pin versions
@@ -114,7 +114,7 @@ docs/adr/  docs/design/
 - **babybear** owns:
   - the pod bodies (EO1, Echo Dot, Linux via Go, Mac, iOS on the embedded runtime);
   - the Baby Bear coglets;
-  - its hub-kernel deployment.
+  - its router deployment.
 
   Mac audio follows an ADR: the Baby Bear Mac pod either adopts face-mac's audio kit or runs as a separate mode, never both at once.
 - **coworld-mindustry** is unchanged.
@@ -123,8 +123,8 @@ docs/adr/  docs/design/
 
 ```
 P0  skeleton ──┬─ conventions spec ─┬─ ABI+journal spec ─────────┐
-               │                    ├─ surface + speech specs ───┤
-               │                    ├─ hub protocol spec ────────┤
+               │                    ├─ adapter + speech specs ───┤
+               │                    ├─ router protocol spec ─────┤
                │                    ├─ policy draft              │
                │                    ├─ conformance harness ──────┤
                │                    └─ codegen ──────────────────┤
@@ -132,13 +132,13 @@ P0  skeleton ──┬─ conventions spec ─┬─ ABI+journal spec ───�
                WAMR armv7(QEMU)+iOS interp, cross-engine float hash┘        │
                                                                             ▼
 P2 (all parallel): engine-wamr · mock engine · fs · runtime core(+C ABI) · guest SDK+echo/counter
-   · surface SDK rust+mock · python · swift · hub proto+mock hub · kernel part 1 · mock LLM+gateway
+   · adapter SDK rust+mock · python · swift · router proto+mock router · kernel part 1 · mock LLM+gateway
    · release pipeline
 P3: M1 hello coglet → M2 sandbox (gridbot, cartpole, CLI, visualizer live) → M3 self-editing loop
     M2b Face on Mac (duplex-audio sim, then real Mac) runs beside M2
     parallel: Wasmtime + cross-engine hash, trace store, full LLM gateway, fault injection,
     visualizer simulated mode; policy freeze at M3
-P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→hub→avatar, delete legacy)
+P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→router→avatar, delete legacy)
     Baby Bear lane (EO1 pilot, Echo Dot/Linux via Go SDK, Mac pod + audio ADR, iOS embedded,
     conversation route → fast loop); each pod cuts over after a side-by-side check
 ```

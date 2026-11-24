@@ -93,7 +93,7 @@ sha256sum -c SHA256SUMS          # Linux
 ```
 
 Record the Release URL, `release.json` commit SHA, selected artifact name and hash
-in the product lock/config. Install binaries only after verification. Keep hub
+in the product lock/config. Install binaries only after verification. Keep router
 identity/state outside the binary installation directory and preserve it during
 upgrades. Releases do not bundle private keys, invites or product configuration.
 

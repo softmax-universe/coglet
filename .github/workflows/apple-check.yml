@@ -1,0 +1,27 @@
+name: apple-check
+# Required. Type-checks the workspace for macOS on Linux (scripts/ci/apple-check),
+# so Apple-only breaks fail a PR in minutes without waiting for a macOS runner.
+# The macOS jobs (swift, WAMR platforms) still run on the coglet Mac minis.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+permissions:
+  contents: read
+jobs:
+  apple-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/dependency-restore
+        with:
+          job: rust
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: apple-check
+      - name: Type-check every workspace crate for aarch64-apple-darwin
+        run: scripts/ci/apple-check aarch64-apple-darwin
