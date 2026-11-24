@@ -88,6 +88,66 @@ fn restart_context_missing_or_not_bound_to_original_receipt_is_refused() {
 }
 
 #[test]
+fn restart_missing_context_faults_until_fresh_authorized_start() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = super::tests::fixture("no-effects");
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    service
+        .managed_install(&json!({"live_commit":"a".repeat(40)}), &"1".repeat(32))
+        .unwrap();
+    service.managed_start_authorized(&context('2')).unwrap();
+    // Write an actual older-format frame: the new optional fields are absent,
+    // not null. Recovery must never infer authority from the retained receipt.
+    let mut legacy = serde_json::to_value(&service.state).unwrap();
+    let managed = legacy["managed"].as_object_mut().unwrap();
+    managed.remove("recovery");
+    managed.remove("recovery_fault");
+    service.store.commit(&legacy, None).unwrap();
+    drop(service);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert!(
+        service
+            .managed_recovery()
+            .err()
+            .unwrap()
+            .contains("missing start recovery")
+    );
+    service.managed_recovery_fault().unwrap();
+    drop(service);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(service.managed_status()["state"], "faulted");
+    service.managed_start_authorized(&context('2')).unwrap();
+    assert_eq!(service.managed_status()["state"], "faulted");
+    service.managed_start_authorized(&context('3')).unwrap();
+    assert_eq!(
+        service.managed_recovery().unwrap().operation_id,
+        "3".repeat(32)
+    );
+}
+
+#[test]
+fn restart_unresolved_attempt_and_pending_stop_prevent_resume() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = super::tests::fixture("no-effects");
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    service
+        .managed_install(&json!({"live_commit":"a".repeat(40)}), &"1".repeat(32))
+        .unwrap();
+    service.managed_start_authorized(&context('2')).unwrap();
+    service.state.runtime.unresolved_attempt = Some(setup["inputs"].clone());
+    assert!(service.managed_recovery().is_err());
+    // Stop records its fence without guessing an unknown attempt outcome.
+    service.managed_stop(100).unwrap();
+    assert!(!service.managed_running());
+    assert!(service.state.managed.as_ref().unwrap().cancellation_pending);
+    assert!(service.managed_recovery().is_err());
+    assert!(service.state.runtime.unresolved_attempt.is_some());
+    assert!(service.managed_start_authorized(&context('3')).is_err());
+}
+
+#[test]
 fn restart_code_validation_compares_recovered_bytes_to_verified_archive() {
     let dir = tempfile::tempdir().unwrap();
     let setup = super::tests::fixture("no-effects");

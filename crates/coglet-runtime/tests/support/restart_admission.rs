@@ -18,7 +18,7 @@ fn faulted(env: &Env) {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn restart_revalidation_refuses_expired_or_changed_authority() {
     timed!(async {
-        for mode in 0..7 {
+        for mode in 0..9 {
             let mut env = Env::new(0x70 + mode, Options::default()).await.unwrap();
             pushed_and_installed(&mut env).await;
             applied(&env.simple("hub.start").await);
@@ -68,9 +68,26 @@ async fn restart_revalidation_refuses_expired_or_changed_authority() {
                         .unwrap();
                     assert!(out.status.success());
                 }
+                7 | 8 => {
+                    // Boot authority sample 1 validates SQL, sample 2 follows
+                    // signature work, 3 precedes native enable, 4 follows it.
+                    // Expire only at the final gates, not before validation.
+                    let clock = env.clock.clone();
+                    let at = env.reads.load(Ordering::SeqCst) + u64::from(mode - 4);
+                    *env.trap.lock().unwrap() = Some((
+                        at,
+                        Box::new(move || {
+                            clock.store(DELEGATION_EXPIRES, Ordering::SeqCst);
+                        }),
+                    ));
+                }
                 _ => unreachable!(),
             }
             env.restart_handler().await;
+            assert!(
+                env.trap.lock().unwrap().is_none(),
+                "final admission gate was exercised"
+            );
             faulted(&env);
         }
     });
