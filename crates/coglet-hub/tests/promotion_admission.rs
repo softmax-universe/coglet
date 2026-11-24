@@ -610,6 +610,75 @@ impl PromotionAuthority for ArtifactAuthority {
     }
 }
 #[tokio::test]
+async fn ticket_only_human_approval_rejects_missing_reference_without_proposal_or_outbox() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    assert_eq!(policy(&target, "a")["human_approval"], false);
+    let mut c = caller();
+    c.ticket = Some(TicketLink {
+        ticket_id: "e".repeat(32),
+        revision: 1,
+        evidence_ref: "artifact:done".into(),
+    });
+    let mut v = propose(&target, "1");
+    let mut game = v["gates"][0].clone();
+    game["kind"] = json!("headless_game");
+    game["suite"] = json!("game-v1");
+    v["gates"].as_array_mut().unwrap().push(game);
+    assert!(v.get("approval_ref").is_none());
+    let authority = Arc::new(ArtifactAuthority {
+        compatible: true,
+        approved_id: "2".repeat(32),
+    });
+    let before = k.audit().await.unwrap();
+    let rejected = k
+        .promotion_request(
+            c.clone(),
+            wire::encode(&v).unwrap(),
+            authority.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        wire::decode(&rejected).unwrap()["error"]["code"],
+        "permission_denied"
+    );
+    let audit = k.audit().await.unwrap();
+    assert_eq!(audit.len(), before.len() + 1);
+    assert_eq!(audit.last().unwrap()["phase"], "rejected");
+    assert_eq!(audit.last().unwrap()["reason"], "permission_denied");
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    for table in ["promotion_proposals", "promotion_state", "promotion_outbox"] {
+        assert_eq!(
+            db.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            0,
+            "missing ticket approval must not change {table}"
+        );
+    }
+
+    // A fresh request with authorized approval admits the same ticket and gates.
+    v["correlation_id"] = json!("2".repeat(32));
+    v["approval_ref"] = json!("artifact:approval");
+    let admitted = k
+        .promotion_request(c, wire::encode(&v).unwrap(), authority, None)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire::decode(&admitted).unwrap()["result"]["state"],
+        "proposed"
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM promotion_proposals", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+}
+
+#[tokio::test]
 async fn ticket_union_approval_request_binding_and_compatibility_are_independent() {
     let dir = tempfile::tempdir().unwrap();
     let (k, _, target) = setup(dir.path()).await;
