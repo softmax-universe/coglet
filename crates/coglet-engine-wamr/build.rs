@@ -58,7 +58,9 @@ fn main() {
         "x86_64-unknown-linux-gnu" => ("linux", "X86_64"),
         "armv7-unknown-linux-gnueabihf" => ("linux", "ARMV7"),
         "x86_64-apple-darwin" => ("darwin", "X86_64"),
-        "aarch64-apple-darwin" | "aarch64-apple-ios" => ("darwin", "AARCH64"),
+        "aarch64-apple-darwin" | "aarch64-apple-ios" | "aarch64-apple-ios-sim" => {
+            ("darwin", "AARCH64")
+        }
         _ => panic!("unqualified WAMR target: {target}"),
     };
     let mut config = cmake::Config::new("native");
@@ -66,11 +68,18 @@ fn main() {
         .define("WAMR_ROOT", &source)
         .define("WAMR_BUILD_PLATFORM", platform)
         .define("WAMR_BUILD_TARGET", arch);
-    if target == "aarch64-apple-ios" {
+    if target == "aarch64-apple-ios" || target == "aarch64-apple-ios-sim" {
         config
             .define("CMAKE_SYSTEM_NAME", "iOS")
             .define("CMAKE_OSX_ARCHITECTURES", "arm64")
-            .define("CMAKE_OSX_SYSROOT", "iphoneos")
+            .define(
+                "CMAKE_OSX_SYSROOT",
+                if target == "aarch64-apple-ios-sim" {
+                    "iphonesimulator"
+                } else {
+                    "iphoneos"
+                },
+            )
             .define("CMAKE_OSX_DEPLOYMENT_TARGET", "15.0");
     } else if platform == "darwin" {
         config.define(
