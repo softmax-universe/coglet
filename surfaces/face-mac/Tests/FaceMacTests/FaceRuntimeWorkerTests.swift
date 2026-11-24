@@ -20,6 +20,9 @@ private final class WorkerFixture: @unchecked Sendable {
     var stopResult: Int32 = 0
     var statusResult: Int32 = 1
     var openResult: Int32 = 0
+    var sendResult: Int32?
+    var recvQueryResult: Int32?
+    var recvReadResult: Int32?
     var configureGate: DispatchSemaphore?
     var configureEntered: DispatchSemaphore?
     var inbound: [[UInt8]] = []
@@ -49,6 +52,7 @@ private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: 
     let (gate, entered) = f.lock.withLock { (f.gate, f.entered) }
     entered?.signal(); gate?.wait()
     return f.lock.withLock {
+        if let result = f.sendResult { return result }
         if f.blocked { return 1 }
         f.messages.append(Array(UnsafeBufferPointer(start: raw!, count: n))); return 0
     }
@@ -56,6 +60,8 @@ private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: 
 private func recvWorker(_ p: OpaquePointer?, _ raw: UnsafeMutablePointer<UInt8>?, _ n: Int, _ size: UnsafeMutablePointer<Int>?) -> Int32 {
     let f = fixture(); f.record("recv")
     return f.lock.withLock {
+        if raw == nil, let result = f.recvQueryResult { size?.pointee = 0; return result }
+        if raw != nil, let result = f.recvReadResult { return result }
         guard let first = f.inbound.first else { size?.pointee = 0; return 1 }
         size?.pointee = first.count
         guard let raw, n >= first.count else { return 2 }
@@ -80,6 +86,61 @@ private final class WorkerLedger: SurfaceLedgerStore {
     func save(_ bytes: [UInt8]) throws { self.bytes = bytes }
 }
 final class FaceRuntimeWorkerTests: XCTestCase {
+    func testPumpFailureRetainsSanitizedPhaseAndAvailableStatus() async throws {
+        try await Self.exercisePumpFailureDiagnostics()
+    }
+    @MainActor private static func exercisePumpFailureDiagnostics() async throws {
+        for mode in ["send", "query", "read", "decode"] {
+            let f = WorkerFixture()
+            WorkerFixture.lock.withLock { WorkerFixture.current = f }
+            let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+            let expected: FaceRuntimeDiagnostic
+            switch mode {
+            case "send":
+                expected = .init(phase: .send, status: -7)
+                f.lock.withLock { f.sendResult = -7 }
+                XCTAssertTrue(try link.send(hello()))
+            case "query":
+                // SDK intentionally exposes no numeric status for receive errors.
+                expected = .init(phase: .receive, cause: .invalidSizeQuery)
+                f.lock.withLock { f.recvQueryResult = -2 }
+            case "read":
+                expected = .init(phase: .receive, cause: .invalidExactRead)
+                f.lock.withLock { f.inbound = [[0xa0]]; f.recvReadResult = -9 }
+            default:
+                // The schema validator's error is not a SurfaceFailure; retain
+                // the phase without retaining arbitrary validator text.
+                expected = .init(phase: .receive, cause: .unknown)
+                f.lock.withLock { f.inbound = [[0xa0]] }
+            }
+            var observed: FaceRuntimeDiagnostic?
+            let deadline = ContinuousClock.now + .seconds(3)
+            while observed == nil && ContinuousClock.now < deadline {
+                do { _ = try link.receive() }
+                catch { observed = error as? FaceRuntimeDiagnostic; XCTAssertEqual(observed, expected) }
+                if observed == nil { try await Task.sleep(for: .milliseconds(5)) }
+            }
+            XCTAssertEqual(observed, expected, mode)
+            link.close()
+            XCTAssertThrowsError(try link.send(hello())) { XCTAssertEqual($0 as? FaceRuntimeDiagnostic, expected) }
+            XCTAssertThrowsError(try link.receive()) { XCTAssertEqual($0 as? FaceRuntimeDiagnostic, expected) }
+            XCTAssertThrowsError(try link.flush()) { XCTAssertEqual($0 as? FaceRuntimeDiagnostic, expected) }
+            try await link.shutdown()
+            XCTAssertEqual(f.lock.withLock { Array(f.calls.suffix(2)) }, ["stop", "status"])
+            XCTAssertEqual(f.lock.withLock { f.calls.filter { $0 == "close" }.count }, 1)
+        }
+    }
+    func testDiagnosticNeverCopiesArbitraryErrorText() {
+        let secret = "private binding/configuration/frame data"
+        for message in [secret, "ABI send failed: " + secret, "ABI open failed: " + secret] {
+            let diagnostic = FaceRuntimeDiagnostic(phase: .send, error: SurfaceFailure.protocolViolation(message))
+            XCTAssertEqual(diagnostic, .init(phase: .send, cause: .protocolViolation))
+            XCTAssertFalse(String(describing: diagnostic).contains(secret))
+        }
+        let unknown = FaceRuntimeDiagnostic(phase: .receive, error: NSError(domain: secret, code: 42))
+        XCTAssertEqual(unknown, .init(phase: .receive, cause: .unknown))
+        XCTAssertFalse(String(describing: unknown).contains(secret))
+    }
     func testInboundSaturationBackpressuresWithoutDroppingFrames() async throws {
         let f = WorkerFixture()
         let frames = try (0..<129).map { index in
@@ -111,7 +172,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
         do {
             _ = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
             XCTFail("failed open succeeded")
-        } catch {}
+        } catch { XCTAssertEqual(error as? FaceRuntimeDiagnostic, .init(phase: .open, status: -1)) }
         XCTAssertEqual(f.lock.withLock { f.calls }, ["configure", "start", "open", "stop", "status"])
         f.lock.withLock { f.openResult = 0 }
         let successor = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
@@ -126,12 +187,16 @@ final class FaceRuntimeWorkerTests: XCTestCase {
             f.statusResult = mode == "status" ? 0 : 1
             WorkerFixture.lock.withLock { WorkerFixture.current = f }
             let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
-            do { try await link.shutdown(); XCTFail("failed stop attested clean") } catch {}
+            do { try await link.shutdown(); XCTFail("failed stop attested clean") }
+            catch {
+                XCTAssertEqual(error as? FaceRuntimeDiagnostic,
+                    .init(phase: mode == "stop" ? .stop : .status, status: mode == "stop" ? -1 : 0))
+            }
             let calls = f.lock.withLock { f.calls }
             do {
                 _ = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
                 XCTFail("successor acquired failed runtime")
-            } catch {}
+            } catch FaceRuntimeFailure.busy {} catch { XCTFail("lost busy refusal: \(error)") }
             XCTAssertEqual(f.lock.withLock { f.calls }, calls)
             return
         }
@@ -189,7 +254,9 @@ final class FaceRuntimeWorkerTests: XCTestCase {
         do {
             _ = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
             XCTFail("failed configure succeeded")
-        } catch {}
+        } catch {
+            XCTAssertEqual(error as? FaceRuntimeDiagnostic, .init(phase: .configure, status: -2))
+        }
         XCTAssertEqual(f.lock.withLock { f.calls }, ["configure", "stop", "status"])
         f.lock.withLock { f.configureResult = 0 }
         let successor = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
@@ -201,7 +268,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
         do {
             _ = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
             XCTFail("failed ABI start succeeded")
-        } catch {}
+        } catch { XCTAssertEqual(error as? FaceRuntimeDiagnostic, .init(phase: .start, status: -2)) }
         XCTAssertEqual(f.lock.withLock { f.calls }, ["configure", "start", "stop", "status"])
         f.lock.withLock { f.startResult = 0 }
         let successor = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
@@ -264,7 +331,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
         do {
             _ = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
             XCTFail("successor opened before old runtime stopped")
-        } catch {}
+        } catch FaceRuntimeFailure.busy {} catch { XCTFail("lost busy refusal: \(error)") }
         gate.signal(); try await link.shutdown()
         f.lock.withLock { f.gate = nil; f.entered = nil }
         let successor = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])

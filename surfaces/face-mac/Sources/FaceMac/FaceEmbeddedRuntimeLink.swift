@@ -20,6 +20,47 @@ public struct FaceRuntimeABI: @unchecked Sendable {
 
 public enum FaceRuntimeFailure: Swift.Error, Sendable { case busy, closed, runtime, oversized }
 
+/// Bounded metadata only: never retains binding/configuration/frame bytes or
+/// arbitrary error descriptions. A nil status means the SDK did not expose it.
+public struct FaceRuntimeDiagnostic: Swift.Error, Sendable, Equatable {
+    public enum Phase: String, Sendable { case configure, start, open, send, receive, stop, status }
+    public enum Cause: String, Sendable {
+        case abi, invalidSizeQuery, invalidExactRead, invalidFrame, closed
+        case protocolViolation, system, unauthenticated, exhausted, unknown
+    }
+    public let phase: Phase
+    public let cause: Cause
+    public let status: Int32?
+
+    init(phase: Phase, cause: Cause = .abi, status: Int32? = nil) {
+        self.phase = phase; self.cause = cause; self.status = status
+    }
+    init(phase: Phase, error: any Swift.Error) {
+        self.phase = phase
+        var cause: Cause = .unknown
+        var status: Int32?
+        if let failure = error as? SurfaceFailure {
+            switch failure {
+            case .invalidFrame: cause = .invalidFrame
+            case .closed: cause = .closed
+            case .system(let value): cause = .system; status = value
+            case .unauthenticated: cause = .unauthenticated
+            case .exhausted: cause = .exhausted
+            case .protocolViolation(let message):
+                cause = .protocolViolation
+                // Only parse the SDK's fixed ABI metadata, never copy its text.
+                let prefix = phase == .open ? "ABI open failed: " : "ABI send failed: "
+                if (phase == .open || phase == .send), message.hasPrefix(prefix),
+                   let value = Int32(message.dropFirst(prefix.count)) {
+                    cause = .abi; status = value
+                } else if message == "invalid ABI size query" { cause = .invalidSizeQuery }
+                else if message == "invalid ABI exact read" { cause = .invalidExactRead }
+            }
+        }
+        self.cause = cause; self.status = status
+    }
+}
+
 /// One process-wide ABI supervisor. A failed stop retains custody: a successor
 /// must not configure a runtime whose termination could not be established.
 private final class FaceRuntimeLease: @unchecked Sendable {
@@ -45,8 +86,9 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
     private var outgoingBytes = 0
     private var incomingBytes = 0
     private var closed = false
-    private var failed = false
+    private var failure: FaceRuntimeDiagnostic?
     private var stoppedOK = false
+    private var stopFailure: FaceRuntimeDiagnostic?
     // Queue-confined fields below.
     private var transport: EmbeddedSurfaceTransport?
     private var timer: DispatchSourceTimer?
@@ -65,11 +107,14 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                     // Even configure can catch a native panic and fence global
                     // state. Any lifecycle attempt needs stop/status attestation.
                     needsStop = true
-                    guard binding.withUnsafeBufferPointer({ abi.configure($0.baseAddress, $0.count) }) == 0 else { throw FaceRuntimeFailure.runtime }
+                    let configured = binding.withUnsafeBufferPointer { abi.configure($0.baseAddress, $0.count) }
+                    guard configured == 0 else { throw FaceRuntimeDiagnostic(phase: .configure, status: configured) }
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
-                    guard configuration.withUnsafeBufferPointer({ abi.start($0.baseAddress, $0.count) }) == 0 else { throw FaceRuntimeFailure.runtime }
+                    let started = configuration.withUnsafeBufferPointer { abi.start($0.baseAddress, $0.count) }
+                    guard started == 0 else { throw FaceRuntimeDiagnostic(phase: .start, status: started) }
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
-                    transport = try EmbeddedSurfaceTransport(abi: abi.surface)
+                    do { transport = try EmbeddedSurfaceTransport(abi: abi.surface) }
+                    catch { throw FaceRuntimeDiagnostic(phase: .open, error: error) }
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
                     let source = DispatchSource.makeTimerSource(queue: queue)
                     source.schedule(deadline: .now(), repeating: .milliseconds(5))
@@ -77,8 +122,8 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                     timer = source; source.resume()
                     continuation.resume()
                 } catch {
-                    lock.withLock { failed = true; closed = true }
-                    cleanup(); continuation.resume(throwing: FaceRuntimeFailure.runtime)
+                    lock.withLock { failure = error as? FaceRuntimeDiagnostic; closed = true }
+                    cleanup(); continuation.resume(throwing: error)
                 }
             }
         }
@@ -89,21 +134,21 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         guard bytes.count <= SurfaceWire.maximumFrame else { throw FaceRuntimeFailure.oversized }
         _ = try SurfaceWire.decode(bytes, from: .surface)
         return try lock.withLock {
-            guard !closed else { throw failed ? FaceRuntimeFailure.runtime : .closed }
+            guard !closed else { throw failure.map { $0 as any Swift.Error } ?? FaceRuntimeFailure.closed }
             guard outgoing.count < 128, outgoingBytes + bytes.count <= Self.byteLimit else { return false }
             outgoing.append(bytes); outgoingBytes += bytes.count; return true
         }
     }
     func receive() throws -> [UInt8]? {
         try lock.withLock {
-            guard !closed else { throw failed ? FaceRuntimeFailure.runtime : .closed }
+            guard !closed else { throw failure.map { $0 as any Swift.Error } ?? FaceRuntimeFailure.closed }
             guard !incoming.isEmpty else { return nil }
             let result = incoming.removeFirst(); incomingBytes -= result.count; return result
         }
     }
     func flush() throws -> Bool {
         try lock.withLock {
-            guard !closed else { throw failed ? FaceRuntimeFailure.runtime : .closed }
+            guard !closed else { throw failure.map { $0 as any Swift.Error } ?? FaceRuntimeFailure.closed }
             return outgoing.isEmpty
         }
     }
@@ -120,14 +165,16 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         let success = await withCheckedContinuation { continuation in
             queue.async { [self] in cleanup(); continuation.resume(returning: lock.withLock { stoppedOK }) }
         }
-        guard success else { throw FaceRuntimeFailure.runtime }
+        guard success else { throw lock.withLock { stopFailure.map { $0 as any Swift.Error } ?? FaceRuntimeFailure.runtime } }
     }
     private func pump() {
         guard !lock.withLock({ closed }), let transport else { cleanup(); return }
+        var phase = FaceRuntimeDiagnostic.Phase.send
         do {
             for _ in 0..<16 {
                 guard !lock.withLock({ closed }) else { cleanup(); return }
                 if let first = lock.withLock({ outgoing.first }) {
+                    phase = .send
                     if try transport.send(first) {
                         lock.withLock {
                             // close may have erased the mailbox while ABI send ran.
@@ -140,6 +187,7 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                 // Full inbound mailbox applies backpressure without consuming or
                 // discarding runtime frames. MainActor keeps its independent stop.
                 guard room else { return }
+                phase = .receive
                 let next = try transport.receive()
                 if let next {
                     lock.withLock { if !closed { incoming.append(next); incomingBytes += next.count } }
@@ -147,7 +195,8 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                 if next == nil { break }
             }
         } catch {
-            lock.withLock { failed = true; closed = true; incoming = []; outgoing = []; incomingBytes = 0; outgoingBytes = 0 }
+            let diagnostic = FaceRuntimeDiagnostic(phase: phase, error: error)
+            lock.withLock { failure = diagnostic; closed = true; incoming = []; outgoing = []; incomingBytes = 0; outgoingBytes = 0 }
             cleanup()
         }
     }
@@ -155,9 +204,18 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         guard !cleaned else { return }; cleaned = true
         timer?.cancel(); timer = nil
         transport?.close(); transport = nil
-        let stopped = !needsStop || (abi.stop() == 0 && abi.status() == 1)
+        var diagnostic: FaceRuntimeDiagnostic?
+        if needsStop {
+            let stopped = abi.stop()
+            if stopped != 0 { diagnostic = .init(phase: .stop, status: stopped) }
+            else {
+                let status = abi.status()
+                if status != 1 { diagnostic = .init(phase: .status, status: status) }
+            }
+        }
+        let stopped = diagnostic == nil
         needsStop = false
-        lock.withLock { stoppedOK = stopped }
+        lock.withLock { stoppedOK = stopped; stopFailure = diagnostic }
         if leased && stopped { FaceRuntimeLease.shared.release(id); leased = false }
     }
 }
