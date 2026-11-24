@@ -289,6 +289,13 @@ fn crash_after_outcome_before_consumption_keeps_one_terminal() {
     changed["seq"] = json!(3);
     changed["payload"]["status"] = json!("cancelled");
     changed["payload"].as_object_mut().unwrap().remove("result");
-    assert!(runtime.record_surface_outcome(&s, &changed, 2010).is_err());
+    changed["payload"]["error"] =
+        json!({"code":"cancelled","message":"conflicting terminal","retryable":false});
+    assert_eq!(
+        runtime
+            .record_surface_outcome(&s, &changed, 2010)
+            .unwrap_err(),
+        "conflicting terminal result"
+    );
     assert_eq!(runtime.queued(), 1);
 }

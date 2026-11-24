@@ -1,6 +1,6 @@
-# M1 residual B-gate qualification work in progress
+# M1 residual B-gate qualification evidence map
 
-Owner: `t_01a20c2f7b9bb95a`. This record supplements, and does not close,
+Owner: `t_01a20c2f7b9bb95a`. This record supplies bounded evidence and explicit ADR dispositions for
 [`spec-v0-m1-gates.md`](spec-v0-m1-gates.md). ADR-0014's isolated echo proof
 remains unchanged. None of the component results below authorizes an otherwise
 withheld production route.
@@ -9,8 +9,10 @@ withheld production route.
 
 The ordinary workspace test discovery includes these integration targets in the
 required `rust` job (`scripts/ci/cargo-test --workspace --locked`). Required CI
-execution and independent exact-head review are still pending; local execution
-is not CI qualification.
+execution on test commit `c569486519a9c0c8ef82b5b3c083eaee527a6a66` passed
+([rust run 45396006313](https://github.com/softmax-universe/coglet/actions/runs/45396006313)).
+The final PR head still requires its own green CI and independent exact-head
+review before landing; local execution is not CI qualification.
 
 ### Runtime `m1_retry_crash`
 
@@ -85,21 +87,44 @@ Initial cancellation fixture omitted its required error and reached schema
 refusal instead of the conflict branch; corrected before the passing run. No
 historical production RED or mutation sensitivity is claimed.
 
-## Remaining obligations (all still owned by this card)
+## Residual disposition and live ownership
 
-| Ledger row | Still unqualified / next proof or decision |
+[ADR-0023](https://github.com/softmax-universe/coglet/blob/main/docs/adr/0023-m1-residual-withheld-routes.md)
+was accepted through independently reviewed, merge-queued
+[PR #123](https://github.com/softmax-universe/coglet/pull/123), merged as
+`8e1942b958fbd7f923b221a0e8000f98e1772110`. These moves do not
+claim that the missing positive tests ran.
+
+| Ledger row | Disposition / owner |
 |---|---|
-| H-transform | Real rewrite before build/commit; pinned transform fuzz and cross-architecture qualification; authenticated publication of the transformed artifact. Existing output-bound provenance/validator tests alone do not prove these. No publication route is enabled here. |
-| H-synthesis | The new real-iroh matrix covers retained admission/source/target/correlation, positive success/failure, duplicate/conflicting terminals and durable relay audit. Required-CI execution and independent review remain outstanding; it does not qualify the runtime's underlying physical adapter. |
-| H-private | Subscription-not-authority, ownership transfer purge/fence, private read/event leakage and remote-debug exclusions with positive controls. The current immutable registry has no ownership-transfer API; adding a protocol/API contract is not authorized by a test. |
-| H-relay-grants | Broader method/target matrix over authenticated sessions, including cross-target replay, wrong actor, expiry/revocation and authorized controls. The local component matrix is not all-method wire conformance. |
-| R-retry | The two new explicit ID controls and three process-exit boundaries need required-CI execution and review. Keep existing clock-advance, old-epoch reconnect and ambiguous-WAL tests. Arbitrary pre/post-fsync crash injection and physical power loss remain outside the named process boundaries; exact original-ledger crash inventory must be reconciled before closure. |
+| H-transform | **MOVED, WITHHELD** by ADR-0023 to `t_01a20d98a7fb7229`: real rewrite before build/commit, pinned-transform fuzz/cross-architecture and authenticated publication. Provenance validation is not publication. Proposed successor names, including `unqualified_transform_publication_refused`, are unexecuted obligations. |
+| H-synthesis | **Bounded component proof**: the real-iroh success/failure matrix above covers callable event/action retained authority and audit. Runtime matrix complements it. Final CI/review/landing remains this card's gate, not an underlying physical-adapter qualification. |
+| H-private | Local private event/ack control above supplements existing immutable-owner registration proof. **MOVED, WITHHELD** transfer/read/back-channel positives to `t_01a20d98a8bca347` under ADR-0023. Existing frozen debug/owner-only relay implementation needs no new ADR; new transfer or changed semantics does. |
+| H-relay-grants | Local target/actor/ticket/expiry/revocation controls above are direct trusted-context component tests. **MOVED** broader authenticated all-method matrix to `t_01a2084063ee0c84` under ADR-0023, against reference and mock. Joined deployment also needs `t_01a20bcfe6db20c3` / `t_01a20bd00f035b09`. |
+| R-retry | Five original ledger obligations map below; three process-exit tests add exact named WAL boundaries. No arbitrary fsync/power-loss or physical exactly-once claim. |
 
-Any migration of an obligation requires an independently reviewed ADR with its
-reason and live owner. The orchestrator has been asked to reserve the next free
-ADR number; this document neither reserves one nor changes the frozen spec.
-Joined production deployment/relay remains outside this card under the three
-owners named in its body. Production `cogletd` cannot enable `test.echo`.
+### R-retry original ledger obligation mapping
+
+These are semantic mappings to actual tests, not claims all proposed names
+exist. The source ledger enumerates five obligations; it does not enumerate
+an additional arbitrary pre/post-fsync crash matrix.
+
+| Original proof name | Executed test(s), target and limit |
+|---|---|
+| `clock_resample_retry_same_bytes` | `operational_surface::byte_identical_retry_after_clock_advances`; `native_operational::ffi_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_act` and socket counterpart. Once-translated immutable bytes, not physical exactly-once. |
+| `crash_after_persist_before_send` | Same-name `m1_retry_crash` parent executes `retry_crash_child`, requires exit 73 after retained dispatch, then reopens and compares exact bytes with no replacement grant. |
+| `reconnect_reconciles_old_epoch` | `operational_surface::durable_grant_epoch_survives_reconnect_and_restart` refuses stale grant epoch after reopen; the two native retry tests above preserve saved requests across clock/reconnect; `m1_retry_crash::crash_after_accept_before_outcome_reconciles_original_admission` preserves admitted identity after process exit. |
+| `unknown_admission_no_new_id` | Same-name `m1_retry_crash`: substituted ID lacking durably pending intent refused, original bytes retained, unadmitted success refused. A distinct legitimate guest intent is not prohibited. |
+| `terminal_rejection_allows_new_id` | Same-name `m1_retry_crash`: durable rejection, guest consumption and fresh guest-emitted ID succeeds, old bytes retained, duplicate rejection creates no wake. |
+
+`crash_after_outcome_before_consumption_keeps_one_terminal` adds the third
+process-exit boundary. `native_operational::ambiguous_wal_failure_fences_native_clock_and_retained_dispatch`
+remains the existing ambiguous-WAL fence control. All targets above are ordinary
+required-workspace test discovery; the ignored crash helper is explicitly
+invoked by its parents, not silently skipped qualification.
+
+Production `cogletd` cannot enable `test.echo`. Unrelated engine, provider,
+native speech and device gates retain their original owners and limitations.
 
 ## Local verification commands
 
@@ -112,6 +137,7 @@ cargo fmt -p coglet-runtime -p coglet-hub -- --check
 git diff --check
 ```
 
-All commands above passed on the work-in-progress test additions. No historical
-RED, mutation sensitivity, full workspace pass, required-CI pass, independent
-review or merge is claimed by this record.
+The component commands above passed on the test additions. The cited CI run
+also passed on the test commit; final-head review and landing are recorded on
+PR #120 rather than inferred from this document. No historical RED, mutation
+sensitivity, physical effect or all-platform qualification is claimed.
