@@ -7,8 +7,8 @@ import Foundation
 @MainActor public final class AppleLocalSynthesis: FaceSynthesis {
     public let route = "local"
     public let usesRemoteAudio = false
-    private let voice: AVSpeechSynthesisVoice
-    private let synthesizer = AVSpeechSynthesizer()
+    private let write: (String, @escaping @Sendable (AVAudioBuffer) -> Void) -> Void
+    private let stop: () -> Void
     private var custody = LocalSpeechCustody()
     private var collector: AppleSpeechCollector?
     private var completion: (@MainActor (Result<FaceSynthesizedAudio, Error>) -> Void)?
@@ -18,40 +18,55 @@ import Foundation
         guard let voice = AVSpeechSynthesisVoice.speechVoices().first(where: { $0.identifier == voiceIdentifier }) else {
             throw LocalSpeechError.unavailable
         }
-        self.voice = voice
+        let synthesizer = AVSpeechSynthesizer()
+        self.write = { text, callback in
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.voice = voice
+            synthesizer.write(utterance, toBufferCallback: callback)
+        }
+        self.stop = { synthesizer.stopSpeaking(at: .immediate) }
     }
+    /// Internal native boundary allows deterministic replacement/callback tests.
+    init(write: @escaping (String, @escaping @Sendable (AVAudioBuffer) -> Void) -> Void,
+         stop: @escaping () -> Void) { self.write = write; self.stop = stop }
 
     public func synthesize(text: String, completion: @escaping @MainActor (Result<FaceSynthesizedAudio, Error>) -> Void) -> @MainActor () -> Void {
-        cancelCurrent()
         guard !text.isEmpty, text.utf8.count <= 4096 else {
             completion(.failure(LocalSpeechError.resourceExhausted)); return {}
         }
+        let previous = retireCurrent()
         let token = custody.replace()
         self.completion = completion
         let collector = AppleSpeechCollector()
         self.collector = collector
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = voice
+        // Install B before notifying A. If A's completion starts C, C cancels B;
+        // the innermost replacement wins and B must never submit a native write.
+        previous?(.failure(LocalSpeechError.cancelled))
+        guard custody.accepts(token) else { return {} }
         let deliver: @MainActor @Sendable (Result<[Int16], LocalSpeechError>) -> Void = { [weak self] result in
             guard let self, self.custody.retire(token) else { return }
             let completion = self.completion
             self.completion = nil; self.collector = nil
-            self.synthesizer.stopSpeaking(at: .immediate)
+            self.stop()
             completion?(result.map { FaceSynthesizedAudio(samples: $0, spans: []) }.mapError { $0 as Error })
         }
-        synthesizer.write(utterance, toBufferCallback: AppleSpeechCollector.callback(collector, deliver: deliver))
+        write(text, AppleSpeechCollector.callback(collector, deliver: deliver))
         return { [weak self] in
             guard let self, self.custody.accepts(token) else { return }
             self.cancelCurrent()
         }
     }
 
-    private func cancelCurrent() {
+    private func retireCurrent() -> (@MainActor (Result<FaceSynthesizedAudio, Error>) -> Void)? {
         if let token = custody.token { custody.retire(token) }
         collector?.cancel(); collector = nil
         let completion = self.completion; self.completion = nil
-        synthesizer.stopSpeaking(at: .immediate)
-        completion?(.failure(LocalSpeechError.cancelled))
+        stop()
+        return completion
+    }
+    private func cancelCurrent() {
+        let previous = retireCurrent()
+        previous?(.failure(LocalSpeechError.cancelled))
     }
 }
 

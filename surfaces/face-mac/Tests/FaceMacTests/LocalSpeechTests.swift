@@ -2,6 +2,7 @@ import XCTest
 @testable import FaceMac
 #if os(macOS)
 import AVFoundation
+import Speech
 #endif
 
 final class LocalSpeechTests: XCTestCase {
@@ -45,6 +46,40 @@ final class LocalSpeechTests: XCTestCase {
     }
 
     #if os(macOS)
+    @MainActor func testReentrantCancellationKeepsInnermostSynthesis() async {
+        var writes: [String] = [], outcomes: [String] = [], stops = 0
+        let synthesis = AppleLocalSynthesis(write: { text, _ in writes.append(text) }, stop: { stops += 1 })
+        var cancelC: (@MainActor () -> Void)?
+        let cancelA = synthesis.synthesize(text: "A") { _ in
+            outcomes.append("A")
+            cancelC = synthesis.synthesize(text: "C") { _ in outcomes.append("C") }
+        }
+        let cancelB = synthesis.synthesize(text: "B") { _ in outcomes.append("B") }
+        XCTAssertEqual(writes, ["A", "C"])
+        XCTAssertEqual(outcomes, ["A", "B"])
+        let before = stops
+        cancelA(); cancelB()
+        XCTAssertEqual(stops, before)
+        cancelC?(); cancelC?()
+        XCTAssertEqual(outcomes, ["A", "B", "C"])
+        XCTAssertEqual(stops, before + 1)
+    }
+    @MainActor func testFinalRecognitionDeliveryFailureNotifiesOnceAndRetires() async throws {
+        let recognizer = try XCTUnwrap(SFSpeechRecognizer(locale: Locale(identifier: "en-US")))
+        for throwsOnFinal in [false, true] {
+            var deliveries = 0, failures = 0
+            let input = AppleRecognitionInput(recognizer: recognizer, positionMS: { 125 }, receive: { update in
+                deliveries += 1
+                XCTAssertTrue(update.final); XCTAssertEqual(update.positionMS, 125)
+                if throwsOnFinal { throw LocalSpeechError.unavailable }
+            }, failed: { failures += 1 })
+            let snapshot = AppleRecognitionSnapshot(text: "hello", final: true, failed: false)
+            input.deliver(snapshot); input.deliver(snapshot)
+            XCTAssertEqual(deliveries, 1)
+            XCTAssertEqual(failures, throwsOnFinal ? 1 : 0)
+            XCTAssertThrowsError(try input.append([1]))
+        }
+    }
     func testNativePlanarAndInterleavedStereoConversion() throws {
         for interleaved in [true, false] {
             let format = try XCTUnwrap(AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 48_000,

@@ -33,7 +33,7 @@ import Foundation
     }
 }
 
-private struct AppleRecognitionSnapshot: Sendable {
+struct AppleRecognitionSnapshot: Sendable {
     let text: String
     let final: Bool
     let failed: Bool
@@ -66,13 +66,13 @@ private final class AppleRecognitionMailbox: @unchecked Sendable {
             let text = result?.bestTranscription.formattedString ?? ""
             let invalid = text.utf8.count > 16_384
             let value = AppleRecognitionSnapshot(text: invalid ? "" : text,
-                final: result?.isFinal ?? false, failed: invalid || (error != nil && result?.isFinal != true))
+                final: result?.isFinal ?? false, failed: invalid || result == nil || (error != nil && result?.isFinal != true))
             if mailbox.put(value) { Task { @MainActor in deliver() } }
         }
     }
 }
 
-@MainActor private final class AppleRecognitionInput: FaceRecognitionInput {
+@MainActor final class AppleRecognitionInput: FaceRecognitionInput {
     private let recognizer: SFSpeechRecognizer
     private let request = SFSpeechAudioBufferRecognitionRequest()
     private var task: SFSpeechRecognitionTask?
@@ -99,12 +99,22 @@ private final class AppleRecognitionMailbox: @unchecked Sendable {
     }
     private func drain() {
         guard active, let value = mailbox.take() else { return }
+        deliver(value)
+    }
+    /// Snapshot seam shares the native callback's actual retirement/delivery path.
+    func deliver(_ value: AppleRecognitionSnapshot) {
+        guard active else { return }
         if value.failed { fail(); return }
         revision += 1
         let update = FaceRecognitionUpdate(revision: revision, text: value.text, final: value.final,
                                            positionMS: positionMS())
         if value.final { cancel() }
-        do { try receive(update) } catch { fail() }
+        do { try receive(update) }
+        catch {
+            // A final retires native input before delivery. Its throwing receiver
+            // still needs one failure notification; fail() would ignore inactive.
+            if value.final { try? failed() } else { fail() }
+        }
     }
     func append(_ samples: [Int16]) throws {
         guard active, !finishing else { throw LocalSpeechError.cancelled }
