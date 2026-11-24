@@ -85,6 +85,16 @@ server, mock hub and registry claims are not yet implemented.
   that append/transfer). Startup orphan cleanup, Git validation/finalization and
   expanded-object/disk/CPU limits are still missing. This raw sink does not
   establish secure Git quarantine or code admission.
+  `BundleSink::check_envelope` consumes append custody and returns an immutable
+  `BundleEnvelope` after exact self-contained v2 header/ref/tip binding, complete
+  transfer SHA-256 verification and declared pack-object-count preflight. It reads
+  at most 32 KiB at a time off-reactor and rejects extra refs/prerequisites before
+  import. The count is untrusted until full pack validation; `BundleEnvelope` is
+  NOT a verified Git artifact and cannot authorize ref updates. A real Git-created
+  logs bundle is transferred over real iroh and checked in
+  `real_iroh_git_bundle_envelope_is_bound_to_signed_ref_and_retains_cleanup_custody`;
+  malformed envelope tests include truncated packs, extra refs, prerequisites,
+  wrong tip/ref/version/magic, object over-count and hash mismatch, with cleanup.
   Raw data-phase tests exercise a 150000-byte transfer and stalled durable
   consumption over real iroh on the hub ALPN, plus sink failure and source EOF.
   They do not establish push/fetch/restart/replay acceptance.
