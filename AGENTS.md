@@ -17,7 +17,9 @@ Read docs/plan.md first, especially the Ground rules section. Specs in spec/ are
 - Disposable verification disk: `.cargo/config.toml` sets `profile.dev` /
   `profile.test` `debug = 0` and `incremental = false` while keeping
   `debug-assertions` and `overflow-checks` on. Do not change
-  `[profile.release]`. Named check:
-  `cargo test --locked -p coglet-types --test disposable_verify_profile`.
+  `[profile.release]` or `[profile.bench]`. Named check (must pass in both
+  modes; `--release` uses bench defaults and must not be given assertions):
+  `cargo test --locked -p coglet-types --test disposable_verify_profile` and
+  `cargo test --locked -p coglet-types --release --test disposable_verify_profile`.
   After a disposable run, `cargo clean` unused private target dirs; never share
   writable target directories across concurrent owners.

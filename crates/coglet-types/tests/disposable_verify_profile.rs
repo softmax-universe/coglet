@@ -1,31 +1,160 @@
-//! Contract for the workspace disposable verification Cargo profile.
-//! debug=0 / incremental=false must not turn off assertions or overflow checks.
+//! Disposable dev/test Cargo profile contract.
+//!
+//! `cargo test` compiles this with `profile.test`. `cargo test --release`
+//! compiles it with `profile.bench`. Release and bench stay at Cargo defaults,
+//! so this file must compile and pass in both modes without requiring
+//! debug-assertions or overflow panics.
 
-const _: () = assert!(
-    cfg!(debug_assertions),
-    "dev/test verification must keep debug-assertions on"
-);
+use std::collections::BTreeMap;
+use std::path::Path;
+use std::process::Command;
 
-#[test]
-fn debug_assertions_remain_enabled() {
-    let mut fired = false;
-    debug_assert!({
-        fired = true;
-        true
-    });
-    assert!(fired, "debug_assert! must execute under this profile");
+const CONFIG: &str = include_str!("../../../.cargo/config.toml");
+
+fn strip_comment(line: &str) -> &str {
+    match line.find('#') {
+        Some(index) => &line[..index],
+        None => line,
+    }
+}
+
+/// Assignment tables only. Comment lines are dropped first so a note that
+/// mentions `[profile.release]` cannot satisfy or violate the contract.
+fn parse_tables(src: &str) -> BTreeMap<String, BTreeMap<String, String>> {
+    let mut tables: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut current: Option<String> = None;
+    for raw in src.lines() {
+        let line = strip_comment(raw).trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(name) = line
+            .strip_prefix('[')
+            .and_then(|rest| rest.strip_suffix(']'))
+        {
+            let name = name.trim().to_string();
+            assert!(!name.is_empty(), "empty table header");
+            tables.entry(name.clone()).or_default();
+            current = Some(name);
+            continue;
+        }
+        let table = current
+            .as_deref()
+            .unwrap_or_else(|| panic!("assignment outside a table: {line}"));
+        let (key, value) = line
+            .split_once('=')
+            .unwrap_or_else(|| panic!("expected key = value, got {line}"));
+        tables
+            .get_mut(table)
+            .expect("current table")
+            .insert(key.trim().to_string(), value.trim().to_string());
+    }
+    tables
 }
 
 #[test]
-fn overflow_checks_remain_enabled() {
-    fn add(a: u8, b: u8) -> u8 {
-        a + b
+fn disposable_profiles_drop_debug_output_without_release_overrides() {
+    let tables = parse_tables(CONFIG);
+    for name in ["dev", "test"] {
+        let profile = tables
+            .get(&format!("profile.{name}"))
+            .unwrap_or_else(|| panic!("missing [profile.{name}]"));
+        assert_eq!(
+            profile.get("debug").map(String::as_str),
+            Some("0"),
+            "profile.{name} debug must be 0 (no DWARF)"
+        );
+        assert_eq!(
+            profile.get("incremental").map(String::as_str),
+            Some("false"),
+            "profile.{name} incremental must be false"
+        );
+        assert_eq!(
+            profile.get("debug-assertions").map(String::as_str),
+            Some("true"),
+            "profile.{name} must keep debug-assertions"
+        );
+        assert_eq!(
+            profile.get("overflow-checks").map(String::as_str),
+            Some("true"),
+            "profile.{name} must keep overflow-checks"
+        );
     }
-    let exploded = std::panic::catch_unwind(|| {
-        let _ = add(u8::MAX, 1);
-    });
     assert!(
-        exploded.is_err(),
-        "dev/test overflow-checks must remain enabled"
+        !tables.contains_key("profile.release"),
+        "do not override [profile.release]; Cargo defaults must stay"
     );
+    assert!(
+        !tables.contains_key("profile.bench"),
+        "cargo test --release uses bench; do not override it"
+    );
+}
+
+fn section_names(readelf_stdout: &str) -> Vec<&str> {
+    readelf_stdout
+        .lines()
+        .filter_map(|line| {
+            let start = line.find("] ")?;
+            let rest = line[start + 2..].trim_start();
+            let name = rest.split_whitespace().next()?;
+            name.starts_with('.').then_some(name)
+        })
+        .collect()
+}
+
+/// External flag-effect check. `debug = 0` reaches rustc as `-C strip=debuginfo`;
+/// gating that on `cfg!(debug_assertions)` would not observe the disk flag.
+/// Bench (release tests) already defaults to no debuginfo, so this passes
+/// there without a release override.
+#[test]
+fn compiling_profile_strips_dwarf() {
+    let exe = std::env::current_exe().expect("test executable");
+    let names = readelf_sections(&exe);
+    for forbidden in [".debug_info", ".debug_line", ".debug_abbrev"] {
+        assert!(
+            !names.iter().any(|name| *name == forbidden),
+            "{forbidden} present in {}; disposable debug=0 must strip DWARF (sections: {names:?})",
+            exe.display()
+        );
+    }
+}
+
+fn readelf_sections(exe: &Path) -> Vec<String> {
+    let output = Command::new("readelf")
+        .args(["-S", "--wide"])
+        .arg(exe)
+        .output()
+        .unwrap_or_else(|err| panic!("readelf invocation failed: {err}"));
+    assert!(
+        output.status.success(),
+        "readelf exited {}: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    section_names(&String::from_utf8_lossy(&output.stdout))
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
+fn wrapping_add(left: u8, right: u8) -> u8 {
+    left + right
+}
+
+/// Overflow-checks are independent of debuginfo. The branch selects the
+/// compiling profile's Cargo default; it does not assert `cfg!(debug_assertions)`.
+#[test]
+fn overflow_checks_follow_compiling_profile_not_release_overrides() {
+    let exploded = std::panic::catch_unwind(|| wrapping_add(u8::MAX, 1));
+    if cfg!(debug_assertions) {
+        assert!(
+            exploded.is_err(),
+            "dev/test must keep overflow-checks on when debug=0"
+        );
+    } else {
+        assert!(
+            exploded.is_ok(),
+            "release/bench must keep overflow-checks off; do not enable them to satisfy this test"
+        );
+    }
 }
