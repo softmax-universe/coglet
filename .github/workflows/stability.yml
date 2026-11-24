@@ -29,7 +29,9 @@ jobs:
   conformance:
     uses: ./.github/workflows/conformance.yml
     with:
-      stability-repeats: ${{ inputs.repeats || 20 }}
+      # workflow_dispatch can preserve numeric inputs as strings; workflow_call
+      # strictly validates the callee's number type before creating any jobs.
+      stability-repeats: ${{ fromJSON(format('{0}', inputs.repeats || 20)) }}
   rust-quarantined:
     runs-on: ubuntu-24.04
     steps:

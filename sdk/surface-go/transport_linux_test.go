@@ -171,6 +171,12 @@ func TestSurfaceConformance(t *testing.T) {
 	} else {
 		t.Log(string(out))
 	}
+	stalled := exec.Command("python3", "check_fixture_clock.py", binary)
+	if out, e := stalled.CombinedOutput(); e != nil {
+		t.Fatalf("fixture scheduler-stall regression: %s %v", out, e)
+	} else {
+		t.Log(string(out))
+	}
 	cmd = exec.Command("python3", "check_conformance.py", "--binary", binary, "--junit", filepath.Join(dir, "surface.xml"))
 	if out, e := cmd.CombinedOutput(); e != nil {
 		t.Fatalf("shared surface cases: %s %v", out, e)

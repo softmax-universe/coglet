@@ -1,0 +1,23 @@
+{"cpu": 0, "burners": [2332208, 2332209], "fixture_clock": true, "started": 1795529045.3691576}
+{"iteration": 1, "result": ["surface-go-reference.surface", "kill-latched", 0.11029857699759305, null, null]}
+{"iteration": 2, "result": ["surface-go-reference.surface", "kill-latched", 0.09842315595597029, null, null]}
+{"iteration": 3, "result": ["surface-go-reference.surface", "kill-latched", 0.10519188496982679, null, null]}
+{"iteration": 4, "result": ["surface-go-reference.surface", "kill-latched", 0.10306657303590328, null, null]}
+{"iteration": 5, "result": ["surface-go-reference.surface", "kill-latched", 0.10181761800777167, null, null]}
+{"iteration": 6, "result": ["surface-go-reference.surface", "kill-latched", 0.10310266294982284, null, null]}
+{"iteration": 7, "result": ["surface-go-reference.surface", "kill-latched", 0.09485413500806317, null, null]}
+{"iteration": 8, "result": ["surface-go-reference.surface", "kill-latched", 0.10600075003458187, null, null]}
+{"iteration": 9, "result": ["surface-go-reference.surface", "kill-latched", 0.10183505096938461, null, null]}
+{"iteration": 10, "result": ["surface-go-reference.surface", "kill-latched", 0.10379569203360006, null, null]}
+{"iteration": 11, "result": ["surface-go-reference.surface", "kill-latched", 0.1104725599871017, null, null]}
+{"iteration": 12, "result": ["surface-go-reference.surface", "kill-latched", 0.11641180096194148, null, null]}
+{"iteration": 13, "result": ["surface-go-reference.surface", "kill-latched", 0.11364842299371958, null, null]}
+{"iteration": 14, "result": ["surface-go-reference.surface", "kill-latched", 0.10511436202796176, null, null]}
+{"iteration": 15, "result": ["surface-go-reference.surface", "kill-latched", 0.11362850497243926, null, null]}
+{"iteration": 16, "result": ["surface-go-reference.surface", "kill-latched", 0.09782957501010969, null, null]}
+{"iteration": 17, "result": ["surface-go-reference.surface", "kill-latched", 0.09918801503954455, null, null]}
+{"iteration": 18, "result": ["surface-go-reference.surface", "kill-latched", 0.09789501898922026, null, null]}
+{"iteration": 19, "result": ["surface-go-reference.surface", "kill-latched", 0.10300813097273931, null, null]}
+{"iteration": 20, "result": ["surface-go-reference.surface", "kill-latched", 0.10981012799311429, null, null]}
+PASS 20/20 consecutive kill-latched under two CPU burners pinned to the same single CPU
+{"burner_exitcodes": [0, 0], "ended": 1795529047.48297}
