@@ -2,6 +2,14 @@
 
 ## Current continuation authority (supersedes historical notes below)
 
+### Run126829 update
+
+Requested native job138526753645 actually ran on GitHub Actions1000815242: the earlier macos-latest shared capacity wall is no longer an established outage. Raw job log saved as workspace/save-red-45417257441-full.log. At exact611fdc3, testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity establishes intended RED: starts1 vs2 at line94 and offline vsconnected at101. Other account tests pass; early optional native test skip is not required mock acceptance.
+
+Minimal production repair5e6d6332884ca554cb7c6932ca95d6d6205a22eb adds scheduleRetry(restart:true) after save-failure stopLink. Pending invitation, identity and generation fences are unchanged. Pushed/readback wip/t_01a205f93f231486-save-green; dispatched exact native45423268341. Supported --once at15:15Z returns2 (queued). No Swift GREEN claim. Fresh portable packaging1/signing4 and diff-check pass; Rust tests not rerun this slice.
+
+PR98 deliberately remains OPEN/DRAFT b2e72d8 to preserve independent SIGPIPE native45417062630, still queued on supported --once at15:15Z. Do not advance it before reading that actual closed-input test and full mock/UI/signature/snapshot results. Latest local source includes persistence test+repair and documentation, not just PR head. Once native45423268341 proves recovery GREEN, integrate source onto PR, then handle remaining pending-invitation/failed-signout leads regression-first. Final independent exact-head review/all CI/native queue/merge/request_review remain required; no acceptance or landing claim.
+
 PR98 OPEN/DRAFT head b2e72d84776622d553f33c024c457b6d78971934. All six prerequisite DONE receipts reread from authorized replicas (PR12/48/58/74/101/114).
 
 Native45403353278@fa2c304 passed functional account, real mock enrollment/drop/recovery, UI Pair router smoke, universal helper and inside-out signature verification, and render matrix. Only snapshot comparison failed. Prior continuation inspected normal/large/contrast changed renders and updated92 baselines in d5e6175; snapshot-comparison GREEN still pending.
