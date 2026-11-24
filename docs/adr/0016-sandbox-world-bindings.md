@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-24
 - Authors: Coglet simulator implementer
-- Related PR: recorded in the accepting PR
+- Related PR: https://github.com/softmax-universe/coglet/pull/78
 - Supersedes / superseded by: none
 
 ## Context
@@ -34,33 +34,68 @@ The family is `sandbox`, with these closed operation records:
 | `sim.cartpole` | `sim.cartpole_state` | event | cartpole-state | none |
 | `sim.cartpole` | `sim.cartpole_force` | action | cartpole-force | empty map |
 
+Catalog rules use `sandbox:gridbot-state`, `sandbox:gridbot-move`,
+`sandbox:cartpole-state`, and `sandbox:cartpole-force`; successful action output
+uses existing `surface:empty-map`. Advertisement URIs follow the existing
+`https://coglet.dev/spec/messages/sandbox.schema.json#/$defs/<rule>` convention.
+
 - gridbot-state: `x`, `y`, `goal_x`, `goal_y`, `width`, `height`, `steps`
   unsigned integers; `done` boolean. Coordinates are bounded to 0..63, dimensions
-  2..64 and steps 0..10000. Seeded worlds are empty rectangular grids; moves
-  saturate at their boundaries. Reaching the goal ends the episode.
+  2..64 and steps 0..10000. The producer additionally enforces `x,goal_x < width`
+  and `y,goal_y < height`; generic wire schema checks alone cannot prove these
+  cross-field invariants. Seeded worlds are empty rectangular grids; moves
+  saturate at their boundaries. Reaching the goal ends the episode; a 10000-step
+  cap also ends it, with `done` indicating termination (not necessarily success).
 - gridbot-move: `direction` is exactly `north`, `south`, `east`, or `west`.
-  North decreases y. A move after termination is refused without an effect.
-- cartpole-state: `x`, `velocity`, `angle`, `angular_velocity` signed integers
-  in millionths of SI units (angle in radians), `steps` 0..10000, `done` boolean.
-  Encoded values are bounded to signed 32-bit integers.
+  North decreases y. A move after termination returns `accept=false` with
+  `conflict` and no outcome/effect.
+- cartpole-state: `x`, `velocity`, `angle`, `angular_velocity` use common
+  `profile-int` constrained to [-2147483648,2147483647], not CDDL `nint` (positive
+  and zero values are valid). Units are millionths of SI (angle in radians).
+  `steps` is 0..10000 and `done` boolean.
 - cartpole-force: `direction` is exactly `left` or `right`, selecting -10 or +10 N
-  for one 20 ms integration step. An action after termination is refused.
+  for one 20 ms integration step. An action after termination returns
+  `accept=false` with `conflict`, and no outcome/effect.
 - Both state records include `state_hash`, the lowercase SHA-256 hex digest of
-  deterministic CBOR of the world snapshot without the hash field. The snapshot
-  includes the episode seed and complete dynamics/configuration state. Hashes
-  are observations, not grants or proof of external effects.
+  deterministic CBOR of the closed world snapshot specified below. Hashes are
+  observations, not grants or proof of external effects.
 
-These are nonexclusive simulator capabilities: sandbox instances are separately
-supervised and bind one pilot identity. The supervisor still supplies explicit
-operation/subscription grants; catalog presence never grants authority. No
-physical resource is advertised or controlled. Unknown operations and schema
-URIs continue to fail closed. The runtime uses the same input/output validation
-for these entries as for the existing catalog, not a profile-map fallback.
+The closed gridbot snapshot has exactly `world="gridbot-v1"`, `seed` (uint64),
+`width`, `height`, `x`, `y`, `goal_x`, `goal_y`, `steps`, and `done`, with the
+same field bounds as the state event. The closed cartpole snapshot has exactly
+`world="cartpole-v1"`, `seed` (uint64), `max_steps` (1..10000), `x`, `velocity`,
+`angle`, `angular_velocity`, `steps`, and `done`, with the same state bounds.
+There is no retained mutable RNG: reset derives initial state from seed, while
+transitions use only this snapshot and the action. Dynamics/constants are pinned
+by the `world` version; changing them requires a new version. The snapshot does
+not contain `state_hash` itself. Extra keys are forbidden.
 
-The Python world implements seeded reset and bounded deterministic transitions.
-Cartpole's numerical method, constants, termination bounds and state rounding
-are pinned by its implementation documentation and regression vectors. No
-physics-fidelity or cross-language floating-point equivalence is asserted.
+These are nonexclusive simulator capabilities, not physical resources. Each
+sandbox supervisor MUST bind exactly one coglet in both the runtime's
+`SurfaceBinding.permitted_coglets` and Python `Surface.coglets`, and only grant
+that identity. Simulator setup rejects zero/multiple pilots. This is a trusted
+supervisor invariant, not a claim that an empty resource list enforces ownership.
+Unknown operations and schema URIs continue to fail closed. The runtime uses the
+same input/output validation for these entries as for the existing catalog,
+not a profile-map fallback.
+
+Cartpole-v1 uses 1,000,000-scaled fixed-point arithmetic; multiplication and
+division truncate toward zero after each operation. Its equations are the
+standard frictionless cartpole accelerations with cart mass 1 kg, pole mass
+0.1 kg, half-length 0.5 m, gravity 9.8 m/s². Sine/cosine are evaluated with the
+fixed-point polynomials `sin(t)=t-t³/6+t⁵/120` and
+`cos(t)=1-t²/2+t⁴/24`, with fixed-point multiplication after each power and
+truncating division for terms. Explicit Euler updates position and angle from
+old velocities, then velocity and angular velocity from acceleration, with a
+20 ms step. Termination occurs at |x| > 2.4 m, |angle| > 0.209440 rad or
+`max_steps`; there is no transition after termination. Intermediate integers
+use arbitrary precision. This is a reproducible approximate simulator, not a
+claim of physical fidelity. Reset uses a specified portable 64-bit LCG
+(`s = (6364136223846793005*s + 1442695040888963407) mod 2^64`), taking four
+successive `s % 100001 - 50000` samples for x, velocity, angle, angular velocity.
+Gridbot reset takes four successive LCG states modulo width,height,width,height
+for x,y,goal_x,goal_y; if start equals goal, set goal_x=(goal_x+1)%width.
+
 Neither surface advances simulation merely because real time passes: each
 accepted action advances exactly one step. Initial state and post-action state
 are explicit surface events, with the SDK's durable sequence and grant fencing.
