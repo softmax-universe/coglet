@@ -40,7 +40,8 @@ jobs:
         run: rustup show active-toolchain
       - name: Every quarantined Rust id names a real test
         run: |
-          if [ -z "$(python3 scripts/ci/quarantine.py rust-args)" ]; then
+          args=$(python3 scripts/ci/quarantine.py rust-args)  # an invalid file fails the step here
+          if [ -z "$args" ]; then
             echo "No quarantined Rust tests."
             exit 0
           fi
