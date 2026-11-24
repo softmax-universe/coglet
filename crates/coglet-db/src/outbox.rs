@@ -1,4 +1,4 @@
-//! Provisional dedicated enqueue. No dispatch or successful public commit path.
+//! Provisional dedicated enqueue plus host-fenced dispatch records.
 use super::*;
 use coglet_types::Value as V;
 use rusqlite::OptionalExtension;
@@ -14,6 +14,53 @@ pub struct Intent {
 pub struct Enqueued {
     pub intent_id: String,
     pub duplicate: bool,
+}
+
+/// Host-visible outbox row. Guest enqueue remains the only insert path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OutboxRecord {
+    pub intent_id: String,
+    pub idempotency_key: String,
+    pub kind: String,
+    pub payload_cbor_hex: String,
+    pub correlation_id: String,
+    pub state: String,
+    pub attempt: u64,
+    pub version: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutboxState {
+    Pending,
+    Dispatching,
+    Uncertain,
+    Succeeded,
+    Failed,
+    Cancelled,
+}
+impl OutboxState {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Dispatching => "dispatching",
+            Self::Uncertain => "uncertain",
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+            Self::Cancelled => "cancelled",
+        }
+    }
+}
+
+/// Operational scheduling row. Cognitive objects stay in `objects`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkQueueRow {
+    pub task_id: String,
+    pub state: String,
+    pub priority: i64,
+    pub lease_owner: Option<String>,
+    pub lease_until: Option<i64>,
+    pub attempt: u64,
+    pub version: u64,
 }
 impl Unit<'_> {
     /// Host-only configuration, pinned before any call. An admitted unit already

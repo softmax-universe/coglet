@@ -332,6 +332,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-db"
+version = "0.1.0"
+dependencies = [
+ "coglet-engine",
+ "coglet-types",
+ "fs2",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "coglet-engine"
 version = "0.1.0"
 dependencies = [
@@ -350,6 +364,16 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "coglet-factory-host"
+version = "0.1.0"
+dependencies = [
+ "coglet-db",
+ "coglet-types",
+ "rusqlite",
+ "tempfile",
 ]
 
 [[package]]
@@ -931,6 +955,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fs2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9564fc758e15025b46aa6643b1b77d047d1a56a1aea6e01002ac0c7026876213"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]

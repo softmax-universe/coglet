@@ -20,3 +20,4 @@ coglet-mock = { path = "../../crates/coglet-mock" }
 rusqlite = { version = "0.38", features = ["bundled"] }
 
 [workspace]
+members = [".", "host"]

@@ -398,6 +398,12 @@ fn failed_experiment_creates_hypothesis_and_dispatch_intent() {
     assert_eq!(h.get(diagnostic).0, "dispatched");
     assert_eq!(h.get(hypothesis).1["trace_artifact"], "sha256:trace");
     assert_eq!(h.count("outbox"), 1);
+    h.run(event(
+        "task.completed",
+        3,
+        [("task_id", Value::Text(diagnostic.into()))],
+    ));
+    assert_eq!(h.get(diagnostic).0, "completed");
 }
 #[test]
 fn async_request_uses_recorded_mock_gateway_reply() {
@@ -478,7 +484,7 @@ fn async_request_uses_recorded_mock_gateway_reply() {
     );
 }
 #[test]
-fn pending_backlog_survives_connection_restart() {
+fn backlog_completes_after_restart() {
     let mut h = TestHost::new();
     let other = "55555555555555555555555555555555";
     Repository::new(&mut h)

@@ -721,16 +721,45 @@ fn apply<H: DbHost>(
             Decision::Decompose {
                 task_id,
                 description,
-            }
-            | Decision::Investigate {
+            } => repo
+                .create_object(&new_object(
+                    task_id,
+                    "task",
+                    "pending",
+                    json(&serde_json::json!({"description":description,"parent_id":c.subject.id,"context_ids":[]}))?,
+                    at,
+                ))
+                .map_err(db)?,
+            Decision::Investigate {
                 task_id,
+                hypothesis_id,
                 description,
-                ..
             } => {
-                repo.create_object(&new_object(task_id, "task", "pending", json(&serde_json::json!({"description":description,"parent_id":c.subject.id,"context_ids":[]}))?, at)).map_err(db)?;
-                if let Decision::Investigate { hypothesis_id, .. } = op {
-                    repo.create_object(&new_object(hypothesis_id, "hypothesis", "open", json(&serde_json::json!({"description":description,"task_id":task_id,"failure_id":c.subject.id,"trace_artifact":c.subject.data.get("trace_artifact")}))?, at)).map_err(db)?;
-                }
+                repo.create_object(&new_object(
+                    task_id,
+                    "task",
+                    "pending",
+                    json(&serde_json::json!({
+                        "description":description,
+                        "parent_id":c.subject.id,
+                        "context_ids":[hypothesis_id, c.subject.id]
+                    }))?,
+                    at,
+                ))
+                .map_err(db)?;
+                repo.create_object(&new_object(
+                    hypothesis_id,
+                    "hypothesis",
+                    "open",
+                    json(&serde_json::json!({
+                        "description":description,
+                        "task_id":task_id,
+                        "failure_id":c.subject.id,
+                        "trace_artifact":c.subject.data.get("trace_artifact")
+                    }))?,
+                    at,
+                ))
+                .map_err(db)?;
             }
             Decision::Dispatch { task_id } => {
                 let task = get(repo, task_id)?;
