@@ -21,6 +21,16 @@ App transport is `HubTransport/`, an isolated Cargo package to avoid root worksp
 5. Add real native `HubConnectionTests` using production helper plus `coglet-mock --example hub DEVICE_NODE_ID` launcher. Assert connected, force drop, observe offline, then auto-recover same identity with null invite. Existing initial tests cover fake keychain/restart/failure, controller reconnect and late callbacks.
 6. Build universal helper, copy it into app bundle on project build, sign inside-out in dev path (release script already recursively signs Mach-O). Minimal workflow steps build helper/mock launcher and set test executable paths. Require native test execution, not skip-only success.
 
+## Continuation 2 (partial, not acceptance)
+
+- Actual macOS run45337370014 confirmed intended missing HubStore/HubPairing/HubLink RED before Swift implementation.
+- Implemented HubAccount/KeychainHubStore, validated local HubPairing, and generation-fenced HubConnection at43cfba1. Native run45339043426 found a Swift 6 actor-isolation error in the default random generator; fixed with `nonisolated static` atd20572b.
+- Native run45339321655 then compiled the new production core and failed as intended for missing ProcessHubLink in the new real-mock process acceptance test. Actual logs read. Implemented that process bridge at3e7466b (backup only, not yet natively compiled).
+- Added HubKeychainTests at95819e4: requires injected HubKeychain backend and HubKeyAccessibility policy. Those APIs are intentionally NOT implemented yet. Run45339491432 on exact95819e4 is queued; obtain its missing-keychain-API RED before refactoring KeychainHubStore. PR98 deliberately remains95819e4 so this native RED is not canceled. Backup branch wip/t_01a205f93f231486 holds newer3e7466b, including process bridge and workflow real-helper/mock builds plus required native acceptance execution.
+- No Swift GREEN yet. No UI, signing or universal packaging yet. Rust tests are prior-run results on unchanged Rust source; no fresh Rust execution claimed this run.
+- Next: verify Keychain RED; implement HubKeychain abstraction/default Security backend and injected in-memory tests. Push latest source to PR branch, get core/native compile+GREEN and actual real mock-hub acceptance. The native bootstrap reader timeout is canceled as soon as bootstrap arrives; no secret output is logged.
+- Revisit process crash recovery/error tests, bounded retry cap including jitter, and pipe-write SIGPIPE behavior. Identity, enrollment and sign-out remain fail-closed. Preserve the UI delta boundary above; full native render comparison, independent review, all CI and merge queue remain required.
+
 ## TDD state
 
 Rust `enroll_drop_offline_recover_same_identity` was observed RED (unresolved app library) before implementation, then GREEN against real MockHub. Private stdio process integration, EOF and strict Clippy also passed locally. Swift tests were pushed before any production Swift implementation: draft PR98 at initial head3dd8ac0; macOS run45337370014 is queued. Its intended RED must be verified from actual compiler/test logs before implementing the Swift account/controller. This Linux host has no Swift toolchain; don't claim native execution.
