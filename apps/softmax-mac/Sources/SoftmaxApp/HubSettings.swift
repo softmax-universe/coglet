@@ -113,7 +113,7 @@ private struct HubPairingSheet: View {
             // The summary owns connecting/offline/error state. Never retain a
             // second copy of the invitation in a dismissed view or preferences.
             clearSecrets(); dismiss()
-        } catch { error = "Could not begin pairing. Check the invitation’s device ID and router configuration." }
+        } catch { self.error = "Could not begin pairing. Check the invitation’s device ID and router configuration." }
     }
     private func importQR() {
         let panel = NSOpenPanel()
@@ -129,6 +129,6 @@ private struct HubPairingSheet: View {
             let values = detector.features(in: image).compactMap { ($0 as? CIQRCodeFeature)?.messageString }
             guard values.count == 1, let value = values.first, (try? HubPairing.parse(value)) != nil else { throw HubError.pairing }
             code = value; error = nil
-        } catch { error = "Choose an image containing one valid router pairing QR code." }
+        } catch { self.error = "Choose an image containing one valid router pairing QR code." }
     }
 }
