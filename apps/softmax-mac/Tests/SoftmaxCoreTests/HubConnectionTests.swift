@@ -41,6 +41,23 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertNil(try store.loadKey())
         XCTAssertNil(try store.loadHub())
     }
+    func testHelperCrashBeforePairingRestartsWithoutRotatingIdentity() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        let hub = HubConnection(account: HubAccount(store: store, generate: { Data(repeating: 9, count: 32) }), link: link)
+        hub.start()
+        defer { hub.stop() }
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let identity = try store.loadKey()
+        link.emit(.failed)
+        XCTAssertEqual(hub.state, .offline)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while link.starts < 2, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(link.starts, 2, "An unpaired runtime must recover its pairing channel after a helper crash")
+        XCTAssertEqual(try store.loadKey(), identity)
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(hub.deviceID, String(repeating: "a", count: 64))
+    }
+
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))
@@ -66,7 +83,8 @@ final class MemoryHubStore: HubStore {
 final class FakeHubLink: HubLink {
     var callback: ((HubLinkEvent) -> Void)?
     var lastPairing: HubPairing?
-    func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws { callback = event }
+    var starts = 0
+    func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws { starts += 1; callback = event }
     func connect(_ pairing: HubPairing) throws { lastPairing = pairing }
     func stop() { callback = nil }
     func emit(_ event: HubLinkEvent) { callback?(event) }
