@@ -31,6 +31,21 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
+      - name: aarch64 R3 transform peer (qemu user emulation)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static libc6-dev-arm64-cross
+          rustup target add aarch64-unknown-linux-gnu
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
+          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+          cargo build --locked -p coglet-transform --features peer --bin coglet-transform-peer --target aarch64-unknown-linux-gnu
+          wrap="$PWD/target/coglet-transform-peer-aarch64"
+          printf '%s\n' '#!/bin/bash' "exec qemu-aarch64-static -L /usr/aarch64-linux-gnu \"$PWD/target/aarch64-unknown-linux-gnu/debug/coglet-transform-peer\" \"\$@\"" >"$wrap"
+          chmod +x "$wrap"
+          echo "COGLET_TRANSFORM_PEER_EVAL=$wrap" >>"$GITHUB_ENV"
+          echo "COGLET_TRANSFORM_PEER_ARCH=aarch64" >>"$GITHUB_ENV"
+          echo "COGLET_TRANSFORM_PEER_MODE=emulated-qemu" >>"$GITHUB_ENV"
       - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
         run: scripts/ci/cargo-test --workspace --locked
       - name: AOT feature fails closed under ABI v0
