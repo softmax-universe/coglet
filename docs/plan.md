@@ -22,8 +22,8 @@ Build the coglet framework as cleanly factored pieces in the right repos:
    - Every real implementation and every mock passes the **same** suite.
    - The suite is a language-neutral black-box harness that drives an implementation over the wire. It is not Rust unit tests.
 3. **Boundary rule.** Product-neutral pieces used by two or more products go in `coglet`. Anything tied to one product's world, data or hardware stays in that product.
-   - **coglet:** Face (Mac surface and face coglet), all SDKs, the simulator and the visualizer.
-   - **mindister:** the game adapter, the avatar coglet and Mindister's hub config.
+   - **coglet:** Face (Mac surface and face coglet), SDKs used by two or more products (Rust, Python, Swift, Go), the simulator and the visualizer.
+   - **mindister:** the game adapter, the Java surface SDK and Java codegen (which pin coglet releases), the avatar coglet and Mindister's hub config.
    - **babybear:** the pod bodies.
 4. **Spec changes go through an ADR** (`docs/adr/NNNN-*.md`). A card that needs a spec change stops, files the ADR as a PR, and links it.
 5. **WAMR first, behind an `Engine` trait.** Wasmtime comes later as a conformance check; both engines must reach identical state hashes.
@@ -45,6 +45,7 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 | Worker capacity | 3 extra workers through Phase 1, then revisit at the freeze. |
 | Face | Lives in coglet: `surfaces/face-mac/` (Swift) and `coglets/face/`. Persona and voice config stay in the product repos. |
 | Kanban board | The `default` board, tenant `coglet`, with titles prefixed `coglet:`. Pool workers serve the default board. |
+| Java surface SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
 
 ## Repo layout (`softmax-universe/coglet`)
 
@@ -68,7 +69,7 @@ spec/
   messages/                 CDDL + JSON Schema for every message
   fixtures/                 golden valid/invalid frames, scripted audio-event timelines
 conformance/                language-neutral black-box harness + suites: abi/ surface/ hub/ engine/ speech/
-codegen/                    schema → Rust / Python / Swift / Go / Java types
+codegen/                    schema → Rust / Python / Swift / Go types
 crates/                     Cargo workspace
   coglet-types              generated
   coglet-engine             Engine trait (load, cap, deadline, wire, call)
@@ -87,7 +88,7 @@ crates/                     Cargo workspace
   coglet-cli                coglet new|build|run|replay|attach|push
 sdk/
   guest-rust/               write coglets in Rust → wasm32-wasip1
-  surface-rust/ surface-python/ surface-swift/ surface-go/ surface-java/
+  surface-rust/ surface-python/ surface-swift/ surface-go/
 surfaces/
   face-mac/                 Swift: reusable audio kit (capture, echo cancellation, voice detection,
                             ducking) + hold-to-talk app
@@ -103,7 +104,8 @@ docs/adr/  docs/design/
 
 **Other repos:**
 - **mindister** owns:
-  - the game adapter, which goes from SP/1 to the coglet surface protocol, is written in Java on `sdk/surface-java`, and must pass the conformance harness;
+  - the Java surface SDK and Java codegen, which live in mindister and pin coglet releases;
+  - the game adapter, which goes from SP/1 to the coglet surface protocol, is written in Java on mindister's own Java SDK (which pins coglet releases), and must pass the conformance harness;
   - the avatar coglet;
   - its hub config and policy, including the Hermes factory adapter and the fast-loop prompts;
   - the cross-repo test (Face → hub → avatar) against released coglet artifacts.

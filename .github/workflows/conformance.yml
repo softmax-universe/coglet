@@ -57,24 +57,9 @@ jobs:
         if: inputs.bundle-mode == 'proof'
         working-directory: spec/tests
         run: bundle install --local
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: ${{ inputs.bundle-mode != 'proof' && 'maven' || '' }}
-          cache-dependency-path: |
-            sdk/surface-java/pom.xml
-            scripts/ci/resolve_maven.py
       - run: python3 -m pip install -r spec/tests/requirements.txt
       - name: Generated types are current
         run: codegen/run --check
-      - name: Resolve Jackson before Python test collection
-        # Normal/proof builds never fetch Central metadata; prepare may fill a miss.
-        # Normal (incl. merge_group) may restore the pinned seed; proof never does.
-        timeout-minutes: 3
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/ci/resolve_maven.py ${{ inputs.bundle-mode == 'prepare' && '--prepare' || '' }} ${{ inputs.bundle-mode == 'proof' && '--proof' || '' }}
       - name: Generator regression tests
         run: python3 -m unittest discover -s codegen -v
       - name: Generated validator agrees with CDDL and JSON Schema

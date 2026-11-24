@@ -130,9 +130,7 @@ def generate(rules):
     formatted = subprocess.run(['rustfmt', '--edition', '2024'], input=outputs['crates/coglet-types/src/generated.rs'], text=True, stdout=subprocess.PIPE, check=True)
     outputs['crates/coglet-types/src/generated.rs'] = formatted.stdout
     from emit_go import generate as generate_go
-    from emit_java import generate as generate_java
     outputs.update(generate_go(rules))
-    outputs.update(generate_java(rules))
     outputs['sdk/surface-swift/Sources/CogletTypes/Generated/Types.swift'] = swift
     return outputs
 
@@ -152,7 +150,7 @@ def main():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(content)
     if args.check and stale: sys.exit('stale generated files: ' + ', '.join(stale))
-    print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Java/Swift outputs ' + ('current' if args.check else 'written'))
+    print(f'codegen: {len(rules)} CDDL rules; Rust/Python/Go/Swift outputs ' + ('current' if args.check else 'written'))
 
 
 if __name__ == '__main__': main()

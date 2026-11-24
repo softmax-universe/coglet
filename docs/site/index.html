@@ -236,7 +236,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
   <h2>Mindustry and Baby Bear plug in as surfaces.</h2>
   <h3>Mindustry avatar: a thin adapter plus the shared runtime</h3>
   <div class="prose">
-    <p>The coglet does <b>not</b> run inside Mindustry's JVM. A thin in-game adapter (Java, on <a data-repo="sdk/surface-java/">sdk/surface-java</a>, owned by mindister) talks over a local socket to the same <code>cogletd</code> the Face uses.</p>
+    <p>The coglet does <b>not</b> run inside Mindustry's JVM. A thin in-game adapter (Java, on mindister's Java SDK, owned by mindister) talks over a local socket to the same <code>cogletd</code> the Face uses.</p>
     <ul>
       <li><b>One runtime everywhere</b>: a Java coglet runtime would mean every capability built twice.</li>
       <li><b>Crash isolation</b>: a hung coglet never takes down the game; the runtime restarts without touching the JVM.</li>
@@ -298,7 +298,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
   <h2>Repo layout and the parallel build.</h2>
   <pre class="tree" aria-label="softmax-universe/coglet layout"><a data-repo="spec/">spec/</a>              <span class="c">conventions · abi · surface-protocol · capabilities/ · hub-protocol · schemas · messages/ · fixtures/</span>
 <a data-repo="conformance/">conformance/</a>       <span class="c">language-neutral black-box harness + suites: abi/ surface/ hub/ engine/ speech/</span>
-<a data-repo="codegen/">codegen/</a>           <span class="c">schema → Rust / Python / Swift / Go / Java types</span>
+<a data-repo="codegen/">codegen/</a>           <span class="c">schema → Rust / Python / Swift / Go types</span>
 <a data-repo="crates/">crates/</a>
   <a data-repo="crates/coglet-types/">coglet-types</a>         <span class="c">generated</span>
   <a data-repo="crates/coglet-engine/">coglet-engine</a>        <span class="c">Engine trait (load, cap, deadline, wire, call)</span>
@@ -313,7 +313,7 @@ refs/heads/logs         <span class="c"># batch-committed logs</span></pre>
   <a data-repo="crates/coglet-trace/">coglet-trace</a>         <span class="c">trace store + training export</span>
   <a data-repo="crates/coglet-mock/">coglet-mock</a>          <span class="c">mock engine / surface / hub / LLM</span>
   <a data-repo="crates/coglet-cli/">coglet-cli</a>           <span class="c">coglet new|build|run|replay|attach|push</span>
-<a data-repo="sdk/">sdk/</a>               <span class="c">guest-rust (→ wasm32-wasip1) · surface-rust · -python · -swift · -go · -java</span>
+<a data-repo="sdk/">sdk/</a>               <span class="c">guest-rust (→ wasm32-wasip1) · surface-rust · -python · -swift · -go</span>
 <a data-repo="surfaces/face-mac/">surfaces/face-mac/</a> <span class="c">Swift audio kit + hold-to-talk app</span>
 <a data-repo="sim/">sim/</a>               <span class="c">worlds: gridbot cartpole arm2d duplex-audio paint · scenarios/</span>
 <a data-repo="apps/visualizer/">apps/visualizer/</a>   <span class="c">web: live view (hub debug client) + simulated mode</span>

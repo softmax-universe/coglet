@@ -295,7 +295,7 @@ refs/heads/logs</pre>
   <p class="eyebrow">08 · Mindustry avatar</p>
   <h2>Thin in-game adapter + the same <code>cogletd</code>.</h2>
   <ul>
-    <li>Coglet does <b>not</b> run in the JVM. Java adapter on <code>sdk/surface-java</code> (owned by mindister) talks to <code>cogletd</code> over a local socket.</li>
+    <li>Coglet does <b>not</b> run in the JVM. Java adapter on mindister's Java SDK (owned by mindister) talks to <code>cogletd</code> over a local socket.</li>
     <li><b>One runtime everywhere</b>; <b>crash isolation</b> (a hung coglet never takes down the game); native iroh + git, no JNI.</li>
     <li>Adapter projects filtered state (diffs), serves <code>/dev/game/{state,events,act,results,pointer,ctl}</code> as capabilities, enforces grants and fencing.</li>
     <li><b>Acts never execute locally</b>: hub motor queue (pacing, player-wins) → fenced acts.</li>
@@ -361,7 +361,7 @@ refs/heads/logs</pre>
   <div class="cols" style="grid-template-columns: 1.25fr 1fr">
     <pre class="tree small">spec/          <span class="c">specs, schemas, messages, fixtures</span>
 conformance/   <span class="c">black-box harness + suites</span>
-codegen/       <span class="c">schema → Rust/Py/Swift/Go/Java</span>
+codegen/       <span class="c">schema → Rust/Py/Swift/Go</span>
 crates/
   coglet-engine{,-wamr,-wasmtime}
   coglet-fs  coglet-runtime  coglet-proto
