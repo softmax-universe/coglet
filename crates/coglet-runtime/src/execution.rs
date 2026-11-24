@@ -13,6 +13,8 @@ mod clock;
 mod dispatch;
 #[path = "live_heard.rs"]
 mod live_heard;
+#[path = "managed.rs"]
+mod managed;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
@@ -78,6 +80,8 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[serde(default)]
+    managed: Option<managed::ManagedState>,
     #[serde(default)]
     catalog_pin: Option<String>,
     #[serde(default)]
@@ -149,6 +153,9 @@ impl RuntimeService {
         let mut state: ServiceState = if let Some(saved) = store.state() {
             let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            if let Some(managed) = &state.managed {
+                managed.validate()?;
+            }
             if state.catalog_pin.as_deref() != catalog.pin() {
                 return Err("recovery extension catalog pin differs from configuration".into());
             }
@@ -207,6 +214,7 @@ impl RuntimeService {
             state
         } else {
             let mut state = ServiceState {
+                managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
                 supervisor_reads: configured_reads,
                 runtime: configured,
@@ -332,6 +340,7 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err(
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
@@ -414,6 +423,7 @@ impl RuntimeService {
     /// Atomically retain timer wake and shared source sequence before execution.
     /// A full router defers firing without discarding or reordering admitted input.
     pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
+        self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("timers deferred until attempt reconciliation".into());
         }

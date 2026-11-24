@@ -5,6 +5,8 @@ mod boundary;
 mod catalog;
 mod trusted_catalog;
 pub use trusted_catalog::TrustedExtensionCatalog;
+mod device;
+pub use device::{AdapterConfig, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin};
 mod execution;
 pub mod ffi;
 mod filesystem;

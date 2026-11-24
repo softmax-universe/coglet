@@ -1,0 +1,1456 @@
+//! Real-iroh router -> device lifecycle tests against the actual `DeviceHandler`.
+//!
+//! The router side is `coglet-mock`'s `MockHub` (real iroh endpoint + shared hub
+//! kernel); the device side is the production `DeviceHandler` served through a
+//! real `Session`. Git bundles are real, signed with the router key, validated by
+//! the actual `coglet-git-validator` helper. Authority (enrollment grants, exact
+//! scopes, the coglet-signed delegation) is pre-provisioned locally by the
+//! operator; no remote delegation acceptance and no test-only flags are used.
+//!
+//! `hub.start` needs the native engine. Without `--features native-engine` the
+//! tests prove start fails closed (no mock fallback); with it they prove
+//! start -> running -> stop. A separate native test explicitly invokes the installed
+//! guest through the handler's shared RuntimeService (not an adapter socket).
+#![cfg(target_os = "linux")]
+
+use coglet_mock::hub::MockHub;
+use coglet_proto::{
+    authority::{Authority, Grant, Scope},
+    signing,
+    transport::{ALPN, Role, Session},
+};
+use coglet_runtime::{DeviceConfig, DeviceHandler, TargetPin};
+use iroh::{Endpoint, SecretKey, endpoint::presets};
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+    process::Command,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Duration,
+};
+use tokio::task::JoinHandle;
+
+const T0: u64 = 1_800_000_000;
+const DELEGATION_EXPIRES: u64 = T0 + 1_000;
+const GRANT_GEN: u64 = 7;
+const DELEGATION_GEN: u64 = 9;
+const METHODS: [&str; 5] = [
+    "hub.git.push",
+    "hub.install",
+    "hub.start",
+    "hub.stop",
+    "hub.status",
+];
+const WASM_WAT: &str = "(module (memory (export \"memory\") 1 2) \
+    (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) \
+    (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))";
+
+#[cfg(feature = "native-engine")]
+const NATIVE: bool = true;
+#[cfg(not(feature = "native-engine"))]
+const NATIVE: bool = false;
+
+type Clock = Arc<AtomicU64>;
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+/// Use the runtime package's installed shared validator, built by Cargo.
+fn validator_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_BIN_EXE_coglet-runtime-git-validator"))
+}
+
+fn key(seed: u8, role: u8) -> SecretKey {
+    let mut bytes = [seed; 32];
+    bytes[31] = role;
+    SecretKey::from_bytes(&bytes)
+}
+
+fn clock_fn(clock: &Clock) -> Arc<dyn Fn() -> Option<u64> + Send + Sync> {
+    let clock = clock.clone();
+    Arc::new(move || Some(clock.load(Ordering::SeqCst)))
+}
+
+fn git(dir: &Path, args: &[&str]) -> Vec<u8> {
+    let out = Command::new("/usr/bin/git")
+        .current_dir(dir)
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_AUTHOR_NAME", "Test")
+        .env("GIT_COMMITTER_NAME", "Test")
+        .env("GIT_AUTHOR_EMAIL", "test@example.invalid")
+        .env("GIT_COMMITTER_EMAIL", "test@example.invalid")
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    out.stdout
+}
+
+fn sign(key: &SecretKey, purpose: &str, statement: Value) -> Value {
+    let signature = key.sign(&signing::preimage(purpose, &statement).unwrap());
+    json!({"signature":hex::encode(signature.to_bytes()),"signer":key.public().to_string(),"statement":statement})
+}
+
+fn correlation(n: u64) -> String {
+    format!("{n:032x}")
+}
+
+/// Scenario knobs. Defaults are the happy path.
+#[derive(Clone)]
+struct Options {
+    delegation_methods: Vec<&'static str>,
+    pin_grant_generation: u64,
+    pin_delegation_generation: u64,
+    native_schedule: bool,
+}
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            delegation_methods: vec!["hub.install", "hub.start", "hub.stop", "hub.status"],
+            pin_grant_generation: GRANT_GEN,
+            pin_delegation_generation: DELEGATION_GEN,
+            native_schedule: NATIVE,
+        }
+    }
+}
+
+struct Env {
+    _dir: tempfile::TempDir,
+    root: PathBuf,
+    clock: Clock,
+    hub: MockHub,
+    hub_key: SecretKey,
+    coglet_key: SecretKey,
+    coglet: String,
+    actor: String,
+    ticket: String,
+    endpoint: Endpoint,
+    device_session: Session,
+    session: Session,
+    handler: Option<DeviceHandler>,
+    serve: JoinHandle<()>,
+    config: DeviceConfig,
+    seq: u64,
+}
+
+impl Env {
+    /// `seed` gives each concurrent test distinct router/device/coglet identities;
+    /// session scheduler budgets are shared per authenticated (local, peer).
+    async fn new(seed: u8, options: Options) -> Result<Self> {
+        let dir = tempfile::tempdir()?;
+        let root = dir.path().to_owned();
+        let clock: Clock = Arc::new(AtomicU64::new(T0));
+        let hub_key = key(seed, 1);
+        let device_key = key(seed, 2);
+        let coglet_key = key(seed, 3);
+        let coglet = format!("coglet:{}", coglet_key.public());
+        let actor = format!("hub:{}", hub_key.public());
+        let ticket = "ab".repeat(16);
+        let hub = MockHub::with_clock(hub_key.clone(), Arc::new(|| Some(T0))).await?;
+        let endpoint = Endpoint::builder(presets::Minimal)
+            .secret_key(device_key.clone())
+            .bind()
+            .await?;
+
+        // Operator provisioning of the device's own durable Authority.
+        let authority_path = root.join("authority.sqlite");
+        {
+            let authority = Authority::open(&authority_path)?;
+            authority.open_window(Duration::from_secs(30))?;
+            let grants: Vec<Grant> = METHODS
+                .iter()
+                .map(|method| Grant {
+                    method: (*method).into(),
+                    target: Some(coglet.clone()),
+                    expires: T0 + 100_000,
+                    generation: GRANT_GEN,
+                })
+                .collect();
+            let invite =
+                authority.issue_invite(hub.id(), Duration::from_secs(30), grants.clone())?;
+            authority.enroll(hub.id(), Some(&invite))?;
+            let scope = Scope {
+                actor: actor.clone(),
+                ticket: Some(ticket.clone()),
+            };
+            for grant in &grants {
+                authority.provision_scope(hub.id(), &scope, grant)?;
+            }
+            let delegation = Self::delegation_for(
+                &coglet_key,
+                &coglet,
+                hub.id().to_string(),
+                endpoint.id().to_string(),
+                DELEGATION_GEN,
+                DELEGATION_EXPIRES,
+                &options.delegation_methods,
+            );
+            authority
+                .accept_delegation(hub.id(), endpoint.id(), &coglet, &delegation, || Some(T0))?;
+        }
+
+        let mut targets = BTreeMap::new();
+        let native_schedule = options.native_schedule.then(|| {
+            json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536})
+        });
+        targets.insert(
+            coglet.clone(),
+            serde_json::from_value::<TargetPin>(json!({
+                "grant_generation": options.pin_grant_generation,
+                "delegation_generation": options.pin_delegation_generation,
+                "native_schedule": native_schedule,
+            }))?,
+        );
+        std::fs::write(root.join("kill.json"), b"{\"latched\":false}")?;
+        let config = DeviceConfig {
+            hub: hub.id(),
+            device: endpoint.id(),
+            wal_root: root.join("wal"),
+            quarantine: root.join("quarantine"),
+            catalog: json!([]),
+            grants: json!({"coglet":coglet,"operations":[],"resources":[]}),
+            kill_switch: Some(root.join("kill.json")),
+            targets,
+            adapter: None,
+        };
+        let handler = DeviceHandler::new(
+            config.clone(),
+            Authority::open(&authority_path)?,
+            validator_path(),
+            clock_fn(&clock),
+        )?;
+        let (device_session, session, serve) = attach(&hub, &endpoint, &handler).await?;
+        Ok(Self {
+            _dir: dir,
+            root,
+            clock,
+            hub,
+            hub_key,
+            coglet_key,
+            coglet,
+            actor,
+            ticket,
+            endpoint,
+            device_session,
+            session,
+            handler: Some(handler),
+            serve,
+            config,
+            seq: 0,
+        })
+    }
+
+    fn delegation_for(
+        coglet_key: &SecretKey,
+        coglet: &str,
+        hub: String,
+        device: String,
+        generation: u64,
+        expires: u64,
+        methods: &[&str],
+    ) -> Value {
+        sign(
+            coglet_key,
+            "delegation",
+            json!({"purpose":"delegation","coglet":coglet,"hub":hub,"device":device,
+                "generation":generation,"expires":expires,"methods":methods}),
+        )
+    }
+
+    /// The operator-provisioned delegation (the one stored by `Authority`).
+    fn delegation(&self) -> Value {
+        Self::delegation_for(
+            &self.coglet_key,
+            &self.coglet,
+            self.hub.id().to_string(),
+            self.endpoint.id().to_string(),
+            DELEGATION_GEN,
+            DELEGATION_EXPIRES,
+            &Options::default().delegation_methods,
+        )
+    }
+
+    fn next(&mut self) -> String {
+        self.seq += 1;
+        correlation(self.seq)
+    }
+
+    fn request(&mut self, method: &str, params: Value) -> Value {
+        let id = self.next();
+        self.request_with(
+            method,
+            id,
+            params,
+            &self.actor.clone(),
+            Some(self.ticket.clone()),
+        )
+    }
+
+    fn request_with(
+        &self,
+        method: &str,
+        id: String,
+        params: Value,
+        actor: &str,
+        ticket: Option<String>,
+    ) -> Value {
+        let mut context = json!({"actor":actor});
+        if let Some(ticket) = ticket {
+            context["ticket"] = json!(ticket);
+        }
+        json!({"method":method,"target":self.coglet,"correlation_id":id,"timeout_ms":30_000,
+            "params":params,"context":context})
+    }
+
+    /// Real signed Git bundle containing manifest.json, bin/step.wasm and
+    /// build/provenance.cbor. `old` is the previous signed tip for generation > 1.
+    fn bundle(&self, generation: u64, old: Option<&str>, extra: &[(&str, &[u8])]) -> Bundle {
+        let work = self.root.join(format!("git-{generation}"));
+        std::fs::create_dir_all(&work).unwrap();
+        git(&work, &["init", "--initial-branch=hub"]);
+        let wasm = wat::parse_str(WASM_WAT).unwrap();
+        let mode = native_compute_mode();
+        let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
+            "required_capabilities":[],"exclusive_outputs":[],
+            "budgets":{"compute":10000,"compute_mode":mode,"memory_pages":2,
+                "wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}});
+        std::fs::write(
+            work.join("manifest.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        std::fs::create_dir_all(work.join("bin")).unwrap();
+        std::fs::write(work.join("bin/step.wasm"), &wasm).unwrap();
+        let record = coglet_types::HubBuildRecord {
+            version: "0.1".into(),
+            source_commit: "ab".repeat(20),
+            recipe_sha256: "11".repeat(32),
+            policy_sha256: "22".repeat(32),
+            transform_sha256: "33".repeat(32),
+            original_sha256: hex::encode(Sha256::digest(&wasm)),
+            rewritten_sha256: hex::encode(Sha256::digest(&wasm)),
+        }
+        .to_cbor()
+        .unwrap();
+        std::fs::create_dir_all(work.join("build")).unwrap();
+        std::fs::write(work.join("build/provenance.cbor"), record).unwrap();
+        for (path, bytes) in extra {
+            std::fs::write(work.join(path), bytes).unwrap();
+        }
+        git(&work, &["add", "."]);
+        git(&work, &["commit", "-m", "code"]);
+        let tip = String::from_utf8(git(&work, &["rev-parse", "HEAD"]))
+            .unwrap()
+            .trim()
+            .to_owned();
+        let archive = git(&work, &["archive", "--format=tar", "HEAD"]);
+        git(
+            &work,
+            &["bundle", "create", "transfer.bundle", "refs/heads/hub"],
+        );
+        let bytes = std::fs::read(work.join("transfer.bundle")).unwrap();
+        let signed = sign(
+            &self.hub_key,
+            "hub-ref",
+            json!({"purpose":"hub-ref","hub":self.hub.id().to_string(),"coglet":self.coglet,
+                "ref":"refs/heads/hub","old":old,"new":tip,
+                "archive_sha256":hex::encode(Sha256::digest(&archive)),"generation":generation}),
+        );
+        Bundle { bytes, signed, tip }
+    }
+
+    async fn push(&mut self, bundle: &Bundle) -> Value {
+        let request = self.request(
+            "hub.git.push",
+            json!({"update":bundle.signed,"size":bundle.bytes.len(),
+                "sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
+        );
+        self.session
+            .push_git(request, &mut bundle.bytes.as_slice())
+            .await
+            .expect("push reply")
+    }
+
+    async fn install(&mut self, initial: &Value, delegation: &Value) -> Value {
+        let request = self.request(
+            "hub.install",
+            json!({"initial":initial,"delegation":delegation}),
+        );
+        self.call(request).await
+    }
+    async fn install_request(&mut self, id: String, initial: &Value) -> Value {
+        let request = self.request_with(
+            "hub.install",
+            id,
+            json!({"initial":initial,"delegation":self.delegation()}),
+            &self.actor.clone(),
+            Some(self.ticket.clone()),
+        );
+        self.call(request).await
+    }
+    async fn simple(&mut self, method: &str) -> Value {
+        let request = self.request(method, json!({}));
+        self.call(request).await
+    }
+    async fn call(&self, request: Value) -> Value {
+        self.session
+            .request(request)
+            .await
+            .expect("session request completes with a terminal frame")
+    }
+
+    /// Replace the handler/authority as a process restart would: same WAL root,
+    /// same Authority file, same device identity and connection.
+    async fn restart_handler(&mut self) {
+        self.serve.abort();
+        let _ = (&mut self.serve).await;
+        drop(self.handler.take());
+        let handler = DeviceHandler::new(
+            self.config.clone(),
+            Authority::open(self.root.join("authority.sqlite")).unwrap(),
+            validator_path(),
+            clock_fn(&self.clock),
+        )
+        .unwrap();
+        self.serve = tokio::spawn(serve(self.device_session.clone(), handler.clone()));
+        self.handler = Some(handler);
+    }
+}
+
+impl Drop for Env {
+    fn drop(&mut self) {
+        self.serve.abort();
+    }
+}
+
+struct Bundle {
+    bytes: Vec<u8>,
+    signed: Value,
+    tip: String,
+}
+
+#[cfg(feature = "native-engine")]
+fn native_compute_mode() -> String {
+    coglet_engine_wamr::COMPUTE_MODE.into()
+}
+#[cfg(not(feature = "native-engine"))]
+fn native_compute_mode() -> String {
+    "fixture.interpreter".into()
+}
+
+async fn serve(session: Session, handler: DeviceHandler) {
+    let _ = session.serve(Arc::new(handler)).await;
+}
+
+/// Device enrolls with the (mock) router over real iroh, then serves the handler.
+/// Returns (device-side session, router-side session, serve task).
+async fn attach(
+    hub: &MockHub,
+    endpoint: &Endpoint,
+    handler: &DeviceHandler,
+) -> Result<(Session, Session, JoinHandle<()>)> {
+    let invite = hub
+        .invite(
+            endpoint.id(),
+            Duration::from_secs(60),
+            vec![Grant {
+                method: "hub.health".into(),
+                target: None,
+                expires: u64::MAX,
+                generation: 0,
+            }],
+        )
+        .await?;
+    let connection = endpoint.connect(hub.addr(), ALPN).await?;
+    let device = Session::new(connection, endpoint.id(), Role::Device)?;
+    device
+        .request(
+            json!({"method":"hub.enroll","target":null,"timeout_ms":5000,
+            "correlation_id":"ab".repeat(16),
+            "params":{"offer":{"versions":["0.1"]},"invite":invite}}),
+        )
+        .await?;
+    let job = tokio::spawn(serve(device.clone(), handler.clone()));
+    for _ in 0..200 {
+        if let Some(session) = hub.session(endpoint.id()).await {
+            return Ok((device, session, job));
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    Err("router never registered the device session".into())
+}
+
+// ---- reply helpers -------------------------------------------------------
+
+fn error_code(reply: &Value) -> String {
+    assert_eq!(reply["type"], "error", "expected error frame: {reply}");
+    reply["error"]["code"].as_str().unwrap().to_owned()
+}
+fn applied(reply: &Value) -> &Value {
+    assert_eq!(reply["type"], "reply", "expected success: {reply}");
+    assert_eq!(reply["result"]["state"], "applied", "{reply}");
+    assert_eq!(reply["result"]["error"], Value::Null);
+    &reply["result"]
+}
+fn denied(reply: &Value) {
+    assert_eq!(error_code(reply), "permission_denied", "{reply}");
+}
+fn state(reply: &Value) -> (String, Value) {
+    assert_eq!(reply["type"], "reply", "status failed: {reply}");
+    (
+        reply["result"]["state"].as_str().unwrap().to_owned(),
+        reply["result"]["live_commit"].clone(),
+    )
+}
+
+/// push -> install, returning (bundle, install receipt).
+async fn pushed_and_installed(env: &mut Env) -> (Bundle, Value) {
+    let bundle = env.bundle(1, None, &[]);
+    let pushed = env.push(&bundle).await;
+    assert_eq!(pushed["result"]["state"], "queued", "{pushed}");
+    let delegation = env.delegation();
+    let receipt = env.install(&bundle.signed, &delegation).await;
+    applied(&receipt);
+    (bundle, receipt)
+}
+
+macro_rules! timed {
+    ($body:expr) => {
+        tokio::time::timeout(Duration::from_secs(120), $body)
+            .await
+            .expect("test exceeded its bounded deadline")
+    };
+}
+
+// ---- tests ---------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn push_install_stopped_then_stop_and_repeat_receipt() {
+    timed!(async {
+        let mut env = Env::new(0x21, Options::default()).await.unwrap();
+        // Not yet installed: status is the stopped default with no live commit.
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), Value::Null)
+        );
+        let (bundle, receipt) = pushed_and_installed(&mut env).await;
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+        // Identical install (same correlation id) returns the original receipt;
+        // a new correlation id for the same installed identity does too.
+        let same_id = receipt["correlation_id"].as_str().unwrap().to_owned();
+        assert_eq!(env.install_request(same_id, &bundle.signed).await, receipt);
+        let original_id = receipt["result"]["operation_id"].clone();
+        let again = env.install_request(correlation(1001), &bundle.signed).await;
+        assert_eq!(again["result"]["operation_id"], original_id, "{again}");
+        assert_eq!(again["result"], receipt["result"]);
+        // Install did not start it, and stopping a stopped coglet is idempotent.
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        applied(&env.simple("hub.stop").await);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        // A known-but-unimplemented method is denied (if its request is schema-valid).
+        let fetch = env.request("hub.cancel", json!({"id":"cd".repeat(16)}));
+        if let Ok(frame) = env.session.request(fetch).await {
+            denied(&frame);
+        }
+    });
+}
+
+#[cfg(not(feature = "native-engine"))]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_fails_closed_without_native_engine_and_stays_stopped() {
+    timed!(async {
+        // No schedule pin, and a schedule pin without the feature: both refuse.
+        for (seed, schedule) in [(0x22, false), (0x23, true)] {
+            let options = Options {
+                native_schedule: schedule,
+                ..Options::default()
+            };
+            let mut env = Env::new(seed, options).await.unwrap();
+            let (bundle, _) = pushed_and_installed(&mut env).await;
+            let started = env.simple("hub.start").await;
+            assert_eq!(error_code(&started), "unavailable", "{started}");
+            // No mock fallback: the coglet never became running.
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), json!(bundle.tip))
+            );
+        }
+    });
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn install_start_running_stop_with_native_engine() {
+    timed!(async {
+        let mut env = Env::new(0x24, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        let started = env.simple("hub.start").await;
+        applied(&started);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("running".into(), json!(bundle.tip))
+        );
+        // Repeating start is idempotent.
+        applied(&env.simple("hub.start").await);
+        assert_eq!(state(&env.simple("hub.status").await).0, "running");
+        applied(&env.simple("hub.stop").await);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+        // Durable stop survives a handler/authority restart.
+        env.restart_handler().await;
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+        applied(&env.simple("hub.start").await);
+        assert_eq!(state(&env.simple("hub.status").await).0, "running");
+        // A running coglet restarts into its durable running state, and stop works.
+        env.restart_handler().await;
+        assert_eq!(state(&env.simple("hub.status").await).0, "running");
+        applied(&env.simple("hub.stop").await);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn wal_restart_preserves_installed_and_stopped_state() {
+    timed!(async {
+        let mut env = Env::new(0x25, Options::default()).await.unwrap();
+        let (bundle, receipt) = pushed_and_installed(&mut env).await;
+        applied(&env.simple("hub.stop").await);
+        for _ in 0..2 {
+            env.restart_handler().await;
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), json!(bundle.tip))
+            );
+        }
+        // The durable install receipt is replayed exactly after restart, and
+        // the accepted ref still permits only the installed identity.
+        assert_eq!(
+            env.install_request(correlation(2000), &bundle.signed).await["result"],
+            receipt["result"]
+        );
+        // An install of a different (unaccepted) commit is refused post-restart.
+        let other = env.bundle(2, Some(&bundle.tip), &[("note.txt", b"x")]);
+        denied(&env.install(&other.signed, &env.delegation()).await);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn install_rejects_wrong_expired_and_wrong_generation_signed_delegations() {
+    timed!(async {
+        let mut env = Env::new(0x26, Options::default()).await.unwrap();
+        let bundle = env.bundle(1, None, &[]);
+        assert_eq!(env.push(&bundle).await["result"]["state"], "queued");
+        let methods = Options::default().delegation_methods;
+        let hub = env.hub.id().to_string();
+        let device = env.endpoint.id().to_string();
+        let other_node = key(0x66, 9).public().to_string();
+        let other_hub = key(0x67, 9).public().to_string();
+        let forged = |hub: String,
+                      device: String,
+                      generation: u64,
+                      expires: u64,
+                      signer: &SecretKey,
+                      coglet: &str| {
+            Env::delegation_for(signer, coglet, hub, device, generation, expires, &methods)
+        };
+        let impostor = key(0x68, 9);
+        let cases = [
+            (
+                "wrong node",
+                forged(
+                    hub.clone(),
+                    other_node,
+                    DELEGATION_GEN,
+                    DELEGATION_EXPIRES,
+                    &env.coglet_key,
+                    &env.coglet,
+                ),
+            ),
+            (
+                "wrong hub",
+                forged(
+                    other_hub,
+                    device.clone(),
+                    DELEGATION_GEN,
+                    DELEGATION_EXPIRES,
+                    &env.coglet_key,
+                    &env.coglet,
+                ),
+            ),
+            (
+                "expired",
+                forged(
+                    hub.clone(),
+                    device.clone(),
+                    DELEGATION_GEN,
+                    T0,
+                    &env.coglet_key,
+                    &env.coglet,
+                ),
+            ),
+            (
+                "generation behind",
+                forged(
+                    hub.clone(),
+                    device.clone(),
+                    DELEGATION_GEN - 1,
+                    DELEGATION_EXPIRES,
+                    &env.coglet_key,
+                    &env.coglet,
+                ),
+            ),
+            (
+                "generation ahead",
+                forged(
+                    hub.clone(),
+                    device.clone(),
+                    DELEGATION_GEN + 1,
+                    DELEGATION_EXPIRES,
+                    &env.coglet_key,
+                    &env.coglet,
+                ),
+            ),
+            (
+                "wrong signer",
+                forged(
+                    hub.clone(),
+                    device.clone(),
+                    DELEGATION_GEN,
+                    DELEGATION_EXPIRES,
+                    &impostor,
+                    &env.coglet,
+                ),
+            ),
+        ];
+        for (name, delegation) in cases {
+            let reply = env.install(&bundle.signed, &delegation).await;
+            assert_eq!(error_code(&reply), "permission_denied", "{name}: {reply}");
+            // Nothing was installed by a rejected delegation.
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), Value::Null),
+                "{name}"
+            );
+        }
+        // Tampering with an otherwise valid signed delegation is also rejected.
+        let mut tampered = env.delegation();
+        tampered["statement"]["expires"] = json!(DELEGATION_EXPIRES + 1);
+        denied(&env.install(&bundle.signed, &tampered).await);
+        assert_eq!(state(&env.simple("hub.status").await).1, Value::Null);
+        // The exact provisioned delegation still installs.
+        let good = env.delegation();
+        applied(&env.install(&bundle.signed, &good).await);
+        assert_eq!(state(&env.simple("hub.status").await).1, json!(bundle.tip));
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stored_delegation_expiry_and_clock_loss_deny_at_the_exact_second() {
+    timed!(async {
+        let mut env = Env::new(0x27, Options::default()).await.unwrap();
+        let (bundle, receipt) = pushed_and_installed(&mut env).await;
+        env.clock.store(DELEGATION_EXPIRES - 1, Ordering::SeqCst);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        applied(&env.simple("hub.stop").await);
+        // now == expires is already expired for every lifecycle method.
+        env.clock.store(DELEGATION_EXPIRES, Ordering::SeqCst);
+        for method in ["hub.status", "hub.start", "hub.stop"] {
+            denied(&env.simple(method).await);
+        }
+        denied(&env.install_request(correlation(3000), &bundle.signed).await);
+        env.clock
+            .store(DELEGATION_EXPIRES + 10_000, Ordering::SeqCst);
+        denied(&env.simple("hub.status").await);
+        // Expiry is evaluated from the injected trusted clock, not cached: rewinding
+        // it (a test-only fixture clock) restores access, and nothing was mutated.
+        env.clock.store(DELEGATION_EXPIRES - 1, Ordering::SeqCst);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+        assert_eq!(
+            env.install_request(correlation(3001), &bundle.signed).await["result"],
+            receipt["result"]
+        );
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn enrollment_grant_expiry_is_independent_of_delegation_expiry() {
+    timed!(async {
+        let mut env = Env::new(0x28, Options::default()).await.unwrap();
+        let _ = pushed_and_installed(&mut env).await;
+        // Grants and scopes expire after the delegation, so only the clock moving
+        // past the (later) grant expiry could matter; delegation already denies.
+        env.clock.store(T0 + 100_000, Ordering::SeqCst);
+        denied(&env.simple("hub.status").await);
+        // Pushes use the same enrollment authority and are denied at that time too.
+        let bundle = env.bundle(2, None, &[("late.txt", b"x")]);
+        let request = env.request(
+            "hub.git.push",
+            json!({"update":bundle.signed,"size":bundle.bytes.len(),
+                "sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
+        );
+        if let Ok(frame) = env
+            .session
+            .push_git(request, &mut bundle.bytes.as_slice())
+            .await
+        {
+            denied(&frame);
+        }
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn wrong_exact_method_and_wrong_generation_pins_are_denied() {
+    timed!(async {
+        // Delegation only grants install and status: start/stop are outside it even
+        // though enrollment grants and scopes exist for them.
+        let options = Options {
+            delegation_methods: vec!["hub.install", "hub.status"],
+            ..Options::default()
+        };
+        let mut env = Env::new(0x29, options).await.unwrap();
+        let bundle = env.bundle(1, None, &[]);
+        assert_eq!(env.push(&bundle).await["result"]["state"], "queued");
+        let provisioned = Env::delegation_for(
+            &env.coglet_key,
+            &env.coglet,
+            env.hub.id().to_string(),
+            env.endpoint.id().to_string(),
+            DELEGATION_GEN,
+            DELEGATION_EXPIRES,
+            &["hub.install", "hub.status"],
+        );
+        applied(&env.install(&bundle.signed, &provisioned).await);
+        denied(&env.simple("hub.start").await);
+        denied(&env.simple("hub.stop").await);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+    });
+
+    for (seed, options, name) in [
+        (
+            0x2a,
+            Options {
+                pin_delegation_generation: DELEGATION_GEN + 1,
+                ..Options::default()
+            },
+            "delegation pin",
+        ),
+        (
+            0x2b,
+            Options {
+                pin_grant_generation: GRANT_GEN + 1,
+                ..Options::default()
+            },
+            "grant pin",
+        ),
+    ] {
+        timed!(async {
+            let mut env = Env::new(seed, options).await.unwrap();
+            let bundle = env.bundle(1, None, &[]);
+            // Push uses the grant pin: a wrong grant generation cannot even push.
+            let request = env.request(
+                "hub.git.push",
+                json!({"update":bundle.signed,"size":bundle.bytes.len(),
+                    "sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
+            );
+            let pushed = env
+                .session
+                .push_git(request, &mut bundle.bytes.as_slice())
+                .await;
+            if name == "grant pin" {
+                assert!(
+                    pushed.map(|f| f["type"] == "error").unwrap_or(true),
+                    "{name}"
+                );
+                return;
+            }
+            assert_eq!(pushed.unwrap()["result"]["state"], "queued");
+            let delegation = env.delegation();
+            denied(&env.install(&bundle.signed, &delegation).await);
+            denied(&env.simple("hub.status").await);
+            denied(&env.simple("hub.start").await);
+        });
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn unauthorized_peer_context_ticket_and_target_are_denied() {
+    timed!(async {
+        let mut env = Env::new(0x2c, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        let wrong_actor = format!("hub:{}", key(0x6a, 1).public());
+        let other_ticket = "cd".repeat(16);
+        let contexts = [
+            ("wrong actor", wrong_actor.clone(), Some(env.ticket.clone())),
+            ("wrong ticket", env.actor.clone(), Some(other_ticket)),
+            ("missing ticket", env.actor.clone(), None),
+        ];
+        for (name, actor, ticket) in contexts {
+            for method in ["hub.status", "hub.start", "hub.stop"] {
+                let request =
+                    env.request_with(method, correlation(4000), json!({}), &actor, ticket.clone());
+                denied(&env.call(request).await);
+                let _ = name;
+            }
+            let request = env.request_with(
+                "hub.install",
+                correlation(4001),
+                json!({"initial":bundle.signed,"delegation":env.delegation()}),
+                &actor,
+                ticket.clone(),
+            );
+            let reply = env.call(request).await;
+            assert_eq!(error_code(&reply), "permission_denied", "{name}");
+        }
+        // Unpinned target.
+        let mut request = env.request("hub.status", json!({}));
+        request["target"] = json!(format!("coglet:{}", key(0x6b, 3).public()));
+        denied(&env.call(request).await);
+        // The authorised context still works, so every denial was specific.
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+
+        // A different router identity is not the pinned hub, even with a valid
+        // iroh session and the correct-looking context.
+        let rogue = MockHub::with_clock(key(0x6c, 1), Arc::new(|| Some(T0)))
+            .await
+            .unwrap();
+        let (_device_session, rogue_session, job) =
+            attach(&rogue, &env.endpoint, env.handler.as_ref().unwrap())
+                .await
+                .unwrap();
+        let reply = rogue_session
+            .request(env.request_with(
+                "hub.status",
+                correlation(4002),
+                json!({}),
+                &env.actor,
+                Some(env.ticket.clone()),
+            ))
+            .await
+            .unwrap();
+        denied(&reply);
+        let reply = rogue_session
+            .request(env.request_with(
+                "hub.stop",
+                correlation(4003),
+                json!({}),
+                &env.actor,
+                Some(env.ticket.clone()),
+            ))
+            .await
+            .unwrap();
+        denied(&reply);
+        let rogue_bundle = env.bundle(2, Some(&bundle.tip), &[("rogue.txt", b"x")]);
+        let push = env.request(
+            "hub.git.push",
+            json!({"update":rogue_bundle.signed,"size":rogue_bundle.bytes.len(),
+                "sha256":hex::encode(Sha256::digest(&rogue_bundle.bytes))}),
+        );
+        if let Ok(frame) = rogue_session
+            .push_git(push, &mut rogue_bundle.bytes.as_slice())
+            .await
+        {
+            denied(&frame);
+        }
+        job.abort();
+        rogue.shutdown().await;
+        // Nothing changed for the real router.
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn install_without_accepted_push_is_refused() {
+    timed!(async {
+        let mut env = Env::new(0x2d, Options::default()).await.unwrap();
+        // Perfectly signed ref and delegation, but no push was ever accepted.
+        let never_pushed = env.bundle(1, None, &[]);
+        let delegation = env.delegation();
+        denied(&env.install(&never_pushed.signed, &delegation).await);
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), Value::Null)
+        );
+        denied(&env.simple("hub.start").await);
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_refuses_when_accepted_ref_advances_past_installed_commit() {
+    timed!(async {
+        let mut env = Env::new(0x2e, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        // Control: the installed commit is readable through status.
+        assert_eq!(state(&env.simple("hub.status").await).1, json!(bundle.tip));
+        if NATIVE {
+            applied(&env.simple("hub.start").await);
+            assert_eq!(state(&env.simple("hub.status").await).0, "running");
+        }
+        // The router later pushes a newer accepted commit; the installed identity
+        // (and its live commit) no longer matches current accepted state, so start
+        // must not resurrect either the old or the new commit.
+        let next = env.bundle(2, Some(&bundle.tip), &[("next.txt", b"n")]);
+        assert_eq!(env.push(&next).await["result"]["state"], "queued");
+        denied(&env.simple("hub.start").await);
+        denied(&env.simple("hub.status").await);
+        let conflict = env.install_request(correlation(5000), &next.signed).await;
+        assert_eq!(error_code(&conflict), "conflict", "{conflict}");
+        // Stop is a safety operation: an accepted replacement must not prevent it.
+        applied(&env.simple("hub.stop").await);
+        let shared = env
+            .handler
+            .as_ref()
+            .unwrap()
+            .share_service(&env.coglet)
+            .unwrap();
+        assert_eq!(shared.lock().unwrap().managed_status()["state"], "stopped");
+        // This must also work with no in-memory service after reopening the WAL.
+        drop(shared);
+        env.restart_handler().await;
+        applied(&env.simple("hub.stop").await);
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_refuses_tampered_retained_bundle_bytes() {
+    timed!(async {
+        let mut env = Env::new(0x2f, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        assert_eq!(state(&env.simple("hub.status").await).1, json!(bundle.tip));
+        // Corrupt the durable retained bytes in the device's own Authority DB (a
+        // local-disk attacker, not a remote capability).
+        let sql = "UPDATE proto_ref_audit SET bundle = CAST(substr(bundle,1,32) || X'FF' || substr(bundle,34) AS BLOB);";
+        let out = Command::new("sqlite3")
+            .arg(env.root.join("authority.sqlite"))
+            .arg(".timeout 5000")
+            .arg(sql)
+            .output()
+            .expect("sqlite3 CLI is required to tamper retained bytes");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let started = env.simple("hub.start").await;
+        assert_eq!(started["type"], "error", "{started}");
+        assert_ne!(started["error"]["code"], "applied");
+        // Not running: install/status re-verify the same retained bytes too.
+        assert_eq!(env.simple("hub.status").await["type"], "error");
+        assert_eq!(env.simple("hub.start").await["type"], "error");
+        // After a restart the corrupt bytes still cannot be revalidated.
+        env.restart_handler().await;
+        assert_eq!(env.simple("hub.start").await["type"], "error");
+        assert_eq!(env.simple("hub.status").await["type"], "error");
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_refuses_after_authority_loses_the_accepted_ref() {
+    timed!(async {
+        let mut env = Env::new(0x30, Options::default()).await.unwrap();
+        let (_bundle, _) = pushed_and_installed(&mut env).await;
+        applied(&env.simple("hub.stop").await);
+        // The WAL says installed, but the Authority DB no longer has an accepted
+        // ref (e.g. replaced/restored): start must not trust the WAL alone.
+        let out = Command::new("sqlite3")
+            .arg(env.root.join("authority.sqlite"))
+            .arg(".timeout 5000")
+            .arg("DELETE FROM proto_accepted_refs;")
+            .output()
+            .expect("sqlite3 CLI is required");
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        denied(&env.simple("hub.start").await);
+        denied(&env.simple("hub.status").await);
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_requires_present_well_formed_clear_kill_switch() {
+    timed!(async {
+        let mut env = Env::new(0x31, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        let kill = env.root.join("kill.json");
+        for (contents, expected) in [
+            (Some("{\"latched\":true}"), "permission_denied"),
+            (None, "unavailable"),
+            (Some("not json"), "unavailable"),
+            (Some("{}"), "unavailable"),
+            (Some("{\"latched\":\"false\"}"), "unavailable"),
+            (Some("{\"latched\":false,\"extra\":true}"), "unavailable"),
+        ] {
+            if let Some(contents) = contents {
+                std::fs::write(&kill, contents).unwrap();
+            } else {
+                std::fs::remove_file(&kill).unwrap();
+            }
+            let reply = env.simple("hub.start").await;
+            assert_eq!(error_code(&reply), expected, "{contents:?}: {reply}");
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), json!(bundle.tip))
+            );
+            applied(&env.simple("hub.stop").await);
+        }
+        // An absent configuration path also fails closed, independently of file IO.
+        env.config.kill_switch = None;
+        env.restart_handler().await;
+        assert_eq!(error_code(&env.simple("hub.start").await), "unavailable");
+        env.config.kill_switch = Some(kill.clone());
+        std::fs::write(kill, b"{\"latched\":false}").unwrap();
+        env.restart_handler().await;
+        let start = env.simple("hub.start").await;
+        if NATIVE {
+            applied(&start);
+        } else {
+            assert_eq!(error_code(&start), "unavailable");
+        }
+        applied(&env.simple("hub.stop").await);
+    });
+}
+
+/// Explicit local scheduler invocation, NOT an adapter-socket execution claim.
+/// The service and code come from the authenticated handler's real installation.
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
+    timed!(async {
+        let mut env = Env::new(0x32, Options::default()).await.unwrap();
+        let (bundle, _) = pushed_and_installed(&mut env).await;
+        applied(&env.simple("hub.start").await);
+        let shared = env
+            .handler
+            .as_ref()
+            .unwrap()
+            .share_service(&env.coglet)
+            .unwrap();
+        let journal = {
+            let mut service = shared.lock().unwrap();
+            let setup = service.managed_setup().clone();
+            let code = hex::decode(
+                setup["initial_files"]["/code/bin/step.wasm"]
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(code, wat::parse_str(WASM_WAT).unwrap());
+            let cases: Value =
+                serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+            let mut inputs = cases
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|c| c["name"] == "no-effects")
+                .unwrap()["steps"][0]["send"]["inputs"]
+                .clone();
+            inputs["budgets"] = setup["manifest"]["budgets"].clone();
+            inputs["grants"] = env.config.grants["operations"].clone();
+            let event = inputs["events"][0].clone();
+            coglet_runtime::validate("event", &event).unwrap();
+            service.enqueue(event).unwrap();
+            assert!(service.records().is_empty());
+            let mut engine =
+                coglet_runtime::NativeEngine::new(code, &inputs["budgets"], 8_388_608, 65_536)
+                    .unwrap();
+            let result = service
+                .run_next(&inputs, &mut engine)
+                .unwrap()
+                .expect("queued event executes");
+            assert_eq!(result["journal"]["status"], "committed", "{result}");
+            assert_eq!(result["journal"]["step"], inputs["step"]);
+            assert_eq!(result["journal"]["coglet"], env.coglet);
+            assert_eq!(
+                result["journal"]["engine"]["policy"],
+                coglet_engine_wamr::COMPUTE_MODE
+            );
+            assert!(result["journal"]["usage"]["compute"].as_u64().unwrap() > 0);
+            assert_eq!(service.records(), &[result["journal"].clone()]);
+            assert_eq!(service.queued(), 0);
+            result["journal"].clone()
+        };
+        applied(&env.simple("hub.stop").await);
+        drop(shared);
+        env.restart_handler().await;
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), json!(bundle.tip))
+        );
+        let recovered = env
+            .handler
+            .as_ref()
+            .unwrap()
+            .share_service(&env.coglet)
+            .unwrap();
+        assert_eq!(
+            recovered.lock().unwrap().records(),
+            std::slice::from_ref(&journal)
+        );
+        // Release all handler/service owners before opening the private WAL;
+        // the runtime deliberately enforces a single writer even for this read.
+        drop(recovered);
+        env.serve.abort();
+        let _ = (&mut env.serve).await;
+        drop(env.handler.take());
+        let wal = env
+            .config
+            .wal_root
+            .join(coglet_runtime::digest(env.coglet.as_bytes()))
+            .join("state.wal");
+        let durable = coglet_runtime::DurableStore::open(&wal).unwrap();
+        assert_eq!(durable.records(), &[journal]);
+    });
+}
+
+/// Own every subprocess immediately: assertions/timeouts also SIGKILL and reap.
+struct ChildGuard(std::process::Child);
+impl ChildGuard {
+    fn spawn(config: &Path, log: &Path) -> Self {
+        let stderr = std::fs::File::create(log).unwrap();
+        Self(
+            Command::new(env!("CARGO_BIN_EXE_cogletd"))
+                .arg("--router-service")
+                .arg(config)
+                .env("TOKIO_WORKER_THREADS", "2")
+                .stdout(std::process::Stdio::null())
+                .stderr(stderr)
+                .spawn()
+                .unwrap(),
+        )
+    }
+    fn kill_and_wait(&mut self) {
+        self.0.kill().unwrap();
+        let status = self.0.wait().unwrap();
+        use std::os::unix::process::ExitStatusExt;
+        assert_eq!(status.signal(), Some(libc::SIGKILL));
+    }
+}
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+async fn child_session(
+    hub: &MockHub,
+    device: iroh::EndpointId,
+    child: &mut ChildGuard,
+    log: &Path,
+) -> Session {
+    for _ in 0..400 {
+        if let Some(status) = child.0.try_wait().unwrap() {
+            panic!(
+                "cogletd exited {status}: {}",
+                std::fs::read_to_string(log).unwrap()
+            );
+        }
+        if let Some(session) = hub.session(device).await {
+            // Hub registration precedes enrollment; requests queue until the child
+            // starts its handler. A completed lifecycle request proves readiness.
+            return session;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    panic!(
+        "cogletd never connected: {}",
+        std::fs::read_to_string(log).unwrap()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigkill() {
+    timed!(async {
+        use std::os::unix::fs::PermissionsExt;
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut env = Env::new(0x33, Options::default()).await.unwrap();
+        // A distinct device ensures the child's first enrollment consumes a real
+        // invite; the in-process fixture device never provisions this hub peer.
+        let device_key = key(0x33, 4);
+        let device = device_key.public();
+        let root = env.root.join("child");
+        std::fs::create_dir(&root).unwrap();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let expires = now.max(T0) + 100_000;
+        let delegation = Env::delegation_for(
+            &env.coglet_key,
+            &env.coglet,
+            env.hub.id().to_string(),
+            device.to_string(),
+            DELEGATION_GEN,
+            expires,
+            &Options::default().delegation_methods,
+        );
+        let authority_path = root.join("authority.sqlite");
+        {
+            let authority = Authority::open(&authority_path).unwrap();
+            authority.open_window(Duration::from_secs(60)).unwrap();
+            let grants: Vec<_> = METHODS
+                .iter()
+                .map(|method| Grant {
+                    method: (*method).into(),
+                    target: Some(env.coglet.clone()),
+                    expires,
+                    generation: GRANT_GEN,
+                })
+                .collect();
+            let invite = authority
+                .issue_invite(env.hub.id(), Duration::from_secs(60), grants.clone())
+                .unwrap();
+            authority.enroll(env.hub.id(), Some(&invite)).unwrap();
+            let scope = Scope {
+                actor: env.actor.clone(),
+                ticket: Some(env.ticket.clone()),
+            };
+            for grant in &grants {
+                authority
+                    .provision_scope(env.hub.id(), &scope, grant)
+                    .unwrap();
+            }
+            authority
+                .accept_delegation(env.hub.id(), device, &env.coglet, &delegation, || Some(now))
+                .unwrap();
+        }
+        let identity = root.join("identity");
+        // Create privately, not write-then-chmod, so no transient public key file.
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&identity)
+            .unwrap()
+            .write_all(&device_key.to_bytes())
+            .unwrap();
+        assert_eq!(
+            std::fs::metadata(&identity).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        let invite = env
+            .hub
+            .invite(
+                device,
+                Duration::from_secs(60),
+                vec![Grant {
+                    method: "hub.health".into(),
+                    target: None,
+                    expires,
+                    generation: 0,
+                }],
+            )
+            .await
+            .unwrap();
+        let addr = *env.hub.addr().ip_addrs().next().unwrap();
+        let config_path = root.join("router.json");
+        let mut config = json!({"hub":env.hub.id().to_string(),"device":device.to_string(),
+            "identity_path":identity,"authority_path":authority_path,"validator_path":validator_path(),
+            "wal_root":root.join("wal"),"quarantine":root.join("quarantine"),
+            "catalog":env.config.catalog,"grants":env.config.grants,"targets":{(env.coglet.clone()):{
+                "grant_generation":GRANT_GEN,"delegation_generation":DELEGATION_GEN,
+                "native_schedule":if NATIVE { json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}) } else { Value::Null }}},
+            "kill_switch":env.root.join("kill.json"),"hub_addr":addr,"invite":invite});
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        let log = root.join("child.log");
+        let mut child = ChildGuard::spawn(&config_path, &log);
+        env.session = child_session(&env.hub, device, &mut child, &log).await;
+        assert_eq!(
+            state(&env.simple("hub.status").await),
+            ("stopped".into(), Value::Null)
+        );
+        let bundle = env.bundle(1, None, &[]);
+        assert_eq!(env.push(&bundle).await["result"]["state"], "queued");
+        let receipt = env.install(&bundle.signed, &delegation).await;
+        applied(&receipt);
+        let start = env.simple("hub.start").await;
+        if NATIVE {
+            applied(&start);
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("running".into(), json!(bundle.tip))
+            );
+        } else {
+            assert_eq!(error_code(&start), "unavailable");
+            assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        }
+        applied(&env.simple("hub.stop").await);
+        let stopped = env.simple("hub.status").await["result"].clone();
+        assert_eq!(stopped["state"], "stopped");
+        let wal = root
+            .join("wal")
+            .join(coglet_runtime::digest(env.coglet.as_bytes()))
+            .join("state.wal");
+        assert!(wal.is_file(), "child must create its own real WAL");
+        let before = std::fs::read(&wal).unwrap();
+        child.kill_and_wait();
+        // Wait for the old authenticated transport to disappear before observing
+        // a replacement session, rather than accidentally reusing the stale one.
+        // QUIC cannot send a graceful close after SIGKILL; allow its bounded
+        // idle timeout to retire the old connection (not just process exit).
+        for _ in 0..2000 {
+            if env.hub.session(device).await.is_none() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        assert!(env.hub.session(device).await.is_none());
+        config["invite"] = Value::Null; // recover already committed enrollment
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        let mut restarted = ChildGuard::spawn(&config_path, &root.join("restart.log"));
+        env.session =
+            child_session(&env.hub, device, &mut restarted, &root.join("restart.log")).await;
+        assert_eq!(env.simple("hub.status").await["result"], stopped);
+        assert_eq!(
+            std::fs::read(&wal).unwrap(),
+            before,
+            "recovery must not replace/reinitialize WAL"
+        );
+        // Exact same correlation and a new correlation both recover the original
+        // install receipt from the original child's persisted state.
+        let replay = env.request_with(
+            "hub.install",
+            receipt["correlation_id"].as_str().unwrap().into(),
+            json!({"initial":bundle.signed,"delegation":delegation}),
+            &env.actor,
+            Some(env.ticket.clone()),
+        );
+        assert_eq!(env.call(replay).await, receipt);
+        let replay = env.install(&bundle.signed, &delegation).await;
+        assert_eq!(replay["result"], receipt["result"]);
+        applied(&env.simple("hub.stop").await);
+        restarted.kill_and_wait();
+    });
+}

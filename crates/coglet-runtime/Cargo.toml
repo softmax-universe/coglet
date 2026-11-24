@@ -25,10 +25,13 @@ coglet-fs = { path = "../coglet-fs", optional = true }
 wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 coglet-types = { path = "../coglet-types" }
+coglet-proto = { path = "../coglet-proto" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
 coglet-hub = { path = "../coglet-hub" }
@@ -57,6 +60,10 @@ required-features = ["native-engine"]
 [[bin]]
 name = "cogletd"
 path = "src/main.rs"
+
+[[bin]]
+name = "coglet-runtime-git-validator"
+path = "src/git_validator.rs"
 
 [[test]]
 name = "m1"

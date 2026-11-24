@@ -84,6 +84,7 @@ fn mock_stdio(trace_state: bool) -> Result<(), String> {
     }
 }
 
+mod router_service;
 #[cfg(feature = "native-engine")]
 mod sandbox;
 
@@ -208,13 +209,19 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        [flag, path] if flag == "--router-service" => {
+            if let Err(error) = router_service::run(path) {
+                eprintln!("cogletd router service: {error}");
+                std::process::exit(1);
+            }
+        }
         // Preserve the workspace packaging smoke contract; this exits immediately
         // and never claims to have started a production daemon.
         [] => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         _ => {
             eprintln!(
-                "usage: cogletd --version | --mock-stdio | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration."
+                "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session."
             );
             std::process::exit(2);
         }

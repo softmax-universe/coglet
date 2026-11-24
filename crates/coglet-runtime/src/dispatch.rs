@@ -17,6 +17,8 @@ pub(super) struct Dispatch {
     terminal_at: Option<u64>,
     accept: Option<Value>,
     outcome: Option<Value>,
+    #[serde(default)]
+    pub(super) stopped: bool,
 }
 impl Dispatch {
     pub(super) fn matches_tool_result(&self, surface: &str, args: &Value) -> bool {
@@ -116,13 +118,16 @@ impl RuntimeService {
                 continue;
             }
             if let Some(saved) = self.state.dispatches.get(&id) {
-                if saved.terminal_at.is_some() || saved.surface != session.surface() {
+                if saved.stopped
+                    || saved.terminal_at.is_some()
+                    || saved.surface != session.surface()
+                {
                     continue;
                 }
             } else {
                 // Keep already prepared IDs reconcilable, but do not admit a
                 // new effect or materialize a terminal over an unknown attempt.
-                if self.state.runtime.unresolved_attempt.is_some() {
+                if !self.managed_running() || self.state.runtime.unresolved_attempt.is_some() {
                     continue;
                 }
                 let pending = self
@@ -171,7 +176,7 @@ impl RuntimeService {
         Self::stage_terminal(&mut next, event, now)?;
         self.commit_dispatch(next)
     }
-    fn stage_terminal(next: &mut ServiceState, event: Value, now: u64) -> Result<()> {
+    pub(super) fn stage_terminal(next: &mut ServiceState, event: Value, now: u64) -> Result<()> {
         if next.runtime.unresolved_attempt.is_some() {
             return Err("terminal receipt deferred until attempt reconciliation".into());
         }
@@ -241,6 +246,9 @@ impl RuntimeService {
             now,
         )?;
         if let Some(saved) = self.state.dispatches.get(id) {
+            if saved.stopped {
+                return Err("stopped dispatch accepts historical receipts only".into());
+            }
             if saved.surface != session.surface() {
                 return Err("dispatch belongs to another authenticated surface".into());
             }
@@ -264,6 +272,7 @@ impl RuntimeService {
             }
             return hex::decode(&saved.envelope_hex).map_err(|e| e.to_string());
         }
+        self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("new dispatch deferred until attempt reconciliation".into());
         }
@@ -294,6 +303,7 @@ impl RuntimeService {
             terminal_at: None,
             accept: None,
             outcome: None,
+            stopped: false,
         };
         let mut next = self.state.clone();
         next.dispatches.insert(id.into(), dispatch);
