@@ -103,6 +103,7 @@ struct Gate {
     release: tokio::sync::Semaphore,
 }
 struct Consumer {
+    kind: RefKind,
     pause: Option<Arc<Gate>>,
     h: Arc<Harness>,
     limits: Limits,
@@ -120,9 +121,11 @@ impl FetchHandler for Consumer {
             assert_eq!(c.peer, self.h.peer);
             let h = self.h.clone();
             let metadata = metadata.clone();
+            let kind = self.kind;
             tokio::task::spawn_blocking(move || {
                 let mut context = h.context(Mode::Observation);
                 context.delegation_generation = Some(10);
+                context.kind = kind;
                 h.store
                     .precheck(&metadata, &context, || clock(c.deadline.into()))
                     .map_err(error)
@@ -157,9 +160,11 @@ impl FetchHandler for Consumer {
                 gate.release.acquire().await.unwrap().forget();
             }
             let h = self.h.clone();
+            let kind = self.kind;
             let receipt = tokio::task::spawn_blocking(move || {
                 let mut context = h.context(Mode::Observation);
                 context.delegation_generation = Some(10);
+                context.kind = kind;
                 h.store
                     .accept(bundle, &context, || clock(c.deadline.into()))
                     .map_err(error)
@@ -188,7 +193,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         ds.request(json!({"method":"hub.enroll","target":null,"correlation_id":"ab".repeat(16),"timeout_ms":5000,"params":{"offer":{"versions":["0.1"]},"invite":null}})).await.unwrap();
         let device_job=tokio::spawn(ds.serve(source.clone()));
         let request=json!({"method":"hub.git.fetch","target":h.coglet(),"context":{"actor":h.scope.actor,"ticket":h.scope.ticket},"correlation_id":"cd".repeat(16),"timeout_ms":5000,"params":{"ref":"refs/heads/logs"}});
-        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{kind:RefKind::Logs,pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         let FetchResult::Accepted(receipt)=hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap() else {panic!("rejected")};
         assert_eq!(receipt["changed"],true); assert_eq!(h.current().unwrap().metadata.signed(),first.signed());
         assert_eq!(h.store.audit_bundle(receipt["audit_id"].as_i64().unwrap()).unwrap(),bytes);
@@ -197,13 +202,13 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         assert_eq!(consumer.validated.load(Ordering::SeqCst),2,"identical statements still validate real Git");
         let reopened=Arc::new(Harness::open(&root.0));
         assert_eq!(reopened.current().unwrap().metadata.signed(),first.signed());
-        let consumer=Consumer{pause:None,h:reopened,limits:Limits{expanded_bytes:1,..Limits::default()},validated:AtomicUsize::new(0)};
+        let consumer=Consumer{kind:RefKind::Logs,pause:None,h:reopened,limits:Limits{expanded_bytes:1,..Limits::default()},validated:AtomicUsize::new(0)};
         assert!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap_err().0.contains("resource_exhausted"));
         assert_eq!(h.count("proto_ref_audit"),1); assert_quarantines(&quarantine.0,0).await;
         // Even an identical signed statement cannot launder a corrupted pack.
         let mut corrupt=bytes.clone(); *corrupt.last_mut().unwrap() ^= 1;
         *source.snapshot.lock().unwrap()=(first.clone(),corrupt.clone());
-        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{kind:RefKind::Logs,pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         assert!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.is_err());
         assert_eq!(consumer.validated.load(Ordering::SeqCst),0);
         assert_eq!(h.count("proto_ref_audit"),1); assert_quarantines(&quarantine.0,0).await;
@@ -212,7 +217,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         let newer=metadata(&newer_bytes,3,Some(&"ff".repeat(20)));
         assert_ne!(newer.new_tip(),first.new_tip());
         *source.snapshot.lock().unwrap()=(newer.clone(),newer_bytes.clone());
-        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{kind:RefKind::Logs,pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         assert!(matches!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap(),FetchResult::Accepted(v) if v["changed"]==true));
         assert_eq!(h.current().unwrap().metadata.generation(),3);
         // Observe actual no-credit rejection: responder never finishes send,
@@ -230,7 +235,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         // A newer independent connection commits after pre-credit and validation
         // but before this observer's commit: the late completion must not rewind.
         let race_gate=Arc::new(Gate{entered:tokio::sync::Semaphore::new(0),release:tokio::sync::Semaphore::new(0)});
-        let racing=Consumer{pause:Some(race_gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let racing=Consumer{kind:RefKind::Logs,pause:Some(race_gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         let session=hs.clone(); let r=request.clone(); let path=quarantine.0.clone();
         let race=tokio::spawn(async move {session.fetch_git(r,&path,&racing).await});
         race_gate.entered.acquire().await.unwrap().forget();
@@ -246,7 +251,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         *source.snapshot.lock().unwrap()=(newest,newer_bytes.clone());
         assert_quarantines(&quarantine.0,0).await;
         let gate=Arc::new(Gate{entered:tokio::sync::Semaphore::new(0),release:tokio::sync::Semaphore::new(0)});
-        let paused=Consumer{pause:Some(gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let paused=Consumer{kind:RefKind::Logs,pause:Some(gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         let session=hs.clone(); let pending_request=request.clone(); let pending_root=quarantine.0.clone();
         let pending=tokio::spawn(async move {session.fetch_git(pending_request,&pending_root,&paused).await});
         gate.entered.acquire().await.unwrap().forget();

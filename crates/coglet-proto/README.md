@@ -222,11 +222,39 @@ concurrent CAS wins, exact bundle bytes are retained, and a new-operation signed
 replay is rejected without polling an instrumented source. Success is queued
 admission, not live activation or qualified build reproduction.
 
-Reopen is not a process/Session restart proof, and statement revalidation is not
-original-operation receipt deduplication. Atomic operation receipts, real restart,
-validated code fetch and remaining adversarial streaming cases still need
-end-to-end qualification; kernel policy, activation and per-disclosure
-authorization remain their owners' responsibility.
+`PushOperation::new(authenticated_peer, &actual_request)` binds identity,
+operation ID and target to a deterministic-CBOR SHA-256 of method, params and
+actor/ticket context; timeout is excluded. `precheck_push` permits a known exact
+intent without replaying its old-tip CAS, but repeats current authorization.
+`accept_push` additionally binds the validated raw bundle's size/hash and commits
+its queued receipt in the **same** transaction as ref and retained audit bytes.
+Receipt insertion failure or final-check expiry rolls all three back. A duplicate
+still completes transfer/FIN, fsck/archive validation and current authority checks;
+changed intent conflicts before credit and a new-ID signed replay still fails CAS.
+`push_receipt` recovers this exact admission receipt under current authority.
+These synchronous calls require bounded off-reactor execution and a fresh clock.
+The receipt table currently owns immutable **queued admission only**, not the
+router/runtime's later applied/failed/cancelled lifecycle or a `hub.receipt` server.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_code_push_process_restart_replays_original_receipt`
+launches two separate child processes. The first performs actual validated code
+push and exits without destructors; the second opens the same Authority database,
+recovers the original receipt and replays the same operation through fresh real
+Session/iroh endpoints with full validation, returning the exact original reply
+without another audit. This proves after-commit process restart, not power-loss
+simulation or a pre-commit Session crash. The store-level before/after-COMMIT
+process tests remain separate. `git_operation_store` also checks atomic receipt
+failure, final expiry rollback, exact context binding and revoked retry denial.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_validated_published_code_fetch_checks_wasm_and_provenance`
+fetches an actual coglet-key-signed published code bundle through Session and
+validates Wasm/provenance before durable observation. Validly signed invalid
+Wasm or missing provenance leaves no audit; identical valid observations fully
+revalidate without a second audit. Source snapshots remain trusted fixture data.
+
+Remaining adversarial streaming cases still need end-to-end qualification;
+kernel policy, activation and per-disclosure authorization remain their owners'
+responsibility.
 
 ## Tests executed for this milestone
 

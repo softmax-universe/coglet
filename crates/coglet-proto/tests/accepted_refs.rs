@@ -22,6 +22,9 @@ use std::{
     time::Duration,
 };
 
+#[path = "support/git_operation_store.rs"]
+mod git_operation_store;
+
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
