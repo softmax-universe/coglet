@@ -101,6 +101,13 @@ Required conformance CI builds it before all registry consumers and includes it
 in every registered run; required Go CI additionally runs race tests and the same
 registry entry with a per-case identity/skip audit.
 
+Fixture clock (ADR-0021): when the harness sets `COGLET_FIXTURE_CLOCK_SOCKET`, the
+adapter's surface clock and the 100 ms kill follow only the harness's logical-time
+advances, and every frame and advance is acknowledged after its output is written
+(`ServeOptions.Control`, test-only). Without it the adapter keeps the monotonic wall
+clock, which the real-clock SDK tests still exercise. The registry entry sets
+`fixture_clock = true`, so the 200 ms case budgets measure the protocol, not runner load.
+
 Native speech stream/chunk/session ownership, media item tables, normalizers,
 heard alignment, provider work/handoff and real audio/display qualification belong
 to the device backend. The SDK provides identity, schema/byte caps, resources,
