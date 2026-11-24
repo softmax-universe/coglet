@@ -64,10 +64,26 @@ final class HubNativeConnectionTests: XCTestCase {
         XCTAssertNil(try store.loadHub())
         XCTAssertEqual(hub.state, .offline)
     }
-    private func eventually(_ condition: () -> Bool) async throws {
+    func testProcessPublishesReadyBeforeItsOutputPipeCloses() async throws {
+        let env = ProcessInfo.processInfo.environment
+        guard let helper = env["SOFTMAX_HUB_HELPER"] else {
+            if env["SOFTMAX_REQUIRE_HUB_TESTS"] == "1" { XCTFail("Native helper is required"); return }
+            throw XCTSkip("Dedicated native lane supplies the real helper")
+        }
+        let link = ProcessHubLink(executable: URL(fileURLWithPath: helper))
+        var device: String?
+        try link.start(key: Data(repeating: 7, count: 32)) {
+            if case .ready(let value) = $0 { device = value }
+        }
+        defer { link.stop() }
+        try await eventually { device != nil }
+        XCTAssertTrue(HubPairing.isHex(try XCTUnwrap(device)))
+    }
+
+    private func eventually(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) async throws {
         let deadline = ContinuousClock.now + .seconds(30)
         while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
-        XCTAssertTrue(condition(), "Timed out waiting for real mock-hub state")
+        XCTAssertTrue(condition(), "Timed out waiting for real mock-ROUTER state", file: file, line: line)
         if !condition() { throw HubError.unavailable }
     }
 }
