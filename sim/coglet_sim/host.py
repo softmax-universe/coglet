@@ -1,8 +1,14 @@
 """Duplex-audio simulator surface: Linux, no real audio.
 
 Uses the public Python surface SDK. Native capture/playback is the DuplexEngine
-clock, never a microphone or speaker. Scripted timelines come from
-spec/fixtures/speech/timelines.json and the ADR-0010 handoff cases.
+clock, never a microphone or speaker. Scripted user speech comes from
+spec/fixtures/speech/timelines.json and the ADR-0010 handoff cases; playback
+items are always the admitted speak action IDs from the RequestContext, never
+fixture constants.
+
+Timing: render starts RENDER_LATENCY_MS (wall) after admission, then virtual
+media advances SPEEDUP times faster than wall time, so a 3 s utterance plays in
+300 ms of CI time. Media positions reported on the wire are virtual media ms.
 """
 from __future__ import annotations
 
@@ -23,13 +29,16 @@ TIMELINES = json.loads((ROOT / 'spec/fixtures/speech/timelines.json').read_text(
 CONFIG = json.loads((ROOT / 'spec/fixtures/surface/adapter-config.json').read_text())
 COGLET = CONFIG['grant']['entries'][0]['coglet']
 HELLO_ID = CONFIG['hello']['body']['correlation_id']
-ITEM = '1' * 32
 STREAM = '2' * 32
-UTTERANCE = '1' * 32
 TURN = '4' * 32
 CALL = '3' * 32
 PROVIDER_ITEM = '1' * 32
 PROVIDER_UTTERANCE = '4' * 32
+HISTORY_UTTERANCE = '6' * 32
+
+SPEEDUP = 10
+RENDER_LATENCY_MS = 20
+BYTE_MS = 50  # unaligned voice: media duration per UTF-8 byte, no alignment
 
 AUDIO_OPS = (
     'speech.start', 'speech.partial', 'speech.end', 'speech.position', 'speech.barge_in',
@@ -40,13 +49,79 @@ HANDOFF_OPS = AUDIO_OPS + (
     'speech.heard', 'speech.work_state', 'speech.work_intent', 'speech.work_done', 'speech.work_result',
 )
 
+# ADR-0010 heard-truncation fixture alignment: 'Hello' ends at 1000 ms, ' world' at 3000 ms.
+HELLO_WORLD = ([{'end_ms': 1000, 'text': 'Hello'}, {'end_ms': 3000, 'text': ' world'}], 3000)
+GOOD_MORNING = ([{'end_ms': 600, 'text': 'Good'}, {'end_ms': 1400, 'text': ' morning.'}], 1400)
+
+
+def _timeline(name):
+    return next(t for t in TIMELINES if t['name'] == name)
+
+
+def _capture(name):
+    steps = []
+    for step in _timeline(name)['steps']:
+        if step['input'] in ('play', 'finish'):
+            continue
+        steps.append(dict(step))
+    return steps
+
+
+def _barge_at(ms, utterance):
+    return [
+        {'at_ms': ms, 'input': 'start', 'utterance': utterance, 'position_ms': 0},
+        {'at_ms': ms, 'input': 'barge_in', 'utterance': utterance, 'played_ms': ms},
+    ]
+
+
+def script_for(case):
+    """Voice alignment table and scripted user speech for one scenario.
+
+    capture.chunk names which admitted chunk of the first stream the user speech
+    is timed against; barge_in steps target whatever item is actually playing.
+    """
+    if case == 'barge-in-stop':
+        return {'voice': {}, 'capture': {'chunk': 0, 'steps': _capture(case)}}
+    if case == 'over-talk-duck':
+        finish = next(s for s in _timeline(case)['steps'] if s['input'] == 'finish')
+        return {'voice': {'Scripted output': ([], finish['played_ms'])},
+                'capture': {'chunk': 0, 'steps': _capture(case)}}
+    if case == 'heard-truncation':
+        return {'voice': {'Hello world': HELLO_WORLD},
+                'capture': {'chunk': 0, 'steps': _barge_at(1200, PROVIDER_UTTERANCE)}}
+    if case == 'heard-history':
+        # Finished aligned item, finished unaligned item, interrupted item, queued item.
+        return {'voice': {'Hello world': HELLO_WORLD, 'Good morning.': GOOD_MORNING},
+                'capture': {'chunk': 2, 'steps': _barge_at(1200, HISTORY_UTTERANCE)}}
+    return {'voice': {}, 'capture': None}
+
+
+def barge_for(case):
+    return 'duck' if case == 'over-talk-duck' else 'stop'
+
 
 class MarkerSurface(Surface):
-    """Advertise empty capture-mode markers (not catalog operations)."""
+    """Advertise empty capture-mode markers (not catalog operations).
+
+    Exclusive resources are declared once, on the entry that owns the device
+    (speech.control / expression.control). Optional entries such as
+    speech.history and speech.work still require those leases in grants, but
+    re-advertising them as exclusive there makes the runtime refuse the whole
+    capability snapshot (one owner entry per resource).
+    """
+
+    OWNERS = ('speech.control', 'speech.session', 'expression.control')
 
     def __init__(self, *args, marker=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.marker = marker
+
+    def _emit(self, kind, body):
+        if kind == 'capabilities':
+            body = dict(body, entries=[
+                dict(entry, exclusive=entry['exclusive'] if entry['name'] in self.OWNERS else [])
+                for entry in body['entries']])
+        super()._emit(kind, body)
 
     def _capabilities(self):
         if not self.marker:
@@ -61,20 +136,21 @@ class DuplexDevice:
         self.case = case
         self.clock = clock
         self.surface_holder = surface_holder
-        self.engine = DuplexEngine(barge='duck' if case == 'over-talk-duck' else 'stop',
-                                   render_latency_ms=0)
+        self.script = script_for(case)
+        self.engine = DuplexEngine(barge=barge_for(case), render_latency_ms=0)
         self.origin_ns = time.monotonic_ns()
         self.due = []
         self.started = False
-        self.epoch = 1
-        if case == 'heard-truncation':
-            self.engine.spans = [
-                {'end_ms': 1000, 'text': 'Hello'},
-                {'end_ms': 3000, 'text': ' world'},
-            ]
+        self.generation = 0
+        self.capture_stream = None
+        self.captured = False
+
+    # Native off-switch and callback fencing --------------------------------
 
     def stop(self):
-        self.engine.output = 'stopped' if self.engine.output == 'playing' else self.engine.output
+        """Surface reflex: silence all output and fence every queued callback."""
+        self.engine.halt()
+        self.generation += 1
         self.due.clear()
 
     def now_ms(self):
@@ -83,42 +159,126 @@ class DuplexDevice:
     def surface(self):
         return self.surface_holder[0]
 
-    def emit_engine(self, events):
-        surface = self.surface()
-        for event in events:
-            if event['name'] == 'action.outcome':
-                payload = event['payload']
-                if payload['status'] == 'cancelled':
-                    surface.complete(COGLET, payload['id'], status='cancelled',
-                                     error=payload.get('error') or Rejection('cancelled', 'No grant').error)
-                elif payload['status'] == 'succeeded':
-                    surface.complete(COGLET, payload['id'], result=payload.get('result') or {})
-                continue
-            surface.event(COGLET, event['name'], event['payload'], epoch=self.epoch)
-
     def schedule(self, at_ms, fn):
-        self.due.append((at_ms, fn))
+        generation = self.generation
+        self.due.append((at_ms, generation, fn))
 
     def tick(self):
         now = self.now_ms()
-        remain = []
-        for at_ms, fn in self.due:
-            if now >= at_ms:
-                fn()
-            else:
-                remain.append((at_ms, fn))
+        due, remain = [], []
+        for entry in self.due:
+            (due if now >= entry[0] else remain).append(entry)
         self.due = remain
+        for _, generation, fn in sorted(due, key=lambda e: e[0]):
+            if generation == self.generation:
+                fn()
 
-    def prepare(self, name, args):
+    def voice(self, text):
+        spans, duration = self.script['voice'].get(text, ([], None))
+        if duration is None:
+            duration = BYTE_MS * len(text.encode())
+        return spans, duration
+
+    def owner(self, item):
+        record = self.engine.items.get(item)
+        if record is None or record['owner'] is None:
+            return COGLET, self.surface()._get('epoch')
+        return tuple(record['owner'])
+
+    def emit_engine(self, events):
+        surface = self.surface()
+        for event in events:
+            payload = event['payload']
+            if event['name'] == 'action.outcome':
+                record = self.engine.items.get(payload['id'])
+                if record is None or record['owner'] is None:
+                    continue  # provider-native item: no admitted action to resolve
+                coglet = record['owner'][0]
+                if payload['status'] == 'succeeded':
+                    surface.complete(coglet, payload['id'], result=payload['result'])
+                else:
+                    surface.complete(coglet, payload['id'], status=payload['status'],
+                                     error=payload['error'])
+                continue
+            item = payload.get('item')
+            coglet, epoch = self.owner(item) if item else (COGLET, surface._get('epoch'))
+            try:
+                surface.event(coglet, event['name'], payload, epoch=epoch)
+            except Rejection:
+                # Late callback after revocation/regrant: fenced, never redirected.
+                self.stop()
+
+    # Playback scheduling -----------------------------------------------------
+
+    def _render_next(self, stream):
+        item = self.engine.next_queued(stream)
+        if item is None:
+            return
+        self.emit_engine(self.engine.render(self.now_ms() * SPEEDUP, item))
+        record = self.engine.items[item]
+        started = self.now_ms()
+        self.schedule(started + record['duration_ms'] // SPEEDUP,
+                      lambda: self._finish(item))
+        capture = self.script['capture']
+        if (capture and not self.captured and stream == self.capture_stream
+                and record['chunk'] == capture['chunk']):
+            self.captured = True
+            self._arm_capture(started, capture['steps'], stream)
+
+    def _finish(self, item):
+        record = self.engine.items[item]
+        if record['state'] not in ('playing', 'ducked'):
+            return
+        self.emit_engine(self.engine.complete_item(self.now_ms() * SPEEDUP, item))
+        self._render_next(record['stream'])
+
+    def _arm_capture(self, started, steps, stream=None):
+        for step in steps:
+            payload = {k: v for k, v in step.items() if k not in ('input', 'at_ms')}
+            self.schedule(started + step['at_ms'] // SPEEDUP,
+                          lambda k=step['input'], p=payload, s=stream: self._capture(k, p, s))
+
+    def _capture(self, kind, payload, stream):
+        if kind == 'barge_in':
+            item = self.engine.active_item()
+            if item is None or (stream is not None and self.engine.items[item]['stream'] != stream):
+                return  # nothing audible any more: user speech emits start only
+            payload = dict(payload, item=item, stream=self.engine.items[item]['stream'])
+            payload.pop('position_ms', None)
+            if payload['played_ms'] > self.engine.items[item]['duration_ms']:
+                return
+        self.emit_engine(self.engine.feed(self.now_ms() * SPEEDUP, kind, **payload))
+
+    def _handoff_barge(self):
+        events = []
+        events.extend(self.engine.feed(1200, 'start', utterance=PROVIDER_UTTERANCE, position_ms=0))
+        events.extend(self.engine.feed(1200, 'barge_in', utterance=PROVIDER_UTTERANCE,
+                                       stream=self.engine.stream, item=self.engine.item,
+                                       played_ms=1200, position_ms=1200))
+        self.emit_engine(events)
+
+    # Operations ------------------------------------------------------------------
+
+    def prepare(self, name, args, context):
         if name in ('expression.set_expression', 'expression.state', 'speech.config',
                     'speech.heard', 'speech.work_state'):
             return
         if name == 'speech.speak_chunk':
-            if self.engine.stream and self.engine.output in ('playing', 'ducked'):
-                raise Rejection('conflict', 'stream already active')
+            stream = self.engine.streams.get(args['stream'])
+            if stream and stream['owner'] and stream['owner'][0] != context.coglet:
+                raise Rejection('conflict', 'stream owned by another coglet')
+            if stream and (stream['stopped'] or stream['final']):
+                raise Rejection('conflict', 'stream closed')
+            if (len(stream['items']) if stream else 0) != args['chunk']:
+                raise Rejection('conflict', 'noncontiguous chunk')
+            if stream and len(stream['items']) >= 64:
+                raise Rejection('conflict', 'chunk limit')
+            if any(s != args['stream'] and self.engine.stream_open(s) for s in self.engine.streams):
+                raise Rejection('conflict', 'another stream is open')
             return
         if name == 'speech.stop':
-            if args['stream'] != self.engine.stream and self.engine.stream is not None:
+            stream = self.engine.streams.get(args['stream'])
+            if stream is None or (stream['owner'] and stream['owner'][0] != context.coglet):
                 raise Rejection('not_found', 'unknown stream')
             return
         if name == 'speech.work_result':
@@ -130,10 +290,8 @@ class DuplexDevice:
             raise Rejection('conflict', 'backchannel not used by duplex timelines')
         if name in ('speech.session_open', 'speech.session_close', 'speech.tool_result'):
             raise Rejection('unavailable', 'no provider session')
-        if 'stream' in args or 'session' in args:
-            return
 
-    def execute(self, name, args):
+    def execute(self, name, args, context):
         now = self.now_ms()
         if name == 'speech.config':
             config = dict(CONFIG['speech_config'])
@@ -145,66 +303,38 @@ class DuplexDevice:
             return self.engine.expression_state(now)
         if name == 'speech.heard':
             record = self.engine.heard(args['item'])
-            if record is None:
+            if record is None or self.owner(args['item'])[0] != context.coglet:
                 raise Rejection('not_found', 'unknown item')
             return record
         if name == 'speech.work_state':
             return self.engine.work_state()
         if name == 'speech.speak_chunk':
-            events = self.engine.feed(now, 'play', stream=args['stream'], chunk=args['chunk'],
-                                      item=ITEM, played_ms=0, position_ms=0)
-            self.emit_engine(events)
-            self.arm_after_play()
-            return None
+            spans, duration = self.voice(args['text'])
+            stream = args['stream']
+            idle = self.engine.next_queued(stream) is None and not any(
+                self.engine.items[i]['state'] in ('playing', 'ducked')
+                for i in self.engine.streams.get(stream, {'items': []})['items'])
+            # Native item identity is exactly the admitted wire action ID.
+            self.engine.enqueue(stream, args['chunk'], context.action_id, spans, duration,
+                                args['final'], owner=[context.coglet, context.epoch])
+            if self.capture_stream is None:
+                self.capture_stream = stream
+            if idle:
+                self.schedule(now + RENDER_LATENCY_MS, lambda: self._render_next(stream))
+            return None  # completes only after the chunk is actually rendered
         if name == 'speech.stop':
-            if self.engine.output in ('playing', 'ducked'):
-                self.engine.output = 'stopped'
-                self.engine.terminal = 'cancelled'
+            self.emit_engine(self.engine.stop_stream(now * SPEEDUP, args['stream']))
             return {}
         if name == 'speech.work_result':
             done = self.engine.work_result(args['turn'], args['call'], args['epoch'], args['value'])
-            self.surface().event(COGLET, 'speech.work_done', done, epoch=self.epoch)
+            self.surface().event(COGLET, 'speech.work_done', done, epoch=self.surface()._get('epoch'))
             return {}
         raise Rejection('unavailable')
-
-    def arm_after_play(self):
-        if self.case == 'barge-in-stop':
-            self._arm_timeline('barge-in-stop')
-        elif self.case == 'over-talk-duck':
-            self._arm_timeline('over-talk-duck')
-        elif self.case == 'heard-truncation':
-            self.schedule(self.now_ms(), self._handoff_barge)
-
-    def _timeline(self, name):
-        return next(t for t in TIMELINES if t['name'] == name)
-
-    def _arm_timeline(self, name):
-        for step in self._timeline(name)['steps']:
-            if step['input'] == 'play':
-                continue
-            payload = {k: v for k, v in step.items() if k not in ('input', 'at_ms')}
-            kind = step['input']
-            # Wire cases only wait at_ms=100 for the first capture; later media times
-            # are scripted positions, not wall-clock delays.
-            if kind in ('start', 'barge_in'):
-                at_ms = min(step['at_ms'], 100)
-            else:
-                at_ms = min(step['at_ms'], 110)
-            self.schedule(at_ms, lambda k=kind, p=payload, t=step['at_ms']: self.emit_engine(
-                self.engine.feed(t, k, **p)))
-
-    def _handoff_barge(self):
-        events = []
-        events.extend(self.engine.feed(1200, 'start', utterance=PROVIDER_UTTERANCE, position_ms=0))
-        events.extend(self.engine.feed(1200, 'barge_in', utterance=PROVIDER_UTTERANCE,
-                                       stream=self.engine.stream or STREAM, item=self.engine.item or PROVIDER_ITEM,
-                                       played_ms=1200, position_ms=1200))
-        self.emit_engine(events)
 
     def configured(self):
         self.started = True
         if self.case == 'late-partial-and-stale-revision':
-            self._arm_timeline(self.case)
+            self._arm_capture(self.now_ms(), _capture(self.case))
         elif self.case == 'work-cancelled':
             self.engine.feed(0, 'play', stream=STREAM, chunk=0, item=PROVIDER_ITEM, played_ms=0)
             self.engine.events.clear()
@@ -226,8 +356,8 @@ class DuplexDevice:
                 binding['input'].replace(':', '::'),
                 binding['output'].replace(':', '::') if binding['output'] else None,
                 resources,
-                lambda args, context, n=name: self.prepare(n, args),
-                lambda args, context, n=name: self.execute(n, args),
+                lambda args, context, n=name: self.prepare(n, args, context),
+                lambda args, context, n=name: self.execute(n, args, context),
             ))
 
 
@@ -238,7 +368,7 @@ def case_name():
 def operations_for(case):
     if case.startswith('mode-'):
         return ()
-    if case in ('heard-truncation', 'work-cancelled', 'duplicate-call'):
+    if case in ('heard-truncation', 'heard-history', 'work-cancelled', 'duplicate-call'):
         return HANDOFF_OPS
     return AUDIO_OPS
 

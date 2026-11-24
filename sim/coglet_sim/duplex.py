@@ -2,13 +2,19 @@
 
 Playback, barge-in, capture normalization and heard truncation follow
 spec/capabilities/speech.md and the scripted timelines in
-spec/fixtures/speech/timelines.json. Render latency is a small virtual delay
-before the first playing position; media positions are scripted, never inferred
-from wall time or text-duration ratios.
+spec/fixtures/speech/timelines.json. Callers supply virtual media
+milliseconds; positions are scripted or derived from the simulated voice's
+known media duration, never inferred from wall time or text-duration ratios.
+
+Every speak item (wire action ID or provider-native ID) has its own record, so
+heard history of a finished item survives later items and an interrupted item
+never extends. Unknown alignment (no spans) always yields empty heard text.
 """
 from __future__ import annotations
 
 from copy import deepcopy
+
+CANCELLED = {'code': 'cancelled', 'message': 'No grant', 'retryable': False}
 
 
 def heard_prefix(spans, played_ms, limit=16384):
@@ -23,14 +29,8 @@ def heard_prefix(spans, played_ms, limit=16384):
         if len(raw) <= room:
             text += piece
             continue
-        take = room
-        while take and (raw[take - 1] & 0xC0) == 0x80:
-            take -= 1
-        if take and (raw[take - 1] & 0x80):
-            while take and (raw[take - 1] & 0xC0) != 0xC0:
-                take -= 1
-            take -= 1
-        text += raw[:max(take, 0)].decode()
+        # Cut at the byte budget, dropping only an incomplete trailing character.
+        text += raw[:room].decode('utf-8', errors='ignore')
         break
     return text
 
@@ -39,6 +39,7 @@ class DuplexEngine:
     """In-memory duplex body. Callers supply virtual milliseconds."""
 
     RENDER_LATENCY_MS = 20
+    LIVE = ('queued', 'playing', 'ducked')
 
     def __init__(self, barge='stop', render_latency_ms=RENDER_LATENCY_MS):
         if barge not in ('stop', 'duck'):
@@ -60,6 +61,8 @@ class DuplexEngine:
         self.position_ms = 0
         self.spans = []
         self.pending_play_at = None
+        self.items = {}
+        self.streams = {}
         self.events = []
         self.journal = []
         self.expression = 'neutral'
@@ -71,66 +74,51 @@ class DuplexEngine:
         self.work_done = []
         self.capture_mode = None
 
+    FIELDS = ('barge', 'render_latency_ms', 'utterances', 'discarded', 'output', 'terminal',
+              'stream', 'item', 'chunk', 'played_ms', 'position_ms', 'spans', 'pending_play_at',
+              'items', 'streams', 'events', 'journal', 'expression', 'intensity',
+              'expression_until', 'work_epoch', 'pending_work', 'remembered_calls',
+              'work_done', 'capture_mode')
+
     def snapshot(self):
-        return deepcopy({
-            'barge': self.barge,
-            'render_latency_ms': self.render_latency_ms,
-            'utterances': self.utterances,
-            'closed': sorted(self.closed),
-            'discarded': self.discarded,
-            'output': self.output,
-            'terminal': self.terminal,
-            'stream': self.stream,
-            'item': self.item,
-            'chunk': self.chunk,
-            'played_ms': self.played_ms,
-            'position_ms': self.position_ms,
-            'spans': self.spans,
-            'pending_play_at': self.pending_play_at,
-            'events': self.events,
-            'journal': self.journal,
-            'expression': self.expression,
-            'intensity': self.intensity,
-            'expression_until': self.expression_until,
-            'work_epoch': self.work_epoch,
-            'pending_work': self.pending_work,
-            'remembered_calls': self.remembered_calls,
-            'work_done': self.work_done,
-            'capture_mode': self.capture_mode,
-        })
+        data = {name: getattr(self, name) for name in self.FIELDS}
+        data['closed'] = sorted(self.closed)
+        data['remembered_calls'] = [[list(k), v] for k, v in self.remembered_calls.items()]
+        return deepcopy(data)
 
     def restore(self, snapshot):
         data = deepcopy(snapshot)
-        self.barge = data['barge']
-        self.render_latency_ms = data['render_latency_ms']
-        self.utterances = data['utterances']
+        for name in self.FIELDS:
+            setattr(self, name, data[name])
         self.closed = set(data['closed'])
-        self.discarded = data['discarded']
-        self.output = data['output']
-        self.terminal = data['terminal']
-        self.stream = data['stream']
-        self.item = data['item']
-        self.chunk = data['chunk']
-        self.played_ms = data['played_ms']
-        self.position_ms = data['position_ms']
-        self.spans = data['spans']
-        self.pending_play_at = data['pending_play_at']
-        self.events = data['events']
-        self.journal = data['journal']
-        self.expression = data['expression']
-        self.intensity = data['intensity']
-        self.expression_until = data['expression_until']
-        self.work_epoch = data['work_epoch']
-        self.pending_work = data['pending_work']
-        self.remembered_calls = data['remembered_calls']
-        self.work_done = data['work_done']
-        self.capture_mode = data['capture_mode']
+        self.remembered_calls = {tuple(k): v for k, v in data['remembered_calls']}
 
     def _emit(self, at_ms, name, payload):
         event = {'at_ms': at_ms, 'name': name, 'payload': payload}
         self.events.append(event)
         self.journal.append(event)
         return event
+
+    # Playback table -----------------------------------------------------
+
+    def _register(self, item, stream, chunk, spans=(), duration_ms=None, state='queued', owner=None):
+        if item in self.items:
+            raise ValueError('conflict: item already known')
+        record = self.streams.setdefault(stream, {'items': [], 'stopped': False, 'final': False,
+                                                  'position_ms': 0, 'owner': owner})
+        record['items'].append(item)
+        self.items[item] = {
+            'stream': stream, 'chunk': chunk, 'spans': list(spans), 'owner': owner,
+            'duration_ms': duration_ms, 'played_ms': 0, 'base_ms': None, 'state': state,
+        }
+        return self.items[item]
+
+    def _set_current(self, item):
+        record = self.items[item]
+        self.item, self.stream, self.chunk = item, record['stream'], record['chunk']
+        self.played_ms = record['played_ms']
+        self.position_ms = record['base_ms'] + record['played_ms']
+        self.spans = record['spans']
 
     def _position(self, at_ms, state=None):
         state = state or self.output
@@ -139,19 +127,109 @@ class DuplexEngine:
             'played_ms': self.played_ms, 'position_ms': self.position_ms, 'state': state,
         })
 
-    def speak(self, at_ms, stream, chunk, item, text, final=True, spans=None):
-        if self.stream and self.output not in ('idle', 'finished', 'stopped'):
-            raise ValueError('conflict: stream already active')
-        self.stream = stream
-        self.chunk = chunk
-        self.item = item
-        self.spans = list(spans or [])
-        self.played_ms = 0
-        self.position_ms = 0
-        self.output = 'playing'
+    def _outcome(self, at_ms, item, status):
+        payload = {'id': item, 'status': status}
+        if status == 'succeeded':
+            payload['result'] = {}
+        else:
+            payload['error'] = dict(CANCELLED)
+        return self._emit(at_ms, 'action.outcome', payload)
+
+    def enqueue(self, stream, chunk, item, spans=(), duration_ms=None, final=False, owner=None):
+        """Admit one speak chunk. Media duration comes from the simulated voice."""
+        known = self.streams.get(stream)
+        if known and (known['stopped'] or known['final']):
+            raise ValueError('conflict: stream closed')
+        if known and len(known['items']) != chunk or not known and chunk != 0:
+            raise ValueError('conflict: noncontiguous chunk')
+        if any(s != stream and self.stream_open(s) for s in self.streams):
+            raise ValueError('conflict: another stream is open')
+        self._register(item, stream, chunk, spans, duration_ms, 'queued', owner)
+        if final:
+            self.streams[stream]['final'] = True
+
+    def stream_open(self, stream):
+        record = self.streams.get(stream)
+        if not record or record['stopped']:
+            return False
+        return not record['final'] or any(self.items[i]['state'] in self.LIVE for i in record['items'])
+
+    def next_queued(self, stream):
+        for item in self.streams.get(stream, {'items': []})['items']:
+            state = self.items[item]['state']
+            if state in ('playing', 'ducked'):
+                return None
+            if state == 'queued':
+                return item
+        return None
+
+    def render(self, at_ms, item):
+        """First rendered audio for a queued item: playing position at played 0."""
+        record = self.items[item]
+        if record['state'] != 'queued':
+            return []
+        stream = self.streams[record['stream']]
+        record['state'] = 'ducked' if self.output == 'ducked' and self.stream == record['stream'] else 'playing'
+        record['base_ms'] = stream['position_ms']
+        self.output = record['state']
         self.terminal = None
-        self.pending_play_at = at_ms + self.render_latency_ms
-        return self.tick(at_ms)
+        self._set_current(item)
+        return [self._position(at_ms, record['state'])]
+
+    def complete_item(self, at_ms, item):
+        """Item rendered to its known media end: finished position + success."""
+        record = self.items[item]
+        if record['state'] not in ('playing', 'ducked'):
+            return []
+        record['played_ms'] = record['duration_ms']
+        record['state'] = 'finished'
+        self.streams[record['stream']]['position_ms'] = record['base_ms'] + record['played_ms']
+        self._set_current(item)
+        self.output = 'finished'
+        self.terminal = 'succeeded'
+        return [self._position(at_ms, 'finished'), self._outcome(at_ms, item, 'succeeded')]
+
+    def stop_stream(self, at_ms, stream):
+        """Coglet speech.stop: silence the stream, cancel queued/playing items."""
+        record = self.streams[stream]
+        record['stopped'] = True
+        emitted = []
+        for item in record['items']:
+            state = self.items[item]['state']
+            if state in ('playing', 'ducked'):
+                self.items[item]['state'] = 'stopped'
+                self._set_current(item)
+                self.output = 'stopped'
+                self.terminal = 'cancelled'
+                emitted.append(self._position(at_ms, 'stopped'))
+                emitted.append(self._outcome(at_ms, item, 'cancelled'))
+            elif state == 'queued':
+                self.items[item]['state'] = 'cancelled'
+                emitted.append(self._outcome(at_ms, item, 'cancelled'))
+        return emitted
+
+    def halt(self):
+        """Native off-switch (revocation, deadline, disconnect): silence everything.
+
+        Outcomes for admitted work come from the surface core, not the engine."""
+        for record in self.streams.values():
+            record['stopped'] = True
+        for record in self.items.values():
+            if record['state'] in ('playing', 'ducked'):
+                record['state'] = 'stopped'
+            elif record['state'] == 'queued':
+                record['state'] = 'cancelled'
+        if self.output in ('playing', 'ducked'):
+            self.output = 'stopped'
+        self.pending_play_at = None
+
+    def active_item(self):
+        for item, record in self.items.items():
+            if record['state'] in ('playing', 'ducked'):
+                return item
+        return None
+
+    # Timeline inputs ----------------------------------------------------
 
     def tick(self, now_ms):
         emitted = []
@@ -168,14 +246,18 @@ class DuplexEngine:
         self.tick(at_ms)
         emitted = []
         if kind == 'play':
-            self.stream = step['stream']
-            self.chunk = step.get('chunk', 0)
-            self.item = step['item']
-            self.played_ms = step.get('played_ms', 0)
-            self.position_ms = step.get('position_ms', self.played_ms)
+            item = step['item']
+            if item not in self.items:
+                self._register(item, step['stream'], step.get('chunk', 0), step.get('spans', ()),
+                               step.get('duration_ms'), 'queued', step.get('owner'))
+            record = self.items[item]
+            record['state'] = 'playing'
+            record['played_ms'] = step.get('played_ms', 0)
+            record['base_ms'] = step.get('position_ms', record['played_ms']) - record['played_ms']
             self.output = 'playing'
             self.terminal = None
             self.pending_play_at = None
+            self._set_current(item)
             emitted.append(self._position(at_ms, 'playing'))
         elif kind == 'start':
             uid = step['utterance']
@@ -201,48 +283,64 @@ class DuplexEngine:
                 payload['position_ms'] = step.get('position_ms', 0)
             emitted.append(self._emit(at_ms, 'speech.' + kind, payload))
         elif kind == 'barge_in':
-            if step['stream'] != self.stream:
-                raise ValueError('barge stream mismatch')
+            item = step['item']
+            record = self.items.get(item)
+            if record is None or record['stream'] != step['stream'] or record['state'] not in ('playing', 'ducked'):
+                raise ValueError('barge item is not the active output')
+            played = step['played_ms']
+            if played < record['played_ms'] or (record['duration_ms'] is not None
+                                                and played > record['duration_ms']):
+                raise ValueError('barge position regressed or exceeds media')
             reflex = 'stopped' if self.barge == 'stop' else 'ducked'
-            self.played_ms = step['played_ms']
-            self.position_ms = step.get('position_ms', step['played_ms'])
+            record['played_ms'] = played
+            if 'position_ms' in step:
+                record['base_ms'] = step['position_ms'] - played
+            record['state'] = reflex
+            self._set_current(item)
             self.output = reflex
             emitted.append(self._emit(at_ms, 'speech.barge_in', {
-                'utterance': step['utterance'], 'stream': self.stream, 'item': step['item'],
+                'utterance': step['utterance'], 'stream': self.stream, 'item': item,
                 'played_ms': self.played_ms, 'position_ms': self.position_ms, 'reflex': reflex,
             }))
             emitted.append(self._position(at_ms, reflex))
             if reflex == 'stopped':
                 self.terminal = 'cancelled'
-                emitted.append(self._emit(at_ms, 'action.outcome', {
-                    'id': step['item'], 'correlation_id': step['item'], 'status': 'cancelled',
-                    'error': {'code': 'cancelled', 'message': 'No grant', 'retryable': False},
-                }))
+                stream = self.streams[record['stream']]
+                stream['stopped'] = True
+                stream['position_ms'] = self.position_ms
+                emitted.append(self._outcome(at_ms, item, 'cancelled'))
+                for later in stream['items']:
+                    if self.items[later]['state'] == 'queued':
+                        self.items[later]['state'] = 'cancelled'
+                        emitted.append(self._outcome(at_ms, later, 'cancelled'))
             emitted.extend(self.cancel_work(at_ms))
         elif kind == 'finish':
-            self.played_ms = step['played_ms']
-            self.position_ms = step.get('position_ms', step['played_ms'])
-            self.output = 'finished'
-            self.terminal = 'succeeded'
-            self.pending_play_at = None
-            emitted.append(self._position(at_ms, 'finished'))
-            emitted.append(self._emit(at_ms, 'action.outcome', {
-                'id': step['item'], 'correlation_id': step['item'], 'status': 'succeeded',
-                'result': {},
-            }))
+            record = self.items[step['item']]
+            if record['state'] not in ('playing', 'ducked'):
+                raise ValueError('finish of inactive item')
+            record['duration_ms'] = step['played_ms']
+            if 'position_ms' in step:
+                record['base_ms'] = step['position_ms'] - step['played_ms']
+            emitted.extend(self.complete_item(at_ms, step['item']))
         else:
             raise ValueError(kind)
         return emitted
 
-    def run_timeline(self, timeline):
+    def run_timeline(self, timeline, *, upto=None):
+        """Run a frozen timeline from reset (or only its first `upto` steps)."""
         self.reset()
         self.barge = timeline['config']['barge']
-        for step in timeline['steps']:
+        return self.continue_timeline(timeline, 0, upto)
+
+    def continue_timeline(self, timeline, start, upto=None):
+        for step in timeline['steps'][start:upto]:
             payload = {k: v for k, v in step.items() if k not in ('input', 'at_ms')}
             self.feed(step['at_ms'], step['input'], **payload)
-        names = [e['name'] for e in self.events]
+        return self.result()
+
+    def result(self):
         return {
-            'events': names,
+            'events': [e['name'] for e in self.events],
             'discarded': self.discarded,
             'output': self.output,
             'terminal': self.terminal,
@@ -250,12 +348,14 @@ class DuplexEngine:
         }
 
     def heard(self, item):
-        if item != self.item:
+        """speech.heard record for exactly that item, or None when unknown."""
+        record = self.items.get(item)
+        if record is None:
             return None
         return {
             'item': item,
-            'played_ms': self.played_ms,
-            'text': heard_prefix(self.spans, self.played_ms),
+            'played_ms': record['played_ms'],
+            'text': heard_prefix(record['spans'], record['played_ms']),
         }
 
     def set_expression(self, now_ms, expression, intensity, duration_ms):
@@ -300,8 +400,7 @@ class DuplexEngine:
         for intent in pending:
             done = {
                 'turn': intent['turn'], 'call': intent['call'], 'epoch': intent['epoch'],
-                'status': 'cancelled',
-                'value': {'code': 'cancelled', 'message': 'No grant', 'retryable': False},
+                'status': 'cancelled', 'value': dict(CANCELLED),
             }
             self.work_done.append(done)
             emitted.append(self._emit(at_ms, 'speech.work_done', done))
