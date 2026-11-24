@@ -10,6 +10,10 @@ import FaceAudioKit
     public var isRunning: Bool { kit.isRunning }
     public var generation: UInt64 { kit.graphGeneration }
     public var captureFailed: Bool { kit.captureFailed || kit.lastError != nil }
+    public var onVoiceActivity: ((Bool) -> Void)? {
+        get { kit.onVoiceActivity }
+        set { kit.onVoiceActivity = newValue }
+    }
     public func start() throws { try kit.startCapture() }
     public func stop() { kit.stopCapture() }
     public func enqueue(_ samples: [Int16]) throws { try kit.enqueuePlayback(samples) }

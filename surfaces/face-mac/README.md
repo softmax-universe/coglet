@@ -1,3 +1,41 @@
+# FaceMac and FaceAudioKit
+
+## Face surface integration (draft)
+
+`FaceSurfaceHost` is an embeddable MainActor host over `SurfaceSession`; the app
+supplies authenticated runtime transport bytes via `receive`/`drain`, an exclusive
+persistent `SurfaceLedgerStore`, an identity anchor, effective grants, and a
+monotonic microsecond clock. Call `start`, negotiate, then explicitly
+`activateDuplex(localConsent: true)` only after local permission. Grant replacement,
+connection failure and the local off-switch stop native I/O. No guest may call
+these trusted configuration APIs.
+
+- Supply `NativeFaceDuplex(kit: FaceAudioKit(...))` to `FaceSurfaceBackend` for the
+  actual shared graph. Do **not** also run `EngineFacePlayback`: that legacy helper
+  owns another output engine. `renderedPlaybackFrames` is an integer render count;
+  it is not an acoustic timestamp.
+- Inject the configured local `FaceSynthesis` and `FaceRecognition` routes. Use
+  `beginCapture`/`finishCapture` for hold-to-talk or `enableVoiceDetection` for the
+  audio kit's RMS gate. Recognition callbacks retain their original utterance and
+  session custody. Raw PCM is passed to recognition only, never on the wire.
+- A native 20 ms task pumps health/deadlines before playback/capture and drains
+  cancellations. Guest execution must stay off MainActor. `localOffSwitch` stops
+  audio before writing the durable kill latch; the wire cannot clear it.
+- Accepted stream IDs are reconstructed as closed tombstones from the authoritative
+  SDK action ledger after restart, never by replaying effects. Rejected actions
+  do not create tombstones. The bounded SDK retains actions indefinitely, a
+  strengthening of the minimum 24-hour window; full ledgers refuse new IDs.
+- Advertised entries are baseline `speech.control` and `expression.control` only.
+  Provider, work and history extension qualification are **not** claimed. The
+  backend's aligned heard projection is tested locally but is not advertised.
+
+Remaining acceptance work: qualify the complete host over real SDK socket and
+embedded transports with named simulator speech timelines and replay equality;
+finish bounded recognition failure/finalization and route/privacy configuration
+coverage; audit every action/kill/grant path; pass final native macOS CI and
+independent exact-head review. Face guest/simulator integration is gated on speech
+PR #79 approval and merge. This draft is not full M2b delivery or acoustic proof.
+
 # FaceAudioKit
 
 A reusable macOS 14+ duplex audio library, independent of the surface protocol.

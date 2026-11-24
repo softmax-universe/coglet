@@ -9,6 +9,7 @@ import CogletTypes
     var isRunning: Bool { get }
     var generation: UInt64 { get }
     var captureFailed: Bool { get }
+    var onVoiceActivity: ((Bool) -> Void)? { get set }
     func start() throws
     func stop()
     func enqueue(_ samples: [Int16]) throws
@@ -66,6 +67,8 @@ public struct FaceCompletion {
     private var captureGeneration = UUID()
     private var recognitionInput: (any FaceRecognitionInput)?
     private var captureOpen = false
+    private var capturedFrames: UInt64 = 0
+    var capturePositionMS: UInt64 { capturedFrames / 24 }
     private var captureNormalizer = SpeechObservations()
     public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer,
                 sttRoute: String = "local", ttsRoute: String = "local") {
@@ -106,9 +109,12 @@ public struct FaceCompletion {
         }
         if captureGeneration == custody { recognitionInput = input } else { input.cancel() }
     }
+    func setVoiceActivityHook(_ hook: ((Bool) -> Void)?) { audio.onVoiceActivity = hook }
     public func finishCapture() { captureOpen = false; recognitionInput?.finish() }
     public func pollCapture() throws {
         let samples = audio.readCapture()
+        guard capturedFrames <= UInt64.max - UInt64(samples.count) else { throw NativeSurfaceError("resource_exhausted") }
+        capturedFrames += UInt64(samples.count)
         if captureOpen, !samples.isEmpty { try recognitionInput?.append(samples) }
     }
     public func takeCompletions() -> [FaceCompletion] {
@@ -242,9 +248,13 @@ public struct FaceCompletion {
         generation = UUID(); let cancel = cancellation; cancellation = nil
         audio.flush(); cancel?()
         for (index, item) in items.enumerated() {
-            // All values were validated when admitted/aligned; a projection error
-            // fails the host on its next read rather than inventing heard text.
-            try? history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: true)
+            do {
+                try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: true)
+            } catch {
+                // A native counter/projection violation must not leave readable
+                // stale evidence. Purge rather than infer a new heard prefix.
+                history = SpeechObservations()
+            }
             completions.append(.init(owner: item.owner, id: item.id, epoch: item.epoch,
                                      result: index == 0 && code != "cancelled" ? .failed(.init(code)) : .cancelled))
         }

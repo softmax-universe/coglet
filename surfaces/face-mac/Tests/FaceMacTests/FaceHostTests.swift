@@ -13,6 +13,41 @@ private final class HostLedger: SurfaceLedgerStore {
 final class FaceHostTests: XCTestCase {
     private static let owner = "coglet:" + String(repeating: "a", count: 64)
     private static let identity = "surface:" + String(repeating: "b", count: 64)
+    func testVoiceActivityUsesCapturedMediaPositionNotHostElapsedTime() async throws {
+        try await MainActor.run {
+            let clock = HostClock(), io = TestDuplex(), recognition = TestRecognition()
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { clock.now })
+            try Self.negotiate(host); try host.activateDuplex(localConsent: true)
+            try host.enableVoiceDetection(recognition: recognition)
+            clock.now = 1_000_000
+            io.captured = [Int16](repeating: 0, count: 2400); try host.pump(); _ = host.drain()
+            io.onVoiceActivity?(true)
+            let event = try SurfaceWire.decode(host.drain()[0], from: .surface)
+            XCTAssertEqual(event["body"]?["payload"]?["position_ms"], .unsigned(100))
+            try host.close()
+        }
+    }
+    func testNativeVoiceActivityStartsAndEndsCaptureAndOldHookCannotRebind() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), recognition = TestRecognition()
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try Self.negotiate(host); try host.activateDuplex(localConsent: true)
+            try host.enableVoiceDetection(recognition: recognition)
+            let oldHook = io.onVoiceActivity
+            oldHook?(true)
+            XCTAssertEqual(recognition.inputs.count, 1)
+            oldHook?(false)
+            XCTAssertTrue(recognition.inputs[0].finished)
+            try host.activateDuplex(localConsent: true)
+            oldHook?(true)
+            XCTAssertEqual(recognition.inputs.count, 1, "old VAD generation must not create capture under the newest token")
+            try host.close()
+        }
+    }
     func testCaptureGraphFailureDisconnectsEvenWithNoPlaybackItems() async throws {
         try await MainActor.run {
             let io = TestDuplex()

@@ -69,6 +69,17 @@ import CogletTypes
         }
         return utterance
     }
+    public func enableVoiceDetection(recognition: any FaceRecognition) throws {
+        guard let captured = token else { throw NativeSurfaceError("permission_denied") }
+        backend.setVoiceActivityHook { [weak self] active in
+            guard let self, self.token == captured else { return }
+            do {
+                if active {
+                    _ = try self.beginCapture(recognition: recognition, positionMS: self.backend.capturePositionMS)
+                } else { self.finishCapture() }
+            } catch { self.lastFailure = error; self.disconnect() }
+        }
+    }
     public func finishCapture() { backend.finishCapture() }
     public func installGrants(_ replacement: [EffectiveSurfaceGrant]) throws {
         try guarded { try session.installGrants(replacement); grants = replacement; token = nil }

@@ -10,6 +10,7 @@ import CogletSurface
     var captureFailed = false
     var enqueued: [[Int16]] = []
     var captured: [Int16] = []
+    var onVoiceActivity: ((Bool) -> Void)?
     var flushes = 0
     func start() throws { isRunning = true }
     func stop() { isRunning = false; generation += 1 }
@@ -116,6 +117,20 @@ final class FaceSurfaceTests: XCTestCase {
             _ = try face.begin(action: stop, epoch: 1, now: 3)
             XCTAssertTrue(face.takeCompletions().isEmpty)
             XCTAssertEqual(try face.read(operation: "speech.heard", args: .record([("item", a["id"]!)]), owner: Self.owner, now: 4)["played_ms"], .unsigned(500))
+        }
+    }
+    func testInvalidStopProjectionCannotReturnStaleHeardEvidence() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis()
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            let item = "00000000000000000000000000000001"
+            _ = try face.begin(action: Self.speak(id: item), epoch: 1, now: 0)
+            tts.callbacks[0](.success(.init(samples: [Int16](repeating: 1, count: 24_000), spans: [.init(endMS: 400, text: "hello ")])))
+            try face.tick(now: 1); io.renderedFrames = 12_000; try face.tick(now: 2)
+            io.renderedFrames = 0 // faulty native counter, not permission to retain a stale projection
+            try face.tick(now: 2_000_000)
+            XCTAssertThrowsError(try face.read(operation: "speech.heard", args: .record([("item", .text(item))]), owner: Self.owner, now: 2_000_000))
         }
     }
     func testSpeechConfigReadIsConfiguredSnapshotWithoutFallback() async throws {
