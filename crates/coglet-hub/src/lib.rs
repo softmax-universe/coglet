@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
 pub mod kernel;
+pub mod operator;
 pub use kernel::{ActionGrant, EventGrant, Kernel, Registration};
 
 #[derive(Debug, thiserror::Error)]
@@ -53,6 +54,7 @@ impl Store {
           CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
           CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;")?;
         kernel::promotion::initialize(&db)?;
+        operator::initialize(&db)?;
         Ok(Self { db })
     }
     /// Caller authorizes the authenticated relay binding before this atomic admission.
