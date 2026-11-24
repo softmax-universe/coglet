@@ -57,6 +57,8 @@ public struct NativeSurfaceError: Swift.Error, Sendable {
 public enum NativeSurfaceResult: Sendable {
     case succeeded(CBORValue)
     case failed(NativeSurfaceError)
+    /// Native stop/reflex cancellation is distinct from execution failure.
+    case cancelled
 }
 
 /// Opaque callback custody captured when a native/provider generation STARTS.
@@ -290,6 +292,7 @@ public final class SurfaceSession {
                 try CBORCodec.validate(operation.outputRule!, value)
                 try terminal(key: key, status: "succeeded", value: value, now: now)
             case .failed(let error): try terminal(key: key, status: "failed", value: error.value, now: now)
+            case .cancelled: try terminal(key: key, status: "cancelled", value: NativeSurfaceError("cancelled").value, now: now)
             }
         }
     }

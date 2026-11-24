@@ -58,6 +58,22 @@ private func drainedSurfaceMessages(_ session: SurfaceSession) throws -> [CBORVa
 }
 
 final class SessionTests: XCTestCase {
+    func testNativeCancellationIsTerminalAndHistoricalRetryPreservesStatus() throws {
+        let backend = Backend(); backend.result = nil
+        let session = try make(MemoryLedger(), backend, Clock())
+        try negotiate(session)
+        let bytes = try action()
+        try session.receive(bytes); _ = session.drain()
+        try session.complete(owner: owner, id: requestID, epoch: 1, result: .cancelled)
+        let done = try drainedSurfaceMessages(session)
+        XCTAssertEqual(done.count, 1)
+        XCTAssertEqual(done[0]["body"]?["payload"]?["status"], .text("cancelled"))
+        XCTAssertEqual(done[0]["body"]?["payload"]?["error"]?["code"], .text("cancelled"))
+        try session.receive(bytes)
+        let retry = try drainedSurfaceMessages(session)
+        XCTAssertEqual(retry.last?["body"]?["payload"], done[0]["body"]?["payload"])
+        XCTAssertEqual(backend.begins, 1)
+    }
     func testDisconnectedKillIsDurableWithoutClockProgress() throws {
         let store = MemoryLedger(), backend = Backend(), clock = Clock()
         let session = try make(store, backend, clock)
