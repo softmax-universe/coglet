@@ -40,6 +40,22 @@ final class DevelopmentHubStoreTests: XCTestCase {
             XCTAssertNil(try store.loadHub())
         }
     }
+    func testEnrollmentReplacementIsAtomicAndKeepsOldOpenFileIntact() throws {
+        try isolated { directory in
+            let store = DevelopmentHubStore(directory: directory)
+            let pairing = try HubPairing.parse(#"{"name":"Old","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":[]}"#)
+            try store.saveHub(pairing)
+            let url = directory.appendingPathComponent("enrollment.json")
+            let old = try FileHandle(forReadingFrom: url)
+            defer { try? old.close() }
+            let expected = try Data(contentsOf: url)
+            let replacement = try HubPairing.parse(#"{"name":"New","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":[]}"#)
+            try store.saveHub(replacement)
+            XCTAssertEqual(try old.readToEnd(), expected)
+            XCTAssertEqual(try store.loadHub()?.name, "New")
+            XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: directory.path), ["enrollment.json"])
+        }
+    }
     func testInsecureDirectoryFileAndSymlinksFailClosed() throws {
         try isolated { directory in
             let store = DevelopmentHubStore(directory: directory)

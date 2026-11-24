@@ -74,7 +74,12 @@ fallback; neither path claims production Data Protection Keychain entitlement.
 Debug builds instead use the visibly labelled **Development identity** store at
 `~/.softmax-development-hub/` (directory 0700, identity/enrollment files 0600).
 This is an unencrypted, disposable, local developer identity, not a production
-credential store. Use only test routers. It never reads, copies or migrates the
+credential store. Use only test routers. POSIX owner/mode checks are not a
+security boundary against other processes running as your user, nor a guarantee
+against user-configured extended ACLs. For disposable automated native proof, set
+`SOFTMAX_DEVELOPMENT_HUB_DIRECTORY` to a fresh private directory; this override
+is compiled only in Debug and still uses the real store/transport, not preview
+mode. `HubDevelopmentUITests` creates and removes its own namespace. It never reads, copies or migrates the
 production Keychain or production enrollment preferences. Release builds compile
 out this backend and select the unchanged `KeychainHubStore`: Data Protection
 only, AfterFirstUnlockThisDeviceOnly, non-synchronizable, no legacy fallback.
@@ -95,6 +100,14 @@ stdin closes the **hub side** of the active connection while preserving enrollme
 the app must become offline and reconnect with the same public ID. EOF stops the
 mock. `HubNativeConnectionTests` exercises this fault and persisted development
 identity; `DevelopmentHubStoreTests` checks storage isolation/fail-closed behavior.
+The opt-in `HubDevelopmentUITests` launches the real app without `--ui-testing`,
+uses the Copy device ID and manual pairing controls, drops the hub-side QUIC link,
+and verifies reconnect plus the same public identity after app relaunch. Its
+macOS UI test runner must be locally ad-hoc signed and allow both network client
+and server in its **test-runner** sandbox, because it launches the mock server.
+Do not change production app entitlements for this harness. Native result bundles
+and bootstrap output can contain identity/invitation material; keep them private
+and share only redacted logs or collapsed-identity screenshots.
 
 ## Workflow and proof
 

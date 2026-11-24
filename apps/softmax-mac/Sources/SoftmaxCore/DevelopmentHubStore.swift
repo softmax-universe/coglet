@@ -7,8 +7,14 @@ import Darwin
 @MainActor
 public final class DevelopmentHubStore: HubStore {
     private let directory: URL
-    public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".softmax-development-hub", isDirectory: true)) {
+    public static var defaultDirectory: URL {
+        if let path = ProcessInfo.processInfo.environment["SOFTMAX_DEVELOPMENT_HUB_DIRECTORY"] {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".softmax-development-hub", isDirectory: true)
+    }
+    public init(directory: URL = DevelopmentHubStore.defaultDirectory) {
         self.directory = directory
     }
     private func directoryFD() throws -> Int32 {
@@ -45,12 +51,17 @@ public final class DevelopmentHubStore: HubStore {
     }
     private func write(_ data: Data, _ name: String, addOnly: Bool) throws {
         let dir = try directoryFD(); defer { close(dir) }
-        let flags = O_WRONLY | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC | (addOnly ? O_EXCL : 0)
-        let fd = openat(dir, name, flags, 0o600)
+        // Validate an existing enrollment before atomic replacement. A failed
+        // write leaves the previous complete enrollment, not truncated JSON.
+        if !addOnly { _ = try read(name) }
+        let staging = addOnly ? name : ".enrollment-" + UUID().uuidString
+        let fd = openat(dir, staging, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw HubError.storage }
-        defer { close(fd) }
+        defer {
+            close(fd)
+            if !addOnly { _ = unlinkat(dir, staging, 0) }
+        }
         try validate(fd)
-        guard ftruncate(fd, 0) == 0 else { throw HubError.storage }
         try data.withUnsafeBytes { bytes in
             var offset = 0
             while offset < bytes.count {
@@ -60,6 +71,10 @@ public final class DevelopmentHubStore: HubStore {
             }
         }
         guard fsync(fd) == 0 else { throw HubError.storage }
+        if !addOnly {
+            guard renameat(dir, staging, dir, name) == 0 else { throw HubError.storage }
+        }
+        guard fsync(dir) == 0 else { throw HubError.storage }
     }
     private func remove(_ name: String) throws {
         let dir = try directoryFD(); defer { close(dir) }

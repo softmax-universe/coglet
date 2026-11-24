@@ -11,15 +11,15 @@ struct HubSettings: View {
     @State private var confirmSignOut = false
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
-            Text(model.hubStatus).fontWeight(.semibold)
+            Text(model.hubStatus).fontWeight(.semibold).accessibilityIdentifier("hub.status")
             #if DEBUG
             Text("Development identity — local unencrypted file, separate from production Keychain. Use only test routers.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("hub.development-warning")
             #endif
             if let name = model.hubConnection?.pairing?.name { Text(name).textSelection(.enabled) }
             if let device = model.hubConnection?.deviceID {
                 DisclosureGroup("Device identity") {
-                    Text(device).textSelection(.enabled).lineLimit(nil)
+                    Text(device).textSelection(.enabled).lineLimit(nil).accessibilityIdentifier("hub.device-id")
                     Button("Copy device ID") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(device, forType: .string)
