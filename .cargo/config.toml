@@ -1,0 +1,17 @@
+# Disposable verification defaults for CI and Kanban clones.
+# debug = 0 drops DWARF; it does not disable debug-assertions or overflow-checks.
+# [profile.release] and [profile.bench] are intentionally absent.
+# cargo test --release uses release; cargo bench uses bench.
+# Override with CARGO_PROFILE_DEV_DEBUG=2 for builds or
+# CARGO_PROFILE_TEST_DEBUG=2 for tests when you need symbols.
+[profile.dev]
+debug = 0
+incremental = false
+debug-assertions = true
+overflow-checks = true
+
+[profile.test]
+debug = 0
+incremental = false
+debug-assertions = true
+overflow-checks = true
