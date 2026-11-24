@@ -106,6 +106,10 @@ impl VerifiedBundle {
     pub fn metadata(&self) -> &VerifiedRef {
         self.envelope.metadata()
     }
+    /// Crate-private copy while exclusive validation custody is still held.
+    pub(crate) fn retained_bundle(&self) -> io::Result<Vec<u8>> {
+        fs::read(self.envelope.directory()?.join("bundle"))
+    }
 }
 struct Cancel(Arc<AtomicBool>);
 impl Drop for Cancel {
