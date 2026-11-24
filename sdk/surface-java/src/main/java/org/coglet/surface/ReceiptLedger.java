@@ -76,8 +76,9 @@ public final class ReceiptLedger implements AutoCloseable {
             catch (OverlappingFileLockException e) { throw new IOException("ledger already owned", e); }
             if (lock == null) throw new IOException("ledger already owned");
             if (create) {
-                state = new LinkedHashMap<>(Map.of("format", BigInteger.ONE, "identity", identity,
-                        "epoch", BigInteger.ZERO, "sequence", BigInteger.ZERO, "killed", false, "receipts", List.of()));
+                state = new LinkedHashMap<>(Map.of("format", BigInteger.TWO, "identity", identity,
+                        "epoch", BigInteger.ZERO, "sequence", BigInteger.ZERO, "killed", false,
+                        "running", false, "clock", BigInteger.ZERO, "receipts", List.of()));
                 persist(state);
                 // Publish the newly created directory entry durably too, before
                 // provisioning can return success to its external identity anchor.
@@ -96,6 +97,13 @@ public final class ReceiptLedger implements AutoCloseable {
                     if (!hash(Codec.encodeProfile(loaded)).equals(wrapper.get("sha256"))) throw new IOException("ledger checksum");
                     validateState(loaded);
                     state = loaded;
+                }
+                // close() cannot attest that native work was stopped. A process
+                // that dies after session admission must never recover authority
+                // merely because its lock is now available. Persist the latch so
+                // even a second reopen cannot forget the interrupted session.
+                if (Boolean.TRUE.equals(state.get("running")) && !Boolean.TRUE.equals(state.get("killed"))) {
+                    var next = detached(state); next.put("killed", true); persist(next);
                 }
             }
         } catch (IOException | RuntimeException e) {
@@ -137,11 +145,12 @@ public final class ReceiptLedger implements AutoCloseable {
             throw new IllegalArgumentException("receipt action binding");
     }
     private void validateState(Map<String,Object> value) {
-        if (!value.keySet().equals(Set.of("format", "identity", "epoch", "sequence", "killed", "receipts"))
-                || !BigInteger.ONE.equals(value.get("format")) || !identity.equals(value.get("identity"))
-                || !(value.get("killed") instanceof Boolean) || !(value.get("receipts") instanceof List<?>))
+        if (!value.keySet().equals(Set.of("format", "identity", "epoch", "sequence", "killed", "running", "clock", "receipts"))
+                || !BigInteger.TWO.equals(value.get("format")) || !identity.equals(value.get("identity"))
+                || !(value.get("killed") instanceof Boolean) || !(value.get("running") instanceof Boolean)
+                || !(value.get("receipts") instanceof List<?>))
             throw new IllegalArgumentException("ledger identity or format");
-        number(value.get("epoch")); number(value.get("sequence"));
+        number(value.get("epoch")); number(value.get("sequence")); number(value.get("clock"));
         if (records(value).size() > MAX_RECEIPTS) throw new IllegalArgumentException("receipt capacity");
         var keys = new HashSet<String>();
         for (Object raw : records(value)) {
@@ -196,6 +205,39 @@ public final class ReceiptLedger implements AutoCloseable {
     }
     public synchronized BigInteger epoch() throws IOException { check(); return number(state.get("epoch")); }
     public synchronized boolean killed() throws IOException { check(); return Boolean.TRUE.equals(state.get("killed")); }
+    public synchronized BigInteger clockHighWater() throws IOException { check(); return number(state.get("clock")); }
+    /** Persist a sampled high-water, never use it as a fresh native admission clock. */
+    public synchronized void checkpointClock(BigInteger now) throws IOException {
+        check(); number(now);
+        int order = now.compareTo(clockHighWater());
+        if (order < 0) throw new IllegalArgumentException("surface clock rollback");
+        if (order == 0) return;
+        var next = detached(state); next.put("clock", now); persist(next);
+    }
+    /** Force the running marker BEFORE any negotiation or authority installation. */
+    public synchronized void beginSession() throws IOException {
+        check();
+        if (killed() || Boolean.TRUE.equals(state.get("running"))) throw new IOException("session killed or already running");
+        var next = detached(state); next.put("running", true); persist(next);
+    }
+    /**
+     * Supervisor-only clean boundary, after disconnect and durable terminalization.
+     * The caller must exclude concurrent negotiation/dispatch. Stop precedes the
+     * ledger monitor so disk contention cannot postpone the native reflex.
+     * This never clears a kill latch; close() alone never marks a clean stop.
+     */
+    public void cleanShutdown() throws IOException {
+        stop.run();
+        synchronized (this) {
+            check();
+            for (Object raw : records(state)) {
+                var record = map(raw);
+                if (Boolean.TRUE.equals(map(record.get("accept")).get("accepted")) && record.get("outcome") == null)
+                    throw new IOException("pending work prevents clean shutdown");
+            }
+            var next = detached(state); next.put("running", false); persist(next);
+        }
+    }
     public synchronized void advanceEpoch(BigInteger epoch) throws IOException {
         check(); number(epoch);
         if (epoch.compareTo(epoch()) <= 0) throw new IllegalArgumentException("epoch must increase");

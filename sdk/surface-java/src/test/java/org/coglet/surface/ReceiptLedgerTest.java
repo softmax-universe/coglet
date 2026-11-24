@@ -30,6 +30,95 @@ class ReceiptLedgerTest {
     static Map<String,Object> accepted() {
         return Map.of("id", "2".repeat(32), "correlation_id", FrameCodecTest.ID, "accepted", true);
     }
+    @Test void interruptedSessionLatchesKillAcrossRepeatedReopens() throws Exception {
+        try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {
+            store.beginSession();
+            store.advanceEpoch(BigInteger.valueOf(7));
+            store.record(act(), accepted(), BigInteger.TEN);
+            // close releases ownership, but is deliberately NOT a clean shutdown.
+        }
+        for (int i = 0; i < 2; i++) {
+            try (var store = new ReceiptLedger(ledger, SURFACE, false, () -> {})) {
+                assertTrue(store.killed(), "unclean restart must durably latch kill");
+                assertEquals(BigInteger.valueOf(7), store.epoch());
+                assertThrows(java.io.IOException.class, store::beginSession);
+                store.recoverPending(BigInteger.valueOf(120));
+                assertEquals("failed", store.lookup(COGLET, "2".repeat(32)).orElseThrow()
+                        .outcome().orElseThrow().get("status"));
+            }
+        }
+    }
+    @Test void cleanShutdownRequiresTerminalReceiptsAndPreservesKill() throws Exception {
+        try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {
+            store.beginSession();
+            assertThrows(java.io.IOException.class, store::beginSession);
+            store.record(act(), accepted(), BigInteger.TEN);
+            assertThrows(java.io.IOException.class, store::cleanShutdown);
+            store.recoverPending(BigInteger.valueOf(120));
+            store.cleanShutdown();
+        }
+        try (var store = new ReceiptLedger(ledger, SURFACE, false, () -> {})) {
+            assertFalse(store.killed());
+            store.beginSession();
+            store.kill();
+            store.cleanShutdown();
+        }
+        try (var store = new ReceiptLedger(ledger, SURFACE, false, () -> {})) {
+            assertTrue(store.killed());
+            assertThrows(java.io.IOException.class, store::beginSession);
+        }
+    }
+    @Test void clockHighWaterSurvivesCleanRestartAndRefusesRollback() throws Exception {
+        try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {
+            store.beginSession();
+            store.checkpointClock(BigInteger.valueOf(300));
+            assertThrows(IllegalArgumentException.class, () -> store.checkpointClock(BigInteger.valueOf(299)));
+            store.cleanShutdown();
+        }
+        try (var store = new ReceiptLedger(ledger, SURFACE, false, () -> {})) {
+            assertEquals(BigInteger.valueOf(300), store.clockHighWater());
+            assertThrows(IllegalArgumentException.class, () -> store.checkpointClock(BigInteger.valueOf(299)));
+            store.checkpointClock(BigInteger.valueOf(300));
+            store.checkpointClock(BigInteger.valueOf(301));
+            assertEquals(BigInteger.valueOf(301), store.clockHighWater());
+        }
+    }
+    @Test void lifecycleCommitsFailClosedAtEveryCrashPoint() throws Exception {
+        for (var point : ReceiptLedger.CommitPoint.values()) {
+            Path path = parent.resolve("start-" + point);
+            var inject = new java.util.concurrent.atomic.AtomicBoolean();
+            try (var store = new ReceiptLedger(path, SURFACE, true, () -> {}, phase -> {
+                if (inject.get() && phase == point) throw new java.io.IOException("injected");
+            })) {
+                inject.set(true);
+                assertThrows(java.io.IOException.class, store::beginSession);
+                assertThrows(java.io.IOException.class, store::beginSession);
+            }
+            try (var store = new ReceiptLedger(path, SURFACE, false, () -> {})) {
+                if (point == ReceiptLedger.CommitPoint.BEFORE_RENAME) {
+                    assertFalse(store.killed()); // Negotiation was never allowed to begin.
+                    store.beginSession();
+                } else {
+                    assertTrue(store.killed());
+                    assertThrows(java.io.IOException.class, store::beginSession);
+                }
+            }
+        }
+    }
+    @Test void failurePersistingRecoveryLatchCannotRestoreAuthority() throws Exception {
+        for (var point : ReceiptLedger.CommitPoint.values()) {
+            Path path = parent.resolve("recover-" + point);
+            try (var store = new ReceiptLedger(path, SURFACE, true, () -> {})) { store.beginSession(); }
+            var stops = new AtomicInteger();
+            assertThrows(java.io.IOException.class, () -> new ReceiptLedger(path, SURFACE, false,
+                    stops::incrementAndGet, phase -> { if (phase == point) throw new java.io.IOException("injected"); }));
+            assertTrue(stops.get() >= 2);
+            try (var store = new ReceiptLedger(path, SURFACE, false, () -> {})) {
+                assertTrue(store.killed());
+                assertThrows(java.io.IOException.class, store::beginSession);
+            }
+        }
+    }
     @Test void exactBytesEpochSequenceAndKillSurviveReopen() throws Exception {
         try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {
             store.advanceEpoch(BigInteger.ONE);
@@ -113,7 +202,26 @@ class ReceiptLedgerTest {
                     store.lookup(COGLET, "2".repeat(32)).orElseThrow().outcome().orElseThrow()));
         }
     }
+    @Test void abruptJvmExitLeavesDurableRunningMarker() throws Exception {
+        try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {}
+        var process = new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                "-cp", System.getProperty("java.class.path"), ReceiptLedgerTest.class.getName(), ledger.toString(), "crash")
+                .redirectErrorStream(true).start();
+        try {
+            assertTrue(process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS));
+            assertEquals(23, process.exitValue(), new String(process.getInputStream().readAllBytes()));
+        } finally { process.destroyForcibly(); }
+        try (var store = new ReceiptLedger(ledger, SURFACE, false, () -> {})) {
+            assertTrue(store.killed());
+            assertThrows(java.io.IOException.class, store::beginSession);
+        }
+    }
     public static void main(String[] args) throws Exception {
+        if (args.length == 2 && args[1].equals("crash")) {
+            var store = new ReceiptLedger(Path.of(args[0]), SURFACE, false, () -> {});
+            store.beginSession();
+            Runtime.getRuntime().halt(23);
+        }
         try (var acquired = new ReceiptLedger(Path.of(args[0]), SURFACE, false, () -> {})) {
             System.out.println("ACQUIRED");
             System.exit(2);

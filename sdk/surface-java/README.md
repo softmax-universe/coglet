@@ -93,8 +93,21 @@ epoch update, persist the higher epoch, then install its full effective snapshot
 No disk, network or control callback may run inside this bounded native fence.
 A successful native call is not timely publication: recheck the token after
 sampling/encoding/native completion and retain any late actual effect as audit.
-Kill is latched and native stop is independent of a blocked ledger commit; durable
-kill state and unclean-start handling still belong to the future session layer.
+Kill is latched and native stop is independent of a blocked ledger commit.
+
+The ledger's format 2 (unreleased; format 1 fails closed, with no implicit migration)
+adds a persisted `running` marker and clock high-water. Call `beginSession()` and
+force the running marker **before** any negotiation or authority installation.
+Ordinary `close()` only releases ownership: it never attests a clean shutdown.
+Reopening a running store durably latches kill before returning; a failed latch
+write stops and refuses startup, including on subsequent attempts. `cleanShutdown()`
+first invokes native stop outside the ledger monitor, requires all accepted work
+terminal, then forces the clean marker without clearing kill. The trusted session
+owner must exclude concurrent negotiation/dispatch while marking clean. The ledger
+has no kill-reset API. Clock checkpoints persist a sampled high-water, not a fresh
+admission sample: sample again after blocking disk work before effects. Clock
+rollback after reboot requires supervisor reconciliation rather than resetting the
+stored high-water.
 
 ### Qualification boundary
 
