@@ -1,7 +1,6 @@
 """Real Swift executable startup regression; build the reference binary first."""
 import asyncio
 import copy
-import os
 from pathlib import Path
 import sys
 import unittest
@@ -35,6 +34,19 @@ class SwiftReadinessTests(unittest.TestCase):
         result = asyncio.run(run_case(delayed(self.impl), 'surface', self.case))
         self.assertIsNone(result[3], result)
         self.assertIsNone(result[4], result)
+
+    def test_startup_remains_bounded(self):
+        impl = delayed(self.impl)
+        impl['connect_timeout_ms'] = 100
+        result = asyncio.run(run_case(impl, 'surface', self.case))
+        self.assertEqual(result[3], 'TimeoutError: ', result)
+
+    def test_invalid_config_never_signals_ready(self):
+        impl = copy.deepcopy(self.impl)
+        impl['fixtures']['surface-base']['env']['COGLET_FIXTURE_CONFIG'] = 'missing-swift-readiness-config.json'
+        result = asyncio.run(run_case(impl, 'surface', self.case))
+        self.assertIn('adapter exited before readiness signal', result[3], result)
+        self.assertIn('Swift reference:', result[3], result)
 
     def test_without_readiness_reproduces_step_zero_timeout(self):
         impl = delayed(self.impl)

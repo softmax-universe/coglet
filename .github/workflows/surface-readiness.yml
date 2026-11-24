@@ -4,7 +4,7 @@ name: surface-readiness
 # nightly, and on demand.
 on:
   pull_request:
-    paths: &readiness_paths ['conformance/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-types/**', 'spec/fixtures/surface/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/surface-readiness.yml']
+    paths: &readiness_paths ['conformance/**', 'sdk/surface-swift/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-types/**', 'spec/fixtures/surface/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/surface-readiness.yml']
   push:
     branches: [main]
     paths: *readiness_paths
@@ -22,6 +22,16 @@ jobs:
       - run: swift build --package-path sdk/surface-swift
       - name: Real Swift slow-start regression and counterfactual
         run: python3 sdk/surface-swift/test_readiness.py -v
+      - name: Bounded readiness and unchanged response deadlines
+        run: python3 -m unittest discover -s conformance/tests -p test_readiness.py -v
+      - name: 20 consecutive full Swift registry passes under CPU load
+        run: python3 sdk/surface-swift/repeat_registry.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swift-readiness-proof
+          path: target/swift-readiness/
+          if-no-files-found: error
   startup-budget:
     runs-on: ubuntu-latest
     timeout-minutes: 15
