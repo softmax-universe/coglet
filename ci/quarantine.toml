@@ -1,0 +1,20 @@
+# Flaky tests quarantined from the required checks. See scripts/ci/quarantine.py and
+# docs/ci-quarantine.md. Required checks skip these; the non-required `stability`
+# workflow runs them every six hours and fails once an entry is older than 14 days.
+#
+# Add an entry only for a test that failed a required check and then passed on the
+# same tree (a merge-queue ejection or a red PR head that is green on rerun), and only
+# with an owner card that will make it deterministic. Remove the entry in the PR that
+# fixes it.
+#
+# [[conformance]]
+# id = "surface-go-reference.surface/action-accept-outcome"   # as conformance/run prints it
+# card = "t_0123456789abcdef"
+# since = 2026-11-24
+# reason = "step 5 TimeoutError in merge group run 45348907418; passes on rerun"
+#
+# [[rust]]
+# id = "runaway_deadline_then_fresh_success"                  # libtest path, matched --exact
+# card = "t_0123456789abcdef"
+# since = 2026-11-24
+# reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"

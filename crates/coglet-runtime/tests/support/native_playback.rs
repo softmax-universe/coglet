@@ -1,6 +1,6 @@
 use super::*;
 fn exercise_playback(ffi: bool, name: &str, provider: bool) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     drop(host.connect());
     host.stop();

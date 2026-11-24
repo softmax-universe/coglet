@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="coglet-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="coglet-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="coglet-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="coglet-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="coglet-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="coglet-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="coglet-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="coglet-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="429" rx="12" class="dg-bg"/>
+<text x="280" y="40" text-anchor="middle" class="dg-cap">FRONT END: EVENTS AND CAPABILITIES</text>
+<text x="685" y="40" text-anchor="middle" class="dg-cap">BACK CHANNEL: PATCHES AND LOGS</text>
+<rect x="370" y="64" width="220" height="214" rx="8" class="dg-coglet"/>
+<text x="480" y="90" text-anchor="middle" class="dg-b">Coglet</text>
+<rect x="384" y="104" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="125" text-anchor="start" class="dg-code">policy</text>
+<text x="564" y="125" text-anchor="end" class="dg-m">code, prompts, skills</text>
+<rect x="384" y="146" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="167" text-anchor="start" class="dg-code">memory</text>
+<text x="564" y="167" text-anchor="end" class="dg-m">what it remembers</text>
+<rect x="384" y="188" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="209" text-anchor="start" class="dg-code">event loop</text>
+<text x="564" y="209" text-anchor="end" class="dg-m">handles events</text>
+<rect x="384" y="230" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="251" text-anchor="start" class="dg-code">capabilities</text>
+<text x="564" y="251" text-anchor="end" class="dg-m">what it may use</text>
+<rect x="30" y="86" width="162" height="170" rx="10" class="dg-group"/>
+<text x="44" y="110" text-anchor="start" class="dg-cap">ADAPTERS</text>
+<rect x="44" y="122" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="141" text-anchor="middle" class="dg-t">An app</text>
+<rect x="44" y="162" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="181" text-anchor="middle" class="dg-t">A camera</text>
+<rect x="44" y="202" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="221" text-anchor="middle" class="dg-t">A display</text>
+<line x1="194" y1="142" x2="368" y2="142" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="134" text-anchor="middle" class="dg-code">handle(event)</text>
+<line x1="368" y1="206" x2="194" y2="206" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="198" text-anchor="middle" class="dg-code">actions</text>
+<rect x="232" y="334" width="496" height="76" rx="10" class="dg-group"/>
+<text x="246" y="356" text-anchor="start" class="dg-cap">THE RUNTIME</text>
+<rect x="246" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="301.5" y="385" text-anchor="middle" class="dg-t">LLM</text>
+<rect x="365" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="420.5" y="385" text-anchor="middle" class="dg-t">Database</text>
+<rect x="484" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="539.5" y="385" text-anchor="middle" class="dg-t">Random numbers</text>
+<rect x="603" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="658.5" y="385" text-anchor="middle" class="dg-t">Timer</text>
+<line x1="450" y1="280" x2="450" y2="332" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="440" y="310" text-anchor="end" class="dg-code">requests</text>
+<line x1="510" y1="332" x2="510" y2="280" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="520" y="310" text-anchor="start" class="dg-code">replies, timer wakes</text>
+<rect x="780" y="96" width="150" height="150" rx="8" class="dg-hub"/>
+<text x="855.0" y="168.0" text-anchor="middle" class="dg-b">Its manager</text>
+<text x="855.0" y="184.0" text-anchor="middle" class="dg-m">a person or a coglet</text>
+<line x1="778" y1="124" x2="592" y2="124" class="dg-blue" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="116" text-anchor="middle" class="dg-code">patch</text>
+<line x1="592" y1="174" x2="778" y2="174" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="166" text-anchor="middle" class="dg-code">tail_log</text>
+<line x1="592" y1="224" x2="778" y2="224" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="216" text-anchor="middle" class="dg-code">read_state · status</text>
+<text x="685" y="244" text-anchor="middle" class="dg-m">each needs its own grant</text>
+</svg>

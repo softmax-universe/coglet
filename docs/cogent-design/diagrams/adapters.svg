@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="330" viewBox="0 0 960 330" role="img" aria-label="Minecraft offers three adapters. Each coglet uses more than one of them, and each adapter can serve more than one coglet.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="adapters-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="adapters-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="adapters-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="adapters-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="adapters-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="adapters-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="adapters-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="adapters-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="329" rx="12" class="dg-bg"/>
+<text x="30" y="30" text-anchor="start" class="dg-cap">COGLETS</text>
+<text x="470" y="30" text-anchor="start" class="dg-cap">ADAPTERS</text>
+<rect x="600" y="40" width="330" height="262" rx="8" class="dg-world"/>
+<text x="765" y="64" text-anchor="middle" class="dg-b">Minecraft</text>
+<rect x="30" y="82" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="107.0" text-anchor="middle" class="dg-b">PlayerCoglet</text>
+<text x="120.0" y="123.0" text-anchor="middle" class="dg-m">plays alongside you</text>
+<rect x="30" y="156" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="181.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<text x="120.0" y="197.0" text-anchor="middle" class="dg-m">talks with you</text>
+<rect x="30" y="230" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="255.0" text-anchor="middle" class="dg-b">BuilderCoglet</text>
+<text x="120.0" y="271.0" text-anchor="middle" class="dg-m">builds what you ask for</text>
+<rect x="470" y="82" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="114.0" text-anchor="middle" class="dg-b">UI adapter</text>
+<rect x="616" y="82" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="114" text-anchor="middle" class="dg-t">the user interface</text>
+<rect x="470" y="156" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="188.0" text-anchor="middle" class="dg-b">Avatar adapter</text>
+<rect x="616" y="156" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="188" text-anchor="middle" class="dg-t">one player character</text>
+<rect x="470" y="230" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="262.0" text-anchor="middle" class="dg-b">Builder adapter</text>
+<rect x="616" y="230" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="262" text-anchor="middle" class="dg-t">the whole world</text>
+<line x1="212" y1="96" x2="468" y2="96" class="dg-teal" stroke-width="1.6" marker-end="url(#adapters-teal)" marker-start="url(#adapters-teal-s)"/>
+<path d="M212 114H340V176H468" class="dg-teal" stroke-width="1.6" marker-end="url(#adapters-teal)" marker-start="url(#adapters-teal-s)"/>
+<path d="M212 166H290V128H468" class="dg-warm" stroke-width="1.6" marker-end="url(#adapters-warm)" marker-start="url(#adapters-warm-s)"/>
+<line x1="212" y1="190" x2="468" y2="190" class="dg-warm" stroke-width="1.6" marker-end="url(#adapters-warm)" marker-start="url(#adapters-warm-s)"/>
+<path d="M212 242H400V204H468" class="dg-blue" stroke-width="1.6" marker-end="url(#adapters-blue)" marker-start="url(#adapters-blue-s)"/>
+<line x1="212" y1="268" x2="468" y2="268" class="dg-blue" stroke-width="1.6" marker-end="url(#adapters-blue)" marker-start="url(#adapters-blue-s)"/>
+</svg>

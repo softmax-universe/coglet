@@ -52,6 +52,7 @@ impl Store {
           CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, record TEXT NOT NULL);
           CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
           CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;")?;
+        kernel::promotion::initialize(&db)?;
         Ok(Self { db })
     }
     /// Caller authorizes the authenticated relay binding before this atomic admission.

@@ -1,0 +1,23 @@
+FF
+======================================================================
+FAIL: test_large_reply_flush_before_send_ack (conformance.tests.test_fixture_clock.FixtureClockTests.test_large_reply_flush_before_send_ack)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/.hermes/kanban/workspaces/t_01a20c1cd3eea88a/repo/conformance/tests/test_fixture_clock.py", line 70, in test_large_reply_flush_before_send_ack
+    self.assertIsNone(result[3], result)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: 'AssertionError: step 0: TimeoutError: \nstderr: READY\n' is not None : ('clock-test.test', 'large-reply', 3.0275926829781383, 'AssertionError: step 0: TimeoutError: \nstderr: READY\n', None)
+
+======================================================================
+FAIL: test_large_initial_reply_before_clock_connection (conformance.tests.test_fixture_clock.FixtureClockTests.test_large_initial_reply_before_clock_connection)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ubuntu/.hermes/kanban/workspaces/t_01a20c1cd3eea88a/repo/conformance/tests/test_fixture_clock.py", line 79, in test_large_initial_reply_before_clock_connection
+    self.assertIsNone(result[3], result)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: 'TimeoutError: ' is not None : ('clock-test.test', 'large-initial', 5.007025121012703, 'TimeoutError: ', None)
+
+----------------------------------------------------------------------
+Ran 2 tests in 8.040s
+
+FAILED (failures=2)

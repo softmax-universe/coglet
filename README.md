@@ -1,7 +1,8 @@
 # coglet
 
-Sandboxed Wasm coglets, the surfaces that host them, and the hub that controls them.
+Sandboxed Wasm coglets, the adapters that host them, and the router that controls them.
 
+- Cogent design: [docs/cogent-design/README.md](docs/cogent-design/README.md), one of the core design documents: what a cogent, a coglet, an adapter and a runtime are, and how they fit together
 - Plan: [docs/plan.md](docs/plan.md)
 - Design: [docs/design/coglet-runtime.md](docs/design/coglet-runtime.md)
 - The previous COG/LET Python framework lives on branch `legacy/v0` (tag `legacy-v0`).
@@ -53,7 +54,7 @@ recipe/policy files (all paths below are operator inputs):
 ```
 
 Create `runs/` first. Build output contains `step.wasm`, `manifest.json` and
-`provenance.cbor`; it is **unsigned local sandbox material, not a hub publication**.
+`provenance.cbor`; it is **unsigned local sandbox material, not a router publication**.
 The supplied source commit/recipe/policy are operator assertions, not authenticated
 source attestation. Their hashes, original/rewritten code hashes and the actual
 R3 transform hash are recorded. The real engine independently checks ABI, R3,
@@ -85,8 +86,8 @@ Sandbox effects are journaled but never sent to a device/provider.
 selects a different trusted executable. There is no mock fallback. The supervisor
 clears inherited environment secrets, bounds request/response bytes and stderr,
 and kills/reaps its child process group on failure or a five-minute total limit.
-The daemon mode is a local trusted supervisor tool, not an authenticated surface
-service or new hub ALPN method. It uses the existing native engine/runtime APIs.
+The daemon mode is a local trusted supervisor tool, not an authenticated adapter
+service or new router ALPN method. It uses the existing native engine/runtime APIs.
 
 The run file is the frozen ABI `trace` JSON diagnostic view, not a WAL or a CLI
 wrapper. It contains **private** initial files, events, journal records and blobs.
@@ -120,20 +121,20 @@ program fails replay.
 ```
 
 Create the private parent directory first. Identity and invitation inputs must
-be regular, non-symlink, current-user-owned private files (0600 on Unix). The hub
+be regular, non-symlink, current-user-owned private files (0600 on Unix). The router
 operator obtains the printed public device ID and provisions its one-use invite.
 Do not pass secrets on the command line or log them. `--address` is an explicit
-IP:port, but iroh authentication still pins the exact hub node ID and ALPN.
+IP:port, but iroh authentication still pins the exact router node ID and ALPN.
 The reference Kernel test exercises real encrypted enrollment, reconnect/null
 recovery and refusal of the consumed invitation with no secret in output/audit.
 
 **`deploy` and its alias `push` currently fail nonzero without effects.** The frozen
-`hub.git.push`, `hub.install` and `hub.start` methods are hub→device, not CLI→hub.
-The merged reference hub has no qualified operator deployment adapter, and the
+`hub.git.push`, `hub.install` and `hub.start` methods are router→device, not CLI→router.
+The merged reference router has no qualified operator deployment tool, and the
 streaming Git/device lifecycle producer chain is incomplete. No invented reverse
 RPC, direct device bypass, registration-only success or local spool is advertised
 as deployment. The M2 card's end-to-end enroll/deploy acceptance remains open
-until that adapter is integrated and exercised against the reference hub.
+until that tool is integrated and exercised against the reference router.
 
 ### Named CLI checks
 
@@ -156,5 +157,5 @@ imports; private trace; per-step hashes),
 `sandbox_missing_grants_unknown_events_and_bad_wasm_are_rejected`,
 `child_supervisor_times_out_and_bounds_both_output_streams`, and
 `file_reader_refuses_fifo_symlink_and_world_readable_secrets`.
-These are component tests, **not full hub or M1 conformance**. Deployment, final
+These are component tests, **not full router or M1 conformance**. Deployment, final
 independent exact-head review, required CI and merge remain the card's gates.

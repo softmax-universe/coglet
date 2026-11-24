@@ -18,6 +18,9 @@ Read docs/plan.md first, especially the Ground rules section. Specs in spec/ are
   result, so the reviewed head stays as it is. Rebase only for a real conflict.
   A PR that leaves the queue failed says why in its timeline; fix that and
   re-enqueue.
+- A test that fails a required check and passes on rerun goes in `ci/quarantine.toml`
+  with an owner card (docs/ci-quarantine.md). Repeated stress runs belong in the
+  non-required `stability` workflow, never in a required job.
 - Name tests in acceptance criteria. Open a PR with green CI, obtain independent
   review, then merge. A scaffold is not a protocol or conformance implementation.
 - Disposable verification disk: `.cargo/config.toml` sets `profile.dev` /
