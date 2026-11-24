@@ -1,5 +1,5 @@
 //! Operator-only startup configuration is not a wire RPC or a guest input.
-use coglet_hub::{Kernel, Registration};
+use coglet_hub::{Kernel, Registration, operator::socket::StateLock};
 use coglet_proto::{
     authority::Grant,
     transport::{ALPN, Role, Session},
@@ -30,7 +30,7 @@ struct Peer {
     device: String,
     grants: Vec<Grant>,
 }
-fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Error>> {
+fn identity(root: &Path) -> Result<(SecretKey, StateLock), Box<dyn std::error::Error>> {
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     fs::create_dir_all(root)?;
     if !fs::symlink_metadata(root)?.is_dir() {
@@ -38,20 +38,7 @@ fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Er
     }
     // The containing directory protects SQLite, journals and local provisioning.
     fs::set_permissions(root, fs::Permissions::from_mode(0o700))?;
-    let lock_path = root.join("hub.lock");
-    if let Ok(meta) = fs::symlink_metadata(&lock_path)
-        && (!meta.is_file() || meta.permissions().mode() & 0o077 != 0)
-    {
-        return Err("hub.lock must be a private regular file".into());
-    }
-    let lock = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .mode(0o600)
-        .open(lock_path)?;
-    lock.try_lock()?;
+    let lock = StateLock::acquire(root)?;
     let path = root.join("hub.key");
     let missing = match fs::symlink_metadata(&path) {
         Ok(meta) => {

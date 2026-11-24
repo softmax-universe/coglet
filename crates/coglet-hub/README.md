@@ -106,6 +106,33 @@ artifacts or build authority. Durable promotion/ticket/audit receipts, signed-re
 boundary activation, health/emergency-fence producers, rollback integration,
 clock recovery, final CI/review/merge and `policy-v0` are still unfinished.
 
+## Local operator components (not deployment qualification)
+
+`operator::Request` validates the closed ADR-0018 JSON contract; the Store retains
+normalized intents, permanent UID-scoped queued/terminal responses, admin sequence
+and audit atomically. `operator::socket::StateLock` provides exclusive state
+ownership and is also used by binary identity/startup. `bind_locked` retains that
+lock and recovers only an owned 0600 socket whose bounded connect probe reports
+`ConnectionRefused`. Live/ambiguous listeners, symlinks, non-socket entries and
+aliased lock files fail closed.
+
+`operator::server::serve` is a bounded AF_UNIX parser/waiter driver with no iroh or
+TCP listener. Its trusted `Handler` must authenticate explicit UID-to-actor
+provisioning, commit admission and own execution independently of the returned
+receipt observation channel. Wait timeout drops observation only, not execution.
+The driver is **not connected to `serve` startup yet**: no production Handler,
+transactional grant/enrollment configuration, qualified signed builder or durable
+deploy saga is supplied by these components.
+
+Named component proofs include `operator_stale_socket_requires_exclusive_state_lock`,
+`operator_state_lock_rejects_hardlink_without_touching_target`,
+`operator_connection_capacity_precedes_admission` and
+`operator_timeout_only_stops_waiting`. The latter uses real local socket framing
+and Store commits with a fixture executor, not a runtime or a simulated remote
+receipt. It also retrieves the exact terminal response over a second connection.
+These do not qualify real-iroh deploy, runtime receipt reconciliation, non-owner
+process rejection, or the remaining ADR acceptance matrix.
+
 ## Local fixture controls (not production)
 
 Enable `coglet-hub/test-controls` explicitly in the test launcher's Cargo

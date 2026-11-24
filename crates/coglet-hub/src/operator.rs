@@ -1,5 +1,7 @@
 //! Trusted-local administration only; never registered as a hub wire method.
 #[cfg(unix)]
+pub mod server;
+#[cfg(unix)]
 pub mod socket;
 use crate::{Error, Result, Store, audit};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};

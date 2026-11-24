@@ -10,6 +10,40 @@ use tokio::{
 };
 
 #[tokio::test]
+async fn operator_stale_socket_requires_exclusive_state_lock() {
+    use coglet_hub::operator::socket::StateLock;
+    let dir = tempfile::tempdir().unwrap();
+    fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o700)).unwrap();
+    let lock = StateLock::acquire(dir.path()).unwrap();
+    let live = OperatorSocket::bind_locked(&lock).await.unwrap();
+    assert!(StateLock::acquire(dir.path()).is_err());
+    assert!(OperatorSocket::bind_locked(&lock).await.is_err());
+    // A process crash leaves the entry but closes the descriptor. Reproduce that
+    // kernel state without relying on a timing-sensitive child kill.
+    let path = dir.path().join("operator.sock");
+    let leftover = dir.path().join("leftover.sock");
+    fs::rename(&path, &leftover).unwrap();
+    drop(live);
+    fs::rename(&leftover, &path).unwrap();
+    drop(lock);
+    let lock = StateLock::acquire(dir.path()).unwrap();
+    let reopened = OperatorSocket::bind_locked(&lock).await.unwrap();
+    let client = UnixStream::connect(&path).await.unwrap();
+    let (server, _) = reopened.accept().await.unwrap();
+    drop((client, server, reopened));
+    // An arbitrary regular file and a symlink may never be removed as stale.
+    fs::write(&path, b"preserve").unwrap();
+    assert!(OperatorSocket::bind_locked(&lock).await.is_err());
+    assert_eq!(fs::read(&path).unwrap(), b"preserve");
+    fs::remove_file(&path).unwrap();
+    let victim = dir.path().join("victim");
+    fs::write(&victim, b"victim").unwrap();
+    symlink(&victim, &path).unwrap();
+    assert!(OperatorSocket::bind_locked(&lock).await.is_err());
+    assert_eq!(fs::read(&victim).unwrap(), b"victim");
+}
+
+#[tokio::test]
 async fn operator_socket_permissions() {
     let dir = tempfile::tempdir().unwrap();
     fs::set_permissions(dir.path(), fs::Permissions::from_mode(0o700)).unwrap();

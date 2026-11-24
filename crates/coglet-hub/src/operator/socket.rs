@@ -3,8 +3,12 @@
 use super::{PeerIdentity, Request};
 use std::{
     fs, io,
-    os::unix::fs::{MetadataExt, PermissionsExt},
+    os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt},
     path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 use tokio::{
@@ -20,14 +24,116 @@ fn denied() -> io::Error {
     )
 }
 
+/// Exclusive process ownership of a private router state directory. The socket
+/// retains this guard, so dropping a caller's copy cannot release ownership early.
+#[derive(Clone)]
+pub struct StateLock(Arc<LockedState>);
+struct LockedState {
+    _file: fs::File,
+    root: PathBuf,
+    bound: AtomicBool,
+}
+impl StateLock {
+    pub fn acquire(root: &Path) -> io::Result<Self> {
+        let meta = fs::symlink_metadata(root)?;
+        // SAFETY: geteuid has no arguments and cannot invalidate Rust memory.
+        let uid = unsafe { libc::geteuid() };
+        if !meta.is_dir() || meta.uid() != uid || meta.mode() & 0o777 != 0o700 {
+            return Err(denied());
+        }
+        let path = root.join("hub.lock");
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+            .open(&path)?;
+        let meta = file.metadata()?;
+        if !meta.is_file() || meta.uid() != uid || meta.mode() & 0o777 != 0o600 || meta.nlink() != 1
+        {
+            return Err(denied());
+        }
+        file.try_lock()?;
+        let entry = fs::symlink_metadata(&path)?;
+        if entry.dev() != meta.dev() || entry.ino() != meta.ino() {
+            return Err(denied());
+        }
+        Ok(Self(Arc::new(LockedState {
+            _file: file,
+            root: root.to_path_buf(),
+            bound: AtomicBool::new(false),
+        })))
+    }
+}
+struct BindLease(StateLock);
+impl Drop for BindLease {
+    fn drop(&mut self) {
+        self.0.0.bound.store(false, Ordering::Release);
+    }
+}
+
 pub struct OperatorSocket {
     listener: UnixListener,
     path: PathBuf,
     device: u64,
     inode: u64,
     uid: u32,
+    _lease: Option<BindLease>,
 }
 impl OperatorSocket {
+    /// Recover only a service-owned, refused socket while holding exclusive
+    /// state ownership. Ambiguous probes, live listeners and arbitrary entries
+    /// are never replaced. The binding lease also serializes same-process calls.
+    pub async fn bind_locked(lock: &StateLock) -> io::Result<Self> {
+        if lock
+            .0
+            .bound
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "operator socket already bound",
+            ));
+        }
+        let lease = BindLease(lock.clone());
+        let path = lock.0.root.join("operator.sock");
+        match fs::symlink_metadata(&path) {
+            Ok(meta) => {
+                // SAFETY: geteuid has no arguments and cannot invalidate Rust memory.
+                let uid = unsafe { libc::geteuid() };
+                if !meta.file_type().is_socket()
+                    || meta.uid() != uid
+                    || meta.mode() & 0o777 != 0o600
+                {
+                    return Err(denied());
+                }
+                match tokio::time::timeout(Duration::from_millis(250), UnixStream::connect(&path))
+                    .await
+                {
+                    Ok(Err(e)) if e.kind() == io::ErrorKind::ConnectionRefused => (),
+                    _ => {
+                        return Err(io::Error::new(
+                            io::ErrorKind::AlreadyExists,
+                            "operator socket is live or ambiguous",
+                        ));
+                    }
+                }
+                let current = fs::symlink_metadata(&path)?;
+                if current.dev() != meta.dev() || current.ino() != meta.ino() {
+                    return Err(denied());
+                }
+                fs::remove_file(&path)?;
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => (),
+            Err(e) => return Err(e),
+        }
+        let mut socket = Self::bind(&lock.0.root)?;
+        socket._lease = Some(lease);
+        Ok(socket)
+    }
     /// Require an existing private, service-owned directory; do not chmod an
     /// arbitrary caller path, follow a symlink or replace an existing entry.
     pub fn bind(state: &Path) -> io::Result<Self> {
@@ -57,6 +163,7 @@ impl OperatorSocket {
             device: meta.dev(),
             inode: meta.ino(),
             uid,
+            _lease: None,
         })
     }
     pub async fn accept(&self) -> io::Result<(UnixStream, PeerIdentity)> {
