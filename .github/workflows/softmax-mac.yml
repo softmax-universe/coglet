@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Hub account tests (before native runtime build)
+        run: swift test --package-path apps/softmax-mac --filter HubConnectionTests
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
