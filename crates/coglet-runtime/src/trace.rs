@@ -65,6 +65,36 @@ impl Engine for ObservedTransition<'_> {
     }
 }
 
+/// Content-addressed exact `db-step-record` bytes whose projection equals `record`.
+fn exact_database_record_bytes(
+    blobs: &serde_json::Map<String, Value>,
+    record: &Value,
+) -> Result<Vec<u8>> {
+    let mut found = None;
+    for (hash, bytes) in blobs {
+        let Some(hex_text) = bytes.as_str() else {
+            continue;
+        };
+        let Ok(raw) = hex::decode(hex_text) else {
+            continue;
+        };
+        if hex::encode(&raw) != hex_text || hash != &digest(&raw) {
+            continue;
+        }
+        let Ok(projection) = crate::journal::database_projection(&raw) else {
+            continue;
+        };
+        if projection != *record {
+            continue;
+        }
+        if found.is_some() {
+            return Err("duplicate exact database record bytes".into());
+        }
+        found = Some(raw);
+    }
+    found.ok_or_else(|| "missing exact lossless database record bytes".into())
+}
+
 /// Internal segment cutoffs refer to the same exclusively owned WAL. Old
 /// records remain immutable; one state transaction promotes all coordinator
 /// metadata without opening a second writable owner or dropping receipts.
@@ -177,6 +207,39 @@ impl RuntimeService {
         Ok(())
     }
 
+    /// Copy WAL-verbatim ABI 0.2 record bytes into the archive blob map. The
+    /// JSON projection is never the export authority.
+    fn bind_exact_database_records(
+        runtime: &mut Runtime,
+        store: &crate::DurableStore,
+        offset: usize,
+        end: usize,
+    ) -> Result<()> {
+        for index in offset..end {
+            let Some(raw) = store.database_record_bytes(index) else {
+                continue;
+            };
+            let record = store
+                .records()
+                .get(index)
+                .ok_or("missing WAL record for exact database bytes")?;
+            if record.get("step").is_none() {
+                continue;
+            }
+            // Content-address the verbatim record. record_hash is the ABI hash
+            // over the unhashed map and is not the blob key.
+            let hash = digest(raw);
+            let hex_text = hex::encode(raw);
+            if let Some(existing) = runtime.retained_blobs.get(&hash)
+                && existing != &json!(hex_text)
+            {
+                return Err("exact database record bytes conflict with a retained blob".into());
+            }
+            runtime.retained_blobs.insert(hash, json!(hex_text));
+        }
+        Ok(())
+    }
+
     /// Export a retained sealed predecessor. Caller separately authorizes
     /// private-data release and authenticates the cutoff and complete header.
     pub fn export_segment(&self, trace_id: &Value) -> Result<Value> {
@@ -191,6 +254,7 @@ impl RuntimeService {
                     &self.store.records()[offset..segment.end],
                 )?;
                 runtime.retained_blobs = self.state.runtime.retained_blobs.clone();
+                Self::bind_exact_database_records(&mut runtime, &self.store, offset, segment.end)?;
                 return runtime.export_trace(trace_id);
             }
             offset = segment.end;
@@ -216,6 +280,18 @@ impl RuntimeService {
         if self.state.staged_boundary.is_some() {
             self.seal_boundary(trace_id, logical_time, &[])?;
         }
+        let offset = self
+            .state
+            .completed_segments
+            .last()
+            .map(|segment| segment.end)
+            .unwrap_or(0);
+        Self::bind_exact_database_records(
+            &mut self.state.runtime,
+            &self.store,
+            offset,
+            self.store.records().len(),
+        )?;
         self.state.runtime.export_trace(trace_id)
     }
 }
@@ -246,12 +322,66 @@ impl Runtime {
     /// Validate all required header fields/blobs, replay host transitions and
     /// reconstruct pending work. No guest execution, dispatch or live lookup.
     /// Caller separately verifies authorization, admission signatures and cutoff.
+    /// ABI 0.2 archives (`database::db-trace`) additionally require content-addressed
+    /// exact `db-step-record` bytes; the JSON projection is not the authority.
     pub fn import_trace(trace: &Value) -> Result<Self> {
+        if trace.get("version") == Some(&json!("0.2")) {
+            return Self::import_database_trace(trace);
+        }
         validate("trace", trace)?;
+        Self::import_archive(trace, "manifest")
+    }
+
+    fn import_database_trace(trace: &Value) -> Result<Self> {
+        validate("database::db-trace", trace)?;
+        if !trace["trailing_boundary"].is_null() {
+            // seal_boundary still publishes ABI 0.1 boundary records. A 0.2
+            // trailing seal is not a deployable adapter until that router
+            // message uses db-boundary-record bytes.
+            return Err(
+                "ABI 0.2 archive import refuses a trailing boundary until db-boundary seals exist"
+                    .into(),
+            );
+        }
+        let blobs = trace["blobs"].as_object().ok_or("missing blobs")?;
+        let records = trace["records"].as_array().ok_or("missing records")?;
+        let initial = trace["initial_db_revision"]
+            .as_u64()
+            .ok_or("missing initial_db_revision")?;
+        let final_revision = trace["final_db_revision"]
+            .as_u64()
+            .ok_or("missing final_db_revision")?;
+        match records.as_slice() {
+            [] if initial != final_revision => {
+                return Err("empty ABI 0.2 archive revisions must match".into());
+            }
+            [] => {}
+            [first, ..] => {
+                let last = records.last().ok_or("missing last database record")?;
+                if first["db_before"].as_u64() != Some(initial)
+                    || last["db_after"].as_u64() != Some(final_revision)
+                {
+                    return Err("ABI 0.2 archive revision bounds do not match records".into());
+                }
+            }
+        }
+        for record in records {
+            let raw = exact_database_record_bytes(blobs, record)?;
+            if crate::journal::database_projection(&raw)? != *record {
+                return Err("exact database record does not match archive projection".into());
+            }
+        }
+        Self::import_archive(trace, "database::db-manifest")
+    }
+
+    fn import_archive(trace: &Value, manifest_rule: &str) -> Result<Self> {
         let blobs = trace["blobs"].as_object().ok_or("missing blobs")?;
         for (hash, bytes) in blobs {
             let raw =
                 hex::decode(bytes.as_str().ok_or("invalid blob")?).map_err(|e| e.to_string())?;
+            if hex::encode(&raw) != bytes.as_str().unwrap() {
+                return Err("trace blob is not canonical hex".into());
+            }
             if hash != &digest(&raw) {
                 return Err("trace blob digest mismatch".into());
             }
@@ -263,7 +393,7 @@ impl Runtime {
                 .ok_or("missing manifest blob")?,
         )
         .map_err(|e| e.to_string())?;
-        let manifest: Value = coglet_types::decode("manifest", &manifest_raw)?
+        let manifest: Value = coglet_types::decode(manifest_rule, &manifest_raw)?
             .deserialized()
             .map_err(|e| e.to_string())?;
         if manifest["id"] != trace["coglet"] {
@@ -325,13 +455,89 @@ impl Runtime {
 
     /// Export the complete atomic header and exact journal bytes' JSON view.
     /// The caller must authorize release of private data and bind completeness.
+    /// ABI 0.2 exports require content-addressed exact record bytes (WAL or an
+    /// imported archive). A JSON-only 0.2 projection stays closed.
     pub fn export_trace(&self, trace_id: &Value) -> Result<Value> {
         if self.unresolved_attempt.is_some() {
             return Err("unresolved attempt prevents complete export".into());
         }
+        if self.manifest["version"] == "0.2" || self.records.iter().any(|r| r["version"] == "0.2") {
+            return self.export_database_trace(trace_id);
+        }
         if self.records.iter().any(|r| r["version"] != "0.1") {
             return Err("ABI 0.2 database trace export is not implemented".into());
         }
+        self.export_frozen_trace(trace_id)
+    }
+
+    fn export_database_trace(&self, trace_id: &Value) -> Result<Value> {
+        if self.manifest["version"] != "0.2" {
+            return Err("ABI 0.2 archive export requires a db-manifest".into());
+        }
+        if self.records.iter().any(|r| r["version"] != "0.2") {
+            return Err("ABI 0.2 archive export refuses mixed ABI record versions".into());
+        }
+        validate("correlation-id", trace_id)?;
+        if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
+            return Err("trace identity changed".into());
+        }
+        let initial = Self::from_fixture(&self.initial_setup)?;
+        let code = &initial.files.files()["/code/bin/step.wasm"];
+        let code_hash = digest(&hex::decode(code).map_err(|e| e.to_string())?);
+        let manifest = cbor(&initial.manifest)?;
+        let manifest_hash = digest(&manifest);
+        let mut blobs = self.retained_blobs.clone();
+        blobs.insert(code_hash.clone(), json!(code));
+        blobs.insert(manifest_hash.clone(), json!(hex::encode(manifest)));
+        let mut records = Vec::new();
+        for record in self.records.iter().filter(|r| r.get("step").is_some()) {
+            let raw = exact_database_record_bytes(&blobs, record).map_err(|_| {
+                "ABI 0.2 database trace export requires exact record bytes".to_string()
+            })?;
+            let projection = crate::journal::database_projection(&raw)?;
+            if projection != *record {
+                return Err("exact database record does not match runtime projection".into());
+            }
+            blobs.insert(digest(&raw), json!(hex::encode(raw)));
+            records.push(projection);
+        }
+        let trailing = self
+            .records
+            .last()
+            .filter(|r| r.get("step").is_none())
+            .cloned();
+        if trailing.as_ref().is_some_and(|r| r["version"] != "0.2") {
+            return Err("ABI 0.2 archive export refuses a 0.1 trailing boundary".into());
+        }
+        if let Some(record) = &trailing {
+            validate("database::db-boundary-record", record)?;
+        }
+        let (initial_db_revision, final_db_revision) = match records.as_slice() {
+            [] => (json!(0), json!(0)),
+            [first, ..] => (
+                first["db_before"].clone(),
+                records.last().unwrap()["db_after"].clone(),
+            ),
+        };
+        let mut trace = json!({"version":"0.2","trace_id":trace_id,"coglet":self.manifest["id"],
+            "initial_hash":initial.files.tree_hash()?,"code_hash":code_hash,"manifest_hash":manifest_hash,
+            "final_hash":self.files.tree_hash()?,"records":records,"trailing_boundary":trailing,"blobs":blobs,
+            "initial_db_revision":initial_db_revision,"final_db_revision":final_db_revision});
+        for key in [
+            "initial_files",
+            "initial_effect_ids",
+            "initial_actions",
+            "initial_inbox_wakes",
+            "initial_timers",
+            "initial_llm_requests",
+        ] {
+            trace[key] = self.initial_setup[key].clone();
+        }
+        validate("database::db-trace", &trace)?;
+        Ok(trace)
+    }
+
+    fn export_frozen_trace(&self, trace_id: &Value) -> Result<Value> {
         validate("correlation-id", trace_id)?;
         if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
             return Err("trace identity changed".into());
