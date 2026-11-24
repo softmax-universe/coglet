@@ -27,6 +27,9 @@ public final class SecurityHubKeychain: HubKeychain {
     func query(_ service: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service, kSecAttrAccount as String: "iroh-device",
+         // Accessibility classes require the Data Protection implementation on
+         // macOS. Never fall back to a legacy item or synchronize this identity.
+         kSecUseDataProtectionKeychain as String: true,
          kSecAttrSynchronizable as String: false]
     }
     public func read(service: String) throws -> Data? {
