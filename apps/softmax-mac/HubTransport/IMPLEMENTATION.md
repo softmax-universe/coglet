@@ -2,6 +2,18 @@
 
 ## Current continuation authority (supersedes historical notes below)
 
+### Run132517 update
+
+PR98 is OPEN/DRAFT at1541a24fab8f0746e496ce0e3582472f5e7f2aff. Independently verified native45450382089 SUCCESS with supported exact --once exit0 and read raw log: failed-signout, persistence and replacement account tests, real mock enrollment/drop/recovery, UI enrollment, universal helper/app valid-on-disk signatures and snapshot errors[] all pass. This supersedes the prior pending native result, NOT final acceptance.
+
+Independent separate-session review sa-0-bd9bd951 returned REQUEST_CHANGES: startup identity errors leave deviceID nil and hide Sign out, blocking explicit reset when enrolled key is missing. Source independently rechecked. New f8df2bade5f2c31c8ca6a19ca0faccd482ac6611 on wip/t_01a205f93f231486-reset-red adds testStartupIdentityFailureKeepsSignOutReachableWithoutRotatingKey. The original visibility condition deviceID!=nil is extracted unchanged into canSignOut, consumed by UI. No behavior repair yet. Exact native RED45458930583 dispatched/readback; require actual XCTest false-versus-true failure, not compiler/setup error, before changing canSignOut to include error/local enrollment state. Failed cleanup must keep action reachable; successful cleanup must hide it. PR98 deliberately unchanged to preserve native GREEN.
+
+Other reviewer leads remain pending: detached ProcessHubLink reader must not share a descriptor closed/reused by stop(); generation fences cannot restore stolen pipe bytes. Native stop/restart regression and reader-owned descriptor correction needed. Also Apple TN3137 confirms SecItem defaults to file-based keychain; setting accessibility alone does not select Data Protection. Investigate/use kSecUseDataProtectionKeychain with synchronizable=false, preserving signed-app entitlement/provisioning and fake tests; no OS Keychain enforcement proof yet. No live Keychain touched.
+
+Rust45450382196 and dependency mirror45450382001 fail lifecycle_operation_retries_cannot_reverse_later_transitions_after_restart at1489 (Null versus original applied receipt). Existing PR136 explicitly owns that WAL restart race; downstream notification independently read back at issuecomment7140593265. One failed-only Rust rerun requested (attempt2). No runtime code/quarantine/waiver added. Python45450381951 attempt2 passes; docs explicitly exclude Python units from quarantine machinery, so no unsupported entry. Main rust45448563243 is green. All five original parent DONE receipts recovered again via authorized replicas; no dependency edits/created cards/worktrees/processes.
+
+Fresh packaging1 + signing4 and diff-check PASS at f8df2ba. NEXT read exact reset RED45458930583, minimally repair predicate only after observed RED, verify GREEN, then close fd/Keychain review leads, final exact-head independent approval/all CI/merge queue and request_review AFTER merged. Review notes/raw logs retained in task workspace; native run URLs authoritative. No acceptance or landing claim.
+
 ### Run130521 update
 
 Independently read completed native logs, saved in workspace/persistence-45423268341.log and replace-45433755546.log. Persistence candidate45423268341@5e6d633 PASSES testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity (1.198s), required real mock lane, portable core, universal helper/signatures and reviewed snapshot comparison. Overall FAILURE is testSettingsFocusedSearchArrowNavigation (SoftmaxUITests.swift214/217/220/227): four focused-search selection assertions. Do not call it full GREEN or rerun/waive without diagnosis and quarantine-policy disposition. This UI navigation code/test is unchanged by persistence repair; causal/inherited/flake attribution is not yet proved.
