@@ -34,6 +34,8 @@ jobs:
         with:
           python-version: '3.12'
       - name: Resolve Jackson before Python test collection
+        # Bound all attempts and backoff together; a registry outage must not hold the queue.
+        timeout-minutes: 3
         # Maven Central transfer errors are transient, and Maven caches a failed lookup
         # in ~/.m2 for the rest of the job. Retry with -U (recheck) and pre-fetch plugins too.
         run: |
