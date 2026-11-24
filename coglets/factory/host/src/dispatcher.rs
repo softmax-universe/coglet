@@ -1,6 +1,10 @@
-use crate::adapter::{AdapterError, FollowUp, HermesAdapter, Outcome, RemoteTask, TaskSpec};
+use crate::adapter::{AdapterError, FollowUp, HermesAdapter, Outcome, WorkerReport};
 use coglet_db::{Database, OutboxRecord, OutboxState, Result, WorkQueueRow};
 use coglet_types::Value;
+use std::collections::BTreeSet;
+
+const HOST_OWNER: &str = "factory-host";
+const LEASE_MS: i64 = 60_000;
 
 pub struct Dispatcher<A> {
     pub adapter: A,
@@ -9,7 +13,38 @@ pub struct Dispatcher<A> {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DispatchBatch {
     pub claimed: usize,
+    pub expired: Vec<String>,
     pub follow_ups: Vec<FollowUp>,
+}
+
+/// Host entry. Production constructs this with [`crate::HttpKanban`]; tests may
+/// substitute [`crate::MockAdapter`]. The cycle never reads Hermes tables.
+pub struct FactoryHost<A> {
+    dispatcher: Dispatcher<A>,
+}
+
+impl FactoryHost<crate::HttpKanban> {
+    pub fn connect(base_url: &str) -> Self {
+        Self {
+            dispatcher: Dispatcher::new(crate::HttpKanban::new(base_url)),
+        }
+    }
+}
+
+impl<A: HermesAdapter> FactoryHost<A> {
+    pub fn from_adapter(adapter: A) -> Self {
+        Self {
+            dispatcher: Dispatcher::new(adapter),
+        }
+    }
+
+    pub fn run(&mut self, db: &mut Database, now: i64) -> Result<DispatchBatch> {
+        self.dispatcher.run_cycle(db, now, 8)
+    }
+
+    pub fn dispatcher(&mut self) -> &mut Dispatcher<A> {
+        &mut self.dispatcher
+    }
 }
 
 impl<A: HermesAdapter> Dispatcher<A> {
@@ -17,7 +52,24 @@ impl<A: HermesAdapter> Dispatcher<A> {
         Self { adapter }
     }
 
-    /// Claim fenced intents and submit them with stable idempotency keys.
+    /// Recover unbound creates, expire leases, redispatch, claim new intents,
+    /// and ingest worker results. Pending deliveries are returned until acknowledged.
+    pub fn run_cycle(&mut self, db: &mut Database, now: i64, limit: u32) -> Result<DispatchBatch> {
+        let mut follow_ups = self.pending_follow_ups(db)?;
+        let expired = self.expire_leases(db, now)?;
+        let rebound = self.redispatch_pending(db, now, limit)?;
+        let fresh = self.dispatch_pending(db, now, limit)?;
+        follow_ups.extend(self.ingest(db, now)?);
+        follow_ups.extend(rebound.follow_ups);
+        follow_ups.extend(fresh.follow_ups);
+        follow_ups = dedupe(follow_ups);
+        Ok(DispatchBatch {
+            claimed: fresh.claimed + rebound.claimed,
+            expired,
+            follow_ups,
+        })
+    }
+
     pub fn dispatch_pending(
         &mut self,
         db: &mut Database,
@@ -34,19 +86,24 @@ impl<A: HermesAdapter> Dispatcher<A> {
         }
         Ok(DispatchBatch {
             claimed: n,
+            expired: vec![],
             follow_ups,
         })
     }
 
-    /// After restart: inflight rows become uncertain, then the same keys retry.
     pub fn recover_and_dispatch(
         &mut self,
         db: &mut Database,
         now: i64,
         limit: u32,
     ) -> Result<DispatchBatch> {
-        db.reconcile_inflight_outbox()?;
-        self.dispatch_pending(db, now, limit)
+        for row in db.unbound_dispatching()? {
+            db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
+        }
+        let mut batch = self.run_cycle(db, now, limit)?;
+        // run_cycle already includes pending deliveries; keep claimed as new work only.
+        let _ = &mut batch;
+        Ok(batch)
     }
 
     fn submit(
@@ -56,7 +113,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
         now: i64,
     ) -> Result<Option<FollowUp>> {
         let task_id = task_id_of(row);
-        let spec = TaskSpec {
+        let spec = crate::adapter::TaskSpec {
             idempotency_key: row.idempotency_key.clone(),
             kind: row.kind.clone(),
             payload_cbor_hex: row.payload_cbor_hex.clone(),
@@ -65,111 +122,403 @@ impl<A: HermesAdapter> Dispatcher<A> {
         };
         match self.adapter.create(&spec) {
             Ok(remote) => {
-                self.record_queue(db, &task_id, &remote, row.attempt, now)?;
+                db.put_binding(&row.intent_id, &remote.remote_id, &task_id)?;
+                self.lease(db, row, &remote.remote_id, &task_id, row.attempt, now)?;
                 Ok(None)
             }
             Err(AdapterError::Uncertain) => {
                 db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
                 Ok(None)
             }
-            Err(AdapterError::Failed(note)) => {
-                db.record_outbox_state(&row.intent_id, row.version, OutboxState::Failed)?;
-                Ok(Some(FollowUp {
-                    task_id,
-                    kind: "task.failed".into(),
-                    note,
-                }))
-            }
+            Err(AdapterError::Failed(note)) => Ok(Some(self.finish(
+                db,
+                row,
+                &task_id,
+                OutboxState::Failed,
+                "task.failed",
+                &note,
+                None,
+                now,
+            )?)),
             Err(AdapterError::Conflict(note)) => Err(note),
         }
     }
 
-    fn record_queue(
+    fn lease(
         &mut self,
         db: &mut Database,
+        row: &OutboxRecord,
+        remote_id: &str,
         task_id: &str,
-        remote: &RemoteTask,
         attempt: u64,
         now: i64,
     ) -> Result<()> {
+        let until = now.saturating_add(LEASE_MS);
+        let lease = self
+            .adapter
+            .claim(remote_id, HOST_OWNER, until as u64, attempt)
+            .map_err(|e| format!("{e:?}"))?;
         let current = db.get_work_queue(task_id)?;
         let version = current.as_ref().map(|r| r.version).unwrap_or(1);
-        let attempt = current
-            .as_ref()
-            .map(|r| r.attempt.max(attempt))
-            .unwrap_or(attempt);
-        let row = WorkQueueRow {
+        db.put_work_queue(&WorkQueueRow {
             task_id: task_id.into(),
-            state: "dispatched".into(),
-            priority: 0,
-            lease_owner: Some(remote.remote_id.clone()),
-            lease_until: Some(now.saturating_add(60_000)),
+            state: "leased".into(),
+            priority: current.as_ref().map(|r| r.priority).unwrap_or(0),
+            lease_owner: Some(lease.token),
+            lease_until: Some(until),
             attempt,
             version: if current.is_some() { version } else { 1 },
-        };
-        db.put_work_queue(&row)?;
+        })?;
+        let _ = row;
         Ok(())
     }
 
-    /// Apply a later worker result. Outcomes are immutable events, not in-place
-    /// mutation of cognitive objects (the Factory executive consumes them).
     pub fn apply_result(
         &mut self,
         db: &mut Database,
         intent_id: &str,
-        outcome: Outcome,
+        report: WorkerReport,
     ) -> Result<FollowUp> {
         let row = db
             .get_outbox(intent_id)?
             .ok_or_else(|| "unknown intent".to_string())?;
+        let task_id = task_id_of(&row);
+        let (state, kind, note) = match &report.outcome {
+            Outcome::Succeeded { note } => (OutboxState::Succeeded, "task.completed", note.clone()),
+            Outcome::Failed { note } => (OutboxState::Failed, "task.failed", note.clone()),
+        };
+        if row.state == state.as_str() {
+            return self
+                .pending_follow_ups(db)?
+                .into_iter()
+                .find(|f| f.task_id == task_id && f.kind == kind)
+                .ok_or_else(|| "terminal outcome has no delivery".to_string());
+        }
         if row.state != OutboxState::Dispatching.as_str() {
             return Err("intent not dispatching".into());
         }
-        let task_id = task_id_of(&row);
-        let (state, kind, note) = match outcome {
-            Outcome::Succeeded { note } => (OutboxState::Succeeded, "task.completed", note),
-            Outcome::Failed { note } => (OutboxState::Failed, "task.failed", note),
-        };
-        db.record_outbox_state(&row.intent_id, row.version, state)?;
-        if let Some(queue) = db.get_work_queue(&task_id)? {
-            db.put_work_queue(&WorkQueueRow {
-                state: "done".into(),
-                lease_owner: None,
-                lease_until: None,
-                version: queue.version,
-                ..queue
-            })?;
-        }
-        Ok(FollowUp {
-            task_id,
-            kind: kind.into(),
-            note,
-        })
+        self.finish(
+            db,
+            &row,
+            &task_id,
+            state,
+            kind,
+            &note,
+            Some((report.lease.as_str(), report.attempt)),
+            0,
+        )
     }
 
-    pub fn cancel_intent(&mut self, db: &mut Database, intent_id: &str) -> Result<FollowUp> {
+    pub fn cancel_intent(
+        &mut self,
+        db: &mut Database,
+        intent_id: &str,
+        attempt: u64,
+        lease: &str,
+        now: i64,
+    ) -> Result<FollowUp> {
         let row = db
             .get_outbox(intent_id)?
             .ok_or_else(|| "unknown intent".to_string())?;
-        if row.state != OutboxState::Dispatching.as_str() {
-            return Err("intent not dispatching".into());
+        let task_id = task_id_of(&row);
+        self.fence(db, &task_id, attempt, lease)?;
+        if let Some(remote) = db.get_binding(intent_id)? {
+            self.adapter
+                .cancel(&remote, attempt, lease)
+                .map_err(|e| format!("{e:?}"))?;
         }
-        if let Some(queue) = db.get_work_queue(&task_id_of(&row))?
-            && let Some(remote) = queue.lease_owner.as_deref()
-        {
-            self.adapter.cancel(remote).map_err(|e| format!("{e:?}"))?;
+        self.finish(
+            db,
+            &row,
+            &task_id,
+            OutboxState::Cancelled,
+            "task.cancelled",
+            "cancelled",
+            Some((lease, attempt)),
+            now,
+        )
+    }
+
+    pub fn heartbeat(
+        &mut self,
+        db: &mut Database,
+        intent_id: &str,
+        attempt: u64,
+        lease: &str,
+        now: i64,
+    ) -> Result<()> {
+        let row = db
+            .get_outbox(intent_id)?
+            .ok_or_else(|| "unknown intent".to_string())?;
+        let task_id = task_id_of(&row);
+        let queue = self.fence(db, &task_id, attempt, lease)?;
+        let until = now.saturating_add(LEASE_MS);
+        if let Some(remote) = db.get_binding(intent_id)? {
+            self.adapter
+                .heartbeat(&remote, until as u64, attempt, lease)
+                .map_err(|e| format!("{e:?}"))?;
         }
-        db.record_outbox_state(&row.intent_id, row.version, OutboxState::Cancelled)?;
-        Ok(FollowUp {
-            task_id: task_id_of(&row),
-            kind: "task.cancelled".into(),
-            note: "cancelled".into(),
-        })
+        db.put_work_queue(&WorkQueueRow {
+            lease_until: Some(until),
+            version: queue.version,
+            ..queue
+        })?;
+        Ok(())
+    }
+
+    pub fn progress(
+        &mut self,
+        db: &mut Database,
+        intent_id: &str,
+        attempt: u64,
+        lease: &str,
+        note: &str,
+    ) -> Result<()> {
+        let row = db
+            .get_outbox(intent_id)?
+            .ok_or_else(|| "unknown intent".to_string())?;
+        self.fence(db, &task_id_of(&row), attempt, lease)?;
+        if let Some(remote) = db.get_binding(intent_id)? {
+            self.adapter
+                .progress(&remote, note, attempt, lease)
+                .map_err(|e| format!("{e:?}"))?;
+        }
+        Ok(())
     }
 
     pub fn expire_leases(&mut self, db: &mut Database, now: i64) -> Result<Vec<String>> {
-        db.expire_work_leases(now)
+        let due = db.work_in_state("leased")?;
+        let mut expired = Vec::new();
+        for row in due {
+            if row.lease_until.is_some_and(|until| until <= now) {
+                if let Some(intent) = intent_for_task(db, &row.task_id)?
+                    && let Some(remote) = db.get_binding(&intent)?
+                {
+                    match self.adapter.retry(&remote) {
+                        Ok(()) | Err(AdapterError::Uncertain) => {}
+                        Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                            return Err(note);
+                        }
+                    }
+                }
+                expired.push(row.task_id);
+            }
+        }
+        if expired.is_empty() {
+            return Ok(expired);
+        }
+        let cleared = db.expire_work_leases(now)?;
+        Ok(cleared)
     }
+
+    pub fn redispatch_pending(
+        &mut self,
+        db: &mut Database,
+        now: i64,
+        limit: u32,
+    ) -> Result<DispatchBatch> {
+        let mut claimed = 0;
+        for row in db.work_in_state("pending")? {
+            if claimed >= limit {
+                break;
+            }
+            let Some(intent) = intent_for_task(db, &row.task_id)? else {
+                continue;
+            };
+            let Some(remote) = db.get_binding(&intent)? else {
+                continue;
+            };
+            let outbox = db
+                .get_outbox(&intent)?
+                .ok_or_else(|| "missing outbox".to_string())?;
+            if outbox.state != OutboxState::Dispatching.as_str() {
+                continue;
+            }
+            self.lease(db, &outbox, &remote, &row.task_id, row.attempt, now)?;
+            claimed += 1;
+        }
+        Ok(DispatchBatch {
+            claimed: claimed as usize,
+            expired: vec![],
+            follow_ups: vec![],
+        })
+    }
+
+    fn ingest(&mut self, db: &mut Database, now: i64) -> Result<Vec<FollowUp>> {
+        let mut events = Vec::new();
+        for row in db.outbox_in_state(OutboxState::Dispatching.as_str())? {
+            let Some(remote) = db.get_binding(&row.intent_id)? else {
+                continue;
+            };
+            let report = match self.adapter.poll(&remote) {
+                Ok(Some(report)) => report,
+                Ok(None) => continue,
+                Err(AdapterError::Uncertain) => continue,
+                Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                    return Err(note);
+                }
+            };
+            match self.apply_result(db, &row.intent_id, report) {
+                Ok(follow) => events.push(follow),
+                Err(error) if error == "stale attempt" => {}
+                Err(error) => return Err(error),
+            }
+        }
+        let _ = now;
+        Ok(events)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn finish(
+        &mut self,
+        db: &mut Database,
+        row: &OutboxRecord,
+        task_id: &str,
+        state: OutboxState,
+        kind: &str,
+        note: &str,
+        lease: Option<(&str, u64)>,
+        now: i64,
+    ) -> Result<FollowUp> {
+        let attempt = lease.map(|(_, attempt)| attempt).unwrap_or(row.attempt);
+        let token = lease.map(|(token, _)| token).unwrap_or("");
+        let event_id = event_id(&row.intent_id, attempt, kind);
+        let payload = format!(
+            "{{\"task_id\":{task},\"note\":{note},\"attempt\":{attempt},\"lease\":{lease},\"kind\":{kind}}}",
+            task = quoted(task_id),
+            note = quoted(note),
+            lease = quoted(token),
+            kind = quoted(kind),
+        );
+        db.commit_outcome(
+            &row.intent_id,
+            row.version,
+            state,
+            &event_id,
+            task_id,
+            kind,
+            &payload,
+            now,
+            lease,
+        )?;
+        Ok(FollowUp {
+            event_id,
+            task_id: task_id.into(),
+            kind: kind.into(),
+            note: note.into(),
+            attempt,
+            lease: token.into(),
+        })
+    }
+
+    fn fence(
+        &self,
+        db: &Database,
+        task_id: &str,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<WorkQueueRow> {
+        let queue = db
+            .get_work_queue(task_id)?
+            .ok_or_else(|| "missing work_queue".to_string())?;
+        if queue.state != "leased"
+            || queue.attempt != attempt
+            || queue.lease_owner.as_deref() != Some(lease)
+        {
+            return Err("stale attempt".into());
+        }
+        Ok(queue)
+    }
+
+    fn pending_follow_ups(&self, db: &Database) -> Result<Vec<FollowUp>> {
+        db.pending_deliveries()?
+            .into_iter()
+            .map(|row| parse_follow_up(&row.event_id, &row.payload_json))
+            .collect()
+    }
+
+    pub fn acknowledge(&mut self, db: &mut Database, event_id: &str) -> Result<()> {
+        db.acknowledge_delivery(event_id)
+    }
+}
+
+fn dedupe(items: Vec<FollowUp>) -> Vec<FollowUp> {
+    let mut seen = BTreeSet::new();
+    items
+        .into_iter()
+        .filter(|item| seen.insert(item.event_id.clone()))
+        .collect()
+}
+
+fn intent_for_task(db: &Database, task_id: &str) -> Result<Option<String>> {
+    for state in ["dispatching", "pending", "uncertain"] {
+        for row in db.outbox_in_state(state)? {
+            if task_id_of(&row) == task_id {
+                return Ok(Some(row.intent_id));
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn event_id(intent: &str, attempt: u64, kind: &str) -> String {
+    format!(
+        "e{attempt:02x}{kind_tag}{intent}",
+        kind_tag = kind_tag(kind),
+        intent = &intent[..30]
+    )
+}
+
+fn kind_tag(kind: &str) -> char {
+    match kind {
+        "task.completed" => 'c',
+        "task.failed" => 'f',
+        "task.cancelled" => 'x',
+        _ => 'o',
+    }
+}
+
+fn parse_follow_up(event_id: &str, payload: &str) -> Result<FollowUp> {
+    Ok(FollowUp {
+        event_id: event_id.into(),
+        task_id: json_text(payload, "task_id").ok_or_else(|| "delivery task".to_string())?,
+        kind: json_text(payload, "kind").unwrap_or_else(|| kind_from_event(event_id).into()),
+        note: json_text(payload, "note").unwrap_or_default(),
+        attempt: json_number(payload, "attempt").unwrap_or(0),
+        lease: json_text(payload, "lease").unwrap_or_default(),
+    })
+}
+
+fn kind_from_event(event_id: &str) -> &'static str {
+    match event_id.chars().nth(3) {
+        Some('c') => "task.completed",
+        Some('f') => "task.failed",
+        Some('x') => "task.cancelled",
+        _ => "task.failed",
+    }
+}
+
+fn quoted(value: &str) -> String {
+    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+fn json_text(raw: &str, key: &str) -> Option<String> {
+    let needle = format!("\"{key}\":\"");
+    let start = raw.find(&needle)? + needle.len();
+    let rest = &raw[start..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_owned())
+}
+
+fn json_number(raw: &str, key: &str) -> Option<u64> {
+    let needle = format!("\"{key}\":");
+    let start = raw.find(&needle)? + needle.len();
+    let digits: String = raw[start..]
+        .chars()
+        .skip_while(|c| c.is_whitespace())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse().ok()
 }
 
 fn task_id_of(row: &OutboxRecord) -> String {

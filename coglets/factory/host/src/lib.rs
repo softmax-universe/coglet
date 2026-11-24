@@ -1,13 +1,15 @@
 //! Host-side Factory dispatcher and replaceable Hermes adapter.
 //!
 //! Guest Wasm only enqueues intents. This crate claims fenced outbox rows,
-//! talks to Hermes through the public Kanban API shape (never internal
-//! tables), and records later outcomes. Production adapters are swappable;
-//! CI uses [`MockAdapter`].
+//! talks to Hermes through the public Kanban HTTP API (never internal tables),
+//! and records later outcomes as durable, replayable events.
 mod adapter;
 mod dispatcher;
+mod http;
 
 pub use adapter::{
     AdapterError, FollowUp, HermesAdapter, Lease, MockAdapter, Outcome, RemoteTask, TaskSpec,
+    WorkerReport,
 };
-pub use dispatcher::{DispatchBatch, Dispatcher};
+pub use dispatcher::{DispatchBatch, Dispatcher, FactoryHost};
+pub use http::{HttpKanban, MockKanbanServer};

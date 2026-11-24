@@ -113,6 +113,7 @@ fn catalog() -> Catalog {
         "text" => CellType::Text,
         "int64" => CellType::Integer,
         "nullable_text" => CellType::NullableText,
+        "nullable_int64" => CellType::NullableInteger,
         _ => panic!("unknown Factory catalog type"),
     };
     Catalog::approve_typed(
@@ -354,7 +355,7 @@ impl Fx {
     }
     fn context(&self) -> Value {
         json!({"trace_id":self.setup["inputs"]["trace_id"],"logical_time":10,"seed":7,
-            "budgets":self.manifest["budgets"],"grants":GRANTS,"boundary":[]})
+            "budgets":self.manifest["budgets"],"grants":self.grants,"boundary":[]})
     }
     fn step<E: SharedEngine>(
         &self,
@@ -668,4 +669,47 @@ fn mock() -> (MockEngine, Fx) {
 fn mock_runs_factory_repository_against_real_database_host() {
     let (engine, fx) = mock();
     scenario(engine, fx);
+}
+
+/// Actual guest executive: task.failed stages an LLM request and the failed
+/// status survives dropping the runtime. The reply arrives as runtime.inbox,
+/// which this database harness cannot yet inject; dispatch consumption is
+/// proved on the host dispatcher tests.
+#[test]
+fn wasm_task_failed_stages_llm_and_survives_reopen() {
+    let engine = Wamr::interpreter().allow_db();
+    let mut fx = Fx::new(coglet_engine_wamr::COMPUTE_MODE);
+    fx.grants.push("llm.complete".into());
+    let policy = serde_json::to_string(&factory::executive::Policy {
+        model: "mock".into(),
+        remaining_budget: 9,
+        available_workers: 2,
+        max_priority: 100,
+    })
+    .unwrap();
+    rusqlite::Connection::open(&fx.db_path)
+        .unwrap()
+        .execute(
+            "INSERT INTO objects VALUES('factory-policy','policy','active',?1,1,10,10)",
+            [policy],
+        )
+        .unwrap();
+    let mut event = fx.event(0, "Efail", "active");
+    event["kind"] = json!("task.failed");
+    event["payload"] = json!({"task_id":"T1","trace_artifact":"sha256:trace"});
+    let mut db = fx.db();
+    let mut service = fx.service();
+    service.enqueue(event).unwrap();
+    let result = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
+    assert_eq!(result["journal"]["status"], "committed");
+    assert!(
+        !result["journal"]["llm_requests"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    drop(service);
+    drop(db);
+    let _ = engine;
+    assert_eq!(fx.object("T1").0, "failed");
 }

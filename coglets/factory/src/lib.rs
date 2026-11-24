@@ -395,4 +395,51 @@ impl<'a, H: DbHost> Repository<'a, H> {
         )?;
         Ok(())
     }
+    /// Authoritative scheduler row. Absent means the host has not leased this task.
+    pub fn get_work_queue(&mut self, task_id: &str) -> Result<Option<WorkQueueView>> {
+        let page = self.call("work_queue_get", vec![text(task_id)])?;
+        if page.rows.len() > 1 || page.next_cursor != Value::Null {
+            return Err(invalid());
+        }
+        page.rows.first().map(|row| row_queue(row)).transpose()
+    }
+}
+
+fn row_queue(row: &[Value]) -> Result<WorkQueueView> {
+    if row.len() != 7 {
+        return Err(invalid());
+    }
+    let text_at = |i: usize| row[i].as_text().map(str::to_owned).ok_or_else(invalid);
+    let int_at = |i: usize| {
+        row[i]
+            .as_integer()
+            .and_then(|n| u64::try_from(i128::from(n)).ok())
+            .ok_or_else(invalid)
+    };
+    let optional_text = |i: usize| match &row[i] {
+        Value::Null => Ok(None),
+        Value::Text(s) => Ok(Some(s.clone())),
+        _ => Err(invalid()),
+    };
+    let optional_until = |i: usize| match &row[i] {
+        Value::Null => Ok(None),
+        Value::Integer(n) => u64::try_from(i128::from(*n))
+            .map(Some)
+            .map_err(|_| invalid()),
+        _ => Err(invalid()),
+    };
+    Ok(WorkQueueView {
+        state: text_at(1)?,
+        lease_owner: optional_text(3)?,
+        lease_until: optional_until(4)?,
+        attempt: int_at(5)?,
+    })
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkQueueView {
+    pub state: String,
+    pub lease_owner: Option<String>,
+    pub lease_until: Option<u64>,
+    pub attempt: u64,
 }

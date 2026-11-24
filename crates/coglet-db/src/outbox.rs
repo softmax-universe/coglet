@@ -51,6 +51,13 @@ impl OutboxState {
     }
 }
 
+/// Replayable host outcome waiting for the guest to acknowledge it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingDelivery {
+    pub event_id: String,
+    pub payload_json: String,
+}
+
 /// Operational scheduling row. Cognitive objects stay in `objects`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkQueueRow {
