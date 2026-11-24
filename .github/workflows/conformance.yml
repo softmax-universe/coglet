@@ -105,16 +105,12 @@ jobs:
       - run: python3 -m unittest discover -s conformance/tests -v
       - run: cargo fmt --manifest-path conformance/iroh-driver/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path conformance/iroh-driver/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --locked --manifest-path conformance/iroh-driver/Cargo.toml
+      - run: scripts/ci/cargo-test --locked --manifest-path conformance/iroh-driver/Cargo.toml
       - name: Harness self-test
         run: conformance/run --self-test --junit target/conformance-self-test.xml
       - name: Surface SDK and mock regressions
         # Quarantined (ci/quarantine.toml) Rust tests are skipped here and run by stability.yml.
-        run: |
-          args=$(python3 scripts/ci/quarantine.py rust-args)
-          extra=()
-          if [ -n "$args" ]; then mapfile -t extra <<< "$args"; fi
-          cargo test --locked -p coglet-surface-rust -p coglet-mock -- "${extra[@]}"
+        run: scripts/ci/cargo-test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint
         run: cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
       - name: Full frozen ABI and executable archive WAMR qualification

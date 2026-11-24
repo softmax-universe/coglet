@@ -106,21 +106,21 @@ jobs:
           test "$count" -gt 0
   proof-java:
     needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && needs.candidate.outputs.exists == 'true' && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
+    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
     uses: ./.github/workflows/java.yml
     with:
       bundle-mode: proof
       bundle-release: ${{ github.event_name == 'pull_request' && format('dependency-candidate-{0}', github.event.pull_request.head.sha) || 'dependency-mirror-v1' }}
   proof-rust:
     needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && needs.candidate.outputs.exists == 'true' && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
+    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
     uses: ./.github/workflows/rust.yml
     with:
       bundle-mode: proof
       bundle-release: ${{ github.event_name == 'pull_request' && format('dependency-candidate-{0}', github.event.pull_request.head.sha) || 'dependency-mirror-v1' }}
   proof-conformance:
     needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && needs.candidate.outputs.exists == 'true' && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
+    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
     uses: ./.github/workflows/conformance.yml
     with:
       bundle-mode: proof

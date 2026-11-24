@@ -10,6 +10,7 @@ MAX_AGE_DAYS fail the stability workflow.
 
   quarantine.py check [--fail-expired]   validate the file (and its age)
   quarantine.py rust-args [--only]       libtest arguments (one per line): skip, or select only, quarantined tests
+  quarantine.py rust-unmatched --listing F   fail if a Rust id names no test in `cargo test -- --list --format terse`
 """
 import argparse
 import datetime
@@ -26,7 +27,8 @@ MAX_AGE_DAYS = 14
 CARD = re.compile(r't_[0-9a-f]{16}')
 # conformance: "<implementation>.<suite>/<case>", exactly as conformance/run prints it.
 # rust: the libtest path inside its test binary, e.g. "runaway_deadline_then_fresh_success"
-# or "tests::name"; matched with --exact, so it never quarantines more than one name.
+# or "tests::name", matched with --exact. libtest has no crate filter, so the id skips that
+# exact name in every test binary: prefer a module path that is unique in the workspace.
 IDS = {
     'conformance': re.compile(r'[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+/[A-Za-z0-9_.-]+'),
     'rust': re.compile(r'[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*'),
@@ -69,6 +71,12 @@ def expired(quarantine, today):
             if (today - entry['since']).days > MAX_AGE_DAYS]
 
 
+def rust_unmatched(quarantine, listing):
+    """Quarantined Rust ids absent from a `cargo test -- --list --format terse` listing."""
+    names = {line.rsplit(': ', 1)[0] for line in listing.splitlines() if line.endswith(': test')}
+    return [entry['id'] for entry in quarantine['rust'] if entry['id'] not in names]
+
+
 def rust_args(quarantine, only=False):
     """Arguments after `cargo test ... --`. Empty means: nothing quarantined."""
     ids = [entry['id'] for entry in quarantine['rust']]
@@ -88,7 +96,12 @@ def main(argv=None):
     check.add_argument('--today', type=datetime.date.fromisoformat, default=datetime.date.today())
     args_cmd = commands.add_parser('rust-args')
     args_cmd.add_argument('--only', action='store_true')
+    unmatched_cmd = commands.add_parser('rust-unmatched')
+    unmatched_cmd.add_argument('--listing', type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.command == 'check' and not args.file.exists():
+        print(f'{args.file}: missing (commit an empty list instead)', file=sys.stderr)
+        return 1
     try:
         quarantine = load(args.file)
     except (ValueError, tomllib.TOMLDecodeError) as error:
@@ -97,6 +110,11 @@ def main(argv=None):
     if args.command == 'rust-args':
         print('\n'.join(rust_args(quarantine, args.only)))  # one argument per line
         return 0
+    if args.command == 'rust-unmatched':
+        missing = rust_unmatched(quarantine, args.listing.read_text())
+        for ident in missing:
+            print(f'UNMATCHED rust {ident}: no test has this exact name; fix or remove the entry', file=sys.stderr)
+        return 1 if missing else 0
     total = sum(len(quarantine[kind]) for kind in KINDS)
     for kind in KINDS:
         for entry in quarantine[kind]:

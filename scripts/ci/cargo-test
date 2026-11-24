@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# `cargo test <args>` with the Rust tests in ci/quarantine.toml skipped (--exact --skip).
+# Fails if the quarantine file is invalid, rather than silently skipping nothing.
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd)
+args=$(python3 "$here/quarantine.py" rust-args)
+extra=()
+if [ -n "$args" ]; then mapfile -t extra <<< "$args"; fi
+if [ ${#extra[@]} -gt 0 ]; then
+  echo "quarantined (skipped): ${extra[*]}"
+  exec cargo test "$@" -- "${extra[@]}"
+fi
+exec cargo test "$@"

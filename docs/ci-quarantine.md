@@ -10,7 +10,9 @@ path quickly, and must also stay owned until it is fixed.
 
 - `id`: for conformance, `<implementation>.<suite>/<case>` exactly as `conformance/run`
   prints it; for Rust, the libtest path in its test binary (`name` or `module::name`),
-  matched with `--exact`.
+  matched with `--exact`. libtest has no crate filter, so the id skips that exact name in
+  every test binary: use a module path that is unique in the workspace. `stability`
+  fails if an id names no test.
 - `card`: the board card that owns the fix.
 - `since`: a TOML date.
 - `reason`: what failed and the run where it was seen.
@@ -21,7 +23,7 @@ path quickly, and must also stay owned until it is fixed.
 
 | Check | Quarantined tests |
 |---|---|
-| `rust` and `conformance` (required) | skipped (`cargo test -- --exact --skip …`, `conformance/run --quarantine`) |
+| `rust` and `conformance` (required) | skipped in every `cargo test` step (via `scripts/ci/cargo-test`) and every registry or ABI `conformance/run` (`--quarantine`). Python unit tests are not covered. |
 | `stability` (not required; every 6 h, on demand, and when the list changes) | run 20 times, with the full registry also repeated 20 times |
 
 `stability` fails when any entry is older than 14 days, so a quarantine cannot be

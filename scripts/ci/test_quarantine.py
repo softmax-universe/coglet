@@ -80,6 +80,20 @@ class QuarantineTests(unittest.TestCase):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 quarantine.load(self.write(text))
 
+    def test_unmatched_rust_ids_are_reported(self):
+        loaded = quarantine.load(self.write(GOOD))
+        listing = 'runaway_deadline_then_fresh_success: test\nother::tests::poisoned_lock: test\nm::bench: benchmark\n'
+        self.assertEqual(quarantine.rust_unmatched(loaded, listing), ['tests::poisoned_lock'])
+        listing += 'tests::poisoned_lock: test\n'
+        self.assertEqual(quarantine.rust_unmatched(loaded, listing), [])
+
+    def test_check_fails_when_the_file_is_missing(self):
+        missing = Path(tempfile.gettempdir()) / 'no-such-quarantine.toml'
+        result = subprocess.run([sys.executable, str(HERE / 'quarantine.py'), '--file', str(missing), 'check'],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('missing', result.stderr)
+
     def test_cli_check_fails_only_when_asked_and_expired(self):
         path = self.write(GOOD)
         script = HERE / 'quarantine.py'

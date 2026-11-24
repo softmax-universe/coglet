@@ -4,7 +4,7 @@ name: surface-readiness
 # nightly, and on demand.
 on:
   pull_request:
-    paths: &readiness_paths ['conformance/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-types/**', '.github/workflows/surface-readiness.yml']
+    paths: &readiness_paths ['conformance/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-types/**', 'spec/fixtures/surface/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/surface-readiness.yml']
   push:
     branches: [main]
     paths: *readiness_paths

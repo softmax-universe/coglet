@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       repeats:
+        description: 'iterations (1 or more; 0 or empty means 20)'
         type: number
         default: 20
   push:
@@ -33,8 +34,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      # Plain cargo (network allowed): this job is not required, so it skips the
+      # offline dependency bundle that rust.yml restores.
       - name: Install pinned toolchain
         run: rustup show active-toolchain
+      - name: Every quarantined Rust id names a real test
+        run: |
+          cargo test --workspace --locked -- --list --format terse > "$RUNNER_TEMP/rust-tests.txt"
+          python3 scripts/ci/quarantine.py rust-unmatched --listing "$RUNNER_TEMP/rust-tests.txt"
       - name: Quarantined Rust tests, repeated
         env:
           REPEATS: ${{ inputs.repeats || 20 }}
