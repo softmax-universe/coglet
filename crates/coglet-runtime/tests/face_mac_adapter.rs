@@ -32,14 +32,27 @@ impl Face {
         Self::spawn_for(C)
     }
     fn spawn_for(owner: &str) -> Self {
-        let mut child =
-            Command::new(std::env::var("FACE_MAC_EXECUTABLE").expect("compiled face-mac path"))
-                .arg("--simulator")
-                .env("FACE_SIMULATOR_OWNER", owner)
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .spawn()
-                .unwrap();
+        Self::spawn_configured(owner, None)
+    }
+    #[cfg(feature = "native-engine")]
+    fn spawn_with_history(owner: &str, directory: &Path) -> Self {
+        Self::spawn_configured(owner, Some(directory))
+    }
+    fn spawn_configured(owner: &str, history: Option<&Path>) -> Self {
+        let mut command =
+            Command::new(std::env::var("FACE_MAC_EXECUTABLE").expect("compiled face-mac path"));
+        if let Some(directory) = history {
+            command.env("FACE_SIMULATOR_HISTORY_DIRECTORY", directory);
+        } else {
+            command.env_remove("FACE_SIMULATOR_HISTORY_DIRECTORY");
+        }
+        let mut child = command
+            .arg("--simulator")
+            .env("FACE_SIMULATOR_OWNER", owner)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
         let input = child.stdin.take();
         let reader = BufReader::new(child.stdout.take().unwrap());
         let (sender, output) = std::sync::mpsc::channel();

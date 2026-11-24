@@ -391,7 +391,9 @@ public final class SurfaceSession {
                 ("events", .array(selected.filter { $0.direction == .event }.map { .text($0.name) })),
                 ("reads", .array(selected.filter { $0.direction == .read }.map { .text($0.name) })),
                 ("actions", .array(selected.filter { $0.direction == .action }.map { .text($0.name) })),
-                ("exclusive", .array(Set(selected.flatMap(\.resources)).sorted().map(CBORValue.text))),
+                // History/work depend on leases advertised by speech.control;
+                // a read's authorization resource is not a second exclusive claim.
+                ("exclusive", .array((entry == "speech.history" || entry == "speech.work" ? [] : Set(selected.flatMap(\.resources)).sorted()).map(CBORValue.text))),
                 ("schemas", .map(selected.map { operation in
                     let rule = operation.direction == .read ? operation.outputRule! : operation.inputRule
                     let parts = rule.components(separatedBy: "::")

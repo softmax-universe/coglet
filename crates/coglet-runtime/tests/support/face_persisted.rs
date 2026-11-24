@@ -1,5 +1,5 @@
 //! Real SDK Face Wasm, restricted transactional WASI, compiled Swift adapter.
-//! Injected media only. No optional speech.history advertisement is fabricated.
+//! Injected aligned media; owner reads become journaled runtime heard state.
 use super::*;
 use coglet_runtime::{NativeEngine, cbor, digest};
 
@@ -79,7 +79,7 @@ fn persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes()
         service.clone(),
     )
     .unwrap();
-    let mut face = Face::spawn_for(OWNER);
+    let mut face = Face::spawn_with_history(OWNER, &directory.join("heard"));
     let mut seen = Vec::new();
     exchange(&mut face, &mut session, json!({}), 0, &mut seen);
     exchange(
@@ -146,6 +146,32 @@ fn persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes()
         )
         .unwrap()
     };
+    assert!(
+        barged["journal"]["boundary"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|change| change["method"] == "runtime.heard")
+    );
+    let heard_raw = hex::decode(
+        barged["journal"]["output_files"]["/data/runtime/heard.cbor"]
+            .as_str()
+            .expect("runtime must journal heard state before guest consumption"),
+    )
+    .unwrap();
+    let heard: Value = coglet_types::decode("heard-state", &heard_raw)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    assert_eq!(heard["items"].as_array().unwrap().len(), 1);
+    assert_eq!(heard["items"][0]["item"], item);
+    assert_eq!(heard["items"][0]["heard"], "Hello");
+    assert_eq!(heard["items"][0]["played_ms"], 1200);
+    assert_eq!(heard["items"][0]["stopped"], true);
+    assert_eq!(
+        heard["items"][0]["spans"],
+        json!([{"end_ms":1200,"text":"Hello"}])
+    );
     let before = state(&barged["journal"]);
     assert_eq!(before["last_step"], 2);
     drop(face);

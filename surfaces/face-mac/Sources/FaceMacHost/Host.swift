@@ -59,10 +59,15 @@ private final class MemoryLedger: SurfaceLedgerStore {
         let owner = ProcessInfo.processInfo.environment["FACE_SIMULATOR_OWNER"]
             ?? "coglet:" + String(repeating: "b", count: 64)
         let backend = FaceSurfaceBackend(audio: media, synthesis: synthesis, renderer: .init { _ in }, sttRoute: "simulator", ttsRoute: "simulator")
+        let historyStore: (any SurfaceLedgerStore)?
+        if let directory = ProcessInfo.processInfo.environment["FACE_SIMULATOR_HISTORY_DIRECTORY"] {
+            historyStore = try FileSurfaceLedger(directory: URL(fileURLWithPath: directory), newIdentity: true)
+        } else { historyStore = nil }
+        let operations = FaceSurfaceHost.operations + (historyStore == nil ? [] : SurfaceOperation.builtins.filter { $0.entry == "speech.history" })
         let host = try FaceSurfaceHost(identity: "surface:" + String(repeating: "a", count: 64), owner: owner,
             store: MemoryLedger(), backend: backend,
-            grants: [.init(coglet: owner, operations: Set(FaceSurfaceHost.operations.map(\.name)),
-                resources: ["audio.mic", "audio.speaker", "display.face"], expires: 1_000_000_000)], clock: { now })
+            grants: [.init(coglet: owner, operations: Set(operations.map(\.name)),
+                resources: ["audio.mic", "audio.speaker", "display.face"], expires: 1_000_000_000)], clock: { now }, historyStore: historyStore)
         try host.start()
         defer { host.disconnect() }
         var active = false

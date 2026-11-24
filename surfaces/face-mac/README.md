@@ -45,9 +45,22 @@ these trusted configuration APIs.
   SDK action ledger after restart, never by replaying effects. Rejected actions
   do not create tombstones. The bounded SDK retains actions indefinitely, a
   strengthening of the minimum 24-hour window; full ledgers refuse new IDs.
-- Advertised entries are baseline `speech.control` and `expression.control` only.
-  Provider, work and history extension qualification are **not** claimed. The
-  backend's aligned heard projection is tested locally but is not advertised.
+- Baseline entries are `speech.control` and `expression.control`. To enable
+  `speech.history`, pass a **separate** exclusive durable `historyStore` to the
+  host and include `speech.heard` in the owner's speaker grant. For file storage,
+  provision a second private `FileSurfaceLedger` directory, never the action-ledger
+  directory. Default hosts do not advertise history. Provider/work stay unadvertised.
+- `FaceHeardHistory` saves registration/alignment/render cutoffs before native
+  effect or observation release. Duplicate cutoffs do not rewrite the snapshot.
+  Records are bounded to 1024, retained without eviction during ownership (matching
+  the SDK's indefinite action retention), and purged on custody revocation, including
+  host teardown/replacement. Reopening the history object validates its snapshot;
+  a new host purges the old epoch before any binding is activated. Invalid storage
+  fails closed, never restores empty history. A failed save or purge latches the
+  backend unavailable and prevents reactivation. Local stop silences native I/O
+  before disk I/O. `speech.stop` and barge-in retain the frozen per-item prefix.
+  Unknown item is `not_found`; foreign owner/epoch is `permission_denied`. Unknown
+  native alignment still yields empty text; no full proposal/duration estimate leaks.
 
 ## Compiled adapter simulator path
 
@@ -104,17 +117,24 @@ The CLI remains simulator-only; there is no native command-line permission UI.
 Native route source and deterministic conversion/callback tests do not establish
 installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
 
-Remaining acceptance work: durable history retention/advertisement and heard-state
-replay, production embedded-runtime qualification, final macOS CI and independent
-exact-head review. `FaceEmbeddedTests` still uses an ABI fixture. The runtime now
-hosts restricted transactional WASI; the additional named test
+Remaining acceptance work: production embedded-runtime qualification, final
+operation/lifecycle audit, macOS CI and independent exact-head review.
+`FaceEmbeddedTests` still uses an ABI fixture. Its synchronous MainActor ABI calls
+must not be connected directly to an automatically scheduled guest: production C
+send/recv may execute the guest on the caller thread. A bounded off-MainActor
+control worker and actual runtime qualification remain necessary.
+
+The runtime hosts restricted transactional WASI; the named test
 `persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes`
-executes the actual Face Wasm with the compiled Swift adapter and independently
-re-executes its archive (see `coglets/face/README.md` for the release-mode command).
-It caught and fixed a source-sequence-zero admission bug: zero is a valid first
-sequence, not an already-seen sentinel. No heard-state or C-ABI qualification is
-inferred from this test. PR #79 has merged; the new native test still needs its
-own macOS CI proof. This draft is not full M2b delivery or acoustic proof.
+executes the actual Face Wasm with the compiled Swift adapter, with a real file
+history store. It checks the guest's emitted proposal, 1200 ms barge/cancellation,
+owner `speech.heard` reads and `runtime.heard` boundary plus reserved heard-state
+file containing only `Hello`, not the unheard ` world`, before the next guest step.
+WAL reopen and four independent actual-Wasm re-executions yield equal hashes with
+no live adapter oracle during replay. Initial seq0 is valid; a replayed old final
+cannot reproduce the action. This is aligned simulated-media proof, not native
+alignment or C-ABI/acoustic qualification. PR #79 has merged. New history changes
+still require their own native CI proof. This draft is not full M2b delivery.
 
 # FaceAudioKit
 

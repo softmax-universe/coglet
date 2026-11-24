@@ -25,10 +25,16 @@ import CogletTypes
     public private(set) var lastFailure: (any Swift.Error)?
 
     public init(identity: String, owner: String, store: any SurfaceLedgerStore, backend: FaceSurfaceBackend,
-                grants: [EffectiveSurfaceGrant], clock: @escaping () -> UInt64) throws {
+                grants: [EffectiveSurfaceGrant], clock: @escaping () -> UInt64,
+                historyStore: (any SurfaceLedgerStore)? = nil) throws {
         self.owner = owner; self.backend = backend; self.grants = grants; self.clock = clock
-        session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: Self.operations,
+        if let historyStore, ObjectIdentifier(historyStore) == ObjectIdentifier(store) {
+            throw NativeSurfaceError("invalid_argument")
+        }
+        let operations = Self.operations + (historyStore == nil ? [] : SurfaceOperation.builtins.filter { $0.entry == "speech.history" })
+        session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: operations,
             store: store, backend: backend, initialGrants: grants, clock: clock)
+        try backend.configureHistory(store: historyStore)
         backend.retainClosedStreams(from: try session.retainedAdmittedActions())
         backend.installCaptureClock(clock)
     }

@@ -55,7 +55,7 @@ public struct FaceCompletion {
     private var epoch: UInt64 = 0
     private var remoteAudioConsent = false
     private var emit: ((String, CBORValue) throws -> Void)?
-    private var history = SpeechObservations()
+    private var history = FaceHeardHistory()
     private var items: [Item] = []
     private var cancellation: (@MainActor () -> Void)?
     private var generation = UUID()
@@ -88,6 +88,14 @@ public struct FaceCompletion {
         self.audio = audio; self.synthesis = synthesis; self.renderer = renderer
         self.sttRoute = sttRoute; self.ttsRoute = ttsRoute
     }
+    /// Install only after the SDK constructor's synchronous safety stop. Never
+    /// expose persisted records belonging to a previous observation epoch.
+    func configureHistory(store: (any SurfaceLedgerStore)?) throws {
+        guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
+        let configured = try FaceHeardHistory(store: store)
+        try configured.revokeAll()
+        history = configured
+    }
     /// Trusted host calls after opening an SDK native observation session. The
     /// emitter closes over that immutable token, never the newest session token.
     public func activate(owner: String, epoch: UInt64, remoteAudioConsent: Bool = false, emit: @escaping (String, CBORValue) throws -> Void) {
@@ -100,6 +108,7 @@ public struct FaceCompletion {
         }
     }
     func startDuplex() throws {
+        guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
         guard owner != nil else { throw NativeSurfaceError("permission_denied") }
         guard !sttRoute.isEmpty, !ttsRoute.isEmpty, synthesis.route == ttsRoute else { throw NativeSurfaceError("unavailable") }
         guard !synthesis.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
@@ -199,6 +208,7 @@ public struct FaceCompletion {
         let result = completions; completions = []; return result
     }
     public func preflight(action: CBORValue, now: UInt64) throws {
+        guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
         guard action["coglet"] == owner.map(CBORValue.text), let operation = action["capability"]?.faceText,
               let args = action["args"] else { throw NativeSurfaceError("permission_denied") }
         switch operation {
@@ -245,17 +255,18 @@ public struct FaceCompletion {
                     snapshot?.playedMS = min(UInt64(data.samples.count), audio.renderedFrames - base) / 24
                 }
                 failStream(code: "cancelled")
+                guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
                 if let snapshot, snapshot.base != nil { try report(item: snapshot, state: "stopped") }
             }
             return .succeeded(.map([]))
         }
-        if stream == nil { stream = streamID; streamPosition = 0 }
         let backchannel = action["capability"] == .text("speech.backchannel")
         let chunk = backchannel ? 0 : args["chunk"]!.faceUInt!
         let cues = ["ack": "mm-hm", "thinking": "working", "agree": "yes"]
         let text = backchannel ? cues[args["cue"]!.faceText!]! : args["text"]!.faceText!
-        nextChunk = chunk + 1; inputClosed = backchannel || args["final"] == .boolean(true); idleSince = now
         try history.register(item: id, owner: owner!, epoch: epoch)
+        if stream == nil { stream = streamID; streamPosition = 0 }
+        nextChunk = chunk + 1; inputClosed = backchannel || args["final"] == .boolean(true); idleSince = now
         items.append(Item(owner: owner!, epoch: epoch, id: id, stream: streamID, chunk: chunk,
                           text: text, deadline: deadline))
         if items.count == 1 { startSynthesis() }
@@ -279,6 +290,7 @@ public struct FaceCompletion {
         else { cancel() }
     }
     public func tick(now: UInt64) throws {
+        guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
         lastTick = now
         renderer.tick(now: now)
         if let captureDeadline, now >= captureDeadline { try closeCapture() }
@@ -302,7 +314,11 @@ public struct FaceCompletion {
                 try audio.start(); graph = audio.generation
                 items[0].base = audio.renderedFrames
                 try audio.enqueue(data.samples)
-            } catch { failStream(code: "unavailable"); return }
+            } catch {
+                failStream(code: "unavailable")
+                if !history.isAvailable { throw error }
+                return
+            }
         }
         let item = items[0], base = item.base!
         guard audio.renderedFrames >= base else { failStream(code: "unavailable"); return }
@@ -340,7 +356,7 @@ public struct FaceCompletion {
             } catch {
                 // A native counter/projection violation must not leave readable
                 // stale evidence. Purge rather than infer a new heard prefix.
-                history = SpeechObservations()
+                try? history.revokeAll()
             }
             completions.append(.init(owner: item.owner, id: item.id, epoch: item.epoch,
                                      result: index == 0 && code != "cancelled" ? .failed(.init(code)) : .cancelled))
@@ -393,19 +409,22 @@ public struct FaceCompletion {
             return .record([("expression", .text(value.expression)), ("intensity", .unsigned(value.intensity)),
                             ("remaining_ms", .unsigned(value.remainingMS))])
         }
-        if operation == "speech.heard", let item = args["item"]?.faceText {
-            return try history.heard(item: item, owner: owner, epoch: epoch)
+        if operation == "speech.heard" {
+            try CBORCodec.validate("speech::heard-query", args)
+            return try history.heard(item: args["item"]!.faceText!, owner: owner, epoch: epoch)
         }
         throw NativeSurfaceError("unavailable")
     }
     public func stop(owner: String?) {
         guard owner == nil || owner == self.owner else { return }
+        // Native safety must precede even a blocking or failing history save.
+        audio.stop(); renderer.reset()
         failStream(code: "cancelled")
         self.owner = nil; emit = nil
         remoteAudioConsent = false
         retireCapture() // privacy revocation suppresses terminal transcript delivery
-        nextChunk = 0; inputClosed = false; history = SpeechObservations(); graph = nil
-        audio.stop(); renderer.reset()
+        nextChunk = 0; inputClosed = false; graph = nil
+        try? history.revokeAll()
     }
 }
 

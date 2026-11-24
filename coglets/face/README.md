@@ -51,8 +51,10 @@ The actual Wasm imports restricted WASI file operations. The production runtime
 now hosts these transactionally. The named runtime integration test
 `persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes`
 executes this guest against real capture events from the compiled Swift adapter,
-asserts its emitted speech is rendered then cancelled at 1200 ms, reopens the WAL,
-and verifies a duplicate old final cannot emit again. Independent actual-Wasm
+asserts its emitted speech is rendered then cancelled at 1200 ms, collects the
+adapter's owner-only heard read into journaled `runtime.heard` state containing
+only the aligned `Hello` prefix, reopens the WAL, and verifies a duplicate old
+final cannot emit again. Independent actual-Wasm
 re-execution matches every archived output hash. The simulator owner is explicitly
 set to this manifest's ID, not changed in the guest.
 
@@ -69,7 +71,7 @@ COGLET_FACE_WASM="$PWD/coglets/face/target/wasm32-wasip1/release/coglet_face.was
 
 Release host execution is intentional: debug WAMR host bookkeeping exhausted the
 unchanged one-second guest wall budget. No production deadline was enlarged.
-This is injected-media RuntimeService qualification, **not** actual C-ABI embedding,
-heard-history qualification, acoustic measurement or full M2b acceptance. macOS
+This qualifies injected-media RuntimeService heard projection/replay, **not** actual
+C-ABI embedding, native alignment, acoustic measurement or full M2b acceptance. macOS
 execution of the new integration must pass in the Swift workflow before claiming
 native proof.
