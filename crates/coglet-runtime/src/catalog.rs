@@ -17,6 +17,28 @@ pub(crate) fn operation(name: &str, direction: &str) -> Result<&'static Value> {
     }
     Ok(op)
 }
+
+/// ADR-0014: immutable trusted fixture selection, never inferred from peer data.
+pub(crate) fn operation_with_echo(
+    echo_fixture: bool,
+    name: &str,
+    direction: &str,
+) -> Result<&'static Value> {
+    if echo_fixture && name == "test.echo" {
+        static EVENT: OnceLock<Value> = OnceLock::new();
+        static ACTION: OnceLock<Value> = OnceLock::new();
+        return match direction {
+            "event" => Ok(EVENT.get_or_init(|| serde_json::json!({
+                "entry":"test.echo", "direction":"event", "input":"common:profile-map", "output":null
+            }))),
+            "action" => Ok(ACTION.get_or_init(|| serde_json::json!({
+                "entry":"test.echo", "direction":"action", "input":"common:profile-map", "output":"surface:empty-map"
+            }))),
+            _ => Err("fixture operation direction mismatch".into()),
+        };
+    }
+    operation(name, direction)
+}
 pub(crate) fn check(rule: &Value, value: &Value) -> Result<()> {
     validate(
         &rule

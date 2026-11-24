@@ -76,7 +76,9 @@ server, mock hub and registry claims are not yet implemented.
   watermarks before the first credit, enforce deadlines and reset-on-abandon,
   check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
   authority/watermarks and commit durable refs/receipts before terminal success.
-  Session streaming dispatch is not implemented yet.
+  Responder-side Session streaming dispatch is available through `handle_git`
+  and `GitStream` (below); guarded initiator transport uses `push_git`/`fetch_git`.
+  Current-authority and durable acceptance integration remains incomplete.
   `quarantine::BundleSink` supplies a private bounded raw bundle file, with
   <=32 KiB writes fsynced off-reactor before returning. The limit is checked
   before writing; I/O failure poisons the file. Drop removes its generated
@@ -186,6 +188,74 @@ cargo test --locked -p coglet-proto --features test-controls --test test_control
 cargo test --locked -p coglet-proto --doc
 ```
 
+## Validated fetch integration (bounded acceptance slice)
+
+`AcceptedRefStore::precheck` checks trusted routing pins, current scoped grants,
+delegation and the durable ref watermark in one SQLite snapshot before credit.
+It is blocking and conveys no lease: use bounded off-reactor execution, a fresh
+trusted clock fenced by the Session deadline, and repeat through `accept` after
+full Git validation. It shares the exact pin/comparison logic with commit.
+
+The real-iroh test
+`accepted_refs::git_acceptance_session::real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits`
+connects actual Session fetch to a Git-created logs bundle, envelope validation,
+bounded fsck/archive validation and durable same-Authority acceptance. It checks
+retained bundle bytes, identical-statement full revalidation, separate-connection
+reopen visibility, changed-tip skipped-generation observation, corrupted-pack and
+expanded-limit rejection/cleanup, stale/equal-different pre-credit rejection,
+a newer independent connection committing between validation and local commit,
+and revocation after validated custody but before commit. The latter proves that
+terminal transport FIN does not replace the commit-time authority check.
+
+`FetchHandler::accept` receives a private-field `ReceivedTransfer` carrying the
+Session-validated raw size/SHA-256, separately from signed archive metadata.
+The consumer needs no preknown bundle hash. The sender snapshot remains a
+trusted test input, not a production per-disclosure authorization service.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_validated_code_push_provenance_replay_and_post_fin_slots`
+sends Git-created code bundles through Session push, fsynced quarantine,
+fsck/archive/Wasm/provenance validation and same-Authority authoritative CAS.
+Invalid Wasm and missing provenance leave no audit or quarantine. Two paused
+validations after end+FIN retain both caller slots; a raw third peer stream
+bypasses caller admission and independently proves responder saturation. One
+concurrent CAS wins, exact bundle bytes are retained, and a new-operation signed
+replay is rejected without polling an instrumented source. Success is queued
+admission, not live activation or qualified build reproduction.
+
+`PushOperation::new(authenticated_peer, &actual_request)` binds identity,
+operation ID and target to a deterministic-CBOR SHA-256 of method, params and
+actor/ticket context; timeout is excluded. `precheck_push` permits a known exact
+intent without replaying its old-tip CAS, but repeats current authorization.
+`accept_push` additionally binds the validated raw bundle's size/hash and commits
+its queued receipt in the **same** transaction as ref and retained audit bytes.
+Receipt insertion failure or final-check expiry rolls all three back. A duplicate
+still completes transfer/FIN, fsck/archive validation and current authority checks;
+changed intent conflicts before credit and a new-ID signed replay still fails CAS.
+`push_receipt` recovers this exact admission receipt under current authority.
+These synchronous calls require bounded off-reactor execution and a fresh clock.
+The receipt table currently owns immutable **queued admission only**, not the
+router/runtime's later applied/failed/cancelled lifecycle or a `hub.receipt` server.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_code_push_process_restart_replays_original_receipt`
+launches two separate child processes. The first performs actual validated code
+push and exits without destructors; the second opens the same Authority database,
+recovers the original receipt and replays the same operation through fresh real
+Session/iroh endpoints with full validation, returning the exact original reply
+without another audit. This proves after-commit process restart, not power-loss
+simulation or a pre-commit Session crash. The store-level before/after-COMMIT
+process tests remain separate. `git_operation_store` also checks atomic receipt
+failure, final expiry rollback, exact context binding and revoked retry denial.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_validated_published_code_fetch_checks_wasm_and_provenance`
+fetches an actual coglet-key-signed published code bundle through Session and
+validates Wasm/provenance before durable observation. Validly signed invalid
+Wasm or missing provenance leaves no audit; identical valid observations fully
+revalidate without a second audit. Source snapshots remain trusted fixture data.
+
+Remaining adversarial streaming cases still need end-to-end qualification;
+kernel policy, activation and per-disclosure authorization remain their owners'
+responsibility.
+
 ## Tests executed for this milestone
 
 ```sh
@@ -263,6 +333,111 @@ share the per-peer total budget; direction is not a way around sixteen streams.
 The reserved slot guarantees control admission under **bulk** saturation, not
 under saturation by already-admitted control operations. All operation work,
 including waiting for unary FIN, remains bounded by the request deadline.
+
+## Durable accepted-ref component
+
+`authority::accepted_refs::AcceptedRefStore::new(authority.clone())` uses the
+Authority's **same connection/database**, including in-memory databases. It is
+not a second policy authority and does not wire Session or activate live code.
+Only `validator::VerifiedBundle` can enter `accept`; the store consumes its
+private custody and atomically retains the complete signed statement, uint64
+watermark, tracked tip and append-only acceptance audit (with exact raw bundle
+bytes for recovery). No external Git ref or checkout is changed. Recovery bytes
+from `audit_bundle` are untrusted data until revalidated, not an activation handle.
+
+Supply `Acceptance` from trusted routing/authentication: pinned hub, coglet and
+ref kind, authenticated peer, exact actor/ticket scope, grant generation and
+separate delegation generation. The store rechecks the exact enrollment/scoped
+grant, ticket end marker, current signed device delegation/method/expiry (or the
+pinned hub peer for hub refs) in the same `BEGIN IMMEDIATE` transaction as the
+ref CAS. Revocation/replacement on another Authority connection serializes with
+that commit. Supply a fresh trusted Unix clock callback; no clock is denial. It
+is sampled after lock acquisition and immediately before commit. Callbacks must
+not reenter Authority; run this blocking API on bounded blocking workers.
+
+`Mode::Authoritative` requires `hub.git.push`, exact signed old tip and strictly
+higher generation. `Mode::Observation` requires `hub.git.fetch`, permits skipped
+generations without matching the observer's old tip, and treats only an identical
+equal-generation statement as a no-op with its original audit ID. Even a no-op
+requires a newly validated transfer and current authority. A scope cannot switch
+modes. Use `current` to check metadata before credit; acceptance always repeats
+the comparison against the latest durable value. There is no delete/reset API to
+erase replay state. Generations are stored as text to preserve all uint64 values.
+
+Named tests in `tests/accepted_refs.rs` cover insert/update fault rollback,
+authoritative wrong-old/generation/replay refusal, close/reopen recovery,
+subprocess exits before/after COMMIT, concurrent authoritative writers,
+out-of-order observer completions, skipped/identical/equal-different/older
+observations, real changed tips, retained historical bundles, routing pins,
+peer/ticket/delegation revocation after validation and final-check expiry.
+The ignored child fixture is executed twice by the ordinary process-restart test.
+
+```sh
+cargo test --locked -j 2 -p coglet-proto --test accepted_refs
+```
+
+This is component acceptance, not full push/fetch or conformance acceptance.
+Session request/receipt operation-ID deduplication (distinct from signed-statement
+replay), streaming integration, build qualification/policy and boundary activation
+remain with the streaming/kernel integration owners. A replayed authoritative
+statement on a new operation conflicts; an exact duplicate **operation** must be
+intercepted by its original durable operation receipt before calling this API.
+
+## Streaming responder transport (integration in progress)
+
+`OperationHandler::handle_git` is dispatched for both Git methods without waiting
+for unary request FIN: push needs credit before sending data; fetch needs its
+request direction open for credit. The default rejects with permission_denied
+without invoking the legacy unary handler. Explicit implementations receive a
+restricted `GitStream`, not an escapable raw iroh connection/stream pair.
+
+`GitStream::receive_push` binds already-verified metadata to the exact request,
+router peer and target, writes to fsync-backed private `BundleSink`, checks the
+transfer SHA-256 and requires end + FIN before returning raw custody. The handler
+must authorize and precheck CAS **before** calling (the helper issues credit),
+then perform envelope/Git validation and durable acceptance before returning its
+receipt. `send_fetch` pins metadata to the requested ref/target/router, sends
+metadata, reads source bytes only after credit, and requires initiator FIN after
+end before success. The sender must separately authorize snapshot disclosure.
+These helpers are one-shot; a failed/cancelled transfer cannot resume.
+
+The Session holds the shared two-Git admission permit, operation deadline and
+code-1 reset guard over the entire handler future, including validation/commit
+and terminal transmission. Errors can reject without consuming the input; unread
+input is stopped with code 1. A handler cannot return a successful terminal frame
+without completing its streaming helper. This transport gate does not prevent a
+custom handler from violating its own authority/transaction contract; never
+perform mutations before verified input or bypass the durable store checks.
+
+`Session::push_git` keeps the request direction open until credited chunks/end
+finish, then sends FIN and validates the terminal frame/FIN. A valid rejection
+before credit is preserved without reading the source. As with `request`, its
+`Ok(Value)` can be a wire error: inspect `type`; it is not an activation claim.
+The sender trusts its local request/source, reads exactly declared size (not EOF),
+and relies on the receiver for hash/admission verification.
+
+`Session::fetch_git` validates transfer schema, correlation and signed routing
+pins, then awaits `FetchHandler::authorize` before creating quarantine or emitting
+credit. That callback must check current authority and the latest durable
+watermark. Terminal reply/FIN precede `FetchHandler::accept`; acceptance must
+validate actual Git and recheck authority/CAS in durable storage, even for an
+identical statement. `FetchResult::Rejected` distinguishes a remote error from a
+local `Accepted` callback result. Both callbacks retain the shared Git permit and
+original deadline. A detached blocking commit must use a fresh deadline-aware
+trusted clock under the write lock; cancelling its awaiter cannot stop the worker,
+and the Session permit is released at cancellation. Receipt recovery is mandatory
+when commit outcome is ambiguous. `request` explicitly rejects Git methods locally.
+
+`tests/git_session_iroh.rs` exercises 150000-byte push/fetch through actual Session
+initiator and responder APIs over real iroh, push success withheld until FIN,
+missing-FIN timeout, trailing-end rejection with quarantine cleanup and code-1
+reset, and fail-closed legacy dispatch (mutation counter stays zero). It also
+holds two local acceptance callbacks after terminal FIN to prove both Git slots
+remain occupied, checks deadline cancellation removes custody/releases the slot,
+and preserves a pre-credit rejection with an empty source. These are **raw
+transport** tests, not real Git admission. Concrete pre-credit authority/watermark
+checks, durable operation receipts, full validator/store integration and
+end-to-end restart/replay/limit proofs remain.
 
 ## Remaining before full protocol acceptance
 

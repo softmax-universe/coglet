@@ -6,7 +6,7 @@ mod expiry;
 fn escaped(raw: &[u8]) -> String {
     raw.iter().map(|b| format!("\\{b:02x}")).collect()
 }
-pub(super) fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
+pub fn with_wasm(mut setup: Value, wasm: &[u8]) -> Value {
     setup["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(wasm));
     let raw = hex::decode(
         setup["initial_files"]["/code/build/provenance.cbor"]
@@ -61,7 +61,7 @@ fn program_delay(abort: bool, delay: bool) -> Vec<u8> {
         (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) {calls} {} i32.const 0))", if abort {"unreachable"} else {""})).unwrap()
 }
 fn exercise_native(ffi: bool, abort: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     if !ffi {
         let mut ready = host.connect();
@@ -140,25 +140,52 @@ fn exercise_native(ffi: bool, abort: bool, name: &str) {
 #[cfg(feature = "echo-smoke")]
 #[test]
 fn ffi_compiled_echo_timer_wake_starts_executes_and_stops() {
-    let _guard = FFI_LOCK.lock().unwrap();
+    compiled_echo_timer_wake(true, "ffi-compiled-echo");
+}
+#[cfg(feature = "echo-smoke")]
+#[test]
+fn socket_compiled_echo_timer_wake_starts_executes_and_stops() {
+    compiled_echo_timer_wake(false, "socket-compiled-echo");
+}
+#[cfg(feature = "echo-smoke")]
+fn compiled_echo_timer_wake(ffi: bool, name: &str) {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let path = std::env::var_os("COGLET_ECHO_SMOKE_WASM")
         .expect("echo-smoke requires the compiled guest path");
     let wasm = std::fs::read(path).unwrap();
-    let mut host = Host::new(true, "ffi-compiled-echo");
+    let mut host = Host::new(ffi, name);
+    if !ffi {
+        let mut ready = host.connect();
+        ready.hello();
+        drop(ready);
+    }
     host.stop();
     std::fs::remove_file(host.dir.join("state.wal")).unwrap();
     host.setup = with_wasm(setup(), &wasm);
     host.setup["manifest"]["budgets"]["memory_pages"] = json!(256);
     host.setup["manifest"]["budgets"]["compute"] = json!(100_000_000);
     host.setup["manifest"]["budgets"]["wall_time_us"] = json!(5_000_000);
+    if !ffi {
+        std::fs::write(
+            host.dir.join("setup.json"),
+            serde_json::to_vec(&host.setup).unwrap(),
+        )
+        .unwrap();
+    }
     host.start();
     let mut link = host.connect();
     link.hello();
     link.grants(1);
-    // Grants synchronously drive the real handle. No health exchange is needed
-    // as a completion barrier: the durable journal below is the execution proof.
-    // Debug-mode guest/setup work can exceed the surface's three-second idle
-    // limit; this lifecycle smoke does not qualify uninterrupted link liveness.
+    // Embedded grants pump synchronously. The socket needs an explicit control
+    // barrier before terminating the child; release-only M1 qualifies that live
+    // exchange without weakening the production inactivity timeout.
+    if !ffi {
+        link.send(
+            "health",
+            json!({"state":"ready","clock":1200,"pending":0,"correlation_id":"9".repeat(32)}),
+        );
+        assert_eq!(decode(&link.recv())["type"], "health");
+    }
     drop(link);
     host.stop();
     let recovered = RuntimeService::open(&host.dir.join("state.wal"), &host.setup, 128).unwrap();
@@ -189,6 +216,7 @@ fn socket_real_wasm_trap_discards_staged_emits_and_consumes_once() {
 }
 #[test]
 fn real_wamr_journal_reexecutes_two_steps_with_identical_state_hashes() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let code = program(false);
     let setup = with_wasm(setup(), &code);
     let mut inputs = setup["inputs"].clone();
@@ -226,6 +254,7 @@ fn real_wamr_journal_reexecutes_two_steps_with_identical_state_hashes() {
 
 #[test]
 fn native_admission_refuses_mode_memory_wasi_and_preserves_queued_input() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut s = with_wasm(setup(), &program(false));
     let code = program(false);
     let mut budgets = s["manifest"]["budgets"].clone();
@@ -235,7 +264,9 @@ fn native_admission_refuses_mode_memory_wasi_and_preserves_queued_input() {
     budgets["memory_pages"] = json!(1);
     assert!(NativeEngine::new(code.clone(), &budgets, 8_388_608, 65_536).is_err());
     let wasi = wat::parse_str("(module (import \"wasi_snapshot_preview1\" \"args_sizes_get\" (func (param i32 i32) (result i32))) (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
-    assert!(NativeEngine::new(wasi, &s["manifest"]["budgets"], 8_388_608, 65_536).is_err());
+    assert!(NativeEngine::new(wasi, &s["manifest"]["budgets"], 8_388_608, 65_536).is_ok());
+    let clock = wat::parse_str("(module (import \"wasi_snapshot_preview1\" \"clock_time_get\" (func (param i32 i64 i32) (result i32))) (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
+    assert!(NativeEngine::new(clock, &s["manifest"]["budgets"], 8_388_608, 65_536).is_err());
     // A valid engine with lower per-step memory admission cannot consume the batch.
     let dir = std::env::temp_dir().join(format!("native-admit-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

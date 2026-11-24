@@ -1,5 +1,7 @@
 # Private database capability — ABI 0.2 extension (proposed)
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+
 Decision: [ADR-0013](../../docs/adr/0013-factory-db-capability.md),
 [PR #41](https://github.com/softmax-universe/coglet/pull/41).
 Imports [common conventions](../conventions.md) and [ABI 0.1](../abi.md) unchanged
@@ -22,7 +24,7 @@ revocation affects the next admitted step and dispatch admission, not past repla
 | `db.read` | `database:db-statement` with mode=read | `database:db-page` or `database:db-failed` |
 | `db.write` | `database:db-statement` with mode=write; `database:db-enqueue` | `database:db-page`, `database:db-enqueued` or `database:db-failed` |
 
-These are built-in ABI operations, not surface advertisements or hub methods.
+These are built-in ABI operations, not adapter advertisements or router methods.
 This version-pinned table is the DB extension catalog; the exhaustive **v0**
 `bindings.json` is deliberately unchanged. A `db.write` grant does not imply
 `db.read`; a read statement needs the latter. Enqueue additionally requires the

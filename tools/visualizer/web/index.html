@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Coglet / Live inspector</title><link rel="stylesheet" href="/style.css"><script src="/worlds.js" defer></script><script src="/app.js" defer></script></head>
+<body><header><strong>COGLET <span>/ live inspector</span></strong><span data-testid="connection" role="status">Connecting</span><button id="help" aria-label="Keyboard shortcuts">?</button></header>
+<main><aside><h1>Coglets</h1><label>Filter <kbd>/ · ⌘K</kbd><input id="filter" type="search" placeholder="ID, event, source…"></label><nav data-testid="coglets" aria-label="Coglets"></nav><p class="muted">Explicit operator export<br>Read-only · no control grants</p><small id="updated"></small></aside>
+<article><div class="heading"><h1>Committed state</h1><span id="step"></span></div><p id="provenance" class="muted">Waiting for a complete exported record. Runtime readiness is unknown.</p>
+<div class="heading"><span data-testid="mode">Following latest export</span><button id="live">Follow live</button></div><nav data-testid="timeline" aria-label="State history"></nav>
+<section id="simulation-panel" aria-label="Offline world replay">
+<h2>Native archive / independent replay</h2>
+<p class="muted">Startup-selected private canonical archive. Fresh native guest execution; no live effects or provider calls. Receipt-result forks reuse recorded continuations only when generated requests still match. The M2 pilot ignores receipt results: divergence proves inbox/tree state, not changed decisions or physics.</p>
+<button id="load-native">Load native archive</button><button id="replay-native">Replay native baseline</button>
+<p data-testid="native-status" role="status">Select an archive and prebuilt helper at server startup.</p>
+<div id="native-controls" hidden>
+<label>Native step<input id="native-step" type="range" min="0" max="0" value="0" step="1"></label>
+<p>Native final hash <code data-testid="native-final"></code></p>
+<p>Verified baseline <code data-testid="native-baseline"></code></p>
+</div>
+<label>Receipt index<input id="native-receipt" type="number" min="0" step="1" value="0"></label>
+<label>Edited receipt result JSON<textarea id="native-result" rows="3">{"what_if":true}</textarea></label>
+<button id="fork-native">Fork native receipt</button>
+<h2>Simulated mode / offline world replay</h2>
+<p data-testid="simulation-scope" class="muted">Seeded world dynamics only. Guest hashes are recorded, not verified. No guest execution, live effects, or provider calls.</p>
+<label>Load simulation archive<input id="simulation-file" type="file" accept=".json,application/json"></label>
+<p data-testid="simulation-status" role="status">Select a private M2 world replay archive.</p>
+<div id="simulation-controls" hidden>
+<div class="simulation-buttons"><button id="previous-world" aria-label="Previous world step">←</button><span data-testid="simulation-step"></span><button id="next-world" aria-label="Next world step">→</button></div>
+<label>World step<input id="world-step" type="range" min="0" max="0" value="0" step="1"></label>
+<p>Computed world hash <code data-testid="simulation-hash"></code></p>
+<p>Recorded world hash <code data-testid="expected-world-hash"></code></p>
+<pre data-testid="simulation-state"></pre>
+<label>Action at selected world step<select id="world-action"></select></label>
+<div class="simulation-buttons"><button id="run-what-if">Run what-if</button><button id="replay-inputs">Replay recorded inputs</button></div>
+<p class="muted">The selected action produces the next world step. A fork keeps all other recorded actions; it does not rerun the coglet policy.</p>
+</div></section>
+<section><h2>World observation</h2><div data-testid="world"></div></section>
+<section><h2>Snapshot / data</h2><code data-testid="hash"></code><div data-testid="files"></div></section>
+<section><h2>Inbox</h2><div data-testid="inbox"></div></section>
+<section><h2>Observed surface sources</h2><div data-testid="surfaces"></div></section>
+<section><h2>Events / selected step</h2><div data-testid="events"></div></section></article></main>
+<dialog><h2>Keyboard shortcuts</h2><p>/ or ⌘K / Ctrl+K — filter all exported objects</p><p>↑ ↓ — move through results · Enter — select</p><p>Esc — clear filter / close · ? — this sheet</p><button id="close-help">Close</button></dialog>
+</body></html>

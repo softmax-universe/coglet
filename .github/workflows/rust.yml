@@ -29,9 +29,10 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
-      - run: cargo test --workspace --locked
+      - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
+        run: scripts/ci/cargo-test --workspace --locked
       - name: AOT feature fails closed under ABI v0
-        run: cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
+        run: scripts/ci/cargo-test --locked -p coglet-engine-wamr --no-default-features --features aot
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked
       - name: Build reference guest modules
         run: bash sdk/guest-rust/build-guests.sh
@@ -50,7 +51,7 @@ jobs:
           python3 sdk/guest-rust/tests/build_reference_cases.py --check
           cargo build --locked -p coglet-guest-rust --example reference_conformance
           for engine in mock wamr; do
-            conformance/run --suite abi --peer-role guest-reference --impl "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance $engine" --junit "target/reference-$engine.xml"
+            conformance/run --quarantine ci/quarantine.toml --suite abi --peer-role guest-reference --impl "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance $engine" --junit "target/reference-$engine.xml"
           done
           python3 sdk/guest-rust/tests/check_reports.py
       - uses: actions/upload-artifact@v4
@@ -58,8 +59,20 @@ jobs:
           name: reference-coglets-wasm-${{ inputs.bundle-mode || 'normal' }}
           path: target/guests/wasm32-wasip1/release/coglet_*.wasm
           if-no-files-found: error
+      - name: M1 compiled echo, Rust mock, real hub enrollment and offline replay
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash tests/m1/run.sh
       - name: Sandbox worlds through cogletd and independent WAMR replay
         run: bash sim/check-native.sh
+      - name: Visualizer native M2 replay, scrub and receipt forks in Chromium
+        run: bash tools/visualizer/check-native.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visualizer-native-proof-${{ inputs.bundle-mode || 'normal' }}
+          path: tools/visualizer/proof/native/
+          if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
       - uses: ./.github/actions/dependency-capture

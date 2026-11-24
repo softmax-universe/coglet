@@ -63,22 +63,13 @@ def input_key(root, job, ecosystem):
     patterns += {
         'cargo': ['**/Cargo.toml', '**/Cargo.lock', 'sdk/guest-rust/*.sh'],
         'rustup': [],
-        'maven': ['**/pom.xml'],
         'python': ['**/requirements*.txt', '**/uv.lock', '**/pyproject.toml'],
         'gems': ['**/Gemfile', '**/Gemfile.lock'],
     }[ecosystem]
     hashed = hashlib.sha256(f'v1|ubuntu-24.04|x86_64|java21|py312|ruby32|{job}|{ecosystem}'.encode())
     # Hosted image versions roll out concurrently: prepare and proof can receive
     # different images in the same run. Key only on dependency-relevant tools.
-    # Java 21 is selected by setup-java; Maven itself comes from the hosted image.
-    if ecosystem == 'maven':
-        import re
-        version = subprocess.check_output(['mvn', '--version'], text=True, timeout=30)
-        version = re.sub(r'\x1b\[[0-9;]*m', '', version)
-        match = re.search(r'^Apache Maven (\S+)', version, re.MULTILINE)
-        if not match:
-            raise ValueError('cannot determine Maven version for bundle identity')
-        hashed.update(f'maven:{match[1]}'.encode())
+    # The identity prefix is frozen, including historical tool tags.
     tracked = None
     if (root / '.git').exists():
         tracked = set(subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode().split('\0'))
@@ -121,7 +112,6 @@ def install_toolchain_on_miss(channel, restored):
 def cache_roots(root, channel):
     home = Path.home()
     return {
-        'maven': {'repository': home / '.m2/repository'},
         'cargo': {'registry': home / '.cargo/registry', 'git': home / '.cargo/git'},
         'rustup': {'toolchain': home / f'.rustup/toolchains/{channel}-x86_64-unknown-linux-gnu'},
         # Python/Ruby are convenience closures, not yet whole-registry-outage proof.
@@ -133,7 +123,7 @@ def cache_roots(root, channel):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=['restore', 'pack'])
-    parser.add_argument('--job', choices=['java', 'rust', 'conformance'], required=True)
+    parser.add_argument('--job', choices=['rust', 'conformance'], required=True)
     parser.add_argument('--release', default='dependency-mirror-v1')
     parser.add_argument('--required', action='store_true')
     args = parser.parse_args()
@@ -142,14 +132,14 @@ def main():
         raise RuntimeError('bundles are Linux x86_64 only')
     channel = tomllib.loads((root / 'rust-toolchain.toml').read_text())['toolchain']['channel']
     (Path.home() / '.cache/coglet-wheels').mkdir(parents=True, exist_ok=True)
-    if 'GITHUB_ENV' in os.environ and args.job != 'java':
+    if 'GITHUB_ENV' in os.environ:
         with open(os.environ['GITHUB_ENV'], 'a') as stream:
             stream.write(f'RUSTUP_TOOLCHAIN={channel}-x86_64-unknown-linux-gnu\n')
             stream.write(f'PIP_FIND_LINKS={Path.home()}/.cache/coglet-wheels\n')
             stream.write(f'UV_FIND_LINKS={Path.home()}/.cache/coglet-wheels\n')
     roots = cache_roots(root, channel)
-    ecosystems = {'java': ['maven'], 'rust': ['cargo', 'rustup', 'python'],
-                  'conformance': ['maven', 'cargo', 'rustup', 'python', 'gems']}[args.job]
+    ecosystems = {'rust': ['cargo', 'rustup', 'python'],
+                  'conformance': ['cargo', 'rustup', 'python', 'gems']}[args.job]
     def download(name, directory):
         subprocess.run(['gh', 'release', 'download', args.release, '--repo', os.environ['GITHUB_REPOSITORY'],
                         '--pattern', name, '--dir', str(directory)], check=True, timeout=180)
@@ -158,7 +148,7 @@ def main():
         name = f'{args.job}-{ecosystem}-{input_key(root, args.job, ecosystem)}'
         if args.operation == 'restore':
             restored = restore_one(name, roots[ecosystem], download,
-                                   required=args.required and ecosystem in {'maven', 'cargo', 'rustup'})
+                                   required=args.required and ecosystem in {'cargo', 'rustup'})
             if ecosystem == 'rustup':
                 install_toolchain_on_miss(channel, restored)
         else:

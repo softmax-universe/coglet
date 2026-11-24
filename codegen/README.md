@@ -1,6 +1,6 @@
 # CDDL code generation
 
-Run `codegen/run` and commit its Rust, Python, Go, Java and Swift outputs.
+Run `codegen/run` and commit its Rust, Python, Go and Swift outputs.
 `codegen/run --check` is read-only and fails on stale/missing output.
 Generation requires Python >=3.11 and the pinned Rust `rustfmt`.
 
@@ -32,7 +32,7 @@ Unsupported controls, syntax, recursive/repeated group splices, undefined or
 ambiguous imports and identifier collisions fail loudly. This is not a general
 CDDL implementation. Every runtime rejects unknown operations; the shared native
 boundary also rejects unknown metadata. New constraints need codec tests, not
-just a broader guard. Go/Java native codecs implement v2 in this change.
+just a broader guard. The Go native codec implements v2 in this change.
 
 `parse_files({stem: source})` resolves references local-first, then `common`,
 then a unique exporter. Every rule has a `file::rule` selector; unique rules also
@@ -46,11 +46,9 @@ Python class-body helpers use `_coglet_dataclasses`, a namespace forbidden to
 schema fields. Rust reserves `Result` and serde derive names as well as its
 container types; schema field casing is retained without a lint failure. Go
 exports fields but keeps package/local helpers separate, and rejects fields
-colliding with `ToValue`, `ToCBOR` or synthetic `Rest`. Java rejects Message
-methods, the `Codec` expression qualifier, and `rest$` (the codec's synthetic
-rest component), plus runtime-owned type names. No wire key is renamed.
+colliding with `ToValue`, `ToCBOR` or synthetic `Rest`. No wire key is renamed.
 `test_identifiers.py` executes generated Python imports and typed roundtrips,
-native Rust (including clippy), Go and Java helper/keyword roundtrips, and
+native Rust (including clippy), Go helper/keyword roundtrips, and
 explicit rejection tests. Required and optional Python `field` precede another
 field to exercise class-body evaluation, not merely syntax compilation.
 
@@ -62,13 +60,11 @@ field to exercise class-body evaluation, not merely syntax compilation.
   generic codec functions. Wire metadata preserves keyword/dashed field names.
 - Go: generated structs and record-union interfaces, `ToCBOR`/`Decode<Type>`,
   generic `types.Encode`/`Decode`. Optional fields are pointers.
-- Java 21: records and sealed interfaces, `Presence<T>` optional fields,
-  `toCbor`/`fromCbor`, generic `Codec.encode`/`decode`, BigInteger integers.
 
 Use codec methods at wire boundaries: language types/serde alone do not enforce
 CDDL constraints. Heterogeneous values use each runtime's generic value model.
 Python uses None for absent optional fields (explicit nullable optionals need
-separate presence modeling). All four codecs enforce deterministic profile CBOR:
+separate presence modeling). All codecs enforce deterministic profile CBOR:
 no bytes/tags/floats, duplicate/non-text keys, indefinite/non-shortest forms or
 trailing data; map keys sorted by encoded bytes; nesting and recursion bounded.
 Transport, authentication and temporal invariants belong to protocol suites.
@@ -151,7 +147,6 @@ swift test --package-path sdk/surface-swift
 uv run --project sdk/surface-python --locked pytest sdk/surface-python/tests -s
 uv run --python 3.12 --with-requirements spec/tests/requirements.txt python codegen/cross_check.py
 (cd sdk/surface-go && go test -v ./...)
-(cd sdk/surface-java && mvn --batch-mode test) # JDK 21
 ```
 
 Compiler regressions cover groups/sockets/choices, controls, namespaces,

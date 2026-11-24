@@ -19,8 +19,70 @@ mod native_engine_cases;
 mod native_heard;
 #[path = "support/native_playback.rs"]
 mod native_playback;
+#[cfg(feature = "native-engine")]
+#[path = "support/native_wasi.rs"]
+mod native_wasi;
 
 static FFI_LOCK: Mutex<()> = Mutex::new(());
+
+fn wait_for_message(mut poll: impl FnMut(&mut usize) -> i32, timeout: Duration) -> usize {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        let mut n = 0;
+        // surface-protocol.md: 1 = would-block, 2 = size query ready (not dequeued).
+        // The ABI has no wait/event API; polling also pumps pending dispatch.
+        match poll(&mut n) {
+            2 => return n,
+            1 => {
+                assert_eq!(n, 0, "would-block must not report message bytes");
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "C ABI recv timed out waiting for a message"
+                );
+                std::thread::yield_now();
+            }
+            status => panic!("C ABI recv size query failed: status={status}"),
+        }
+    }
+}
+
+#[test]
+fn ffi_recv_waits_through_would_block_without_consuming_message() {
+    let mut polls = 0;
+    let n = wait_for_message(
+        |n| {
+            polls += 1;
+            if polls < 4 {
+                *n = 0;
+                1
+            } else {
+                *n = 17;
+                2
+            }
+        },
+        Duration::from_secs(2),
+    );
+    assert_eq!(polls, 4);
+    assert_eq!(n, 17);
+}
+#[test]
+#[should_panic(expected = "C ABI recv timed out waiting for a message")]
+fn ffi_recv_would_block_has_a_bounded_deadline() {
+    wait_for_message(|_| 1, Duration::ZERO);
+}
+
+#[test]
+#[should_panic(expected = "C ABI recv size query failed: status=-2")]
+fn ffi_recv_closed_is_not_retried_as_would_block() {
+    wait_for_message(|_| -2, Duration::from_secs(2));
+}
+
+#[test]
+#[should_panic(expected = "C ABI recv size query failed: status=-1")]
+fn ffi_recv_invalid_argument_is_not_retried_as_would_block() {
+    wait_for_message(|_| -1, Duration::from_secs(2));
+}
+
 fn decode(raw: &[u8]) -> Value {
     coglet_types::decode("surface-message", raw)
         .unwrap()
@@ -166,10 +228,9 @@ impl Link {
     fn recv(&mut self) -> Vec<u8> {
         match self {
             Self::Ffi(l) => {
-                let mut n = 0;
-                assert_eq!(
-                    unsafe { coglet_surface_recv(*l, std::ptr::null_mut(), 0, &mut n) },
-                    2
+                let mut n = wait_for_message(
+                    |n| unsafe { coglet_surface_recv(*l, std::ptr::null_mut(), 0, n) },
+                    Duration::from_secs(2),
                 );
                 let mut raw = vec![0; n];
                 assert_eq!(
@@ -217,7 +278,7 @@ impl Drop for Link {
     }
 }
 fn exercise(ffi: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     let mut link = host.connect();
     link.hello();
@@ -327,7 +388,7 @@ fn socket_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_a
 }
 
 fn native_private_capture(ffi: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     let mut link = host.connect();
     link.hello();

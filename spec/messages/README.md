@@ -1,6 +1,8 @@
 # Message schemas
 
-These are the v0 common, ABI, surface, speech, expression and hub CDDL/JSON Schema
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+
+These are the v0 common, ABI, adapter, speech, expression and router CDDL/JSON Schema
 contracts, not a reserved scaffold. `codegen/contracts.json` is the authoritative
 family classification for generation and fixture crawling. Import common rules;
 do not duplicate envelope, identity, version or error definitions.

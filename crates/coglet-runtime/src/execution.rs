@@ -1,4 +1,6 @@
-use crate::{DurableStore, Router};
+use crate::{DurableStore, Router, TrustedExtensionCatalog};
+#[path = "supervisor_reads.rs"]
+mod supervisor_reads;
 use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -76,6 +78,10 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[serde(default)]
+    catalog_pin: Option<String>,
+    #[serde(default)]
+    supervisor_reads: BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
     runtime: Runtime,
     router: Router,
     #[serde(default)]
@@ -109,18 +115,52 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    pub(crate) catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     state: ServiceState,
     store: DurableStore,
     #[cfg(feature = "native-engine")]
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    /// ADR-0014 trusted in-process harness only. Recovery requires explicit
+    /// fixture authority again; no daemon, C ABI or artifact enables it.
+    pub fn open_echo_fixture(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        let catalog = crate::TrustedExtensionCatalog::echo_fixture();
+        Self::open_with_catalog(path, setup, queue_capacity, catalog)
+    }
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        Self::open_with_catalog(
+            path,
+            setup,
+            queue_capacity,
+            crate::TrustedExtensionCatalog::default(),
+        )
+    }
+    pub fn open_with_catalog(
+        path: &Path,
+        setup: &Value,
+        queue_capacity: usize,
+        catalog: crate::TrustedExtensionCatalog,
+    ) -> Result<Self> {
+        let catalog = std::sync::Arc::new(catalog);
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
+        let configured_reads = Self::configured_reads(setup, &catalog)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
             let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            if state.catalog_pin.as_deref() != catalog.pin() {
+                return Err("recovery extension catalog pin differs from configuration".into());
+            }
+            if state.supervisor_reads.len() != configured_reads.len()
+                || state.supervisor_reads.iter().any(|(id, r)| {
+                    configured_reads
+                        .get(id)
+                        .is_none_or(|c| c.request != r.request)
+                })
+            {
+                return Err("recovery supervisor read plan differs from configuration".into());
+            }
             state.router.validate_recovered()?;
             let offset =
                 Self::validate_segments(&state, &configured.initial_setup, store.records())?;
@@ -142,7 +182,7 @@ impl RuntimeService {
             state
                 .runtime
                 .validate_recovered(&store.records()[offset..])?;
-            Self::validate_dispatches(&state)?;
+            Self::validate_dispatches(&state, &catalog)?;
             state
                 .speech_temporal
                 .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
@@ -167,6 +207,8 @@ impl RuntimeService {
             state
         } else {
             let mut state = ServiceState {
+                catalog_pin: catalog.pin().map(str::to_owned),
+                supervisor_reads: configured_reads,
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
                 completed_segments: Vec::new(),
@@ -253,6 +295,7 @@ impl RuntimeService {
         Ok(Self {
             state,
             store,
+            catalog,
             #[cfg(feature = "native-engine")]
             native: None,
         })
@@ -271,7 +314,10 @@ impl RuntimeService {
     /// before calling this internal coordinator seam.
     pub fn enqueue(&mut self, event: Value) -> Result<u64> {
         if event["kind"].as_str().is_some_and(|kind| {
-            kind.starts_with("runtime.") || kind == "action.outcome" || kind == "llm.reply"
+            kind.starts_with("runtime.")
+                || kind == "action.outcome"
+                || kind == "llm.reply"
+                || self.catalog.single_owner(kind)
         }) {
             return Err("reserved runtime/inbox event cannot enter external event router".into());
         }

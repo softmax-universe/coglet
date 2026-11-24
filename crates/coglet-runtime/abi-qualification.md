@@ -42,7 +42,8 @@ boundary inputs may advance the source floor; generated wakes cannot invent gaps
 exercises the actual native-enabled session pump, retained translated bytes,
 new-intent refusal (including direct preparation), and untouched queued attempt.
 `guest_exit_is_guest_return_abort_including_zero_status` proves typed outcome
-classification only. Native WASI/proc_exit execution remains admission-refused.
+classification only. Restricted native WASI file execution is covered separately
+by `tests/support/native_wasi.rs`; `proc_exit` aborts the guest step.
 
 `durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts`
 carries pending actions, LLM requests, inbox wakes and translated dispatch
@@ -52,7 +53,21 @@ negatives beyond the frozen 80. Native playback/heard control tests skip
 runtime health pings when waiting for act/read; they do not relax the 1s/3s
 protocol clocks.
 
-Remaining: independent all-profile replay resolution (see matrix above), final
-exact-head independent review, required CI and merge. Internal WAL history is
+ADR-0015 resolution: [executable archive companions](../../conformance/abi/executable-archive.md)
+add 42 independent code-pinned archives without changing the frozen inventory.
+`executable_archive_inventory_covers_every_source_record` accounts for all 80
+sources and maps all 32 guest records, including empty-call handles and valid
+baselines for invalid archives. The named
+`executable_archive_records_reexecute_on_wamr_with_identical_step_hashes` executes
+all 32 on real WAMR, preserving multi-step state and comparing deterministic
+usage/effects/status/results and each output tree hash. The checker requires all
+five ADR-named native tests in addition to 170 harness cases, with zero failures
+or skips. Original 52 negative archives remain rejected before native entry;
+runtime-only boundaries are validated without invented guest invocations.
+The frozen empty-module archives themselves remain archive-consistency evidence,
+not retrospectively executable programs. Authentication/dispatch are not claimed.
+
+Remaining landing gates: exact-head independent review, required CI and merge.
+Internal WAL history is
 retained with a 64 MiB frame bound and no reclamation; storage exhaustion
 backpressures rather than dropping receipts/lifetime IDs.

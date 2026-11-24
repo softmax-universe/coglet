@@ -40,10 +40,16 @@ wheels = [
 ]
 
 [[package]]
+name = "coglet-gate"
+version = "0.1.0"
+source = { editable = "../crates/coglet-gate" }
+
+[[package]]
 name = "coglet-sim"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "coglet-gate" },
     { name = "coglet-surface" },
 ]
 
@@ -53,7 +59,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "coglet-surface", editable = "../sdk/surface-python" }]
+requires-dist = [
+    { name = "coglet-gate", editable = "../crates/coglet-gate" },
+    { name = "coglet-surface", editable = "../sdk/surface-python" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8,<10" }]

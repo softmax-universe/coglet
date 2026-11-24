@@ -17,4 +17,4 @@ export COGLET_SANDBOX_WASM="$PWD/target/sandbox/pilot.wasm"
 # CI may not define TMPDIR; retain a short, private subdir under its workspace.
 mkdir -p target/sandbox/tmp
 export TMPDIR="${TMPDIR:-$PWD/target/sandbox/tmp}"
-uv run --project sim --locked pytest sim/tests/test_native.py -v -s
+uv run --project sim --locked pytest sim/tests/test_native.py sim/tests/test_evaluation.py sim/tests/test_gate_artifacts.py sim/tests/test_gate_adversarial.py sim/tests/test_gate_service.py -v -s

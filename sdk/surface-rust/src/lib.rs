@@ -7,6 +7,8 @@ pub mod catalog;
 pub mod codec;
 pub mod config;
 pub mod error;
+#[doc(hidden)]
+pub mod fixture_clock;
 pub mod ids;
 pub mod reference;
 pub mod speech;

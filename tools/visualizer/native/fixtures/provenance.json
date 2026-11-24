@@ -1,0 +1,11 @@
+{
+  "producer_head": "4a94cea4ca1c6c2ec1e18024b3aaccdefdd479f0",
+  "producer_command": "sim/check-native.sh; then unmodified sim/tests/test_native.py with capture wrapper invoking real coglet-sandbox-proof",
+  "capture": "authorized synthetic M2 Gridbot test; stopped test WAL; no live router scraping",
+  "canonical_trace_sha256": "77c79fcb98f9e4198a4503301e52291a4279d1600509028affdc02ef9ffc2f79",
+  "canonical_trace_bytes": 49185661,
+  "proof_sha256": "9def2488032d5429ca38878e5507b0b213f53a5936a769a7e66b4ba02b7be457",
+  "fixture_sha256": "46f218fc71d11cc1526522f226cd27a628949a110439db4e15f19ea3e0243204",
+  "final_hash": "59c762853081b55d6ba0fdef9eaeb65896fca1eb0ab4cc4eee237027ef21b88b",
+  "records": 9
+}

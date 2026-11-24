@@ -1,19 +1,38 @@
 //! Authority established only by authenticated, negotiated surface messages.
 use super::*;
-use crate::catalog;
 
 impl SurfaceSession {
+    /// ADR-0014 trusted in-process constructor, never transport negotiation.
+    pub fn with_echo_fixture(
+        binding: SurfaceBinding,
+        service: std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
+    ) -> Result<Self> {
+        if !service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .catalog
+            .echo_fixture
+        {
+            return Err("echo fixture requires an explicitly trusted fixture service".into());
+        }
+        let mut session = Self::with_service(binding, service)?;
+        std::sync::Arc::make_mut(&mut session.catalog).echo_fixture = true;
+        Ok(session)
+    }
     /// A live endpoint's epoch high-water mark belongs to the durable runtime,
     /// not a transport connection. Probe-only new() sessions have no persistence.
     pub fn with_service(
         binding: SurfaceBinding,
         service: std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
     ) -> Result<Self> {
-        let epoch = service
-            .lock()
-            .map_err(|_| "runtime service poisoned")?
-            .surface_epoch(binding.surface());
+        let guard = service.lock().map_err(|_| "runtime service poisoned")?;
+        let epoch = guard.surface_epoch(binding.surface());
+        let catalog = guard.catalog.clone();
+        drop(guard);
         let mut session = Self::new(binding);
+        session.catalog = catalog;
+        // A normal adapter constructor must not inherit fixture admission.
+        std::sync::Arc::make_mut(&mut session.catalog).echo_fixture = false;
         session.epoch = epoch;
         session.service = Some(service);
         Ok(session)
@@ -26,6 +45,13 @@ impl SurfaceSession {
             || !self.binding.permitted_coglets.iter().any(|c| c == coglet)
         {
             return Err("inactive or unbound reconciliation link".into());
+        }
+        Ok(())
+    }
+    pub(crate) fn check_single_owner(&self, coglet: &str) -> Result<()> {
+        if self.binding.permitted_coglets.len() != 1 || self.binding.permitted_coglets[0] != coglet
+        {
+            return Err("extension requires its single supervisor-bound owner".into());
         }
         Ok(())
     }
@@ -66,7 +92,7 @@ impl SurfaceSession {
             return Err("capability revision/clock rollback".into());
         }
         let mut entries = BTreeSet::new();
-        let mut operations = BTreeMap::new();
+        let mut operations: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut resources = BTreeSet::new();
         for entry in body["entries"].as_array().ok_or("missing entries")? {
             let name = entry["name"].as_str().ok_or("missing entry name")?;
@@ -88,22 +114,22 @@ impl SurfaceSession {
                     let name = value.as_str().ok_or("invalid operation")?;
                     // Unsupported operations never gain authority. Fail closed rather
                     // than falling back to generic profile-map schema validation.
-                    let op = catalog::operation(name, direction)?;
-                    if op["entry"] != entry["name"] {
+                    let (expected_entry, uri) = self.catalog.binding(name, direction)?;
+                    if expected_entry != entry["name"] {
                         return Err("wrong catalog entry".into());
                     }
-                    let rule = if direction == "read" {
-                        &op["output"]
-                    } else {
-                        &op["input"]
-                    };
-                    if entry["schemas"][name] != catalog::uri(rule)? {
+                    if self.catalog.single_owner(name) && self.binding.permitted_coglets.len() != 1
+                    {
+                        return Err("extension requires exactly one supervisor-bound owner".into());
+                    }
+                    if entry["schemas"][name] != uri {
                         return Err("untrusted schema URI".into());
                     }
-                    if !advertised.insert(name.to_owned())
-                        || operations
-                            .insert(name.to_owned(), direction.to_owned())
-                            .is_some()
+                    advertised.insert(name.to_owned());
+                    if !operations
+                        .entry(name.to_owned())
+                        .or_default()
+                        .insert(direction.to_owned())
                     {
                         return Err("duplicate operation".into());
                     }
@@ -126,7 +152,7 @@ impl SurfaceSession {
                     "speech.control" | "speech.session" => {
                         matches!(resource, "audio.mic" | "audio.speaker")
                     }
-                    _ => false,
+                    _ => self.catalog.resource_in_entry(name, resource),
                 };
                 if !known || !resources.insert(resource.to_owned()) {
                     return Err("unsupported/duplicate exclusive resource".into());
@@ -231,9 +257,11 @@ impl SurfaceSession {
         let allowed: Vec<String> = self
             .operations
             .iter()
-            .filter_map(|(op, direction)| {
-                self.authorize(coglet, op, direction, now)
-                    .ok()
+            .filter_map(|(op, directions)| {
+                directions
+                    .iter()
+                    .all(|direction| self.authorize(coglet, op, direction, now).is_ok())
+                    .then_some(())
                     .map(|_| op.clone())
             })
             .collect();
@@ -260,10 +288,16 @@ impl SurfaceSession {
         direction: &str,
         now: u64,
     ) -> Result<()> {
+        if self.catalog.single_owner(operation) {
+            self.check_single_owner(coglet)?;
+        }
         let clock = self.surface_now(now)?;
         if self.stopped
             || self.killed
-            || self.operations.get(operation).map(String::as_str) != Some(direction)
+            || !self
+                .operations
+                .get(operation)
+                .is_some_and(|directions| directions.contains(direction))
         {
             return Err("permission_denied: unavailable operation".into());
         }
@@ -277,7 +311,7 @@ impl SurfaceSession {
                 .unwrap()
                 .iter()
                 .any(|op| op == operation)
-            || catalog::resources(operation).iter().any(|resource| {
+            || self.catalog.resources(operation).iter().any(|resource| {
                 !grant["resources"]
                     .as_array()
                     .unwrap()
@@ -295,7 +329,7 @@ impl SurfaceSession {
         validate("action", action)?;
         let op = action["capability"].as_str().ok_or("missing capability")?;
         self.authorize(action["coglet"].as_str().unwrap(), op, "action", now)?;
-        catalog::check(&catalog::operation(op, "action")?["input"], &action["args"])?;
+        self.catalog.check(op, "action", false, &action["args"])?;
         if op == "speech.speak_chunk"
             && action["args"]["text"]
                 .as_str()

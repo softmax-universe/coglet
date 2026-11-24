@@ -1,7 +1,6 @@
 //! Native observations, never synthetic guest events. All results stay scoped to
 //! the requesting coglet; correlation tombstones fence late replies and ID reuse.
 use super::*;
-use crate::catalog;
 
 pub(super) struct PendingRead {
     pub coglet: String,
@@ -12,10 +11,49 @@ pub(super) struct PendingRead {
 }
 
 impl SurfaceSession {
+    pub(crate) fn pump_supervisor_reads(&mut self, now: u64) -> Result<()> {
+        let Some(service) = self.service.clone() else {
+            return Ok(());
+        };
+        let requests = service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .pending_supervisor_reads(self.surface());
+        for request in requests {
+            if self
+                .authorize(&request.coglet, &request.operation, "read", now)
+                .is_err()
+            {
+                continue;
+            }
+            let deadline = now
+                .checked_add(request.timeout_us)
+                .ok_or("supervisor read deadline overflow")?;
+            // Queue locally, commit original intent before the transport can pop bytes.
+            self.request_read(
+                &request.coglet,
+                &request.operation,
+                request.args,
+                &request.correlation_id,
+                deadline,
+                now,
+            )?;
+            let persisted = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .mark_supervisor_read_attempted(&request.correlation_id);
+            if let Err(error) = persisted {
+                self.disconnect();
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn collects_heard(&self) -> bool {
         self.operations
             .get("speech.heard")
-            .is_some_and(|v| v == "read")
+            .is_some_and(|v| v.contains("read"))
     }
     pub(crate) fn authorize_heard(&self, coglet: &str, now: u64) -> Result<()> {
         self.authorize(coglet, "speech.heard", "read", now)
@@ -41,8 +79,7 @@ impl SurfaceSession {
         {
             return Err("stale surface grant epoch".into());
         }
-        let op = catalog::operation(operation, "read")?;
-        catalog::check(&op["input"], &args)?;
+        self.catalog.check(operation, "read", false, &args)?;
         if operation == "speech.heard" {
             let service = self
                 .service
@@ -191,10 +228,8 @@ impl SurfaceSession {
         };
         self.authorize(&read.coglet, &read.operation, "read", now)?;
         if body["ok"] == true {
-            catalog::check(
-                &catalog::operation(&read.operation, "read")?["output"],
-                &body["value"],
-            )?;
+            self.catalog
+                .check(&read.operation, "read", true, &body["value"])?;
             if read.operation == "speech.heard" && body["value"]["item"] != read.args["item"] {
                 return Err("heard read returned another item".into());
             }
@@ -224,6 +259,18 @@ impl SurfaceSession {
             self.heard_reads.remove(id);
             self.reads.remove(id);
             return Ok(());
+        }
+        if let Some(service) = &self.service {
+            service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .record_supervisor_read(
+                    self.surface(),
+                    &read.coglet,
+                    &read.operation,
+                    &read.args,
+                    body,
+                )?;
         }
         let read = self.reads.remove(id).unwrap();
         self.read_results

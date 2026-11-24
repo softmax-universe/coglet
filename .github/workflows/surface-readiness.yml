@@ -1,9 +1,16 @@
 name: surface-readiness
+# Not a required check and not run in the merge queue: its 150 stress iterations
+# are a proof for surface-readiness changes, so they run when that code changes,
+# nightly, and on demand.
 on:
   pull_request:
+    paths: &readiness_paths ['conformance/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-types/**', 'spec/fixtures/surface/**', 'Cargo.lock', 'rust-toolchain.toml', '.cargo/**', '.github/workflows/surface-readiness.yml']
   push:
     branches: [main]
-  merge_group:
+    paths: *readiness_paths
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

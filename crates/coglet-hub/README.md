@@ -27,6 +27,85 @@ No product, mindister or legacy/v0 implementation was copied.
 - Local `Kernel::status` is an explicit operator-only metadata snapshot, not a
   remotely authorized debug endpoint. It contains no event contents or prompts.
 
+## M3 components (not freeze or activation qualification)
+
+PR95 / Accepted ADR0019 establishes the design and component foundation: closed
+draft-policy validation, explicit gate artifact authority and a pure probation
+reducer. `bind_policy_registry` and
+`install_policy` are **trusted-local operator APIs only**, not wire/factory
+methods. They retain immutable role/repository metadata and exact deterministic
+CBOR revisions in this Store, CAS replacements and atomically audit installation.
+Repository bindings are opaque ASCII references (`._:/-` plus alphanumerics),
+not URLs. Current target `hub.git.push` enrollment/delegation is an additional
+eligibility requirement; it does not authorize the administrative caller.
+
+`promotion_installation` exercises restart/idempotency, role isolation,
+credential-URL rejection, injected audit failure and competing SQLite-connection
+CAS. Policy replacement invalidates unattempted proposals atomically; activating
+work refuses replacement until explicit recovery is available. Existing probation
+limits remain pinned. Operator installation errors are returned, not promotion
+rejection receipts. Corrupt/deleted store rows fail closed; there is no automatic
+policy repair API.
+
+`Kernel::promotion_request` adds **trusted-local** propose/promote admission in
+this same Store. The operator authenticates `PromotionCaller` and pins explicit
+`PromotionAuthority` and `PromotionBoundary` implementations. No startup flag,
+wire method, permissive authority or production adapter is added. Input is bounded
+to 64 KiB. Exact request bytes and actor/ticket context are retained permanently
+under `(actor, coglet, correlation_id)`; identical retries return the exact old
+receipt without new effects or audit. Conflicting bytes/context cannot replace it.
+
+Admission holds the State → boundary fence and an IMMEDIATE SQL transaction,
+serializing registry/current-policy/generation reads through commit. Actor authority
+uses a revision CAS witness. Shared enrollment/delegation Authority has a separate
+DB and is freshly rechecked before commit, **not** atomically leased across DBs.
+Build/signature, required policy+ticket gate union, original-propose approval and
+capability/state compatibility are rechecked at promote, including after adapter
+preparation. Even optional approval references must authenticate before audit.
+Semantic refusal rolls back tentative state via a savepoint, then retains a static
+reason-code rejection receipt+audit; storage failure aborts the entire transaction.
+
+Propose does not move live state. Promote reserves a checked higher generation and
+atomically retains receipt, audit, state and **unsigned** outbox intent. Outbox
+metadata includes a unique common-grammar operation ID, full original propose and
+promote contexts, binding, signature reference and device identity. The verified
+bundle is a separate BLOB (nonempty, at most 64 MiB), not a CBOR integer array.
+The local schema is unreleased; incompatible experimental outbox layouts fail
+closed instead of silently rewriting retained commands. Card C must extend this
+same outbox, revalidate all authorities, retain exact signed bytes before I/O,
+reconcile the original `hub.git.push`/`hub.receipt` scope, and independently attest
+applied generation/executable before changing live state. Nothing here signs,
+sends, activates code, starts probation or qualifies a native runtime.
+
+Named `promotion_admission` proofs cover:
+- `proposal_receipt_is_exact_and_survives_restart_without_new_audit`,
+  `same_actor_and_id_on_other_target_does_not_alias_receipt`,
+  `independent_sqlite_connections_serialize_competing_and_identical_proposals`,
+  `simultaneous_distinct_requests_have_one_pending_proposal`;
+- `proposal_faults_leave_no_partial_receipt_or_transition_after_restart`,
+  `rejection_receipt_is_exact_after_fault_and_restart`,
+  `promote_admits_one_exact_outbox_intent_without_claiming_activation` (including
+  receipt/audit/outbox fault injection, exact BLOB bytes and restart);
+- `authority_cas_rejection_rolls_back_proposal_but_retains_receipt_and_audit`,
+  `policy_replacement_invalidates_unactivated_proposal_and_audit_failure_is_atomic`,
+  `proposal_rejects_wrong_base_generation_policy_and_ended_ticket`;
+- `ticket_union_approval_request_binding_and_compatibility_are_independent`,
+  `artifact_revocation_during_boundary_preparation_rejects_without_outbox`,
+  `optional_unverified_approval_is_rejected_without_secret_in_audit`,
+  `admitted_audit_links_verified_build_gate_and_ticket_evidence`;
+- `absent_boundary_and_generation_overflow_leave_proposal_unactivated`,
+  `invalid_boundary_bindings_or_bundle_hash_never_enter_outbox`,
+  `incompatible_unreleased_outbox_schema_fails_closed_on_open`.
+These fixture authorities prove local storage behavior, not production artifact
+verification or native activation qualification.
+
+The reusable `sim/coglet_sim/evaluation.py` runs exact rewritten guest bytes with
+real cogletd/WAMR and independent replay, returning behavioral pass/fail. Its M2
+fixture provenance and unsigned results are **not** authenticated production gate
+artifacts or build authority. Durable promotion/ticket/audit receipts, signed-ref
+boundary activation, health/emergency-fence producers, rollback integration,
+clock recovery, final CI/review/merge and `policy-v0` are still unfinished.
+
 ## Local fixture controls (not production)
 
 Enable `coglet-hub/test-controls` explicitly in the test launcher's Cargo
