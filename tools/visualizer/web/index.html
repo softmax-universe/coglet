@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Coglet / Live inspector</title><link rel="stylesheet" href="/style.css"><script src="/worlds.js" defer></script><script src="/app.js" defer></script></head>
+<body><header><strong>COGLET <span>/ live inspector</span></strong><span data-testid="connection" role="status">Connecting</span><button id="help" aria-label="Keyboard shortcuts">?</button></header>
+<main><aside><h1>Coglets</h1><label>Filter <kbd>/ · ⌘K</kbd><input id="filter" type="search" placeholder="ID, event, source…"></label><nav data-testid="coglets" aria-label="Coglets"></nav><p class="muted">Explicit operator export<br>Read-only · no control grants</p><small id="updated"></small></aside>
+<article><div class="heading"><h1>Committed state</h1><span id="step"></span></div><p id="provenance" class="muted">Waiting for a complete exported record. Runtime readiness is unknown.</p>
+<div class="heading"><span data-testid="mode">Following latest export</span><button id="live">Follow live</button></div><nav data-testid="timeline" aria-label="State history"></nav>
+<section><h2>World observation</h2><div data-testid="world"></div></section>
+<section><h2>Snapshot / data</h2><code data-testid="hash"></code><div data-testid="files"></div></section>
+<section><h2>Inbox</h2><div data-testid="inbox"></div></section>
+<section><h2>Observed surface sources</h2><div data-testid="surfaces"></div></section>
+<section><h2>Events / selected step</h2><div data-testid="events"></div></section></article></main>
+<dialog><h2>Keyboard shortcuts</h2><p>/ or ⌘K / Ctrl+K — filter all exported objects</p><p>↑ ↓ — move through results · Enter — select</p><p>Esc — clear filter / close · ? — this sheet</p><button id="close-help">Close</button></dialog>
+</body></html>
