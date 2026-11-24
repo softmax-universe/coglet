@@ -1,4 +1,4 @@
-//! Linux authenticated local transport, optionally attached to the durable
+//! Linux/Apple authenticated local transport, optionally attached to the durable
 //! coordinator. Probe-only callers retain the same negotiation shell.
 use crate::{Result, SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
 use std::{
@@ -102,6 +102,35 @@ fn serve_with_service(
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
 ) -> Result<()> {
     // Authenticate kernel-supplied credentials, not a claimed hello identity.
+    #[cfg(target_os = "linux")]
+    let uid = peer_uid_linux(&stream)?;
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    let uid = {
+        let (mut uid, mut gid) = (0, 0);
+        // SAFETY: valid socket fd and writable uid/gid storage.
+        if unsafe { libc::getpeereid(stream.as_raw_fd(), &mut uid, &mut gid) } != 0 {
+            return Err("peer credential lookup failed".into());
+        }
+        uid
+    };
+    if uid != peer_uid {
+        return Err("unauthenticated peer UID".into());
+    }
+    stream
+        .set_write_timeout(Some(Duration::from_secs(3)))
+        .map_err(|e| e.to_string())?;
+    let clock = Instant::now();
+    let mut session = if let Some(service) = service {
+        SurfaceSession::with_service(binding, service)?
+    } else {
+        SurfaceSession::new(binding)
+    };
+    let result = serve_session(&mut stream, &mut session, clock);
+    session.disconnect();
+    result
+}
+#[cfg(target_os = "linux")]
+fn peer_uid_linux(stream: &UnixStream) -> Result<u32> {
     let mut cred = std::mem::MaybeUninit::<libc::ucred>::uninit();
     let mut len = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
     // SAFETY: the kernel writes at most len bytes to aligned credential storage.
@@ -118,23 +147,7 @@ fn serve_with_service(
         return Err("peer credential lookup failed".into());
     }
     // SAFETY: successful getsockopt returned the complete credential object.
-    if unsafe { cred.assume_init() }.uid != peer_uid {
-        return Err("unauthenticated peer UID".into());
-    }
-    stream
-        .set_write_timeout(Some(Duration::from_secs(3)))
-        .map_err(|e| e.to_string())?;
-    let clock = Instant::now();
-    let mut session = if let Some(service) = service {
-        SurfaceSession::with_service(binding, service)?
-    } else {
-        SurfaceSession::new(binding)
-    };
-    let result = serve_session(&mut stream, &mut session, clock);
-    // Every exit (I/O failure, partial EOF, malformed input) revokes private
-    // queues, not just clean EOF. Never leave an abandoned owner queue live.
-    session.disconnect();
-    result
+    Ok(unsafe { cred.assume_init() }.uid)
 }
 fn serve_session(
     stream: &mut UnixStream,

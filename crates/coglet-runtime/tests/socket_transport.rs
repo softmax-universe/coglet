@@ -1,4 +1,4 @@
-#![cfg(target_os = "linux")]
+#![cfg(any(target_os = "linux", target_os = "macos"))]
 use coglet_runtime::{
     SurfaceBinding, cbor,
     socket::{SurfaceListener, serve},
