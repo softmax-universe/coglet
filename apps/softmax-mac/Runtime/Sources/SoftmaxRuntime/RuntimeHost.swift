@@ -15,6 +15,26 @@ public struct RuntimeAction: Sendable, Equatable {
     public let capability: String
     public let text: String?
     public let expression: String?
+    public let stream: String?
+    public let chunk: UInt64?
+    public let final: Bool
+    public let intensity: UInt64?
+    public let durationMS: UInt64?
+    public let owner: String
+    public let id: String
+    public let epoch: UInt64
+    let ticket = UUID()
+    init(action: CBORValue, epoch: UInt64) {
+        capability = action["capability"]!.hostText!
+        text = action["args"]?["text"]?.hostText
+        expression = action["args"]?["expression"]?.hostText
+        stream = action["args"]?["stream"]?.hostText
+        if case .unsigned(let value) = action["args"]?["chunk"] { chunk = value } else { chunk = nil }
+        final = action["args"]?["final"] == .boolean(true)
+        if case .unsigned(let value) = action["args"]?["intensity"] { intensity = value } else { intensity = nil }
+        if case .unsigned(let value) = action["args"]?["duration_ms"] { durationMS = value } else { durationMS = nil }
+        owner = action["coglet"]!.hostText!; id = action["id"]!.hostText!; self.epoch = epoch
+    }
 }
 private extension CBORValue {
     var hostText: String? { if case .text(let value) = self { value } else { nil } }
@@ -25,22 +45,6 @@ private struct HostFailure: Swift.Error, CustomStringConvertible {
     init(_ description: String) { self.description = description }
 }
 
-/// Captures dispatch without pretending that text was physically rendered.
-/// Until a product speech sink is installed, terminal outcomes say unavailable.
-private final class PendingFaceSink: SurfaceNativeBackend {
-    var actions: [RuntimeAction] = []
-    func preflight(action: CBORValue, now: UInt64) throws {}
-    func begin(action: CBORValue, epoch: UInt64, now: UInt64) throws -> NativeSurfaceResult? {
-        actions.append(RuntimeAction(capability: action["capability"]!.hostText!,
-            text: action["args"]?["text"]?.hostText,
-            expression: action["args"]?["expression"]?.hostText))
-        return .failed(NativeSurfaceError("unavailable"))
-    }
-    func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
-        throw NativeSurfaceError("unavailable")
-    }
-    func stop(owner: String?) {}
-}
 
 /// Every runtime pointer and SDK object is confined to this background actor.
 /// No ABI entry happens on MainActor or a real-time audio callback.
@@ -48,14 +52,14 @@ private actor RuntimeExecutor {
     let root: URL
     private var link: EmbeddedSurfaceTransport?
     private var session: SurfaceSession?
-    private let sink = PendingFaceSink()
+    private let sink: PendingFaceSink
     private var owner: String?
     private var token: NativeObservationToken?
     private var queued: [[UInt8]] = []
     private var lockFD: Int32 = -1
     private var active = false
     private var generation: UInt64?
-    init(root: URL) { self.root = root }
+    init(root: URL, output: RuntimeFaceOutput) { self.root = root; sink = PendingFaceSink(output: output) }
     private func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds / 1_000 }
     private func log(_ message: String) {
         // Diagnostics never contain transcript/config/guest bytes.
@@ -121,6 +125,7 @@ private actor RuntimeExecutor {
             link = try EmbeddedSurfaceTransport(abi: .init(open: coglet_surface_open, send: coglet_surface_send, recv: coglet_surface_recv, close: coglet_surface_close))
             try surface.start(); try pump()
             token = try surface.openNativeObservationSession(owner: id, epoch: surface.grantEpoch)
+            sink.output.resume()
             self.generation = generation
             log("runtime started")
             return [.init(id: id, version: manifest["version"] as? String ?? "unknown", status: .running)]
@@ -130,6 +135,7 @@ private actor RuntimeExecutor {
     }
     func pump() throws {
         guard let surface = session, let link else { return }
+        try sink.reconcile(surface)
         for _ in 0..<128 {
             let generated = surface.drain()
             guard queued.count + generated.count <= 128 else { throw HostFailure("Surface control queue exhausted") }
@@ -159,6 +165,9 @@ private actor RuntimeExecutor {
         guard generation == expected else { return [] }
         guard let session, let token else { throw HostFailure("Runtime not connected") }
         do {
+            // Drain old guest output while reflex cancellation is still fenced.
+            try pump()
+            sink.output.resume()
             let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             guard try session.publishObservation(token, kind: "speech.start", payload: .record([("utterance", .text(utterance)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
             guard try session.publishObservation(token, kind: "speech.end", payload: .record([("utterance", .text(utterance)), ("revision", .unsigned(1)), ("text", .text(text)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
@@ -195,16 +204,26 @@ private actor RuntimeExecutor {
     /// Capture BEFORE asynchronous recognition; lifecycle changes fence old input.
     public private(set) var generation: UInt64 = 0
     public var onAction: ((RuntimeAction) -> Void)?
+    public var onStopOutput: (() -> Void)? {
+        get { outputStop.callback }
+        set { outputStop.callback = newValue }
+    }
+    private let outputStop: RuntimeOutputStop
+    private let output: RuntimeFaceOutput
     private let executor: RuntimeExecutor
     private var polling: Task<Void, Never>?
     private var busy = false
     public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Softmax/runtime", isDirectory: true)) {
-        self.directory = directory; executor = RuntimeExecutor(root: directory)
+        self.directory = directory
+        let stop = RuntimeOutputStop(); outputStop = stop
+        let output = RuntimeFaceOutput { stop.stop() }; self.output = output
+        executor = RuntimeExecutor(root: directory, output: output)
     }
     public func start() async { await boot(localReset: false) }
     public func restart() async {
         guard !busy else { return }
         busy = true; generation &+= 1; state = .stopped
+        cancelOutput()
         polling?.cancel(); polling = nil
         try? await executor.stop()
         busy = false
@@ -229,6 +248,7 @@ private actor RuntimeExecutor {
         guard !busy else { return }; busy = true; defer { busy = false }
         generation &+= 1
         polling?.cancel(); polling = nil
+        cancelOutput()
         do { try await executor.stop(); state = .stopped; coglets = coglets.map { .init(id: $0.id, version: $0.version, status: .stopped) } }
         catch { fail(error) }
     }
@@ -248,9 +268,17 @@ private actor RuntimeExecutor {
         } catch { if generation == expected { fail(error) } }
     }
     private func deliver(_ received: [RuntimeAction]) {
-        for action in received { actions.append(action); if actions.count > 128 { actions.removeFirst() }; onAction?(action) }
+        for action in received where output.isLive(action) {
+            actions.append(action); if actions.count > 128 { actions.removeFirst() }
+            if let onAction { onAction(action) } else { complete(action, error: "unavailable") }
+        }
     }
+    /// Called only by the native renderer, never on synthesis completion alone.
+    public func complete(_ action: RuntimeAction, error: String? = nil) { output.complete(action, error: error) }
+    /// Synchronous local off-switch; SDK reconciliation follows on its actor.
+    public func cancelOutput() { output.suspend() }
     private func fail(_ error: any Swift.Error) {
+        cancelOutput()
         state = .error; errorMessage = String(describing: error)
         coglets = coglets.map { .init(id: $0.id, version: $0.version, status: .error) }
         polling?.cancel(); polling = nil

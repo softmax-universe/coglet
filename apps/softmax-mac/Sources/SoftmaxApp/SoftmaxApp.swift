@@ -50,6 +50,7 @@ struct StatusLabel: View {
 final class ShellModel: ObservableObject {
     let updates = UpdateController()
     let runtime = RuntimeHost()
+    lazy var faceHost = FaceHost(shell: self)
     let recognizer = LocalSpeechInput()
     @Published private(set) var hubConnection: HubConnection?
     var hubStatus: String {
@@ -77,6 +78,11 @@ final class ShellModel: ObservableObject {
     func configureRuntime() {
         guard !testing, speechDelivery == nil else { return }
         runtimeSubscription = runtime.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        runtime.onStopOutput = { [weak self] in self?.faceHost.stopRuntimeOutput() }
+        runtime.onAction = { [weak self] action in
+            guard let self else { return }
+            faceHost.perform(action) { [weak self] error in self?.runtime.complete(action, error: error) }
+        }
         Task { await runtime.start() }
         speechDelivery = Task { [weak self] in
             guard let self else { return }
@@ -159,7 +165,9 @@ final class ShellModel: ObservableObject {
                 microphone: .microphone(rawValue: AVCaptureDevice.authorizationStatus(for: .audio).rawValue),
                 inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
         }
-        ptt.stopPlayback = { [weak self] in self?.stopFacePlayback?(); self?.stopFacePlayback = nil }
+        ptt.stopPlayback = { [weak self] in
+            self?.runtime.cancelOutput(); self?.stopFacePlayback?(); self?.stopFacePlayback = nil
+        }
         ptt.playStartSound = { [weak self] in if self?.startSound == true { self?.cues.play(.start) } }
         ptt.onChange = { [weak self] in
             guard let self else { return }

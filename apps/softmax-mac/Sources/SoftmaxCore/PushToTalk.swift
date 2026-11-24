@@ -72,7 +72,9 @@ public struct Utterance: Sendable, Equatable {
     public func complete(operation: UInt64, state expectedState: AppState) -> Bool {
         guard operation == operationID, state == expectedState,
               expectedState == .thinking || expectedState == .speaking else { return false }
-        setState(.idle)
+        // A played-back completion is not cancellation. Invoking stopPlayback
+        // here would turn the renderer's successful receipt into barge-in.
+        operationID &+= 1; state = .idle; onChange?()
         return true
     }
     public func handle(_ event: PushToTalkKeyEvent, at timestamp: TimeInterval? = nil) {

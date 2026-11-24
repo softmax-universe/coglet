@@ -3,8 +3,9 @@ import SwiftUI
 import Combine
 import SoftmaxCore
 import FaceMac
+import SoftmaxRuntime
 
-/// Runtime replaces the driver and feeds the sink; this host never synthesizes or admits actions.
+/// Product renderer for admitted runtime actions; this host grants no authority.
 @MainActor
 final class FaceHost: ObservableObject {
     let driver: any FaceDriver
@@ -15,11 +16,13 @@ final class FaceHost: ObservableObject {
     private var timer: Timer?
     private var demoStart = 0.0
     private let playback: FacePlaybackSession
+    private let runtimeSpeech: RuntimeSpeechPlayback
     private weak var shell: ShellModel?
     init(shell: ShellModel, driver: any FaceDriver = LocalFaceDriver()) {
         self.shell = shell; self.driver = driver
         speech = FaceSpeechSink(device: EngineFacePlayback())
         playback = FacePlaybackSession(ptt: shell.ptt, speech: speech)
+        runtimeSpeech = RuntimeSpeechPlayback(session: playback, synthesis: AppleSpeechSynthesis())
         driver.onChange = { [weak self] in self?.revision &+= 1 }
         speech.onChange = { [weak self] in
             guard let self, speech.active else { return }
@@ -29,7 +32,26 @@ final class FaceHost: ObservableObject {
             guard let self else { return }
             driver.setState(.idle)
         }
+        runtimeSpeech.willBegin = { [weak self] in self?.stopDemo() }
     }
+    func perform(_ action: RuntimeAction, completion: @escaping (String?) -> Void) {
+        switch action.capability {
+        case "speech.speak_chunk":
+            guard let text = action.text, let stream = action.stream, let chunk = action.chunk else {
+                completion("invalid_argument"); return
+            }
+            runtimeSpeech.enqueue(text: text, stream: stream, chunk: chunk, final: action.final, completion: completion)
+        case "expression.set_expression":
+            guard let name = action.expression, let intensity = action.intensity, intensity <= 1000,
+                  let duration = action.durationMS, duration <= 60000 else { completion("invalid_argument"); return }
+            do {
+                try driver.setExpression(name, intensity: Int(intensity), durationMS: Int(duration))
+                completion(nil)
+            } catch { completion("invalid_argument") }
+        default: completion("unavailable")
+        }
+    }
+    func stopRuntimeOutput() { runtimeSpeech.stop(); driver.reset() }
     func beginSpeech() -> UUID {
         stopDemo()
         let token = playback.begin()
@@ -37,7 +59,7 @@ final class FaceHost: ObservableObject {
         return token
     }
     func startDemo() {
-        speech.stop(); demo = true; demoStart = ProcessInfo.processInfo.systemUptime
+        shell?.runtime.cancelOutput(); demo = true; demoStart = ProcessInfo.processInfo.systemUptime
     }
     func stopDemo() { demo = false; driver.reset() }
     func updateFromShell() {
@@ -61,7 +83,7 @@ final class FaceHost: ObservableObject {
             }
         }
     }
-    func cancel() { shell?.ptt.cancel(); speech.stop(); stopDemo() }
+    func cancel() { shell?.runtime.cancelOutput(); shell?.ptt.cancel(); stopRuntimeOutput(); stopDemo() }
 }
 
 @MainActor
@@ -72,7 +94,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
     private var globalEscape: Any?
     private let persist: Bool
     init(shell: ShellModel) {
-        host = FaceHost(shell: shell); persist = !shell.testing
+        host = shell.faceHost; persist = !shell.testing
         panel = FacePanel(contentRect: NSRect(x: 0, y: 0, width: 280, height: 330),
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()

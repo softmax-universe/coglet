@@ -1,5 +1,7 @@
 import XCTest
 import CogletTypes
+import SoftmaxCore
+import FaceMac
 @testable import SoftmaxRuntime
 
 final class RuntimeHostTests: XCTestCase {
@@ -23,6 +25,17 @@ final class RuntimeHostTests: XCTestCase {
         let good = root.appendingPathComponent("good")
         try provision(good, from: source)
         let host = RuntimeHost(directory: good)
+        let device = RuntimeNativePlaybackDevice()
+        let speech = FaceSpeechSink(device: device)
+        let ptt = PushToTalk(keys: RuntimeNativeKeys(), audio: RuntimeNativeCapture())
+        let player = RuntimeSpeechPlayback(session: FacePlaybackSession(ptt: ptt, speech: speech), synthesis: RuntimeNativeSynthesis())
+        host.onStopOutput = { player.stop() }
+        host.onAction = { action in
+            guard let text = action.text, let stream = action.stream, let chunk = action.chunk else {
+                host.complete(action, error: "unavailable"); return
+            }
+            player.enqueue(text: text, stream: stream, chunk: chunk, final: action.final) { host.complete(action, error: $0) }
+        }
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(host.coglets.count, 1)
@@ -32,6 +45,26 @@ final class RuntimeHostTests: XCTestCase {
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(host.actions.first?.capability, "speech.speak_chunk")
         XCTAssertEqual(host.actions.first?.text, text)
+        let firstAction = try XCTUnwrap(host.actions.first)
+        func outcome(_ action: RuntimeAction) throws -> CBORValue? {
+            let ledger = try CBORCodec.decodeProfile(Array(Data(contentsOf: good.appendingPathComponent("surface/ledger.cbor"))))
+            guard case .array(let values) = ledger["records"]?[action.owner + "/" + action.id]?["outcome"] else { return nil }
+            return values.first
+        }
+        XCTAssertEqual(device.callbacks.count, 1, "real Wasm output reaches FacePlaybackSession and FaceSpeechSink")
+        await host.poll()
+        XCTAssertNil(try outcome(firstAction), "synthesized/scheduled PCM cannot complete the durable action")
+        device.renderedFrames = 2; device.callbacks[0]()
+        await host.poll()
+        XCTAssertEqual(try outcome(firstAction)?["status"], .text("succeeded"))
+        await host.submitTranscript("Barge this reply", generation: host.generation)
+        let interrupted = try XCTUnwrap(host.actions.last)
+        let late = try XCTUnwrap(device.callbacks.last)
+        host.cancelOutput()
+        XCTAssertFalse(speech.active)
+        late(); host.complete(interrupted)
+        await host.poll()
+        XCTAssertEqual(try outcome(interrupted)?["error"]?["code"], .text("cancelled"))
         // No synthetic UI-success path: actual C ABI panic returns an error.
         #if COGLET_RUNTIME_TEST_HOOKS
         await host.injectCaughtPanicForTesting()
