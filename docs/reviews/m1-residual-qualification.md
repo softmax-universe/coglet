@@ -93,7 +93,11 @@ historical production RED or mutation sensitivity is claimed.
 was accepted through independently reviewed, merge-queued
 [PR #123](https://github.com/softmax-universe/coglet/pull/123), merged as
 `8e1942b958fbd7f923b221a0e8000f98e1772110`. These moves do not
-claim that the missing positive tests ran.
+claim that the missing positive tests ran. The inventory's primary-owner
+column still names the original Phase-2 cards, because
+`test_m1_inventory_has_one_disposition_and_owner_per_row` requires exactly
+one of those frozen IDs there; live successors are named in the proof
+column, this map, and ADR-0023.
 
 | Ledger row | Disposition / owner |
 |---|---|
