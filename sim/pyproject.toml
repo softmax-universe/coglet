@@ -8,11 +8,14 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = ["coglet-surface"]
 
+[dependency-groups]
+dev = ["pytest>=8,<10"]
+
 [tool.uv.sources]
 coglet-surface = { path = "../sdk/surface-python", editable = true }
 
-[dependency-groups]
-dev = ["pytest>=8,<10"]
+[tool.hatch.build.targets.wheel]
+packages = ["coglet_sim"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
