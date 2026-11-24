@@ -7,10 +7,15 @@ on:
 permissions:
   contents: read
 jobs:
+  # Runs on Linux: the Swift SDK builds against Glibc as well as Darwin, so the
+  # required check does not need a macOS runner. Apple-specific coverage lives in
+  # swift.yml, which only runs when Swift-related paths change.
   swift-codegen:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Swift toolchain present (the emitter compile tests skip without swiftc)
+        run: swift --version && command -v swiftc
       - name: Swift emitter keyword and collision regressions
         run: python3 -m unittest discover -s codegen -p test_swift.py -v
       - name: Strict Swift codec and recursive schema fixtures
