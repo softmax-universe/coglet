@@ -1,5 +1,7 @@
 //! ADR-0014 Linux integration. Real compiled guest, runtime native scheduler,
-//! durable Rust mock surface, and encrypted iroh session to the real kernel.
+//! durable local Rust mock surface, while its harness device holds an encrypted
+//! enrollment/health session to the real kernel. Surface frames stay local;
+//! this is not a hub-relayed surface or deployment qualification.
 //! The trusted constructors are intentionally NOT production cogletd options.
 use coglet_hub::Kernel;
 use coglet_mock::surface::MockSurface;
@@ -252,8 +254,11 @@ async fn enroll_real_kernel() {
     assert_eq!(response["type"], "reply", "{response}");
     assert_eq!(response["result"]["device"], device.id().to_string());
     assert_eq!(response["result"]["hub"], hub.id().to_string());
+    // Retain the enrolled device session while executing its local runtime.
+    // No fixture catalog crosses the hub boundary.
+    let queue_depth = echo_roundtrip();
     let health = json!({"method":"hub.health","target":null,"correlation_id":"33".repeat(16),"timeout_ms":1000,
-        "params":{"device":device.id().to_string(),"uptime_ms":0,"queue_depth":0,"available_bytes":0,"coglets":[]}});
+        "params":{"device":device.id().to_string(),"uptime_ms":0,"queue_depth":queue_depth,"available_bytes":0,"coglets":[]}});
     assert_eq!(
         session.request(health.clone()).await.unwrap()["type"],
         "reply"
@@ -273,6 +278,8 @@ async fn hello_coglet() {
     tokio::time::timeout(Duration::from_secs(30), enroll_real_kernel())
         .await
         .unwrap();
+}
+fn echo_roundtrip() -> usize {
     let mut live = Live::new();
     live.start();
     let delivered = live.echo();
@@ -306,6 +313,21 @@ async fn hello_coglet() {
     let recovered =
         RuntimeService::open_echo_fixture(&live.dir.path().join("wal"), &live.setup, 128).unwrap();
     assert!(!recovered.records().is_empty());
+    let queue_depth = recovered.queued();
+    drop(recovered);
+    let wal = coglet_runtime::DurableStore::open(&live.dir.path().join("wal")).unwrap();
+    let dispatches = wal.state().unwrap()["dispatches"].as_object().unwrap();
+    let dispatch = dispatches
+        .get(actions[0]["body"]["action"]["id"].as_str().unwrap())
+        .unwrap();
+    assert_eq!(dispatch["outcome"]["status"], "succeeded");
+    assert_eq!(dispatch["outcome"]["result"], json!({}));
+    drop(wal);
+    assert!(
+        RuntimeService::open(&live.dir.path().join("wal"), &live.setup, 128).is_err(),
+        "production recovery must reject fixture dispatches"
+    );
+    queue_depth
 }
 #[test]
 fn replay_state_hash() {
@@ -332,16 +354,32 @@ fn replay_state_hash() {
     );
     // Recompute the checksum after a mutation: checksum-only validation cannot
     // detect this lie, independent guest reexecution must reject its effects.
-    let mut mutated = records.clone();
-    mutated[0]["events"][0]["payload"]["message"] = json!("tampered");
-    mutated[0].as_object_mut().unwrap().remove("record_hash");
-    mutated[0]["record_hash"] = json!(digest(&cbor(&mutated[0]).unwrap()));
-    assert!(
-        Runtime::from_fixture(&setup)
+    let index = records
+        .iter()
+        .position(|r| {
+            r["events"]
+                .as_array()
+                .is_some_and(|events| events.iter().any(|e| e["kind"] == "test.echo"))
+        })
+        .unwrap();
+    for output in [false, true] {
+        let mut mutated = records.clone();
+        if output {
+            mutated[index]["actions"][0]["args"]["message"] = json!("tampered");
+        } else {
+            mutated[index]["events"][0]["payload"]["message"] = json!("tampered");
+        }
+        mutated[index]
+            .as_object_mut()
+            .unwrap()
+            .remove("record_hash");
+        mutated[index]["record_hash"] = json!(digest(&cbor(&mutated[index]).unwrap()));
+        let error = Runtime::from_fixture(&setup)
             .unwrap()
             .replay(&mutated, &mut engine())
-            .is_err()
-    );
+            .unwrap_err();
+        assert!(error.contains("replay mismatch at step"), "{error}");
+    }
     eprintln!(
         "M1 independent compiled-echo replay final_hash={}",
         trace["final_hash"]
@@ -381,7 +419,7 @@ fn production_runtime_rejects_test_echo() {
 #[test]
 fn fixture_catalog_requires_explicit_grant() {
     grants::runtime_grant_negatives();
-    for mode in ["missing", "wrong_actor", "expired", "revoked"] {
+    for mode in ["missing", "wrong_actor", "expired", "revoked", "valid"] {
         let dir = tempfile::tempdir().unwrap();
         let mut cfg = config(2000);
         match mode {
@@ -411,10 +449,11 @@ fn fixture_catalog_requires_explicit_grant() {
         }
         let now = if mode == "expired" { 2001 } else { 1002 };
         let frames = surface.emit_echo_fixture(now, json!({"x":1}), C).unwrap();
-        assert!(
-            !frames
+        assert_eq!(
+            frames
                 .iter()
                 .any(|m| decode(m)["body"]["kind"] == "test.echo"),
+            mode == "valid",
             "{mode}"
         );
     }

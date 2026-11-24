@@ -166,7 +166,11 @@ fn compiled_echo_timer_wake(ffi: bool, name: &str) {
     host.setup["manifest"]["budgets"]["compute"] = json!(100_000_000);
     host.setup["manifest"]["budgets"]["wall_time_us"] = json!(5_000_000);
     if !ffi {
-        std::fs::write(host.dir.join("setup.json"), serde_json::to_vec(&host.setup).unwrap()).unwrap();
+        std::fs::write(
+            host.dir.join("setup.json"),
+            serde_json::to_vec(&host.setup).unwrap(),
+        )
+        .unwrap();
     }
     host.start();
     let mut link = host.connect();
@@ -176,7 +180,10 @@ fn compiled_echo_timer_wake(ffi: bool, name: &str) {
     // barrier before terminating the child; release-only M1 qualifies that live
     // exchange without weakening the production inactivity timeout.
     if !ffi {
-        link.send("health", json!({"state":"ready","clock":1200,"pending":0,"correlation_id":"9".repeat(32)}));
+        link.send(
+            "health",
+            json!({"state":"ready","clock":1200,"pending":0,"correlation_id":"9".repeat(32)}),
+        );
         assert_eq!(decode(&link.recv())["type"], "health");
     }
     drop(link);
