@@ -1,6 +1,9 @@
 use super::*;
 #[test]
 fn native_dispatch_rechecks_clock_after_guest_outlives_grant() {
+    // WAMR's process-global runtime lock includes this deliberately slow guest.
+    // Do not spend another test's short guest deadline waiting behind it.
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut setup = with_wasm(setup(), &program_delay(false, true));
     setup["manifest"]["budgets"]["compute"] = json!(1_000_000_000);
     setup["manifest"]["budgets"]["wall_time_us"] = json!(10_000_000);
