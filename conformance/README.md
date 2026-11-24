@@ -26,6 +26,27 @@ repository root; the runner itself works from any directory. A fresh process or
 socket connection is made per case, and spawned process groups are cleaned up on
 success, failure and timeout. Unix-socket/server state reset is the fixture's job.
 
+Stdio registry entries may set `ready_line = "COGLET_CONFORMANCE_READY"`.
+The adapter emits this exact newline-terminated ASCII line on **stderr** after
+durable initialization, immediately before emitting its initial protocol frame.
+The harness waits for it under `connect_timeout_ms` (default 5000) and the existing
+whole-case watchdog. Only then does the unchanged case timeline start; readiness
+does not consume, decode or discard stdout. EOF before the marker fails startup;
+a missing marker times out. Frame deadlines still apply after readiness, including
+the first hello. This separates process/storage initialization from protocol
+response latency without retries or fixture changes. Adapters without the field
+retain exec-only startup behavior.
+
+`python3 conformance/repeat_surface.py --output target/readiness/normal` runs
+50 full in-process reference-surface iterations. Add `--slow-startup` to delay
+only the real Init ledger's first `fdatasync` by 250ms with Linux `strace`.
+With `--without-readiness`, the same binary and cases must reproduce a step-0
+timeout; with readiness all cases must pass. This counterfactual isolates the
+harness budget defect; it does not identify the historical CI host's particular
+disk or scheduler stall. `surface-readiness` CI preserves per-iteration JUnit and
+summary counts on the same `ubuntu-latest` runner type as conformance. The two
+runtime-under-test version cases remain unsupported-role skips, not surface passes.
+
 ## Case data
 
 Each `conformance/<suite>/**/*.json` is one case object or an array of case

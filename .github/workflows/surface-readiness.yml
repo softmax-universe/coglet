@@ -1,0 +1,35 @@
+name: surface-readiness
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+permissions:
+  contents: read
+jobs:
+  startup-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install startup syscall probe
+        run: sudo apt-get update -qq && sudo apt-get install -y strace
+      - name: Build real release surface adapter
+        run: cargo build --locked --release -p coglet-surface-rust --bin coglet-reference-surface
+      - name: Readiness and unchanged-deadline regressions
+        run: python3 -m unittest discover -s conformance/tests -p test_readiness.py -v
+      - name: 50 normal surface iterations
+        run: python3 conformance/repeat_surface.py --output target/readiness/normal
+      - name: 50 slow-durability iterations without readiness (must reproduce)
+        run: python3 conformance/repeat_surface.py --slow-startup --without-readiness --output target/readiness/before
+      - name: 50 identical slow-durability iterations with readiness (must pass)
+        run: python3 conformance/repeat_surface.py --slow-startup --output target/readiness/after
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surface-readiness-proof
+          path: target/readiness/
+          if-no-files-found: error
