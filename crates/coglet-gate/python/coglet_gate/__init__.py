@@ -249,6 +249,7 @@ class GateVerifier:
             raise Refused('evaluation binding, tool identity or qualification mismatch')
         report = value['report']
         if (report.get('rewritten_sha256') != binding.rewritten_sha256
+                or report.get('coglet') != binding.coglet
                 or report.get('independent_guest_reexecution') is not True
                 or any(report.get(k) != suite.document()[k]
                        for k in ('world', 'seed', 'max_steps', 'minimum_actions'))):
@@ -313,7 +314,7 @@ class GateService:
                 paths.append(target.resolve())
             report = evaluate(Path(work), NativeTools(*paths), rewritten, world=suite.world,
                               seed=suite.seed, max_steps=suite.max_steps,
-                              minimum_actions=suite.minimum_actions)
+                              minimum_actions=suite.minimum_actions, coglet=binding.coglet)
         if (report['rewritten_sha256'] != binding.rewritten_sha256
                 or any(report[k] != suite.document()[k] for k in ('world', 'seed', 'max_steps', 'minimum_actions'))):
             raise Refused('native evaluator returned mismatched configuration')

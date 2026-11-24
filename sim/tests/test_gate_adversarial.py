@@ -13,6 +13,7 @@ def signed_fixture(store, gate_key, binding, suite, challenge):
     return store.put(dict(request=challenge, tools=challenge['tools'], qualification='fixture-only',
                           report={**{k: v for k, v in suite.document().items() if k != 'suite'},
                                   'rewritten_sha256': binding.rewritten_sha256,
+                                  'coglet': binding.coglet,
                                   'independent_guest_reexecution': True, 'passed': True}),
                      gate_key, 'evaluation')
 

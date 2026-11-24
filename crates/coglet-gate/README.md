@@ -91,7 +91,9 @@ rewritten Rust pilot, then runs the existing native tests and
 - `test_native_authenticated_gridbot_cartpole_pass_and_reject`: four real native
   episodes (both worlds pass/reject), independent replay, artifact acceptance,
   replay refusal and mutated executable refusal. Gridbot rejects a one-step
-  horizon before its goal; Cartpole rejects a horizon longer than actual survival.
+  horizon before its goal; Cartpole rejects a configured minimum action threshold
+  above the observed episode count (17 required, 16 executed), not a fabricated
+  instability or performance claim.
 - `test_artifacts_are_content_addressed_and_tamper_refused`: immutable/idempotent
   publication and mutated authenticated build artifact refusal.
 - `test_issuer_refuses_wrong_bytes_and_fixture_never_becomes_production`: exact

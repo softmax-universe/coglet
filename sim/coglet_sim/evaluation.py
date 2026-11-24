@@ -32,10 +32,10 @@ class NativeTools:
                 raise ValueError('native tool must be an existing absolute executable')
 
 
-def setup(wasm, name, seed=7):
+def setup(wasm, name, seed=7, coglet=C):
     cases = json.loads((ROOT / 'conformance/abi/cases.json').read_text())
     result = next(c['steps'][0]['send'] for c in cases if c['name'] == 'no-effects')
-    result['manifest'].update(id=C, subscriptions=[f'sim.{name}_state'],
+    result['manifest'].update(id=coglet, subscriptions=[f'sim.{name}_state'],
         required_capabilities=[f'sim.{name}_' + ('move' if name == 'gridbot' else 'force')], exclusive_outputs=[])
     result['manifest']['budgets'].update(compute_mode='wamr-2.4.3-fast-cumulative-v1',
         compute=100_000_000, memory_pages=256, wall_time_us=2_000_000, host_bytes=1_000_000)
@@ -57,7 +57,7 @@ def exact(sock, size):
     return bytes(data)
 
 
-def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1):
+def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C):
     """Execute exact rewritten bytes, independently replay, check behavior.
 
     Caller pins tools, world and assertions. Returned data is unsigned, not a
@@ -80,30 +80,24 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
     name = world
     kind = Gridbot if name == 'gridbot' else Cartpole
 
-    class BoundedGridbot(Gridbot):
-        def step(self, direction):
-            super().step(direction)
-            self.done = self.done or self.steps >= max_steps
-            return self.snapshot()
-
-    make_world = lambda s: (Cartpole(s, max_steps=max_steps) if kind is Cartpole
-                            else BoundedGridbot(s))
+    make_world = lambda s: kind(s, max_steps=max_steps)
     with tempfile.TemporaryDirectory(prefix='eval-', dir=os.environ['TMPDIR']) as short:
         path = Path(short)
         assert len(str(path / 'sock/control').encode()) < 104
         world = make_world(seed)
-        config = setup(wasm, name, seed)
+        config = setup(wasm, name, seed, coglet)
         (path / 'setup.json').write_text(json.dumps(config))
-        (path / 'binding.json').write_text(json.dumps(runtime_binding(S, [C])))
+        (path / 'binding.json').write_text(json.dumps(runtime_binding(S, [coglet])))
+        surface = WorldSurface(S, [coglet], path / 'ledger', world)
         stderr = (tmp_path / 'daemon.log').open('w+')
-        child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
-            str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
-            str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr)
-        surface = WorldSurface(S, [C], path / 'ledger', world)
         snapshots, actions = [world.state_hash()], []
         received_actions = {}
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        child = None
         try:
+            child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
+                str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
+                str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr)
             deadline = time.monotonic() + 10
             while True:
                 assert child.poll() is None, 'daemon exited: ' + (tmp_path / 'daemon.log').read_text()
@@ -127,7 +121,7 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                 surface.receive(raw)
                 if surface.state == 'ready' and not initialized:
                     initialized = True
-                    surface.grant([dict(coglet=C, operations=list(surface.operations),
+                    surface.grant([dict(coglet=coglet, operations=list(surface.operations),
                                         resources=[], expires=surface.now() + 120_000_000)])
                     surface.publish(epoch=1)
                 if msg['type'] == 'act':
@@ -182,14 +176,14 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                 failure = 'episode_terminated_early'
             elif len(actions) < minimum_actions:
                 failure = 'minimum_actions'
-            return dict(world=name, seed=seed, max_steps=max_steps, minimum_actions=minimum_actions,
+            return dict(world=name, seed=seed, max_steps=max_steps, minimum_actions=minimum_actions, coglet=coglet,
                         rewritten_sha256=sha256(wasm).hexdigest(), action_count=len(actions),
                         world_hashes=snapshots, runtime_state_hashes=report['state_hashes'],
                         independent_guest_reexecution=True, passed=failure is None, failure=failure)
         finally:
             sock.close()
             surface.close()
-            if child.poll() is None:
+            if child is not None and child.poll() is None:
                 child.kill()
                 child.wait(timeout=5)
             stderr.close()

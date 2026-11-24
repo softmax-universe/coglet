@@ -73,6 +73,7 @@ def test_verifier_authentication_challenge_binding_and_restart_replay(tmp_path):
     result = dict(request=challenge, tools={'daemon': 'd', 'proof': 'p'},
                   report={**{k: v for k, v in suite.document().items() if k != 'suite'},
                           'rewritten_sha256': binding.rewritten_sha256,
+                          'coglet': binding.coglet,
                           'independent_guest_reexecution': True, 'passed': True},
                   qualification='fixture-only')
     artifact = store.put(result, gate_key, 'evaluation')
@@ -121,8 +122,9 @@ def test_native_authenticated_gridbot_cartpole_pass_and_reject(tmp_path, world, 
     wasm = Path(os.environ[TOOLS[2]]).read_bytes()
     binding = replace(binding, rewritten_sha256=sha256(wasm).hexdigest())
     build = BuildIssuer(store, build_key).fixture(binding, wasm, b'M2 fixture, not production')
-    steps = 16 if passed else (1 if world == 'gridbot' else 128)
-    suite = Suite(world + '-v1', world, 42, steps, 1)
+    steps = 1 if not passed and world == 'gridbot' else 16
+    minimum = 17 if not passed and world == 'cartpole' else 1
+    suite = Suite(world + '-v1', world, 42, steps, minimum)
     tools = NativeTools(Path(os.environ[TOOLS[0]]), Path(os.environ[TOOLS[1]]))
     service = GateService(store, build_key, gate_key, tools)
     verifier = GateVerifier(tmp_path / 'native.sqlite', store, build_key, gate_key,
@@ -133,7 +135,7 @@ def test_native_authenticated_gridbot_cartpole_pass_and_reject(tmp_path, world, 
     assert report['report']['passed'] is passed
     if not passed:
         assert report['report']['failure'] == ('goal_not_reached' if world == 'gridbot'
-                                                else 'episode_terminated_early')
+                                                else 'minimum_actions')
     assert report['report']['independent_guest_reexecution']
     assert report['report']['rewritten_sha256'] == binding.rewritten_sha256
     assert report['request']['suite'] == suite.document()
