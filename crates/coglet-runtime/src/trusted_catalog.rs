@@ -6,6 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Default)]
 pub struct TrustedExtensionCatalog {
+    // ADR-0014: in-process only; never parsed from an extension artifact.
+    pub(crate) echo_fixture: bool,
     pin: Option<String>,
     artifact: Option<Artifact>,
     ir: String,
@@ -40,6 +42,12 @@ struct Selection {
     reads: Vec<String>,
 }
 impl TrustedExtensionCatalog {
+    pub(crate) fn echo_fixture() -> Self {
+        Self {
+            echo_fixture: true,
+            ..Default::default()
+        }
+    }
     /// Hash the exact bytes, including local schemas. A missing/invalid pin never enables extensions.
     pub fn from_pinned_bytes(raw: &[u8], sha256: &str) -> Result<Self> {
         if sha256.len() != 64
@@ -57,6 +65,7 @@ impl TrustedExtensionCatalog {
         artifact.validate()?;
         let ir = serde_json::to_string(&artifact.rules).map_err(|e| e.to_string())?;
         Ok(Self {
+            echo_fixture: false,
             pin: Some(sha256.to_owned()),
             artifact: Some(artifact),
             ir,
@@ -82,7 +91,7 @@ impl TrustedExtensionCatalog {
                 },
             ));
         }
-        let op = catalog::operation(name, direction)?;
+        let op = catalog::operation_with_echo(self.echo_fixture, name, direction)?;
         Ok((
             op["entry"].as_str().ok_or("missing entry")?.to_owned(),
             catalog::uri(
@@ -112,7 +121,8 @@ impl TrustedExtensionCatalog {
             coglet_types::validate_with_schema(&self.ir, rule, &profile_value(value, 0)?)
         } else {
             catalog::check(
-                &catalog::operation(name, direction)?[if output { "output" } else { "input" }],
+                &catalog::operation_with_echo(self.echo_fixture, name, direction)?
+                    [if output { "output" } else { "input" }],
                 value,
             )
         }

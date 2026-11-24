@@ -58,7 +58,7 @@ pub struct SurfaceSession {
     output: VecDeque<Vec<u8>>,
     revision: u64,
     epoch: u64,
-    operations: BTreeMap<String, String>,
+    operations: BTreeMap<String, BTreeSet<String>>,
     resources: BTreeSet<String>,
     grants: BTreeMap<String, Value>,
     mapping: Option<(u64, u64)>,

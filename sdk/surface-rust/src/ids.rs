@@ -68,6 +68,18 @@ pub fn unhex(s: &str) -> Option<Vec<u8>> {
 mod tests {
     use super::*;
     #[test]
+    fn random_ids_are_fresh_lowercase_128_bit_values() {
+        let ids: std::collections::HashSet<_> = (0..1024)
+            .map(|_| {
+                let id = random_id().expect("OS CSPRNG must be available");
+                assert!(is_correlation_id(&id));
+                id
+            })
+            .collect();
+        assert_eq!(ids.len(), 1024);
+    }
+
+    #[test]
     fn grammars() {
         assert!(is_surface_id(&format!("surface:{}", "a".repeat(64))));
         assert!(!is_surface_id(&format!("surface:{}", "A".repeat(64))));

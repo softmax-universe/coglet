@@ -20,6 +20,7 @@ and the other ADR status decisions remain separate.
 | 0011 | Design-document fold-in | Reserved by orchestrator |
 | 0012 | Hub publish-time float rewrite (if ADR-0003 changes) | Reserved by orchestrator |
 | 0013 | [Factory database capability and recovery boundary](0013-factory-db-capability.md) | Proposed; PR #41 |
+| 0014 | [Isolated M1 echo fixture catalog](0014-m1-echo-fixture-catalog.md) | Accepted; PR #73; implementation qualification separate |
 | 0015 | [Executable companion fixtures for archive-profile replay](0015-archive-executable-guest-fixtures.md) | Proposed |
 | 0017 | [Recorded game observations and motor-only game extensions](0017-game-observations-and-research.md) | Proposed |
 | 0020 | [Vocabulary: router, adapter, runtime](0020-vocabulary.md) | Proposed; stage 1 (prose) only |

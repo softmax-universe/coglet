@@ -1,9 +1,9 @@
 # ADR-0014: Isolated M1 echo fixture catalog
 
-- Status: Proposed
+- Status: Accepted (PR #73)
 - Date: 2026-11-24
 - Authors: Coglet M1 integration owner
-- Related PR: this ADR PR; M1 implementation follows separately
+- Related PR: [#73](https://github.com/softmax-universe/coglet/pull/73); M1 implementation follows separately
 - Supersedes / superseded by: none
 
 ## Context
@@ -83,6 +83,5 @@ select the fixture catalog.
 
 ## Approval
 
-Proposed for independent exact-head review and merge before M1 implementation.
-The accepting merged ADR PR records the decision; this document alone does not
-claim implementation qualification or completion of M1 gates.
+Accepted through independently reviewed PR #73, merged before M1 implementation.
+That decision does not claim implementation qualification or completion of M1 gates.

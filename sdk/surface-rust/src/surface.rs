@@ -17,7 +17,7 @@ use crate::backend::{ActionRequest, Backend, BackendHealth, KillFence, Native, S
 use crate::catalog::{
     Catalog, Direction, UNQUALIFIED, catalog, required_resources, rule_key, schema_uri,
 };
-use crate::config::{Config, GrantSpec, check_grants};
+use crate::config::{Config, GrantSpec, check_grants_catalog};
 use crate::error::{ApiError, Code};
 use crate::ids::random_id;
 use crate::speech::{Normalized, SpeechState};
@@ -82,6 +82,9 @@ fn advertise(cat: &Catalog, backend: &dyn Backend) -> Advertisement {
             _ => 2,
         };
         by_entry.entry(entry.clone()).or_default()[slot].push(name.clone());
+        if op.direction == Direction::FixtureEventAction {
+            by_entry.entry(entry.clone()).or_default()[0].push(name.clone());
+        }
         adv.operations.insert(name.clone());
     }
     for (entry, [events, reads, actions]) in by_entry {
@@ -233,8 +236,31 @@ impl Surface {
         backend: Arc<dyn Backend>,
         wall: WallClock,
     ) -> Result<Self, String> {
-        cfg.validate()?;
-        let cat = catalog()?;
+        Self::open_catalog(cfg, state_dir, backend, wall, catalog()?)
+    }
+    /// ADR-0014 trusted M1 harness seam; not reachable through adapter config or
+    /// any native transport. Production open() continues using the pinned catalog.
+    pub fn open_echo_fixture(
+        cfg: Config,
+        state_dir: &Path,
+        backend: Arc<dyn Backend>,
+    ) -> Result<Self, String> {
+        Self::open_catalog(
+            cfg,
+            state_dir,
+            backend,
+            crate::store::system_wall_clock(),
+            Catalog::echo_fixture()?,
+        )
+    }
+    fn open_catalog(
+        cfg: Config,
+        state_dir: &Path,
+        backend: Arc<dyn Backend>,
+        wall: WallClock,
+        cat: &'static Catalog,
+    ) -> Result<Self, String> {
+        cfg.validate_catalog(cat)?;
         let adv = advertise(cat, backend.as_ref());
         let store = Store::open_with_clock(state_dir, &cfg.surface, wall).map_err(serr)?;
         let kill = KillSwitch(Arc::new(KillInner {
@@ -302,7 +328,7 @@ impl Surface {
         };
         // Fail early on configs that cannot yield a valid snapshot after restriction.
         let (eff, _) = me.restrict(&me.operator_grants.clone(), None);
-        check_grants(&eff, None, &me.cfg.bound_coglets).map_err(|e| e.message)?;
+        check_grants_catalog(&eff, None, &me.cfg.bound_coglets, me.cat).map_err(|e| e.message)?;
         Ok(me)
     }
 
@@ -361,7 +387,7 @@ impl Surface {
         specs: Vec<GrantSpec>,
     ) -> Result<Vec<Vec<u8>>, ApiError> {
         self.check_clock(now).map_err(ApiError::internal)?;
-        check_grants(&specs, Some(now), &self.cfg.bound_coglets)?;
+        check_grants_catalog(&specs, Some(now), &self.cfg.bound_coglets, self.cat)?;
         let mut out = Vec::new();
         self.operator_grants = specs;
         if self.phase == Phase::Active {
@@ -689,7 +715,11 @@ impl Surface {
             .find(|g| g.coglet == coglet && g.expires > now && g.operations.iter().any(|o| o == op))
             .ok_or_else(|| ApiError::denied("operation not granted to coglet"))?;
         match self.cat.op(op) {
-            Some(o) if o.direction == Direction::Action => {}
+            Some(o)
+                if matches!(
+                    o.direction,
+                    Direction::Action | Direction::FixtureEventAction
+                ) => {}
             _ => return Err(ApiError::invalid("operation is not an action")),
         }
         if let Some(r) = required_resources(op)
@@ -897,6 +927,29 @@ impl Surface {
     }
 
     // ------------------------------------------------------------ native events
+
+    /// Emit the sole trusted ADR-0014 fixture observation. Production catalogs
+    /// refuse it, and ordinary grant/lifecycle/schema checks still gate delivery.
+    pub fn emit_echo_fixture(
+        &mut self,
+        now: u64,
+        payload: Json,
+        owner: &str,
+    ) -> Result<Vec<Vec<u8>>, String> {
+        if !self
+            .cat
+            .op("test.echo")
+            .is_some_and(|o| o.direction == Direction::FixtureEventAction)
+        {
+            return Err("echo fixture catalog not installed".into());
+        }
+        let mut wire = self.tick(now)?;
+        self.cat.validate_input("test.echo", &payload)?;
+        let mut out = Vec::new();
+        self.deliver(now, "test.echo", payload, Some(owner), &mut out)?;
+        wire.extend(self.encode_all(out)?);
+        Ok(wire)
+    }
 
     fn deliver(
         &mut self,
