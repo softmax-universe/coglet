@@ -487,6 +487,51 @@ fn hermes_contract_fixture_create_claim_complete() {
 }
 
 #[test]
+fn unconfigured_transport_does_not_fabricate_worker_failure() {
+    let (_root, mut db) = seed();
+    let mut host = FactoryHost::connect("http://127.0.0.1:1");
+    assert!(host.run(&mut db, 10).is_err());
+    assert_ne!(db.get_outbox(KEY).unwrap().unwrap().state, "failed");
+    assert!(db.pending_deliveries().unwrap().is_empty());
+    let server = ContractKanbanServer::spawn();
+    let adapter = coglet_factory_host::HttpKanban::authenticated(
+        server.base(),
+        "coglet-factory-t01a20f44e61e630a",
+        "wrong-token",
+        "worker-a1",
+        "fixture",
+    )
+    .unwrap();
+    let mut host = FactoryHost::from_adapter(adapter);
+    host.dispatcher()
+        .recover_and_dispatch(&mut db, 11, 8)
+        .unwrap();
+    assert_eq!(db.get_outbox(KEY).unwrap().unwrap().state, "uncertain");
+    assert!(db.pending_deliveries().unwrap().is_empty());
+    assert!(server.is_empty());
+}
+
+#[test]
+fn unsupported_retry_holds_expired_attempt_without_poisoning_cycle() {
+    let (_root, mut db) = seed();
+    let server = ContractKanbanServer::spawn();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    host.run(&mut db, 10).unwrap();
+    let original = db.get_work_queue(TASK).unwrap().unwrap();
+    let before = server.requests().len();
+    let batch = host.run(&mut db, 90_000).unwrap();
+    assert!(batch.expired.is_empty());
+    assert_eq!(db.get_work_queue(TASK).unwrap().unwrap(), original);
+    assert!(
+        server.requests()[before..]
+            .iter()
+            .all(|r| r["method"] == "GET")
+    );
+    server.post_result(&db.get_binding(KEY).unwrap().unwrap(), true, "late result");
+    assert_eq!(host.run(&mut db, 90_001).unwrap().follow_ups.len(), 1);
+}
+
+#[test]
 fn factory_dispatch_crash_reconciles_exactly_once() {
     let (root, mut db) = seed();
     let server = ContractKanbanServer::spawn();

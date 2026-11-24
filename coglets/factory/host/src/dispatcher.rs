@@ -365,11 +365,12 @@ impl<A: HermesAdapter> Dispatcher<A> {
             .ok_or_else(|| "unknown intent".to_string())?;
         let task_id = task_id_of(&row);
         let queue = self.fence(db, &task_id, attempt, lease)?;
-        let until = now.saturating_add(LEASE_MS);
+        let mut until = now.saturating_add(LEASE_MS);
         if let Some(remote) = db.get_binding(intent_id)? {
-            self.adapter
+            until = self
+                .adapter
                 .heartbeat(&remote, until as u64, attempt, lease)
-                .map_err(|e| format!("{e:?}"))?;
+                .map_err(|e| format!("{e:?}"))? as i64;
         }
         db.put_work_queue(&WorkQueueRow {
             lease_until: Some(until),
@@ -400,6 +401,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
     }
 
     pub fn expire_leases(&mut self, db: &mut Database, now: i64) -> Result<Vec<String>> {
+        if !self.adapter.supports_retry() {
+            return Ok(vec![]);
+        }
         let due = db.work_in_state("leased")?;
         let mut expired = Vec::new();
         for row in due {

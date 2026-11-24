@@ -59,6 +59,11 @@ pub enum AdapterError {
 }
 
 pub trait HermesAdapter {
+    /// Unsupported retry leaves the exact attempt held for evidence polling,
+    /// never a local requeue that would invent a remote lifecycle operation.
+    fn supports_retry(&self) -> bool {
+        true
+    }
     fn create(&mut self, spec: &TaskSpec) -> Result<RemoteTask, AdapterError>;
     fn claim(
         &mut self,
@@ -82,7 +87,7 @@ pub trait HermesAdapter {
         until: u64,
         attempt: u64,
         lease: &str,
-    ) -> Result<(), AdapterError>;
+    ) -> Result<u64, AdapterError>;
     fn retry(&mut self, remote_id: &str) -> Result<(), AdapterError>;
     fn cancel(&mut self, remote_id: &str, attempt: u64, lease: &str) -> Result<(), AdapterError>;
     fn progress(
@@ -184,7 +189,7 @@ impl HermesAdapter for MockAdapter {
         until: u64,
         attempt: u64,
         lease: &str,
-    ) -> Result<(), AdapterError> {
+    ) -> Result<u64, AdapterError> {
         let known = self
             .claims
             .iter()
@@ -193,7 +198,7 @@ impl HermesAdapter for MockAdapter {
             return Err(AdapterError::Conflict("stale lease".into()));
         }
         self.heartbeats.push((remote_id.into(), until));
-        Ok(())
+        Ok(until)
     }
 
     fn retry(&mut self, remote_id: &str) -> Result<(), AdapterError> {
