@@ -121,6 +121,12 @@ source control. Bearer authenticates the gateway; the caller-supplied Factory
 owner name is **not** a gateway credential. HTTPS certificate validation is on;
 cleartext is allowed only for loopback fixtures. Redirects and implicit POST
 retry are disabled. Unconfigured `FactoryHost::connect` refuses dispatch.
+The client pins Ring through a per-client rustls configuration with the native
+platform verifier; it does not install or replace a process-global provider.
+This keeps certificate/hostname validation while avoiding aws-lc's Apple SDK
+requirement in the Linux/Zig Apple cross-check. Both the standalone host Apple
+check and the unified runtime/Factory builds must pass (feature unification can
+otherwise hide a standalone TLS-provider failure).
 
 The remote task is `t_` plus the first 16 hex digits of SHA256 of the Factory
 idempotency key. A collision or payload mismatch refuses; archived/deleted IDs
