@@ -2,6 +2,14 @@
 
 ## Current continuation authority (supersedes historical notes below)
 
+### Run130521 update
+
+Independently read completed native logs, saved in workspace/persistence-45423268341.log and replace-45433755546.log. Persistence candidate45423268341@5e6d633 PASSES testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity (1.198s), required real mock lane, portable core, universal helper/signatures and reviewed snapshot comparison. Overall FAILURE is testSettingsFocusedSearchArrowNavigation (SoftmaxUITests.swift214/217/220/227): four focused-search selection assertions. Do not call it full GREEN or rerun/waive without diagnosis and quarantine-policy disposition. This UI navigation code/test is unchanged by persistence repair; causal/inherited/flake attribution is not yet proved.
+
+Replacement RED45433755546@6766f2c is the intended thrown pairing error at HubConnection.swift52 in testOfflinePendingInvitationCanBeReplacedWithoutAcceptingOldCallbacks; persistence recovery also passes1.241s there. Applied minimal ef36558fe0c5bee71dd9b2b1b720aaa0baaf454a: explicit offline pending replacement cancels retry, stops/increments original channel generation, retains key, replaces pending envelope and restarts. Active/enrolled replacement stays forbidden. Candidate45443085385 dispatched on wip/t_01a205f93f231486-replace-green, exact head read back; supported --once exits2 queued. No native GREEN claimed. Fresh packaging1 + signing4 + diff-check PASS.
+
+All five original prerequisite DONE replicas reread. PR98 remains OPEN/DRAFT b2e72d8; new source is deliberately separate pending native proof. NEXT: exact --once run45443085385 at ef36558fe0c5bee71dd9b2b1b720aaa0baaf454a with macos=success; inspect replacement/account/mock/UI/signing/snapshot results. Resolve the actual focused-search failure if it recurs, never label a flake without evidence. Then failed-signout tracer bullet (current signOut clears deviceID before fallible deletion; HubSettings only offers retry when deviceID exists), preserving failed cleanup reachability and callback fencing. Final integration onto PR98, independent exact-head review/all CI/native queue/merge/request_review still pending. No local background processes, new worktrees or cards.
+
 ### Run128614 update
 
 Native SIGPIPE candidate45417062630 at exactb2e72d84776622d553f33c024c457b6d78971934 is SUCCESS (supported --once exit0). Independently read full raw log workspace/sigpipe-green-45417062630.log: closed-input test PASS0.041s; real mock-ROUTER enrollment/drop/offline/recovery PASS1.692s; dedicated native lane3 tests/0skips. UI Pair router smoke PASS11.647s. Universal helper and inside-out ad-hoc signature verification succeed (app/helper valid on disk and designated requirements satisfied). Actual native snapshot matrix360/360 errors[]; earlier missing-render errors in the same log belong to intentionally failing checker unit fixtures. All job steps succeeded. This is not notarization or TCC proof.
