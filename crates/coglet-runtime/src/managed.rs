@@ -73,6 +73,7 @@ impl RuntimeService {
         self.state.managed.as_ref().map(|m| &m.identity)
     }
 
+    #[cfg(feature = "device")]
     pub(crate) fn managed_install_receipt(&self) -> Option<&Value> {
         self.state.managed.as_ref().map(|m| &m.install_receipt)
     }
@@ -209,6 +210,7 @@ impl RuntimeService {
 
     /// Authenticated caller supplies a digest of peer/method/target/params/context,
     /// excluding timeout. Always reauthorize before this lookup.
+    #[cfg(feature = "device")]
     pub(crate) fn managed_operation_receipt(
         &self,
         id: &str,
@@ -232,6 +234,7 @@ impl RuntimeService {
         Ok(None)
     }
 
+    #[cfg(feature = "device")]
     pub(crate) fn managed_operation(
         &mut self,
         id: &str,

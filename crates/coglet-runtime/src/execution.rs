@@ -260,6 +260,7 @@ impl RuntimeService {
     /// Construct and pin the stopped identity in the very first state frame.
     /// Failure/expiry before that frame leaves only an empty WAL, never an
     /// unmanaged service whose code could be rebound to a later install.
+    #[cfg(feature = "device")]
     pub(crate) fn open_for_install(
         path: &Path,
         setup: &Value,

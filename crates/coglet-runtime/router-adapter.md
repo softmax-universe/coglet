@@ -50,6 +50,16 @@ for their independent acceptance gates.
 
 ## Configuration and runtime API
 
+The default-enabled `device` Cargo feature exposes `DeviceHandler` and builds
+`cogletd` plus its validator. Normal daemon builds retain that feature. Embedded
+C ABI consumers use `default-features = false` and enable `native-engine` only;
+the Apple xcframework/link-probe scripts select this profile explicitly. This
+keeps daemon-only iroh/proto dependencies (including desktop DNS APIs) out of
+iOS archives. It does not qualify the router transport on iOS. Check the actual
+normal dependency graphs for all four Apple targets with
+`python3 crates/coglet-runtime/tools/check-embedded-dependencies.py`; archive
+linking and native execution still require the hosted Apple jobs.
+
 `DeviceHandler::new(config, authority, validator_path, clock)` takes local pins,
 a pre-provisioned `Authority`, a trusted helper executable, and
 `Arc<dyn Fn() -> Option<u64> + Send + Sync>` (trusted Unix seconds, `None` refuses).
