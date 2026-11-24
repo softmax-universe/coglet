@@ -1,47 +1,42 @@
 # Hub enrollment implementation notes
 
-## Pinned inputs
+## Contract and boundaries
 
-- Base `736db6ead9263e31b00680d3632cf269e19a5b38` includes mock hub PR74.
-- Original shell/kernel/protocol parents and new mock part-1 parent are DONE in authorized replicas.
-- `spec-v0:spec/hub-protocol.md` requires pinned hub identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, fresh enrollment on every connection, and null-invite recovery after ambiguous success. No short-code lookup or QR encoding is a wire method.
+- Frozen `spec-v0:spec/hub-protocol.md`: pinned hub identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, fresh enrollment on each connection, null-invite recovery after ambiguous success. Short-code lookup and QR encoding are not wire methods.
+- Shell/protocol/kernel/mock part-1 parent receipts recovered as DONE (PR12/48/58/74).
+- Configure surface: preserve Settings sidebar, heading, search and DesignGroup. Replace only Hub placeholder with shared enrollment controls. Preserve onboarding steps, permissions/login controls and footer. Reuse existing tokens and keyboard navigation. Menu connection availability remains independent of voice/activity.
+- No UI implementation or visual acceptance yet. Baseline gate and native rendered comparison remain mandatory.
 
-## Selected composition and boundary
+## Implemented, partial
 
-Configure surface: preserve Settings sidebar, heading and DesignGroup, replace only its Hub placeholder. Preserve onboarding steps, existing permissions/login controls and footer; replace Hub placeholder with the same reusable enrollment component. Existing design tokens and keyboard controls remain. Menu status remains orthogonal to activity; wire current hub connection into the existing availability input. Native render comparison is still required; no UI implementation or visual acceptance is claimed yet.
+`HubTransport/` is a standalone Cargo package. Production helper uses landed coglet-proto Session + real iroh. Key/config arrive only through anonymous pipes, not argv/env/files/logs. Output is sanitized state/public device ID. Commands bounded to16KiB. Null-invite recovery precedes initial invitation; connected only after version selection; QUIC closure yields offline; EOF closes endpoint.
 
-App transport is `HubTransport/`, an isolated Cargo package to avoid root workspace edits. The helper uses the landed coglet-proto Session API and real iroh, never a substitute socket protocol. Identity/config arrive through anonymous pipes, not argv/environment, files or logs. Stdout carries sanitized state and public device ID only; command parser bounds input to 16 KiB. The helper attempts null-invite recovery before consuming an initial invite, pins the hub node, reports connected only after version selection, and reports offline after QUIC closes. EOF closes its endpoint.
+Swift HubAccount persists a32-byte generated-once seed before use, fails closed on Keychain errors and never silently rotates it. HubKeychain injection tests use memory backend; Security backend uses generic password and `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Non-secret hub config uses UserDefaults; invite is memory-only. HubConnection provides cancelable, generation-fenced reconnect with30s inclusive jitter cap, and local sign-out deletion. ProcessHubLink bridges anonymous pipes and fences stale callbacks.
 
-## Remaining Swift implementation (not delivered)
+Native run45341075790 and run45342465981 compiled production Swift and passed four HubConnectionTests +two HubKeychainTests. Optional native mock test skipped without executable paths; NOT acceptance. Required real-helper/native test still unexecuted.
 
-1. `HubStore` main-actor abstraction: key and non-secret hub configuration, with an in-memory fake. `HubAccount.identity()` loads existing 32-byte seed or generates once, saving before use; any read/write failure fails closed without rotating. Real adapter uses Security generic-password items and `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`; non-synchronizable. Non-secret configuration may use UserDefaults, never an invite.
-2. `HubLink` main-actor adapter for the bundled helper; private input pipe and async output reader. Stop terminates helper, closes handles, cancels reader. Generation fence ignores late process callbacks after sign out/new start.
-3. `HubConnection` owns observable state via a callback (portable core avoids Combine); automatic exponential capped backoff, bounded jitter, cancelable retry; immediate offline on disconnect, reconnect via same identity and null invite. Sign out stops tasks/helper before deleting both local key and hub record. Show deletion/storage errors rather than silently succeeding.
-4. Pairing: accept pasted QR JSON or image QR import locally; developer fields for pinned hub ID and socket addresses, 64-lowercase-hex invitation. Display/copy public device ID first for peer-bound invitation creation. Local JSON envelope: name, hub, addresses, optional relay/invite/device. Validate limits, hex, addresses and expected device; never introduce a network short-code service or change spec.
-5. Add real native `HubConnectionTests` using production helper plus `coglet-mock --example hub DEVICE_NODE_ID` launcher. Assert connected, force drop, observe offline, then auto-recover same identity with null invite. Existing initial tests cover fake keychain/restart/failure, controller reconnect and late callbacks.
-6. Build universal helper, copy it into app bundle on project build, sign inside-out in dev path (release script already recursively signs Mach-O). Minimal workflow steps build helper/mock launcher and set test executable paths. Require native test execution, not skip-only success.
+Rust real MockHub enrollment/drop/offline/recovery/revocation and private-stdio/EOF tests passed locally; strict all-target Clippy/fmt passed on6071ef2. Forward main integration e9e5817 and regenerated standalone helper lock repaired actual transitive reqwest lock conflict.
 
-## Continuation 3 (partial, not acceptance)
+## Current native blocker
 
-- Native run45339491432@95819e4 confirmed intended missing HubKeychain/HubKeyAccessibility and extra `keychain:` argument RED. Unrelated snapshot "missing actual" ran after the compile failure (`if: !cancelled`) and is not RED.
-- Implemented HubKeychain protocol, HubKeyAccessibility.afterFirstUnlockThisDeviceOnly, SecurityHubKeychain (generic password, device-only accessibility, add-only), and KeychainHubStore(keychain:).
-- Capped reconnect delay including jitter at 30s. Early workflow filter now includes HubKeychainTests.
-- ProcessHubLink remains from 3e7466b. No UI/signing/universal packaging yet. No native GREEN claimed until hosted Swift runs.
+https://github.com/softmax-universe/coglet/actions/runs/45342465981 fails building helper/mock: existing `crates/coglet-proto/src/validator.rs:182` imports nix waitid/Id under cfg(unix), but these nix0.31 APIs do not exist on Darwin. This is not Swift RED or a missing snapshot diagnosis. Separate owner `t_01a20c519d9fa91e` owns portable compilation without weakening process custody/validator enforcement. Do not replace unreaped-leader custody with reap-then-kill. First incorrectly pinned owner `t_01a20c51098e61de` was archived.
 
-## Continuation 2 (partial, not acceptance)
+## Packaging slice (portable orchestration verified only)
 
-- Actual macOS run45337370014 confirmed intended missing HubStore/HubPairing/HubLink RED before Swift implementation.
-- Implemented HubAccount/KeychainHubStore, validated local HubPairing, and generation-fenced HubConnection at43cfba1. Native run45339043426 found a Swift 6 actor-isolation error in the default random generator; fixed with `nonisolated static` atd20572b.
-- Native run45339321655 then compiled the new production core and failed as intended for missing ProcessHubLink in the new real-mock process acceptance test. Actual logs read. Implemented that process bridge at3e7466b (backup only, not yet natively compiled).
-- Added HubKeychainTests at95819e4: requires injected HubKeychain backend and HubKeyAccessibility policy. Those APIs are intentionally NOT implemented yet. Run45339491432 on exact95819e4 is queued; obtain its missing-keychain-API RED before refactoring KeychainHubStore. PR98 deliberately remains95819e4 so this native RED is not canceled. Backup branch wip/t_01a205f93f231486 holds newer3e7466b, including process bridge and workflow real-helper/mock builds plus required native acceptance execution.
-- No Swift GREEN yet. No UI, signing or universal packaging yet. Rust tests are prior-run results on unchanged Rust source; no fresh Rust execution claimed this run.
-- Next: verify Keychain RED; implement HubKeychain abstraction/default Security backend and injected in-memory tests. Push latest source to PR branch, get core/native compile+GREEN and actual real mock-hub acceptance. The native bootstrap reader timeout is canceled as soon as bootstrap arrives; no secret output is logged.
-- Revisit process crash recovery/error tests, bounded retry cap including jitter, and pipe-write SIGPIPE behavior. Identity, enrollment and sign-out remain fail-closed. Preserve the UI delta boundary above; full native render comparison, independent review, all CI and merge queue remain required.
+- `scripts/build-hub-helper.sh` builds --locked --release for aarch64/x86_64 Apple targets, lipo-merges and verifies both architectures, atomically installs executable under Contents/Helpers/softmax-hub-link.
+- project.yml post-build invokes that script. Rust toolchain/targets are required for Xcode builds.
+- sign-dev.sh signs the helper before outer app. Existing release path recursively signs Mach-O.
+- Tests/test_hub_packaging.py uses explicitly fake cargo/lipo to verify orchestration and paths with spaces; Tests/test_dev_signing.py uses fake signing/keychain to assert inside-out order. Both observed expected RED, then GREEN (1 packaging +4 signing cases). These are NOT native universal binary, codesign or TCC proof. Native build remains blocked above.
 
-## TDD state
+## Remaining delivery
 
-Rust `enroll_drop_offline_recover_same_identity` was observed RED (unresolved app library) before implementation, then GREEN against real MockHub. Private stdio process integration, EOF and strict Clippy also passed locally. Swift tests were pushed before any production Swift implementation: draft PR98 at initial head3dd8ac0; macOS run45337370014 is queued. Its intended RED must be verified from actual compiler/test logs before implementing the Swift account/controller. This Linux host has no Swift toolchain; don't claim native execution.
+1. Obtain dependency repair and real native helper/mock acceptance; read actual test output, not just job status. Required workflow supplies executable paths and SOFTMAX_REQUIRE_HUB_TESTS=1, so it cannot count a skip as success.
+2. UI wiring: local pasted pairing JSON/code, QR image import, pinned manual developer hub/address, public device ID copy, hub name/status and local unenroll. Envelope fields name/hub/addresses plus optional relay/invite/device; validation already in HubPairing. Do not invent remote short-code lookup.
+3. Wire ShellModel lifecycle and existing menu availability; shared controls only in existing Settings Hub and onboarding placeholders. Run baseline gate before UI edits and real native render comparison after.
+4. Verify native Xcode helper bundle architecture, resource lookup and inside-out signing on actual target. Portable fixture tests do not satisfy this.
+5. Revisit ProcessHubLink pipe-write SIGPIPE and crash/restart coverage.
+6. Independent exact-head review, every required check green, native merge queue, then kanban_request_review with published_pr. PR98 remains draft; no merge/delivery claim.
 
-## Gates still open
+## TDD provenance
 
-No app identity/UI/controller exists yet. No end-to-end Swift acceptance, native rendered comparison, independent final review, green final CI or merge claim. PR98 intentionally remains DRAFT. Do not request acceptance review or complete the card at this checkpoint.
+Rust initial library RED then real-iroh GREEN. Swift initial missing core API RED run45337370014; missing process bridge RED run45339321655; missing Keychain injection RED run45339491432. Production Swift six-test GREEN above. Linux worker has no Swift toolchain: native results are hosted evidence, never local execution.
