@@ -38,6 +38,8 @@ jobs:
       - name: Resolve Jackson before Python test collection
         # Normal/proof builds never fetch Central metadata; prepare may fill a miss.
         timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/resolve_maven.py ${{ inputs.bundle-mode == 'prepare' && '--prepare' || '' }}
       - name: Java emitter keyword and collision regressions (no skips)
         run: >-

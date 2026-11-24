@@ -18,12 +18,23 @@ fallback. **Maven normal/proof jobs never fall back to Central:** after mirror a
 Actions cache restore, `resolve_maven.py` invokes the fully versioned
 `org.apache.maven.plugins:maven-dependency-plugin:3.11.0:go-offline` with `--offline`.
 It does not perform plugin-prefix/latest-version lookup or force metadata refresh
-with `-U`. Successful resolution exports `MAVEN_ARGS=--offline` for subsequent
-Maven invocations (including Python subprocesses). A missing closure fails clearly
+with `-U`. Successful normal/proof resolution exports `MAVEN_ARGS=--offline` for
+subsequent Maven invocations (including Python subprocesses). Preparation leaves
+later full tests online until capture, including dynamically loaded Surefire
+providers that go-offline alone does not fetch. A missing closure fails clearly
 instead of waiting on Central. Local contributor builds remain unchanged.
 
 Only explicit `bundle-mode: prepare` may fill a cold Maven cache online, after
-trying offline first. A shared monotonic 165-second budget bounds that sequence;
+trying offline first. On a preparation miss it first seeds from the exact original
+Java Maven archive in reviewed candidate `9b5f54198673ff089905d82db874ace4a27bd101`,
+verified against hardcoded SHA-256 `5957675c303a908498be1b2c9e88475f691806dc043c7046e087fe87ef52a061`.
+This read-only GitHub bootstrap is a partial cache seed: original asset identity
+and provenance remain unchanged, full tests still run, and capture emits a genuinely
+new input-addressed closure. Normal/proof cannot use this seed as a substitute for
+current input keys. This lets preparation fill/save a cold cache even while Central
+returns 429 and the first shared publication is unavailable. The candidate must
+be retained until a reviewed replacement seed is committed.
+A shared monotonic 165-second budget bounds resolution and seed download together;
 both Java and conformance also impose a native three-minute step timeout. The
 empty-cache regression invokes real Maven offline and requires failure in under
 30 seconds. When adding Maven dependencies/plugins, publish a validated candidate

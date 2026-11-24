@@ -31,13 +31,37 @@ class MavenResolutionTests(unittest.TestCase):
     def test_only_explicit_preparation_can_populate_a_miss_with_one_shared_budget(self):
         module = self.load()
         results = [subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0), subprocess.CompletedProcess([], 0)]
-        with patch.object(module.subprocess, 'run', side_effect=results) as run, patch.object(module.time, 'monotonic', side_effect=[0, 1, 40, 150]):
+        with patch.object(module, 'seed_maven', return_value=False), patch.object(module.subprocess, 'run', side_effect=results) as run, patch.object(module.time, 'monotonic', side_effect=[0, 1, 40, 150]):
             self.assertEqual(module.resolve(prepare=True), 0)
             self.assertEqual(run.call_count, 3)
             self.assertIn('--offline', run.call_args_list[0].args[0])
             self.assertNotIn('--offline', run.call_args_list[1].args[0])
             self.assertIn('--offline', run.call_args_list[2].args[0])
             self.assertEqual([call.kwargs['timeout'] for call in run.call_args_list], [30, 125, 15])
+    def test_prepare_can_seed_then_verify_offline_without_contacting_central(self):
+        module = self.load()
+        self.assertTrue(hasattr(module, 'seed_maven'), 'reviewed Maven bootstrap is missing')
+        with patch.object(module, 'seed_maven', return_value=True) as seed, patch.object(module.subprocess, 'run', side_effect=[subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0)]) as run:
+            self.assertEqual(module.resolve(prepare=True), 0)
+            seed.assert_called_once()
+            self.assertEqual(run.call_count, 2)
+            self.assertTrue(all('--offline' in call.args[0] for call in run.call_args_list))
+
+    def test_seed_rejects_corrupt_bytes_without_replacing_the_existing_cache(self):
+        import os
+        import tempfile
+        module = self.load()
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory) / 'repository'
+            repository.mkdir()
+            (repository / 'sentinel').write_text('untouched')
+            def corrupt_download(command, **kwargs):
+                (Path(command[-1]) / command[-3]).write_bytes(b'corrupt fixture')
+                return subprocess.CompletedProcess(command, 0)
+            with patch.dict(os.environ, {'GH_TOKEN': 'non-secret-test-fixture'}), patch.object(module.subprocess, 'run', side_effect=corrupt_download):
+                self.assertFalse(module.seed_maven(repository, module.time.monotonic() + 10))
+            self.assertEqual((repository / 'sentinel').read_text(), 'untouched')
+
     def test_prepare_does_not_force_later_test_commands_offline_before_capture(self):
         import os
         import tempfile
@@ -59,7 +83,7 @@ class MavenResolutionTests(unittest.TestCase):
 
     def test_exhausted_prepare_budget_cannot_start_another_attempt(self):
         module = self.load()
-        with patch.object(module.time, 'monotonic', side_effect=[0, 1, 166]), patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1)) as run:
+        with patch.object(module, 'seed_maven', return_value=False), patch.object(module.time, 'monotonic', side_effect=[0, 1, 166]), patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1)) as run:
             self.assertEqual(module.resolve(prepare=True), 1)
             self.assertEqual(run.call_count, 1)
 
