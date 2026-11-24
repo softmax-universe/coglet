@@ -7,6 +7,21 @@ use coglet_proto::{
 };
 use iroh::{Endpoint, SecretKey, endpoint::presets};
 
+/// Loopback-only endpoint. The default binds every interface and advertises LAN
+/// addresses; a host firewall (macOS application firewall in stealth mode) drops
+/// incoming UDP to those for unsigned test binaries, so the connect never completes.
+/// This test injects faults at the application boundary and needs no real network.
+async fn loopback_endpoint(alpns: Vec<Vec<u8>>) -> Endpoint {
+    Endpoint::builder(presets::Minimal)
+        .clear_ip_transports()
+        .bind_addr("127.0.0.1:0")
+        .unwrap()
+        .alpns(alpns)
+        .bind()
+        .await
+        .unwrap()
+}
+
 async fn sessions(
     hub: &Endpoint,
     device: &Endpoint,
@@ -40,12 +55,13 @@ async fn router_iroh_lost_reply_reorder_disconnect_restart_retains_old_batch_rec
 }
 async fn scenario() {
     let dir = tempfile::tempdir().unwrap();
-    let hub = Endpoint::builder(presets::Minimal)
-        .alpns(vec![ALPN.to_vec()])
-        .bind()
-        .await
-        .unwrap();
-    let device = Endpoint::builder(presets::Minimal).bind().await.unwrap();
+    let hub = loopback_endpoint(vec![ALPN.to_vec()]).await;
+    let device = loopback_endpoint(vec![]).await;
+    assert!(
+        hub.addr().ip_addrs().all(|addr| addr.ip().is_loopback()),
+        "hub must advertise loopback only: {:?}",
+        hub.addr()
+    );
     let key = SecretKey::from_bytes(&[7; 32]);
     let target = format!("coglet:{}", key.public());
     let kernel = Kernel::open(dir.path(), hub.id(), Arc::new(|| Some(1))).unwrap();
