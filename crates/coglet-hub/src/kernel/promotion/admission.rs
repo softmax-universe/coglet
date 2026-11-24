@@ -108,7 +108,14 @@ fn reason(error: &Error) -> &'static str {
     match error {
         Error::Conflict(_) => "conflict",
         Error::Invalid => "invalid_argument",
-        Error::Denied | Error::Authority(_) => "permission_denied",
+        Error::Denied => "permission_denied",
+        Error::Authority(e) => match e {
+            coglet_proto::authority::AuthorityError::Unauthenticated => "unauthenticated",
+            coglet_proto::authority::AuthorityError::PermissionDenied => "permission_denied",
+            coglet_proto::authority::AuthorityError::ResourceExhausted => "resource_exhausted",
+            coglet_proto::authority::AuthorityError::InvalidArgument => "invalid_argument",
+            coglet_proto::authority::AuthorityError::Storage => "unavailable",
+        },
         _ => "unavailable",
     }
 }
@@ -400,6 +407,7 @@ impl Kernel {
             let (reply, phase) = match admission {
                 Ok(result) => (response(&v,Ok(result)),"admitted"),
                 Err(Error::Storage(e)) => return Err(Error::Storage(e)),
+                Err(e @ Error::Authority(coglet_proto::authority::AuthorityError::Storage)) => return Err(e),
                 Err(e) => {
                     evidence_refs.clear();
                     let snapshot: Option<(String,Option<String>)> = tx.query_row("SELECT generation,proposal FROM promotion_state WHERE target=?1",[target],|r|Ok((r.get(0)?,r.get(1)?))).optional()?;

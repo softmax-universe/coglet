@@ -266,6 +266,30 @@ fn incompatible_unreleased_outbox_schema_fails_closed_on_open() {
     );
 }
 
+#[tokio::test]
+async fn shared_authority_storage_fault_does_not_consume_request_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    let db = rusqlite::Connection::open(dir.path().join("authority.db")).unwrap();
+    db.execute_batch("ALTER TABLE proto_grants RENAME TO saved_grants")
+        .unwrap();
+    let input = wire::encode(&propose(&target, "1")).unwrap();
+    let before = k.audit().await.unwrap();
+    assert!(
+        k.promotion_request(caller(), input.clone(), Arc::new(FixtureAuthority), None)
+            .await
+            .is_err()
+    );
+    assert_eq!(k.audit().await.unwrap(), before);
+    db.execute_batch("ALTER TABLE saved_grants RENAME TO proto_grants")
+        .unwrap();
+    let reply = k
+        .promotion_request(caller(), input, Arc::new(FixtureAuthority), None)
+        .await
+        .unwrap();
+    assert_eq!(wire::decode(&reply).unwrap()["result"]["state"], "proposed");
+}
+
 struct ChangingAuthority(std::sync::atomic::AtomicUsize);
 impl GateAuthority for ChangingAuthority {
     fn verify(&self, _: &GateReport, _: &GateBinding) -> coglet_hub::Result<()> {
@@ -441,6 +465,34 @@ async fn promote_admits_one_exact_outbox_intent_without_claiming_activation() {
         .unwrap();
     assert_eq!(live, None);
     assert_eq!(g, "1");
+    let before_replacement = k.audit().await.unwrap();
+    assert!(matches!(
+        k.install_policy(
+            wire::encode(&policy(&target, "b")).unwrap(),
+            Some("a".repeat(32))
+        )
+        .await,
+        Err(coglet_hub::Error::Conflict(_))
+    ));
+    assert_eq!(k.audit().await.unwrap(), before_replacement);
+    assert_eq!(
+        db.query_row("SELECT revision FROM policy_current", [], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        "a".repeat(32)
+    );
+    assert_eq!(
+        db.query_row("SELECT generation FROM promotion_state", [], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        "1"
+    );
+    assert_eq!(
+        db.query_row("SELECT bundle FROM promotion_outbox", [], |r| r
+            .get::<_, Vec<u8>>(0))
+            .unwrap(),
+        bundle
+    );
     drop(k);
     let k = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
     assert_eq!(
