@@ -76,13 +76,11 @@ class SchemaLintTests(unittest.TestCase):
             self.assertEqual(lint(root), [])
 
     def test_actual_generated_output_paths_are_checked(self):
-        # All current outputs of codegen.generate.generate, including Java IR.
+        # All current outputs of codegen.generate.generate.
         paths = [
             'crates/coglet-types/src/generated.rs',
             'sdk/surface-python/coglet_surface/generated.py',
             'sdk/surface-go/types/generated.go',
-            'sdk/surface-java/src/main/java/org/coglet/surface/Generated.java',
-            'sdk/surface-java/src/main/resources/schema.json',
             'sdk/surface-swift/Sources/CogletTypes/Generated/Types.swift',
         ]
         for relative in paths:
