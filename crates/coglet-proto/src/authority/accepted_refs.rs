@@ -12,6 +12,57 @@ use crate::{
 use iroh::EndpointId;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
+
+/// Immutable mutation intent bound to the authenticated caller. Construct from
+/// the actual request, not a synthetic acceptance context. Timeout is not intent.
+#[derive(Clone)]
+pub struct PushOperation {
+    peer: EndpointId,
+    id: String,
+    target: String,
+    context: Value,
+    params: Value,
+    digest: String,
+}
+impl PushOperation {
+    pub fn new(peer: EndpointId, request: &Value) -> Result<Self> {
+        if !valid("hub-request", request) || request["method"] != "hub.git.push" {
+            return Err(StoreError::Conflict);
+        }
+        let intent = serde_json::json!({"method":request["method"],"params":request["params"],"context":request["context"]});
+        let bytes = crate::wire::encode(&intent).map_err(|_| StoreError::Conflict)?;
+        Ok(Self {
+            peer,
+            id: request["correlation_id"]
+                .as_str()
+                .ok_or(StoreError::Conflict)?
+                .into(),
+            target: request["target"]
+                .as_str()
+                .ok_or(StoreError::Conflict)?
+                .into(),
+            context: request["context"].clone(),
+            params: request["params"].clone(),
+            digest: hex::encode(Sha256::digest(bytes)),
+        })
+    }
+    fn check(&self, metadata: &VerifiedRef, context: &Acceptance<'_>) -> Result<()> {
+        if context.mode != Mode::Authoritative
+            || context.peer != self.peer
+            || context.coglet != self.target
+            || self.params["update"] != *metadata.signed()
+            || self.context["actor"] != context.scope.actor
+            || self.context["ticket"].as_str() != context.scope.ticket.as_deref()
+        {
+            return Err(StoreError::Conflict);
+        }
+        Ok(())
+    }
+    fn queued(&self) -> Value {
+        serde_json::json!({"operation_id":self.id,"state":"queued","step":null,"error":null})
+    }
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -101,7 +152,12 @@ impl AcceptedRefStore {
                 hub TEXT NOT NULL, coglet TEXT NOT NULL, ref TEXT NOT NULL,
                 mode TEXT NOT NULL, signed TEXT NOT NULL, generation TEXT NOT NULL,
                 tip TEXT NOT NULL, audit_id INTEGER NOT NULL REFERENCES proto_ref_audit(id),
-                PRIMARY KEY(hub,coglet,ref));",
+                PRIMARY KEY(hub,coglet,ref));
+                CREATE TABLE IF NOT EXISTS proto_git_operations(
+                peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
+                digest TEXT NOT NULL, receipt TEXT NOT NULL,
+                audit_id INTEGER NOT NULL REFERENCES proto_ref_audit(id),
+                PRIMARY KEY(peer,operation_id,target));",
             )?;
         }
         Ok(Self { authority })
@@ -111,6 +167,77 @@ impl AcceptedRefStore {
     pub fn current(&self, hub: &str, coglet: &str, kind: RefKind) -> Result<Option<AcceptedRef>> {
         let state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
         load(&state.db, hub, coglet, kind).map(|row| row.map(|(_, value)| value))
+    }
+
+    /// Blocking pre-credit authorization and watermark check in one current
+    /// database snapshot. This conveys no lease: `accept` repeats these checks
+    /// under the write lock after complete Git validation. Call off the reactor.
+    pub fn precheck(
+        &self,
+        metadata: &VerifiedRef,
+        context: &Acceptance<'_>,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<()> {
+        self.precheck_inner(metadata, context, None, trusted_clock)
+    }
+
+    /// Exact admitted retries still need complete transfer validation and fresh
+    /// authority; only their publisher CAS comparison is bypassed.
+    pub fn precheck_push(
+        &self,
+        metadata: &VerifiedRef,
+        context: &Acceptance<'_>,
+        operation: &PushOperation,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<()> {
+        operation.check(metadata, context)?;
+        self.precheck_inner(metadata, context, Some(operation), trusted_clock)
+    }
+
+    fn precheck_inner(
+        &self,
+        metadata: &VerifiedRef,
+        context: &Acceptance<'_>,
+        operation: Option<&PushOperation>,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<()> {
+        check_pins(metadata, context)?;
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state.db.transaction()?;
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        let current = load(&tx, &context.hub.to_string(), &context.coglet, context.kind)?;
+        if operation
+            .map(|op| lookup_operation(&tx, op))
+            .transpose()?
+            .flatten()
+            .is_none()
+        {
+            compare(metadata, context.mode, current.as_ref())?;
+        }
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Recover an admission receipt for this exact authenticated intent. This
+    /// does not accept a transfer or authorize activation. Unknown intent is None;
+    /// changed intent is conflict, and current authority is always required.
+    pub fn push_receipt(
+        &self,
+        metadata: &VerifiedRef,
+        context: &Acceptance<'_>,
+        operation: &PushOperation,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<Option<Value>> {
+        operation.check(metadata, context)?;
+        check_pins(metadata, context)?;
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state.db.transaction()?;
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        let receipt = lookup_operation(&tx, operation)?.map(|row| row.1);
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        tx.commit()?;
+        Ok(receipt)
     }
 
     /// Retained exact raw bundle for explicit recovery/revalidation. Returning
@@ -134,61 +261,149 @@ impl AcceptedRefStore {
         context: &Acceptance<'_>,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Receipt> {
+        self.accept_inner(bundle, context, None, trusted_clock)
+            .map(|r| r.0)
+    }
+
+    /// Durable queued admission, never an applied/activation receipt. The exact
+    /// receipt commits with the ref/audit; no mutation occurs on receipt failure.
+    pub fn accept_push(
+        &self,
+        bundle: VerifiedBundle,
+        context: &Acceptance<'_>,
+        operation: &PushOperation,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<Value> {
+        operation.check(bundle.metadata(), context)?;
+        self.accept_inner(bundle, context, Some(operation), trusted_clock)?
+            .1
+            .ok_or(StoreError::Storage)
+    }
+
+    fn accept_inner(
+        &self,
+        bundle: VerifiedBundle,
+        context: &Acceptance<'_>,
+        operation: Option<&PushOperation>,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<(Receipt, Option<Value>)> {
         let metadata = bundle.metadata();
         let statement = &metadata.signed()["statement"];
         let hub = statement["hub"].as_str().ok_or(StoreError::Storage)?;
         let coglet = statement["coglet"].as_str().ok_or(StoreError::Storage)?;
         let kind = context.kind;
-        if hub != context.hub.to_string()
-            || coglet != context.coglet
-            || statement["ref"] != kind.reference()
-        {
-            return Err(AuthorityError::PermissionDenied.into());
-        }
+        check_pins(metadata, context)?;
         let retained = bundle.retained_bundle().map_err(|_| StoreError::Storage)?;
+        if let Some(op) = operation
+            && (op.params["size"].as_u64() != Some(retained.len() as u64)
+                || op.params["sha256"] != hex::encode(Sha256::digest(&retained)))
+        {
+            return Err(StoreError::Conflict);
+        }
         let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
         let tx = state
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let now = authorize(&tx, metadata, kind, context, &trusted_clock)?;
-        let current = load(&tx, hub, coglet, kind)?;
-        if current
-            .as_ref()
-            .is_some_and(|(mode, _)| mode != context.mode.name())
+        if let Some((audit_id, receipt)) = operation
+            .map(|op| lookup_operation(&tx, op))
+            .transpose()?
+            .flatten()
         {
-            return Err(StoreError::Conflict);
+            authorize(&tx, metadata, kind, context, &trusted_clock)?;
+            tx.commit()?;
+            return Ok((
+                Receipt {
+                    audit_id,
+                    changed: false,
+                },
+                Some(receipt),
+            ));
         }
+        let current = load(&tx, hub, coglet, kind)?;
+        let changed = compare(metadata, context.mode, current.as_ref())?;
         let old = current.as_ref().map(|(_, row)| row);
-        let changed = match context.mode {
-            Mode::Authoritative => {
-                metadata.check_authoritative(
-                    old.map(|r| r.metadata.new_tip()),
-                    old.map(|r| r.metadata.generation()),
-                )?;
-                true
-            }
-            Mode::Observation => {
-                metadata.check_observation(old.map(|r| &r.metadata))? == Observation::Advance
-            }
-        };
         if !changed {
             authorize(&tx, metadata, kind, context, &trusted_clock)?;
             tx.commit()?;
-            return Ok(Receipt {
-                audit_id: old.ok_or(StoreError::Storage)?.audit_id,
-                changed: false,
-            });
+            return Ok((
+                Receipt {
+                    audit_id: old.ok_or(StoreError::Storage)?.audit_id,
+                    changed: false,
+                },
+                None,
+            ));
         }
         let signed = serde_json::to_string(metadata.signed()).map_err(|_| StoreError::Storage)?;
         tx.execute("INSERT INTO proto_ref_audit(hub,coglet,ref,mode,signed,peer,actor,ticket,grant_generation,delegation_generation,accepted_at,bundle) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)", params![hub,coglet,kind.reference(),context.mode.name(),signed,context.peer.to_string(),context.scope.actor,context.scope.ticket,context.grant_generation.to_string(),context.delegation_generation.map(|g| g.to_string()),now.to_string(),retained])?;
         let audit_id = tx.last_insert_rowid();
         tx.execute("INSERT INTO proto_accepted_refs(hub,coglet,ref,mode,signed,generation,tip,audit_id) VALUES(?1,?2,?3,?4,?5,?6,?7,?8) ON CONFLICT(hub,coglet,ref) DO UPDATE SET signed=excluded.signed,generation=excluded.generation,tip=excluded.tip,audit_id=excluded.audit_id", params![hub,coglet,kind.reference(),context.mode.name(),signed,metadata.generation().to_string(),metadata.new_tip(),audit_id])?;
+        let receipt = operation.map(PushOperation::queued);
+        if let Some(op) = operation {
+            tx.execute("INSERT INTO proto_git_operations(peer,operation_id,target,digest,receipt,audit_id) VALUES(?1,?2,?3,?4,?5,?6)", params![op.peer.to_string(),op.id,op.target,op.digest,serde_json::to_string(receipt.as_ref().ok_or(StoreError::Storage)?).map_err(|_| StoreError::Storage)?,audit_id])?;
+        }
         authorize(&tx, metadata, kind, context, &trusted_clock)?;
         tx.commit()?;
-        Ok(Receipt {
-            audit_id,
-            changed: true,
-        })
+        Ok((
+            Receipt {
+                audit_id,
+                changed: true,
+            },
+            receipt,
+        ))
+    }
+}
+
+fn lookup_operation(db: &Connection, op: &PushOperation) -> Result<Option<(i64, Value)>> {
+    let row: Option<(String, String, i64)> = db.query_row(
+        "SELECT digest,receipt,audit_id FROM proto_git_operations WHERE peer=?1 AND operation_id=?2 AND target=?3",
+        params![op.peer.to_string(), op.id, op.target],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    ).optional()?;
+    row.map(|(digest, receipt, audit_id)| {
+        if digest != op.digest {
+            return Err(StoreError::Conflict);
+        }
+        let receipt: Value = serde_json::from_str(&receipt).map_err(|_| StoreError::Storage)?;
+        // This component owns only queued admission. Activation/boundary receipt
+        // updates belong to the router/runtime, not this ref-storage primitive.
+        if receipt != op.queued() {
+            return Err(StoreError::Storage);
+        }
+        Ok((audit_id, receipt))
+    })
+    .transpose()
+}
+
+fn check_pins(metadata: &VerifiedRef, context: &Acceptance<'_>) -> Result<()> {
+    let statement = &metadata.signed()["statement"];
+    if statement["hub"] != context.hub.to_string()
+        || statement["coglet"] != context.coglet
+        || statement["ref"] != context.kind.reference()
+    {
+        return Err(AuthorityError::PermissionDenied.into());
+    }
+    Ok(())
+}
+
+fn compare(
+    metadata: &VerifiedRef,
+    mode: Mode,
+    current: Option<&(String, AcceptedRef)>,
+) -> Result<bool> {
+    if current.is_some_and(|(stored, _)| stored != mode.name()) {
+        return Err(StoreError::Conflict);
+    }
+    let old = current.map(|(_, row)| &row.metadata);
+    match mode {
+        Mode::Authoritative => {
+            metadata.check_authoritative(
+                old.map(VerifiedRef::new_tip),
+                old.map(VerifiedRef::generation),
+            )?;
+            Ok(true)
+        }
+        Mode::Observation => Ok(metadata.check_observation(old)? == Observation::Advance),
     }
 }
 
