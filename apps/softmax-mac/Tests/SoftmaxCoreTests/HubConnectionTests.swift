@@ -74,6 +74,34 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertEqual(hub.deviceID, String(repeating: "a", count: 64))
     }
 
+    func testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        let key = Data(repeating: 4, count: 32)
+        let hub = HubConnection(account: HubAccount(store: store, generate: { key }), link: link)
+        hub.start()
+        defer { hub.stop() }
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let pairing = try HubPairing.parse(#"{"name":"Test router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"],"invite":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}"#)
+        try hub.enroll(pairing)
+        let stale = link.callback
+        store.failHubSave = true
+        link.emit(.connected)
+        XCTAssertEqual(hub.state, .offline)
+        XCTAssertNil(try store.loadHub())
+        store.failHubSave = false
+        let deadline = ContinuousClock.now + .seconds(3)
+        while link.starts < 2, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(link.starts, 2, "Enrollment persistence failure must restart the recovery channel")
+        XCTAssertEqual(try store.loadKey(), key)
+        stale?(.connected)
+        XCTAssertNil(try store.loadHub(), "The old channel cannot persist an enrollment")
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(link.lastPairing?.hub, pairing.hub)
+        link.emit(.connected)
+        XCTAssertEqual(hub.state, .connected)
+        XCTAssertNil(try store.loadHub()?.invite)
+    }
+
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))
@@ -89,11 +117,12 @@ final class HubConnectionTests: XCTestCase {
 @MainActor
 final class MemoryHubStore: HubStore {
     var key: Data?, hub: HubPairing?, fail = false
+    var failHubSave = false
     func loadKey() throws -> Data? { if fail { throw HubError.storage }; return key }
     func saveKey(_ value: Data) throws { if fail { throw HubError.storage }; key = value }
     func deleteKey() throws { if fail { throw HubError.storage }; key = nil }
     func loadHub() throws -> HubPairing? { hub }
-    func saveHub(_ value: HubPairing?) throws { hub = value }
+    func saveHub(_ value: HubPairing?) throws { if failHubSave { throw HubError.storage }; hub = value }
 }
 @MainActor
 final class FakeHubLink: HubLink {
