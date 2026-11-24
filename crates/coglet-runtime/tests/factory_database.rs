@@ -28,6 +28,8 @@ use std::{
 #[path = "../../../coglets/factory/src/lib.rs"]
 #[allow(dead_code)]
 mod factory;
+mod factory_dispatch_result;
+use factory_dispatch_result::dispatch_result_consumed;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]
 #[allow(dead_code)]
@@ -729,7 +731,7 @@ fn wasm_task_failed_stages_llm_and_survives_reopen() {
 /// Router authentication is supplied by the embedding fixture, as for the
 /// existing migration approval fixture; this tests the actual boundary, not a
 /// second direct llm.reply enqueue.
-fn reply_scenario(stale: bool, duplicate: bool) {
+fn reply_scenario(stale: bool, duplicate: bool, dispatch: bool) {
     let engine = Wamr::interpreter().allow_db();
     let mut fx = Fx::new(coglet_engine_wamr::COMPUTE_MODE);
     fx.grants.push("llm.complete".into());
@@ -907,6 +909,11 @@ fn reply_scenario(stale: bool, duplicate: bool) {
             Some("11111111111111111111111111111111")
         );
     }
+    if dispatch {
+        drop((service, db));
+        dispatch_result_consumed(&mut fx, &engine, &message, &after);
+        return;
+    }
     if duplicate {
         let before = fx.count("events");
         // A fresh runtime event identity naming the same immutable line cannot
@@ -950,17 +957,22 @@ fn reply_scenario(stale: bool, duplicate: bool) {
 
 #[test]
 fn factory_wasm_llm_reply_produces_hypothesis() {
-    reply_scenario(false, false);
+    reply_scenario(false, false, false);
 }
 #[test]
 fn factory_wasm_stale_llm_reply_refused() {
-    reply_scenario(true, false);
+    reply_scenario(true, false, false);
 }
 #[test]
 fn factory_wasm_reply_survives_reopen() {
-    reply_scenario(false, true);
+    reply_scenario(false, true, false);
 }
 #[test]
 fn factory_wasm_reply_to_outbox_dispatch_intent() {
-    reply_scenario(false, false);
+    reply_scenario(false, false, false);
+}
+
+#[test]
+fn factory_wasm_outbox_dispatch_result_consumed() {
+    reply_scenario(false, false, true);
 }

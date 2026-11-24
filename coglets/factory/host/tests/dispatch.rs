@@ -1,6 +1,6 @@
 use coglet_db::{Database, OutboxState};
 use coglet_factory_host::{
-    FactoryHost, HermesAdapter, MockAdapter, MockKanbanServer, Outcome, WorkerReport,
+    ContractKanbanServer, FactoryHost, HermesAdapter, MockAdapter, Outcome, WorkerReport,
 };
 use coglet_types::Value;
 
@@ -110,15 +110,15 @@ fn dispatch_retry_same_idempotency_key() {
 #[test]
 fn backlog_completes_after_restart() {
     let (root, mut db) = seed();
-    let server = MockKanbanServer::spawn();
-    let mut host = FactoryHost::connect(server.base());
+    let server = ContractKanbanServer::spawn();
+    let mut host = FactoryHost::from_adapter(server.adapter());
     host.run(&mut db, 10).unwrap();
     assert_eq!(server.len(), 1);
     assert_eq!(db.get_work_queue(TASK).unwrap().unwrap().state, "leased");
     drop(db);
     drop(host);
     let mut db = Database::open(root.path(), OWNER).unwrap();
-    let mut host = FactoryHost::connect(server.base());
+    let mut host = FactoryHost::from_adapter(server.adapter());
     let recovered = host.run(&mut db, 12).unwrap();
     assert_eq!(
         server.len(),
@@ -126,7 +126,11 @@ fn backlog_completes_after_restart() {
         "restart must reuse the public idempotency key"
     );
     assert_eq!(recovered.claimed, 0);
-    server.post_result(&format!("k{KEY}"), true, "after restart");
+    server.post_result(
+        &db.get_binding(KEY).unwrap().unwrap(),
+        true,
+        "after restart",
+    );
     let done = host.run(&mut db, 13).unwrap();
     assert_eq!(done.follow_ups[0].kind, "task.completed");
     assert_eq!(event_count(&db), 1);
@@ -257,15 +261,15 @@ fn stale_attempt_does_not_finish_current_lease() {
 }
 
 #[test]
-fn http_kanban_adapter_exercises_public_api() {
+fn hermes_contract_retry_cancel_progress() {
     let (_root, mut db) = seed();
-    let server = MockKanbanServer::spawn();
-    let mut host = FactoryHost::connect(server.base());
+    let server = ContractKanbanServer::spawn();
+    let mut host = FactoryHost::from_adapter(server.adapter());
     host.run(&mut db, 10).unwrap();
     assert_eq!(server.len(), 1);
     let queue = db.get_work_queue(TASK).unwrap().unwrap();
     assert_eq!(queue.state, "leased");
-    let remote = format!("k{KEY}");
+    let remote = db.get_binding(KEY).unwrap().unwrap();
     host.dispatcher()
         .heartbeat(
             &mut db,
@@ -292,8 +296,8 @@ fn http_kanban_adapter_exercises_public_api() {
     host.dispatcher().expire_leases(&mut db, 90_000).unwrap();
     let cancelled = {
         let (_root2, mut fresh) = seed();
-        let server = MockKanbanServer::spawn();
-        let mut host = FactoryHost::connect(server.base());
+        let server = ContractKanbanServer::spawn();
+        let mut host = FactoryHost::from_adapter(server.adapter());
         host.run(&mut fresh, 10).unwrap();
         let queue = fresh.get_work_queue(TASK).unwrap().unwrap();
         host.dispatcher()
@@ -304,9 +308,16 @@ fn http_kanban_adapter_exercises_public_api() {
                 queue.lease_owner.as_deref().unwrap(),
                 40,
             )
-            .unwrap()
+            .unwrap_err()
     };
-    assert_eq!(cancelled.kind, "task.cancelled");
+    assert!(cancelled.contains("unsupported"));
+    let before = server.requests().len();
+    assert!(host.dispatcher().adapter.retry(&remote).is_err());
+    assert_eq!(
+        server.requests().len(),
+        before,
+        "unsupported retry does no I/O"
+    );
 }
 
 fn spec() -> coglet_factory_host::TaskSpec {
@@ -431,4 +442,113 @@ fn quoted_multiline_note_survives_redelivery() {
     let mut db = Database::open(root.path(), OWNER).unwrap();
     let pretty_replay = host.run(&mut db, 12).unwrap();
     assert_eq!(pretty_replay.follow_ups[0].note, note);
+}
+
+#[test]
+fn hermes_contract_fixture_create_claim_complete() {
+    let server = ContractKanbanServer::spawn();
+    let mut adapter = server.adapter();
+    let task = adapter.create(&spec()).unwrap();
+    assert_eq!(adapter.create(&spec()).unwrap(), task);
+    assert_eq!(server.len(), 1);
+    let lease = adapter
+        .claim(&task.remote_id, "factory-host", 60_010, 1)
+        .unwrap();
+    assert!(
+        adapter
+            .poll(&task.remote_id, 1, &lease.token)
+            .unwrap()
+            .is_none()
+    );
+    server.post_result(&task.remote_id, true, "actual recorded Board schema");
+    drop(adapter);
+    let mut adapter = server.adapter();
+    let report = adapter
+        .poll(&task.remote_id, 1, &lease.token)
+        .unwrap()
+        .unwrap();
+    assert_eq!(report.lease, lease.token);
+    assert_eq!(
+        report.outcome,
+        Outcome::Succeeded {
+            note: "actual recorded Board schema".into()
+        }
+    );
+    assert!(
+        server
+            .requests()
+            .iter()
+            .all(|r| r["path"].as_str().unwrap().starts_with("/v2/boards/"))
+    );
+    let mut changed = spec();
+    changed.payload_cbor_hex = "00".into();
+    assert!(adapter.create(&changed).is_err());
+    assert!(adapter.poll(&task.remote_id, 2, &lease.token).is_err());
+}
+
+#[test]
+fn factory_dispatch_crash_reconciles_exactly_once() {
+    let (root, mut db) = seed();
+    let server = ContractKanbanServer::spawn();
+    server.lose_next_create_reply();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    host.run(&mut db, 10).unwrap();
+    assert_eq!(server.len(), 1, "remote effect committed before lost reply");
+    assert_eq!(db.get_outbox(KEY).unwrap().unwrap().state, "uncertain");
+    drop((host, db));
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    host.dispatcher()
+        .recover_and_dispatch(&mut db, 11, 8)
+        .unwrap();
+    assert_eq!(server.len(), 1);
+    server.post_result(
+        &db.get_binding(KEY).unwrap().unwrap(),
+        true,
+        "persisted once",
+    );
+    let batch = host.run(&mut db, 12).unwrap();
+    assert_eq!(batch.follow_ups.len(), 1);
+    drop((host, db));
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    let replay = host.run(&mut db, 13).unwrap();
+    assert_eq!(replay.follow_ups, batch.follow_ups);
+    assert_eq!(event_count(&db), 1);
+    host.dispatcher()
+        .acknowledge(&mut db, &replay.follow_ups[0].event_id)
+        .unwrap();
+    assert!(host.run(&mut db, 14).unwrap().follow_ups.is_empty());
+}
+
+#[test]
+fn remote_completion_before_local_lease_recovers_without_reclaim() {
+    let (root, mut db) = seed();
+    let server = ContractKanbanServer::spawn();
+    let rows = db.claim_pending_outbox(1).unwrap();
+    let mut adapter = server.adapter();
+    let remote = adapter.create(&spec()).unwrap();
+    db.put_binding(KEY, &remote.remote_id, TASK).unwrap();
+    let lease = adapter
+        .claim(&remote.remote_id, "factory-host", 60_010, rows[0].attempt)
+        .unwrap();
+    db.set_binding_phase(KEY, "claimed", &lease.token).unwrap();
+    server.post_result(&remote.remote_id, true, "completed during crash");
+    drop((adapter, db));
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    let before = server.requests().len();
+    let batch = host
+        .dispatcher()
+        .recover_and_dispatch(&mut db, 20, 8)
+        .unwrap();
+    assert_eq!(batch.follow_ups.len(), 1);
+    assert_eq!(batch.follow_ups[0].note, "completed during crash");
+    assert_eq!(event_count(&db), 1);
+    assert!(
+        server.requests()[before..]
+            .iter()
+            .all(|r| r["method"] == "GET"),
+        "terminal run is never renewed or reclaimed"
+    );
 }

@@ -1,458 +1,404 @@
-//! Public Kanban HTTP transport. Paths and JSON are the adapter contract;
-//! nothing here opens a Hermes database.
+//! Hermes Board service transport. See PHASE2.md for pinned source provenance.
+//! No private SQLite access and no guessed task REST endpoints.
 use crate::adapter::{
     AdapterError, HermesAdapter, Lease, Outcome, RemoteTask, TaskSpec, WorkerReport,
 };
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use reqwest::{Method, blocking::Client, redirect::Policy};
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::time::Duration;
 
 pub struct HttpKanban {
     base: String,
+    board: String,
+    bearer: String,
+    gateway: String,
+    assignee: String,
+    client: Client,
 }
 
 impl HttpKanban {
+    /// Unconfigured connections fail closed. Production must supply enrolled
+    /// gateway credentials and a board explicitly through `authenticated`.
     pub fn new(base: impl Into<String>) -> Self {
-        Self { base: base.into() }
+        Self::authenticated(base, "", "", "", "").expect("HTTP client")
+    }
+
+    pub fn authenticated(
+        base: impl Into<String>,
+        board: &str,
+        bearer: &str,
+        gateway: &str,
+        assignee: &str,
+    ) -> Result<Self, AdapterError> {
+        let base = base.into();
+        let url = reqwest::Url::parse(&base).map_err(|_| failed("invalid Board URL"))?;
+        // Never send gateway credentials over cleartext except loopback fixtures.
+        if url.scheme() != "https"
+            && !(url.scheme() == "http"
+                && matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]")))
+        {
+            return Err(failed("Board requires HTTPS (loopback fixtures excepted)"));
+        }
+        if !url.username().is_empty()
+            || url.password().is_some()
+            || url.query().is_some()
+            || url.fragment().is_some()
+        {
+            return Err(failed(
+                "Board URL may not contain credentials, query or fragment",
+            ));
+        }
+        if !board
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"_-".contains(&c))
+        {
+            return Err(failed("invalid board identifier"));
+        }
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .redirect(Policy::none())
+            .retry(reqwest::retry::never())
+            .build()
+            .map_err(|_| failed("HTTP client initialization"))?;
+        Ok(Self {
+            base: base.trim_end_matches('/').into(),
+            board: board.into(),
+            bearer: bearer.into(),
+            gateway: gateway.into(),
+            assignee: assignee.into(),
+            client,
+        })
+    }
+
+    fn call(
+        &self,
+        method: Method,
+        suffix: &str,
+        body: Option<Value>,
+    ) -> Result<Value, AdapterError> {
+        if self.board.is_empty()
+            || self.bearer.is_empty()
+            || self.gateway.is_empty()
+            || self.assignee.is_empty()
+        {
+            return Err(failed(
+                "Board, enrolled gateway bearer, gateway and assignee are required",
+            ));
+        }
+        let mut request = self
+            .client
+            .request(
+                method,
+                format!("{}/v2/boards/{}{}", self.base, self.board, suffix),
+            )
+            .bearer_auth(&self.bearer)
+            .header("user-agent", "hermes-kanban-sync/1");
+        if let Some(body) = body {
+            request = request.json(&body);
+        }
+        // Never retry a POST automatically; the caller reconciles durable identities.
+        let response = request.send().map_err(|_| AdapterError::Uncertain)?;
+        let status = response.status();
+        if status.is_server_error() {
+            return Err(AdapterError::Uncertain);
+        }
+        if !status.is_success() {
+            return Err(failed(&format!("Board HTTP {}", status.as_u16())));
+        }
+        // Bound external result size, including chunked bodies.
+        use std::io::Read;
+        let mut bytes = Vec::new();
+        response
+            .take(1_048_577)
+            .read_to_end(&mut bytes)
+            .map_err(|_| AdapterError::Uncertain)?;
+        if bytes.len() > 1_048_576 {
+            return Err(failed("Board response exceeds limit"));
+        }
+        serde_json::from_slice(&bytes).map_err(|_| AdapterError::Uncertain)
+    }
+
+    fn op(&self, body: Value) -> Result<Value, AdapterError> {
+        let id = body["client_op_id"]
+            .as_str()
+            .ok_or_else(|| failed("operation identity missing"))?
+            .to_owned();
+        let response = self.call(Method::POST, "/ops", Some(json!({"ops":[body]})))?;
+        let results = response["results"]
+            .as_array()
+            .ok_or(AdapterError::Uncertain)?;
+        if results.len() != 1 || results[0]["client_op_id"] != id {
+            return Err(AdapterError::Uncertain);
+        }
+        verdict(&results[0])?;
+        Ok(results[0].clone())
+    }
+
+    fn evidence(&self, table: &str, uid: &str) -> Result<Option<Value>, AdapterError> {
+        identifier(uid)?;
+        let response = self.call(
+            Method::GET,
+            &format!("/evidence?table={table}&uid={uid}"),
+            None,
+        )?;
+        if response["board"] != self.board || response["table"] != table || response["uid"] != uid {
+            return Err(AdapterError::Uncertain);
+        }
+        match response["state"].as_str() {
+            Some("live") if response["row"]["uid"] == uid => Ok(Some(response["row"].clone())),
+            Some("never_existed") => Ok(None),
+            _ => Err(AdapterError::Uncertain),
+        }
+    }
+
+    fn run(remote: &str, attempt: u64) -> Result<String, AdapterError> {
+        identifier(remote)?;
+        if attempt == 0 {
+            return Err(failed("zero attempt"));
+        }
+        Ok(format!("factory:{remote}:{attempt}"))
+    }
+
+    fn lease(
+        &self,
+        action: &str,
+        remote: &str,
+        attempt: u64,
+        until: u64,
+    ) -> Result<Value, AdapterError> {
+        let run = Self::run(remote, attempt)?;
+        let response = self.call(Method::POST, "/leases", Some(json!({
+            "action":action, "task":remote,"run_uid":run,"ttl_s":60,"lane":"ready",
+            "client_op_id":format!("factory:{action}:{remote}:{attempt}:{}", if action == "renew" { until } else { 0 })
+        })))?;
+        verdict(&response)?;
+        let lease = &response["lease"];
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| failed("clock unavailable"))?
+            .as_millis();
+        if lease["task_id"] != remote
+            || lease["run_uid"] != run
+            || lease["holder"] != self.gateway
+            || !lease["expires"]
+                .as_u64()
+                .is_some_and(|expires| u128::from(expires) > now)
+        {
+            return Err(AdapterError::Uncertain);
+        }
+        Ok(lease.clone())
     }
 }
 
 impl HermesAdapter for HttpKanban {
     fn create(&mut self, spec: &TaskSpec) -> Result<RemoteTask, AdapterError> {
-        let body = format!(
-            "{{\"idempotency_key\":{key},\"kind\":{kind},\"payload_cbor_hex\":{payload},\"correlation_id\":{corr},\"task_id\":{task}}}",
-            key = json_str(&spec.idempotency_key),
-            kind = json_str(&spec.kind),
-            payload = json_str(&spec.payload_cbor_hex),
-            corr = json_str(&spec.correlation_id),
-            task = json_str(&spec.task_id),
-        );
-        let (status, text) = call(&self.base, "POST", "/v1/tasks", Some(&body))?;
-        if status == 409 {
-            return Err(AdapterError::Conflict(text));
+        if spec.idempotency_key.len() != 32
+            || !spec
+                .idempotency_key
+                .bytes()
+                .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+        {
+            return Err(failed("Factory idempotency key must be 32 lowercase hex"));
         }
-        if status >= 500 {
-            return Err(AdapterError::Uncertain);
-        }
-        if !(200..300).contains(&status) {
-            return Err(AdapterError::Failed(text));
+        let digest = format!("{:x}", Sha256::digest(spec.idempotency_key.as_bytes()));
+        let remote = format!("t_{}", &digest[..16]);
+        let body = json!({"kind":spec.kind,"payload_cbor_hex":spec.payload_cbor_hex,
+            "correlation_id":spec.correlation_id,"task_id":spec.task_id})
+        .to_string();
+        // Exact row lookup before create handles response loss beyond the service's
+        // bounded applied-op cache. Never treat a reused/archived identity as fresh.
+        let existing = self.evidence("tasks", &remote)?;
+        let row = match existing {
+            Some(row) => row,
+            None => {
+                self.op(json!({"op":"create","task":remote,
+                    "client_op_id":format!("factory:create:{}",spec.idempotency_key),
+                    "fields":{"title":format!("Factory {} {}",spec.kind,spec.task_id),"body":body,
+                    "assignee":self.assignee,"created_by":"coglet-factory",
+                    "idempotency_key":spec.idempotency_key,"workspace_kind":"scratch","review_required":0}}))?;
+                self.evidence("tasks", &remote)?
+                    .ok_or(AdapterError::Uncertain)?
+            }
+        };
+        if row["idempotency_key"] != spec.idempotency_key
+            || row["body"] != body
+            || row["assignee"] != self.assignee
+            || row["status"] == "archived"
+        {
+            return Err(AdapterError::Conflict(
+                "remote identity/payload mismatch or archived".into(),
+            ));
         }
         Ok(RemoteTask {
-            remote_id: field(&text, "remote_id").ok_or(AdapterError::Uncertain)?,
-            idempotency_key: field(&text, "idempotency_key")
-                .unwrap_or_else(|| spec.idempotency_key.clone()),
+            remote_id: remote,
+            idempotency_key: spec.idempotency_key.clone(),
         })
     }
 
     fn claim(
         &mut self,
-        remote_id: &str,
+        remote: &str,
         owner: &str,
         until: u64,
         attempt: u64,
     ) -> Result<Lease, AdapterError> {
-        let body = format!(
-            "{{\"owner\":{owner},\"until\":{until},\"attempt\":{attempt}}}",
-            owner = json_str(owner),
-        );
-        let (status, text) = call(
-            &self.base,
-            "POST",
-            &format!("/v1/tasks/{remote_id}/claim"),
-            Some(&body),
-        )?;
-        map_status(status, &text)?;
+        let lease = self.lease("grant", remote, attempt, until)?;
+        let effective_until = local_deadline(&lease, until)?;
         Ok(Lease {
-            remote_id: remote_id.into(),
+            remote_id: remote.into(),
             owner: owner.into(),
-            until,
+            until: effective_until,
             attempt,
-            token: field(&text, "lease").ok_or(AdapterError::Uncertain)?,
+            token: lease["run_uid"]
+                .as_str()
+                .ok_or(AdapterError::Uncertain)?
+                .into(),
         })
     }
 
-    fn heartbeat(
+    fn restore_lease(
         &mut self,
-        remote_id: &str,
+        remote: &str,
+        owner: &str,
         until: u64,
         attempt: u64,
-        lease: &str,
+        token: &str,
+    ) -> Result<Lease, AdapterError> {
+        if Self::run(remote, attempt)? != token {
+            return Err(AdapterError::Conflict("stale run".into()));
+        }
+        let lease = self.lease("renew", remote, attempt, until)?;
+        Ok(Lease {
+            remote_id: remote.into(),
+            owner: owner.into(),
+            until: local_deadline(&lease, until)?,
+            attempt,
+            token: token.into(),
+        })
+    }
+    fn heartbeat(
+        &mut self,
+        remote: &str,
+        until: u64,
+        attempt: u64,
+        token: &str,
     ) -> Result<(), AdapterError> {
-        let body = format!(
-            "{{\"until\":{until},\"attempt\":{attempt},\"lease\":{lease}}}",
-            lease = json_str(lease),
-        );
-        let (status, text) = call(
-            &self.base,
-            "POST",
-            &format!("/v1/tasks/{remote_id}/heartbeat"),
-            Some(&body),
-        )?;
-        map_status(status, &text)
+        if Self::run(remote, attempt)? != token {
+            return Err(AdapterError::Conflict("stale run".into()));
+        }
+        self.lease("renew", remote, attempt, until)?;
+        Ok(())
     }
 
-    fn retry(&mut self, remote_id: &str) -> Result<(), AdapterError> {
-        let (status, text) = call(
-            &self.base,
-            "POST",
-            &format!("/v1/tasks/{remote_id}/retry"),
-            Some("{}"),
-        )?;
-        map_status(status, &text)
+    fn retry(&mut self, _remote: &str) -> Result<(), AdapterError> {
+        Err(failed(
+            "unsupported: Board has no public retry operation; release/unblock are not equivalent",
+        ))
     }
-
-    fn cancel(&mut self, remote_id: &str, attempt: u64, lease: &str) -> Result<(), AdapterError> {
-        let body = format!(
-            "{{\"attempt\":{attempt},\"lease\":{lease}}}",
-            lease = json_str(lease),
-        );
-        let (status, text) = call(
-            &self.base,
-            "POST",
-            &format!("/v1/tasks/{remote_id}/cancel"),
-            Some(&body),
-        )?;
-        map_status(status, &text)
+    fn cancel(&mut self, _remote: &str, _attempt: u64, _token: &str) -> Result<(), AdapterError> {
+        Err(failed(
+            "unsupported: Board has no public cancel operation; archive/delete are not cancellation",
+        ))
     }
 
     fn progress(
         &mut self,
-        remote_id: &str,
+        remote: &str,
         note: &str,
         attempt: u64,
-        lease: &str,
+        token: &str,
     ) -> Result<(), AdapterError> {
-        let body = format!(
-            "{{\"note\":{note},\"attempt\":{attempt},\"lease\":{lease}}}",
-            note = json_str(note),
-            lease = json_str(lease),
-        );
-        let (status, text) = call(
-            &self.base,
-            "POST",
-            &format!("/v1/tasks/{remote_id}/progress"),
-            Some(&body),
+        if Self::run(remote, attempt)? != token {
+            return Err(AdapterError::Conflict("stale run".into()));
+        }
+        // Comment itself is not lease-fenced in Hermes; independently verify the
+        // live current run. No claim that this read and comment are atomic.
+        let row = self
+            .evidence("tasks", remote)?
+            .ok_or_else(|| failed("missing task"))?;
+        if row["current_run_uid"] != token
+            || row["lease_holder"] != self.gateway
+            || row["status"] != "running"
+        {
+            return Err(AdapterError::Conflict("not current holder".into()));
+        }
+        let hash = format!("{:x}", Sha256::digest(note.as_bytes()));
+        self.op(
+            json!({"op":"comment","task":remote,"run_uid":token,"author":"coglet-factory",
+            "body":note,"uid":format!("factory:progress:{remote}:{attempt}:{hash}"),
+            "client_op_id":format!("factory:progress:{remote}:{attempt}:{hash}")}),
         )?;
-        map_status(status, &text)
+        Ok(())
     }
 
-    fn poll(&mut self, remote_id: &str) -> Result<Option<WorkerReport>, AdapterError> {
-        let (status, text) = call(
-            &self.base,
-            "GET",
-            &format!("/v1/tasks/{remote_id}/result"),
-            None,
-        )?;
-        map_status(status, &text)?;
-        if field(&text, "status").as_deref() == Some("pending") {
+    fn poll(
+        &mut self,
+        remote: &str,
+        attempt: u64,
+        token: &str,
+    ) -> Result<Option<WorkerReport>, AdapterError> {
+        if Self::run(remote, attempt)? != token {
+            return Err(AdapterError::Conflict("stale run".into()));
+        }
+        let Some(run) = self.evidence("task_runs", token)? else {
+            return Ok(None);
+        };
+        if run["task_id"] != remote {
+            return Err(AdapterError::Conflict("wrong task run".into()));
+        }
+        if run["ended_at"].is_null() {
             return Ok(None);
         }
-        let succeeded = field(&text, "status").as_deref() == Some("succeeded");
-        let note = field(&text, "note").unwrap_or_default();
-        let outcome = if succeeded {
-            Outcome::Succeeded { note }
-        } else {
-            Outcome::Failed { note }
+        let note = run["summary"]
+            .as_str()
+            .or_else(|| run["error"].as_str())
+            .unwrap_or("")
+            .to_owned();
+        let outcome = match (run["status"].as_str(), run["outcome"].as_str()) {
+            (Some("done"), Some("completed")) => Outcome::Succeeded { note },
+            (Some("crashed" | "failed"), Some("crashed" | "failed")) => Outcome::Failed { note },
+            _ => return Err(failed("unsupported terminal run outcome")),
         };
         Ok(Some(WorkerReport {
-            attempt: number(&text, "attempt").ok_or(AdapterError::Uncertain)?,
-            lease: field(&text, "lease").ok_or(AdapterError::Uncertain)?,
+            attempt,
+            lease: token.into(),
             outcome,
         }))
     }
 }
-
-/// In-process stand-in for the public Kanban API. Tests and local fakes use it;
-/// production points [`HttpKanban`] at the real scheduler.
-pub struct MockKanbanServer {
-    base: String,
-    state: Arc<Mutex<Board>>,
-    shutdown: Arc<Mutex<bool>>,
-    thread: Option<JoinHandle<()>>,
-}
-
-struct Board {
-    tasks: Vec<Remote>,
-}
-
-struct Remote {
-    idempotency_key: String,
-    remote_id: String,
-    lease: String,
-    attempt: u64,
-    owner: String,
-    until: u64,
-    cancelled: bool,
-    progress: Vec<String>,
-    heartbeats: u32,
-    retries: u32,
-    result: Option<(bool, String, u64, String)>,
-}
-
-impl MockKanbanServer {
-    pub fn spawn() -> Self {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock kanban");
-        let port = listener.local_addr().expect("addr").port();
-        let state = Arc::new(Mutex::new(Board { tasks: vec![] }));
-        let shutdown = Arc::new(Mutex::new(false));
-        let shared = Arc::clone(&state);
-        let stop = Arc::clone(&shutdown);
-        listener.set_nonblocking(true).expect("nonblocking");
-        let thread = thread::spawn(move || {
-            while !*stop.lock().expect("stop") {
-                match listener.accept() {
-                    Ok((stream, _)) => {
-                        let _ = handle(stream, &shared);
-                    }
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(5));
-                    }
-                    Err(_) => break,
-                }
-            }
-        });
-        Self {
-            base: format!("http://127.0.0.1:{port}"),
-            state,
-            shutdown,
-            thread: Some(thread),
-        }
-    }
-
-    pub fn base(&self) -> &str {
-        &self.base
-    }
-
-    pub fn post_result(&self, remote_id: &str, succeeded: bool, note: &str) {
-        let mut board = self.state.lock().expect("board");
-        let task = board
-            .tasks
-            .iter_mut()
-            .find(|t| t.remote_id == remote_id)
-            .expect("remote");
-        task.result = Some((succeeded, note.into(), task.attempt, task.lease.clone()));
-    }
-
-    pub fn len(&self) -> usize {
-        self.state.lock().expect("board").tasks.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+fn verdict(value: &Value) -> Result<(), AdapterError> {
+    match value["status"].as_str() {
+        Some("applied" | "merged") => Ok(()),
+        Some("rejected" | "deferred") => Err(AdapterError::Conflict(
+            value["reason"].as_str().unwrap_or("Board refused").into(),
+        )),
+        _ => Err(AdapterError::Uncertain),
     }
 }
-
-impl Drop for MockKanbanServer {
-    fn drop(&mut self) {
-        *self.shutdown.lock().expect("stop") = true;
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
-    }
-}
-
-fn handle(mut stream: TcpStream, state: &Mutex<Board>) -> std::io::Result<()> {
-    stream.set_read_timeout(Some(Duration::from_secs(2)))?;
-    let mut buf = [0u8; 8192];
-    let n = stream.read(&mut buf)?;
-    let text = String::from_utf8_lossy(&buf[..n]);
-    let mut lines = text.lines();
-    let request = lines.next().unwrap_or("");
-    let mut parts = request.split_whitespace();
-    let method = parts.next().unwrap_or("");
-    let path = parts.next().unwrap_or("");
-    let body = text.split("\r\n\r\n").nth(1).unwrap_or("");
-    let response = route(method, path, body, state);
-    stream.write_all(response.as_bytes())?;
-    Ok(())
-}
-
-fn route(method: &str, path: &str, body: &str, state: &Mutex<Board>) -> String {
-    let mut board = state.lock().expect("board");
-    if method == "POST" && path == "/v1/tasks" {
-        let key = field(body, "idempotency_key").unwrap_or_default();
-        if let Some(existing) = board.tasks.iter().find(|t| t.idempotency_key == key) {
-            return ok(&format!(
-                "{{\"remote_id\":{id},\"idempotency_key\":{key}}}",
-                id = json_str(&existing.remote_id),
-                key = json_str(&existing.idempotency_key),
-            ));
-        }
-        let remote_id = format!("k{key}");
-        board.tasks.push(Remote {
-            idempotency_key: key.clone(),
-            remote_id: remote_id.clone(),
-            lease: String::new(),
-            attempt: 0,
-            owner: String::new(),
-            until: 0,
-            cancelled: false,
-            progress: vec![],
-            heartbeats: 0,
-            retries: 0,
-            result: None,
-        });
-        return created(&format!(
-            "{{\"remote_id\":{id},\"idempotency_key\":{key}}}",
-            id = json_str(&remote_id),
-            key = json_str(&key),
-        ));
-    }
-    let Some(remote_id) = path
-        .strip_prefix("/v1/tasks/")
-        .and_then(|rest| rest.split('/').next())
-    else {
-        return status(404, "{\"error\":\"missing\"}");
-    };
-    let Some(task) = board.tasks.iter_mut().find(|t| t.remote_id == remote_id) else {
-        return status(404, "{\"error\":\"unknown\"}");
-    };
-    let action = path.rsplit('/').next().unwrap_or("");
-    match (method, action) {
-        ("POST", "claim") => {
-            if task.cancelled {
-                return status(409, "{\"error\":\"cancelled\"}");
-            }
-            let attempt = number(body, "attempt").unwrap_or(0);
-            let owner = field(body, "owner").unwrap_or_default();
-            let until = number(body, "until").unwrap_or(0);
-            if !task.cancelled && !task.lease.is_empty() && task.attempt == attempt {
-                return ok(&format!(
-                    "{{\"remote_id\":{id},\"lease\":{lease},\"until\":{until}}}",
-                    id = json_str(remote_id),
-                    lease = json_str(&task.lease),
-                    until = task.until,
-                ));
-            }
-            task.attempt = attempt;
-            task.owner = owner;
-            task.until = until;
-            task.lease = format!("lease:{attempt}:{remote_id}");
-            ok(&format!(
-                "{{\"remote_id\":{id},\"lease\":{lease},\"until\":{until}}}",
-                id = json_str(remote_id),
-                lease = json_str(&task.lease),
-            ))
-        }
-        ("POST", "heartbeat") => {
-            if task.lease != field(body, "lease").unwrap_or_default()
-                || task.attempt != number(body, "attempt").unwrap_or(0)
-            {
-                return status(409, "{\"error\":\"stale\"}");
-            }
-            task.until = number(body, "until").unwrap_or(task.until);
-            task.heartbeats += 1;
-            ok("{}")
-        }
-        ("POST", "retry") => {
-            task.lease.clear();
-            task.retries += 1;
-            ok("{}")
-        }
-        ("POST", "cancel") => {
-            if task.lease != field(body, "lease").unwrap_or_default() {
-                return status(409, "{\"error\":\"stale\"}");
-            }
-            task.cancelled = true;
-            ok("{}")
-        }
-        ("POST", "progress") => {
-            if task.lease != field(body, "lease").unwrap_or_default() {
-                return status(409, "{\"error\":\"stale\"}");
-            }
-            task.progress.push(field(body, "note").unwrap_or_default());
-            ok("{}")
-        }
-        ("GET", "result") => {
-            if let Some((succeeded, note, attempt, lease)) = &task.result {
-                let status_name = if *succeeded { "succeeded" } else { "failed" };
-                ok(&format!(
-                    "{{\"status\":{status},\"note\":{note},\"attempt\":{attempt},\"lease\":{lease}}}",
-                    status = json_str(status_name),
-                    note = json_str(note),
-                    lease = json_str(lease),
-                ))
-            } else {
-                ok("{\"status\":\"pending\"}")
-            }
-        }
-        _ => status(404, "{\"error\":\"route\"}"),
-    }
-}
-
-fn call(
-    base: &str,
-    method: &str,
-    path: &str,
-    body: Option<&str>,
-) -> Result<(u16, String), AdapterError> {
-    let host = base.trim_start_matches("http://");
-    let mut stream = TcpStream::connect(host).map_err(|_| AdapterError::Uncertain)?;
-    stream
-        .set_read_timeout(Some(Duration::from_secs(2)))
-        .map_err(|_| AdapterError::Uncertain)?;
-    let body = body.unwrap_or("");
-    let request = format!(
-        "{method} {path} HTTP/1.1\r\nHost: {host}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    );
-    stream
-        .write_all(request.as_bytes())
-        .map_err(|_| AdapterError::Uncertain)?;
-    let mut raw = Vec::new();
-    stream
-        .read_to_end(&mut raw)
-        .map_err(|_| AdapterError::Uncertain)?;
-    let text = String::from_utf8_lossy(&raw);
-    let status = text
-        .split_whitespace()
-        .nth(1)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0);
-    let payload = text.split("\r\n\r\n").nth(1).unwrap_or("").to_owned();
-    Ok((status, payload))
-}
-
-fn map_status(status: u16, text: &str) -> Result<(), AdapterError> {
-    if status == 409 {
-        return Err(AdapterError::Conflict(text.into()));
-    }
-    if status >= 500 || status == 0 {
-        return Err(AdapterError::Uncertain);
-    }
-    if !(200..300).contains(&status) {
-        return Err(AdapterError::Failed(text.into()));
+fn identifier(id: &str) -> Result<(), AdapterError> {
+    if id.is_empty()
+        || id.len() > 128
+        || !id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"._:-".contains(&c))
+    {
+        return Err(failed("invalid wire identifier"));
     }
     Ok(())
 }
-
-fn ok(body: &str) -> String {
-    status(200, body)
+fn local_deadline(lease: &Value, until: u64) -> Result<u64, AdapterError> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| failed("clock unavailable"))?
+        .as_millis();
+    let expires = u128::from(lease["expires"].as_u64().ok_or(AdapterError::Uncertain)?);
+    let remaining = expires.saturating_sub(now).min(60_000) as u64;
+    if remaining == 0 {
+        return Err(AdapterError::Conflict("expired lease".into()));
+    }
+    Ok(until.saturating_sub(60_000).saturating_add(remaining))
 }
-fn created(body: &str) -> String {
-    status(201, body)
-}
-fn status(code: u16, body: &str) -> String {
-    format!(
-        "HTTP/1.1 {code} OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    )
-}
-fn json_str(value: &str) -> String {
-    serde_json::to_string(value).expect("json string")
-}
-fn field(raw: &str, key: &str) -> Option<String> {
-    serde_json::from_str::<serde_json::Value>(raw)
-        .ok()?
-        .get(key)?
-        .as_str()
-        .map(str::to_owned)
-}
-fn number(raw: &str, key: &str) -> Option<u64> {
-    serde_json::from_str::<serde_json::Value>(raw)
-        .ok()?
-        .get(key)?
-        .as_u64()
+fn failed(note: &str) -> AdapterError {
+    AdapterError::Failed(note.into())
 }

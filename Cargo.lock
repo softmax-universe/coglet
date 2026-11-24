@@ -547,6 +547,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-factory-host"
+version = "0.1.0"
+dependencies = [
+ "coglet-db",
+ "coglet-types",
+ "reqwest",
+ "rusqlite",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+]
+
+[[package]]
 name = "coglet-fs"
 version = "0.1.0"
 dependencies = [
@@ -662,6 +675,7 @@ dependencies = [
  "coglet-db",
  "coglet-engine",
  "coglet-engine-wamr",
+ "coglet-factory-host",
  "coglet-fs",
  "coglet-guest-rust",
  "coglet-hub",

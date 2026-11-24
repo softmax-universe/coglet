@@ -67,6 +67,15 @@ pub trait HermesAdapter {
         until: u64,
         attempt: u64,
     ) -> Result<Lease, AdapterError>;
+    /// Revalidate/renew a durably saved token after a crash, without obtaining a new claim.
+    fn restore_lease(
+        &mut self,
+        remote_id: &str,
+        owner: &str,
+        until: u64,
+        attempt: u64,
+        token: &str,
+    ) -> Result<Lease, AdapterError>;
     fn heartbeat(
         &mut self,
         remote_id: &str,
@@ -83,7 +92,12 @@ pub trait HermesAdapter {
         attempt: u64,
         lease: &str,
     ) -> Result<(), AdapterError>;
-    fn poll(&mut self, remote_id: &str) -> Result<Option<WorkerReport>, AdapterError>;
+    fn poll(
+        &mut self,
+        remote_id: &str,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<Option<WorkerReport>, AdapterError>;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -148,6 +162,22 @@ impl HermesAdapter for MockAdapter {
         Ok(lease)
     }
 
+    fn restore_lease(
+        &mut self,
+        remote_id: &str,
+        owner: &str,
+        until: u64,
+        attempt: u64,
+        token: &str,
+    ) -> Result<Lease, AdapterError> {
+        Ok(Lease {
+            remote_id: remote_id.into(),
+            owner: owner.into(),
+            until,
+            attempt,
+            token: token.into(),
+        })
+    }
     fn heartbeat(
         &mut self,
         remote_id: &str,
@@ -201,7 +231,12 @@ impl HermesAdapter for MockAdapter {
         Ok(())
     }
 
-    fn poll(&mut self, remote_id: &str) -> Result<Option<WorkerReport>, AdapterError> {
+    fn poll(
+        &mut self,
+        remote_id: &str,
+        _attempt: u64,
+        _lease: &str,
+    ) -> Result<Option<WorkerReport>, AdapterError> {
         Ok(self.results.get(remote_id).cloned())
     }
 }
