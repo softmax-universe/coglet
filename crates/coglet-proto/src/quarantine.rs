@@ -6,6 +6,7 @@ use crate::transfer::DurableSink;
 mod custody_tests {
     use super::*;
     use std::process::{Command, Stdio};
+    use std::sync::mpsc;
     struct Child(std::process::Child);
     impl Drop for Child {
         fn drop(&mut self) {
@@ -22,15 +23,7 @@ mod custody_tests {
         ));
         fs::create_dir(&parent).unwrap();
         let sink = BundleSink::create(&parent, 1).await.unwrap();
-        let lease = sink
-            .0
-            .as_ref()
-            .unwrap()
-            ._lease
-            .as_ref()
-            .unwrap()
-            .try_clone()
-            .unwrap();
+        let lease = sink.0.as_ref().unwrap().export_lease().unwrap();
         let mut child = Child(
             Command::new("/bin/sleep")
                 .arg("30")
@@ -46,11 +39,138 @@ mod custody_tests {
         assert_eq!(BundleSink::sweep_orphans(&parent).await.unwrap(), 1);
         fs::remove_dir(&parent).unwrap();
     }
+
+    fn metadata(tip: &str) -> crate::git_metadata::VerifiedRef {
+        use ed25519_dalek::{Signer, SigningKey};
+        let key = SigningKey::from_bytes(&[3; 32]);
+        let hub = "11".repeat(32);
+        let coglet = format!("coglet:{}", hex::encode(key.verifying_key().as_bytes()));
+        let statement = serde_json::json!({"purpose":"logs-ref", "hub":hub,"coglet":coglet,
+            "ref":"refs/heads/logs","old":null,"new":tip,
+            "archive_sha256":"cd".repeat(32),"generation":1});
+        let signature = key.sign(&crate::signing::preimage("logs-ref", &statement).unwrap());
+        crate::git_metadata::VerifiedRef::verify(
+            &serde_json::json!({"statement":statement,
+                "signer":hex::encode(key.verifying_key().as_bytes()),
+                "signature":hex::encode(signature.to_bytes())}),
+            crate::git_metadata::RefKind::Logs,
+            &hub,
+            &coglet,
+        )
+        .unwrap()
+    }
+
+    /// Model a concurrent fork/spawn on another thread: it shares the
+    /// unexported lease's open description until its exec closes the CLOEXEC
+    /// copy. No timing is involved: the copy is released only once the kernel
+    /// lists a cleanup blocked on this lease in /proc/locks (correct, waiting
+    /// cleanup), or once the test signals that the rejection already returned
+    /// (a non-waiting cleanup, which then fails the leftover assertion).
+    fn transient_holder(sink: &BundleSink) -> (mpsc::Sender<()>, std::thread::JoinHandle<()>) {
+        use std::os::unix::fs::MetadataExt;
+        let state = sink.0.as_ref().unwrap();
+        let copy = state._lease.as_ref().unwrap().try_clone().unwrap();
+        assert!(!state.exported.load(Ordering::Acquire));
+        let inode = copy.metadata().unwrap().ino().to_string();
+        let (release, wait) = mpsc::channel();
+        let holder = std::thread::spawn(move || {
+            let blocked_on_lease = || {
+                fs::read_to_string("/proc/locks")
+                    .unwrap()
+                    .lines()
+                    .any(|line| {
+                        line.contains("->")
+                            && line.split_whitespace().any(|field| {
+                                field.matches(':').count() == 2
+                                    && field.rsplit(':').next() == Some(inode.as_str())
+                            })
+                    })
+            };
+            while wait.try_recv().is_err() && !blocked_on_lease() {
+                std::thread::yield_now();
+            }
+            drop(copy);
+        });
+        (release, holder)
+    }
+
+    async fn truncated_sink(parent: &Path) -> (BundleSink, String) {
+        let mut bytes = format!(
+            "# v2 git bundle\n{} refs/heads/logs\n\nPACK",
+            "ab".repeat(20)
+        )
+        .into_bytes();
+        bytes.extend_from_slice(&2u32.to_be_bytes());
+        bytes.extend_from_slice(&1u32.to_be_bytes());
+        let mut sink = BundleSink::create(parent, bytes.len() as u64)
+            .await
+            .unwrap();
+        sink.append(&bytes).await.unwrap();
+        use sha2::Digest;
+        (sink, hex::encode(sha2::Sha256::digest(&bytes)))
+    }
+
+    #[tokio::test]
+    async fn rejections_remove_quarantine_before_returning_despite_forked_lease_copy() {
+        let parent = std::env::temp_dir().join(format!(
+            "coglet-reject-{}",
+            iroh::SecretKey::generate().public()
+        ));
+        fs::create_dir(&parent).unwrap();
+        let pinned = metadata(&"ab".repeat(20));
+        let mut leftovers = Vec::new();
+        for (case, expected) in [
+            ("truncated pack", "truncated pack"),
+            ("invalid hash", "invalid transfer hash"),
+            ("mismatched header", "bundle header mismatch"),
+            ("dropped sink", ""),
+        ] {
+            let (sink, hash) = truncated_sink(&parent).await;
+            let (release, holder) = transient_holder(&sink);
+            let message = match case {
+                "dropped sink" => {
+                    drop(sink);
+                    String::new()
+                }
+                "invalid hash" => sink
+                    .check_envelope(&pinned, "zz", 100000)
+                    .await
+                    .err()
+                    .expect("rejected")
+                    .to_string(),
+                "mismatched header" => sink
+                    .check_envelope(&metadata(&"cd".repeat(20)), &hash, 100000)
+                    .await
+                    .err()
+                    .expect("rejected")
+                    .to_string(),
+                _ => sink
+                    .check_envelope(&pinned, &hash, 100000)
+                    .await
+                    .err()
+                    .expect("rejected")
+                    .to_string(),
+            };
+            // Observe before releasing the simulated forked copy.
+            let remaining = fs::read_dir(&parent).unwrap().count();
+            let _ = release.send(());
+            holder.join().unwrap();
+            assert_eq!(message, expected, "{case}");
+            leftovers.push((case, remaining));
+            let _ = BundleSink::sweep_orphans(&parent).await;
+        }
+        fs::remove_dir_all(&parent).unwrap();
+        assert!(
+            leftovers.iter().all(|(_, remaining)| *remaining == 0),
+            "{leftovers:?}"
+        );
+    }
 }
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
     path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 struct State {
@@ -60,6 +180,18 @@ struct State {
     size: u64,
     limit: u64,
     failed: bool,
+    /// Set once the lease is deliberately handed to a helper process.
+    exported: AtomicBool,
+}
+impl State {
+    fn export_lease(&self) -> io::Result<File> {
+        let lease = self
+            ._lease
+            .as_ref()
+            .ok_or_else(|| io::Error::other("quarantine discarded"))?;
+        self.exported.store(true, Ordering::Release);
+        lease.try_clone()
+    }
 }
 impl Drop for State {
     fn drop(&mut self) {
@@ -76,11 +208,21 @@ impl Drop for State {
         // while one still owns it (including a killed task stuck in kernel I/O).
         // If service/helper dies first, startup sweep resumes cleanup only after
         // the final inherited descriptor closes. No accepted ref exists here.
+        //
+        // Before export no helper owns the lease, but a concurrent fork/spawn on
+        // any thread still duplicates every descriptor until exec closes the
+        // CLOEXEC copy. A non-blocking probe can lose to that transient holder
+        // and leave rejected bytes behind, so wait for it: every pre-export
+        // rejection returns only after removal. After export, keep deferring.
         let candidate = File::open(self.directory.join("lease"));
         drop(self._lease.take());
-        if let Ok(lease) = candidate
-            && lease.try_lock().is_ok()
-        {
+        let Ok(lease) = candidate else { return };
+        let owned = if self.exported.load(Ordering::Acquire) {
+            lease.try_lock().is_ok()
+        } else {
+            lease.lock().is_ok()
+        };
+        if owned {
             let _ = fs::remove_dir_all(&self.directory);
         }
     }
@@ -118,9 +260,8 @@ impl BundleEnvelope {
         self._sink
             .0
             .as_ref()
-            .and_then(|s| s._lease.as_ref())
             .ok_or_else(|| io::Error::other("quarantine discarded"))?
-            .try_clone()
+            .export_lease()
     }
 
     /// Consume raw custody. Success proves bounded Git/tree/archive validation,
@@ -343,6 +484,7 @@ impl BundleSink {
                     size: 0,
                     limit,
                     failed: false,
+                    exported: AtomicBool::new(false),
                 }))),
                 Err(error) => {
                     let _ = fs::remove_dir_all(directory);
