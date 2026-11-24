@@ -74,7 +74,7 @@ Unsolicited events allocate a fresh id. Derived events MAY retain a causal id.
   (capability-name), `args` (map), `deadline` (uint64), `correlation_id`.
   Deadline is an exclusive expiry instant in logical microseconds, scoped to
   the boundary carrying the envelope (ADR-0009 M-C): an ABI guest intent uses
-  its runtime epoch and remains immutable in the journal. A surface-wire action
+  its runtime epoch and remains immutable in the journal. An adapter-wire action
   uses the executing adapter epoch, translated ONCE before first dispatch and
   durably retained with the complete act envelope. `hub.actions` uses the
   RECEIVING runtime epoch, not the router's epoch: the sender establishes that

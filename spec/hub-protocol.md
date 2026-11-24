@@ -92,7 +92,7 @@ revokes its grants and cancels its unapplied writes; provenance records carry it
 | `hub.git.push` | router → device | coglet; only `refs/heads/hub` |
 | `hub.git.fetch` | router → device | coglet; only published/main or logs |
 | `hub.events` | device → router | coglet; enrolled source + relay binding |
-| `hub.actions` | router → device | coglet; action/capability/surface grants too |
+| `hub.actions` | router → device | coglet; action/capability/adapter grants too |
 | `debug.read` | router → device | coglet; read paths/step/log range |
 | `debug.write` | router → device | coglet; bounded `/data` paths only |
 | `debug.pause`, `debug.step` | router → device | coglet; independent control grants |
@@ -386,7 +386,7 @@ the exact file JSON bytes,
 appends UTF-8 JSON plus one LF at a boundary, and emits the ABI `runtime.inbox`
 wake `{index,id}`. Index exhaustion fails closed. Newlines inside strings are
 escaped; integers retain full precision. `sender` is authenticated router identity
-(or the hub-validated original source on relay); never trust an arbitrary sender
+(or the router-validated original source on relay); never trust an arbitrary sender
 string. The router checks sender authority and the runtime trusts only the pinned
 router's explicit provenance. LLM results/steering/factory notes use this primitive.
 Runtime owns append; coglet owns its separate read cursor. Neither debug.write

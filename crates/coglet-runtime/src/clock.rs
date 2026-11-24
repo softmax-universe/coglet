@@ -5,6 +5,9 @@
 use crate::{Result, RuntimeService};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+pub(super) type TestClockSample = std::sync::Arc<dyn Fn() -> Result<(String, u64)> + Send + Sync>;
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct ClockAnchor {
@@ -107,13 +110,38 @@ fn sample() -> Result<(String, u64)> {
     Err("supervisor clock continuity is not implemented on this platform".into())
 }
 impl RuntimeService {
+    /// Resample an established native epoch after persistence. Logical callers
+    /// own their clock; never create an anchor or write the WAL at publication.
+    pub(crate) fn read_publication_now(&self, entry: u64) -> Result<u64> {
+        let Some(anchor) = &self.state.clock_anchor else {
+            return Ok(entry);
+        };
+        if !self.store.is_healthy() {
+            return Err("runtime requires WAL recovery".into());
+        }
+        let (boot, micros) = self.clock_sample()?;
+        let now = anchor.at(&boot, micros)?;
+        if now < entry || now < self.state.runtime.time {
+            return Err("read publication clock rollback".into());
+        }
+        Ok(now)
+    }
+
+    fn clock_sample(&self) -> Result<(String, u64)> {
+        #[cfg(test)]
+        if let Some(sample) = &self.test_clock_sample {
+            return sample();
+        }
+        sample()
+    }
+
     /// Activate a durable native clock once, or recover the same epoch. Refuse
     /// to infer an epoch for already prepared dispatches from an older runtime.
     pub fn supervised_now(&mut self) -> Result<u64> {
         if !self.store.is_healthy() {
             return Err("runtime requires WAL recovery".into());
         }
-        let (boot, micros) = sample()?;
+        let (boot, micros) = self.clock_sample()?;
         self.supervised_at(boot, micros)
     }
     // Keep the recovery policy identical across OS samplers. Tests inject only
