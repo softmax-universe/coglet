@@ -665,6 +665,7 @@ dependencies = [
  "coglet-fs",
  "coglet-guest-rust",
  "coglet-hub",
+ "coglet-llm",
  "coglet-mock",
  "coglet-proto",
  "coglet-surface-rust",
