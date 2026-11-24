@@ -71,6 +71,11 @@ targets without filters or ignores.
   rebinding delayed callbacks to a new session. Unrestricted provider reconnect
   is not qualified; see `live-heard.md`.
 
+Authenticated router→device Git/lifecycle (`hub.git.push` / install / start /
+stop / status) is documented in [router-adapter.md](router-adapter.md). It is
+not native execution qualification: start does not run Wasm without a connected
+adapter session, and this card does not add named wire tests.
+
 ## Reproduction and results
 
 Executed after merging current main, with CMake available:

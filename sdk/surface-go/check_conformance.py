@@ -11,7 +11,9 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'conformance'))
-from harness import cases_for
+from harness import cases_for, quarantined_ids
+
+QUARANTINE = ROOT / 'ci/quarantine.toml'
 
 
 def main():
@@ -33,7 +35,7 @@ def main():
         registry = Path(tmp) / 'impls.toml'
         registry.write_text(block)
         subprocess.run([sys.executable, str(ROOT / 'conformance/run'), '--registry', str(registry),
-                        '--junit', str(args.junit.resolve())], cwd=ROOT, check=True)
+                        '--quarantine', str(QUARANTINE), '--junit', str(args.junit.resolve())], cwd=ROOT, check=True)
     report = ET.parse(args.junit).getroot()
     cases = cases_for(ROOT / 'conformance', 'surface')
     expected = {(impl['name'] + '.surface', c['name']): c for c in cases}
@@ -41,7 +43,8 @@ def main():
     keys = [(c.get('classname'), c.get('name')) for c in actual]
     if len(keys) != len(set(keys)) or set(keys) != set(expected):
         raise RuntimeError('missing/duplicate/unexpected JUnit identities')
-    passed = skipped = 0
+    quarantined = quarantined_ids(QUARANTINE)
+    passed = skipped = held = 0
     for c in actual:
         case = expected[(c.get('classname'), c.get('name'))]
         if c.find('failure') is not None or c.find('error') is not None:
@@ -52,12 +55,16 @@ def main():
                 raise RuntimeError('unsupported role not explicitly skipped')
             skipped += 1
         else:
-            if skip is not None:
+            ident = f"{c.get('classname')}/{c.get('name')}"
+            if skip is not None and ident in quarantined and 'quarantined (ci/quarantine.toml)' in skip.get('message', ''):
+                held += 1  # skipped by ci/quarantine.toml; the stability workflow still runs it
+            elif skip is not None:
                 raise RuntimeError('supported surface case skipped')
-            passed += 1
+            else:
+                passed += 1
     if int(report.get('tests')) != len(keys) or int(report.get('failures')) != 0:
         raise RuntimeError('JUnit totals disagree')
-    print(f'Go surface identities verified: {passed} passed, {skipped} unsupported-role skips')
+    print(f'Go surface identities verified: {passed} passed, {skipped} unsupported-role skips, {held} quarantined')
 
 
 if __name__ == '__main__':

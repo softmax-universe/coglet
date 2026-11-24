@@ -1,67 +1,84 @@
-# Factory DB guest slice — in progress
+# Factory DB guest and runtime qualification — in progress
 
-**Non-deployable ABI 0.2 slice**, not a qualified DB runtime. Existing WAMR/mock/
-runtime admission is unchanged and must reject `coglet_v0.db`. No LLM, executive,
-dispatcher or ambient time/randomness. No deployment manifest with a placeholder
-catalog hash: approved catalog admission/migrations/recovery must come first.
+ABI 0.2 is explicitly opted in. Frozen ABI 0.1 loaders still reject
+`coglet_v0.db`. The borrowed runtime service path now executes DB steps, publishes
+full-state decisions through the WAL, and replays recorded DB results offline.
+**Milestone D is not yet qualified or landed:** hosted exact-head required CI,
+and final independent review remain gates. No live deployment,
+production operator-approval adapter or external dispatcher is certified here.
 
-## Implemented
+## Repository and schema
 
-- Portable forward schema source `migrations/0001.sql`: objects, relations,
-  semantic events, work_queue, outbox and schema_migrations; foreign keys,
-  deterministic-key indexes, explicit NOT NULL primary keys and optimistic versions.
-  Semantic JSON stays opaque text; dedicated host outbox payloads use canonical
-  CBOR hex so profile values retain identity. No SQLite JSON functions or upsert.
+- Portable schema source `migrations/0001.sql`: objects, relations, semantic
+  events, work_queue, outbox and schema_migrations. Semantic JSON is opaque text;
+  outbox payloads retain canonical profile-CBOR identity. No guest SQL or DDL.
 - Repository `get_object`, `query_objects`, `get_relations`, `create_object`,
   optimistic `update_object`, `append_event`, and dedicated `enqueue_outbox`.
-  Multiple calls share the host step transaction; there is no guest commit.
-  Propagate **every** error out of handle. Success is provisional, never durable
-  DB commit. Outbox is never mutated through guest SQL.
-- Query pages retain revision/opaque cursor, never fetch unbounded results.
-  Authentication/expiry is the host's responsibility and not implemented here.
-- Application ULID encoding uses supplied recorded timestamp/entropy; callers must
-  preserve uniqueness across trace resets. ABI outbox action/correlation IDs retain
-  the frozen 32-lowercase-hex encoding, not 26-character ULIDs.
-- Read-only `factory.inspect` probe event with payload `{id: <object id>}` reads one
-  object and stages an ID/status log. DB rejection propagates to nonzero handle
-  with no log. This is a walking-skeleton probe, not a product executive/API.
+  Replies are provisional until host step completion; propagate every error.
+- Bounded pages retain host revision and authenticated opaque cursor. Application
+  ULIDs use supplied timestamp/entropy; ABI action/correlation IDs remain
+  32-lowercase-hex. No ambient time/randomness, LLM or executive.
+- `factory.inspect` reads one object. `factory.transact` is a deterministic probe,
+  not a product executive: supplied IDs/time select get/query/relations, optimistic
+  update, semantic event append and outbox enqueue in one host step. Its payload
+  reports bounded first-page peer/relation counts, not exhaustive scan totals.
 
-## Verification and limits
+## Actual runtime tests
+
+From repository root, with the pinned toolchain and CMake installed:
 
 ```sh
-# from repository root
+rustup target add wasm32-unknown-unknown
+cargo test --locked -p coglet-runtime --features native-engine \
+  --test factory_database --test database_service -- --test-threads=1
+```
+
+`real_wamr_runs_actual_factory_guest_end_to_end` compiles this Rust guest for
+`wasm32-unknown-unknown` with a 16 MiB maximum, checks that imports are exclusively
+`coglet_v0.*` (no WASI), and applies the existing NaN-canonicalization qualification
+rewrite. It uses the real Factory catalog and host-approved migration flow,
+including snapshot, isolated trial restore and code/schema compatibility pins.
+The migration runner owns `schema_migrations`; the test omits that table's DDL
+from the portable schema source before submitting the migration.
+
+`mock_runs_factory_repository_against_real_database_host` runs the same
+`factory::wake` via native mock imports against real SQLite, not canned replies.
+Both tests assert read-derived outbox payloads, exact mixed DB/log call order,
+committed SQL rows, whole-unit rollback after a duplicate semantic event,
+durable reopen/continuation, and offline guest replay with the DB file deleted.
+Operator approval/restore verifiers are explicit test fixtures. Application rows
+and relations are host-provisioned test setup; this is not a deployment service.
+The build is cached per test binary in `target/factory-unknown`.
+
+`database_service` separately exercises real/mock marker-present/absent recovery
+without guest execution, inaccessible-DB holds, exact WAL publication and
+recorded-result replay with missing/extra/changed-call and poison controls.
+Both adapters now also exercise WAL-safe backup, isolated restore, missing
+reference refusal and actual recorded-result guest replay. Exact Factory records
+roundtrip through 0.2 archives. The full eight-case frozen wire corpus passes
+locally on both adapters; see the detailed
+[requirement matrix](../../crates/coglet-runtime/DATABASE_QUALIFICATION.md).
+This is not a hosted exact-head CI or final milestone acceptance claim.
+
+## Supplemental guest transport checks
+
+```sh
 bash coglets/factory/check.sh
 ```
 
-Runs SDK buffer tests, native repository tests, clippy/fmt, a bounded-memory
-wasm32-wasip1 reactor build, and execution of the actual four-buffer import through
-a **test-only Python Wasmtime/SQLite transport**. Checks import signature, disjoint
-live buffers, canonical CBOR, real query readback, rejection propagation, absence
-of ambient clock/random imports, and a 16 MiB memory maximum. The existing Rust CI
-workflow calls this script.
+This existing script runs SDK/native repository tests and lint, then builds a
+bounded `wasm32-wasip1` reactor for a **test-only Python Wasmtime/SQLite
+transport**. That path remains supplemental: it does not qualify production
+WASI admission, authorization, recovery or dispatch. The runtime test above
+instead uses a no-WASI guest without widening any engine import allowlist.
 
-Native repository tests execute real SQLite queries and schema constraints. The
-outbox forwarding test is only a typed transport unit test; it does not implement
-or prove native immutable-key dedup. Neither transport is a production capability
-adapter. No admission/grants, host-byte reservation, cancellation, journal/replay,
-marker recovery, sticky poison or authenticated pagination qualification is claimed.
-No frozen conformance input changed. These tests do **not** satisfy the task's
-seven named acceptance cases through the shared real/mock runtime suite.
+The script additionally invokes `crates/coglet-runtime/tools/check-database.py`:
+real/mock native runtime, DB recovery/backup and all frozen wire cases. The
+existing required Rust job already invokes this owned script. Its historical
+workflow step label still says supplemental; no workflow file was edited here.
 
-## Required next
+## Remaining milestone D gates
 
-1. Bind the native typed catalog digest to manifest/code/schema admission. The
-   native coglet-db suite now consumes catalog.rs and the actual migration source,
-   enforcing types, FK read dependencies, unique order and immutable enqueue;
-   catalog.rs remains deployment data, not an operator-approved live deployment.
-2. Finish host revision/cursor/admitted-attempt accounting/error protocol and
-   journal-fenced enqueue. Native outbox tests do not enable runtime support.
-3. Implement the **operator-authorized host migration runner**. The SQL file is
-   input, not approval. Bind approval to owner, versions, migration digest,
-   candidate code and recovery plan; verify quiesced backup/restore, apply a
-   transactional migration, record schema_migrations. Keep ADR-0013's complete
-   previous/current compatibility window. Wasm must not execute schema DDL.
-4. Complete prepare -> DB marker -> exact journal publication recovery;
-   runtime/engine opt-in ABI0.2 admission and offline recorded-result replay;
-   shared real/mock crash/backup black-box tests; independent exact-head review,
-   green CI and merge. External dispatch remains Phase 2.
+- Run the wired qualification checks on the eventual PR's exact head in hosted CI.
+- Obtain independent exact-head approval, green required CI and merge the one D
+  PR. No ADR-0013 gate is waived. External dispatch remains Factory Phase 2.

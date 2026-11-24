@@ -470,3 +470,80 @@ async fn validator_code_requires_valid_wasm_and_canonical_output_bound_provenanc
             .ends_with("provenance output digest")
     );
 }
+
+#[tokio::test]
+async fn validator_exports_immutable_bounded_verified_contents() {
+    let wasm = b"\0asm\x01\0\0\0";
+    let record = provenance(wasm);
+    let (bytes, metadata) = code_fixture(wasm, Some(&record));
+    let root = Root::new();
+    let mut sink = BundleSink::create(&root.0, bytes.len() as u64)
+        .await
+        .unwrap();
+    sink.append(&bytes).await.unwrap();
+    let envelope = sink
+        .check_envelope(&metadata, &hex::encode(Sha256::digest(&bytes)), 100000)
+        .await
+        .unwrap();
+    let validator = Validator::new(env!("CARGO_BIN_EXE_coglet-git-validator"));
+    let bundle = envelope
+        .validate(&validator, Limits::default())
+        .await
+        .unwrap();
+    let contents = bundle.contents();
+    // Exactly the validated tip-tree files, byte-for-byte.
+    assert_eq!(contents.len(), 2);
+    assert_eq!(contents.file("bin/step.wasm"), Some(wasm.as_slice()));
+    assert_eq!(
+        contents.file("build/provenance.cbor"),
+        Some(record.as_slice())
+    );
+    assert_eq!(contents.file("bin"), None);
+    assert_eq!(contents.file("missing"), None);
+    let paths: Vec<_> = contents.files().map(|(p, _)| p).collect();
+    assert_eq!(paths, ["bin/step.wasm", "build/provenance.cbor"]);
+    // Content comes from the verified bytes; no mutable path is exposed.
+    drop(bundle);
+    for _ in 0..100 {
+        BundleSink::sweep_orphans(&root.0).await.unwrap();
+        if fs::read_dir(&root.0).unwrap().count() == 0 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
+}
+
+#[tokio::test]
+async fn validator_content_export_larger_than_pipe_buffer_and_within_limit() {
+    // >64 KiB forces the parent to drain the helper pipe while it polls.
+    let big: Vec<u8> = (0..300_000u32).map(|n| (n * 31 % 251) as u8).collect();
+    let source = Root::new();
+    source.git(&["init", "--initial-branch=logs"]);
+    fs::create_dir(source.0.join("logs")).unwrap();
+    fs::write(source.0.join("logs/big.bin"), &big).unwrap();
+    let (bytes, metadata) = finish_fixture(&source, RefKind::Logs);
+    let root = Root::new();
+    let mut sink = BundleSink::create(&root.0, bytes.len() as u64)
+        .await
+        .unwrap();
+    sink.append(&bytes).await.unwrap();
+    let envelope = sink
+        .check_envelope(&metadata, &hex::encode(Sha256::digest(&bytes)), 100000)
+        .await
+        .unwrap();
+    let validator = Validator::new(env!("CARGO_BIN_EXE_coglet-git-validator"));
+    let bundle = envelope
+        .validate(&validator, Limits::default())
+        .await
+        .unwrap();
+    assert_eq!(bundle.contents().file("logs/big.bin"), Some(big.as_slice()));
+    drop(bundle);
+    // The same bundle under a smaller expanded limit is rejected before export.
+    let tight = Limits {
+        expanded_bytes: 64 * 1024,
+        ..Limits::default()
+    };
+    let error = validate_bytes(&bytes, &metadata, tight).await.unwrap_err();
+    assert!(error.to_string().contains("resource_exhausted"), "{error}");
+}

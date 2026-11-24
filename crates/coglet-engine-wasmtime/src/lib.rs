@@ -1,7 +1,7 @@
 //! Wasmtime 51, pinned fuel policy. No ambient WASI, no serialized native modules.
 use coglet_engine::{
-    Engine, Error, GuestMemory, Host, Instance, Limits, Metadata, Result, StepBudget, StepInput,
-    StepOutcome, admission::admit,
+    Admission, Engine, Error, GuestMemory, Host, Instance, Limits, Metadata, Result, StepBudget,
+    StepInput, StepOutcome, admit_with,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -38,7 +38,9 @@ mod growth_tests {
     }
 }
 #[derive(Default, Clone, Copy)]
-pub struct Wasmtime;
+pub struct Wasmtime {
+    allow_db: bool,
+}
 #[derive(Clone)]
 pub struct Module {
     bytes: Arc<[u8]>,
@@ -69,6 +71,18 @@ fn check(l: &Limits) -> Result<()> {
     }
     Ok(())
 }
+impl Wasmtime {
+    /// Explicit ABI 0.2 `coglet_v0.db` import. Frozen ABI 0.1 engines never set this.
+    #[must_use]
+    pub fn allow_db(self) -> Self {
+        Self { allow_db: true }
+    }
+    pub fn admission(&self) -> Admission {
+        Admission {
+            allow_db: self.allow_db,
+        }
+    }
+}
 impl Engine for Wasmtime {
     type Module = Module;
     type Instance = WasmtimeInstance;
@@ -83,7 +97,7 @@ impl Engine for Wasmtime {
     }
     fn load(&self, wasm: &[u8], limits: &Limits) -> Result<Module> {
         check(limits)?;
-        admit(wasm, limits)?;
+        admit_with(wasm, limits, self.admission())?;
         check(limits)?;
         Ok(Module {
             bytes: Arc::from(wasm),
@@ -91,7 +105,7 @@ impl Engine for Wasmtime {
     }
     fn instantiate(&self, module: &Module, limits: Limits) -> Result<WasmtimeInstance> {
         check(&limits)?;
-        admit(&module.bytes, &limits)?;
+        admit_with(&module.bytes, &limits, self.admission())?;
         let mut config = Config::new();
         config
             .consume_fuel(true)
@@ -241,6 +255,9 @@ impl GuestMemory for CopyMemory<'_> {
         let r = self.range(ptr, bytes.len())?;
         self.bytes[r].copy_from_slice(bytes);
         Ok(())
+    }
+    fn memory_len(&self) -> u64 {
+        self.bytes.len() as u64
     }
 }
 fn sync_budget(caller: &mut Caller<'_, State>) -> Result<()> {

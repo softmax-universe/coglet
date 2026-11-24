@@ -334,6 +334,10 @@ impl Database {
     pub fn path(&self) -> &Path {
         &self.path
     }
+    /// Authenticated host-selected owner, never selected by a guest request.
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
     #[cfg(test)]
     fn begin<'a>(
         &'a mut self,

@@ -68,6 +68,7 @@ impl NativeModule {
 #[derive(Default)]
 pub struct MockEngine {
     modules: BTreeMap<Vec<u8>, NativeModule>,
+    allow_db: bool,
 }
 impl MockEngine {
     pub fn register(&mut self, identity: Vec<u8>, module: NativeModule) -> Result<()> {
@@ -76,6 +77,11 @@ impl MockEngine {
         }
         self.modules.insert(identity, module);
         Ok(())
+    }
+    /// Explicit ABI 0.2 `coglet_v0.db` import. Frozen ABI 0.1 engines never set this.
+    pub fn allow_db(&mut self) -> &mut Self {
+        self.allow_db = true;
+        self
     }
 }
 fn validate(l: &Limits) -> Result<()> {
@@ -127,12 +133,14 @@ impl Engine for MockEngine {
         Ok(NativeInstance {
             module: module.clone(),
             limits,
+            allow_db: self.allow_db,
         })
     }
 }
 pub struct NativeInstance {
     module: NativeModule,
     limits: Limits,
+    allow_db: bool,
 }
 pub struct Memory {
     bytes: Vec<u8>,
@@ -193,6 +201,9 @@ impl GuestMemory for Memory {
         self.bytes[range].copy_from_slice(bytes);
         Ok(())
     }
+    fn memory_len(&self) -> u64 {
+        self.bytes.len() as u64
+    }
 }
 // Host-visible copies are metered even when a Host ignores a returned error.
 struct HostMemory<'a> {
@@ -238,6 +249,9 @@ impl GuestMemory for HostMemory<'_> {
         self.charge(ptr, bytes.len())?;
         self.memory.write(ptr, bytes)
     }
+    fn memory_len(&self) -> u64 {
+        self.memory.bytes.len() as u64
+    }
 }
 pub struct Context<'a> {
     pub memory: Memory,
@@ -246,6 +260,7 @@ pub struct Context<'a> {
     runtime_remaining: u32,
     stack_limit: u32,
     failure: Option<Error>,
+    allow_db: bool,
 }
 impl Context<'_> {
     fn checked<T>(&mut self, result: Result<T>) -> Result<T> {
@@ -289,7 +304,7 @@ impl Context<'_> {
         };
         self.checked(result)
     }
-    /// All four ABI imports use copy-only memory and one aggregate byte budget.
+    /// Frozen ABI imports plus optional `coglet_v0.db` when the engine opted in.
     /// WASI and file policy belong to the trusted Host, not ambient native I/O.
     pub fn call(&mut self, module: &str, name: &str, args: &[u64]) -> Result<u32> {
         self.boundary()?;
@@ -304,12 +319,23 @@ impl Context<'_> {
             ));
         }
         if module == "coglet_v0" {
-            if !matches!(name, "timer" | "emit" | "llm" | "log") || args.len() != 2 {
+            if name == "db" {
+                if !self.allow_db || args.len() != 4 {
+                    return Err(Error::UnqualifiedModule);
+                }
+                let in_ptr = args[0] as u32;
+                let in_len = args[1] as u32;
+                let out_ptr = args[2] as u32;
+                let out_len = args[3] as u32;
+                self.memory.range(in_ptr, in_len as usize)?;
+                self.memory.range(out_ptr, out_len as usize)?;
+            } else if !matches!(name, "timer" | "emit" | "llm" | "log") || args.len() != 2 {
                 return Err(Error::UnqualifiedModule);
+            } else {
+                let ptr = u32::try_from(args[0]).map_err(|_| Error::InvalidPointer)?;
+                let len = u32::try_from(args[1]).map_err(|_| Error::InvalidPointer)?;
+                self.memory.range(ptr, len as usize)?;
             }
-            let ptr = u32::try_from(args[0]).map_err(|_| Error::InvalidPointer)?;
-            let len = u32::try_from(args[1]).map_err(|_| Error::InvalidPointer)?;
-            self.memory.range(ptr, len as usize)?;
         }
         let mut memory = HostMemory {
             memory: &mut self.memory,
@@ -354,6 +380,7 @@ impl Instance for NativeInstance {
                 runtime_remaining: self.limits.runtime_bytes,
                 stack_limit: self.limits.stack_bytes,
                 failure: None,
+                allow_db: self.allow_db,
             };
             cx.boundary()?;
             guest.initialize(&mut cx)?;

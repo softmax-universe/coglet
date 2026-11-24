@@ -368,13 +368,25 @@ impl SurfaceSession {
                             .lock()
                             .map_err(|_| "runtime service poisoned")?
                             .heard_owner();
+                        // Persistence is not part of this not-yet-issued read's
+                        // allowance. Existing PendingRead deadlines stay fixed.
+                        let publication_time = service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .read_publication_now(now)?;
+                        // This event passed the arrival-time inactivity check.
+                        // Count persistence against this receipt, not the prior
+                        // message. A >=3s commit still fails the unchanged fence.
+                        self.last_received = now;
                         self.request_read(
                             &owner,
                             "speech.heard",
                             json!({"item":body["payload"]["item"]}),
                             &id,
-                            now.checked_add(1_000_000).ok_or("read deadline overflow")?,
-                            now,
+                            publication_time
+                                .checked_add(1_000_000)
+                                .ok_or("read deadline overflow")?,
+                            publication_time,
                         )?;
                         self.heard_reads.insert(id);
                     }
@@ -385,6 +397,8 @@ impl SurfaceSession {
                 _ => return Err("wrong direction or lifecycle".into()),
             }
         }
+        // This is the transport's input high-water mark, not an internal
+        // publication sample: its post-send pump may reuse the arrival sample.
         self.runtime_clock = now;
         self.last_received = now;
         Ok(())

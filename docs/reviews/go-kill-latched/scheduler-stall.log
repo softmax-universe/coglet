@@ -1,0 +1,3 @@
+{"fixture_clock": false, "scheduler_stall_ms": 450, "error": "step 1: TimeoutError: "}
+{"fixture_clock": true, "scheduler_stall_ms": 450, "error": null}
+PASS unchanged case: real-time budget fails under owned stall; logical fixture passes

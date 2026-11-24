@@ -27,7 +27,7 @@ rustup component add llvm-tools-preview
 LLVM_NM="$(rustc --print sysroot)/lib/rustlib/$(rustc --print host-tuple)/bin/llvm-nm"
 [[ -x "$LLVM_NM" ]] || { printf '%s\n' 'Rust LLVM symbol reader is unavailable' >&2; exit 1; }
 while read -r -u 3 target sdk arch; do
-  IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --locked --release -p coglet-runtime --features native-engine --target "$target"
+  IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --locked --release -p coglet-runtime --no-default-features --features native-engine --target "$target"
   mkdir -p "$OUT/$target"
   cp "$CARGO_TARGET_DIR/$target/release/libcoglet_runtime.a" "$OUT/$target/libCogletRuntime.a"
   xcrun lipo "$OUT/$target/libCogletRuntime.a" -verify_arch "$arch"

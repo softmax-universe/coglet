@@ -37,8 +37,8 @@ fn guest(init: &str, alloc: &str, handle: &str) -> Vec<u8> {
     .unwrap()
 }
 fn run(b: &[u8], l: Limits) -> coglet_engine::StepOutcome {
-    let m = Wasmtime.load(b, &l).unwrap();
-    Wasmtime.instantiate(&m, l).unwrap().handle(
+    let m = Wasmtime::default().load(b, &l).unwrap();
+    Wasmtime::default().instantiate(&m, l).unwrap().handle(
         StepInput {
             events: vec![0x81, 0xa0],
             step: 0,
@@ -113,7 +113,10 @@ fn memory_admission_growth_and_stack_bound() {
     assert_eq!(run(&b, limits(1000)).result, Ok(()));
     let mut l = limits(1000);
     l.memory_pages = 1;
-    assert!(matches!(Wasmtime.load(&b, &l), Err(Error::MemoryExhausted)));
+    assert!(matches!(
+        Wasmtime::default().load(&b, &l),
+        Err(Error::MemoryExhausted)
+    ));
     let recursive=wat::parse_str(r#"(module (memory (export "memory") 1 2) (func $r call $r) (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) call $r i32.const 0))"#).unwrap();
     assert_eq!(
         run(&recursive, limits(1000000)).result,
@@ -126,22 +129,28 @@ fn mode_pointer_return_and_fresh_globals() {
     assert_eq!(run(&b, limits(1000)).result, Err(Error::InvalidPointer));
     let mut l = limits(1000);
     l.compute_mode = "wamr-2.4.3-fast-cumulative-v1".into();
-    assert!(matches!(Wasmtime.load(&b, &l), Err(Error::UnsupportedMode)));
+    assert!(matches!(
+        Wasmtime::default().load(&b, &l),
+        Err(Error::UnsupportedMode)
+    ));
     let b = guest("", "i32.const 0", "i32.const 7");
     assert_eq!(run(&b, limits(1000)).result, Err(Error::GuestReturn(7)));
     let b=wat::parse_str(r#"(module (memory (export "memory") 1 2) (global $g (mut i32) (i32.const 0)) (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) global.get $g i32.const 1 global.set $g))"#).unwrap();
     let l = limits(1000);
-    let m = Wasmtime.load(&b, &l).unwrap();
+    let m = Wasmtime::default().load(&b, &l).unwrap();
     for _ in 0..3 {
-        let out = Wasmtime.instantiate(&m, limits(1000)).unwrap().handle(
-            StepInput {
-                events: vec![0x81, 0xa0],
-                step: 0,
-                logical_time: 0,
-                seed: 0,
-            },
-            &mut NoHost,
-        );
+        let out = Wasmtime::default()
+            .instantiate(&m, limits(1000))
+            .unwrap()
+            .handle(
+                StepInput {
+                    events: vec![0x81, 0xa0],
+                    step: 0,
+                    logical_time: 0,
+                    seed: 0,
+                },
+                &mut NoHost,
+            );
         assert_eq!(out.result, Ok(()));
     }
 }

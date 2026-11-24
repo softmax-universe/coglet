@@ -153,7 +153,7 @@ impl Engine for NativeEngine {
     }
 }
 
-fn engine_failure(error: coglet_engine::Error) -> Value {
+pub(super) fn engine_failure(error: coglet_engine::Error) -> Value {
     use coglet_engine::Error::*;
     let (kind, code) = match &error {
         ComputeExhausted => ("compute", "resource_exhausted"),
@@ -192,7 +192,7 @@ pub struct NativeSchedule {
 }
 impl crate::RuntimeService {
     pub(crate) fn native_enabled(&self) -> bool {
-        self.native.is_some()
+        self.native.is_some() && self.managed_running()
     }
     pub fn enable_native(&mut self, config: NativeSchedule) -> Result<()> {
         validate("correlation-id", &json!(config.trace_id))?;
@@ -217,7 +217,8 @@ impl crate::RuntimeService {
         Ok(())
     }
     pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
-        if self.native.is_none()
+        if !self.managed_running()
+            || self.native.is_none()
             || self.state.runtime.unresolved_attempt.is_some()
             || self.surface_epoch(session.surface()) != session.grant_epoch()
         {

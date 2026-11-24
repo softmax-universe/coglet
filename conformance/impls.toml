@@ -6,6 +6,7 @@ peer_roles = ["runtime"]
 transport = "stdio"
 command = ["target/coglet-go-surface"]
 ready_line = "COGLET_CONFORMANCE_READY"
+fixture_clock = true
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
