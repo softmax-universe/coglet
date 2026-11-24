@@ -42,7 +42,7 @@ fn guest(scrub: &str) -> Vec<u8> {
 #[test]
 fn production_nan_validator_rejects_unrewritten_computation() {
     assert!(matches!(
-        Wasmtime.load(&guest(""), &limits()),
+        Wasmtime::default().load(&guest(""), &limits()),
         Err(Error::UnqualifiedModule)
     ));
 }
@@ -52,7 +52,7 @@ fn float_nan_repeated_execution() {
         "local.set $t local.get $t f64.const nan:0x8000000000000 local.get $t local.get $t f64.eq select",
     );
     for _ in 0..5 {
-        let e = Wasmtime;
+        let e = Wasmtime::default();
         let l = limits();
         let m = e.load(&b, &l).unwrap();
         let out = e.instantiate(&m, l).unwrap().handle(
@@ -129,7 +129,7 @@ fn every_r3_operator_requires_and_executes_the_exact_rewrite() {
                 (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) (local $t {float})
                 {prefix} {scrub} {integer}.reinterpret_{float} {integer}.const {bits} {integer}.ne))"#)).unwrap()
             };
-            let e = Wasmtime;
+            let e = Wasmtime::default();
             let l = limits();
             assert!(
                 matches!(e.load(&build(""), &l), Err(Error::UnqualifiedModule)),
@@ -156,7 +156,7 @@ fn wrong_nan_payload_is_rejected() {
         "local.set $t local.get $t f64.const nan:0x8000000000042 local.get $t local.get $t f64.eq select",
     );
     assert!(matches!(
-        Wasmtime.load(&wrong, &limits()),
+        Wasmtime::default().load(&wrong, &limits()),
         Err(Error::UnqualifiedModule)
     ));
 }
