@@ -1,4 +1,9 @@
 import Foundation
+#if canImport(Darwin)
+import Darwin
+#else
+import Glibc
+#endif
 
 /// Bundled real-iroh transport. Secrets only cross anonymous pipes.
 @MainActor
@@ -30,9 +35,19 @@ public final class ProcessHubLink: HubLink {
         reader = Task.detached { [weak self] in
             do {
                 var pending = Data()
+                var buffer = [UInt8](repeating: 0, count: 4096)
                 while !Task.isCancelled {
-                    guard let data = try handle.read(upToCount: 4096), !data.isEmpty else { break }
-                    pending.append(data)
+                    // read(2) returns currently available bytes from a pipe; a
+                    // Foundation fill-to-count read can stall a short ready frame.
+                    let count = buffer.withUnsafeMutableBytes { bytes in
+                        read(handle.fileDescriptor, bytes.baseAddress!, bytes.count)
+                    }
+                    if count < 0 {
+                        if errno == EINTR { continue }
+                        throw HubError.unavailable
+                    }
+                    if count == 0 { break }
+                    pending.append(contentsOf: buffer.prefix(count))
                     guard pending.count <= 16384 else { throw HubError.unavailable }
                     while let newline = pending.firstIndex(of: 10) {
                         let line = pending[..<newline]
