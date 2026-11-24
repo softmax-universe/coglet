@@ -531,6 +531,14 @@ dependencies = [
 [[package]]
 name = "coglet-trace"
 version = "0.1.0"
+dependencies = [
+ "coglet-runtime",
+ "hex",
+ "rusqlite",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+]
 
 [[package]]
 name = "coglet-types"
