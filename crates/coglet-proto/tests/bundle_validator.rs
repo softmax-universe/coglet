@@ -149,6 +149,15 @@ async fn validator_accepts_real_logs_bundle_and_retains_private_cleanup_custody(
     assert_eq!(BundleSink::sweep_orphans(&root.0).await.unwrap(), 0);
     assert_eq!(fs::read_dir(&root.0).unwrap().count(), 1);
     drop(verified);
+    // Another concurrently forked child can briefly retain a CLOEXEC lease
+    // until exec, even after our helper has exited. Respect deferred custody.
+    for _ in 0..100 {
+        BundleSink::sweep_orphans(&root.0).await.unwrap();
+        if fs::read_dir(&root.0).unwrap().count() == 0 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
     assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
 }
 

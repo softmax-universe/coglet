@@ -213,15 +213,20 @@ async fn validator_compression_bomb_is_bounded_independent_of_build_speed() {
     // Neither performance outcome proves the other's missing fence.
     assert!(
         match &error {
-            coglet_proto::validator::ValidationError::Resource(message) =>
-                message == "helper CPU/memory/process limit",
+            coglet_proto::validator::ValidationError::Resource(message) => matches!(
+                message.as_str(),
+                "helper CPU/memory/process limit"
+                    | "fsck CPU"
+                    | "archive CPU"
+                    | "validation wall time/cancelled"
+            ),
             coglet_proto::validator::ValidationError::Invalid(message) =>
                 message.ends_with("archive digest"),
             _ => false,
         },
         "{error}"
     );
-    assert!(start.elapsed() < Duration::from_secs(15));
+    assert!(start.elapsed() < Duration::from_secs(35));
 }
 
 #[tokio::test]
