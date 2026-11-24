@@ -244,6 +244,14 @@ impl RuntimeService {
             if saved.surface != session.surface() {
                 return Err("dispatch belongs to another authenticated surface".into());
             }
+            if self.catalog.single_owner(
+                saved.intent["capability"]
+                    .as_str()
+                    .ok_or("missing operation")?,
+            ) {
+                session
+                    .check_single_owner(saved.intent["coglet"].as_str().ok_or("missing owner")?)?;
+            }
             // Completed records may expire at the surface. Never silently retry
             // beyond even the minimum guaranteed retention window.
             let retained_until = saved.intent["deadline"]
@@ -313,6 +321,14 @@ impl RuntimeService {
         if dispatch.surface != session.surface() {
             return Err("accept from wrong authenticated surface".into());
         }
+        if self.catalog.single_owner(
+            dispatch.intent["capability"]
+                .as_str()
+                .ok_or("missing operation")?,
+        ) {
+            session
+                .check_single_owner(dispatch.intent["coglet"].as_str().ok_or("missing owner")?)?;
+        }
         dispatch.check_accept(body)?;
         if let Some(saved) = &dispatch.accept {
             return if saved == body {
@@ -358,6 +374,14 @@ impl RuntimeService {
             .ok_or("outcome without retained dispatch")?;
         if dispatch.surface != session.surface() {
             return Err("outcome from wrong authenticated surface".into());
+        }
+        if self.catalog.single_owner(
+            dispatch.intent["capability"]
+                .as_str()
+                .ok_or("missing operation")?,
+        ) {
+            session
+                .check_single_owner(dispatch.intent["coglet"].as_str().ok_or("missing owner")?)?;
         }
         dispatch.check_outcome(&event["payload"], &self.catalog)?;
         if let Some(saved) = &dispatch.outcome {

@@ -85,6 +85,11 @@ impl RuntimeService {
         let coglet = self.state.runtime.manifest["id"].as_str().unwrap();
         let expires = session.event_lease(coglet, kind, now)?;
         if let Some(read) = self.catalog.selected_read(kind, &event["payload"])? {
+            if kind == "game.observation"
+                && event["payload"]["grant_epoch"] != session.grant_epoch()
+            {
+                return Err("selected observation grant epoch mismatch".into());
+            }
             session.authorize(coglet, read, "read", now)?;
         }
         if kind == "speech.tool_call" {

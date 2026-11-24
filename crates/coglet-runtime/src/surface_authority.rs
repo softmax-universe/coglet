@@ -29,6 +29,13 @@ impl SurfaceSession {
         }
         Ok(())
     }
+    pub(crate) fn check_single_owner(&self, coglet: &str) -> Result<()> {
+        if self.binding.permitted_coglets.len() != 1 || self.binding.permitted_coglets[0] != coglet
+        {
+            return Err("extension requires its single supervisor-bound owner".into());
+        }
+        Ok(())
+    }
     pub fn surface(&self) -> &str {
         self.binding.surface()
     }
@@ -259,6 +266,9 @@ impl SurfaceSession {
         direction: &str,
         now: u64,
     ) -> Result<()> {
+        if self.catalog.single_owner(operation) {
+            self.check_single_owner(coglet)?;
+        }
         let clock = self.surface_now(now)?;
         if self.stopped
             || self.killed

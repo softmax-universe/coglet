@@ -1,6 +1,7 @@
 use super::*;
 #[test]
 fn native_dispatch_rechecks_clock_after_guest_outlives_grant() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut setup = with_wasm(setup(), &program_delay(false, true));
     setup["manifest"]["budgets"]["compute"] = json!(1_000_000_000);
     setup["manifest"]["budgets"]["wall_time_us"] = json!(10_000_000);

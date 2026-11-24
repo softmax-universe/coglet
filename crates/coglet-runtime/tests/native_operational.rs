@@ -167,10 +167,15 @@ impl Link {
         match self {
             Self::Ffi(l) => {
                 let mut n = 0;
-                assert_eq!(
-                    unsafe { coglet_surface_recv(*l, std::ptr::null_mut(), 0, &mut n) },
-                    2
-                );
+                let deadline = std::time::Instant::now() + Duration::from_secs(5);
+                loop {
+                    let status = unsafe { coglet_surface_recv(*l, std::ptr::null_mut(), 0, &mut n) };
+                    if status == 2 { break; }
+                    assert_eq!(status, 1, "fatal/invalid native receive status");
+                    assert_eq!(n, 0, "empty poll supplied bytes");
+                    assert!(std::time::Instant::now() < deadline, "native receive readiness timeout");
+                    std::thread::yield_now();
+                }
                 let mut raw = vec![0; n];
                 assert_eq!(
                     unsafe { coglet_surface_recv(*l, raw.as_mut_ptr(), raw.len(), &mut n) },
@@ -217,7 +222,7 @@ impl Drop for Link {
     }
 }
 fn exercise(ffi: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut host = Host::new(ffi, name);
     let mut link = host.connect();
     link.hello();
@@ -327,7 +332,7 @@ fn socket_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_a
 }
 
 fn native_private_capture(ffi: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut host = Host::new(ffi, name);
     let mut link = host.connect();
     link.hello();
