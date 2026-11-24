@@ -14,6 +14,258 @@ use iroh::{EndpointId, SecretKey};
 use serde_json::{Value, json};
 use std::{sync::Arc, time::Duration};
 
+#[tokio::test]
+async fn optional_unverified_approval_is_rejected_without_secret_in_audit() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    let mut v = propose(&target, "1");
+    v["approval_ref"] = json!("secret:must-not-reach-audit");
+    assert_eq!(
+        request(&k, caller(), &v).await["error"]["code"],
+        "permission_denied"
+    );
+    assert!(
+        !serde_json::to_string(&k.audit().await.unwrap())
+            .unwrap()
+            .contains("secret:must-not-reach-audit")
+    );
+}
+
+#[tokio::test]
+async fn rejection_receipt_is_exact_after_fault_and_restart() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, hub, target) = setup(dir.path()).await;
+    let mut v = propose(&target, "1");
+    v["expected_generation"] = json!(1);
+    let bytes = wire::encode(&v).unwrap();
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    let before = k.audit().await.unwrap();
+    db.execute_batch("CREATE TRIGGER fail_rejection BEFORE INSERT ON audit BEGIN SELECT RAISE(ABORT,'fault'); END;").unwrap();
+    assert!(
+        k.promotion_request(caller(), bytes.clone(), Arc::new(FixtureAuthority), None)
+            .await
+            .is_err()
+    );
+    assert_eq!(k.audit().await.unwrap(), before);
+    db.execute_batch("DROP TRIGGER fail_rejection").unwrap();
+    let receipt = k
+        .promotion_request(caller(), bytes.clone(), Arc::new(FixtureAuthority), None)
+        .await
+        .unwrap();
+    assert_eq!(wire::decode(&receipt).unwrap()["error"]["code"], "conflict");
+    drop(k);
+    let k = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
+    let before = k.audit().await.unwrap();
+    assert_eq!(
+        k.promotion_request(caller(), bytes, Arc::new(FixtureAuthority), None)
+            .await
+            .unwrap(),
+        receipt
+    );
+    assert_eq!(k.audit().await.unwrap(), before);
+}
+
+#[tokio::test]
+async fn proposal_rejects_wrong_base_generation_policy_and_ended_ticket() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    for (id, field, value) in [
+        ("1", "base", json!("c".repeat(40))),
+        ("2", "expected_generation", json!(1)),
+        ("3", "policy_revision", json!("c".repeat(32))),
+    ] {
+        let mut v = propose(&target, id);
+        v[field] = value;
+        assert_eq!(
+            request(&k, caller(), &v).await["error"]["code"],
+            "conflict",
+            "{field}"
+        );
+    }
+    let mut c = caller();
+    c.ticket = Some(TicketLink {
+        ticket_id: "e".repeat(32),
+        revision: 1,
+        evidence_ref: "artifact:done".into(),
+    });
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    db.execute(
+        "INSERT INTO ended_tickets(actor,ticket) VALUES(?1,?2)",
+        rusqlite::params![c.actor, "e".repeat(32)],
+    )
+    .unwrap();
+    assert_eq!(
+        request(&k, c, &propose(&target, "4")).await["error"]["code"],
+        "permission_denied"
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM promotion_proposals", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn simultaneous_distinct_requests_have_one_pending_proposal() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, hub, target) = setup(dir.path()).await;
+    let other = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
+    let first = propose(&target, "1");
+    let second = propose(&target, "2");
+    let (a, b) = tokio::join!(
+        request(&k, caller(), &first),
+        request(&other, caller(), &second)
+    );
+    assert_eq!(
+        [a["ok"].as_bool().unwrap(), b["ok"].as_bool().unwrap()]
+            .iter()
+            .filter(|&&v| v)
+            .count(),
+        1
+    );
+    let denied = if a["ok"] == true { b } else { a };
+    assert_eq!(denied["error"]["code"], "conflict");
+}
+
+#[tokio::test]
+async fn same_actor_and_id_on_other_target_does_not_alias_receipt() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    assert_eq!(
+        request(&k, caller(), &propose(&target, "1")).await["ok"],
+        true
+    );
+    let other_target = format!("coglet:{}", "9".repeat(64));
+    assert_eq!(
+        request(&k, caller(), &propose(&other_target, "1")).await["error"]["code"],
+        "permission_denied"
+    );
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM promotion_receipts", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+}
+
+#[tokio::test]
+async fn absent_boundary_and_generation_overflow_leave_proposal_unactivated() {
+    let dir = tempfile::tempdir().unwrap();
+    let (k, _, target) = setup(dir.path()).await;
+    let p = request(&k, caller(), &propose(&target, "1")).await;
+    let mut v = json!({"version":"0.1","op":"promote","correlation_id":"2".repeat(32),"coglet":target,
+        "proposal_id":p["result"]["proposal_id"],"expected_generation":0});
+    assert_eq!(
+        request(&k, caller(), &v).await["error"]["code"],
+        "unavailable"
+    );
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    db.execute(
+        "UPDATE promotion_state SET generation=?1",
+        [u64::MAX.to_string()],
+    )
+    .unwrap();
+    v["expected_generation"] = json!(u64::MAX);
+    v["correlation_id"] = json!("3".repeat(32));
+    assert_eq!(
+        request(&k, caller(), &v).await["error"]["code"],
+        "unavailable"
+    );
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM promotion_outbox", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        db.query_row("SELECT state FROM promotion_state", [], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        "proposed"
+    );
+}
+
+#[tokio::test]
+async fn invalid_boundary_bindings_or_bundle_hash_never_enter_outbox() {
+    use coglet_hub::kernel::promotion::{BoundaryIntent, PromotionBoundary};
+    use sha2::{Digest, Sha256};
+    struct InvalidBoundary(EndpointId, &'static str);
+    impl PromotionBoundary for InvalidBoundary {
+        fn prepare(&self, b: &GateBinding, g: u64) -> coglet_hub::Result<BoundaryIntent> {
+            let bundle = vec![1, 2, 3];
+            let mut statement = json!({"purpose":"hub-ref","hub":self.0.to_string(),"coglet":b.coglet,
+                "ref":"refs/heads/hub","old":b.base,"new":b.candidate,"archive_sha256":hex::encode(Sha256::digest(&bundle)),"generation":g});
+            statement[self.1] = match self.1 {
+                "generation" => json!(g + 1),
+                "archive_sha256" => json!("0".repeat(64)),
+                "new" => json!("c".repeat(40)),
+                "ref" => json!("refs/heads/main"),
+                _ => unreachable!(),
+            };
+            Ok(BoundaryIntent { statement, bundle })
+        }
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let (k, hub, target) = setup(dir.path()).await;
+    let p = request(&k, caller(), &propose(&target, "1")).await;
+    for (id, field) in [
+        ("2", "generation"),
+        ("3", "archive_sha256"),
+        ("4", "new"),
+        ("5", "ref"),
+    ] {
+        let v = json!({"version":"0.1","op":"promote","correlation_id":id.repeat(32),"coglet":target,
+            "proposal_id":p["result"]["proposal_id"],"expected_generation":0});
+        let receipt = k
+            .promotion_request(
+                caller(),
+                wire::encode(&v).unwrap(),
+                Arc::new(FixtureAuthority),
+                Some(Arc::new(InvalidBoundary(hub, field))),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            wire::decode(&receipt).unwrap()["error"]["code"],
+            "invalid_argument",
+            "{field}"
+        );
+    }
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    assert_eq!(
+        db.query_row("SELECT count(*) FROM promotion_outbox", [], |r| r
+            .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        db.query_row("SELECT generation FROM promotion_state", [], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        "0"
+    );
+}
+
+#[test]
+fn incompatible_unreleased_outbox_schema_fails_closed_on_open() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
+    db.execute_batch(
+        "CREATE TABLE promotion_outbox(operation_id TEXT PRIMARY KEY,intent BLOB NOT NULL);",
+    )
+    .unwrap();
+    assert!(
+        Kernel::open(
+            dir.path(),
+            SecretKey::generate().public(),
+            Arc::new(|| Some(1))
+        )
+        .is_err()
+    );
+}
+
 struct ChangingAuthority(std::sync::atomic::AtomicUsize);
 impl GateAuthority for ChangingAuthority {
     fn verify(&self, _: &GateReport, _: &GateBinding) -> coglet_hub::Result<()> {
@@ -163,6 +415,22 @@ async fn promote_admits_one_exact_outbox_intent_without_claiming_activation() {
             .get::<_, i64>(0))
             .unwrap(),
         1
+    );
+    let (metadata, bundle, operation_id): (Vec<u8>, Vec<u8>, String) = db
+        .query_row(
+            "SELECT intent,bundle,operation_id FROM promotion_outbox",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(bundle, b"fixture bundle - not native qualification");
+    let metadata = wire::decode(&metadata).unwrap();
+    assert!(metadata["intent"].get("bundle").is_none());
+    assert_eq!(metadata["operation_id"], operation_id);
+    assert_eq!(metadata["proposal_context"]["actor"], caller().actor);
+    assert_eq!(
+        metadata["promote_request"]["correlation_id"],
+        v["correlation_id"]
     );
     let (live, g): (Option<String>, String) = db
         .query_row(

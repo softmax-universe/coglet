@@ -83,9 +83,10 @@ pub(super) fn initialize(db: &Connection) -> Result<()> {
       CREATE TABLE IF NOT EXISTS promotion_proposals(id TEXT PRIMARY KEY,target TEXT NOT NULL,actor TEXT NOT NULL,context TEXT NOT NULL,input BLOB NOT NULL,wasm TEXT NOT NULL,signature_ref TEXT NOT NULL,state TEXT NOT NULL);
       CREATE UNIQUE INDEX IF NOT EXISTS promotion_one_pending ON promotion_proposals(target) WHERE state IN ('proposed','activating');
       CREATE TABLE IF NOT EXISTS promotion_state(target TEXT PRIMARY KEY,generation TEXT NOT NULL,live_commit TEXT,proposal TEXT,state TEXT NOT NULL);
-      CREATE TABLE IF NOT EXISTS promotion_outbox(operation_id TEXT PRIMARY KEY,target TEXT NOT NULL,proposal TEXT NOT NULL,generation TEXT NOT NULL,actor TEXT NOT NULL,context TEXT NOT NULL,intent BLOB NOT NULL);
+      CREATE TABLE IF NOT EXISTS promotion_outbox(operation_id TEXT PRIMARY KEY,target TEXT NOT NULL,proposal TEXT NOT NULL,generation TEXT NOT NULL,actor TEXT NOT NULL,context TEXT NOT NULL,intent BLOB NOT NULL,bundle BLOB NOT NULL);
       CREATE TRIGGER IF NOT EXISTS promotion_receipts_no_update BEFORE UPDATE ON promotion_receipts BEGIN SELECT RAISE(ABORT,'immutable receipt'); END;
       CREATE TRIGGER IF NOT EXISTS promotion_receipts_no_delete BEFORE DELETE ON promotion_receipts BEGIN SELECT RAISE(ABORT,'retained receipt'); END;")?;
+    db.prepare("SELECT operation_id,intent,bundle FROM promotion_outbox LIMIT 0")?;
     Ok(())
 }
 fn id() -> String {
@@ -208,7 +209,7 @@ fn check_artifacts(
         effective.0.human_approval |= rules.human_approval;
     }
     effective.verify_reports(&v["gates"], &binding, authority.now_ms()?, authority)?;
-    if effective.0.human_approval {
+    if effective.0.human_approval || v.get("approval_ref").is_some() {
         authority.approval(
             caller,
             &binding,
@@ -372,12 +373,12 @@ impl Kernel {
                     let (_,fresh_built)=check_artifacts(&policy,&original,&origin,&repo,authority.as_ref())?;
                     if fresh_built!=built { return Err(Error::Denied); }
                     let operation_id = id();
-                    let retained = wire::encode(&json!({"intent":intent,"binding":{
+                    let retained = wire::encode(&json!({"operation_id":operation_id,"intent":{"statement":intent.statement},"binding":{
                         "coglet":binding.coglet,"repo":binding.repo,"candidate":binding.candidate,"base":binding.base,
                         "policy_revision":binding.policy_revision,"wasm_sha256":binding.wasm_sha256},
                         "proposal_request":original,"proposal_context":origin,"promote_request":v,"promote_context":caller,
                         "signature_ref":signature,"device":r.device})).map_err(|_|Error::Full)?;
-                    tx.execute("INSERT INTO promotion_outbox VALUES(?1,?2,?3,?4,?5,?6,?7)",params![operation_id,target,proposal,next.to_string(),caller.actor,context,retained])?;
+                    tx.execute("INSERT INTO promotion_outbox(operation_id,target,proposal,generation,actor,context,intent,bundle) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![operation_id,target,proposal,next.to_string(),caller.actor,context,retained,intent.bundle])?;
                     if tx.execute("UPDATE promotion_state SET generation=?1,state='activating' WHERE target=?2 AND generation=?3 AND state='proposed' AND proposal=?4",params![next.to_string(),target,generation.to_string(),proposal])?!=1 { return Err(Error::Conflict(generation)); }
                     tx.execute("UPDATE promotion_proposals SET state='activating' WHERE id=?1 AND state='proposed'",[proposal])?;
                     if authority.authorize(&origin,target,"propose")? != origin_witness { return Err(Error::Conflict(generation)); }
