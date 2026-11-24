@@ -1,5 +1,6 @@
 //! Coglet hub wire protocol. Only the frozen `coglet/hub/0` protocol is supported.
 pub mod authority;
+pub mod scheduler;
 pub mod signing;
 pub mod transfer;
 pub mod transport;
