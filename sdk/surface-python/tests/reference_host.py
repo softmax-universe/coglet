@@ -60,6 +60,11 @@ def reference_host(directory, config):
                                 serve(surface, connection.fileno(), connection.fileno(),
                                     hello_id=config['hello']['body']['correlation_id'],
                                     configured=configured, poll=poll)
+                            except (BrokenPipeError, ConnectionResetError):
+                                # A timed-out case owns this wire, not the
+                                # supervisor. Keep consuming subsequent setups
+                                # instead of leaving listen(1) to fill to EAGAIN.
+                                pass
                             finally:
                                 surface.close()
                 except BaseException as exc:
