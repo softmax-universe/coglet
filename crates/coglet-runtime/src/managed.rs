@@ -2,6 +2,9 @@
 //! local grants; this module owns the serialized runtime/WAL boundary only.
 use super::*;
 
+/// Retained start/stop receipts. Entries are never evicted.
+const OPERATION_LEDGER: usize = 4096;
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ManagedState {
@@ -59,7 +62,7 @@ impl ManagedState {
                 return Err("invalid recovered lifecycle operation receipt".into());
             }
         }
-        if self.operations.len() > 4096 {
+        if self.operations.len() > OPERATION_LEDGER {
             return Err("invalid recovered lifecycle receipt bound".into());
         }
         Ok(())
@@ -151,6 +154,13 @@ impl RuntimeService {
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
             );
         }
+        // The last ledger slot is reserved for a stop, so the fence stays
+        // reachable and recorded when the ledger fills. No start of any kind
+        // is admitted past that point: entries are never evicted, and a start
+        // without a ledger entry could be reversed by a replayed stop.
+        if self.state.managed.as_ref().unwrap().operations.len() >= OPERATION_LEDGER - 1 {
+            return Err("resource_exhausted: lifecycle receipt ledger full".into());
+        }
         let mut next = self.state.clone();
         if next.managed.as_ref().unwrap().cancellation_pending {
             let now = next
@@ -228,7 +238,7 @@ impl RuntimeService {
                 Err("conflict: operation intent differs".into())
             };
         }
-        if managed.operations.len() >= 4096 {
+        if managed.operations.len() >= OPERATION_LEDGER {
             return Err("resource_exhausted: lifecycle receipt ledger full".into());
         }
         Ok(None)
@@ -242,22 +252,8 @@ impl RuntimeService {
         start: bool,
         now: u64,
     ) -> Result<Value> {
-        match self.managed_operation_receipt(id, intent) {
-            Ok(Some(receipt)) => return Ok(receipt),
-            Ok(None) => {}
-            // A full receipt ledger refuses new starts, never a stop: the fence
-            // must stay reachable. The stop commits without a ledger entry and
-            // its receipt is not retained. That is safe because every start
-            // needs a free ledger slot and entries are never evicted, so no
-            // later start exists for a replay of this stop to reverse.
-            Err(_) if !start && self.operation_ledger_full(id) => {
-                self.managed_stop_inner(now, None)?;
-                let receipt = json!({"operation_id":id,"state":"applied",
-                    "step":Self::last_step(&self.state),"error":null});
-                validate("hub-mutation-receipt", &receipt)?;
-                return Ok(receipt);
-            }
-            Err(error) => return Err(error),
+        if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
+            return Ok(receipt);
         }
         let outcome = if start {
             self.managed_start_inner(Some((id, intent)))
@@ -271,18 +267,6 @@ impl RuntimeService {
         }
         outcome?;
         Err("unavailable: lifecycle receipt missing".into())
-    }
-
-    /// True only for the ledger-capacity refusal of an ID that is neither the
-    /// install ID nor an already recorded operation (those keep their conflict
-    /// and original-receipt semantics).
-    #[cfg(feature = "device")]
-    fn operation_ledger_full(&self, id: &str) -> bool {
-        self.state.managed.as_ref().is_some_and(|managed| {
-            managed.operations.len() >= 4096
-                && managed.install_receipt["operation_id"] != id
-                && !managed.operations.contains_key(id)
-        })
     }
 
     fn last_step(state: &ServiceState) -> u64 {
@@ -412,21 +396,12 @@ mod tests {
         setup
     }
 
-    #[test]
-    fn full_operation_ledger_still_stops_and_refuses_new_starts() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("state.wal");
-        let setup = setup();
-        let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
-        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
-        service.managed_install(&identity, &"1".repeat(32)).unwrap();
-        let start = service
-            .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0)
-            .unwrap();
-        assert_eq!(start["state"], "applied");
-        // Fill the remaining ledger slots exactly as recorded operations.
+    fn fill_ledger_to(service: &mut RuntimeService, len: usize) {
         let operations = &mut service.state.managed.as_mut().unwrap().operations;
-        for n in 0..4095u32 {
+        for n in 0.. {
+            if operations.len() >= len {
+                break;
+            }
             let id = format!("{n:032x}");
             let receipt = json!({"operation_id":id,"state":"applied","step":0,"error":null});
             operations.insert(
@@ -437,17 +412,30 @@ mod tests {
                 },
             );
         }
-        assert_eq!(operations.len(), 4096);
-        assert!(service.managed_running());
+        assert_eq!(operations.len(), len);
+    }
 
-        // A new start is still refused: no eviction of retry evidence.
-        let refused = service
-            .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
-            .unwrap_err();
-        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
-        assert!(service.managed_running());
+    #[test]
+    fn last_operation_ledger_slot_is_reserved_for_a_recorded_stop() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let setup = setup();
+        let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
 
-        // A new stop applies the durable fence without a ledger entry.
+        // The last start that fits leaves exactly the reserved slot.
+        fill_ledger_to(&mut service, OPERATION_LEDGER - 2);
+        let start_id = "2".repeat(32);
+        let start = service
+            .managed_operation(&start_id, &"a".repeat(64), true, 0)
+            .unwrap();
+        assert_eq!(start["state"], "applied");
+        assert!(service.managed_running());
+        let len = |s: &RuntimeService| s.state.managed.as_ref().unwrap().operations.len();
+        assert_eq!(len(&service), OPERATION_LEDGER - 1);
+
+        // The stop takes the reserved slot and is recorded like any other.
         let stop_id = "4".repeat(32);
         let stopped = service
             .managed_operation(&stop_id, &"d".repeat(64), false, 7)
@@ -457,45 +445,69 @@ mod tests {
             json!({"operation_id":stop_id,"state":"applied","step":0,"error":null})
         );
         assert!(!service.managed_running());
-        let managed = service.state.managed.as_ref().unwrap();
-        assert_eq!(managed.operations.len(), 4096);
-        assert!(!managed.operations.contains_key(&stop_id));
+        assert_eq!(len(&service), OPERATION_LEDGER);
 
-        // Recorded IDs keep original-receipt and conflict semantics when full.
-        assert_eq!(
-            service
-                .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0)
-                .unwrap(),
-            start
-        );
-        let conflict = service
-            .managed_operation(&"2".repeat(32), &"e".repeat(64), false, 0)
+        // No start of any kind is admitted any more, so nothing can run again
+        // for a replayed stop to reverse. Nothing is evicted.
+        let refused = service
+            .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
             .unwrap_err();
-        assert!(conflict.starts_with("conflict:"), "{conflict}");
-        let install_id = service
-            .managed_operation(&"1".repeat(32), &"e".repeat(64), false, 0)
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        let refused = service.managed_start().unwrap_err();
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        let refused = service
+            .managed_operation(&"6".repeat(32), &"d".repeat(64), false, 8)
             .unwrap_err();
-        assert!(install_id.starts_with("conflict:"), "{install_id}");
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
         assert!(!service.managed_running());
+        assert_eq!(len(&service), OPERATION_LEDGER);
 
-        // The stop and the full ledger survive a real WAL reopen; the unrecorded
-        // stop replays idempotently and start stays refused.
+        // Recorded IDs keep original-receipt and conflict semantics when full,
+        // across a real WAL reopen.
         drop(service);
         let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
-        assert!(!service.managed_running());
         assert_eq!(service.managed_status()["state"], "stopped");
         assert_eq!(
             service
                 .managed_operation(&stop_id, &"d".repeat(64), false, 9)
-                .unwrap()["state"],
-            "applied"
+                .unwrap(),
+            stopped
         );
-        assert!(
+        assert_eq!(
             service
-                .managed_operation(&"5".repeat(32), &"c".repeat(64), true, 0)
-                .unwrap_err()
-                .starts_with("resource_exhausted:")
+                .managed_operation(&start_id, &"a".repeat(64), true, 0)
+                .unwrap(),
+            start
         );
+        for (id, intent) in [(&stop_id, "e"), (&start_id, "e"), (&"1".repeat(32), "e")] {
+            let conflict = service
+                .managed_operation(id, &intent.repeat(64), false, 0)
+                .unwrap_err();
+            assert!(conflict.starts_with("conflict:"), "{conflict}");
+        }
         assert!(!service.managed_running());
+    }
+
+    #[test]
+    fn start_is_refused_once_only_the_reserved_stop_slot_is_left() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let mut service = RuntimeService::open(&path, &setup(), 8).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
+        fill_ledger_to(&mut service, OPERATION_LEDGER - 1);
+        for refused in [
+            service
+                .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
+                .unwrap_err(),
+            service.managed_start().unwrap_err(),
+        ] {
+            assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        }
+        assert!(!service.managed_running());
+        assert_eq!(
+            service.state.managed.as_ref().unwrap().operations.len(),
+            OPERATION_LEDGER - 1
+        );
     }
 }
