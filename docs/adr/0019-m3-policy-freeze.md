@@ -24,16 +24,28 @@ authority. An accepted-ref store alone is not runtime activation.
    `status` literal from `DRAFT` to `FROZEN` in both schemas and fixtures; update
    document status, retaining the shape and all other normative rules. Old draft
    policy is rejected, not silently upgraded. The existing spec-v0 tag and hub
-   method set remain unchanged. Tickets stay draft; their existing candidate and
-   terminal-result shapes are consumed without inventing provider fields.
-2. Implement `coglet-gate` as the trusted-local policy/promotion library. It is
-   fixed kernel code, not guest-editable code or a factory plugin. A private
-   operator-owned store owns registry role/repository, immutable policy revisions,
-   request receipts, proposals, monotonically increasing generation, probation,
-   audit and boundary outbox. SQLite WAL/FULL transactions serialize concurrent
-   owners and commit receipt, transition, audit and outbox together. Audit failure
-   rolls back admission. No network endpoint is added. The hub can consume this
-   library through an explicit local adapter; absence of that adapter is refusal,
+   method set remain unchanged. Promotion's signed-ref requirement is retained:
+   the outbox contains the exact signed `hub-ref`, retained verified bundle and
+   operation context for existing `hub.git.push`, not an unsigned abstract
+   activate message. A configured adapter incapable of building that command
+   makes promote admission fail `unavailable` without changing live state.
+   Tickets stay draft; their existing candidate and terminal-result shapes are
+   consumed without inventing provider fields. On acceptance, reconcile ADR0005
+   and the ADR index. Keep `draft-validated` generator classifications until their
+   syntax is compiler-supported: a freeze is not generated-code qualification.
+   Add executable shared conformance cases for the local promotion boundary and
+   run the same cases against real kernel and test adapter, labelled local-only.
+2. Implement the trusted-local policy/promotion state machine in `coglet-hub`,
+   alongside its existing registry and audit, not in a second registry/database.
+   It is fixed kernel code, not guest-editable code or a factory plugin.
+   `coglet-gate` owns sandbox evaluation only, as assigned in the plan. Add policy
+   revisions, request receipts, proposals, generation, probation and boundary
+   outbox tables to the existing hub Store. Its SQLite WAL/FULL transactions
+   serialize current registration/policy checks and commit receipt, transition,
+   audit and outbox together. Authority-owned revocation is additionally checked
+   under the existing kernel boundary fence, not assumed to share the hub SQL
+   transaction. Audit failure rolls back admission. No network endpoint is added.
+   The kernel requires an explicit local runtime adapter; absence is refusal,
    never implicit installation or an authorized deployment claim.
 3. Typed local authority interfaces separately authenticate actor/method/target,
    built candidate, gate evidence, human approval, capability/state compatibility
@@ -55,15 +67,29 @@ authority. An accepted-ref store alone is not runtime activation.
    production build signing/qualification; production verification remains closed
    until a real qualified build authority and runtime adapter are installed.
 5. Promotion admission produces a durable boundary command, not activation. The
-   command binds coglet, proposal, old/new commit, monotonic generation and policy
-   revision. Only a verified matching runtime receipt changes live state and starts
+   command binds coglet, proposal, old/new commit, monotonic generation and policy revision, signed
+   ref/archive, and exact actor/ticket operation context. The runtime adapter
+   recovers the same `hub.git.push` operation through `hub.receipt` and verifies
+   current `hub.status.live_commit` plus the applied signed generation; an
+   arbitrary opaque receipt reference cannot complete activation. Late outcomes
+   retain original operation context and never borrow another actor's receipt. Only a verified matching runtime receipt changes live state and starts
    probation. Duplicate/late/superseded receipts cannot activate code. Rollback
    cancels/fences a pending activation before queuing a higher-generation restore.
    It targets only retained stable code, never a caller-selected commit. Missing
    or unsafe restoration produces an output-fenced stop with an audited receipt;
-   code rollback does not restore private data or undo world effects.
+   code rollback does not restore private data or undo world effects, and never
+   makes the failed candidate last-known-good. Database
+   DDL/DML/data restoration from ADR0013 is not implemented here; a candidate that
+   needs database/data rollback must fail the state-compatibility check rather than
+   treating code restoration as transaction undo.
 6. Use a durable supervisor clock identity and monotonic milliseconds including
-   downtime; reject regression. A changed/unverifiable epoch during probation or
+   downtime; reject regression. Use the same OS boot-identity plus continuous
+   clock algorithm as `RuntimeService::supervised_now`/`ClockAnchor` (BOOTTIME on
+   Linux, mach continuous time plus boot-session UUID on Apple), retaining a
+   hub-owned anchor in the hub Store, not a transport-local `Instant`. Gate times
+   are hub observation milliseconds. Runtime health/activation times require an
+   authenticated explicit mapping; the runtime's logical time is not that clock.
+   A changed/unverifiable epoch during probation or
    activation cannot complete probation: reconcile the same boundary command or
    fence/restore, recording uncertainty. No wall-clock fallback. Threshold equality
    and health timeout trigger before probation completion, including at expiry.
