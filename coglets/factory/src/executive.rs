@@ -413,81 +413,105 @@ pub fn handle<H: Host + DbHost>(
                 }
             }
             "task.heartbeat" => {
-                if task.status == "leased" {
-                    let mut data: serde_json::Value = parse(&task.data_json)?;
-                    let owner = event
+                // Lease extension is host-owned on work_queue. A mismatched token
+                // is rejected and never becomes a deliberation trigger.
+                if let Some(queue) = repo.get_work_queue(subject).map_err(db)?
+                    && queue.state == "leased"
+                {
+                    let lease = event
                         .payload
-                        .get("lease_owner")
-                        .and_then(coglet_types::Value::as_text)
-                        .ok_or_else(bad)?;
-                    if data.get("lease_owner").and_then(|v| v.as_str()) != Some(owner) {
+                        .get("lease")
+                        .and_then(coglet_types::Value::as_text);
+                    let attempt = event
+                        .payload
+                        .get("attempt")
+                        .and_then(coglet_types::Value::as_integer)
+                        .and_then(|n| u64::try_from(i128::from(n)).ok());
+                    if lease != queue.lease_owner.as_deref() || attempt != Some(queue.attempt) {
                         return Err(bad());
                     }
-                    data["lease_until"] = at.checked_add(60_000).ok_or_else(bad)?.into();
-                    task.data_json = json(&data)?;
-                    task.updated_at = at;
-                    repo.update_object(&task).map_err(db)?;
                 }
             }
             "task.failed" | "task.completed"
                 if !matches!(task.status.as_str(), "completed" | "cancelled" | "failed") =>
             {
-                task.status = if kind == "task.failed" {
-                    "failed"
-                } else {
-                    "completed"
-                }
-                .into();
-                let mut data: serde_json::Value = parse(&task.data_json)?;
-                if let Some(trace) = event
-                    .payload
-                    .get("trace_artifact")
-                    .and_then(coglet_types::Value::as_text)
-                {
-                    data["trace_artifact"] = trace.into();
-                }
-                task.data_json = json(&data)?;
-                task.updated_at = at;
-                release_capacity(&mut repo, &mut task, at)?;
-                repo.update_object(&task).map_err(db)?;
-                audit(
-                    &mut repo,
-                    &id(&[&event_key, "transition"]),
-                    kind,
-                    Some(subject),
-                    task.data_json.clone(),
-                    at,
-                )?;
-                if kind == "task.failed" {
-                    if agenda.pending.is_none() {
-                        request = Some(build_context(&mut repo, subject, "failure")?);
-                    } else {
-                        repo.create_object(&new_object(
-                            &id(&["queued", &event_key]),
-                            "deliberation",
-                            "pending",
-                            json(&subject)?,
-                            at,
-                        ))
-                        .map_err(db)?;
+                let queue = repo.get_work_queue(subject).map_err(db)?;
+                let accepted = match &queue {
+                    None => true,
+                    Some(queue) => {
+                        let attempt = event
+                            .payload
+                            .get("attempt")
+                            .and_then(coglet_types::Value::as_integer)
+                            .and_then(|n| u64::try_from(i128::from(n)).ok());
+                        let lease = event
+                            .payload
+                            .get("lease")
+                            .and_then(coglet_types::Value::as_text);
+                        queue.state == "leased"
+                            && attempt == Some(queue.attempt)
+                            && lease == queue.lease_owner.as_deref()
                     }
-                }
-            }
-            "task.lease_expired" => {
-                // Lease scheduling is deterministic, never a deliberation trigger.
-                let mut data: serde_json::Value = parse(&task.data_json)?;
-                let expires = data
-                    .get("lease_until")
-                    .and_then(|v| v.as_u64())
-                    .ok_or_else(bad)?;
-                if task.status == "leased" && expires <= at {
-                    task.status = "pending".into();
-                    data["lease_until"] = serde_json::Value::Null;
-                    data["lease_owner"] = serde_json::Value::Null;
+                };
+                if !accepted {
+                    // Stale attempt: do not finish the task or release the current lease.
+                } else {
+                    task.status = if kind == "task.failed" {
+                        "failed"
+                    } else {
+                        "completed"
+                    }
+                    .into();
+                    let mut data: serde_json::Value = parse(&task.data_json)?;
+                    if let Some(trace) = event
+                        .payload
+                        .get("trace_artifact")
+                        .and_then(coglet_types::Value::as_text)
+                    {
+                        data["trace_artifact"] = trace.into();
+                    }
                     task.data_json = json(&data)?;
                     task.updated_at = at;
                     release_capacity(&mut repo, &mut task, at)?;
                     repo.update_object(&task).map_err(db)?;
+                    audit(
+                        &mut repo,
+                        &id(&[&event_key, "transition"]),
+                        kind,
+                        Some(subject),
+                        task.data_json.clone(),
+                        at,
+                    )?;
+                    if kind == "task.failed" {
+                        if agenda.pending.is_none() {
+                            request = Some(build_context(&mut repo, subject, "failure")?);
+                        } else {
+                            repo.create_object(&new_object(
+                                &id(&["queued", &event_key]),
+                                "deliberation",
+                                "pending",
+                                json(&subject)?,
+                                at,
+                            ))
+                            .map_err(db)?;
+                        }
+                    }
+                }
+            }
+            "task.lease_expired" => {
+                // Scheduling follows work_queue, not a parallel JSON lease field.
+                if let Some(queue) = repo.get_work_queue(subject).map_err(db)? {
+                    let expired = queue.state == "pending"
+                        || (queue.state == "leased"
+                            && queue.lease_until.is_some_and(|until| until <= at));
+                    if expired
+                        && !matches!(task.status.as_str(), "completed" | "cancelled" | "failed")
+                    {
+                        task.status = "pending".into();
+                        task.updated_at = at;
+                        release_capacity(&mut repo, &mut task, at)?;
+                        repo.update_object(&task).map_err(db)?;
+                    }
                 }
             }
             "factory.review" if agenda.pending.is_none() => {

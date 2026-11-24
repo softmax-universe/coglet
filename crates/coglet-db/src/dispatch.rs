@@ -190,7 +190,7 @@ impl Database {
             for id in &ids {
                 let n = conn
                     .execute(
-                        "UPDATE work_queue SET state='pending',lease_owner=NULL,lease_until=NULL,version=version+1 WHERE task_id=?1 AND state='leased' AND lease_until<=?2",
+                        "UPDATE work_queue SET state='pending',lease_owner=NULL,lease_until=NULL,attempt=attempt+1,version=version+1 WHERE task_id=?1 AND state='leased' AND lease_until<=?2",
                         rusqlite::params![id, now],
                     )
                     .map_err(sqlite_failure)?;
@@ -223,8 +223,239 @@ impl Database {
             .optional()
             .map_err(sqlite_failure)
     }
+
+    /// Dispatching intents that never recorded a remote binding. Those are the
+    /// crash window before create/claim was durable; bound rows stay leased.
+    pub fn unbound_dispatching(&self) -> Result<Vec<OutboxRecord>> {
+        let rows = self.outbox_in_state(OutboxState::Dispatching.as_str())?;
+        let mut unbound = Vec::new();
+        for row in rows {
+            if self.get_binding(&row.intent_id)?.is_none() {
+                unbound.push(row);
+            }
+        }
+        Ok(unbound)
+    }
+
+    pub fn outbox_in_state(&self, state: &str) -> Result<Vec<OutboxRecord>> {
+        let mut stmt = self
+            .connection
+            .prepare(
+                "SELECT intent_id,idempotency_key,kind,payload_cbor_hex,correlation_id,state,attempt,version FROM outbox WHERE state=?1 ORDER BY intent_id",
+            )
+            .map_err(sqlite_failure)?;
+        stmt.query_map([state], read_outbox)
+            .map_err(sqlite_failure)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(sqlite_failure)
+    }
+
+    pub fn work_in_state(&self, state: &str) -> Result<Vec<WorkQueueRow>> {
+        let mut stmt = self
+            .connection
+            .prepare(
+                "SELECT task_id,state,priority,lease_owner,lease_until,attempt,version FROM work_queue WHERE state=?1 ORDER BY task_id",
+            )
+            .map_err(sqlite_failure)?;
+        stmt.query_map([state], read_work)
+            .map_err(sqlite_failure)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(sqlite_failure)
+    }
+
+    /// Remote id recorded after a successful public-API create. Survives lease expiry.
+    pub fn put_binding(&mut self, intent_id: &str, remote_id: &str, task_id: &str) -> Result<()> {
+        if intent_id.is_empty() || remote_id.is_empty() || task_id.is_empty() {
+            return Err("invalid dispatch binding".into());
+        }
+        let id = binding_id(intent_id);
+        let data = format!("{remote_id}\t{task_id}");
+        self.dispatcher_mutation(|conn| {
+            let existing: Option<i64> = conn
+                .query_row(
+                    "SELECT version FROM objects WHERE id=?1",
+                    [&id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(sqlite_failure)?;
+            match existing {
+                None => {
+                    conn.execute(
+                        "INSERT INTO objects(id,type,status,data_json,version,created_at,updated_at) VALUES (?1,'dispatch_binding','active',?2,1,0,0)",
+                        rusqlite::params![&id, &data],
+                    )
+                    .map_err(sqlite_failure)?;
+                }
+                Some(version) => {
+                    let n = conn
+                        .execute(
+                            "UPDATE objects SET data_json=?1,updated_at=0,version=version+1 WHERE id=?2 AND version=?3 AND type='dispatch_binding'",
+                            rusqlite::params![&data, &id, version],
+                        )
+                        .map_err(sqlite_failure)?;
+                    if n != 1 {
+                        return Err("binding conflict".into());
+                    }
+                }
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    pub fn get_binding(&self, intent_id: &str) -> Result<Option<String>> {
+        let data: Option<String> = self
+            .connection
+            .query_row(
+                "SELECT data_json FROM objects WHERE id=?1 AND type='dispatch_binding'",
+                [binding_id(intent_id)],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(sqlite_failure)?;
+        Ok(data.and_then(|raw| raw.split('\t').next().map(str::to_owned)))
+    }
+
+    /// Terminal outbox transition, append-only event, and pending delivery in one fence.
+    /// A matching lease is required when `lease` is `Some`. Replay of the same
+    /// terminal state is a no-op so a crashed caller can read the delivery back.
+    #[allow(clippy::too_many_arguments)]
+    pub fn commit_outcome(
+        &mut self,
+        intent_id: &str,
+        version: u64,
+        state: OutboxState,
+        event_id: &str,
+        task_id: &str,
+        event_type: &str,
+        payload_json: &str,
+        created_at: i64,
+        lease: Option<(&str, u64)>,
+    ) -> Result<()> {
+        if matches!(state, OutboxState::Pending | OutboxState::Dispatching) {
+            return Err("invalid outbox outcome".into());
+        }
+        if event_id.is_empty() || task_id.is_empty() || payload_json.len() > 8192 {
+            return Err("invalid outcome event".into());
+        }
+        let delivery_id = delivery_id(event_id);
+        let next = version.checked_add(1).ok_or("version overflow")?;
+        self.dispatcher_mutation(|conn| {
+            let current: Option<String> = conn
+                .query_row(
+                    "SELECT state FROM outbox WHERE intent_id=?1",
+                    [intent_id],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(sqlite_failure)?;
+            if current.as_deref() == Some(state.as_str()) {
+                return Ok(());
+            }
+            if let Some((token, attempt)) = lease {
+                let matched: i64 = conn
+                    .query_row(
+                        "SELECT count(*) FROM work_queue WHERE task_id=?1 AND state='leased' AND lease_owner=?2 AND attempt=?3",
+                        rusqlite::params![task_id, token, attempt as i64],
+                        |r| r.get(0),
+                    )
+                    .map_err(sqlite_failure)?;
+                if matched != 1 {
+                    return Err("stale attempt".into());
+                }
+            }
+            let n = conn
+                .execute(
+                    "UPDATE outbox SET state=?1,version=?2 WHERE intent_id=?3 AND version=?4 AND state='dispatching'",
+                    rusqlite::params![state.as_str(), next as i64, intent_id, version as i64],
+                )
+                .map_err(sqlite_failure)?;
+            if n != 1 {
+                return Err("outbox outcome conflict".into());
+            }
+            conn.execute(
+                "INSERT INTO events(id, object_id, event_type, payload_json, created_at, version) VALUES (?1,?2,?3,?4,?5,1)",
+                rusqlite::params![event_id, task_id, event_type, payload_json, created_at],
+            )
+            .map_err(sqlite_failure)?;
+            conn.execute(
+                "INSERT INTO objects(id,type,status,data_json,version,created_at,updated_at) VALUES (?1,'delivery','pending',?2,1,?3,?3)",
+                rusqlite::params![&delivery_id, payload_json, created_at],
+            )
+            .map_err(sqlite_failure)?;
+            if lease.is_some() {
+                let n = conn
+                    .execute(
+                        "UPDATE work_queue SET state='done',lease_owner=NULL,lease_until=NULL,version=version+1 WHERE task_id=?1 AND state='leased'",
+                        [task_id],
+                    )
+                    .map_err(sqlite_failure)?;
+                if n != 1 {
+                    return Err("work_queue outcome conflict".into());
+                }
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    pub fn pending_deliveries(&self) -> Result<Vec<PendingDelivery>> {
+        let mut stmt = self
+            .connection
+            .prepare(
+                "SELECT id, data_json FROM objects WHERE type='delivery' AND status='pending' ORDER BY id",
+            )
+            .map_err(sqlite_failure)?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+            .map_err(sqlite_failure)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(sqlite_failure)?;
+        Ok(rows
+            .into_iter()
+            .map(|(id, payload_json)| PendingDelivery {
+                event_id: id.strip_prefix("delivery:").unwrap_or(&id).to_owned(),
+                payload_json,
+            })
+            .collect())
+    }
+
+    pub fn acknowledge_delivery(&mut self, event_id: &str) -> Result<()> {
+        let id = delivery_id(event_id);
+        self.dispatcher_mutation(|conn| {
+            let n = conn
+                .execute(
+                    "UPDATE objects SET status='acknowledged',updated_at=updated_at,version=version+1 WHERE id=?1 AND type='delivery' AND status='pending'",
+                    [&id],
+                )
+                .map_err(sqlite_failure)?;
+            if n != 1 {
+                return Err("delivery not pending".into());
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
 }
 
+fn binding_id(intent_id: &str) -> String {
+    format!("bind:{intent_id}")
+}
+fn delivery_id(event_id: &str) -> String {
+    format!("delivery:{event_id}")
+}
+fn read_work(r: &rusqlite::Row<'_>) -> rusqlite::Result<WorkQueueRow> {
+    Ok(WorkQueueRow {
+        task_id: r.get(0)?,
+        state: r.get(1)?,
+        priority: r.get(2)?,
+        lease_owner: r.get(3)?,
+        lease_until: r.get(4)?,
+        attempt: r.get::<_, i64>(5)? as u64,
+        version: r.get::<_, i64>(6)? as u64,
+    })
+}
 fn read_outbox(r: &rusqlite::Row<'_>) -> rusqlite::Result<OutboxRecord> {
     Ok(OutboxRecord {
         intent_id: r.get(0)?,
@@ -336,6 +567,7 @@ CREATE TABLE outbox (
         let row = db.get_work_queue("task-1").unwrap().unwrap();
         assert_eq!(row.state, "pending");
         assert!(row.lease_owner.is_none());
+        assert_eq!(row.attempt, 2);
     }
 
     #[test]

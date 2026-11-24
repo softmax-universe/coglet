@@ -1,4 +1,4 @@
-//! Replaceable Hermes Kanban adapter. Identifiers stay Hermes-API shaped;
+//! Replaceable Hermes Kanban adapter. Identifiers stay public-API shaped;
 //! this module never opens Hermes internal tables.
 use std::collections::BTreeMap;
 
@@ -22,6 +22,9 @@ pub struct Lease {
     pub remote_id: String,
     pub owner: String,
     pub until: u64,
+    pub attempt: u64,
+    /// Issued lease identity. Results, heartbeats and cancellation must present it.
+    pub token: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -30,11 +33,22 @@ pub enum Outcome {
     Failed { note: String },
 }
 
+/// Worker report fenced by the attempt and lease the dispatcher issued.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkerReport {
+    pub attempt: u64,
+    pub lease: String,
+    pub outcome: Outcome,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FollowUp {
+    pub event_id: String,
     pub task_id: String,
     pub kind: String,
     pub note: String,
+    pub attempt: u64,
+    pub lease: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,11 +60,30 @@ pub enum AdapterError {
 
 pub trait HermesAdapter {
     fn create(&mut self, spec: &TaskSpec) -> Result<RemoteTask, AdapterError>;
-    fn claim(&mut self, remote_id: &str, owner: &str, until: u64) -> Result<Lease, AdapterError>;
-    fn heartbeat(&mut self, remote_id: &str, until: u64) -> Result<(), AdapterError>;
+    fn claim(
+        &mut self,
+        remote_id: &str,
+        owner: &str,
+        until: u64,
+        attempt: u64,
+    ) -> Result<Lease, AdapterError>;
+    fn heartbeat(
+        &mut self,
+        remote_id: &str,
+        until: u64,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<(), AdapterError>;
     fn retry(&mut self, remote_id: &str) -> Result<(), AdapterError>;
-    fn cancel(&mut self, remote_id: &str) -> Result<(), AdapterError>;
-    fn progress(&mut self, remote_id: &str, note: &str) -> Result<(), AdapterError>;
+    fn cancel(&mut self, remote_id: &str, attempt: u64, lease: &str) -> Result<(), AdapterError>;
+    fn progress(
+        &mut self,
+        remote_id: &str,
+        note: &str,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<(), AdapterError>;
+    fn poll(&mut self, remote_id: &str) -> Result<Option<WorkerReport>, AdapterError>;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -61,18 +94,14 @@ pub struct MockAdapter {
     pub retries: Vec<String>,
     pub cancels: Vec<String>,
     pub notes: Vec<(String, String)>,
-    pub results: BTreeMap<String, Outcome>,
+    pub results: BTreeMap<String, WorkerReport>,
     pub crash_keys: Vec<String>,
     pub fail_keys: Vec<String>,
 }
 
 impl MockAdapter {
-    pub fn complete(&mut self, remote_id: &str, outcome: Outcome) {
-        self.results.insert(remote_id.into(), outcome);
-    }
-
-    pub fn take_result(&mut self, remote_id: &str) -> Option<Outcome> {
-        self.results.remove(remote_id)
+    pub fn complete(&mut self, remote_id: &str, report: WorkerReport) {
+        self.results.insert(remote_id.into(), report);
     }
 }
 
@@ -90,7 +119,7 @@ impl HermesAdapter for MockAdapter {
             return Ok(existing.clone());
         }
         let remote = RemoteTask {
-            remote_id: format!("kanban:{}", spec.idempotency_key),
+            remote_id: format!("k{}", spec.idempotency_key),
             idempotency_key: spec.idempotency_key.clone(),
         };
         self.created
@@ -98,7 +127,13 @@ impl HermesAdapter for MockAdapter {
         Ok(remote)
     }
 
-    fn claim(&mut self, remote_id: &str, owner: &str, until: u64) -> Result<Lease, AdapterError> {
+    fn claim(
+        &mut self,
+        remote_id: &str,
+        owner: &str,
+        until: u64,
+        attempt: u64,
+    ) -> Result<Lease, AdapterError> {
         if !self.created.values().any(|t| t.remote_id == remote_id) {
             return Err(AdapterError::Conflict("unknown remote".into()));
         }
@@ -106,12 +141,27 @@ impl HermesAdapter for MockAdapter {
             remote_id: remote_id.into(),
             owner: owner.into(),
             until,
+            attempt,
+            token: format!("{owner}:{attempt}:{remote_id}"),
         };
         self.claims.push(lease.clone());
         Ok(lease)
     }
 
-    fn heartbeat(&mut self, remote_id: &str, until: u64) -> Result<(), AdapterError> {
+    fn heartbeat(
+        &mut self,
+        remote_id: &str,
+        until: u64,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<(), AdapterError> {
+        let known = self
+            .claims
+            .iter()
+            .any(|c| c.remote_id == remote_id && c.attempt == attempt && c.token == lease);
+        if !known {
+            return Err(AdapterError::Conflict("stale lease".into()));
+        }
         self.heartbeats.push((remote_id.into(), until));
         Ok(())
     }
@@ -121,13 +171,37 @@ impl HermesAdapter for MockAdapter {
         Ok(())
     }
 
-    fn cancel(&mut self, remote_id: &str) -> Result<(), AdapterError> {
+    fn cancel(&mut self, remote_id: &str, attempt: u64, lease: &str) -> Result<(), AdapterError> {
+        let known = self
+            .claims
+            .iter()
+            .any(|c| c.remote_id == remote_id && c.attempt == attempt && c.token == lease);
+        if !known {
+            return Err(AdapterError::Conflict("stale lease".into()));
+        }
         self.cancels.push(remote_id.into());
         Ok(())
     }
 
-    fn progress(&mut self, remote_id: &str, note: &str) -> Result<(), AdapterError> {
+    fn progress(
+        &mut self,
+        remote_id: &str,
+        note: &str,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<(), AdapterError> {
+        let known = self
+            .claims
+            .iter()
+            .any(|c| c.remote_id == remote_id && c.attempt == attempt && c.token == lease);
+        if !known {
+            return Err(AdapterError::Conflict("stale lease".into()));
+        }
         self.notes.push((remote_id.into(), note.into()));
         Ok(())
+    }
+
+    fn poll(&mut self, remote_id: &str) -> Result<Option<WorkerReport>, AdapterError> {
+        Ok(self.results.get(remote_id).cloned())
     }
 }

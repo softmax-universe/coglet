@@ -354,12 +354,11 @@ fn crash_after_commit_recovers() {
 #[test]
 fn lease_expiration_requeues() {
     let mut h = TestHost::new();
+    h.db.execute("UPDATE objects SET status='leased' WHERE id=?1", [TASK])
+        .unwrap();
     h.db.execute(
-        "UPDATE objects SET status='leased',data_json=?1 WHERE id=?2",
-        params![
-            json!({"lease_until":3,"lease_owner":"mock"}).to_string(),
-            TASK
-        ],
+        "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'leased',0,'mock',3,1,1)",
+        [TASK],
     )
     .unwrap();
     h.run(task_event("task.lease_expired", 2));
@@ -530,12 +529,11 @@ fn pending_timeout_does_not_blindly_retry_uncertain_llm() {
 #[test]
 fn heartbeat_extends_lease_without_deliberation() {
     let mut h = TestHost::new();
+    h.db.execute("UPDATE objects SET status='leased' WHERE id=?1", [TASK])
+        .unwrap();
     h.db.execute(
-        "UPDATE objects SET status='leased',data_json=?1 WHERE id=?2",
-        params![
-            json!({"lease_until":3,"lease_owner":"mock"}).to_string(),
-            TASK
-        ],
+        "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'leased',0,'mock',100,1,1)",
+        [TASK],
     )
     .unwrap();
     h.run(event(
@@ -543,7 +541,8 @@ fn heartbeat_extends_lease_without_deliberation() {
         2,
         [
             ("task_id", Value::Text(TASK.into())),
-            ("lease_owner", Value::Text("mock".into())),
+            ("lease", Value::Text("mock".into())),
+            ("attempt", Value::Integer(1.into())),
         ],
     ));
     h.run(task_event("task.lease_expired", 3));
@@ -624,4 +623,43 @@ fn invalid_ops_rejected_without_partial_mutation() {
     h.run(response);
     assert_eq!(h.count("objects"), 5);
     assert_eq!(h.count("outbox"), 0);
+}
+#[test]
+fn stale_attempt_does_not_release_current_capacity() {
+    let mut h = TestHost::new();
+    h.db.execute(
+        "UPDATE objects SET status='dispatched',data_json=?1 WHERE id=?2",
+        params![
+            json!({"capacity_reserved": true, "context_ids": []}).to_string(),
+            TASK
+        ],
+    )
+    .unwrap();
+    h.db.execute(
+        "UPDATE objects SET data_json=?1 WHERE id='factory-policy'",
+        [serde_json::to_string(&Policy {
+            model: "mock".into(),
+            remaining_budget: 9,
+            available_workers: 1,
+            max_priority: 100,
+        })
+        .unwrap()],
+    )
+    .unwrap();
+    h.db.execute(
+        "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'leased',0,'current',100,2,1)",
+        [TASK],
+    )
+    .unwrap();
+    h.run(event(
+        "task.completed",
+        4,
+        [
+            ("task_id", Value::Text(TASK.into())),
+            ("lease", Value::Text("old".into())),
+            ("attempt", Value::Integer(1.into())),
+        ],
+    ));
+    assert_eq!(h.get(TASK).0, "dispatched");
+    assert_eq!(h.get("factory-policy").1["available_workers"], 1);
 }

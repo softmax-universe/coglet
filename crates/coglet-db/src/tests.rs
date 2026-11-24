@@ -9,6 +9,7 @@ fn factory_deployment_catalog() -> Catalog {
         "text" => CellType::Text,
         "int64" => CellType::Integer,
         "nullable_text" => CellType::NullableText,
+        "nullable_int64" => CellType::NullableInteger,
         _ => panic!("unknown Factory catalog type"),
     };
     Catalog::approve_typed(

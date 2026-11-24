@@ -30,12 +30,13 @@ This branch is **not Phase 2 acceptance** and is not a deployment. Phase 1's
   format. Replies accept the existing provider `output.text` JSON or a scripted
   `output.decisions_json`. The gateway test uses `crates/coglet-llm` and the real
   `coglet-mock::llm::MockLlm`, without provider network access or paid calls.
-- Host-fenced outbox API on `coglet-db` (`claim_pending_outbox`,
-  `reconcile_inflight_outbox`, `record_outbox_state`, work_queue put/expire).
-  No arbitrary SQL closure is public. `coglets/factory/host` is a replaceable
-  Hermes Kanban adapter plus dispatcher: claim/lease/retry/cancel/progress go
-  through the adapter trait; CI uses `MockAdapter`. Idempotency keys are stable
-  across uncertain retry. Worker results become later Factory events.
+- Host dispatcher talks only to a replaceable Kanban adapter. Production is
+  `HttpKanban` (public HTTP create/claim/heartbeat/cancel/result). Tests use
+  `MockAdapter` or `MockKanbanServer`. Outcomes and replayable event rows commit
+  in the same transaction as the terminal outbox state. Recovery redelivers
+  until acknowledged. Leases are `leased` with an attempt token; expiry returns
+  them to `pending` and the same idempotency key is retried. Late results are
+  rejected unless attempt and lease match.
 
 ## Invocation and policy
 
@@ -70,11 +71,12 @@ also be exercised with executive events before final acceptance.
 
 ## Still required before merge
 
-1. Actual runtime/Wasm executive events and journal/crash proof (not only
-   transaction/reopen unit tests and host-dispatcher SQLite tests). Diagnose
-   `real_wamr_runs_actual_factory_guest_end_to_end` compile/run cost; never waive.
-2. Guest writes onto `work_queue` (host dispatcher maintains it today).
-3. Full owned qualification script, green exact-head required hosted CI,
-   independent final review, and merge queue landing. No waiver is claimed.
-
-The short reasoning review performed during implementation is not ship approval.
+1. Green exact-head required CI for this head, then independent review.
+   `wasm_task_failed_stages_llm_and_survives_reopen` is the Wasm executive
+   proof for `task.failed` → staged LLM request → reopen. The runtime delivers
+   `llm.reply` only as an authenticated `runtime.inbox` wake, and this database
+   harness has no public inbox-append seam, so the reply-to-dispatch half stays
+   on the native executive test plus the host dispatcher tests.
+2. Guest does not write `work_queue`. It can read one row through
+   `work_queue_get`. The host dispatcher remains the scheduler.
+3. No waiver is claimed. The implementation review is not ship approval.
