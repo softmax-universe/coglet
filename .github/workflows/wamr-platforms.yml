@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
