@@ -19,6 +19,7 @@ Repository Actions secrets (never commit their values):
 | `SOFTMAX_MAC_ASC_ISSUER_ID` | ASC issuer UUID |
 | `SOFTMAX_MAC_ASC_PRIVATE_KEY` | Matching ASC P8 private key |
 | `SOFTMAX_MAC_TEAM_ID` | Must equal Z7589R323Y |
+| `SOFTMAX_MAC_PROVISIONING_PROFILE` | Base64 Developer ID profile authorizing `Z7589R323Y.com.softmax.app` and the pinned certificate |
 | `SOFTMAX_MAC_SPARKLE_PRIVATE_KEY` | Sparkle base64 32-byte Ed25519 seed |
 
 The signing P12/password were sourced from the existing MacBook `~/.bb-signing/`
@@ -49,7 +50,17 @@ intentional; do not send private signing material to untrusted self-hosted runne
 The app is not App Sandbox enabled: the two network entries document intended
 network capabilities and apply if sandboxing is introduced; they do not restrict
 an unsandboxed app. No JIT, unsigned executable memory, get-task-allow or library
-validation exemption is granted. All embedded Mach-O code, then nested bundles,
+validation exemption is granted. For Developer ID releases only, `release.py`
+requires and embeds the CMS provisioning profile and adds its exact authorized
+`com.apple.application-identifier` and `com.apple.developer.team-identifier` to
+the outer app signature. The application identifier is the private default Data
+Protection Keychain access group; no explicit shared Keychain group is enabled.
+Team, prefix, bundle ID, expiration and pinned certificate are checked before
+signing. The profile is ASC `MAC_APP_DIRECT` ID `9LA27AHTVY`, bundle registration
+`F5QWV5467H`; the existing certificate is reused, not rotated. Ad-hoc builds keep
+only the three base entitlements and cannot prove production Keychain access.
+See Apple's [TN3137](https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains).
+All embedded Mach-O code, then nested bundles,
 then the outer app are signed inside-out with `--options runtime --timestamp`.
 `--deep` is used for **verification only**, not for signing. Project generation
 remains unsigned for ordinary CI and development; do not alter development-only

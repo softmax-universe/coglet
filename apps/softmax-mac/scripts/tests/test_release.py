@@ -124,6 +124,37 @@ class ReleasePolicyTests(unittest.TestCase):
             self.assertEqual(signed[0]['com.apple.application-identifier'],release.TEAM+'.com.softmax.app')
             self.assertEqual(signed[0]['com.apple.developer.team-identifier'],release.TEAM)
             self.assertNotIn('keychain-access-groups',signed[0])
+            # Every restriction is independent: refuse before signing when its
+            # authorized identity, team, certificate, or lifetime is unsuitable.
+            import copy
+            invalid=[]
+            for key,value in [('TeamIdentifier',['OTHER']),('ApplicationIdentifierPrefix',['OTHER']),
+                              ('DeveloperCertificates',[b'wrong-cert']),
+                              ('ExpirationDate',datetime.datetime(2000,1,1))]:
+                bad=copy.deepcopy(profile);bad[key]=value;invalid.append(bad)
+            for key in ('com.apple.application-identifier','com.apple.developer.team-identifier'):
+                bad=copy.deepcopy(profile);bad['Entitlements'][key]='OTHER';invalid.append(bad)
+            for bad in invalid:
+                with self.subTest(profile=bad), \
+                     patch.dict(os.environ, {'PROVISIONING_PROFILE':base64.b64encode(b'test-cms').decode()}), \
+                     patch.object(release,'run',return_value=plistlib.dumps(bad).decode()) as commands:
+                    with self.assertRaisesRegex(ValueError,'Unexpected or expired'):
+                        release.sign_tree(app,'identity','developer-id')
+                    self.assertEqual(commands.call_count,1, 'Invalid authorization must fail before codesign')
+
+    def test_adhoc_proof_never_installs_restricted_identity(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Path(d)/'Softmax.app';(app/'Contents').mkdir(parents=True)
+            captured=[]
+            def command(*args, **kwargs):
+                if '--entitlements' in args:
+                    captured.append(plistlib.loads(Path(args[args.index('--entitlements')+1]).read_bytes()))
+                return ''
+            with patch.dict(os.environ, {'PROVISIONING_PROFILE':'not-used-in-proof'}), patch.object(release,'run',side_effect=command):
+                release.sign_tree(app,'-','adhoc')
+            self.assertNotIn('com.apple.application-identifier',captured[0])
+            self.assertNotIn('com.apple.developer.team-identifier',captured[0])
+            self.assertFalse((app/'Contents/embedded.provisionprofile').exists())
 
     def test_minimal_entitlements(self):
         ent=plistlib.loads((SCRIPTS.parent/'release.entitlements').read_bytes())
