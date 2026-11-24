@@ -57,7 +57,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: ${{ inputs.bundle-mode != 'proof' && 'maven' || '' }}
-          cache-dependency-path: sdk/surface-java/pom.xml
+          cache-dependency-path: |
+            sdk/surface-java/pom.xml
+            scripts/ci/resolve_maven.py
       - run: python3 -m pip install -r spec/tests/requirements.txt
       - name: Generated types are current
         run: codegen/run --check

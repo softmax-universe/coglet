@@ -29,7 +29,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: ${{ inputs.bundle-mode != 'proof' && 'maven' || '' }}
-          cache-dependency-path: sdk/surface-java/pom.xml
+          cache-dependency-path: |
+            sdk/surface-java/pom.xml
+            scripts/ci/resolve_maven.py
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
