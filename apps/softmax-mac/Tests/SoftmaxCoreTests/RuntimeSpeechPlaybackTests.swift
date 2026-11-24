@@ -32,6 +32,18 @@ import FaceMac
     func stop() -> [PCMFrame] { [] }
 }
 final class RuntimeSpeechPlaybackTests: XCTestCase {
+    @MainActor func testExpiredSynthesisCannotStartNativePlayback() throws {
+        let ptt = PushToTalk(keys: BridgeKeys(), audio: BridgeCapture())
+        let synth = BridgeTestSynthesis(); let device = BridgeTestDevice()
+        var clock: UInt64 = 10
+        let player = RuntimeSpeechPlayback(session: FacePlaybackSession(ptt: ptt, speech: FaceSpeechSink(device: device)), synthesis: synth, now: { clock })
+        var result: String?
+        player.enqueue(text: "late", stream: "late", chunk: 0, final: true, deadline: 20) { result = $0 }
+        clock = 20
+        synth.completions[0](.success([PCMFrame(samples: [0.1], sampleRate: 16000, timestamp: 0)]))
+        XCTAssertEqual(result, "deadline_exceeded")
+        XCTAssertEqual(device.scheduled, 0)
+    }
     @MainActor func testSynthesisIsNotSuccessAndBargeFencesOldNativeCompletion() throws {
         let keys = BridgeKeys(); let ptt = PushToTalk(keys: keys, audio: BridgeCapture())
         ptt.permissions = .init(microphone: .granted, inputMonitoring: .granted); ptt.start()

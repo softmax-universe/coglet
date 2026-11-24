@@ -23,6 +23,7 @@ public struct RuntimeAction: Sendable, Equatable {
     public let owner: String
     public let id: String
     public let epoch: UInt64
+    public let deadline: UInt64
     let ticket = UUID()
     init(action: CBORValue, epoch: UInt64) {
         capability = action["capability"]!.hostText!
@@ -34,6 +35,7 @@ public struct RuntimeAction: Sendable, Equatable {
         if case .unsigned(let value) = action["args"]?["intensity"] { intensity = value } else { intensity = nil }
         if case .unsigned(let value) = action["args"]?["duration_ms"] { durationMS = value } else { durationMS = nil }
         owner = action["coglet"]!.hostText!; id = action["id"]!.hostText!; self.epoch = epoch
+        if case .unsigned(let value) = action["deadline"] { deadline = value } else { deadline = 0 }
     }
 }
 private extension CBORValue {
@@ -269,6 +271,9 @@ private actor RuntimeExecutor {
     }
     private func deliver(_ received: [RuntimeAction]) {
         for action in received where output.isLive(action) {
+            guard DispatchTime.now().uptimeNanoseconds / 1000 < action.deadline else {
+                complete(action, error: "deadline_exceeded"); continue
+            }
             actions.append(action); if actions.count > 128 { actions.removeFirst() }
             if let onAction { onAction(action) } else { complete(action, error: "unavailable") }
         }

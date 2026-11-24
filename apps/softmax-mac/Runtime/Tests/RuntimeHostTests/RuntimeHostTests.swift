@@ -35,7 +35,7 @@ final class RuntimeHostTests: XCTestCase {
             guard let text = action.text, let stream = action.stream, let chunk = action.chunk else {
                 host.complete(action, error: "unavailable"); return
             }
-            player.enqueue(text: text, stream: stream, chunk: chunk, final: action.final) { host.complete(action, error: $0) }
+            player.enqueue(text: text, stream: stream, chunk: chunk, final: action.final, deadline: action.deadline) { host.complete(action, error: $0) }
         }
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")

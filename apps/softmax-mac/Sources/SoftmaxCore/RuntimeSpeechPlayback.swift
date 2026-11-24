@@ -9,11 +9,13 @@ import FaceMac
         let text: String
         let stream: String
         let final: Bool
+        let deadline: UInt64
         let complete: (String?) -> Void
     }
     private struct Stream { var next: UInt64 = 0; var closed = false }
     private let session: FacePlaybackSession
     private let synthesis: any LocalSpeechSynthesis
+    private let now: () -> UInt64
     private var streams: [String: Stream] = [:]
     private var activeStream: String?
     private var queue: [Item] = []
@@ -23,14 +25,17 @@ import FaceMac
     private var offset = 0
     private var cancelSynthesis: (@MainActor () -> Void)?
     private var feeding: Task<Void, Never>?
+    private var expiry: Task<Void, Never>?
     private var idleSince: TimeInterval?
     public var willBegin: (() -> Void)?
-    public init(session: FacePlaybackSession, synthesis: any LocalSpeechSynthesis) {
-        self.session = session; self.synthesis = synthesis
+    public init(session: FacePlaybackSession, synthesis: any LocalSpeechSynthesis,
+                now: @escaping () -> UInt64 = { DispatchTime.now().uptimeNanoseconds / 1000 }) {
+        self.session = session; self.synthesis = synthesis; self.now = now
         session.onResult = { [weak self] cancelled in
             guard let self, let item = current else { return }
             current = nil; token = nil; frames = []; offset = 0
             feeding?.cancel(); feeding = nil; cancelSynthesis = nil
+            expiry?.cancel(); expiry = nil
             if cancelled {
                 item.complete("cancelled"); stop()
             } else {
@@ -40,8 +45,9 @@ import FaceMac
             }
         }
     }
-    public func enqueue(text: String, stream: String, chunk: UInt64, final: Bool,
+    public func enqueue(text: String, stream: String, chunk: UInt64, final: Bool, deadline: UInt64 = .max,
                         completion: @escaping (String?) -> Void) {
+        guard now() < deadline else { completion("deadline_exceeded"); return }
         if let idleSince, ProcessInfo.processInfo.systemUptime - idleSince >= 60 { stop() }
         guard !text.isEmpty, text.utf8.count <= 4096 else { completion("invalid_argument"); return }
         guard queue.count + (current == nil ? 0 : 1) < 16 else { completion("resource_exhausted"); return }
@@ -51,13 +57,14 @@ import FaceMac
               activeStream == nil || activeStream == stream else { completion("conflict"); return }
         state.next += 1; state.closed = final; streams[stream] = state
         activeStream = stream; idleSince = nil
-        queue.append(Item(text: text, stream: stream, final: final, complete: completion))
+        queue.append(Item(text: text, stream: stream, final: final, deadline: deadline, complete: completion))
         startNext()
     }
     public func stop() {
         let old = current; let waiting = queue
         current = nil; queue = []; token = nil; frames = []; offset = 0
         feeding?.cancel(); feeding = nil
+        expiry?.cancel(); expiry = nil
         let cancel = cancelSynthesis; cancelSynthesis = nil
         if let activeStream { streams[activeStream]?.closed = true }
         activeStream = nil; idleSince = nil
@@ -68,8 +75,18 @@ import FaceMac
     private func startNext() {
         guard current == nil, !queue.isEmpty else { return }
         let item = queue.removeFirst(); current = item
+        guard now() < item.deadline else { fail("deadline_exceeded"); return }
         willBegin?()
         token = session.begin()
+        if item.deadline != .max {
+            expiry = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(10))
+                    guard !Task.isCancelled, let self, self.current?.key == item.key else { return }
+                    if self.now() >= item.deadline { self.fail("deadline_exceeded"); return }
+                }
+            }
+        }
         let cancel = synthesis.synthesize(item.text) { [weak self] result in
             guard let self, current?.key == item.key else { return }
             switch result {
@@ -94,7 +111,8 @@ import FaceMac
         if current?.key == item.key { cancelSynthesis = cancel }
     }
     private func feed() {
-        guard current != nil, let token else { return }
+        guard let current, let token else { return }
+        guard now() < current.deadline else { fail("deadline_exceeded"); return }
         while offset < frames.count {
             do { try session.speech.enqueue(frames[offset], token: token); offset += 1 }
             catch FacePlaybackError.capacity { return } // retry unchanged PCM after native drain

@@ -40,7 +40,7 @@ final class FaceHost: ObservableObject {
             guard let text = action.text, let stream = action.stream, let chunk = action.chunk else {
                 completion("invalid_argument"); return
             }
-            runtimeSpeech.enqueue(text: text, stream: stream, chunk: chunk, final: action.final, completion: completion)
+            runtimeSpeech.enqueue(text: text, stream: stream, chunk: chunk, final: action.final, deadline: action.deadline, completion: completion)
         case "expression.set_expression":
             guard let name = action.expression, let intensity = action.intensity, intensity <= 1000,
                   let duration = action.durationMS, duration <= 60000 else { completion("invalid_argument"); return }
