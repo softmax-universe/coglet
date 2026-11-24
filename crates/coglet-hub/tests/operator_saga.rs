@@ -69,15 +69,23 @@ struct CrashBoundary {
     handler: DeviceHandler,
     method: Option<&'static str>,
     armed: std::sync::atomic::AtomicBool,
+    busy: std::sync::atomic::AtomicBool,
     reached: tokio::sync::Notify,
     release: tokio::sync::Notify,
     requests: std::sync::Mutex<Vec<Value>>,
 }
 impl CrashBoundary {
     async fn after(&self, request: &Value) {
-        if self.method == request["method"].as_str()
-            && self.armed.swap(false, std::sync::atomic::Ordering::SeqCst)
-        {
+        let selected = self.method == request["method"].as_str()
+            || (self.method == Some("running")
+                && request["method"] == "hub.status"
+                && self
+                    .requests
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .any(|r| r["method"] == "hub.start"));
+        if selected && self.armed.swap(false, std::sync::atomic::Ordering::SeqCst) {
             self.reached.notify_one();
             self.release.notified().await;
         }
@@ -94,6 +102,12 @@ impl OperationHandler for CrashBoundary {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Value> + Send + 'a>> {
         Box::pin(async move {
             self.record(&r);
+            // Fault injection is denial before admission, never a success receipt.
+            if r["method"] == "hub.install"
+                && self.busy.swap(false, std::sync::atomic::Ordering::SeqCst)
+            {
+                return json!({"type":"error","correlation_id":r["correlation_id"],"error":{"code":"resource_exhausted","message":"fixture busy","retryable":true,"details":{}}});
+            }
             let result = self.handler.handle(c, r.clone()).await;
             self.after(&r).await;
             result
@@ -127,7 +141,13 @@ async fn operator_real_iroh_deploy_running_stop_status() {
 async fn operator_saga_crash_each_stage() {
     // Status is the post-build/pre-push barrier: the artifact and every child
     // intent are durable, but no mutation has been sent yet.
-    for method in ["hub.status", "hub.git.push", "hub.install", "hub.start"] {
+    for method in [
+        "hub.status",
+        "hub.git.push",
+        "hub.install",
+        "hub.start",
+        "running",
+    ] {
         exercise(Some(method)).await;
     }
 }
@@ -201,7 +221,17 @@ async fn exercise(crash: Option<&'static str>) {
     authority
         .accept_delegation(router.id(), device, &target, &proof, || Some(NOW))
         .unwrap();
-    let validator = std::path::PathBuf::from(env!("CARGO_BIN_EXE_coglet-hub-build-validator"));
+    let real_validator = std::path::PathBuf::from(env!("CARGO_BIN_EXE_coglet-hub-build-validator"));
+    let building = root.path().join("building");
+    let resume_build = root.path().join("resume-build");
+    let validator = if crash.is_none() {
+        let wrapper = root.path().join("validator");
+        std::fs::write(&wrapper, format!("#!/bin/sh\ntouch '{}'\nwhile [ ! -f '{}' ]; do sleep 0.01; done\nexec '{}' \"$@\"\n", building.display(), resume_build.display(), real_validator.display())).unwrap();
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700)).unwrap();
+        wrapper
+    } else {
+        real_validator
+    };
     let kill = root.path().join("kill.json");
     std::fs::write(&kill, b"{\"latched\":false}").unwrap();
     let handler=DeviceHandler::new(DeviceConfig {hub:router.id(),device,wal_root:root.path().join("wal"),quarantine:root.path().join("device-quarantine"),catalog:json!([]),grants:json!({"coglet":target,"operations":[],"resources":[]}),kill_switch:Some(kill),
@@ -210,6 +240,7 @@ async fn exercise(crash: Option<&'static str>) {
         handler: handler.clone(),
         method: crash,
         armed: std::sync::atomic::AtomicBool::new(true),
+        busy: std::sync::atomic::AtomicBool::new(crash.is_none()),
         reached: tokio::sync::Notify::new(),
         release: tokio::sync::Notify::new(),
         requests: std::sync::Mutex::new(vec![]),
@@ -299,6 +330,26 @@ async fn exercise(crash: Option<&'static str>) {
         std::future::pending(),
     ));
     let deploy = json!({"version":"local-1","operation_id":"01".repeat(16),"op":"deploy","timeout_ms":30000,"params":{"device":device.to_string(),"target":target,"source_commit":commit,"build_profile":"fixture","delegation_id":"fixture"}});
+    if crash.is_none() {
+        let mut first = deploy.clone();
+        first["timeout_ms"] = json!(1);
+        assert_eq!(
+            call(&router_root, &first).await["receipt"]["state"],
+            "queued"
+        );
+        tokio::time::timeout(Duration::from_secs(20), async {
+            while !building.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("real builder validation reached");
+        tokio::time::timeout(Duration::from_secs(2), kernel.status())
+            .await
+            .expect("builder must not hold global State")
+            .unwrap();
+        std::fs::write(&resume_build, b"resume").unwrap();
+    }
     if crash.is_some() {
         let mut first = deploy.clone();
         first["timeout_ms"] = json!(1);
@@ -318,6 +369,13 @@ async fn exercise(crash: Option<&'static str>) {
             )
             .unwrap();
         let before: Value = serde_json::from_str(&before).unwrap();
+        // Admission remains independent of the blocked operation executor.
+        let concurrent = json!({"version":"local-1","operation_id":"08".repeat(16),"op":"status","timeout_ms":1,"params":{"device":device.to_string(),"target":target}});
+        let admitted =
+            tokio::time::timeout(Duration::from_secs(2), call(&router_root, &concurrent))
+                .await
+                .expect("blocked executor must not block durable admission");
+        assert_eq!(admitted["receipt"]["state"], "queued");
         driver.abort();
         let _ = driver.await;
         socket_task.abort();
@@ -363,6 +421,22 @@ async fn exercise(crash: Option<&'static str>) {
     }
     let response = call(&router_root, &deploy).await;
     assert_eq!(response["receipt"]["state"], "applied", "{response}");
+    let progress: Value = {
+        let db = rusqlite::Connection::open(router_root.join("kernel.db")).unwrap();
+        let text: String = db
+            .query_row(
+                "SELECT progress FROM operator_sagas WHERE id=?1",
+                ["01".repeat(16)],
+                |r| r.get(0),
+            )
+            .unwrap();
+        serde_json::from_str(&text).unwrap()
+    };
+    assert_eq!(
+        progress["outcomes"].as_array().unwrap().last().unwrap()["observation"]["state"],
+        "running",
+        "deploy itself must observe running"
+    );
     let repeated = call(&router_root, &deploy).await;
     assert_eq!(response, repeated);
     let status = json!({"version":"local-1","operation_id":"02".repeat(16),"op":"status","timeout_ms":30000,"params":{"device":device.to_string(),"target":target}});

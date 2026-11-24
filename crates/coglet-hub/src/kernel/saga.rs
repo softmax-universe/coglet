@@ -164,6 +164,105 @@ impl Kernel {
             Ok(pending)
         }).await
     }
+    // Build/publication uses a separate connection to the SAME Store file, with
+    // the existing builder's atomic artifact/audit custody. Never hold State
+    // across compiler, Git, or validator subprocesses. Dispatch is fenced again.
+    async fn saga_build(
+        &self,
+        peer: PeerIdentity,
+        request: Request,
+        p: Provisioning,
+        executor: Executor,
+    ) -> Result<()> {
+        let r = request.clone();
+        let exec = executor.clone();
+        let prepared = self
+            .work(move |s| {
+                if !permitted(&p, peer, &r) || exec.key.public() != s.hub {
+                    return Err(Error::Denied);
+                }
+                let response = s.store.operator_admit_actor(peer, &r, Some(&p.actor))?;
+                let v = r.value();
+                let id = v["operation_id"].as_str().ok_or(Error::Invalid)?;
+                if response["receipt"]["state"] != "queued"
+                    || !matches!(v["op"].as_str(), Some("deploy" | "push"))
+                    || load(s, peer.uid, id)?.is_some_and(|p| !p.children.is_empty())
+                    || s.store.build_artifact(peer.uid, id)?.is_some()
+                {
+                    return Ok(None);
+                }
+                let recipe = exec
+                    .recipes
+                    .iter()
+                    .find(|x| {
+                        x.target.coglet == v["params"]["target"]
+                            && v["params"]["device"] == x.target.device
+                            && v["params"]["delegation_id"] == x.delegation.id
+                    })
+                    .ok_or(Error::Denied)?
+                    .clone();
+                let device = recipe.target.device.parse().map_err(|_| Error::Invalid)?;
+                for method in if v["op"] == "deploy" {
+                    &[
+                        "hub.git.push",
+                        "hub.receipt",
+                        "hub.status",
+                        "hub.install",
+                        "hub.start",
+                    ][..]
+                } else {
+                    &["hub.git.push", "hub.receipt", "hub.status"][..]
+                } {
+                    authorize(s, device, &recipe.target.coglet, method, &p)?;
+                }
+                let path = PathBuf::from(s.store.db.path().ok_or(Error::Invalid)?);
+                Ok(Some((recipe, path, s.authority.clone(), s.clock.clone())))
+            })
+            .await?;
+        if let Some((recipe, path, authority, clock)) = prepared {
+            let permit = self
+                .blocking
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| Error::Full)?;
+            tokio::task::spawn_blocking(move || {
+                let _permit = permit;
+                let v = request.value();
+                let mut store = Store::open(path)?;
+                build::Builder::new(recipe.target, recipe.profile)?
+                    .compile(&build::BuildRequest {
+                        source_commit: v["params"]["source_commit"]
+                            .as_str()
+                            .ok_or(Error::Invalid)?
+                            .into(),
+                        profile_id: v["params"]["build_profile"]
+                            .as_str()
+                            .ok_or(Error::Invalid)?
+                            .into(),
+                    })?
+                    .sign_and_retain(
+                        &mut store,
+                        &build::SignRequest {
+                            uid: peer.uid,
+                            operation_id: v["operation_id"].as_str().ok_or(Error::Invalid)?.into(),
+                            delegation_id: recipe.delegation.id.clone(),
+                            old_tip: None,
+                            generation: recipe.generation,
+                        },
+                        &recipe.delegation,
+                        &executor.key,
+                        &authority,
+                        &Validator::new(&recipe.validator),
+                        &recipe.quarantine,
+                        || clock(),
+                    )?;
+                Ok::<_, Error>(())
+            })
+            .await
+            .map_err(|_| Error::Denied)??;
+        }
+        Ok(())
+    }
     /// One bounded recovery pass. A queued or uncertain child never authorizes
     /// the next stage; future passes poll its ORIGINAL ID and original context.
     pub async fn saga_pass(
@@ -174,6 +273,8 @@ impl Kernel {
         executor: Executor,
         sessions: BTreeMap<String, Session>,
     ) -> Result<Value> {
+        self.saga_build(peer, request.clone(), p.clone(), executor.clone())
+            .await?;
         let request = Arc::new(request);
         let id = request.value()["operation_id"]
             .as_str()
@@ -206,15 +307,7 @@ impl Kernel {
                 }
                 // Retained artifacts are retrieved without rebuilding after a
                 // crash; protected recipe/source changes cannot replace them.
-                let artifact=match s.store.build_artifact(peer.uid,&key)? {
-                    Some(a)=>a,
-                    None=>build::Builder::new(recipe.target.clone(),recipe.profile.clone())?.compile(&build::BuildRequest {
-                        source_commit:v["params"]["source_commit"].as_str().ok_or(Error::Invalid)?.into(),
-                        profile_id:v["params"]["build_profile"].as_str().ok_or(Error::Invalid)?.into(),
-                    })?.sign_and_retain(&mut s.store,&build::SignRequest {uid:peer.uid,operation_id:key.clone(),
-                        delegation_id:recipe.delegation.id.clone(),old_tip:None,generation:recipe.generation},
-                        &recipe.delegation,&exec.key,&s.authority,&Validator::new(&recipe.validator),&recipe.quarantine,|| (s.clock)())?,
-                };
+                let artifact=s.store.build_artifact(peer.uid,&key)?.ok_or(Error::Invalid)?;
                 children.push(envelope(child(peer.uid,&key,"preflight"),&provision.actor,target,"hub.status",json!({})));
                 children.push(envelope(child(peer.uid,&key,"push"),&provision.actor,target,"hub.git.push",
                     json!({"update":artifact.signed,"size":artifact.bundle.len(),"sha256":hex::encode(Sha256::digest(&artifact.bundle))})));
@@ -222,6 +315,7 @@ impl Kernel {
                     children.push(envelope(child(peer.uid,&key,"install"),&provision.actor,target,"hub.install",
                         json!({"initial":artifact.signed,"delegation":recipe.delegation.signed})));
                     children.push(envelope(child(peer.uid,&key,"start"),&provision.actor,target,"hub.start",json!({})));
+                    children.push(envelope(child(peer.uid,&key,"running"),&provision.actor,target,"hub.status",json!({})));
                 }
             } else {
                 authorize(s,device,target.as_str().ok_or(Error::Invalid)?,if op=="stop" {"hub.stop"} else {"hub.status"},&provision)?;
@@ -307,6 +401,11 @@ impl Kernel {
             }
             let reply = reply.ok_or(Error::Invalid)?;
             if reply["type"] == "error" {
+                if reply["error"]["retryable"] == true {
+                    // A transient refusal is not an effect receipt. Retain
+                    // attempted custody; the next pass reconciles the same ID.
+                    return Ok(response);
+                }
                 // A peer refusal is authoritative; never hide partial earlier
                 // success, whose receipts remain in the durable progress/audit.
                 let error = reply["error"].clone();
@@ -318,13 +417,15 @@ impl Kernel {
             let result = reply["result"].clone();
             if status
                 && request.value()["op"] == "deploy"
-                && !result["live_commit"].is_null()
-                && result["live_commit"]
-                    != progress
-                        .children
-                        .get(i + 1)
-                        .map(|r| r["params"]["update"]["statement"]["new"].clone())
-                        .unwrap_or(Value::Null)
+                && if i == 0 {
+                    !result["live_commit"].is_null()
+                        && result["live_commit"]
+                            != progress.children[1]["params"]["update"]["statement"]["new"]
+                } else {
+                    result["state"] != "running"
+                        || result["live_commit"]
+                            != progress.children[1]["params"]["update"]["statement"]["new"]
+                }
             {
                 progress.outcomes[i] = Some(json!({"observation":result}));
                 return self

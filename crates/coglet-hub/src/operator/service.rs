@@ -278,7 +278,8 @@ impl Handler for Service {
                     .as_str()
                     .unwrap_or_default()
                     .to_owned();
-                let _execution = self.execution.lock().await;
+                // Store admission is already serialized by Kernel::work. Do not
+                // hold a socket waiter behind network I/O from an older saga.
                 let op = request.value()["op"].clone();
                 let response = self.kernel.saga_admit(peer, request, p.clone()).await;
                 return match response {

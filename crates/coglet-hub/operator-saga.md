@@ -35,8 +35,8 @@ retains its complete child envelopes before I/O. Deterministic original child
 IDs are scoped by UID/local operation ID/stage. Runtime effects are not inferred
 from local queued state, accepted refs, or status.
 
-The stages are status preflight, streaming `hub.git.push`, `hub.install`, and
-`hub.start`. Only an actual applied runtime receipt permits the next mutation.
+The stages are status preflight, streaming `hub.git.push`, `hub.install`,
+`hub.start`, and a final running/commit status observation. Only an actual applied runtime receipt permits the next mutation.
 After an attempted mutation, recovery first reads `hub.receipt` with the
 ORIGINAL child ID, actor, target and absent-ticket omission. Fresh receipt and
 original-method authority is checked on every transport poll. Only an actual
@@ -62,12 +62,15 @@ cargo test --locked -p coglet-hub --test operator_saga
 | Requirement | Named test / assertion |
 | --- | --- |
 | Actual socket → qualified build → streaming Git → install → start → running | `operator_real_iroh_deploy_running_stop_status` asserts actual runtime status is running |
-| Lost coordinator at each deploy boundary | `operator_saga_crash_each_stage`, four barriers: post-build/pre-push (`hub.status`), post-push, post-install, post-start |
+| Lost coordinator at each deploy boundary | `operator_saga_crash_each_stage`, five barriers: post-build/pre-push (`hub.status`), post-push, post-install, post-start, and final running observation |
 | Original child IDs and exact scope after recovery | crash test compares all retained envelopes, observes real receipt polling and one distinct ID per mutation |
 | Immutable local retries and conflicting ID reuse | running/stop/status test compares terminal responses and rejects changed source under the same ID |
 | Original-actor receipt privacy | same test has separately granted wrong-actor denial plus authorized original-actor applied control |
 | Stop/status and retained observation | same test stops the real runtime and retains prior status on identical retry |
 | Typed missing enrollment / missing grant / conflicting install | same test revokes enrollment/grant and tries a distinct pinned publication against an installed target |
+| Admission while executor is blocked | crash test admits another actual socket request while the runtime reply is paused |
+| Build does not hold global State | running test pauses the real validator and obtains a concurrent kernel status snapshot |
+| Retryable peer pressure | running test injects one pre-admission busy refusal, then requires real original-ID receipt recovery and actual install success |
 
 `coglet_mock::lifecycle::LifecyclePeer` supplies actual authenticated iroh
 connections and accepts an OperationHandler; it does not generate receipt
