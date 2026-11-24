@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-24
 - Authors: Coglet runtime maintainers
-- Related PR: linked by the publishing PR and owner card t_01a20f45e1464258
+- Related PR: [#144](https://github.com/softmax-universe/coglet/pull/144); owner card t_01a20f45e1464258
 - Supersedes / superseded by: none
 
 ## Context
@@ -30,16 +30,29 @@ with this docs-only decision before implementation:
   local kill switch. Recovery uses the installed identity, never a newer staged
   ref, and must not create fresh authorization from a stored receipt.
 - The authority for automatic resume is the still-valid original start's actor,
-  ticket scope and pinned authority generations. Persist that recovery context
-  with the running transition. Missing context in an older WAL is not authority:
-  refuse automatic resume until a new authorized start establishes it.
+  ticket scope and pinned authority generations. Commit that recovery context
+  atomically with the running transition, bound to its original operation ID and
+  intent digest. Missing/mismatched context in an older WAL is not authority.
+  Require exact equality between retained, locally configured and currently
+  authorized grant/delegation generations; any rotation, revocation or rollback
+  requires a fresh authorized start, never adoption of newer authority on boot.
+- Resolve durably admitted boundary mutations in their existing receipt order
+  before considering resume. A pending stop/pause prevents guest entry; if its
+  outcome cannot be established, keep execution fenced. A request that was never
+  durably admitted creates no recovery intent. Do not fabricate a queued mutation
+  for an operation whose effect and terminal receipt commit synchronously.
 - Recheck time-bounded authority and kill state immediately before enabling
-  execution after expensive validation. Unknown time, unavailable native engine,
-  missing/changed artifacts, revoked/expired authority or latched/unknown kill
-  state never enable execution. If recovery cannot safely establish a usable
-  service, daemon startup fails without exposing a running status. A recoverable
-  per-coglet failure may instead be durably represented as faulted with a shared
-  error; it must not be reported as running.
+  execution after expensive validation, using the device's trusted authority
+  clock (the same source used by ordinary start, not recovered logical time).
+  Unknown time, unavailable native engine, missing/changed artifacts,
+  revoked/expired authority or latched/unknown kill state never enable execution.
+  For a readable, writable WAL with established identity, durably set faulted
+  with an error and expose no scheduler; this includes missing recovery context
+  and a latched kill switch. A fresh, distinct authorized start may leave this
+  recovery fault only after all normal artifact/authority/kill checks pass and
+  replacement recovery context commits atomically. Historical receipt retries
+  cannot clear it. If WAL/identity integrity or durable fault persistence cannot
+  be established, fail daemon startup without device readiness instead.
 - Stopped, paused and faulted coglets never implicitly resume. Resume recovers
   committed data, logical clock and queued timers/events under the existing ABI
   recovery rules; it does not replay an uncertain guest attempt or redispatch an
@@ -66,12 +79,13 @@ an implicit privileged start.
 
 ## Consequences
 
-Existing installations without durable start authority context fail closed rather
-than silently adopting an operator scope. They require a fresh authorized start.
+Existing installations without durable start authority context become faulted
+rather than silently adopting an operator scope. They require a fresh authorized
+start, so an upgrade does not strand them behind unavailable daemon readiness.
 Boot validation adds startup cost; daemon readiness now certifies that durable
-running intent has an admitted scheduler, not merely readable metadata. Failure
-may prevent whole-device startup rather than exposing partial readiness. No
-compiler runs on the device and no legacy runtime code is imported.
+running intent has an admitted scheduler or an explicit non-running fault. WAL
+integrity/persistence failure still prevents whole-device startup. No compiler
+runs on the device and no legacy runtime code is imported.
 
 ## Verification
 
@@ -83,9 +97,15 @@ Implementation qualification remains separate from accepting this decision:
   durable-state readiness, never sleeps as readiness.
 - `restart_revalidation_refuses_tampered_artifact`: tamper the retained artifact
   and prove restart refuses native execution and never serves running status.
-- Cover expired/revoked delegation/grants, missing recovery context, kill state,
-  stopped/paused recovery and historical start retry after a later stop. Retain
-  the current lifecycle receipt, ABI journal/attempt-fence and surface suites.
+- `restart_revalidation_refuses_expired_or_changed_authority`: expiry,
+  revocation and both directions of generation mismatch refuse guest entry.
+- `restart_missing_context_faults_until_fresh_authorized_start`: include an older
+  WAL and mismatched operation/intent context, then prove fresh-start recovery.
+- `restart_kill_switch_refuses_resume`: latched and unreadable kill state refuse.
+- `restart_pending_pause_prevents_guest_entry`: exercise an actual durable queued
+  pause; include committed stop/paused controls and unresolved mutation fencing.
+- `historical_start_retry_does_not_reverse_stop_after_restart`: preserve receipts.
+- Retain current lifecycle receipt, ABI journal/attempt-fence and surface suites.
 - Run the restart proof 20 consecutive times under CPU load with raw evidence on
   the owner card. Required CI runs the named tests once; repeated stress belongs
   outside required CI under the existing flake policy.
