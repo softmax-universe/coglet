@@ -2,6 +2,16 @@
 
 ## Current continuation authority (supersedes historical notes below)
 
+### Run128614 update
+
+Native SIGPIPE candidate45417062630 at exactb2e72d84776622d553f33c024c457b6d78971934 is SUCCESS (supported --once exit0). Independently read full raw log workspace/sigpipe-green-45417062630.log: closed-input test PASS0.041s; real mock-ROUTER enrollment/drop/offline/recovery PASS1.692s; dedicated native lane3 tests/0skips. UI Pair router smoke PASS11.647s. Universal helper and inside-out ad-hoc signature verification succeed (app/helper valid on disk and designated requirements satisfied). Actual native snapshot matrix360/360 errors[]; earlier missing-render errors in the same log belong to intentionally failing checker unit fixtures. All job steps succeeded. This is not notarization or TCC proof.
+
+Persistence GREEN candidate45423268341 at5e6d6332884ca554cb7c6932ca95d6d6205a22eb is now executing (job138548269169 started16:06:16Z); latest --once returns2. Account step succeeded, real helper/mock build in progress. Do not infer final GREEN yet. PR98 remains OPEN/DRAFT b2e72d8 until actual persistence result is read, then integrate test+repair.
+
+Next TEST-ONLY tracer6766f2c9d53ec9f4140b2807bf44439d60ee7bb5 on wip/t_01a205f93f231486-replace-red adds testOfflinePendingInvitationCanBeReplacedWithoutAcceptingOldCallbacks. It keeps active/enrolled replacement forbidden, permits explicit offline replacement with same identity and requires old-channel callback fencing. Production is UNCHANGED pending actual RED. Exact native45433755546 dispatched and readback verified; --once with macos=failure returns2 (queued). Expected RED is thrown HubError.pairing at the offline replacement enroll call, not a compiler/setup failure. After actual RED, minimally support offline pending replacement by restarting/fencing the channel before the new target connects; preserve null-invite-first recovery and no implicit replacement of persisted enrollment. Native GREEN then required.
+
+All five original parent DONE receipts reread via authorized replicas PR48/58/12/74/101. Source begins at verified backup292b850 and new regression6766f2c; do not restore older PR-only/wip source. No local background jobs, added worktrees or owner cards this run. Still pending: persistence GREEN/integration; pending replacement RED→GREEN; failed-signout recovery coverage; final independent exact-head review/all CI/merge queue/merged request_review. No acceptance or landing claim.
+
 ### Run126829 update
 
 Requested native job138526753645 actually ran on GitHub Actions1000815242: the earlier macos-latest shared capacity wall is no longer an established outage. Raw job log saved as workspace/save-red-45417257441-full.log. At exact611fdc3, testEnrollmentSaveFailureRestartsChannelAndRecoversSameIdentity establishes intended RED: starts1 vs2 at line94 and offline vsconnected at101. Other account tests pass; early optional native test skip is not required mock acceptance.
