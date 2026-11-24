@@ -81,6 +81,14 @@ final class HubNativeConnectionTests: XCTestCase {
         try await eventually { hub.state == .connected }
         XCTAssertEqual(try store.loadKey(), identity)
         XCTAssertNil(try store.loadHub()?.invite)
+        // Reuse this exact ProcessHubLink instance: an old detached reader must
+        // not consume bytes or deliver failure into its replacement process.
+        hub.stop()
+        XCTAssertEqual(hub.state, .offline)
+        hub.start()
+        try await eventually { hub.state == .connected }
+        XCTAssertEqual(try store.loadKey(), identity)
+        XCTAssertNil(try store.loadHub()?.invite)
         hub.signOut()
         XCTAssertNil(try store.loadKey())
         XCTAssertNil(try store.loadHub())
