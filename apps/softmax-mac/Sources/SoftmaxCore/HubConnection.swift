@@ -124,8 +124,9 @@ public final class HubConnection {
     }
     public func signOut() {
         retry?.cancel(); retry = nil
-        stopLink(); pending = nil; deviceID = nil; state = .offline
-        do { try account.signOut(); pairing = nil; errorMessage = nil }
+        stopLink(); pending = nil; state = .offline
+        // Keep deviceID until cleanup succeeds so the UI's Sign out stays reachable for retry.
+        do { try account.signOut(); pairing = nil; deviceID = nil; errorMessage = nil }
         catch { errorMessage = "Sign out could not remove local identity or hub data. Try again." }
         changed?()
     }

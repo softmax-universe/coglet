@@ -129,6 +129,23 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertThrowsError(try hub.enroll(original), "An enrolled router still requires explicit sign out")
     }
 
+    func testFailedSignOutKeepsRetryReachableAndLaterSucceeds() throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        let hub = HubConnection(account: HubAccount(store: store, generate: { Data(repeating: 9, count: 32) }), link: link)
+        hub.start()
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertNotNil(hub.deviceID)
+        store.fail = true
+        hub.signOut()
+        XCTAssertNotNil(hub.deviceID, "Sign out must stay reachable after a failed cleanup")
+        XCTAssertNotNil(hub.errorMessage)
+        store.fail = false
+        hub.signOut()
+        XCTAssertNil(hub.deviceID)
+        XCTAssertNil(hub.errorMessage)
+        XCTAssertNil(try store.loadKey())
+        XCTAssertNil(try store.loadHub())
+    }
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))
