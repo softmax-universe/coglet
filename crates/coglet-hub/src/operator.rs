@@ -19,6 +19,7 @@ pub struct PeerIdentity {
 }
 
 /// Validated local intent. Timeout is a wait budget, not part of identity.
+#[derive(Clone)]
 pub struct Request(Value);
 impl Request {
     pub fn parse(bytes: &[u8]) -> Result<Self> {
@@ -222,6 +223,30 @@ impl Store {
     where
         F: FnOnce(&rusqlite::Transaction<'_>) -> Result<Value>,
     {
+        self.operator_terminal(
+            uid,
+            request,
+            if error.is_some() { "failed" } else { "applied" },
+            error,
+            effect,
+        )
+    }
+    pub(crate) fn operator_terminal<F>(
+        &mut self,
+        uid: u32,
+        request: &Request,
+        state: &str,
+        error: Option<Value>,
+        effect: F,
+    ) -> Result<Value>
+    where
+        F: FnOnce(&rusqlite::Transaction<'_>) -> Result<Value>,
+    {
+        if !matches!(state, "applied" | "failed" | "cancelled")
+            || (state == "failed") != error.is_some()
+        {
+            return Err(Error::Invalid);
+        }
         let id = request.0["operation_id"].as_str().ok_or(Error::Invalid)?;
         let intent = request.intent()?;
         let tx = self
@@ -242,7 +267,7 @@ impl Store {
         if error.as_ref().is_some_and(|e| !valid("error", e)) {
             return Err(Error::Invalid);
         }
-        let step = if error.is_none() {
+        let step = if state == "applied" {
             let old: String = tx.query_row(
                 "SELECT value FROM operator_sequence WHERE singleton=1",
                 [],
@@ -258,7 +283,7 @@ impl Store {
             None
         };
         let result = effect(&tx)?;
-        let result_valid = if error.is_some() {
+        let result_valid = if state != "applied" {
             result.is_null()
         } else {
             match request.0["op"].as_str() {
@@ -272,7 +297,7 @@ impl Store {
         if !result_valid {
             return Err(Error::Invalid);
         }
-        response["receipt"] = json!({"operation_id":id,"state":if error.is_some() {"failed"} else {"applied"},"step":step,"error":error});
+        response["receipt"] = json!({"operation_id":id,"state":state,"step":step,"error":error});
         response["result"] = result;
         audit(
             &tx,
@@ -290,6 +315,14 @@ impl Store {
     /// This low-level method is not an authorization API: the socket driver must
     /// authenticate the peer and check its explicit local actor mapping first.
     pub fn operator_admit(&mut self, peer: PeerIdentity, request: &Request) -> Result<Value> {
+        self.operator_admit_actor(peer, request, None)
+    }
+    pub(crate) fn operator_admit_actor(
+        &mut self,
+        peer: PeerIdentity,
+        request: &Request,
+        actor: Option<&str>,
+    ) -> Result<Value> {
         let intent = request.intent()?;
         let id = request.0["operation_id"].as_str().ok_or(Error::Invalid)?;
         let tx = self
@@ -303,6 +336,12 @@ impl Store {
             )
             .optional()?
         {
+            if let Some(actor) = actor {
+                let saved: Option<String>=tx.query_row("SELECT json_extract(progress,'$.actor') FROM operator_sagas WHERE uid=?1 AND id=?2",params![peer.uid,id],|r|r.get(0)).optional()?;
+                if saved.as_deref() != Some(actor) {
+                    return Err(Error::Denied);
+                }
+            }
             return if old == intent {
                 Ok(serde_json::from_str(&response)?)
             } else {
@@ -345,6 +384,18 @@ impl Store {
                 serde_json::to_string(&response)?
             ],
         )?;
+        if let Some(actor) = actor {
+            tx.execute(
+                "INSERT INTO operator_sagas VALUES(?1,?2,?3)",
+                params![
+                    peer.uid,
+                    id,
+                    serde_json::to_string(
+                        &json!({"actor":actor,"children":[],"outcomes":[],"attempted":[]})
+                    )?
+                ],
+            )?;
+        }
         audit(
             &tx,
             json!({"method":"operator.admit","uid":peer.uid,"gid":peer.gid,"pid":peer.pid,

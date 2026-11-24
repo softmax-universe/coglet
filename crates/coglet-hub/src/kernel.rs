@@ -20,6 +20,8 @@ mod actions;
 #[cfg(unix)]
 mod operator;
 pub mod promotion;
+#[cfg(unix)]
+pub mod saga;
 #[cfg(test)]
 mod tests;
 

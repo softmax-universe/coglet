@@ -34,8 +34,8 @@ impl From<rusqlite::Error> for AuthorityError {
 type Result<T> = std::result::Result<T, AuthorityError>;
 pub mod accepted_refs;
 mod delegation;
-mod runtime_boundary;
 mod operator;
+mod runtime_boundary;
 pub use operator::{LocalConfiguration, LocalInvite};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

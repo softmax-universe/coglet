@@ -592,7 +592,9 @@ name = "coglet-hub"
 version = "0.1.0"
 dependencies = [
  "coglet-engine",
+ "coglet-mock",
  "coglet-proto",
+ "coglet-runtime",
  "coglet-types",
  "hex",
  "iroh",

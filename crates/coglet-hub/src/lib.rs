@@ -58,6 +58,8 @@ impl Store {
           CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;")?;
         kernel::promotion::initialize(&db)?;
         operator::initialize(&db)?;
+        #[cfg(unix)]
+        kernel::saga::initialize(&db)?;
         build::initialize(&db)?;
         Ok(Self { db })
     }
