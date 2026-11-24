@@ -90,6 +90,11 @@ impl SurfaceSession {
         let mut resources = BTreeSet::new();
         for entry in body["entries"].as_array().ok_or("missing entries")? {
             let name = entry["name"].as_str().ok_or("missing entry name")?;
+            if matches!(name, "sim.gridbot" | "sim.cartpole")
+                && self.binding.permitted_coglets.len() != 1
+            {
+                return Err("sandbox requires exactly one supervisor-bound pilot".into());
+            }
             if !entries.insert(name) {
                 return Err("duplicate capability entry".into());
             }

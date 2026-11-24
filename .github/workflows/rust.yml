@@ -59,6 +59,8 @@ jobs:
         run: |
           rustup target add wasm32-unknown-unknown
           bash tests/m1/run.sh
+      - name: Sandbox worlds through cogletd and independent WAMR replay
+        run: bash sim/check-native.sh
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
       - uses: ./.github/actions/dependency-capture

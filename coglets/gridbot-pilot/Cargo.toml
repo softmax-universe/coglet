@@ -1,0 +1,18 @@
+[package]
+name = "coglet-gridbot-pilot"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+coglet-guest-rust = { path = "../../sdk/guest-rust" }
+ciborium = "0.2"
+
+[dev-dependencies]
+serde_json = "1"
+coglet-types = { path = "../../crates/coglet-types" }
+
+[workspace]

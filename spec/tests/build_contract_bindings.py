@@ -33,6 +33,10 @@ TABLE = [
     ('speech.work_result', 'speech.work', 'action', 'speech:work-result', 'surface:empty-map'),
     ('expression.set_expression', 'expression.control', 'action', 'expression:set-expression', 'surface:empty-map'),
     ('expression.state', 'expression.control', 'read', 'surface:empty-map', 'expression:expression-state'),
+    ('sim.gridbot_state', 'sim.gridbot', 'event', 'sandbox:gridbot-state', None),
+    ('sim.gridbot_move', 'sim.gridbot', 'action', 'sandbox:gridbot-move', 'surface:empty-map'),
+    ('sim.cartpole_state', 'sim.cartpole', 'event', 'sandbox:cartpole-state', None),
+    ('sim.cartpole_force', 'sim.cartpole', 'action', 'sandbox:cartpole-force', 'surface:empty-map'),
     ('llm.complete', None, 'gateway', 'abi:llm-request', 'abi:llm-reply'),
 ]
 
@@ -46,6 +50,8 @@ def catalog():
 def examples():
     values = {f'{family}:{rule}': value for family, rules in build.values.items()
               for rule, value in rules.items()}
+    from build_sandbox import VALUES
+    values.update({'sandbox:' + rule: value for rule, value in VALUES.items()})
     values['surface:empty-map'] = {}
     abi = json.loads((ROOT / 'spec/fixtures/abi/cases.json').read_text())
     for rule in ('llm-request', 'llm-reply'):
