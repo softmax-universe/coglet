@@ -15,11 +15,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   apple:
-    # GitHub-hosted on purpose: its iroh fault test needs incoming UDP to an unsigned
-    # test binary, which the minis' macOS application firewall (stealth mode) drops,
-    # so router_iroh_lost_reply_reorder_... times out there. Move to coglet-mac once
-    # the minis' firewall allows it or the test binds loopback only.
-    runs-on: macos-latest
+    # coglet Mac minis (self-hosted). The iroh fault test binds loopback only, so the
+    # minis' macOS application firewall no longer affects it.
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 25
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '15.0'
@@ -62,7 +60,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # Hosted only: on a persistent self-hosted runner the target dir already
+      # persists, and rust-cache's post-job cleanup of CARGO_HOME/bin deleted the
+      # runner's rustup (2026-11-24, coglet minis).
       - uses: Swatinem/rust-cache@v2
+        if: runner.environment == 'github-hosted'
       - name: Test iOS build admission (not native execution)
         run: python3 scripts/tests/test_ios_runtime.py
       - name: Install pinned header generator
