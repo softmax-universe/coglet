@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Include spec-v0 so the ABI checker verifies the freeze ref offline.
       - uses: ./.github/actions/dependency-restore
         with:
           job: conformance
@@ -62,19 +64,19 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: ${{ inputs.bundle-mode != 'proof' && 'maven' || '' }}
-          cache-dependency-path: sdk/surface-java/pom.xml
+          cache-dependency-path: |
+            sdk/surface-java/pom.xml
+            scripts/ci/resolve_maven.py
       - run: python3 -m pip install -r spec/tests/requirements.txt
       - name: Generated types are current
         run: codegen/run --check
       - name: Resolve Jackson before Python test collection
-        # Maven Central transfer errors are transient, and Maven caches a failed lookup
-        # in ~/.m2 for the rest of the job. Retry with -U (recheck) and pre-fetch plugins too.
-        run: |
-          for i in 1 2 3; do
-            mvn --batch-mode --no-transfer-progress -U -f sdk/surface-java/pom.xml dependency:go-offline && exit 0
-            echo "Maven resolve attempt $i failed; retrying"; sleep $((i * 15))
-          done
-          exit 1
+        # Normal/proof builds never fetch Central metadata; prepare may fill a miss.
+        # Normal (incl. merge_group) may restore the pinned seed; proof never does.
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/resolve_maven.py ${{ inputs.bundle-mode == 'prepare' && '--prepare' || '' }} ${{ inputs.bundle-mode == 'proof' && '--proof' || '' }}
       - name: Generator regression tests
         run: python3 -m unittest discover -s codegen -v
       - name: Generated validator agrees with CDDL and JSON Schema
@@ -88,6 +90,13 @@ jobs:
         run: cargo build --locked -p coglet-mock --example mock-conformance
       - name: Build surface adapters
         run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/surface-go/go.mod
+          cache: false
+      - name: Build Go surface adapter before every registry consumer
+        working-directory: sdk/surface-go
+        run: go build -o ../../target/coglet-go-surface ./cmd/conformance
       - run: python3 -m unittest discover -s conformance/tests -v
       - run: cargo fmt --manifest-path conformance/iroh-driver/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path conformance/iroh-driver/Cargo.toml --all-targets -- -D warnings
@@ -98,6 +107,8 @@ jobs:
         run: cargo test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint
         run: cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
+      - name: Full frozen ABI and executable archive WAMR qualification
+        run: python3 crates/coglet-runtime/tools/check-abi.py
       - name: Every registered implementation and claimed suite
         if: ${{ !cancelled() }}
         run: conformance/run --junit target/conformance-registered.xml
@@ -111,7 +122,9 @@ jobs:
         if: always()
         with:
           name: conformance-junit-${{ inputs.bundle-mode || 'normal' }}
-          path: target/conformance-*.xml
+          path: |
+            target/conformance-*.xml
+            target/runtime-all-abi/*.xml
           if-no-files-found: warn
       - uses: ./.github/actions/dependency-capture
         if: inputs.bundle-mode == 'prepare'

@@ -17,6 +17,7 @@ use std::{
 };
 use tokio::sync::Semaphore;
 mod actions;
+pub mod promotion;
 #[cfg(test)]
 mod tests;
 

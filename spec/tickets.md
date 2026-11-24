@@ -1,5 +1,7 @@
 # Generic factory ticket interface — DRAFT 0.1
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+
 **Status: DRAFT; revisit with policy at M3, not frozen at v0.**
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md), [PR #40](https://github.com/softmax-universe/coglet/pull/40).
 Imports [common conventions](conventions.md) and shared control definitions from
@@ -16,7 +18,7 @@ A later integration ADR must negotiate framing and per-method grants before
 network use, including authenticated actor and ticket context on every debug,
 status and export read. Transport authentication alone is not ticket authority.
 Ticket termination/revocation must close reads as well as writes; there is no
-non-ticket fallback for ticket-scoped access. Frozen hub rules remain unchanged.
+non-ticket fallback for ticket-scoped access. Frozen router rules remain unchanged.
 
 The fast loop submits; the factory consumes and reports. An adapter can implement
 this interface with any scheduler, including a future caos implementation. There
@@ -46,9 +48,9 @@ hyphen/dot, excluding `.` and `..` segments; no leading slash, empty segments,
 backslashes, drive letters or trailing slash. Symlinks resolving outside the repo
 or scope are denied. Empty edit_paths is valid for analysis-only work, but cannot
 produce changed code. Source/prompts/manifest edits require explicit matching
-roots. Debug requests always pass through the hub and its current grants; a
+roots. Debug requests always pass through the router and its current grants; a
 requested ticket capability is a ceiling, never authority by itself. Revocation
-closes streams immediately. Writes queue between steps and have hub audit records.
+closes streams immediately. Writes queue between steps and have router audit records.
 No raw `/data`, transcript, secret or credentials in progress/error fields.
 
 The factory intersects requested edit/debug scope with current operator grants,

@@ -8,6 +8,9 @@ use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::Path};
 
+pub mod http;
+mod policies;
+
 pub type Result<T> = std::result::Result<T, String>;
 fn db(e: rusqlite::Error) -> String {
     e.to_string()
@@ -149,6 +152,7 @@ impl Gateway {
                 reply BLOB, cost INTEGER, inbox BLOB, UNIQUE(coglet,id));",
         )
         .map_err(db)?;
+        policies::init(&conn)?;
         Ok(Self { conn, routes })
     }
 
@@ -183,6 +187,20 @@ impl Gateway {
     /// Refusals never call a provider. Adapter maps them to recorded failure replies
     /// in its runtime delivery journal; ABI staging is not gateway admission.
     pub fn enqueue(&mut self, auth: Admission<'_>, request: &Value) -> Result<()> {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|_| "clock unavailable")?
+            .as_millis();
+        self.enqueue_at(
+            auth,
+            request,
+            u64::try_from(now).map_err(|_| "clock overflow")?,
+        )
+    }
+
+    /// As enqueue, using a trusted host clock, never a guest-supplied timestamp.
+    pub fn enqueue_at(&mut self, auth: Admission<'_>, request: &Value, now_ms: u64) -> Result<()> {
+        let now = i64::try_from(now_ms).map_err(|_| "clock overflow")?;
         let raw = encode_json("llm-request", request)?;
         encode_typed("coglet-id", &auth.coglet)?;
         if !auth.llm_complete_granted || request["capability"] != "llm.complete" {
@@ -221,6 +239,7 @@ impl Gateway {
         if exposure > budget {
             return Err("resource_exhausted".into());
         }
+        policies::admit(&tx, auth.coglet, id, &route.provider, request, now)?;
         tx.execute(
             "UPDATE accounts SET reserved=reserved+? WHERE coglet=?",
             params![route.ceiling, auth.coglet],
@@ -251,6 +270,17 @@ impl Gateway {
     /// The adapter must recheck current grants before calling this method.
     pub fn dispatch_next(
         &mut self,
+        select: impl FnMut(&Call) -> Result<Completion>,
+    ) -> Result<bool> {
+        self.dispatch_next_checked(|_| Ok(()), select)
+    }
+
+    /// Recheck current host authorization for both cache hits and real dispatch.
+    /// The caller must serialize revocation with its dispatch boundary. Failure
+    /// leaves a conservative uncertain claim; it never calls the provider.
+    pub fn dispatch_next_checked(
+        &mut self,
+        mut authorize: impl FnMut(&Call) -> Result<()>,
         mut select: impl FnMut(&Call) -> Result<Completion>,
     ) -> Result<bool> {
         let tx = self
@@ -269,12 +299,18 @@ impl Gateway {
         )
         .map_err(db)?;
         tx.commit().map_err(db)?;
-        let completion = select(&Call {
+        let call = Call {
             coglet: coglet.clone(),
             request,
             provider,
             ceiling,
-        })?;
+        };
+        authorize(&call)?;
+        let completion = if let Some(completion) = policies::cached(&self.conn, &coglet, &id)? {
+            completion
+        } else {
+            select(&call)?
+        };
         self.reconcile(&coglet, &id, completion)?;
         Ok(true)
     }
@@ -304,6 +340,7 @@ impl Gateway {
         if completion.cost < 0 || completion.cost > ceiling {
             return Err("cost outside reservation; reconciliation required".into());
         }
+        policies::save_cache(&tx, coglet, id, &completion, &raw)?;
         tx.execute(
             "UPDATE accounts SET reserved=reserved-?,spent=spent+? WHERE coglet=?",
             params![ceiling, completion.cost, coglet],
