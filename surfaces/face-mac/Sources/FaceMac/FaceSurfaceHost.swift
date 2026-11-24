@@ -73,6 +73,7 @@ import CogletTypes
         try guarded {
             // Replacing native observation custody also fences the external link
             // backlog, even when the effective grant epoch stays unchanged.
+            if writePending, let link { writePending = try !link.flush() }
             guard pendingWire.isEmpty, !writePending else { throw SurfaceFailure.closed }
             let captured = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
             token = captured
@@ -120,6 +121,10 @@ import CogletTypes
     }
     private func serviceLink() throws {
         guard let link else { return }
+        // An asynchronous embedded worker may have drained the previous mailbox
+        // since the last native tick. Resample before evaluating epoch fencing;
+        // never erase queued bytes merely because authority changed.
+        if writePending { writePending = try !link.flush() }
         try synchronizeTransportEpoch()
         // Bound work per native tick so a busy control peer cannot starve reflex
         // processing. The SDK separately bounds frames and message queues.

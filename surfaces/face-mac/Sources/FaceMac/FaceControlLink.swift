@@ -19,8 +19,10 @@ import CogletSurface
     public func close() { transport.close() }
 }
 
-/// The containing app installs its binding in the real runtime before opening
-/// the ABI link. This adapter never invents runtime symbols or a fallback peer.
+/// Synchronous non-scheduling ABI seam, retained for wrapper fixtures. Actual
+/// production send/recv may execute a guest synchronously: use
+/// FaceEmbeddedRuntimeLink for a real runtime, never this MainActor wrapper.
+@available(*, deprecated, message: "Use FaceEmbeddedRuntimeLink for scheduled production runtimes")
 @MainActor public final class FaceEmbeddedLink: FaceControlLink {
     private let transport: EmbeddedSurfaceTransport
     public init(abi: SurfaceRuntimeABI) throws { transport = try EmbeddedSurfaceTransport(abi: abi) }

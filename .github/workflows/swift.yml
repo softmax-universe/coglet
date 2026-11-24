@@ -52,3 +52,15 @@ jobs:
         run: |
           cargo run --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- "$COGLET_FACE_WASM"
           cargo test --release --locked -p coglet-runtime --features native-engine --test face_mac_adapter -- --ignored
+      - name: Actual C ABI scheduled Face guest and heard replay (simulated media)
+        timeout-minutes: 15
+        env:
+          COGLET_FACE_WASM: ${{ github.workspace }}/coglets/face/target/wasm32-wasip1/release/coglet_face.wasm
+        run: |
+          cargo build --release --locked -p coglet-runtime --features native-engine --lib
+          cargo build --release --locked -p coglet-runtime --features native-engine --example face_embedded_fixture
+          swift build --package-path surfaces/face-mac/Integration -Xlinker -L"$PWD/target/release"
+          PROOF=$(mktemp -d "$RUNNER_TEMP/face-cabi.XXXXXX")
+          target/release/examples/face_embedded_fixture prepare "$PROOF" "$COGLET_FACE_WASM"
+          DYLD_LIBRARY_PATH="$PWD/target/release" surfaces/face-mac/Integration/.build/debug/FaceRuntimeProof "$PROOF"
+          target/release/examples/face_embedded_fixture verify "$PROOF"

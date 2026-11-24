@@ -32,8 +32,18 @@ these trusted configuration APIs.
   native handle. Saturating diagnostics count failures/discards without private text.
   Raw PCM is passed to recognition only, never on the wire.
 - Before `start`, optionally `attach(link:)` using `FaceSocketLink` over an SDK
-  authenticated socket or `FaceEmbeddedLink(abi:)` over installed runtime symbols.
-  The native timer drives both links; the latter preserves would-block byte identity.
+  authenticated socket or `await FaceEmbeddedRuntimeLink.start(abi:binding:configuration:)`
+  over application-supplied production symbols and immutable installed JSON.
+  Configure/start/open/send/recv/close/stop are confined to one serial worker.
+  MainActor accesses bounded copied mailboxes (128 messages and 8 MiB per direction);
+  a full send mailbox copies nothing and requires retrying identical bytes.
+  `close()` fences bytes immediately, never waits for a running guest; `shutdown()`
+  is an optional asynchronous teardown attestation AFTER the native stop reflex.
+  One process-wide Face supervisor lease prevents a stale close stopping a successor;
+  failed termination retains that lease. The app must not supervise the same global
+  runtime through another coordinator concurrently. The old synchronous
+  `FaceEmbeddedLink` is deprecated and remains only a non-scheduling fixture seam.
+  The native timer drives links.
   The host bounds queued messages and services at most 64 incoming messages per tick.
   Attached links own output consumption (`drain` returns empty). Fatal transport
   errors stop native media. A grant-epoch change with blocked/partially written
@@ -117,12 +127,21 @@ The CLI remains simulator-only; there is no native command-line permission UI.
 Native route source and deterministic conversion/callback tests do not establish
 installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
 
-Remaining acceptance work: production embedded-runtime qualification, final
-operation/lifecycle audit, macOS CI and independent exact-head review.
-`FaceEmbeddedTests` still uses an ABI fixture. Its synchronous MainActor ABI calls
-must not be connected directly to an automatically scheduled guest: production C
-send/recv may execute the guest on the caller thread. A bounded off-MainActor
-control worker and actual runtime qualification remain necessary.
+Remaining acceptance work: native macOS execution of the new production C ABI
+probe, final operation/lifecycle audit and independent full exact-head review.
+`FaceEmbeddedTests` remains explicitly an ABI wrapper fixture. `Integration/` is
+separate: it links the real release native-engine library without test hooks,
+asserts off-main entry at every C symbol, and drives the real scheduled persisted
+Face guest through FaceSurfaceHost with injected media. The
+`face_embedded_fixture prepare/verify` example provisions only installation JSON,
+then reopens the resulting WAL, checks 3 actual guest steps, the emitted Hello world
+proposal, journaled barge and exact stopped 1200 ms heard prefix, and independently
+reexecutes every guest output hash. Its installed manifest selects the operation
+`speech.speak_chunk` because automatic scheduling requires operation-name grants;
+this does not prove unmodified catalog-entry requirements work with that scheduler.
+The Swift workflow runs the probe after the existing actual-Wasm tests. Local
+Linux execution passes; native macOS results and universal-XCFramework packaging
+are separate gates. No hardware, acoustics or second speaker graph is involved.
 
 The runtime hosts restricted transactional WASI; the named test
 `persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes`
