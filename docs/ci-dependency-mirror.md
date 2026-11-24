@@ -13,9 +13,23 @@ version, nested manifests/locks, codegen dependency logic and mirror setup/workf
 code. Whole hosted-image versions are deliberately excluded: GitHub rolls multiple
 images out concurrently, including within one preparation/proof run. Compiled
 `target/` outputs are not restored.
-Missing, corrupt or unavailable assets are logged; ordinary CI uses upstream with
-PR #59's existing Maven retries/cache. A simultaneous GitHub/upstream outage or
-an unpublished dependency addition is not covered.
+Missing, corrupt or unavailable assets are logged. Cargo/rustup retain upstream
+fallback. **Maven normal/proof jobs never fall back to Central:** after mirror and
+Actions cache restore, `resolve_maven.py` invokes the fully versioned
+`org.apache.maven.plugins:maven-dependency-plugin:3.11.0:go-offline` with `--offline`.
+It does not perform plugin-prefix/latest-version lookup or force metadata refresh
+with `-U`. Successful resolution exports `MAVEN_ARGS=--offline` for subsequent
+Maven invocations (including Python subprocesses). A missing closure fails clearly
+instead of waiting on Central. Local contributor builds remain unchanged.
+
+Only explicit `bundle-mode: prepare` may fill a cold Maven cache online, after
+trying offline first. A shared monotonic 165-second budget bounds that sequence;
+both Java and conformance also impose a native three-minute step timeout. The
+empty-cache regression invokes real Maven offline and requires failure in under
+30 seconds. When adding Maven dependencies/plugins, publish a validated candidate
+from successful preparation before rerunning normal/proof checks with a cold
+cache. The scheduled/main refresh populates the shared release. A simultaneous
+GitHub/upstream outage or an unpublished dependency addition is not covered.
 
 `dependency-mirror` runs daily, on dependency/setup changes on main, or manually.
 Read-only preparation runs the existing workflows' commands, fetches every Cargo
