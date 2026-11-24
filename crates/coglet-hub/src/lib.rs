@@ -3,6 +3,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
+pub mod build;
 pub mod kernel;
 pub mod operator;
 pub use kernel::{ActionGrant, EventGrant, Kernel, Registration};
@@ -57,6 +58,7 @@ impl Store {
           CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;")?;
         kernel::promotion::initialize(&db)?;
         operator::initialize(&db)?;
+        build::initialize(&db)?;
         Ok(Self { db })
     }
     /// Caller authorizes the authenticated relay binding before this atomic admission.
