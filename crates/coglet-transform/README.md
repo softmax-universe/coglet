@@ -19,7 +19,10 @@ mutate refs, or qualify H-transform. Builder wiring stays with
 - `pinned_transform_fuzz_differential` executes a bounded generated corpus on
   WAMR interpreter and Wasmtime with an independent host-arithmetic R3 oracle.
   `pinned_transform_cross_arch_replay` executes the same corpus/output bytes on
-  x86_64 native and aarch64 qemu-user using both engines. Raw result bytes and
+  x86_64 native and aarch64 qemu-user with an explicit `cortex-a72` CPU using both engines.
+  The default QEMU max-CPU mode is **not** covered: on QEMU 8.2.2 it
+  internally SIGSEGVs on the retained f32.mul corpus. No seeds or operations
+  are skipped to work around it. Raw result bytes and
   their SHA-256 digests are retained; these are **not** runtime journal or
   filesystem state hashes. Native aarch64/AOT/unexecuted modes are not qualified.
 
@@ -50,7 +53,7 @@ Local component verification (Linux x86_64 with configured aarch64 peer):
 python3 crates/coglet-transform/tests/check_runner.py
 COGLET_TRANSFORM_PEER_EVAL=/absolute/peer-wrapper \
 COGLET_TRANSFORM_PEER_ARCH=aarch64 \
-COGLET_TRANSFORM_PEER_MODE=emulated-qemu \
+COGLET_TRANSFORM_PEER_MODE=emulated-qemu-cortex-a72 \
 COGLET_TRANSFORM_EVIDENCE_DIR=/new/private/output \
 python3 crates/coglet-transform/check.py
 ```

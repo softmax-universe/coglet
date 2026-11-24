@@ -57,7 +57,7 @@ def main():
     native_arch = run(["uname", "-m"], capture_output=True).stdout.strip()
     assert native_arch == "x86_64", native_arch
     assert env["COGLET_TRANSFORM_PEER_ARCH"] == "aarch64"
-    assert env["COGLET_TRANSFORM_PEER_MODE"] == "emulated-qemu"
+    assert env["COGLET_TRANSFORM_PEER_MODE"] == "emulated-qemu-cortex-a72"
     run(["git", "diff", "--exit-code", "HEAD", "--", "crates/coglet-transform", "crates/coglet-engine", "crates/coglet-engine-wamr", "crates/coglet-engine-wasmtime", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml"])
     head = run(["git", "rev-parse", "HEAD"], capture_output=True).stdout.strip()
     toolchain = run(["rustc", "-vV"], capture_output=True).stdout
@@ -89,13 +89,15 @@ def main():
     qemu = shutil.which("qemu-aarch64-static")
     assert qemu is not None, "missing executed emulator"
     shutil.copy2(qemu, OUT / "qemu-aarch64-static")
+    shutil.copy2(env["COGLET_TRANSFORM_PEER_EVAL"], OUT / "peer-wrapper")
+    (OUT / "packages.txt").write_text(run(["dpkg-query", "-W", "qemu-user-static", "libc6-arm64-cross", "libstdc++6-arm64-cross"], capture_output=True).stdout)
     manifest = {
         "scope": "component-only; builder/CI-identity/provenance/CAS not qualified",
         "actual_checkout": head,
         "github_head": env.get("GITHUB_SHA"),
         "github_run": env.get("GITHUB_RUN_ID"),
         "github_attempt": env.get("GITHUB_RUN_ATTEMPT"),
-        "modes": ["x86_64/native/wamr-interpreter+wasmtime", "aarch64/emulated-qemu/wamr-interpreter+wasmtime"],
+        "modes": ["x86_64/native/wamr-interpreter+wasmtime", "aarch64/emulated-qemu-cortex-a72/wamr-interpreter+wasmtime"],
         "tests": {key: sorted(value) for key, value in EXPECTED.items()},
         "files": {p.name: digest(p) for p in sorted(OUT.iterdir()) if p.is_file()},
     }

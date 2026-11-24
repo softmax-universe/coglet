@@ -41,11 +41,11 @@ jobs:
           export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
           cargo build --locked -p coglet-transform --features peer --bin coglet-transform-peer --target aarch64-unknown-linux-gnu
           wrap="$PWD/target/coglet-transform-peer-aarch64"
-          printf '%s\n' '#!/bin/bash' "exec qemu-aarch64-static -L /usr/aarch64-linux-gnu \"$PWD/target/aarch64-unknown-linux-gnu/debug/coglet-transform-peer\" \"\$@\"" >"$wrap"
+          printf '%s\n' '#!/bin/bash' "exec qemu-aarch64-static -cpu cortex-a72 -L /usr/aarch64-linux-gnu \"$PWD/target/aarch64-unknown-linux-gnu/debug/coglet-transform-peer\" \"\$@\"" >"$wrap"
           chmod +x "$wrap"
           echo "COGLET_TRANSFORM_PEER_EVAL=$wrap" >>"$GITHUB_ENV"
           echo "COGLET_TRANSFORM_PEER_ARCH=aarch64" >>"$GITHUB_ENV"
-          echo "COGLET_TRANSFORM_PEER_MODE=emulated-qemu" >>"$GITHUB_ENV"
+          echo "COGLET_TRANSFORM_PEER_MODE=emulated-qemu-cortex-a72" >>"$GITHUB_ENV"
       - name: R3 component proofs (exact inventory, no quarantine or skips)
         run: |
           evidence="$RUNNER_TEMP/transform-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.bundle-mode || 'normal' }}"

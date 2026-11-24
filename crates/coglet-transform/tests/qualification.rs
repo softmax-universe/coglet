@@ -259,7 +259,7 @@ fn pinned_transform_cross_arch_replay() {
     assert_eq!(
         std::env::consts::ARCH,
         "x86_64",
-        "this executed pairing is x86_64/native vs aarch64/emulated-qemu only"
+        "this executed pairing is x86_64/native vs aarch64/emulated-qemu-cortex-a72 only"
     );
     let peer = std::env::var("COGLET_TRANSFORM_PEER_EVAL")
         .expect("missing peer execution refuses qualification");
@@ -269,7 +269,7 @@ fn pinned_transform_cross_arch_replay() {
     );
     assert_eq!(
         std::env::var("COGLET_TRANSFORM_PEER_MODE").unwrap(),
-        "emulated-qemu"
+        "emulated-qemu-cortex-a72"
     );
     let cases = corpus();
     let bytes = corpus_bytes(&cases);
@@ -283,9 +283,18 @@ fn pinned_transform_cross_arch_replay() {
         for seed in &case.seeds {
             input.extend(seed.to_le_bytes());
         }
+        if let Ok(dir) = std::env::var("COGLET_TRANSFORM_EVIDENCE_DIR") {
+            std::fs::write(
+                std::path::Path::new(&dir)
+                    .join(format!("peer-input-{:?}-{:?}.bin", case.op, case.width)),
+                &input,
+            )
+            .unwrap();
+        }
         let mut child = Command::new(&peer)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()
             .unwrap();
         {
@@ -293,7 +302,14 @@ fn pinned_transform_cross_arch_replay() {
             child.stdin.take().unwrap().write_all(&input).unwrap();
         }
         let out = child.wait_with_output().unwrap();
-        assert!(out.status.success());
+        assert!(
+            out.status.success(),
+            "peer {:?} {:?} failed {}: {}",
+            case.op,
+            case.width,
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        );
         let z = out.stdout.iter().position(|b| *b == 0).unwrap();
         assert_eq!(&out.stdout[..z], b"aarch64");
         let rest = &out.stdout[z + 1..];
