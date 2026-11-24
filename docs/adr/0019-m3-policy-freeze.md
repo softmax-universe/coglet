@@ -55,7 +55,18 @@ authority. An accepted-ref store alone is not runtime activation.
    at boundary dispatch. The operator pins implementations and trusted identities;
    tests label fixture authorities as such. No permissive default implementation.
    Reinstallation checks enrolled control role and invalidates unactivated work;
-   policy revision identifiers are never reused with different bytes.
+   policy revision identifiers are never reused with different bytes. Because
+   existing `Registration` has no role/repository fields, an explicit trusted-local
+   operator API first binds immutable role/repository metadata in the same Store.
+   Repository values are opaque ASCII registry references, not URLs or credentials.
+   Binding/installation additionally require current target `hub.git.push`
+   enrollment/delegation; this is a conservative eligibility check, not the
+   administrative caller's authority. Revoked targets remain blocked; incident
+   containment uses revoke/stop rather than installing through a revoked grant.
+   Installations retain exact deterministic CBOR, compare-and-swap the current
+   revision, and cannot reactivate historical revision IDs. Consumers must pin
+   `(coglet, revision)`, never revision alone. Existing probation limits stay pinned
+   independently; current revision changes cannot reset or shorten probation.
 4. Gate execution is a separate sandbox service. It evaluates exact rewritten
    `bin/step.wasm` bytes, not the source or original pre-rewrite module. Suites pin
    seed, world configuration, adapter/build identity and assertions. Journal replay

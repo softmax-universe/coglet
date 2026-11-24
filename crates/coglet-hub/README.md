@@ -27,6 +27,32 @@ No product, mindister or legacy/v0 implementation was copied.
 - Local `Kernel::status` is an explicit operator-only metadata snapshot, not a
   remotely authorized debug endpoint. It contains no event contents or prompts.
 
+## M3 components (not freeze or activation qualification)
+
+Draft PR95 / Proposed ADR0019 adds closed draft-policy validation, explicit gate
+artifact authority and a pure probation reducer. `bind_policy_registry` and
+`install_policy` are **trusted-local operator APIs only**, not wire/factory
+methods. They retain immutable role/repository metadata and exact deterministic
+CBOR revisions in this Store, CAS replacements and atomically audit installation.
+Repository bindings are opaque ASCII references (`._:/-` plus alphanumerics),
+not URLs. Current target `hub.git.push` enrollment/delegation is an additional
+eligibility requirement; it does not authorize the administrative caller.
+
+`promotion_installation` exercises restart/idempotency, role isolation,
+credential-URL rejection, injected audit failure and competing SQLite-connection
+CAS. Policy replacement changes only the current revision pointer; future proposal
+admission MUST intersect that pointer, while active probation MUST keep its pinned
+limits. There is no proposal/outbox/activation service here yet, and no mutation
+of running code. Operator failures are returned, not promotion rejection receipts.
+Corrupt/deleted store rows fail closed; there is no automatic policy repair API.
+
+The reusable `sim/coglet_sim/evaluation.py` runs exact rewritten guest bytes with
+real cogletd/WAMR and independent replay, returning behavioral pass/fail. Its M2
+fixture provenance and unsigned results are **not** authenticated production gate
+artifacts or build authority. Durable promotion/ticket/audit receipts, signed-ref
+boundary activation, health/emergency-fence producers, rollback integration,
+clock recovery, final CI/review/merge and `policy-v0` are still unfinished.
+
 ## Local fixture controls (not production)
 
 Enable `coglet-hub/test-controls` explicitly in the test launcher's Cargo
