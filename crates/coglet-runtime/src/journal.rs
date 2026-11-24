@@ -41,6 +41,17 @@ pub struct DurableStore {
     poisoned: bool,
 }
 
+impl Drop for DurableStore {
+    /// Release the exclusive lock explicitly instead of relying on `close`.
+    /// The lock belongs to the open file description, which a concurrently
+    /// spawned child process shares until its `exec` closes the inherited
+    /// descriptor. Closing alone would leave the WAL "already owned" for that
+    /// window, so the next open in this process could be refused.
+    fn drop(&mut self) {
+        let _ = self.file.unlock();
+    }
+}
+
 impl DurableStore {
     pub fn open(path: &Path) -> Result<Self> {
         let mut options = OpenOptions::new();
