@@ -30,6 +30,14 @@ PR98 remains draft at82ff3cae935a8928b88008f4cecb3595ba8d2c67; backup43f7f33 add
 - sign-dev.sh signs the helper before outer app. Existing release path recursively signs Mach-O.
 - Tests/test_hub_packaging.py uses explicitly fake cargo/lipo to verify orchestration and paths with spaces; Tests/test_dev_signing.py uses fake signing/keychain to assert inside-out order. Both observed expected RED, then GREEN (1 packaging +4 signing cases). These are NOT native universal binary, codesign or TCC proof. Native build remains blocked above.
 
+## Portable randomness prerequisite integrated; native proof queued
+
+PR114 merged as6838433 after independent review at a87bc198. Integrated the reviewed SDK repair as5772786; the standalone helper lock required exactly one new dependency line (5b2bcaa). GitHub reported DIRTY and merge-tree reproduced the workflow conflict, so forward merge4d8c674 incorporates merged main6838433 while preserving both SDK checks and required app helper/mock acceptance. PR98 and backup branch are read-back verified at4d8c67426a99e34edd3edabcf658548322dad535.
+
+Native Softmax Mac run45379171349 is QUEUED at that exact head. Supported exact-run waiter returned2. No new native acceptance claim. Fresh local real-iroh helper tests (2), strict all-target Clippy/fmt, diff-check and portable packaging/signing tests (1+4) passed on4d8c674. Logs: workspace rust-run2-4d8c674.log and clippy-run2-4d8c674.log. Portable signing remains fake orchestration, not native signature proof.
+
+All eight settings-hub baseline PNGs were opened and inspected this run: light/dark, contrast and large-text variants preserve the180pt sidebar, filter, section list, shortcuts footer, title and DesignGroup. Source Windows.swift and DesignTokens.swift read. Baseline markdown/checker remains unfinished, onboarding renders still need inspection (names use onboarding-2, not hub). No UI edits.
+
 ## Remaining delivery
 
 1. Obtain dependency repair and real native helper/mock acceptance; read actual test output, not just job status. Required workflow supplies executable paths and SOFTMAX_REQUIRE_HUB_TESTS=1, so it cannot count a skip as success.
