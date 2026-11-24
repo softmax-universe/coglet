@@ -17,6 +17,9 @@ mod database_replay;
 pub mod database_service;
 #[path = "dispatch.rs"]
 mod dispatch;
+#[cfg(test)]
+#[path = "heard_deadline_tests.rs"]
+mod heard_deadline_tests;
 #[path = "live_heard.rs"]
 mod live_heard;
 #[path = "managed.rs"]
@@ -155,6 +158,8 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    #[cfg(test)]
+    test_clock_sample: Option<clock::TestClockSample>,
     pub(crate) catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     state: ServiceState,
     store: DurableStore,
@@ -390,6 +395,8 @@ impl RuntimeService {
             )?;
         }
         let mut service = Self {
+            #[cfg(test)]
+            test_clock_sample: None,
             state,
             store,
             catalog,

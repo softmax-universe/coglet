@@ -32,6 +32,8 @@ const MAX_TRANSACTION: usize = 64 * 1024 * 1024;
 /// It participates in the WAL checksum/chain, never the ABI record or export.
 /// Older frames and direct/aborted database writes may omit this receipt.
 pub struct DurableStore {
+    #[cfg(test)]
+    pub(crate) before_commit: Option<Box<dyn FnMut() + Send>>,
     file: File,
     state: Option<Value>,
     journal: Vec<Value>,
@@ -174,12 +176,18 @@ impl DurableStore {
             db_artifacts_hashes,
             previous,
             poisoned: false,
+            #[cfg(test)]
+            before_commit: None,
         })
     }
 
     /// Dispatch is allowed only after this returns Ok. Any ambiguous I/O failure
     /// poisons this handle; reopen and recover identity rather than re-executing.
     pub fn commit(&mut self, state: &Value, record: Option<&Value>) -> Result<()> {
+        #[cfg(test)]
+        if let Some(hook) = &mut self.before_commit {
+            hook();
+        }
         if let Some(record) = record {
             validate_record(record)?;
         }
