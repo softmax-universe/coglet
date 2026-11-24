@@ -206,6 +206,10 @@ public final class ReceiptLedger implements AutoCloseable {
     public synchronized BigInteger epoch() throws IOException { check(); return number(state.get("epoch")); }
     public synchronized boolean killed() throws IOException { check(); return Boolean.TRUE.equals(state.get("killed")); }
     public synchronized BigInteger clockHighWater() throws IOException { check(); return number(state.get("clock")); }
+    private void validateTime(BigInteger now) {
+        number(now);
+        if (now.compareTo(number(state.get("clock"))) < 0) throw new IllegalArgumentException("surface clock rollback");
+    }
     /** Persist a sampled high-water, never use it as a fresh native admission clock. */
     public synchronized void checkpointClock(BigInteger now) throws IOException {
         check(); number(now);
@@ -265,7 +269,7 @@ public final class ReceiptLedger implements AutoCloseable {
     }
     /** Persist before acknowledging OR starting an effect. Exact existing bytes are a no-op. */
     public synchronized void record(Map<String,Object> envelope, Map<String,Object> accept, BigInteger now) throws IOException {
-        check(); number(now); var a = action(envelope);
+        check(); validateTime(now); var a = action(envelope);
         Codec.validate("common::action-accept", accept); matchesAction(a, accept);
         var old = find(state, (String) a.get("coglet"), (String) a.get("id"));
         if (old != null) {
@@ -278,10 +282,10 @@ public final class ReceiptLedger implements AutoCloseable {
         var next = detached(state); var record = new LinkedHashMap<String,Object>();
         record.put("envelope", envelope); record.put("accept", accept); record.put("outcome", null);
         record.put("terminal", Boolean.TRUE.equals(accept.get("accepted")) ? null : now);
-        records(next).add(record); persist(detached(next));
+        records(next).add(record); next.put("clock", now); persist(detached(next));
     }
     public synchronized void finish(String coglet, String id, Map<String,Object> outcome, BigInteger now) throws IOException {
-        check(); number(now); Codec.validate("common::action-outcome", outcome);
+        check(); validateTime(now); Codec.validate("common::action-outcome", outcome);
         var next = detached(state); var record = find(next, coglet, id);
         if (record == null || !Boolean.TRUE.equals(map(record.get("accept")).get("accepted")))
             throw new IllegalArgumentException("outcome without admitted action");
@@ -291,11 +295,11 @@ public final class ReceiptLedger implements AutoCloseable {
                 throw new IllegalArgumentException("conflicting terminal outcome");
             return;
         }
-        record.put("outcome", outcome); record.put("terminal", now); persist(detached(next));
+        record.put("outcome", outcome); record.put("terminal", now); next.put("clock", now); persist(detached(next));
     }
     /** Call only after the independent native stop reflex; never replay pending effects. */
     public synchronized void recoverPending(BigInteger now) throws IOException {
-        check(); number(now); var next = detached(state);
+        check(); validateTime(now); var next = detached(state); next.put("clock", now);
         for (Object raw : records(next)) {
             var record = map(raw);
             if (Boolean.TRUE.equals(map(record.get("accept")).get("accepted")) && record.get("outcome") == null) {
@@ -308,7 +312,7 @@ public final class ReceiptLedger implements AutoCloseable {
         persist(next);
     }
     public synchronized void prune(BigInteger now) throws IOException {
-        check(); number(now); var next = detached(state);
+        check(); validateTime(now); var next = detached(state); next.put("clock", now);
         records(next).removeIf(raw -> {
             var record = map(raw);
             if (record.get("terminal") == null) return false;

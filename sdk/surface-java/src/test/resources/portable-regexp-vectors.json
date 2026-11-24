@@ -1,0 +1,7 @@
+[
+  {"pattern":"[0-9a-f]{32}","values":[{"text":"0123456789abcdef0123456789abcdef","valid":true},{"text":"A123456789abcdef0123456789abcdef","valid":false},{"text":"0123456789abcdef0123456789abcdef\n","valid":false}]},
+  {"pattern":"^[\\s\\S]{1,3}$","values":[{"text":"é\r\n","valid":true},{"text":"🙂","valid":true},{"text":"","valid":false},{"text":"abcd","valid":false}]},
+  {"pattern":"^path\\.[a-z_]{1,4}$","values":[{"text":"path.ab_c","valid":true},{"text":"path.abcdx","valid":false},{"text":"pathaabc","valid":false},{"text":"path.é","valid":false}]},
+  {"pattern":"^x?y{2}$","values":[{"text":"xyy","valid":true},{"text":"yy","valid":true},{"text":"xy","valid":false}]},
+  {"pattern":"[^a]{1,3}","values":[{"text":"é🙂\r","valid":true},{"text":"a","valid":false},{"text":"\n","valid":true},{"text":"bbbb","valid":false}]}
+]

@@ -83,6 +83,20 @@ class ReceiptLedgerTest {
             assertEquals(BigInteger.valueOf(301), store.clockHighWater());
         }
     }
+    @Test void timestampedLedgerWritesRejectRetainedClockRollback() throws Exception {
+        try (var store = new ReceiptLedger(ledger, SURFACE, true, () -> {})) {
+            store.record(act(), accepted(), BigInteger.TEN);
+            store.checkpointClock(BigInteger.valueOf(300));
+            assertThrows(IllegalArgumentException.class, () -> store.record(act(), accepted(), BigInteger.valueOf(299)));
+            assertThrows(IllegalArgumentException.class, () -> store.recoverPending(BigInteger.valueOf(299)));
+            assertThrows(IllegalArgumentException.class, () -> store.prune(BigInteger.valueOf(299)));
+            assertThrows(IllegalArgumentException.class, () -> store.finish(COGLET, "2".repeat(32),
+                    Map.of("id", "2".repeat(32), "correlation_id", FrameCodecTest.ID, "status", "succeeded", "result", Map.of()),
+                    BigInteger.valueOf(299)));
+            store.recoverPending(BigInteger.valueOf(301));
+            assertEquals(BigInteger.valueOf(301), store.clockHighWater());
+        }
+    }
     @Test void lifecycleCommitsFailClosedAtEveryCrashPoint() throws Exception {
         for (var point : ReceiptLedger.CommitPoint.values()) {
             Path path = parent.resolve("start-" + point);

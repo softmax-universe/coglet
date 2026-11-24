@@ -109,6 +109,42 @@ admission sample: sample again after blocking disk work before effects. Clock
 rollback after reboot requires supervisor reconciliation rather than resetting the
 stored high-water.
 
+### Pinned extension catalog parser (not registration)
+
+`TrustedExtensionCatalog.fromPinnedBytes(raw, lowercaseSha256)` consumes the exact
+UTF-8 local artifact agreed with the runtime's ADR-0017 loader. It hashes a private
+byte copy, rejects alternate encodings/BOMs, duplicate keys, trailing JSON, unknown
+fields, reserved namespaces, missing schema references, unsupported directions,
+non-single-owner bindings, and resources outside their entry. All schema bytes
+are in the pin; no URI is fetched. The accepted IR is closed and acyclic, bounded
+to depth 64 with memoized reference heights, finite arrays, scalar literals and
+explicit exact schema URI mappings. `game.observation` requires selected-read
+binding. `validateInput` checks the wrapper **and** selected read's args/value;
+`requiredOperations` returns the event/read conjunction. That set is not a grant:
+acquire both grants before sampling, then recheck the immutable token after
+encoding and atomically with final private output admission.
+
+Java deliberately uses a conservative portable regex subset: ASCII literal/class
+atoms, optional edge anchors, finite `{n}` / `{min,max}` or `?`, at most one
+variable-width atom, and exact `[\\s\\S]` for arbitrary Unicode. Groups,
+alternation, dot, dialect character escapes, unbounded repetitions and ambiguous
+multiple variable-width atoms fail at load. This avoids Java/Rust regex semantic
+and backtracking differences rather than silently reinterpreting schemas.
+Container literals, explicit event `output:null`, malformed Unicode keys and
+nonportable patterns are rejected even where the Rust loader accepts a superset.
+Provisioned product artifacts must satisfy both loaders. The checked-in synthetic
+fixture is copied byte-for-byte from runtime branch commit `bd6d7eb` and has pin
+`2f3ab80d5b09134e35a2e63e5a3c14e314e61ac12135fa0a1c723aaf02cf79dd`;
+it is not a production game schema. `portable-regexp-vectors.json` supplies common
+positive/negative Unicode/newline/identifier vectors.
+
+David's ownership decision moves this SDK to Mindister: ongoing foundations are
+on the adapter branch until migration owner `t_01a20c501a7d66d3` lands the pinned
+codec/generator and plain-javac runner. The adapter then ports these additions to
+Mindister `sdk/surface-java`, without Maven/Gradle, and drops Coglet SDK consumption
+before removal owner `t_01a20c50456dca9e` lands. This branch is not an extra SDK
+publication contract or permission to retain a second long-term copy.
+
 ### Qualification boundary
 
 Named unit/integration tests: `FrameCodecTest`, `UnixSurfaceListenerTest`,
