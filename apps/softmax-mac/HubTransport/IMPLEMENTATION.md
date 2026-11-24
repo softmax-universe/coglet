@@ -29,13 +29,15 @@ TEST-ONLY99ee882 (source branch wip/t_01a205f93f231486) was tested in native4539
 
 Native GREEN candidate45409288288 is dispatched on wip/t_01a205f93f231486-crash-green at32203fc86b5ddad18110377c91d51382a847cb0e. It also includes `testClosedHelperInputThrowsWithoutTerminatingClient`, ordered by the fixture closing stdin before emitting ready. Need actual result; no speculative SIGPIPE fix yet. This branch is deliberately separate from active PR UI verification.
 
-Next TEST-ONLY tracer bullet f02380d32da88681322f47e3efe9d615690cdc4a adds `testTransientHelperLaunchFailureRestartsWithoutRotatingIdentity`: throw once from link.start, expect automatic second startup preserving key. Native RED candidate45409494369 is dispatched on wip/t_01a205f93f231486-launch-red. Production catch still does not retry. Read intended assertion RED before changing production. This RED-only commit must not be merged unchanged into PR.
+Next tracer bullet f02380d32da88681322f47e3efe9d615690cdc4a adds `testTransientHelperLaunchFailureRestartsWithoutRotatingIdentity`: throw once from link.start, expect automatic second startup preserving key. Native45409494369 establishes actual intended RED at line71 (starts1 vs2), while pre-pairing crash test passes1.077s. After independently reading logs, production23bf699 makes start() catch call stopLink and scheduleRetry(restart:true), preserving failure-closed identity reads and bounded backoff. Native45410096378 on wip/t_01a205f93f231486-crash-green at23bf6992acf8f0bd61759611e767673f8089199e is the newest GREEN candidate for both recovery tests and the closed-input native probe; no GREEN claim yet.
+
+An interrupted prior run also published wip/t_01a205f93f231486-recovery at5d7a009d8f0fec3f76236008b4af888befdd0bc7 and dispatched45408123084 (queued on readback). It contains the same pre-pairing crash repair/tests as32203fc except a comment; preserve it, do not force-push or claim it lost. Push to that branch was rejected safely. Current run uses unique backup wip/t_01a205f93f231486-run125478 and the crash-green stream. No prior unknown source was overwritten.
 
 ## Focused read-only audit leads (not executed proofs)
 
 A separate investigative session identified these app-owned paths requiring regressions before acceptance:
 
-1. start() catch never re-arms retry; paired Reconnect calls retryNow, which no-ops when running=false. Test-only tracer above is pending.
+1. start() catch never re-armed retry; now reproduced native RED45409494369 and repaired23bf699, native GREEN candidate pending. Paired manual Reconnect no-op when running=false still merits UI recovery coverage.
 2. pending invitation cannot be replaced after unavailable/wrong invite; enroll rejects pending!=nil while UI continues showing Pair router. Preserve null-invite ambiguous-success recovery, but provide explicit cancel/replacement semantics and test late responses/generation fencing rather than simply clearing pending on every offline event.
 3. saveHub failure after connected calls stopLink with no restart, stranding the pending recovery path.
 4. failed sign-out clears deviceID/running but retains pairing; UI hides Sign out (deviceID nil) and shows ineffective Reconnect. Keep deletion failure recoverable without silently rotating identity. Account intentionally deletes key first so stale enrollment fails closed; do not weaken that invariant just to hide error.
