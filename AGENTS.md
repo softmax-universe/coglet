@@ -14,3 +14,10 @@ Read docs/plan.md first, especially the Ground rules section. Specs in spec/ are
   and submit and link the ADR PR before proceeding with the spec change.
 - Name tests in acceptance criteria. Open a PR with green CI, obtain independent
   review, then merge. A scaffold is not a protocol or conformance implementation.
+- Disposable verification disk: `.cargo/config.toml` sets `profile.dev` /
+  `profile.test` `debug = 0` and `incremental = false` while keeping
+  `debug-assertions` and `overflow-checks` on. Do not change
+  `[profile.release]`. Named check:
+  `cargo test --locked -p coglet-types --test disposable_verify_profile`.
+  After a disposable run, `cargo clean` unused private target dirs; never share
+  writable target directories across concurrent owners.
