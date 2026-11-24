@@ -20,6 +20,13 @@ public final class ProcessHubLink: HubLink {
         stop()
         guard key.count == 32 else { throw HubError.identity }
         let child = Process(), stdin = Pipe(), stdout = Pipe()
+        #if canImport(Darwin)
+        // A helper can close stdin before a command. Suppress SIGPIPE only on
+        // this descriptor, preserving the application's global signal policy.
+        guard fcntl(stdin.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1) != -1 else {
+            throw HubError.unavailable
+        }
+        #endif
         child.executableURL = executable
         child.arguments = []
         child.standardInput = stdin; child.standardOutput = stdout
