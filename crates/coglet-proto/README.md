@@ -76,10 +76,30 @@ server, mock hub and registry claims are not yet implemented.
   watermarks before the first credit, enforce deadlines and reset-on-abandon,
   check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
   authority/watermarks and commit durable refs/receipts before terminal success.
-  There is no production `DurableSink` or Session streaming dispatch yet.
+  Session streaming dispatch is not implemented yet.
+  `quarantine::BundleSink` supplies a private bounded raw bundle file, with
+  <=32 KiB writes fsynced off-reactor before returning. The limit is checked
+  before writing; I/O failure poisons the file. Drop removes its generated
+  quarantine directory; an in-flight worker retains cleanup custody after future
+  cancellation. Callers MUST discard the sink after cancellation (never resume
+  that append/transfer). Startup orphan cleanup, Git validation/finalization and
+  expanded-object/disk/CPU limits are still missing. This raw sink does not
+  establish secure Git quarantine or code admission.
   Raw data-phase tests exercise a 150000-byte transfer and stalled durable
   consumption over real iroh on the hub ALPN, plus sink failure and source EOF.
   They do not establish push/fetch/restart/replay acceptance.
+- `git_metadata::{RefKind, VerifiedRef}` pins signed metadata to the requested
+  purpose/ref and trusted hub/coglet. Hub refs use the hub key; published/logs
+  refs use the coglet key, never the device key or untrusted signer. Pure
+  `check_observation` distinguishes higher-generation snapshots, identical
+  equal-generation statements, and conflicts (including equal-tip but different
+  statements); `check_authoritative` requires exact old tip and higher generation.
+  These prechecks DO NOT persist or accept transfers, and signature verification
+  is not a grant. The owner must intersect current authority/delegation, compare
+  its latest durable watermark before credit, verify the entire quarantine even
+  on Identical, and repeat comparisons in the durable commit transaction.
+  Tests cover foreign hub/target/purpose/ref/key, tampering, skipped generations,
+  uint64 maximum, lower/equal-different conflicts and authoritative old-tip CAS.
 
 Kernel integration must keep registry, relay batch dedupe/audit, private-event
 routing and immutable once-mapped sender action envelopes in `coglet-hub`.
