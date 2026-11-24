@@ -118,6 +118,14 @@ impl RuntimeService {
     ) -> Result<Value> {
         validate("correlation-id", &json!(operation_id))?;
         if let Some(saved) = &self.state.managed {
+            // An identical installed identity is not permission to borrow a
+            // different caller's receipt or collide with another method's ID.
+            if scope.is_some()
+                && (scope != saved.install_scope.as_ref()
+                    || saved.operations.contains_key(operation_id))
+            {
+                return Err("conflict: managed install operation scope differs".into());
+            }
             return if saved.identity == *identity {
                 Ok(saved.install_receipt.clone())
             } else {

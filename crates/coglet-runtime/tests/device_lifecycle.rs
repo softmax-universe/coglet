@@ -497,9 +497,50 @@ impl Env {
     /// Replace the handler/authority as a process restart would: same WAL root,
     /// same Authority file, same device identity and connection.
     async fn restart_handler(&mut self) {
+        let retired = self.handler.as_ref().and_then(|handler| {
+            handler
+                .share_service(&self.coglet)
+                .map(|service| Arc::downgrade(&service))
+        });
         self.serve.abort();
         let _ = (&mut self.serve).await;
         drop(self.handler.take());
+        if let Some(retired) = retired {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                while retired.upgrade().is_some() {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .expect("old handler releases the coordinator");
+        }
+        // Aborting Session::serve aborts stream tasks, but they may still hold
+        // the old handler until their async cancellation is driven. A new
+        // handler has an independent coordinator map; do not race its first
+        // request against the old coordinator's OS flock destruction.
+        let wal = self
+            .config
+            .wal_root
+            .join(coglet_runtime::digest(self.coglet.as_bytes()))
+            .join("state.wal");
+        if wal.exists() {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                loop {
+                    match coglet_runtime::DurableStore::open(&wal) {
+                        Ok(store) => {
+                            drop(store);
+                            break;
+                        }
+                        Err(error) if error.starts_with("WAL already owned:") => {
+                            tokio::task::yield_now().await;
+                        }
+                        Err(error) => panic!("restart WAL recovery failed: {error}"),
+                    }
+                }
+            })
+            .await
+            .expect("old stream tasks release the WAL lock");
+        }
         let handler = DeviceHandler::new(
             self.config.clone(),
             Authority::open(self.root.join("authority.sqlite")).unwrap(),
@@ -1780,6 +1821,168 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
 
 // ---- hub.receipt: original-scope operation receipts -------------------------
 
+/// Actual process death with only a durable queued push present. This proves
+/// queued recovery, not ref activation: install has a separate terminal receipt.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install() {
+    timed!(async {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let mut env = Env::new(0x4a, Options::receipts()).await.unwrap();
+        let device_key = key(0x4a, 4);
+        let device = device_key.public();
+        let root = env.root.join("receipt-child");
+        std::fs::create_dir(&root).unwrap();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let expires = now.max(T0) + 100_000;
+        let delegation = Env::delegation_for(
+            &env.coglet_key,
+            &env.coglet,
+            env.hub.id().to_string(),
+            device.to_string(),
+            DELEGATION_GEN,
+            expires,
+            &Options::receipts().delegation_methods,
+        );
+        let authority_path = root.join("authority.sqlite");
+        {
+            let authority = Authority::open(&authority_path).unwrap();
+            authority.open_window(Duration::from_secs(60)).unwrap();
+            let grants: Vec<_> = METHODS
+                .iter()
+                .map(|method| Grant {
+                    method: (*method).into(),
+                    target: Some(env.coglet.clone()),
+                    expires,
+                    generation: GRANT_GEN,
+                })
+                .collect();
+            let invite = authority
+                .issue_invite(env.hub.id(), Duration::from_secs(60), grants.clone())
+                .unwrap();
+            authority.enroll(env.hub.id(), Some(&invite)).unwrap();
+            // Both tickets are authorized, but only the original may read a
+            // receipt. This is not a missing-grant negative control.
+            for ticket in [&env.ticket, &OTHER_TICKET.to_owned()] {
+                let scope = Scope {
+                    actor: env.actor.clone(),
+                    ticket: Some(ticket.clone()),
+                };
+                for grant in &grants {
+                    authority
+                        .provision_scope(env.hub.id(), &scope, grant)
+                        .unwrap();
+                }
+            }
+            authority
+                .accept_delegation(env.hub.id(), device, &env.coglet, &delegation, || Some(now))
+                .unwrap();
+        }
+        let identity = root.join("identity");
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&identity)
+            .unwrap()
+            .write_all(&device_key.to_bytes())
+            .unwrap();
+        let invite = env
+            .hub
+            .invite(
+                device,
+                Duration::from_secs(60),
+                vec![Grant {
+                    method: "hub.health".into(),
+                    target: None,
+                    expires,
+                    generation: 0,
+                }],
+            )
+            .await
+            .unwrap();
+        let addr = *env.hub.addr().ip_addrs().next().unwrap();
+        let config_path = root.join("router.json");
+        let mut config = json!({"hub":env.hub.id().to_string(),"device":device.to_string(),
+            "identity_path":identity,"authority_path":authority_path,"validator_path":validator_path(),
+            "wal_root":root.join("wal"),"quarantine":root.join("quarantine"),
+            "catalog":env.config.catalog,"grants":env.config.grants,"targets":{(env.coglet.clone()):{
+                "grant_generation":GRANT_GEN,"delegation_generation":DELEGATION_GEN,
+                "native_schedule":if NATIVE { json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}) } else { Value::Null }}},
+            "kill_switch":env.root.join("kill.json"),"hub_addr":addr,"invite":invite});
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        let log = root.join("child.log");
+        let mut child = ChildGuard::spawn(&config_path, &log);
+        env.session = child_session(&env.hub, device, &mut child, &log).await;
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        let bundle = env.bundle(1, None, &[]);
+        let pushed = env.push(&bundle).await;
+        assert_eq!(pushed["result"]["state"], "queued", "{pushed}");
+        let push_id = operation_id(&pushed);
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &push_id).await),
+            pushed["result"]
+        );
+        child.kill_and_wait();
+        for _ in 0..2000 {
+            if env.hub.session(device).await.is_none() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        assert!(env.hub.session(device).await.is_none());
+        config["invite"] = Value::Null;
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        let restart_log = root.join("restart.log");
+        let mut restarted = ChildGuard::spawn(&config_path, &restart_log);
+        env.session = child_session(&env.hub, device, &mut restarted, &restart_log).await;
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &push_id).await),
+            pushed["result"]
+        );
+        let actor = env.actor.clone();
+        let denied = receipt_as(&mut env, &push_id, &actor, Some(OTHER_TICKET)).await;
+        let unknown = receipt_as(&mut env, &correlation(424_250), &actor, Some(OTHER_TICKET)).await;
+        assert_eq!(error_code(&denied), "not_found", "{denied}");
+        assert_eq!(error_of(&denied), error_of(&unknown));
+        let installed = env.install(&bundle.signed, &delegation).await;
+        applied(&installed);
+        let id = operation_id(&installed);
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &id).await),
+            installed["result"]
+        );
+        let wal = root
+            .join("wal")
+            .join(coglet_runtime::digest(env.coglet.as_bytes()))
+            .join("state.wal");
+        let before = std::fs::read(&wal).unwrap();
+        let retry = env.request_with(
+            "hub.install",
+            id,
+            json!({"initial":bundle.signed,"delegation":delegation}),
+            &env.actor,
+            Some(env.ticket.clone()),
+        );
+        assert_eq!(env.call(retry).await["result"], installed["result"]);
+        assert_eq!(
+            std::fs::read(&wal).unwrap(),
+            before,
+            "retry must not append another effect"
+        );
+        // A separate install cannot manufacture an applied push receipt.
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &push_id).await),
+            pushed["result"]
+        );
+        restarted.kill_and_wait();
+    });
+}
+
 /// `hub.receipt {operation_id}` as `actor`/`ticket`, against `env.coglet`.
 async fn receipt_as(env: &mut Env, id: &str, actor: &str, ticket: Option<&str>) -> Value {
     let correlation_id = env.next();
@@ -2027,6 +2230,40 @@ async fn hub_receipt_conflicting_intent_typed() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_install_retry_cannot_borrow_scope_or_reuse_stop_id() {
+    timed!(async {
+        let mut env = Env::new(0x4b, Options::receipts()).await.unwrap();
+        let (_, installed, stopped) = push_install_stop(&mut env).await;
+        let initial = installed_ref(&env).await;
+        let delegation = env.delegation();
+        let actor = env.actor.clone();
+        for restart in [false, true] {
+            if restart {
+                env.restart_handler().await;
+            }
+            for (id, ticket) in [
+                (operation_id(&installed), OTHER_TICKET),
+                (operation_id(&stopped), TICKET),
+            ] {
+                let request = env.request_with(
+                    "hub.install",
+                    id,
+                    json!({"initial":initial,"delegation":delegation}),
+                    &actor,
+                    Some(ticket.to_owned()),
+                );
+                let reply = env.call(request).await;
+                assert_eq!(error_code(&reply), "conflict", "{reply}");
+            }
+            assert_eq!(
+                result_of(&receipt_of(&mut env, &operation_id(&installed)).await),
+                installed["result"]
+            );
+        }
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hub_receipt_queued_never_applied_without_boundary() {
     timed!(async {
         let mut env = Env::new(0x47, Options::receipts()).await.unwrap();
@@ -2086,11 +2323,38 @@ async fn hub_receipt_request_validation_and_fixtures() {
         let mut env = Env::new(0x49, Options::receipts()).await.unwrap();
         let (_, installed, _) = push_install_stop(&mut env).await;
         let id = operation_id(&installed);
-        // Valid fixture-shaped request: result is a hub-receipt-applied value.
+        // The frozen hub-receipt-* corpus consists of response-schema cases,
+        // not RPC envelopes. In particular, '*-unknown' adds an unknown FIELD;
+        // it is not a lookup of an unknown operation ID. Validate the unchanged
+        // corpus and separately validate actual receiver responses below.
+        let fixtures: Value =
+            serde_json::from_str(include_str!("../../../spec/fixtures/hub/cases.json")).unwrap();
+        let cases: Vec<_> = fixtures
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|c| c["name"].as_str().unwrap().starts_with("hub-receipt-"))
+            .collect();
+        assert!(!cases.is_empty());
+        for case in cases {
+            let valid =
+                coglet_runtime::validate(case["type"].as_str().unwrap(), &case["value"]).is_ok();
+            assert_eq!(valid, case["valid"].as_bool().unwrap(), "{}", case["name"]);
+        }
         let polled = receipt_of(&mut env, &id).await;
         coglet_runtime::validate("hub-receipt-applied", &polled["result"]).unwrap();
-        // Frozen invalid shapes never reach a success reply: either the session
-        // refuses to send them or the device answers invalid_argument.
+        let unknown = receipt_of(&mut env, &correlation(424_249)).await;
+        assert_eq!(error_code(&unknown), "not_found", "{unknown}");
+        // Exercise the actual receiver directly for malformed envelopes: Session
+        // validates outgoing requests and would otherwise hide receiver bugs.
+        use coglet_proto::transport::{OperationHandler, RequestContext};
+        let context = || RequestContext {
+            peer: env.config.hub,
+            local: env.config.device,
+            deadline: tokio::time::Instant::now() + Duration::from_secs(5),
+        };
+        let handler = env.handler.as_ref().unwrap().clone();
+        let receiver_context = context();
         let correlation_id = env.next();
         let actor = env.actor.clone();
         let mut missing = env.request_with(
@@ -2101,9 +2365,8 @@ async fn hub_receipt_request_validation_and_fixtures() {
             Some(TICKET.to_owned()),
         );
         missing["params"] = json!({});
-        if let Ok(frame) = env.session.request(missing).await {
-            assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
-        }
+        let frame = handler.handle(receiver_context.clone(), missing).await;
+        assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
         let correlation_id = env.next();
         let mut bad_id = env.request_with(
             "hub.receipt",
@@ -2113,9 +2376,8 @@ async fn hub_receipt_request_validation_and_fixtures() {
             Some(TICKET.to_owned()),
         );
         bad_id["params"]["operation_id"] = json!("nope");
-        if let Ok(frame) = env.session.request(bad_id).await {
-            assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
-        }
+        let frame = handler.handle(receiver_context.clone(), bad_id).await;
+        assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
         let correlation_id = env.next();
         let mut no_context = env.request_with(
             "hub.receipt",
@@ -2125,8 +2387,7 @@ async fn hub_receipt_request_validation_and_fixtures() {
             None,
         );
         no_context.as_object_mut().unwrap().remove("context");
-        if let Ok(frame) = env.session.request(no_context).await {
-            assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
-        }
+        let frame = handler.handle(receiver_context, no_context).await;
+        assert_eq!(error_code(&frame), "invalid_argument", "{frame}");
     });
 }

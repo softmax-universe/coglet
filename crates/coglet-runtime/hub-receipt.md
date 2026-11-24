@@ -40,3 +40,33 @@ evidence.
 in the managed WAL state with the receipt. Push receipts are scoped through the
 accepted-ref audit row (`AcceptedRefStore::push_receipt_for_scope`). Receipts
 written without scope cannot be read through `hub.receipt` (fail closed).
+
+## Qualification and remaining acceptance gate
+
+| Requirement | Executed test / boundary |
+| --- | --- |
+| Original scope, immutable terminal record, receipt step <= status | `hub_receipt_original_scope_roundtrip` |
+| Wrong actor, ticket, target, original-method grant | `hub_receipt_denies_cross_identity` |
+| Same operation ID, differing method/ticket | `hub_receipt_conflicting_intent_typed` |
+| Install retry cannot borrow a different ticket's receipt or reuse a stop ID | `hub_receipt_install_retry_cannot_borrow_scope_or_reuse_stop_id` |
+| Terminal retry does not append another effect | `hub_receipt_identical_retry_no_reexecute` and `hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install` |
+| Actual daemon SIGKILL with queued push; recovered original-scope lookup | `hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install` |
+| No activation from admission/restart alone | `hub_receipt_queued_never_applied_without_boundary`, `hub_receipt_git_push_queued_not_applied` |
+| Frozen response-schema corpus and non-vacuous malformed request handling | `hub_receipt_request_validation_and_fixtures` |
+
+The response-schema fixture suffix `-unknown` means an extra unknown **field**,
+not an unknown operation lookup; the latter is a separate actual-receiver
+`not_found` assertion. Malformed requests call the production `DeviceHandler`
+directly because `Session::request` refuses to send malformed envelopes. Positive
+and original-scope negative receipt requests traverse real iroh sessions.
+
+**Not yet qualified:** a single durable queued operation surviving SIGKILL and
+then transitioning to terminal `applied`. The daemon test above recovers a queued
+push and then installs via a *different* operation; it does not claim that install
+completes that push. Frozen hub 0.1 requires a router ref to become applied only at
+a verified runtime boundary (`spec/hub-protocol.md`, lifecycle ordering and Git
+control plane). PR125's device slice has no queued router-ref application API.
+An accepted-ref record or matching live commit cannot substitute for that boundary
+or attest an applied generation. Do not advance an ADR-0018 deploy saga past a
+queued child using this implementation, and do not treat this test matrix as the
+full card acceptance gate.
