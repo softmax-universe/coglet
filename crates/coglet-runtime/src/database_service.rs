@@ -481,8 +481,13 @@ impl RuntimeService {
         };
         if self.store.is_healthy() {
             let saved = self.store.state().ok_or("missing WAL state")?.clone();
-            self.state = Self::restore(&self.store, &self.configured, &saved,
-                &self.catalog, &self.state.supervisor_reads)?;
+            self.state = Self::restore(
+                &self.store,
+                &self.configured,
+                &saved,
+                &self.catalog,
+                &self.state.supervisor_reads,
+            )?;
         }
         result
     }

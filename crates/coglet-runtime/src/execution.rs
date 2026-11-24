@@ -163,9 +163,13 @@ impl RuntimeService {
     /// Validate a saved WAL state against the configured pins and the exact
     /// journal. Shared by `open` and by database recovery reload, so a state
     /// published by a collaborator is checked as strictly as a restart.
-    fn restore(store: &DurableStore, configured: &Runtime, saved: &Value,
+    fn restore(
+        store: &DurableStore,
+        configured: &Runtime,
+        saved: &Value,
         catalog: &TrustedExtensionCatalog,
-        configured_reads: &BTreeMap<String, supervisor_reads::SupervisorReadRecord>) -> Result<ServiceState> {
+        configured_reads: &BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
+    ) -> Result<ServiceState> {
         let mut state: ServiceState =
             serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
         if state.catalog_pin.as_deref() != catalog.pin() {
@@ -173,8 +177,11 @@ impl RuntimeService {
         }
         if state.supervisor_reads.len() != configured_reads.len()
             || state.supervisor_reads.iter().any(|(id, r)| {
-                configured_reads.get(id).is_none_or(|c| c.request != r.request)
-            }) {
+                configured_reads
+                    .get(id)
+                    .is_none_or(|c| c.request != r.request)
+            })
+        {
             return Err("recovery supervisor read plan differs from configuration".into());
         }
         state.router.validate_recovered()?;
