@@ -148,6 +148,22 @@ def test_heard_truncation_hello_world_1200_of_3000():
     assert heard_prefix([{'end_ms': 1, 'text': 'é' * 9000}], 1) == 'é' * 8192
 
 
+def test_work_result_status_survives_replay():
+    import json
+    engine = DuplexEngine()
+    turn, call = '4' * 32, '3' * 32
+    engine.stage_work(0, turn, call, 'game.inspect', {'request': 'Inspect'})
+    failed = {'code': 'unavailable', 'message': 'probe failure', 'retryable': False}
+    done = engine.work_result(turn, call, 1, 'failed', failed)
+    assert done['status'] == 'failed' and done['value'] == failed
+    restored = DuplexEngine()
+    restored.restore(json.loads(json.dumps(engine.snapshot())))
+    assert restored.work_done == [done]
+    assert restored.pending_work == []
+    with pytest.raises(KeyError):
+        restored.work_result(turn, call, 1, 'succeeded', {'summary': 'no'})
+
+
 def test_expression_expires_on_virtual_clock():
     engine = DuplexEngine()
     engine.set_expression(0, 'listening', 500, 40)

@@ -3,8 +3,9 @@
 Uses the public Python surface SDK. Native capture/playback is the DuplexEngine
 clock, never a microphone or speaker. Scripted user speech comes from
 spec/fixtures/speech/timelines.json and the ADR-0010 handoff cases; playback
-items are always the admitted speak action IDs from the RequestContext, never
-fixture constants.
+Playback items are always the admitted speak/backchannel action IDs from the
+RequestContext, never fixture constants. Backchannel is its own chunk-0 final
+stream. work_result preserves the supplied succeeded/failed status.
 
 Timing: render starts RENDER_LATENCY_MS (wall) after admission, then virtual
 media advances SPEEDUP times faster than wall time, so a 3 s utterance plays in
@@ -19,10 +20,11 @@ import sys
 import tempfile
 import time
 
-from coglet_surface.surface import CATALOG, RESOURCES, Operation, Rejection, Surface, correlation_id
+from coglet_surface.codec import decode, encode_profile
+from coglet_surface.surface import CATALOG, RESOURCES, WIRE, Operation, Rejection, Surface, correlation_id
 from coglet_surface.transport import serve
 
-from .duplex import DuplexEngine
+from .duplex import WORK_RESULT_BYTES, DuplexEngine
 
 ROOT = Path(__file__).resolve().parents[2]
 TIMELINES = json.loads((ROOT / 'spec/fixtures/speech/timelines.json').read_text())
@@ -39,6 +41,10 @@ HISTORY_UTTERANCE = '6' * 32
 SPEEDUP = 10
 RENDER_LATENCY_MS = 20
 BYTE_MS = 50  # unaligned voice: media duration per UTF-8 byte, no alignment
+CHUNK_TEXT_BYTES = 4096
+IDLE_STREAM_US = 60_000_000
+# Simulated cue media. thinking is long enough that stop-during-playback is not a race.
+CUE_MS = {'ack': 100, 'thinking': 8000, 'agree': 200}
 
 AUDIO_OPS = (
     'speech.start', 'speech.partial', 'speech.end', 'speech.position', 'speech.barge_in',
@@ -143,6 +149,11 @@ class MarkerSurface(Surface):
         self._emit('capabilities', dict(revision=self.revision, clock=self.now(),
                     entries=[entry], correlation_id=correlation_id()))
 
+    def disconnect(self):
+        super().disconnect()
+        if self.revoked:
+            self.revoked()
+
 
 class DuplexDevice:
     def __init__(self, case, clock, surface_holder):
@@ -162,10 +173,30 @@ class DuplexDevice:
     # Native off-switch and callback fencing --------------------------------
 
     def stop(self):
-        """Surface reflex: silence all output and fence every queued callback."""
+        """Surface reflex: silence all output and fence every queued callback.
+
+        A failed or expired chunk stops its stream. Later admitted chunks are
+        cancelled here so they cannot play a gap after the reflex (speech.md
+        91-92, 106). The chunk whose own deadline already passed is expired;
+        the surface tick's second complete is a no-op.
+        """
         self.engine.halt()
         self.generation += 1
         self.due.clear()
+        surface = self.surface_holder[0]
+        if surface is None or surface.state != 'ready':
+            return
+        now = surface.now()
+        for coglet, aid, raw in surface._pending():
+            action = decode(WIRE, raw)['body']['action']
+            if action['capability'] not in ('speech.speak_chunk', 'speech.backchannel'):
+                continue
+            if action['deadline'] <= now:
+                surface.complete(coglet, aid, status='expired',
+                                 error=Rejection('deadline_exceeded').error)
+            else:
+                surface.complete(coglet, aid, status='cancelled',
+                                 error=Rejection('cancelled').error)
 
     def heard_owner(self, item):
         """(coglet, epoch) whose authority covers this item's heard record."""
@@ -188,6 +219,7 @@ class DuplexDevice:
             item for item, record in self.engine.items.items()
             if not record.get('heard_removed')
             and (self.heard_owner(item)[1] != epoch or self.heard_owner(item)[0] not in holders)])
+        self.engine.reset_expression()
 
     def now_ms(self):
         return (time.monotonic_ns() - self.origin_ns) // 1_000_000
@@ -214,6 +246,27 @@ class DuplexDevice:
         if duration is None:
             duration = BYTE_MS * len(text.encode())
         return spans, duration
+
+    def cue_voice(self, cue):
+        if cue not in CUE_MS:
+            raise Rejection('invalid_argument', 'unknown cue')
+        # No aligned spans: a cue is not a transcript. Heard text stays empty.
+        return [], CUE_MS[cue]
+
+    def _touch_stream(self, stream):
+        self.engine.streams[stream]['last_admit_us'] = self.surface().now()
+
+    def _close_idle(self):
+        """Unfinalized streams with no live item close after 60s without a chunk."""
+        now = self.surface().now()
+        for record in self.engine.streams.values():
+            if record['stopped'] or record['final']:
+                continue
+            if any(self.engine.items[i]['state'] in self.engine.LIVE for i in record['items']):
+                continue
+            last = record.get('last_admit_us')
+            if last is not None and now - last >= IDLE_STREAM_US:
+                record['stopped'] = True
 
     def owner(self, item):
         record = self.engine.items.get(item)
@@ -299,11 +352,14 @@ class DuplexDevice:
         if name in ('expression.set_expression', 'expression.state', 'speech.config',
                     'speech.heard', 'speech.work_state'):
             return
+        self._close_idle()
         if name == 'speech.speak_chunk':
+            if len(args['text'].encode()) > CHUNK_TEXT_BYTES:
+                raise Rejection('invalid_argument', 'chunk text exceeds 4096 UTF-8 bytes')
             stream = self.engine.streams.get(args['stream'])
             if stream and stream['owner'] and stream['owner'][0] != context.coglet:
                 raise Rejection('conflict', 'stream owned by another coglet')
-            if stream and (stream['stopped'] or stream['final']):
+            if stream and (stream['stopped'] or stream['final'] or stream.get('backchannel')):
                 raise Rejection('conflict', 'stream closed')
             if (len(stream['items']) if stream else 0) != args['chunk']:
                 raise Rejection('conflict', 'noncontiguous chunk')
@@ -317,13 +373,25 @@ class DuplexDevice:
             if stream is None or (stream['owner'] and stream['owner'][0] != context.coglet):
                 raise Rejection('not_found', 'unknown stream')
             return
-        if name == 'speech.work_result':
-            if not any(w['call'] == args['call'] and w['epoch'] == args['epoch']
-                       for w in self.engine.pending_work):
-                raise Rejection('not_found', 'unknown work')
-            return
         if name == 'speech.backchannel':
-            raise Rejection('conflict', 'backchannel not used by duplex timelines')
+            if args.get('cue') not in CUE_MS:
+                raise Rejection('invalid_argument', 'unknown cue')
+            if args['stream'] in self.engine.streams:
+                raise Rejection('conflict', 'stream id is not reusable')
+            if any(self.engine.stream_open(s) for s in self.engine.streams):
+                raise Rejection('conflict', 'speaker is busy')
+            return
+        if name == 'speech.work_result':
+            pending = next((w for w in self.engine.pending_work if w['call'] == args['call']), None)
+            if pending is None or pending['epoch'] != args['epoch']:
+                raise Rejection('not_found', 'unknown or stale work')
+            if pending['turn'] != args['turn']:
+                raise Rejection('conflict', 'mismatched turn')
+            if args.get('status') not in ('succeeded', 'failed'):
+                raise Rejection('invalid_argument', 'work status')
+            if len(encode_profile(args['value'])) > WORK_RESULT_BYTES:
+                raise Rejection('invalid_argument', 'work result exceeds 32000 CBOR bytes')
+            return
         if name in ('speech.session_open', 'speech.session_close', 'speech.tool_result'):
             raise Rejection('unavailable', 'no provider session')
 
@@ -353,18 +421,28 @@ class DuplexDevice:
             # Native item identity is exactly the admitted wire action ID.
             self.engine.enqueue(stream, args['chunk'], context.action_id, spans, duration,
                                 args['final'], owner=[context.coglet, context.epoch])
+            self._touch_stream(stream)
             if self.capture_stream is None:
                 self.capture_stream = stream
             if idle:
                 self.schedule(now + RENDER_LATENCY_MS, lambda: self._render_next(stream))
             return None  # completes only after the chunk is actually rendered
+        if name == 'speech.backchannel':
+            spans, duration = self.cue_voice(args['cue'])
+            stream = args['stream']
+            self.engine.enqueue_backchannel(stream, context.action_id, spans, duration,
+                                            owner=[context.coglet, context.epoch])
+            self._touch_stream(stream)
+            self.schedule(now + RENDER_LATENCY_MS, lambda: self._render_next(stream))
+            return None  # one terminal outcome after the cue is actually rendered
         if name == 'speech.stop':
             self.emit_engine(self.engine.stop_stream(now * SPEEDUP, args['stream']))
             return {}
         if name == 'speech.work_result':
-            done = self.engine.work_result(args['turn'], args['call'], args['epoch'], args['value'])
+            done = self.engine.work_result(args['turn'], args['call'], args['epoch'],
+                                           args['status'], args['value'])
             self.surface().event(COGLET, 'speech.work_done', done, epoch=self.surface()._get('epoch'))
-            return {}
+            return {}  # delivery succeeded; work_done carries the supplied status
         raise Rejection('unavailable')
 
     def configured(self):

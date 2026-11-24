@@ -14,7 +14,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from coglet_surface.codec import encode_profile
+
 CANCELLED = {'code': 'cancelled', 'message': 'No grant', 'retryable': False}
+WORK_ARGUMENT_BYTES = 8192
+WORK_RESULT_BYTES = 32000
 
 
 def heard_prefix(spans, played_ms, limit=16384):
@@ -83,7 +87,8 @@ class DuplexEngine:
     def snapshot(self):
         data = {name: getattr(self, name) for name in self.FIELDS}
         data['closed'] = sorted(self.closed)
-        data['remembered_calls'] = [[list(k), v] for k, v in self.remembered_calls.items()]
+        # call id -> intent. Dedup is per call within the work epoch, not per turn.
+        data['remembered_calls'] = [[k, v] for k, v in self.remembered_calls.items()]
         return deepcopy(data)
 
     def restore(self, snapshot):
@@ -91,7 +96,7 @@ class DuplexEngine:
         for name in self.FIELDS:
             setattr(self, name, data[name])
         self.closed = set(data['closed'])
-        self.remembered_calls = {tuple(k): v for k, v in data['remembered_calls']}
+        self.remembered_calls = {k: v for k, v in data['remembered_calls']}
 
     def _emit(self, at_ms, name, payload):
         event = {'at_ms': at_ms, 'name': name, 'payload': payload}
@@ -147,6 +152,20 @@ class DuplexEngine:
         self._register(item, stream, chunk, spans, duration_ms, 'queued', owner)
         if final:
             self.streams[stream]['final'] = True
+
+    def enqueue_backchannel(self, stream, item, spans=(), duration_ms=None, owner=None):
+        """Admit a backchannel as its own chunk-0, implicitly final item.
+
+        Fails if the stream id is already known or another stream is active.
+        The item id is the admitted action id; one terminal outcome follows render.
+        """
+        if stream in self.streams:
+            raise ValueError('conflict: stream id is not reusable')
+        if any(self.stream_open(s) for s in self.streams):
+            raise ValueError('conflict: speaker is busy')
+        self._register(item, stream, 0, spans, duration_ms, 'queued', owner)
+        self.streams[stream]['final'] = True
+        self.streams[stream]['backchannel'] = True
 
     def stream_open(self, stream):
         record = self.streams.get(stream)
@@ -286,11 +305,14 @@ class DuplexEngine:
             uid = step['utterance']
             if uid not in self.utterances:
                 raise ValueError('unknown utterance')
-            if uid in self.closed or step['revision'] <= self.utterances[uid]:
+            text = step['text']
+            # Byte cap is additional to the schema's code-point limit. Oversized
+            # transcripts are discarded, not forwarded and not used to reopen.
+            if uid in self.closed or step['revision'] <= self.utterances[uid] or len(text.encode()) > 16384:
                 self.discarded += 1
                 return []
             self.utterances[uid] = step['revision']
-            payload = {'utterance': uid, 'revision': step['revision'], 'text': step['text']}
+            payload = {'utterance': uid, 'revision': step['revision'], 'text': text}
             if kind == 'end':
                 self.closed.add(uid)
                 payload['position_ms'] = step.get('position_ms', 0)
@@ -371,6 +393,12 @@ class DuplexEngine:
             'text': heard_prefix(record['spans'], record['played_ms']),
         }
 
+    def reset_expression(self):
+        """Kill, revocation and disconnect return the renderer to neutral."""
+        self.expression = 'neutral'
+        self.intensity = 0
+        self.expression_until = 0
+
     def set_expression(self, now_ms, expression, intensity, duration_ms):
         if duration_ms == 0:
             self.expression = 'neutral'
@@ -392,16 +420,28 @@ class DuplexEngine:
         }
 
     def stage_work(self, at_ms, turn, call, name, arguments):
-        key = (turn, call)
-        if key in self.remembered_calls:
+        """Stage one work_intent. Identical (call) repeats are ignored.
+
+        A repeated call with a different turn, name or arguments conflicts and
+        is not staged. Oversized argument CBOR is not staged and emits nothing.
+        """
+        previous = self.remembered_calls.get(call)
+        if previous is not None:
+            same = (previous['turn'], previous['name'], previous['arguments']) == (turn, name, arguments)
+            if same:
+                return []
+            raise ValueError('conflict')
+        if len(encode_profile(arguments)) > WORK_ARGUMENT_BYTES or len(self.remembered_calls) >= 128:
+            if len(self.remembered_calls) >= 128 and len(encode_profile(arguments)) <= WORK_ARGUMENT_BYTES:
+                raise ValueError('resource_exhausted')
             return []
-        if len(self.remembered_calls) >= 128:
+        if len(self.pending_work) >= 4:
             raise ValueError('resource_exhausted')
         intent = {
             'turn': turn, 'call': call, 'epoch': self.work_epoch,
             'name': name, 'arguments': arguments,
         }
-        self.remembered_calls[key] = intent
+        self.remembered_calls[call] = intent
         self.pending_work.append(intent)
         return [self._emit(at_ms, 'speech.work_intent', intent)]
 
@@ -422,15 +462,27 @@ class DuplexEngine:
     def work_state(self):
         return {'epoch': self.work_epoch, 'pending': len(self.pending_work)}
 
-    def work_result(self, turn, call, epoch, value):
+    def work_result(self, turn, call, epoch, status, value):
+        """Accept one live tuple. status/value are the caller's, not implied success.
+
+        Unknown, cancelled or old-epoch tuples are not_found. A mismatched turn
+        conflicts and leaves the call pending. The delivery action's own outcome
+        is separate and may succeed after a failed work_done.
+        """
+        if status not in ('succeeded', 'failed'):
+            raise ValueError('invalid work status')
+        if len(encode_profile(value)) > WORK_RESULT_BYTES:
+            raise ValueError('invalid')
         for index, intent in enumerate(self.pending_work):
             if intent['call'] != call:
                 continue
-            if intent['turn'] != turn or intent['epoch'] != epoch:
+            if intent['epoch'] != epoch:
+                raise KeyError('not_found')
+            if intent['turn'] != turn:
                 raise ValueError('conflict')
             done = {
                 'turn': turn, 'call': call, 'epoch': epoch,
-                'status': 'succeeded', 'value': value,
+                'status': status, 'value': value,
             }
             self.pending_work.pop(index)
             self.work_done.append(done)
