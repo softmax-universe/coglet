@@ -11,7 +11,7 @@
 
 ## Context
 
-The cogent design pages (`docs/cogent-design/`, added by PR #103) describe the system in four
+The cogent design pages (`docs/cogent-design/`, proposed in PR #103) describe the system in four
 words: a **cogent** is one agent made of **coglets**; a coglet runs in a
 **runtime**; a runtime reaches apps and hardware through **adapters**; and the
 cogent's **router** carries messages and patches between runtimes.
@@ -58,8 +58,12 @@ action, grant.
   old word, because they are identifiers.
 - The runtime already had a "router" of its own, the part that orders and
   delivers events. It is now always called the **event router**, so that
-  "router" alone means the cogent's router. Five sentences in the spec prose
-  change for this; none changes a rule.
+  "router" alone means the cogent's router. Four sentences in the spec prose
+  change for this, all plainly about the runtime; none changes a rule. A fifth,
+  "The router MUST enforce the target's event grants and capability ownership
+  before relay" in `spec/hub-protocol.md`, is left word for word as it was:
+  whether it binds the runtime or the hub is ambiguous on main and is for the
+  hub-protocol owner to settle, not this ADR.
 - New prose, new cards and new documents use the new words from now on.
 
 Stage 1 changes no schema, no fixture and no behaviour, so it is not a change

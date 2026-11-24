@@ -60,7 +60,7 @@ Do not log invite values or include them in error details.
 
 A runtime hosts many independently keyed coglets on one device connection.
 `hub.install` supplies a coglet-key signed `delegation` statement naming the
-coglet, device node, router node, generation, expiry and exact allowed methods.
+coglet, device node, hub node, generation, expiry and exact allowed methods.
 `signer` MUST equal the node key suffix of the coglet ID. The router validates this
 proof against authenticated device identity and its own pinned identity; the
 runtime keeps the same binding. A coglet key MUST NOT be supplied to router builders.
@@ -332,7 +332,7 @@ event router, not independent proof of the adapter key and never cross-device au
 A coglet source must equal target and may carry only a runtime-synthesized
 `action.outcome` for an admitted router action. Foreign coglet sources and all
 `runtime.*` events are rejected with `permission_denied`; local wakes never relay.
-The runtime's event router MUST enforce the target's event grants and capability ownership before
+The router MUST enforce the target's event grants and capability ownership before
 relay. Private speech events remain owner-only at the router: storage/routing MUST
 NOT expose them to another coglet. Merely naming a target grants no access.
 
@@ -484,7 +484,7 @@ Run `python3 -m unittest discover -s spec/tests -v` with
 schemas, exact golden CBOR, framing negatives and test-key signatures.
 [Case data](../conformance/hub/) defines black-box temporal scenarios;
 [the suite contract](../conformance/hub/README.md) specifies observable assertions.
-Case data/schema checks are NOT a claim that a hub/runtime or mock already passes
+Case data/schema checks are NOT a claim that a router/runtime or mock already passes
 wire conformance. The harness owner must execute the same cases against both.
 Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
 SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including

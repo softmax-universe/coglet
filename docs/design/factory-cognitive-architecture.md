@@ -13,7 +13,7 @@ This document describes the intended v1 architecture, not an assertion that the 
 
 - **Factory Wasm (evolvable):** event handling, context retrieval, goal management, prioritization, planning, prompts, decision validation, experiment selection, repository logic, and outbox intent generation.
 - **Host capabilities:** parameterized database operations and short transactions, asynchronous LLM requests, Hermes adapter, artifact access, code/build/test/evaluation services. No database engine or credentials inside Wasm.
-- **Hub/kernel (trusted):** identity, capability grants, event routing, budgets, replay recording, code verification, deployment and rollback. Inter-coglet messages go through the router, never through shared database tables.
+- **Router/kernel (trusted):** identity, capability grants, event routing, budgets, replay recording, code verification, deployment and rollback. Inter-coglet messages go through the router, never through shared database tables.
 - **Private by default:** each Factory owns its own logical database; no other coglet can read goals, hypotheses, or knowledge without explicit grants or published artifacts/APIs.
 
 ## Storage design
@@ -62,7 +62,7 @@ A `task.failed` event identifies a task and trace artifact. Deterministic handli
 - Tool capabilities enable trace inspection, code changes, simulations, replay, experiment runs and evaluations.
 - Evaluations compare candidate behavior against baselines with tests, deterministic recorded-event replay, and headless simulation where applicable. The Factory may develop new evaluations.
 - A candidate Factory version is built from source to Wasm and tested in isolation. The Factory cannot overwrite its running module or directly promote itself.
-- Promotion flows through the hub/kernel, with configured gates, signature verification, probation, and last-known-good rollback.
+- Promotion flows through the router/kernel, with configured gates, signature verification, probation, and last-known-good rollback.
 - Observability should expose agenda, decisions, evidence, worker state, costs and promotion outcomes, preferably by extending the existing dashboard.
 
 ## Database consistency and replay
