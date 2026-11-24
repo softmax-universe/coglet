@@ -61,7 +61,7 @@ struct SoftmaxMenuView: View {
             HStack { MenuTemplate(state: presentation ?? model.menuPresentation); Text((presentation ?? model.menuPresentation).label).fontWeight(.semibold) }
             Text("Push-to-talk: \(model.hotkeyName)")
             Text("Hub disconnected · no hub configured")
-            Text("Local runtime: not connected")
+            Text(model.testing ? "Local runtime: not connected" : "Local runtime: \(model.runtime.state.rawValue)")
             if model.updates.updateAvailable || presentation == .update { Text("Update available · install from Updates") }
             Divider()
             Button("Open Face") { dismiss(); showFace() }
@@ -81,6 +81,6 @@ struct SoftmaxMenuView: View {
 
 extension ShellModel {
     var menuPresentation: MenuPresentation {
-        MenuPresentation.resolve(activity: state, hasError: message != nil, hubConnected: false, updateAvailable: updates.updateAvailable)
+        MenuPresentation.resolve(activity: state, hasError: message != nil || runtime.state == .error, hubConnected: false, updateAvailable: updates.updateAvailable)
     }
 }

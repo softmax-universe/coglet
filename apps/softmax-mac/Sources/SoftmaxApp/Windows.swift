@@ -107,8 +107,7 @@ struct SettingsView: View {
                             Text("Hub disconnected").fontWeight(.semibold)
                             Text("No hub configured. Enrollment and connectivity are not implemented yet.")
                         case .coglets:
-                            Text("No coglets loaded").fontWeight(.semibold)
-                            Text("Local runtime integration is not implemented yet. No running state or grants can be reported.")
+                            RuntimeSettings(host: model.runtime, openLogs: model.openRuntimeLogs)
                         case .updates: UpdatesView(updates: model.updates)
                         case .privacy:
                             Text("Audio is captured only while push-to-talk is listening (maximum 120 seconds). Runtime speech delivery is a separate integration.")

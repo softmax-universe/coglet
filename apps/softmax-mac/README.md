@@ -12,6 +12,8 @@ and install [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xco
 From this directory:
 
 ```sh
+cargo install cbindgen --version 0.29.2 --locked
+bash ../../scripts/build-runtime-xcframework.sh
 xcodegen generate
 xcodebuild -project Softmax.xcodeproj -scheme Softmax \
   -destination 'platform=macOS' -derivedDataPath build build
@@ -27,8 +29,62 @@ instead: build, sign embedded frameworks, sign the app, then verify its signatur
 Stable permission grants and launch-at-login behavior require a consistently signed app.
 CI deliberately builds unsigned: its ZIP is not a distributable release.
 Developer ID signing, notarization, DMG and Sparkle remain release work. Local
-audio capture and global push-to-talk are implemented here. Runtime hosting, hub
-enrollment and speech-provider delivery remain separate integration work.
+audio capture and global push-to-talk are implemented here. Local runtime hosting
+is described below; hub enrollment and speech-provider delivery remain separate work.
+
+## Embedded runtime
+
+`RuntimeHost` runs the real WAMR runtime through the Swift surface SDK's C ABI
+transport on a background actor. UI updates stay on MainActor. State, pinned
+configuration, surface ledger, WAL and diagnostics are under
+`~/Library/Application Support/Softmax/runtime/`. Settings › Coglets lists the
+loaded ID, manifest version and state, and provides Restart runtime and Open logs.
+The current runtime coordinator supports **one pinned coglet**, not a multi-coglet
+registry; startup rejects unsupported operations rather than reporting them loaded.
+
+To explicitly install the model-free speech fixture from the repository root:
+
+```sh
+rustup target add wasm32-wasip1
+ROOT="$HOME/Library/Application Support/Softmax/runtime"
+python3 apps/softmax-mac/tools/install_speech_echo.py --output-dir "$ROOT" --wal "$ROOT/state.wal"
+```
+
+The installer refuses replacement of an existing config/WAL. It is a development
+fixture with real Wasm compilation/provenance, not signed hub publication. No demo
+coglet or arbitrary code is silently installed by app launch. The product reads
+trusted operator-owned `binding.json` and `runtime.json`; see `tools/README.md` and
+the config schema. Each start opens the existing WAL and never replays failed work.
+A new surface ledger is created only for a new private directory; ledger loss or
+unclean recovery fails closed. **Restart runtime** is the explicit local operator
+reconciliation/reset, then new negotiation and a higher grants epoch. Grants last
+24 hours and are not automatically renewed; Restart is required after expiry.
+
+Push-to-talk captures locally and requests speech-recognition permission when an
+utterance is first submitted. Recognition requires on-device support and never
+falls back to cloud recognition. A finalized local transcript publishes typed
+`speech.start` and `speech.end` through `SurfaceSession`; raw PCM never enters the
+control protocol. Speech/expression dispatches reach the bounded `RuntimeAction`
+sink (`onAction`). The current Face adapter is deliberately an unavailable sink:
+it records the semantic action but sends a failed/unavailable terminal outcome,
+not fictitious playback success. Chat text sending, hub enrollment, provider/media
+routing and physical TTS/acoustic qualification are not delivered here.
+
+**Fault boundary:** guest traps, runtime API failures, deadline/budget failures
+and unwinding Rust panics caught at every C ABI entry become UI `error`. Restart
+closes all links, drops poisoned service state, reopens the WAL and establishes
+fresh surface authority. **Process-fatal abort, SIGSEGV, OOM, C faults and invalid
+caller pointers can still terminate the app.** In-process execution is not a
+helper-process crash sandbox. Do not compile the product with `panic=abort` or
+`ffi-test-hooks`. The latter supplies a real C-entry caught-panic injection only
+for native CI; production archives are rebuilt without it and symbol-checked.
+
+`scripts/build-runtime-xcframework.sh` (at repository root) generates the C header
+with pinned cbindgen, builds aarch64/x86_64 Apple static libraries, creates one
+universal macOS slice and wraps it in an xcframework. Both architectures are
+SDK-linked; only the runner architecture is executed. `RuntimeHostTests` executes
+the real compiled speech guest, a compiled trap guest, and caught-panic/restart
+paths on `macos-latest`. It does not prove x86_64 execution or physical speech.
 
 ## Try the shell
 

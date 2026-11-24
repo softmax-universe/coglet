@@ -6,6 +6,7 @@ import ServiceManagement
 import SoftmaxCore
 import FaceMac
 import Combine
+import SoftmaxRuntime
 
 @main
 struct SoftmaxApp: App {
@@ -48,6 +49,29 @@ struct StatusLabel: View {
 @MainActor
 final class ShellModel: ObservableObject {
     let updates = UpdateController()
+    let runtime = RuntimeHost()
+    let recognizer = LocalSpeechInput()
+    private var runtimeSubscription: AnyCancellable?
+    private var speechDelivery: Task<Void, Never>?
+    func configureRuntime() {
+        guard !testing, speechDelivery == nil else { return }
+        runtimeSubscription = runtime.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        Task { await runtime.start() }
+        speechDelivery = Task { [weak self] in
+            guard let self else { return }
+            for await input in ptt.speechInput {
+                guard case .utterance(let utterance) = input else { continue }
+                do {
+                    let text = try await recognizer.transcribe(utterance)
+                    guard ptt.operationID == utterance.operationID, ptt.state == .thinking else { continue }
+                    await runtime.submitTranscript(text)
+                    if runtime.state == .error { message = runtime.errorMessage }
+                    finishSpeechInput(operation: utterance.operationID)
+                } catch { message = error.localizedDescription; finishSpeechInput(operation: utterance.operationID) }
+            }
+        }
+    }
+    func openRuntimeLogs() { NSWorkspace.shared.open(runtime.directory.appendingPathComponent("logs")) }
     let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
     @Published var machine: AppStateMachine {
         didSet {
@@ -125,6 +149,7 @@ final class ShellModel: ObservableObject {
         }
         ptt.permissions = permissions
         ptt.start()
+        configureRuntime()
     }
     func recordHotkey() {
         recordingKey.toggle(); keySource.recording = recordingKey
@@ -332,7 +357,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             alert.addButton(withTitle: "Quit Softmax"); alert.addButton(withTitle: "Cancel")
             guard alert.runModal() == .alertFirstButtonReturn else { return }
         }
-        model.ptt.cancel(); NSApp.terminate(nil)
+        model.ptt.cancel()
+        Task { await model.runtime.stop(); NSApp.terminate(nil) }
     }
 
     private func window<V: View>(title: String, size: NSSize, view: V) -> NSWindow {
