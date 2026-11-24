@@ -1164,3 +1164,55 @@ fn duplicate_owner_or_wrong_catalog_uri_does_not_install_grants() {
     );
     assert!(s.translate_action(&action(), 130).is_err());
 }
+
+#[test]
+fn durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts() {
+    let path = wal("segment-pending");
+    let mut setup = setup();
+    let llm = json!({"id":"7".repeat(32),"correlation_id":"7".repeat(32),"capability":"llm.complete","model":"small","input":{"prompt":"hello"}});
+    setup["initial_effect_ids"]["llm_requests"] = json!(["7".repeat(32)]);
+    setup["initial_llm_requests"] = json!([llm]);
+    let event = setup["inputs"]["events"][0].clone();
+    let message = json!({"id":"a".repeat(32),"index":0,"sender":event["source"],"event":event});
+    setup["initial_files"]["/data/inbox.jsonl"] = json!(hex::encode(format!(
+        "{}\n",
+        serde_json::to_string(&message).unwrap()
+    )));
+    setup["initial_inbox_wakes"] = json!([0]);
+    let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
+    assert_eq!(service.queued(), 1);
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    let id = action()["id"].as_str().unwrap().to_owned();
+    let bytes = service.prepare_dispatch(&s, &id, 130).unwrap();
+    let before = setup["initial_files"]["/data/count"].clone();
+    let change = json!({"actor":format!("hub:{}","3".repeat(64)),"target":C,"audit_id":"d".repeat(32),
+        "ticket":null,"method":"debug.write","path":"/data/count","before":before,"after":"31"});
+    service
+        .seal_boundary(
+            &setup["inputs"]["trace_id"],
+            20,
+            std::slice::from_ref(&change),
+        )
+        .unwrap();
+    let new_id = json!("e".repeat(32));
+    service.start_segment(&new_id).unwrap();
+    assert_eq!(service.queued(), 1);
+    drop(service);
+    let mut recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
+    assert_eq!(recovered.queued(), 1, "inbox wake dropped across segment");
+    assert_eq!(
+        recovered.prepare_dispatch(&s, &id, 200).unwrap(),
+        bytes,
+        "dispatch receipt mutated or lost"
+    );
+    let fresh = recovered.export_trace(&new_id, 20).unwrap();
+    assert_eq!(fresh["initial_actions"][0]["id"], action()["id"]);
+    assert_eq!(fresh["initial_llm_requests"][0]["id"], "7".repeat(32));
+    assert_eq!(fresh["initial_inbox_wakes"], json!([0]));
+    assert!(fresh["records"].as_array().unwrap().is_empty());
+    coglet_runtime::Runtime::import_trace(&fresh).unwrap();
+    drop(recovered);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}

@@ -189,6 +189,9 @@ The unimplemented boundaries remain explicit:
   deterministic record fields remain checked. Simple enqueue retains bounded
   tail admission while fenced; it cannot consume or reorder the attempted prefix.
 - Independent exact-head review, green CI, merge, and board review handoff.
+  Segment transfer also retains pending actions, LLM requests, inbox wakes and
+  durable dispatch receipts across successor reopen. Extra malformed
+  header/record/blob and divergent-program replay refusals are named tests.
 
 The internal WAL format is not the exported ABI journal. Each internal commit
 contains runtime host state and an optional ABI record in one checked frame;

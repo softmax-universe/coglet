@@ -397,3 +397,65 @@ fn independent_program_replay_and_segment_transfer_preserve_lifetime_state() {
     );
     Runtime::import_trace(&exported).unwrap();
 }
+
+#[test]
+fn malformed_trace_header_record_and_blob_are_rejected() {
+    use serde_json::json;
+    let cases = corpus(include_str!("../../../conformance/abi/provenance.json"));
+    let valid = cases
+        .iter()
+        .map(|c| &c["steps"][0]["send"]["trace"])
+        .find(|t| Runtime::import_trace(t).is_ok())
+        .unwrap()
+        .clone();
+    let mut missing_header = valid.clone();
+    missing_header.as_object_mut().unwrap().remove("version");
+    assert!(
+        Runtime::import_trace(&missing_header).is_err(),
+        "header-less archive imported"
+    );
+    let mut bad_blob = valid.clone();
+    let digest = bad_blob["blobs"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .next()
+        .unwrap()
+        .clone();
+    bad_blob["blobs"][&digest] = json!("00");
+    assert!(
+        Runtime::import_trace(&bad_blob).is_err(),
+        "digest-mismatched blob imported"
+    );
+    let mut bad_record = valid.clone();
+    let mut record = valid["records"][0].clone();
+    record["usage"]["compute"] = json!(record["usage"]["compute"].as_u64().unwrap_or(0) + 1);
+    bad_record["records"] = json!([record]);
+    assert!(
+        Runtime::import_trace(&bad_record).is_err(),
+        "mutated record imported"
+    );
+}
+
+#[test]
+fn replay_rejects_mismatched_independent_program_effects() {
+    use coglet_runtime::MockEngine;
+    use serde_json::json;
+    let cases = corpus(include_str!("../../../conformance/abi/cases.json"));
+    let send = &cases.iter().find(|c| c["name"] == "no-effects").unwrap()["steps"][0]["send"];
+    let mut live = Runtime::from_fixture(send).unwrap();
+    live.step(
+        &send["inputs"],
+        &mut MockEngine::new(send["guest_script"].clone()),
+    )
+    .unwrap();
+    let mut other = send["guest_script"].clone();
+    other["writes"] = json!({"/data/count": "31"});
+    assert!(
+        Runtime::from_fixture(send)
+            .unwrap()
+            .replay(live.records(), &mut MockEngine::new(other))
+            .is_err(),
+        "divergent guest writes replayed as matching"
+    );
+}

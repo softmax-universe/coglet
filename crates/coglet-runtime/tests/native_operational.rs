@@ -179,9 +179,22 @@ impl Link {
             }
         }
     }
+    fn recv_until(&mut self, kind: &str) -> Value {
+        loop {
+            let message = decode(&self.recv());
+            if message["type"] == kind {
+                return message;
+            }
+            assert_eq!(
+                message["type"], "health",
+                "unexpected {} while waiting for {kind}",
+                message["type"]
+            );
+        }
+    }
     fn hello(&mut self) {
         self.send("hello",json!({"surface":S,"offer":{"versions":["0.1"]},"clock":1000,"correlation_id":"1".repeat(32)}));
-        assert_eq!(decode(&self.recv())["type"], "hello_reply");
+        assert_eq!(self.recv_until("hello_reply")["type"], "hello_reply");
     }
     fn grants(&mut self, epoch: u64) {
         self.send("capabilities",json!({"revision":1,"clock":1100,"entries":[{"name":"expression.control","events":[],"reads":[],"actions":["expression.set_expression"],"exclusive":["display.face"],"schemas":{"expression.set_expression":"https://coglet.dev/spec/messages/expression.schema.json#/$defs/set-expression"}}],"correlation_id":"2".repeat(32)}));

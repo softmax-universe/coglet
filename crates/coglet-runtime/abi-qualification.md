@@ -44,8 +44,15 @@ new-intent refusal (including direct preparation), and untouched queued attempt.
 `guest_exit_is_guest_return_abort_including_zero_status` proves typed outcome
 classification only. Native WASI/proc_exit execution remains admission-refused.
 
-Remaining: broader pending action/LLM/inbox/dispatch segment-transfer scenarios,
-additional malformed trace/replay negatives, independent all-profile replay
-resolution, final exact-head independent review, required CI and merge. Internal
-WAL history is retained with a 64 MiB frame bound and no reclamation; storage
-exhaustion backpressures rather than dropping receipts/lifetime IDs.
+`durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts`
+carries pending actions, LLM requests, inbox wakes and translated dispatch
+receipts across successor reopen. `malformed_trace_header_record_and_blob_are_rejected`
+and `replay_rejects_mismatched_independent_program_effects` cover extra
+negatives beyond the frozen 80. Native playback/heard control tests skip
+runtime health pings when waiting for act/read; they do not relax the 1s/3s
+protocol clocks.
+
+Remaining: independent all-profile replay resolution (see matrix above), final
+exact-head independent review, required CI and merge. Internal WAL history is
+retained with a 64 MiB frame bound and no reclamation; storage exhaustion
+backpressures rather than dropping receipts/lifetime IDs.
