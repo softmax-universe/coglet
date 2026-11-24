@@ -239,7 +239,7 @@ async fn audit_failure_precedes_authority_and_registry_failure_has_durable_recov
     let hub = SecretKey::generate().public();
     let kernel = Kernel::open(dir.path(), hub, Arc::new(|| Some(1))).unwrap();
     let db = Connection::open(dir.path().join("kernel.db")).unwrap();
-    let auth = Connection::open(dir.path().join("authority.db")).unwrap();
+    let auth = Connection::open(dir.path().join("kernel.db")).unwrap();
     let r = registration(hub);
     db.execute_batch("CREATE TRIGGER fail_audit BEFORE INSERT ON audit BEGIN SELECT RAISE(ABORT,'injected audit failure'); END;").unwrap();
     assert!(kernel.register(r.clone()).await.is_err());

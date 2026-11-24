@@ -17,6 +17,8 @@ pub enum Error {
     Full,
     #[error("permission_denied")]
     Denied,
+    #[error("split authority.db state requires explicit offline migration")]
+    SplitAuthority,
     #[error("{0}")]
     Authority(#[from] coglet_proto::authority::AuthorityError),
     #[error("storage unavailable")]

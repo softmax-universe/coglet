@@ -57,8 +57,9 @@ receipt without new effects or audit. Conflicting bytes/context cannot replace i
 
 Admission holds the State → boundary fence and an IMMEDIATE SQL transaction,
 serializing registry/current-policy/generation reads through commit. Actor authority
-uses a revision CAS witness. Shared enrollment/delegation Authority has a separate
-DB and is freshly rechecked before commit, **not** atomically leased across DBs.
+uses a revision CAS witness. Shared enrollment/delegation Authority uses a separate
+connection to `kernel.db` and is freshly rechecked before commit. Those existing
+cross-connection checks are **not** a single transaction-bound authority lease.
 Build/signature, required policy+ticket gate union, original-propose approval and
 capability/state compatibility are rechecked at promote, including after adapter
 preparation. Even optional approval references must authenticate before audit.
@@ -123,6 +124,21 @@ receipt observation channel. Wait timeout drops observation only, not execution.
 The driver is **not connected to `serve` startup yet**: no production Handler,
 transactional grant/enrollment configuration, qualified signed builder or durable
 deploy saga is supplied by these components.
+
+New installations keep shared Authority tables in `kernel.db`. Any existing
+`authority.db` entry fails startup with an explicit offline-migration requirement,
+before creating replacement state; there is no automatic migration or deletion.
+`Authority::configure_grant_in` writes an exact enrolled-peer grant through a
+caller-owned transaction. It requires a usable clock and future expiry, refuses
+same-generation changes/rollback, and leaves actor/ticket scopes independent. It
+does not authenticate the operator, enforce local grant policy or fence in-flight
+dispatch. Production code must supply those before exposing it through a Handler.
+
+`operator_grant_receipt_audit_and_authority_share_one_commit` uses actual Store and
+Authority connections to prove audit-failure rollback of configuration and terminal
+receipt, then exact retry after reopen. This is configuration storage proof, not
+socket-to-runtime deployment. Enrollment-window/hash-only provisioning, revocation
+and production Handler integration remain incomplete.
 
 Named component proofs include `operator_stale_socket_requires_exclusive_state_lock`,
 `operator_state_lock_rejects_hardlink_without_touching_target`,
