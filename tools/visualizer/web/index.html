@@ -4,6 +4,21 @@
 <main><aside><h1>Coglets</h1><label>Filter <kbd>/ · ⌘K</kbd><input id="filter" type="search" placeholder="ID, event, source…"></label><nav data-testid="coglets" aria-label="Coglets"></nav><p class="muted">Explicit operator export<br>Read-only · no control grants</p><small id="updated"></small></aside>
 <article><div class="heading"><h1>Committed state</h1><span id="step"></span></div><p id="provenance" class="muted">Waiting for a complete exported record. Runtime readiness is unknown.</p>
 <div class="heading"><span data-testid="mode">Following latest export</span><button id="live">Follow live</button></div><nav data-testid="timeline" aria-label="State history"></nav>
+<section id="simulation-panel" aria-label="Offline world replay">
+<h2>Simulated mode / offline world replay</h2>
+<p data-testid="simulation-scope" class="muted">Seeded world dynamics only. Guest hashes are recorded, not verified. No guest execution, live effects, or provider calls.</p>
+<label>Load simulation archive<input id="simulation-file" type="file" accept=".json,application/json"></label>
+<p data-testid="simulation-status" role="status">Select a private M2 world replay archive.</p>
+<div id="simulation-controls" hidden>
+<div class="simulation-buttons"><button id="previous-world" aria-label="Previous world step">←</button><span data-testid="simulation-step"></span><button id="next-world" aria-label="Next world step">→</button></div>
+<label>World step<input id="world-step" type="range" min="0" max="0" value="0" step="1"></label>
+<p>Computed world hash <code data-testid="simulation-hash"></code></p>
+<p>Recorded world hash <code data-testid="expected-world-hash"></code></p>
+<pre data-testid="simulation-state"></pre>
+<label>Action at selected world step<select id="world-action"></select></label>
+<div class="simulation-buttons"><button id="run-what-if">Run what-if</button><button id="replay-inputs">Replay recorded inputs</button></div>
+<p class="muted">The selected action produces the next world step. A fork keeps all other recorded actions; it does not rerun the coglet policy.</p>
+</div></section>
 <section><h2>World observation</h2><div data-testid="world"></div></section>
 <section><h2>Snapshot / data</h2><code data-testid="hash"></code><div data-testid="files"></div></section>
 <section><h2>Inbox</h2><div data-testid="inbox"></div></section>

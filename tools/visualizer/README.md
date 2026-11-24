@@ -25,7 +25,9 @@ Open the private `http://127.0.0.1:8088/#…` launch URL printed by the server. 
 fragment capability is consumed in memory and removed from browser history;
 API calls carry it in an authorization header. Reload by reopening the original
 launch URL. Restarting the server revokes the old capability. Do not share it.
-There is deliberately no wildcard/listen-network option or HTTP mutation route.
+There is deliberately no wildcard/listen-network option or runtime mutation route.
+The authenticated POST endpoint computes offline simulations only; it does not
+write an archive, control a runtime, or contact a provider.
 
 ## Observe an authorized native or simulator export
 
@@ -75,6 +77,71 @@ is scaled at 70 pixels/unit and clipped visibly to track bounds. Unsupported or
 malformed observations show an explicit unavailable state, never a made-up world.
 Simulators with a different state shape should supply a **trusted local export
 adapter** rather than change their protocol to match this UI.
+
+## Offline simulated world mode
+
+The additional panel runs the **production Python M2 world model**, not a second
+JavaScript approximation and not recorded-output injection. It reconstructs the
+world from an explicit seed/configuration and ordered action inputs. Every
+baseline world state/hash must match a recorded `sim.gridbot_state` or
+`sim.cartpole_state` event before a result is shown. An edited action forks that
+same baseline and reports the first divergent **world** step and the computed
+versus recorded world hash. The world-step slider supports Home/End and arrow
+keys; previous/next buttons also work. Replay recorded inputs resets the fork.
+
+For the committed actual M2 Gridbot run (producer/input provenance remains in
+`tests/fixtures/native-m2-gridbot-trace.provenance.json`):
+
+```sh
+cd tools/visualizer
+uv run --locked prepare_simulation.py \
+  --trace tests/fixtures/native-m2-gridbot-trace.json \
+  --world gridbot-v1 --seed 42 --config '{"width":8,"height":8}' \
+  --actions '["east","east","south","south"]' \
+  --output /private/run/world-replay.json
+uv run --locked server.py --trace tests/fixtures/native-m2-gridbot-trace.json
+```
+
+Open the private launch URL and choose `world-replay.json` under **Load simulation
+archive**. No upload is made until that explicit selection; the archive stays
+in the browser/server process memory and is not persisted. **Follow live** leaves
+simulation, discards the imported archive and resumes the original export.
+Invalid, oversized, incomplete or mismatching imports clear previous results.
+The preparation command creates a new private mode-0600 file atomically and
+refuses overwrite; the containing directory must already exist and be private.
+
+The viewer-local envelope (not a new ABI schema) is:
+
+```json
+{"format":"coglet-world-replay-v1","world":"gridbot-v1","seed":42,
+ "config":{"width":8,"height":8},"actions":["east","east","south","south"],
+ "records":["actual ABI display records with matching world observations"]}
+```
+
+The displayed placeholder in `records` above must be replaced with the actual
+record objects; the preparation tool does that without modifying them. Cartpole
+uses `world: cartpole-v1`, explicit `config: {"max_steps":16}` and `left`/`right`
+actions. Supply the producer's actual seed, configuration and actions, never
+infer missing input pins from displayed output. The real M2 fixture's producer
+records and provenance are unchanged. Limits: 16 MiB input, 1,000 world actions,
+4,000 records, complete one-observation-per-world-step history, one coglet/trace.
+A fork preserves the recorded action count; invalid or early-terminated action
+sequences fail closed rather than inventing continuation states.
+
+**Qualification boundary:** this proves seeded **world dynamics** only. It does
+not re-execute Wasm, verify guest `output_hash` values, rerun the coglet policy,
+authenticate producer identity or replace a complete private ABI archive.
+The guest timeline/files remain explicitly recorded observations and do not
+change when world inputs are edited. Native guest replay/what-if remains a
+separate unfinished portion of the simulated-mode card; do not present this
+world-model subset as full card acceptance.
+
+Named browser acceptance:
+`test_recorded_m2_upload_scrub_step_replay_same_final_hash_and_edited_input_divergence`
+loads the actual M2 run, keyboard-scrubs and steps, independently reconstructs all
+recorded world hashes, shows a first divergent edited action, rejects malformed
+and oversized input without stale state, and checks desktop/390px layouts.
+The existing Python CI job discovers it without any workflow edit.
 
 ## Tests / proof scope
 

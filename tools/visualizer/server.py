@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import importlib.util
 import stat
 from urllib.parse import urlsplit
 
@@ -128,6 +129,54 @@ def make_server(path, *, port=0, world_path=None, source_format="jsonl"):
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
             super().end_headers()
+
+        def do_POST(self):
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            if (self.headers.get("Host") != origin.removeprefix('http://') or
+                    self.headers.get("Origin", origin) != origin or
+                    not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token)):
+                self.send_error(403)
+                return
+            if urlsplit(self.path).path != '/api/simulate':
+                self.send_error(404)
+                return
+            try:
+                length = int(self.headers.get('Content-Length', '-1'))
+                if self.headers.get('Transfer-Encoding') or not 0 < length <= MAX_BYTES:
+                    raise ValueError('Upload size limit')
+                raw = self.rfile.read(length)
+                if len(raw) != length:
+                    raise ValueError('Incomplete upload')
+                def pairs(items):
+                    result = {}
+                    for key, value in items:
+                        if key in result:
+                            raise ValueError('Duplicate JSON key')
+                        result[key] = value
+                    return result
+                def nonfinite(value):
+                    raise ValueError('Nonfinite JSON')
+                payload = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite)
+                if not isinstance(payload, dict) or set(payload) - {'archive', 'actions'}:
+                    raise ValueError('Invalid simulation request')
+                spec = importlib.util.spec_from_file_location('visualizer_simulation', Path(__file__).with_name('simulation.py'))
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                result = module.replay(payload.get('archive'), payload.get('actions'))
+                records = [project(r) for r in payload['archive']['records']]
+                body = json.dumps(browser_values(dict(state='simulated', records=records,
+                                  simulation=result, world_path=None))).encode()
+            except (ValueError, TypeError, KeyError, RecursionError, OSError):
+                self.send_error(400, 'Invalid or incomplete simulation archive; previous result is not current')
+                return
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         def do_GET(self):
             origin = f"http://127.0.0.1:{self.server.server_port}"
