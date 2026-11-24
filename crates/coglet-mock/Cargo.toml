@@ -5,6 +5,11 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+coglet-hub = { path = "../coglet-hub" }
+coglet-proto = { path = "../coglet-proto" }
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "time", "sync", "signal"] }
+tempfile = "3"
 coglet-engine = { path = "../coglet-engine" }
 coglet-llm = { path = "../coglet-llm" }
 coglet-surface-rust = { path = "../../sdk/surface-rust" }

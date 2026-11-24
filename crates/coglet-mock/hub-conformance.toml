@@ -1,0 +1,10 @@
+[[implementations]]
+name = "coglet-mock-hub-real-iroh"
+suites = ["hub"]
+peer_roles = ["device"]
+transport = "stdio"
+command = ["target/debug/examples/mock_hub_peer"]
+
+[implementations.fixtures."hub.enroll-reconnect"]
+[implementations.fixtures."hub.health-minimal"]
+[implementations.fixtures."hub.enroll-unsupported-version"]
