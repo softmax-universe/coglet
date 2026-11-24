@@ -1,51 +1,52 @@
 # ROUTER enrollment implementation notes
 
-## Contract and boundaries
+## Boundaries
 
-- Frozen `spec-v0:spec/hub-protocol.md`: pinned ROUTER identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, fresh enrollment per connection, null-invite recovery after ambiguous success. Short-code lookup and QR encoding are not wire methods. Keep existing code identifiers unchanged.
-- All six prerequisite DONE receipts recovered from authorized replicas (PR12/48/58/74/101/114). Darwin subprocess validation explicitly refuses before spawn; Linux unreaped-leader custody is unchanged. Portable SDK CSPRNG repair is integrated.
-- Configure-only extension: preserve Settings sidebar/search/title/DesignGroup, onboarding stages/illustration/login/voice/footer. Replace only the two enrollment placeholder rows with shared controls. Menu availability is orthogonal to voice/activity.
+Frozen `spec-v0:spec/hub-protocol.md`: pinned ROUTER identity, ALPN `coglet/hub/0`, peer-bound 256-bit invite, null-invite recovery after ambiguous success. Local pairing-envelope and QR-image decoding are provisioning UI, not a new wire method or remote short-code lookup. Code identifiers remain unchanged. All prerequisite DONE receipts recovered through authorized replicas (PR12/48/58/74/101/114). Darwin validator refuses before spawn; Linux custody is unchanged.
 
-## Implemented, partial
+Configure-only UI extension preserves Settings sidebar/search/title/DesignGroup and onboarding stages/illustration/login/voice/footer. Menu availability is independent of voice activity. Baseline checker passed before edits; post-change native visual comparison is still required.
 
-`HubTransport/` is a standalone Cargo package. The production helper uses landed coglet-proto Session and real iroh. Key/config arrive only through anonymous pipes, never argv/env/files/logs. Output is sanitized state/public device ID. Commands are bounded to16KiB. Null-invite recovery precedes initial invitation; connected only follows version selection; QUIC closure emits offline; EOF closes the endpoint.
+## Implemented, not yet accepted
 
-Swift HubAccount persists a32-byte generated-once seed before use, fails closed on Keychain errors and never silently rotates. HubKeychain injection tests use an in-memory backend; Security backend uses a generic password and `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Non-secret configuration uses UserDefaults; invitation stays in memory. HubConnection provides cancelable, generation-fenced reconnect with30s inclusive jitter cap and local sign-out deletion. ProcessHubLink bridges private pipes and fences stale callbacks.
+- App-owned Rust helper uses real iroh and landed coglet-proto Session. Key/invitation cross anonymous pipes only, never argv/env/files/logs. Bounded16KiB commands; output contains sanitized states/public device ID. Null-invite recovery precedes initial invitation. QUIC loss emits offline; EOF closes endpoint.
+- Swift HubAccount persists generated32-byte seed before use, fails closed on storage errors, and never silently replaces an enrolled missing key. Injected HubKeychain supports memory tests; Security backend uses add-only generic password with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no iCloud synchronization. UserDefaults contains non-secret configuration; invite remains memory-only.
+- HubConnection provides generation-fenced retries with30s inclusive jitter cap, persisted enrollment without invite, offline status and local sign-out. ProcessHubLink uses bounded POSIX read with EINTR retry: Foundation fill-to-count read stalled the persistent pipe's short readiness frame.
+- Shared HubSettings summary and pairing sheet are wired into Settings and final onboarding. Pasted local envelope, local CoreImage QR import, developer manual pinned node/address/relay/invite, public identity copy/name/status/signout. Testing/snapshot mode returns before Keychain/transport construction. Inputs cleared on cancel/submission/dismissal. ShellModel startup/shutdown and menu status are wired.
+- Universal helper build installs Contents/Helpers/softmax-hub-link. Xcode post-build uses --locked release Apple targets and correct lipo grammar (input before variadic -verify_arch). Dev signing signs helper before outer app.
 
-## Verified native transport gate
+## Established native evidence
 
-Full logs from Softmax Mac run45386256577 at e0c953981e5a19dc367fb67c20b7180808ca0f0d were read independently:
+- Account missing-API RED45337370014; bridge RED45339321655; injected Keychain API RED45339491432.
+- Focused persistent-pipe readiness RED45382448795, then GREEN45386256577@e0c9539. Required real `testHubConnectionTestsEnrollDropOfflineAndRecoverAgainstCogletMock` PASS1.796s, focused readiness PASS0.030s, six core tests pass; no skips in required native lane. Overall job later failed packaging, not transport.
+- Strict portable lipo fake exposed invalid argv REDexit64; production eb605f9 fixed argument order. Native45391611490@5e07553 produced real universal arm64+x86_64 helper, independently confirmed with file(1) after downloading app artifact. Not signature proof.
+- Native45391611490 UI RED at SoftmaxUITests.swift:315: final onboarding lacked Pair router entry.
+- UI implementation b4f0e9e then native45398673357 compiler RED: catch binding shadowed State error. Fixed with self.error in fa2c304.
+- At this checkpoint native45403353278@fa2c304 is IN_PROGRESS in app/unit/UI step; account, required real coglet-mock, runtime and portable lanes already succeeded. Actual UI behavior, native signatures and render comparison not yet established. PR98 remains OPEN/DRAFT at fa2c304; do not cancel this run by advancing PR before its result is read.
 
-- Four HubConnectionTests and two HubKeychainTests pass.
-- Required `testHubConnectionTestsEnrollDropOfflineAndRecoverAgainstCogletMock` passes in1.796s, executing real helper and real coglet-mock launcher, not a fake or skip.
-- Required `testProcessPublishesReadyBeforeItsOutputPipeCloses` passes in0.030s.
-- This verifies the bounded4096-byte POSIX pipe-reader repair after both tests failed at initial deviceID on f441b29. EINTR retry,16KiB parser bound and generation fences are retained.
-- The overall native job still FAILED later during app packaging, so it is not all-green acceptance.
+## Process recovery tracer bullets
 
-Durable run: https://github.com/softmax-universe/coglet/actions/runs/45386256577/job/138417833696 . Worker raw logs: macos-45386256577-{full,failed}.log.
+TEST-ONLY99ee882 (source branch wip/t_01a205f93f231486) was tested in native45398062674. Independently reread actual RED: `testHelperCrashBeforePairingRestartsWithoutRotatingIdentity` starts1 vs expected2. Root cause: scheduleRetry rejected every unpaired runtime, including restart=true. Integrated tests as e7caae1; minimal production32203fc permits restart without pending/persisted enrollment, retaining cancellation and generation fence.
 
-## Packaging repair and UI RED pending
+Native GREEN candidate45409288288 is dispatched on wip/t_01a205f93f231486-crash-green at32203fc86b5ddad18110377c91d51382a847cb0e. It also includes `testClosedHelperInputThrowsWithoutTerminatingClient`, ordered by the fixture closing stdin before emitting ready. Need actual result; no speculative SIGPIPE fix yet. This branch is deliberately separate from active PR UI verification.
 
-The later native failure is `lipo: unknown architecture specification flag: <staging path>`: the input filename followed the variadic `-verify_arch` list. Tightened the portable lipo fake to enforce actual argument grammar; observed RED exit64. Production commit eb605f9 moves the input before `-verify_arch arm64 x86_64`; portable GREEN follows. All five portable packaging/signing tests also pass on5e07553 (portable-run1-5e07553.log). Fake orchestration is not native architecture/signature proof.
+Next TEST-ONLY tracer bullet f02380d32da88681322f47e3efe9d615690cdc4a adds `testTransientHelperLaunchFailureRestartsWithoutRotatingIdentity`: throw once from link.start, expect automatic second startup preserving key. Native RED candidate45409494369 is dispatched on wip/t_01a205f93f231486-launch-red. Production catch still does not retry. Read intended assertion RED before changing production. This RED-only commit must not be merged unchanged into PR.
 
-`scripts/build-hub-helper.sh` builds --locked --release for aarch64/x86_64 Apple targets, lipo-merges/verifies and atomically installs an executable under Contents/Helpers/softmax-hub-link. project.yml invokes it post-build. sign-dev.sh signs the helper before the outer app; release recursively signs Mach-O. Native packaged-helper resource/signature proof remains required.
+## Focused read-only audit leads (not executed proofs)
 
-PR98 is OPEN/DRAFT at5e07553c39445e5c7f353ba2a812e18c98a5e1c2. Native run45391611490 at that exact head is IN_PROGRESS. It contains the packaging repair and a new test-only UI RED probe, `testRouterEnrollmentConfigurationInOnboardingAndSettings`. The test expects shared `Pair router…` entry points, a pairing sheet with `Pairing code`, `Import QR image…`, a disabled empty `Connect router`, Cancel return, and preserved Settings navigation/onboarding login/footer. Production UI is still unchanged. Read actual failure logs before implementation; packaging/compiler failures do not establish intended UI RED. Earlier packaging-only run45391423072 was superseded/cancelled by this push.
+A separate investigative session identified these app-owned paths requiring regressions before acceptance:
 
-## Next implementation slice
+1. start() catch never re-arms retry; paired Reconnect calls retryNow, which no-ops when running=false. Test-only tracer above is pending.
+2. pending invitation cannot be replaced after unavailable/wrong invite; enroll rejects pending!=nil while UI continues showing Pair router. Preserve null-invite ambiguous-success recovery, but provide explicit cancel/replacement semantics and test late responses/generation fencing rather than simply clearing pending on every offline event.
+3. saveHub failure after connected calls stopLink with no restart, stranding the pending recovery path.
+4. failed sign-out clears deviceID/running but retains pairing; UI hides Sign out (deviceID nil) and shows ineffective Reconnect. Keep deletion failure recoverable without silently rotating identity. Account intentionally deletes key first so stale enrollment fails closed; do not weaken that invariant just to hide error.
+5. POSIX reader/stop descriptor ownership and SIGPIPE safety need native evidence. XCTest signal disposition alone may differ from shipped app; do not claim robust production behavior solely from a same-process test.
 
-UI baseline gate PASS in Design/hub-enrollment-baseline.md. Prior normal light/dark Settings and final onboarding renders were inspected, capture times unknown, publication provenance recorded, marked stale against newer source. Native post-change large-text/high-contrast comparison remains required; baseline status is unverified.
+These are hypotheses grounded in source reading, not claimed regressions/GREEN. Line numbers in the investigative summary were concatenated offsets, not actual per-file locations.
 
-Use a shared compact connection summary plus `Pair router…` sheet in the existing Settings Hub/onboarding group, not a new wizard/navigation. The sheet progressively discloses developer pinned manual address entry; it imports a local QR image or accepts pasted provisioning JSON. Envelope fields: name/hub/addresses plus optional relay/invite/device. Validate through HubPairing; do not invent a remote short-code lookup. Display/copy public device ID before invite provisioning. Preserve token fonts, cancel/default actions, and optional onboarding completion without enrollment. Clear pasted invitations on cancellation/success; never persist or log them.
+## CI and remaining acceptance
 
-Still required:
+At fa2c304 current PR Python45403353268 succeeds. Earlier Python45391611789@5e07553 failed duplex-audio.speech/heard-truncation step7 TimeoutError. These are different source trees, not a same-tree rerun; do not claim a quarantine-eligible flake from this alone. docs/ci-quarantine.md covers Rust/conformance IDs, explicitly not Python unit tests; any quarantine needs demonstrated same-tree flakiness and orchestrator owner, not a speculative entry.
 
-1. Verify native lipo repair and intended missing-UI RED in45391611490.
-2. Implement shared controls, QR import, manual pinned address, public ID/name/status/sign-out; wire ShellModel startup/stop and existing menu availability independently of voice. UI-testing/snapshot mode must not access real Keychain or network.
-3. Exercise native UI behavior and render comparison (normal/large/contrast), updating only deliberately reviewed changed snapshots.
-4. Verify actual universal helper in the app bundle, resource lookup, inside-out signing; revisit private-pipe SIGPIPE and process-crash/restart regression coverage.
-5. Independent exact-head review, every required check green, repository merge queue, then kanban_request_review with published_pr after merge. No delivery claim yet.
+Fresh this run: test_hub_packaging.py1 + test_dev_signing.py4 PASS; fake orchestration only, not native signature proof. git diff --check PASS. Rust helper2 real-iroh tests, strict Clippy/fmt remain historical4d8c674 evidence, not rerun this slice. Linux worker has no Swift toolchain; all Swift execution evidence is hosted.
 
-## TDD provenance
-
-Rust initial library RED then real-iroh GREEN. Swift missing core API RED45337370014; missing process bridge RED45339321655; missing Keychain injection RED45339491432; focused native readiness RED45382448795 then GREEN45386256577. UI behavior probe is pending, not a claimed RED. Linux worker has no Swift toolchain; native results are hosted evidence, never local execution. Earlier Rust real-iroh two-test/strict-Clippy/fmt passes at4d8c674 are historical, not rerun during this packaging/UI-probe slice.
+Still required: read native UI result and download/inspect normal/large/contrast renders; run baseline presentation checker after comparison and update only reviewed changed baselines; actual universal helper/resource/inside-out signature proof; process tracer GREENs and further controller error-path regressions/fixes; independent exact-head review; all required CI green; native merge queue; finally kanban_request_review with metadata.published_pr AFTER merged. No acceptance or delivery claim yet.
