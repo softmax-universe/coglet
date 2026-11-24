@@ -32,7 +32,7 @@ class NativeTools:
                 raise ValueError('native tool must be an existing absolute executable')
 
 
-def setup(wasm, name):
+def setup(wasm, name, seed=7):
     cases = json.loads((ROOT / 'conformance/abi/cases.json').read_text())
     result = next(c['steps'][0]['send'] for c in cases if c['name'] == 'no-effects')
     result['manifest'].update(id=C, subscriptions=[f'sim.{name}_state'],
@@ -43,7 +43,7 @@ def setup(wasm, name):
     provenance = decode_profile(bytes.fromhex(result['initial_files']['/code/build/provenance.cbor']))
     provenance['rewritten_sha256'] = sha256(wasm).hexdigest()
     result['initial_files']['/code/build/provenance.cbor'] = encode_profile(provenance).hex()
-    result['native_schedule'] = dict(trace_id=result['inputs']['trace_id'], seed=7,
+    result['native_schedule'] = dict(trace_id=result['inputs']['trace_id'], seed=seed,
                                      runtime_bytes=16_777_216, stack_bytes=262_144)
     return result
 
@@ -73,14 +73,26 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         raise ValueError('nonempty rewritten wasm bytes required')
     if type(minimum_actions) is not int or minimum_actions < 1:
         raise ValueError('positive minimum_actions required')
+    if type(seed) is not int or not 0 <= seed < 2**64:
+        raise ValueError('u64 seed required')
+    if type(max_steps) is not int or not 1 <= max_steps <= 1024:
+        raise ValueError('bounded max_steps required')
     name = world
     kind = Gridbot if name == 'gridbot' else Cartpole
-    make_world = lambda s: kind(s, max_steps=max_steps) if kind is Cartpole else kind(s)
+
+    class BoundedGridbot(Gridbot):
+        def step(self, direction):
+            super().step(direction)
+            self.done = self.done or self.steps >= max_steps
+            return self.snapshot()
+
+    make_world = lambda s: (Cartpole(s, max_steps=max_steps) if kind is Cartpole
+                            else BoundedGridbot(s))
     with tempfile.TemporaryDirectory(prefix='eval-', dir=os.environ['TMPDIR']) as short:
         path = Path(short)
         assert len(str(path / 'sock/control').encode()) < 104
         world = make_world(seed)
-        config = setup(wasm, name)
+        config = setup(wasm, name, seed)
         (path / 'setup.json').write_text(json.dumps(config))
         (path / 'binding.json').write_text(json.dumps(runtime_binding(S, [C])))
         stderr = (tmp_path / 'daemon.log').open('w+')
@@ -166,6 +178,8 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
             failure = None
             if kind is Gridbot and (world.x, world.y) != (world.goal_x, world.goal_y):
                 failure = 'goal_not_reached'
+            elif kind is Cartpole and world.steps < max_steps:
+                failure = 'episode_terminated_early'
             elif len(actions) < minimum_actions:
                 failure = 'minimum_actions'
             return dict(world=name, seed=seed, max_steps=max_steps, minimum_actions=minimum_actions,
