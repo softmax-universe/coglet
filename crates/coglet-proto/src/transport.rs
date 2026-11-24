@@ -179,6 +179,38 @@ impl GitStream<'_> {
     }
 }
 
+/// Local fetch authority and acceptance boundary. Session verifies the signed
+/// routing pins; the service must check current delegation/grants and the latest
+/// durable watermark in `authorize` BEFORE credit. `accept` must validate actual
+/// Git/archive/provenance and commit with current authority/CAS under one write
+/// lock. Both futures run inside the original deadline and shared Git permit.
+/// Blocking work must fence its own commit with a fresh clock: cancelling an
+/// async future does not stop a detached blocking worker from committing.
+pub trait FetchHandler: Send + Sync {
+    fn authorize<'a>(
+        &'a self,
+        context: RequestContext,
+        request: &'a Value,
+        metadata: &'a crate::git_metadata::VerifiedRef,
+    ) -> Pin<Box<dyn Future<Output = Result<(), TransportError>> + Send + 'a>>;
+
+    fn accept<'a>(
+        &'a self,
+        context: RequestContext,
+        request: Value,
+        metadata: crate::git_metadata::VerifiedRef,
+        sink: crate::quarantine::BundleSink,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, TransportError>> + Send + 'a>>;
+}
+
+/// A remote rejection is not local acceptance. The Accepted value is supplied
+/// by the local FetchHandler, not inferred from a remote terminal success.
+#[derive(Debug)]
+pub enum FetchResult {
+    Rejected(Value),
+    Accepted(Value),
+}
+
 #[derive(Clone)]
 pub struct Session {
     connection: Connection,
@@ -249,6 +281,12 @@ impl Session {
     /// operations initiated by the other endpoint on the same connection.
     pub async fn request(&self, request: Value) -> Result<Value, TransportError> {
         validate("hub-request", &request)?;
+        if matches!(
+            request["method"].as_str(),
+            Some("hub.git.push" | "hub.git.fetch")
+        ) {
+            return Err(error("Git requires streaming API"));
+        }
         if !self.role.permits(request["method"].as_str().unwrap()) {
             return Err(error("wrong method direction"));
         }
@@ -282,6 +320,178 @@ impl Session {
             }
             streams.completed = true;
             Ok(reply)
+        })
+        .await
+        .map_err(error)?
+    }
+
+    /// Push without closing the request direction before receiving credit.
+    /// Returns a validated terminal receipt/error, not a local activation claim.
+    /// The source is never read without credit. Cancellation resets both halves.
+    pub async fn push_git<B: tokio::io::AsyncRead + Unpin>(
+        &self,
+        request: Value,
+        source: &mut B,
+    ) -> Result<Value, TransportError> {
+        use tokio::io::AsyncReadExt;
+        validate("hub-request", &request)?;
+        if request["method"] != "hub.git.push" || self.role != Role::Hub {
+            return Err(error("not a router push"));
+        }
+        let _permit = self
+            .scheduler
+            .admit(
+                "hub.git.push",
+                serde_json::to_vec(&request).map_err(error)?.len(),
+            )
+            .map_err(error)?;
+        let deadline =
+            Instant::now() + Duration::from_millis(request["timeout_ms"].as_u64().unwrap());
+        timeout_at(deadline, async {
+            let (send, recv) = self.connection.open_bi().await.map_err(error)?;
+            let mut streams = StreamGuard::new(send, recv);
+            write_frame(&mut streams.send, &request)
+                .await
+                .map_err(error)?;
+            let id = request["correlation_id"].as_str().unwrap();
+            let size = request["params"]["size"].as_u64().unwrap();
+            let mut state = crate::transfer::Sender::new(id, size).map_err(error)?;
+            let mut remaining = size;
+            let mut buffer = [0; 32768];
+            while remaining > 0 {
+                while state.available() == 0 {
+                    let frame = read_frame(&mut streams.recv).await.map_err(error)?;
+                    if frame["type"] == "error" {
+                        self.check_reply(&request, &frame)?;
+                        if streams.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+                            return Err(error("trailing rejection"));
+                        }
+                        let _ = streams.send.reset(1u32.into());
+                        streams.completed = true;
+                        return Ok(frame);
+                    }
+                    state.credit(&frame).map_err(error)?;
+                }
+                let count = state.available().min(remaining).min(buffer.len() as u64) as usize;
+                source
+                    .read_exact(&mut buffer[..count])
+                    .await
+                    .map_err(error)?;
+                write_frame(
+                    &mut streams.send,
+                    &state.chunk(&buffer[..count]).map_err(error)?,
+                )
+                .await
+                .map_err(error)?;
+                remaining -= count as u64;
+            }
+            write_frame(&mut streams.send, &state.finish().map_err(error)?)
+                .await
+                .map_err(error)?;
+            streams.send.finish().map_err(error)?;
+            let reply = read_frame(&mut streams.recv).await.map_err(error)?;
+            self.check_reply(&request, &reply)?;
+            if streams.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+                return Err(error("trailing push reply"));
+            }
+            streams.completed = true;
+            Ok(reply)
+        })
+        .await
+        .map_err(error)?
+    }
+
+    /// Fetch a signed snapshot. No credit or raw storage is created until current
+    /// local authority/watermark authorization succeeds. Remote terminal + FIN
+    /// precede local acceptance, whose future retains the permit and deadline.
+    pub async fn fetch_git(
+        &self,
+        request: Value,
+        root: &std::path::Path,
+        handler: &dyn FetchHandler,
+    ) -> Result<FetchResult, TransportError> {
+        use crate::git_metadata::{RefKind, VerifiedRef};
+        validate("hub-request", &request)?;
+        if request["method"] != "hub.git.fetch" || self.role != Role::Hub {
+            return Err(error("not a router fetch"));
+        }
+        let _permit = self
+            .scheduler
+            .admit(
+                "hub.git.fetch",
+                serde_json::to_vec(&request).map_err(error)?.len(),
+            )
+            .map_err(error)?;
+        let deadline =
+            Instant::now() + Duration::from_millis(request["timeout_ms"].as_u64().unwrap());
+        let context = RequestContext {
+            peer: self.peer(),
+            local: self.local,
+            deadline,
+        };
+        timeout_at(deadline, async {
+            let (send, recv) = self.connection.open_bi().await.map_err(error)?;
+            let mut streams = StreamGuard::new(send, recv);
+            write_frame(&mut streams.send, &request)
+                .await
+                .map_err(error)?;
+            let transfer = read_frame(&mut streams.recv).await.map_err(error)?;
+            if transfer["type"] == "error" {
+                self.check_reply(&request, &transfer)?;
+                if streams.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+                    return Err(error("trailing rejection"));
+                }
+                let _ = streams.send.reset(1u32.into());
+                streams.completed = true;
+                return Ok(FetchResult::Rejected(transfer));
+            }
+            validate("hub-transfer", &transfer)?;
+            if transfer["correlation_id"] != request["correlation_id"] {
+                return Err(error("transfer correlation mismatch"));
+            }
+            let kind = match request["params"]["ref"].as_str().unwrap() {
+                "refs/heads/hub" => RefKind::Hub,
+                "refs/published/main" => RefKind::Published,
+                "refs/heads/logs" => RefKind::Logs,
+                _ => return Err(error("unsupported fetch ref")),
+            };
+            let metadata = VerifiedRef::verify(
+                &transfer["update"],
+                kind,
+                &self.local.to_string(),
+                request["target"].as_str().unwrap(),
+            )
+            .map_err(error)?;
+            handler
+                .authorize(context.clone(), &request, &metadata)
+                .await?;
+            let size = transfer["size"].as_u64().unwrap();
+            let mut sink = crate::quarantine::BundleSink::create(root, size)
+                .await
+                .map_err(error)?;
+            crate::transfer::receive_chunks(
+                &mut streams.send,
+                &mut streams.recv,
+                request["correlation_id"].as_str().unwrap(),
+                size,
+                transfer["sha256"].as_str().unwrap(),
+                &mut sink,
+            )
+            .await
+            .map_err(error)?;
+            streams.send.finish().map_err(error)?;
+            let reply = read_frame(&mut streams.recv).await.map_err(error)?;
+            self.check_reply(&request, &reply)?;
+            if streams.recv.read(&mut [0]).await.map_err(error)?.is_some() {
+                return Err(error("trailing fetch reply"));
+            }
+            if reply["type"] == "error" {
+                streams.completed = true;
+                return Ok(FetchResult::Rejected(reply));
+            }
+            let accepted = handler.accept(context, request, metadata, sink).await?;
+            streams.completed = true;
+            Ok(FetchResult::Accepted(accepted))
         })
         .await
         .map_err(error)?

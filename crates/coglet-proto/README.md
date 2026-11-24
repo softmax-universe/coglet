@@ -77,7 +77,8 @@ server, mock hub and registry claims are not yet implemented.
   check FIN/trailing frames, validate quarantined Git/archive/provenance, recheck
   authority/watermarks and commit durable refs/receipts before terminal success.
   Responder-side Session streaming dispatch is available through `handle_git`
-  and `GitStream` (below); initiator-side integration remains incomplete.
+  and `GitStream` (below); guarded initiator transport uses `push_git`/`fetch_git`.
+  Current-authority and durable acceptance integration remains incomplete.
   `quarantine::BundleSink` supplies a private bounded raw bundle file, with
   <=32 KiB writes fsynced off-reactor before returning. The limit is checked
   before writing; I/O failure poisons the file. Drop removes its generated
@@ -340,13 +341,35 @@ without completing its streaming helper. This transport gate does not prevent a
 custom handler from violating its own authority/transaction contract; never
 perform mutations before verified input or bypass the durable store checks.
 
+`Session::push_git` keeps the request direction open until credited chunks/end
+finish, then sends FIN and validates the terminal frame/FIN. A valid rejection
+before credit is preserved without reading the source. As with `request`, its
+`Ok(Value)` can be a wire error: inspect `type`; it is not an activation claim.
+The sender trusts its local request/source, reads exactly declared size (not EOF),
+and relies on the receiver for hash/admission verification.
+
+`Session::fetch_git` validates transfer schema, correlation and signed routing
+pins, then awaits `FetchHandler::authorize` before creating quarantine or emitting
+credit. That callback must check current authority and the latest durable
+watermark. Terminal reply/FIN precede `FetchHandler::accept`; acceptance must
+validate actual Git and recheck authority/CAS in durable storage, even for an
+identical statement. `FetchResult::Rejected` distinguishes a remote error from a
+local `Accepted` callback result. Both callbacks retain the shared Git permit and
+original deadline. A detached blocking commit must use a fresh deadline-aware
+trusted clock under the write lock; cancelling its awaiter cannot stop the worker,
+and the Session permit is released at cancellation. Receipt recovery is mandatory
+when commit outcome is ambiguous. `request` explicitly rejects Git methods locally.
+
 `tests/git_session_iroh.rs` exercises 150000-byte push/fetch through actual Session
-dispatch over real iroh, push success withheld until FIN, missing-FIN timeout,
-trailing-end rejection with quarantine cleanup and code-1 reset, and fail-closed
-legacy dispatch (mutation counter stays zero). These are **raw transport** tests,
-not real Git admission. The unary `Session::request` is still not a Git client.
-Initiator integration, pre-credit durable watermark checks, operation receipts,
-full validator/store integration and end-to-end restart/replay/limit proofs remain.
+initiator and responder APIs over real iroh, push success withheld until FIN,
+missing-FIN timeout, trailing-end rejection with quarantine cleanup and code-1
+reset, and fail-closed legacy dispatch (mutation counter stays zero). It also
+holds two local acceptance callbacks after terminal FIN to prove both Git slots
+remain occupied, checks deadline cancellation removes custody/releases the slot,
+and preserves a pre-credit rejection with an empty source. These are **raw
+transport** tests, not real Git admission. Concrete pre-credit authority/watermark
+checks, durable operation receipts, full validator/store integration and
+end-to-end restart/replay/limit proofs remain.
 
 ## Remaining before full protocol acceptance
 

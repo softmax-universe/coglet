@@ -10,6 +10,105 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{future::Future, path::PathBuf, pin::Pin, sync::Arc, time::Duration};
 
+struct RawFetch;
+impl coglet_proto::transport::FetchHandler for RawFetch {
+    fn authorize<'a>(
+        &'a self,
+        _: RequestContext,
+        _: &'a Value,
+        metadata: &'a VerifiedRef,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<(), coglet_proto::transport::TransportError>> + Send + 'a>,
+    > {
+        Box::pin(async move {
+            assert_eq!(metadata.signed()["statement"]["generation"], 1);
+            Ok(())
+        })
+    }
+    fn accept<'a>(
+        &'a self,
+        _: RequestContext,
+        _: Value,
+        _: VerifiedRef,
+        sink: coglet_proto::quarantine::BundleSink,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Value, coglet_proto::transport::TransportError>> + Send + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            drop(sink);
+            Ok(json!("raw-only"))
+        })
+    }
+}
+
+struct DenyFetch;
+impl coglet_proto::transport::FetchHandler for DenyFetch {
+    fn authorize<'a>(
+        &'a self,
+        _: RequestContext,
+        _: &'a Value,
+        _: &'a VerifiedRef,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<(), coglet_proto::transport::TransportError>> + Send + 'a>,
+    > {
+        Box::pin(async {
+            Err(coglet_proto::transport::TransportError(
+                "local conflict".into(),
+            ))
+        })
+    }
+    fn accept<'a>(
+        &'a self,
+        _: RequestContext,
+        _: Value,
+        _: VerifiedRef,
+        _: coglet_proto::quarantine::BundleSink,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Value, coglet_proto::transport::TransportError>> + Send + 'a,
+        >,
+    > {
+        panic!("denied metadata cannot reach acceptance")
+    }
+}
+
+struct HoldFetch {
+    entered: tokio::sync::Semaphore,
+    release: tokio::sync::Semaphore,
+}
+impl coglet_proto::transport::FetchHandler for HoldFetch {
+    fn authorize<'a>(
+        &'a self,
+        _: RequestContext,
+        _: &'a Value,
+        _: &'a VerifiedRef,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<(), coglet_proto::transport::TransportError>> + Send + 'a>,
+    > {
+        Box::pin(async { Ok(()) })
+    }
+    fn accept<'a>(
+        &'a self,
+        _: RequestContext,
+        _: Value,
+        _: VerifiedRef,
+        sink: coglet_proto::quarantine::BundleSink,
+    ) -> Pin<
+        Box<
+            dyn Future<Output = Result<Value, coglet_proto::transport::TransportError>> + Send + 'a,
+        >,
+    > {
+        Box::pin(async move {
+            self.entered.add_permits(1);
+            let _sink = sink;
+            self.release.acquire().await.unwrap().forget();
+            Ok(json!("released"))
+        })
+    }
+}
+
 struct Service {
     root: PathBuf,
 }
@@ -95,6 +194,7 @@ async fn real_iroh_session_dispatches_push_before_fin_and_fin_precedes_handler_s
         let ds = Session::new(dc, device.id(), Role::Device).unwrap();
         let hs = Session::new(hc.clone(), hub.id(), Role::Hub).unwrap();
         let service = Arc::new(Service { root:root.clone() });
+        let initiator = hs.clone();
         let serving_hub = tokio::spawn(hs.serve(service.clone()));
         let enrollment = json!({"method":"hub.enroll","target":null,"correlation_id":"ab".repeat(16),"timeout_ms":2000,
             "params":{"offer":{"versions":["0.1"]},"invite":null}});
@@ -109,6 +209,7 @@ async fn real_iroh_session_dispatches_push_before_fin_and_fin_precedes_handler_s
         let id = "cd".repeat(16);
         let request = json!({"method":"hub.git.push","target":target,"context":{"actor":format!("hub:{}",hub.id())},"correlation_id":id,"timeout_ms":5000,
             "params":{"update":update,"size":bytes.len(),"sha256":hex::encode(Sha256::digest(&bytes))}});
+        assert_eq!(initiator.push_git(request.clone(), &mut bytes.as_slice()).await.unwrap()["result"]["state"], "queued");
         let (mut send, mut recv) = hc.open_bi().await.unwrap();
         write_frame(&mut send, &request).await.unwrap();
         coglet_proto::transfer::send_chunks(&mut send, &mut recv, &id, bytes.len() as u64, &mut bytes.as_slice()).await.unwrap();
@@ -123,6 +224,34 @@ async fn real_iroh_session_dispatches_push_before_fin_and_fin_precedes_handler_s
         let fetch_id = "ef".repeat(16);
         let fetch = json!({"method":"hub.git.fetch","target":format!("coglet:{}",SecretKey::from([3;32]).public()),
             "context":{"actor":format!("hub:{}",hub.id())},"correlation_id":fetch_id,"timeout_ms":5000,"params":{"ref":"refs/heads/logs"}});
+        assert_eq!(initiator.request(fetch.clone()).await.unwrap_err().0, "Git requires streaming API");
+        assert!(matches!(initiator.fetch_git(fetch.clone(), &root, &RawFetch).await.unwrap(),
+            coglet_proto::transport::FetchResult::Accepted(value) if value == "raw-only"));
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(),0);
+        assert!(initiator.fetch_git(fetch.clone(), &root.join("absent"), &DenyFetch).await.unwrap_err().0.contains("local conflict"));
+        assert!(!root.join("absent").exists(),"authorization precedes quarantine creation");
+        // Both wire transfers and terminal FINs finish, but local acceptance
+        // still owns the two shared Git slots and quarantine custody.
+        let held = Arc::new(HoldFetch { entered:tokio::sync::Semaphore::new(0), release:tokio::sync::Semaphore::new(0) });
+        let mut jobs = Vec::new();
+        for index in 0..2 {
+            let session = initiator.clone(); let root = root.clone(); let held = held.clone(); let mut request = fetch.clone();
+            request["correlation_id"] = json!(format!("{:032x}",index + 1));
+            jobs.push(tokio::spawn(async move { session.fetch_git(request,&root,held.as_ref()).await }));
+        }
+        held.entered.acquire_many(2).await.unwrap().forget();
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(),2);
+        assert!(initiator.fetch_git(fetch.clone(),&root,&RawFetch).await.is_err(),"local acceptance must retain both slots after FIN");
+        held.release.add_permits(2);
+        for job in jobs { assert!(matches!(job.await.unwrap().unwrap(),coglet_proto::transport::FetchResult::Accepted(_))); }
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(),0);
+        let session = initiator.clone(); let local_root = root.clone(); let local_held = held.clone(); let mut short = fetch.clone();
+        short["timeout_ms"] = json!(500);
+        let deadline_job = tokio::spawn(async move { session.fetch_git(short,&local_root,local_held.as_ref()).await });
+        held.entered.acquire().await.unwrap().forget();
+        assert!(deadline_job.await.unwrap().is_err(),"deadline includes local acceptance");
+        assert_eq!(std::fs::read_dir(&root).unwrap().count(),0);
+        assert!(matches!(initiator.fetch_git(fetch.clone(), &root, &RawFetch).await.unwrap(),coglet_proto::transport::FetchResult::Accepted(_)),"deadline releases permit");
         let (mut send, mut recv) = hc.open_bi().await.unwrap();
         write_frame(&mut send,&fetch).await.unwrap();
         let transfer = read_frame(&mut recv).await.unwrap();
@@ -182,6 +311,7 @@ async fn real_iroh_legacy_handler_is_not_invoked_for_streaming_git() {
         let hc = incoming.await.unwrap();
         let ds = Session::new(dc,device.id(),Role::Device).unwrap();
         let hs = Session::new(hc.clone(),hub.id(),Role::Hub).unwrap();
+        let initiator = hs.clone();
         let serving_hub = tokio::spawn(hs.serve(Arc::new(Service {root:PathBuf::new()})));
         ds.request(json!({"method":"hub.enroll","target":null,"correlation_id":"ab".repeat(16),"timeout_ms":1000,
             "params":{"offer":{"versions":["0.1"]},"invite":null}})).await.unwrap();
@@ -194,6 +324,15 @@ async fn real_iroh_legacy_handler_is_not_invoked_for_streaming_git() {
         assert_eq!(calls.load(Ordering::SeqCst),0,"legacy mutation dispatch must not run");
         assert_eq!(reply.unwrap()["error"]["code"],"permission_denied");
         assert_eq!(send.stopped().await.unwrap().unwrap().into_inner(),1);
+        let target = format!("coglet:{}",SecretKey::from([3;32]).public());
+        let push = json!({"method":"hub.git.push","target":target,
+            "context":{"actor":format!("hub:{}",hub.id())},"correlation_id":"ef".repeat(16),"timeout_ms":1000,
+            "params":{"size":150000,"sha256":"ab".repeat(32),"update":{"signer":hub.id().to_string(),"signature":"00".repeat(64),
+                "statement":{"purpose":"hub-ref","hub":hub.id().to_string(),"coglet":target,"ref":"refs/heads/hub","old":null,
+                "new":"12".repeat(20),"archive_sha256":"34".repeat(32),"generation":1}}}});
+        assert_eq!(initiator.push_git(push,&mut tokio::io::empty()).await.unwrap()["error"]["code"],"permission_denied",
+            "valid rejection before credit must not read even an empty source");
+        assert_eq!(calls.load(Ordering::SeqCst),0);
         serving_device.abort(); serving_hub.abort();
         let _ = serving_device.await; let _ = serving_hub.await;
         device.close().await; hub.close().await;
