@@ -66,6 +66,23 @@ final class RuntimeHostTests: XCTestCase {
         late(); host.complete(interrupted)
         await host.poll()
         XCTAssertEqual(try outcome(interrupted)?["error"]?["code"], .text("cancelled"))
+        // A rendered receipt is terminal even if lifecycle teardown beats the
+        // polling task. Exercise the real ledger, not only the output mailbox.
+        await host.submitTranscript("Rendered immediately before stop", generation: host.generation)
+        let beforeStop = try XCTUnwrap(host.actions.last)
+        device.renderedFrames = 2
+        try XCTUnwrap(device.callbacks.last)()
+        await host.stop() // Deliberately no poll between native callback and stop.
+        XCTAssertEqual(try outcome(beforeStop)?["status"], .text("succeeded"))
+        await host.start()
+        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        await host.submitTranscript("Rendered immediately before restart", generation: host.generation)
+        let beforeRestartReceipt = try XCTUnwrap(host.actions.last)
+        device.renderedFrames = 2
+        try XCTUnwrap(device.callbacks.last)()
+        await host.restart() // Deliberately no poll before restarting either.
+        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        XCTAssertEqual(try outcome(beforeRestartReceipt)?["status"], .text("succeeded"))
         // No synthetic UI-success path: actual C ABI panic returns an error.
         #if COGLET_RUNTIME_TEST_HOOKS
         await host.injectCaughtPanicForTesting()
