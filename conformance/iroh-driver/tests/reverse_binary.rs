@@ -93,6 +93,7 @@ async fn python_registry_drives_reverse_fetch_on_existing_connection() -> Result
             r#"{
             "name":"opaque-reverse-fetch", "steps":[
                 {"send":1}, {"expect":2,"within_ms":5000},
+                {"send":7},
                 {"expect":3,"within_ms":5000},
                 {"send":4,"stream":100,"finish":false},
                 {"expect":5,"within_ms":5000},
@@ -145,6 +146,12 @@ incoming_stream = 100
         assert!(recv.read_to_end(1024).await?.is_empty());
         write(&mut send, &[2]).await?;
         send.finish()?;
+        // Wait for the unchanged reply assertion before publishing a reverse
+        // stream: QUIC imposes no ordering between separate operation streams.
+        let (mut barrier_send, mut barrier_recv) = conn.accept_bi().await?;
+        assert_eq!(read(&mut barrier_recv).await?, [7]);
+        assert!(barrier_recv.read_to_end(1024).await?.is_empty());
+        barrier_send.finish()?;
         let (mut send, mut recv) = conn.open_bi().await?;
         write(&mut send, &[3]).await?;
         assert_eq!(read(&mut recv).await?, [4]);

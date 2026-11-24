@@ -12,6 +12,9 @@ use serde_json::{Value, json};
 use std::{collections::HashMap, future::Future, pin::Pin, sync::Arc, time::Duration};
 use tokio::{io::AsyncWriteExt, sync::Mutex, task::JoinSet};
 
+#[path = "support/router_fetch.rs"]
+mod router_fetch;
+
 type Sessions = Arc<Mutex<HashMap<EndpointId, (u64, Session)>>>;
 
 /// Reference adapter only supplies transport around the production Kernel. The
@@ -30,6 +33,7 @@ impl Reference {
         let endpoint = Endpoint::builder(presets::Minimal)
             .secret_key(SecretKey::from_bytes(&[2; 32]))
             .alpns(vec![ALPN.to_vec()])
+            .bind_addr("127.0.0.1:0".parse::<std::net::SocketAddr>()?)?
             .bind()
             .await?;
         let root = state.path().to_owned();
@@ -192,6 +196,9 @@ async fn enroll(session: &Session, token: Option<&str>, id: &str) -> Result<()> 
 #[tokio::main]
 async fn main() -> Result<()> {
     let case = std::env::var("COGLET_CONFORMANCE_CASE")?;
+    if router_fetch::supported(&case) {
+        return router_fetch::run(Backend::start().await?, &case).await;
+    }
     let expected = expected_events(&case);
     if expected.is_none() && !enrollment_supported(&case) {
         return Err("unsupported isolated router fixture".into());
@@ -328,6 +335,7 @@ async fn main() -> Result<()> {
     } else if expected.is_some() {
         enroll(&session, Some(&token), "ff").await?;
     }
+    eprintln!("COGLET_ROUTER_READY");
     let mut input = tokio::io::stdin();
     let mut output = tokio::io::stdout();
     for index in 0..requests {

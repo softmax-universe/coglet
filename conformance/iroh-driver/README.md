@@ -64,8 +64,14 @@ transport watchdog. EOF with any unfinished send is an error. On clean EOF it
 waits for remote read FINs and acknowledgement of all locally finished sends
 before closing the connection. QUIC acknowledgement proves byte delivery, **not**
 application processing, durable import or a passing fixture oracle. Resets and
-transport failures currently fail the driver; expected-reset negative scenarios
-remain unsupported until an explicit, separately tested observation seam exists.
+transport failures fail by default. An isolated negative fixture may opt in to
+`--expect-reset-stream 100` (or `COGLET_FIXTURE_EXPECT_RESET_STREAM=100`). Only an
+actual code-1 reset at a frame boundary on that exact tooling stream qualifies;
+clean FIN, other codes, connection loss and partial framing still fail. The
+driver retires that operation's unfinished send with a code-1 reset. It forwards
+all preceding frames, so the harness terminal drain rejects any unexpected
+credit/disclosure before the reset. This is transport observation, not the local
+policy-conflict or durable-state oracle; both remain fixture responsibilities.
 
 ## Post-wire verification
 

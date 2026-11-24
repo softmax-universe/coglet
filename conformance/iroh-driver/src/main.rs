@@ -18,6 +18,7 @@ use tokio::{
 const MAX_FRAME: usize = 1_048_576;
 const LIMIT: Duration = Duration::from_secs(300);
 
+#[cfg(test)]
 async fn read_frame<R: AsyncRead + Unpin>(reader: &mut R) -> Result<Option<Vec<u8>>> {
     read_frame_limit(reader, MAX_FRAME).await
 }
@@ -58,6 +59,7 @@ async fn bridge<R, W>(
     mut input: R,
     output: W,
     incoming_id: Option<u64>,
+    expected_reset: Option<u64>,
 ) -> Result<()>
 where
     R: AsyncRead + Unpin,
@@ -66,8 +68,9 @@ where
     let output = Arc::new(Mutex::new(output));
     let mut operations = JoinSet::new();
     let mut finishes = JoinSet::new();
-    let mut sends = HashMap::new();
+    let mut sends: HashMap<u64, iroh::endpoint::SendStream> = HashMap::new();
     let mut used = HashSet::new();
+    let mut reset_observed = false;
     let mut waiting_incoming = incoming_id;
     // Reserve before reading stdin: an early send must never silently open a
     // different QUIC stream for the reverse-initiated operation.
@@ -84,7 +87,8 @@ where
                 tokio::select! {
                     frame = &mut next => break frame?,
                     Some(result) = operations.join_next(), if !operations.is_empty() => {
-                        result??;
+                        let (id, reset) = result??;
+                        if reset { reset_observed = true; let mut send = sends.remove(&id).context("reset without open send")?; send.reset(1u32.into())?; }
                     }
                     Some(result) = finishes.join_next(), if !finishes.is_empty() => {
                         result??;
@@ -97,7 +101,7 @@ where
                         }
                         // Publish routing before the request bytes reach stdout.
                         sends.insert(id, send);
-                        operations.spawn(copy_replies(recv, output.clone()));
+                        operations.spawn(copy_operation(id, recv, output.clone(), expected_reset == Some(id)));
                     }
                 }
             }
@@ -120,7 +124,12 @@ where
             }
             let (send, recv) = conn.open_bi().await?;
             entry.insert(send);
-            operations.spawn(copy_replies(recv, output.clone()));
+            operations.spawn(copy_operation(
+                id,
+                recv,
+                output.clone(),
+                expected_reset == Some(id),
+            ));
         }
         let send = sends.get_mut(&id).context("missing send stream")?;
         timeout(LIMIT, write_frame(send, &frame[9..])).await??;
@@ -147,11 +156,24 @@ where
     if waiting_incoming.is_some() {
         bail!("input EOF before expected incoming operation");
     }
-    if !sends.is_empty() {
+    if !sends.is_empty()
+        && !expected_reset.is_some_and(|id| sends.len() == 1 && sends.contains_key(&id))
+    {
         bail!("input EOF with unfinished operation streams");
     }
     while let Some(result) = operations.join_next().await {
-        result??;
+        let (id, reset) = result??;
+        if reset {
+            reset_observed = true;
+            let mut send = sends.remove(&id).context("reset without open send")?;
+            send.reset(1u32.into())?;
+        }
+    }
+    if !sends.is_empty() {
+        bail!("input EOF with unfinished operation streams");
+    }
+    if expected_reset.is_some() && !reset_observed {
+        bail!("expected reset stream was never observed");
     }
     while let Some(result) = finishes.join_next().await {
         result??;
@@ -159,15 +181,37 @@ where
     Ok(())
 }
 
-async fn copy_replies<W: AsyncWrite + Unpin + Send + 'static>(
+async fn copy_operation<W: AsyncWrite + Unpin + Send + 'static>(
+    id: u64,
     mut recv: iroh::endpoint::RecvStream,
     output: Arc<Mutex<W>>,
-) -> Result<()> {
+    expect_reset: bool,
+) -> Result<(u64, bool)> {
     timeout(LIMIT, async {
-        while let Some(reply) = read_frame(&mut recv).await? {
-            write_frame(&mut *output.lock().await, &reply).await?;
+        loop {
+            let mut header = [0u8; 4];
+            // A reset is expected only at a frame boundary. Partial framing,
+            // clean FIN, connection close and other reset codes still fail.
+            match recv.read(&mut header[..1]).await {
+                Err(iroh::endpoint::ReadError::Reset(code))
+                    if expect_reset && code == 1u32.into() =>
+                {
+                    return Ok((id, true));
+                }
+                Err(error) => return Err(error.into()),
+                Ok(None) if expect_reset => bail!("expected code-1 reset was not observed"),
+                Ok(None) => return Ok((id, false)),
+                Ok(Some(_)) => {}
+            }
+            AsyncReadExt::read_exact(&mut recv, &mut header[1..]).await?;
+            let size = u32::from_be_bytes(header) as usize;
+            if !(1..=MAX_FRAME).contains(&size) {
+                bail!("invalid frame size");
+            }
+            let mut frame = vec![0; size];
+            AsyncReadExt::read_exact(&mut recv, &mut frame).await?;
+            write_frame(&mut *output.lock().await, &frame).await?;
         }
-        Ok::<_, anyhow::Error>(())
     })
     .await
     .context("operation timeout")?
@@ -197,6 +241,10 @@ async fn run() -> Result<()> {
     let mut alpn = None;
     let mut mode = "dial".to_owned();
     let mut incoming_id = None;
+    let mut expected_reset = std::env::var("COGLET_FIXTURE_EXPECT_RESET_STREAM")
+        .ok()
+        .map(|s| s.parse::<u64>())
+        .transpose()?;
     let mut key_file = std::env::var("COGLET_FIXTURE_IROH_KEY_FILE").ok();
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -208,6 +256,7 @@ async fn run() -> Result<()> {
             "--key-file" => key_file = Some(value),
             "--mode" => mode = value,
             "--incoming-stream" => incoming_id = Some(value.parse::<u64>()?),
+            "--expect-reset-stream" => expected_reset = Some(value.parse::<u64>()?),
             _ => bail!("unknown option {arg}"),
         }
     }
@@ -261,6 +310,7 @@ async fn run() -> Result<()> {
                 tokio::io::stdin(),
                 tokio::io::stdout(),
                 incoming_id,
+                expected_reset,
             )
             .await;
             conn.close(0u32.into(), b"driver finished");
@@ -276,6 +326,9 @@ async fn run() -> Result<()> {
 async fn main() -> Result<()> {
     run().await
 }
+
+#[cfg(test)]
+mod reset_tests;
 
 #[cfg(test)]
 mod reverse_tests;
@@ -321,7 +374,7 @@ mod tests {
             let conn = client.connect(remote, alpn).await?;
             let (mut writer, reader) = tokio::io::duplex(1024);
             let (output, mut replies) = tokio::io::duplex(1024);
-            let driver = tokio::spawn(bridge(conn.clone(), reader, output, None));
+            let driver = tokio::spawn(bridge(conn.clone(), reader, output, None, None));
             for (id, frame) in [b"first".as_slice(), b"second".as_slice()]
                 .into_iter()
                 .enumerate()

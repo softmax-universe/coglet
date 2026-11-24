@@ -30,7 +30,7 @@ async fn device_dials_pinned_listener_then_receives_reverse_operation() -> Resul
         assert_eq!(accepted.remote_id(), device.id());
         let (mut input, reader) = tokio::io::duplex(1024);
         let (output, mut replies) = tokio::io::duplex(1024);
-        let driver = tokio::spawn(bridge(accepted.clone(), reader, output, None));
+        let driver = tokio::spawn(bridge(accepted.clone(), reader, output, None, None));
         control(&mut input, u64::MAX, true, b"reverse request").await?;
         let (mut send, mut recv) = connection.accept_bi().await?;
         assert_eq!(read_frame(&mut recv).await?.unwrap(), b"reverse request");
@@ -83,7 +83,7 @@ async fn incoming_fetch_maps_to_100_and_preserves_credit_chunk_fin() -> Result<(
         let remote = accepting.await??;
         let (mut input, reader) = tokio::io::duplex(1024);
         let (output, mut replies) = tokio::io::duplex(1024);
-        let driver = tokio::spawn(bridge(local.clone(), reader, output, Some(100)));
+        let driver = tokio::spawn(bridge(local.clone(), reader, output, Some(100), None));
         let (mut send, mut recv) = remote.open_bi().await?;
         write_frame(&mut send, b"fetch").await?;
         assert_eq!(read_frame(&mut replies).await?.unwrap(), b"fetch");
@@ -130,7 +130,7 @@ async fn reserved_incoming_id_cannot_silently_open_outgoing_stream() -> Result<(
         let remote = accepting.await??;
         let (mut input, reader) = tokio::io::duplex(1024);
         let (output, _replies) = tokio::io::duplex(1024);
-        let driver = tokio::spawn(bridge(local.clone(), reader, output, Some(100)));
+        let driver = tokio::spawn(bridge(local.clone(), reader, output, Some(100), None));
         control(&mut input, 100, true, b"premature").await?;
         let error = driver.await?.unwrap_err();
         assert!(
