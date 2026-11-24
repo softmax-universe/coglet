@@ -92,10 +92,14 @@ admission are milestone D, so runtime admission stays closed and nothing outside
 this crate can commit yet. Dispatcher mutations will use the crate-private
 `Database::dispatcher_mutation` (same fence, same revision, owner lease).
 
+## Milestone C: operator-approved native maintenance
+
+See [maintenance.md](maintenance.md) for approval, recovery archive/verifier,
+isolated restore and conservative compatibility-floor contracts. Real SQLite
+rejection, WAL-only backup, restore and reopen controls are covered by the tests
+listed there. This does not open runtime admission or claim engine replay.
+
 ## Remaining serial milestones (not waived)
-- C: operator-approved forward migrations, digest/owner/code/schema/recovery-plan
-  bindings, quiesced WAL-safe backup, isolated verified restore and previous/current
-  schema compatibility floor.
 - D: runtime/real engine/mock opt-in manifest/import admission, invocation-ordered
   call journals and offline recorded-result replay without live DB/catalog/cursor
   access; all seven original shared acceptance cases and recovery/backup controls.
