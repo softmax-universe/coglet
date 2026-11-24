@@ -112,13 +112,28 @@ impl State {
         let generation = r.delegation["statement"]["generation"]
             .as_u64()
             .ok_or(Error::Denied)?;
+        let checked_time = std::cell::Cell::new(None);
         self.authority.authorize_delegation(
             self.hub,
             peer,
             target,
             method,
-            || (self.clock)(),
+            || {
+                let now = (self.clock)();
+                checked_time.set(now);
+                now
+            },
             generation,
+        )?;
+        // Delegation verification samples after its blocking lookup/signature
+        // work. Re-intersect the grant at THAT sample, not the earlier one.
+        // Authority still owns both decisions; this is not a cached lease.
+        self.authority.authorize(
+            peer,
+            method,
+            Some(target),
+            checked_time.get(),
+            r.grant_generation,
         )?;
         Ok(r)
     }
