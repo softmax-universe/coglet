@@ -356,6 +356,8 @@ dependencies = [
 name = "coglet-factory"
 version = "0.1.0"
 dependencies = [
+ "coglet-db",
+ "coglet-factory-host",
  "coglet-guest-rust",
  "coglet-llm",
  "coglet-mock",
@@ -364,6 +366,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tempfile",
 ]
 
 [[package]]
@@ -373,6 +376,7 @@ dependencies = [
  "coglet-db",
  "coglet-types",
  "rusqlite",
+ "serde_json",
  "tempfile",
 ]
 

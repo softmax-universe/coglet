@@ -52,9 +52,11 @@ impl<A: HermesAdapter> Dispatcher<A> {
         Self { adapter }
     }
 
-    /// Recover unbound creates, expire leases, redispatch, claim new intents,
-    /// and ingest worker results. Pending deliveries are returned until acknowledged.
+    /// Recover unbound creates, finish bound claims that never leased, expire
+    /// leases, redispatch, claim new intents, and ingest worker results.
+    /// Pending deliveries are returned until acknowledged.
     pub fn run_cycle(&mut self, db: &mut Database, now: i64, limit: u32) -> Result<DispatchBatch> {
+        let reconciled = self.reconcile_bound_unleased(db, now)?;
         let mut follow_ups = self.pending_follow_ups(db)?;
         let expired = self.expire_leases(db, now)?;
         let rebound = self.redispatch_pending(db, now, limit)?;
@@ -64,7 +66,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
         follow_ups.extend(fresh.follow_ups);
         follow_ups = dedupe(follow_ups);
         Ok(DispatchBatch {
-            claimed: fresh.claimed + rebound.claimed,
+            claimed: fresh.claimed + rebound.claimed + reconciled,
             expired,
             follow_ups,
         })
@@ -100,10 +102,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
         for row in db.unbound_dispatching()? {
             db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
         }
-        let mut batch = self.run_cycle(db, now, limit)?;
-        // run_cycle already includes pending deliveries; keep claimed as new work only.
-        let _ = &mut batch;
-        Ok(batch)
+        self.run_cycle(db, now, limit)
     }
 
     fn submit(
@@ -153,24 +152,92 @@ impl<A: HermesAdapter> Dispatcher<A> {
         attempt: u64,
         now: i64,
     ) -> Result<()> {
+        // A renewed attempt must claim again. The stored token is only a
+        // crash marker for a lease that was never written locally.
+        db.set_binding_phase(&row.intent_id, "claiming", "")?;
         let until = now.saturating_add(LEASE_MS);
-        let lease = self
+        let claimed = match self
             .adapter
             .claim(remote_id, HOST_OWNER, until as u64, attempt)
-            .map_err(|e| format!("{e:?}"))?;
+        {
+            Ok(lease) => lease,
+            Err(AdapterError::Uncertain) => return Ok(()),
+            Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => return Err(note),
+        };
+        db.set_binding_phase(&row.intent_id, "claimed", &claimed.token)?;
+        self.persist_local_lease(db, task_id, &claimed.token, attempt, now)
+    }
+
+    fn persist_local_lease(
+        &mut self,
+        db: &mut Database,
+        task_id: &str,
+        token: &str,
+        attempt: u64,
+        now: i64,
+    ) -> Result<()> {
         let current = db.get_work_queue(task_id)?;
-        let version = current.as_ref().map(|r| r.version).unwrap_or(1);
+        if current.as_ref().is_some_and(|row| row.state == "leased") {
+            return Ok(());
+        }
+        let until = now.saturating_add(LEASE_MS);
+        let version = current.as_ref().map(|row| row.version).unwrap_or(1);
+        let priority = current.as_ref().map(|row| row.priority).unwrap_or(0);
         db.put_work_queue(&WorkQueueRow {
             task_id: task_id.into(),
             state: "leased".into(),
-            priority: current.as_ref().map(|r| r.priority).unwrap_or(0),
-            lease_owner: Some(lease.token),
+            priority,
+            lease_owner: Some(token.into()),
             lease_until: Some(until),
             attempt,
             version: if current.is_some() { version } else { 1 },
         })?;
-        let _ = row;
         Ok(())
+    }
+
+    /// Dispatching rows that already have a remote id but no local lease.
+    /// Covers a crash after binding, after an uncertain claim, and after the
+    /// claim token was saved but before `work_queue` was written.
+    fn reconcile_bound_unleased(&mut self, db: &mut Database, now: i64) -> Result<usize> {
+        let mut finished = 0;
+        for row in db.outbox_in_state(OutboxState::Dispatching.as_str())? {
+            let Some(binding) = db.get_binding_record(&row.intent_id)? else {
+                continue;
+            };
+            let task_id = task_id_of(&row);
+            if db.get_work_queue(&task_id)?.is_some() {
+                continue;
+            }
+            if binding.phase == "claimed" && !binding.token.is_empty() {
+                self.persist_local_lease(db, &task_id, &binding.token, row.attempt, now)?;
+            } else {
+                let spec = crate::adapter::TaskSpec {
+                    idempotency_key: row.idempotency_key.clone(),
+                    kind: row.kind.clone(),
+                    payload_cbor_hex: row.payload_cbor_hex.clone(),
+                    correlation_id: row.correlation_id.clone(),
+                    task_id: task_id.clone(),
+                };
+                let remote = match self.adapter.create(&spec) {
+                    Ok(remote) => remote,
+                    Err(AdapterError::Uncertain) => continue,
+                    Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                        return Err(note);
+                    }
+                };
+                if remote.remote_id != binding.remote_id {
+                    return Err("binding remote mismatch".into());
+                }
+                self.lease(db, &row, &remote.remote_id, &task_id, row.attempt, now)?;
+            }
+            if db
+                .get_work_queue(&task_id)?
+                .is_some_and(|queue| queue.state == "leased")
+            {
+                finished += 1;
+            }
+        }
+        Ok(finished)
     }
 
     pub fn apply_result(
@@ -383,13 +450,14 @@ impl<A: HermesAdapter> Dispatcher<A> {
         let attempt = lease.map(|(_, attempt)| attempt).unwrap_or(row.attempt);
         let token = lease.map(|(token, _)| token).unwrap_or("");
         let event_id = event_id(&row.intent_id, attempt, kind);
-        let payload = format!(
-            "{{\"task_id\":{task},\"note\":{note},\"attempt\":{attempt},\"lease\":{lease},\"kind\":{kind}}}",
-            task = quoted(task_id),
-            note = quoted(note),
-            lease = quoted(token),
-            kind = quoted(kind),
-        );
+        let payload = serde_json::to_string(&serde_json::json!({
+            "task_id": task_id,
+            "note": note,
+            "attempt": attempt,
+            "lease": token,
+            "kind": kind,
+        }))
+        .map_err(|error| error.to_string())?;
         db.commit_outcome(
             &row.intent_id,
             row.version,
@@ -479,13 +547,29 @@ fn kind_tag(kind: &str) -> char {
 }
 
 fn parse_follow_up(event_id: &str, payload: &str) -> Result<FollowUp> {
+    let value: serde_json::Value =
+        serde_json::from_str(payload).map_err(|_| "delivery json".to_string())?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| "delivery json".to_string())?;
+    let text = |key: &str| -> Result<String> {
+        object
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned)
+            .ok_or_else(|| format!("delivery {key}"))
+    };
+    let attempt = object
+        .get("attempt")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| "delivery attempt".to_string())?;
     Ok(FollowUp {
         event_id: event_id.into(),
-        task_id: json_text(payload, "task_id").ok_or_else(|| "delivery task".to_string())?,
-        kind: json_text(payload, "kind").unwrap_or_else(|| kind_from_event(event_id).into()),
-        note: json_text(payload, "note").unwrap_or_default(),
-        attempt: json_number(payload, "attempt").unwrap_or(0),
-        lease: json_text(payload, "lease").unwrap_or_default(),
+        task_id: text("task_id")?,
+        kind: text("kind").unwrap_or_else(|_| kind_from_event(event_id).into()),
+        note: text("note")?,
+        attempt,
+        lease: text("lease")?,
     })
 }
 
@@ -496,29 +580,6 @@ fn kind_from_event(event_id: &str) -> &'static str {
         Some('x') => "task.cancelled",
         _ => "task.failed",
     }
-}
-
-fn quoted(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-fn json_text(raw: &str, key: &str) -> Option<String> {
-    let needle = format!("\"{key}\":\"");
-    let start = raw.find(&needle)? + needle.len();
-    let rest = &raw[start..];
-    let end = rest.find('"')?;
-    Some(rest[..end].to_owned())
-}
-
-fn json_number(raw: &str, key: &str) -> Option<u64> {
-    let needle = format!("\"{key}\":");
-    let start = raw.find(&needle)? + needle.len();
-    let digits: String = raw[start..]
-        .chars()
-        .skip_while(|c| c.is_whitespace())
-        .take_while(|c| c.is_ascii_digit())
-        .collect();
-    digits.parse().ok()
 }
 
 fn task_id_of(row: &OutboxRecord) -> String {

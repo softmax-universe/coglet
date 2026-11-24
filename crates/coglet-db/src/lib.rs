@@ -30,7 +30,9 @@ pub use maintenance::{
     ArchivedDecision, CodeRange, CompatibilityFloor, Migration, OperatorApproval, RecoveryBundle,
     RestoreReport, RestoreVerifier, Snapshot,
 };
-pub use outbox::{Enqueued, Intent, OutboxRecord, OutboxState, PendingDelivery, WorkQueueRow};
+pub use outbox::{
+    DispatchBinding, Enqueued, Intent, OutboxRecord, OutboxState, PendingDelivery, WorkQueueRow,
+};
 pub use protocol::{CallResult, HostBudget};
 
 pub type Result<T> = std::result::Result<T, String>;

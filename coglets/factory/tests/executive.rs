@@ -663,3 +663,158 @@ fn stale_attempt_does_not_release_current_capacity() {
     assert_eq!(h.get(TASK).0, "dispatched");
     assert_eq!(h.get("factory-policy").1["available_workers"], 1);
 }
+#[test]
+fn host_terminal_done_row_is_consumed_and_stale_attempt_rejected() {
+    let mut h = TestHost::new();
+    h.db.execute(
+        "UPDATE objects SET status='dispatched',data_json=?1 WHERE id=?2",
+        params![
+            json!({"capacity_reserved": true, "context_ids": []}).to_string(),
+            TASK
+        ],
+    )
+    .unwrap();
+    h.db.execute(
+        "UPDATE objects SET data_json=?1 WHERE id='factory-policy'",
+        [serde_json::to_string(&Policy {
+            model: "mock".into(),
+            remaining_budget: 9,
+            available_workers: 1,
+            max_priority: 100,
+        })
+        .unwrap()],
+    )
+    .unwrap();
+    let token = "factory-host:1:kremote";
+    h.db
+        .execute(
+            "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'done',0,?2,NULL,1,2)",
+            params![TASK, token],
+        )
+        .unwrap();
+    h.run(event(
+        "task.completed",
+        5,
+        [
+            ("task_id", Value::Text(TASK.into())),
+            ("attempt", Value::Integer(1.into())),
+            ("lease", Value::Text(token.into())),
+        ],
+    ));
+    assert_eq!(h.get(TASK).0, "completed");
+    assert_eq!(h.get("factory-policy").1["available_workers"], 2);
+    let mut stale = TestHost::new();
+    stale
+        .db
+        .execute("UPDATE objects SET status='dispatched' WHERE id=?1", [TASK])
+        .unwrap();
+    stale
+        .db
+        .execute(
+            "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'done',0,?2,NULL,1,2)",
+            params![TASK, token],
+        )
+        .unwrap();
+    stale.run(event(
+        "task.completed",
+        6,
+        [
+            ("task_id", Value::Text(TASK.into())),
+            ("attempt", Value::Integer(1.into())),
+            ("lease", Value::Text("factory-host:9:other".into())),
+        ],
+    ));
+    assert_eq!(stale.get(TASK).0, "dispatched");
+}
+
+#[test]
+fn dispatcher_terminal_result_is_consumed_by_executive() {
+    use coglet_db::Database;
+    use coglet_factory_host::{FactoryHost, MockAdapter, Outcome, WorkerReport};
+    const OWNER: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const KEY: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let root = tempfile::tempdir().unwrap();
+    let db = Database::open(root.path(), OWNER).unwrap();
+    let path = db.path().to_owned();
+    drop(db);
+    let conn = Connection::open(&path).unwrap();
+    conn.execute_batch("PRAGMA foreign_keys=ON;").unwrap();
+    conn.execute_batch(coglet_factory::SCHEMA_SQL).unwrap();
+    conn.execute(
+        "INSERT INTO objects(id,type,status,data_json,version,created_at,updated_at) VALUES (?1,'task','dispatched','{\"capacity_reserved\":true}',1,1,1)",
+        [TASK],
+    )
+    .unwrap();
+    let payload = coglet_types::encode_profile(&Value::Map(vec![(
+        Value::Text("task_id".into()),
+        Value::Text(TASK.into()),
+    )]))
+    .unwrap();
+    let hex: String = payload.iter().map(|b| format!("{b:02x}")).collect();
+    conn.execute(
+        "INSERT INTO outbox(intent_id,idempotency_key,kind,payload_cbor_hex,correlation_id,state,attempt,version) VALUES (?1,?1,'factory.dispatch',?2,?3,'pending',0,1)",
+        params![KEY, hex, TASK],
+    )
+    .unwrap();
+    drop(conn);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    host.dispatcher().dispatch_pending(&mut db, 10, 8).unwrap();
+    let queue = db.get_work_queue(TASK).unwrap().unwrap();
+    let follow = host
+        .dispatcher()
+        .apply_result(
+            &mut db,
+            KEY,
+            WorkerReport {
+                attempt: queue.attempt,
+                lease: queue.lease_owner.clone().unwrap(),
+                outcome: Outcome::Failed {
+                    note: "trace says \"failed\"\nline".into(),
+                },
+            },
+        )
+        .unwrap();
+    let done = db.get_work_queue(TASK).unwrap().unwrap();
+    assert_eq!(done.state, "done");
+    assert_eq!(done.lease_owner.as_deref(), Some(follow.lease.as_str()));
+    assert_eq!(done.attempt, follow.attempt);
+    let mut guest = TestHost::new();
+    guest
+        .db
+        .execute(
+            "UPDATE objects SET status='dispatched',data_json=?1 WHERE id=?2",
+            params![
+                json!({"capacity_reserved": true, "context_ids": []}).to_string(),
+                TASK
+            ],
+        )
+        .unwrap();
+    guest
+        .db
+        .execute(
+            "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+            params![
+                TASK,
+                done.state,
+                done.priority,
+                done.lease_owner,
+                done.lease_until,
+                done.attempt as i64,
+                done.version as i64
+            ],
+        )
+        .unwrap();
+    guest.run(event(
+        &follow.kind,
+        7,
+        [
+            ("task_id", Value::Text(follow.task_id)),
+            ("attempt", Value::Integer((follow.attempt as i64).into())),
+            ("lease", Value::Text(follow.lease)),
+        ],
+    ));
+    assert_eq!(guest.get(TASK).0, "failed");
+    assert_eq!(guest.get("factory-policy").1["available_workers"], 3);
+    assert_eq!(guest.staged.len(), 1, "failure deliberation must start");
+}
