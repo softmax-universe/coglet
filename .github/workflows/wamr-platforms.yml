@@ -20,7 +20,7 @@ jobs:
         run: |
           test "$(uname -m)" = arm64
           rustup show active-toolchain
-          rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1
+          rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1 wasm32-unknown-unknown
       - name: Check Darwin proto and prove validator refuses unsupported execution
         run: |
           cargo check --locked -p coglet-proto --target aarch64-apple-darwin

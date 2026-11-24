@@ -18,3 +18,9 @@
 # card = "t_0123456789abcdef"
 # since = 2026-11-24
 # reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"
+
+[[conformance]]
+id = "surface-go-reference.surface/kill-latched"
+card = "t_01a20dcb7a8f60db"
+since = 2026-11-24
+reason = "step 7 TimeoutError in the go check (GoEmitterTests.test_go_module_tests), PR #97 head dce02beb run 45400144208 attempt 1; passes on attempt 2 of the same tree"

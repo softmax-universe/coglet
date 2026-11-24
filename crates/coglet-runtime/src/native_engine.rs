@@ -153,7 +153,7 @@ impl Engine for NativeEngine {
     }
 }
 
-fn engine_failure(error: coglet_engine::Error) -> Value {
+pub(super) fn engine_failure(error: coglet_engine::Error) -> Value {
     use coglet_engine::Error::*;
     let (kind, code) = match &error {
         ComputeExhausted => ("compute", "resource_exhausted"),

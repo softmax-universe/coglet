@@ -494,6 +494,7 @@ dependencies = [
 name = "coglet-db"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
  "coglet-types",
  "fs2",
  "hex",
@@ -516,6 +517,7 @@ name = "coglet-engine"
 version = "0.1.0"
 dependencies = [
  "wasmparser 0.245.1",
+ "wat",
 ]
 
 [[package]]
@@ -657,9 +659,11 @@ name = "coglet-runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "coglet-db",
  "coglet-engine",
  "coglet-engine-wamr",
  "coglet-fs",
+ "coglet-guest-rust",
  "coglet-hub",
  "coglet-mock",
  "coglet-proto",
@@ -668,6 +672,7 @@ dependencies = [
  "hex",
  "iroh",
  "libc",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2 0.10.9",

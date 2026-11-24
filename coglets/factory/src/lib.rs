@@ -1,7 +1,8 @@
 //! Factory repository; every method's result is provisional until host step commit.
 //! There is deliberately no guest commit, DDL, SQL-text or migration capability.
 pub mod catalog;
-use coglet_guest_rust::database::{Client, DbError, DbHost};
+pub use coglet_guest_rust::database::DbHost;
+use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
 pub const SCHEMA_SQL: &str = include_str!("../migrations/0001.sql");
 
@@ -13,6 +14,10 @@ pub fn wake<H: coglet_guest_rust::Host + DbHost>(
     events: &[coglet_guest_rust::Event],
 ) -> std::result::Result<(), coglet_guest_rust::HostError> {
     for event in events {
+        if event.kind == "factory.transact" {
+            transact(context, &event.payload)?;
+            continue;
+        }
         if event.kind != "factory.inspect" {
             continue;
         }
@@ -42,6 +47,102 @@ pub fn wake<H: coglet_guest_rust::Host + DbHost>(
             .into(),
         })?;
     }
+    Ok(())
+}
+
+fn host_error(error: DbError) -> coglet_guest_rust::HostError {
+    match error {
+        DbError::Host(error) => error,
+        _ => coglet_guest_rust::HostError::InvalidArgument,
+    }
+}
+pub type Payload = std::collections::BTreeMap<String, Value>;
+fn payload_text<'a>(
+    p: &'a Payload,
+    k: &str,
+) -> std::result::Result<&'a str, coglet_guest_rust::HostError> {
+    p.get(k)
+        .and_then(Value::as_text)
+        .ok_or(coglet_guest_rust::HostError::InvalidArgument)
+}
+/// Deterministic probe transaction over supplied payload values only: get, query,
+/// relations, optimistic update, event append and outbox enqueue in one host step.
+/// Every repository error is propagated; nothing here is a product executive.
+fn transact<H: coglet_guest_rust::Host + DbHost>(
+    context: &mut coglet_guest_rust::Context<'_, H>,
+    p: &Payload,
+) -> std::result::Result<(), coglet_guest_rust::HostError> {
+    transact_repository(
+        &mut Repository {
+            client: context.database(),
+        },
+        p,
+    )?;
+    context.log(&coglet_guest_rust::LogEntry {
+        level: "info".into(),
+        message: "factory.transact".into(),
+        fields: [("object_id".into(), text(payload_text(p, "id")?))].into(),
+    })
+}
+/// Repository half of the probe, shared verbatim by the Wasm guest and the native
+/// mock so both drive the same Factory repository API.
+pub fn transact_repository<H: DbHost>(
+    repo: &mut Repository<'_, H>,
+    p: &Payload,
+) -> std::result::Result<(), coglet_guest_rust::HostError> {
+    let id = payload_text(p, "id")?;
+    let at = p
+        .get("at")
+        .and_then(Value::as_integer)
+        .and_then(|n| u64::try_from(i128::from(n)).ok())
+        .ok_or(coglet_guest_rust::HostError::InvalidArgument)?;
+    let mut object = repo
+        .get_object(id)
+        .map_err(host_error)?
+        .ok_or(coglet_guest_rust::HostError::InvalidArgument)?;
+    let peers = repo
+        .query_objects(
+            payload_text(p, "query_type")?,
+            payload_text(p, "query_status")?,
+            64,
+            65536,
+            None,
+        )
+        .map_err(host_error)?;
+    let relations = repo
+        .get_relations(id, payload_text(p, "relation_type")?, 64, 65536, None)
+        .map_err(host_error)?;
+    object.status = payload_text(p, "new_status")?.into();
+    object.updated_at = at;
+    repo.update_object(&object).map_err(host_error)?;
+    repo.append_event(&SemanticEvent {
+        id: payload_text(p, "event_id")?.into(),
+        object_id: Some(id.into()),
+        event_type: "factory.transacted".into(),
+        payload_json: "{}".into(),
+        created_at: at,
+    })
+    .map_err(host_error)?;
+    let payload = [
+        ("object_id".to_string(), text(id)),
+        (
+            "peers".to_string(),
+            Value::Integer((peers.items.len() as u64).into()),
+        ),
+        (
+            "relations".to_string(),
+            Value::Integer((relations.items.len() as u64).into()),
+        ),
+    ];
+    repo.enqueue_outbox(&coglet_types::DatabaseDbEnqueue {
+        operation: "enqueue".into(),
+        intent_id: payload_text(p, "intent_id")?.into(),
+        idempotency_key: payload_text(p, "idempotency_key")?.into(),
+        kind: payload_text(p, "kind")?.into(),
+        payload: payload.into_iter().collect(),
+        correlation_id: payload_text(p, "correlation_id")?.into(),
+    })
+    .map_err(host_error)?;
     Ok(())
 }
 

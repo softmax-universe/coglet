@@ -98,7 +98,7 @@ fn run(request: Request) -> StepOutcome {
                 .checked_add(Duration::from_micros(request.wall_time_us))
                 .ok_or(Error::InvalidArgument)?,
         };
-        let e = Wasmtime;
+        let e = Wasmtime::default();
         let m = e.load(&unhex(&request.module_hex)?, &l)?;
         let input = StepInput {
             events: unhex(&request.events_hex)?,

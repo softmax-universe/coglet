@@ -1,8 +1,7 @@
 //! Pinned WAMR metered-interpreter admission. AOT is deliberately fail-closed.
-use coglet_engine::admission::admit;
 use coglet_engine::{
-    Engine, Error, Host, Instance as InstanceTrait, Limits, Metadata, Result, StepInput,
-    StepOutcome,
+    Admission, Engine, Error, Host, Instance as InstanceTrait, Limits, Metadata, Result, StepInput,
+    StepOutcome, admit_with,
 };
 mod native;
 use std::sync::Arc;
@@ -11,6 +10,7 @@ pub const BUILD: &str = "0e47872fb4e57833dbeccf7c312a406fa2dac2bc+cumulative-v1"
 #[derive(Clone, Copy)]
 pub struct Wamr {
     aot: bool,
+    allow_db: bool,
 }
 #[derive(Clone)]
 pub struct Module {
@@ -19,6 +19,7 @@ pub struct Module {
 pub struct WamrInstance {
     module: Module,
     limits: Limits,
+    allow_db: bool,
 }
 impl Engine for Wamr {
     type Module = Module;
@@ -34,23 +35,24 @@ impl Engine for Wamr {
     }
     fn load(&self, wasm: &[u8], limits: &Limits) -> Result<Module> {
         self.check_limits(limits)?;
-        admit(wasm, limits)?;
+        admit_with(wasm, limits, self.admission())?;
         Ok(Module {
             bytes: Arc::from(wasm),
         })
     }
     fn instantiate(&self, module: &Module, limits: Limits) -> Result<WamrInstance> {
         self.check_limits(&limits)?;
-        admit(&module.bytes, &limits)?;
+        admit_with(&module.bytes, &limits, self.admission())?;
         Ok(WamrInstance {
             module: module.clone(),
             limits,
+            allow_db: self.allow_db,
         })
     }
 }
 impl InstanceTrait for WamrInstance {
     fn handle(self, input: StepInput, host: &mut dyn Host) -> StepOutcome {
-        native::execute(&self.module.bytes, self.limits, input, host)
+        native::execute(&self.module.bytes, self.limits, input, host, self.allow_db)
     }
 }
 #[allow(clippy::derivable_impls)]
@@ -58,15 +60,35 @@ impl Default for Wamr {
     fn default() -> Self {
         Self {
             aot: cfg!(feature = "aot"),
+            allow_db: false,
         }
     }
 }
 impl Wamr {
     pub fn interpreter() -> Self {
-        Self { aot: false }
+        Self {
+            aot: false,
+            allow_db: false,
+        }
     }
     pub fn aot() -> Self {
-        Self { aot: true }
+        Self {
+            aot: true,
+            allow_db: false,
+        }
+    }
+    /// Explicit ABI 0.2 `coglet_v0.db` import. Frozen ABI 0.1 engines never set this.
+    #[must_use]
+    pub fn allow_db(self) -> Self {
+        Self {
+            allow_db: true,
+            ..self
+        }
+    }
+    pub fn admission(&self) -> Admission {
+        Admission {
+            allow_db: self.allow_db,
+        }
     }
     fn check_limits(&self, l: &Limits) -> Result<()> {
         if self.aot || !cfg!(feature = "interpreter") || l.compute_mode != COMPUTE_MODE {

@@ -307,6 +307,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-db"
+version = "0.1.0"
+dependencies = [
+ "coglet-engine",
+ "coglet-types",
+ "fs2",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "coglet-engine"
 version = "0.1.0"
 dependencies = [
@@ -357,6 +371,7 @@ dependencies = [
 name = "coglet-runtime"
 version = "0.1.0"
 dependencies = [
+ "coglet-db",
  "coglet-engine",
  "coglet-engine-wamr",
  "coglet-fs",

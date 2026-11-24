@@ -1,7 +1,7 @@
 use crate::{DurableStore, Router, TrustedExtensionCatalog};
 #[path = "supervisor_reads.rs"]
 mod supervisor_reads;
-use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, validate};
+use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, profile_value, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
@@ -9,6 +9,12 @@ use std::path::Path;
 
 #[path = "clock.rs"]
 mod clock;
+#[cfg(feature = "native-engine")]
+#[path = "database_replay.rs"]
+mod database_replay;
+#[cfg(feature = "native-engine")]
+#[path = "database_service.rs"]
+pub mod database_service;
 #[path = "dispatch.rs"]
 mod dispatch;
 #[path = "live_heard.rs"]
@@ -43,6 +49,24 @@ pub trait Engine {
     /// Once entered, Err means unknown outcome/usage, NOT admission refusal.
     /// Known guest failures must return an observed EngineReport instead.
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport>;
+    /// ABI 0.2 hook, called once after `execute`, before the record is built.
+    /// `committed` says whether the step will be a committed decision; an
+    /// adapter that owns a database unit must abort it when false. Return
+    /// `None` when no database call was made: the ordinary 0.1 record applies.
+    fn database_observation(&mut self, _committed: bool) -> Result<Option<DatabaseObservation>> {
+        Ok(None)
+    }
+}
+
+/// Native observations that turn an ordinary attempt into an ABI 0.2
+/// `db-step-record`. `calls` is the invocation-ordered native call stream
+/// (ordinary calls and `db-host-call`s) and is never converted through JSON.
+pub struct DatabaseObservation {
+    pub calls: Vec<coglet_types::Value>,
+    pub db_before: u64,
+    pub db_after: u64,
+    pub schema_version: u64,
+    pub catalog_hash: String,
 }
 
 /// Persist entry intent before invoking an engine. A crash or unreportable
@@ -64,12 +88,21 @@ impl<E: Engine> Engine for DurableAttempt<'_, E> {
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
         let mut intent = self.before.clone();
         intent.runtime.unresolved_attempt = Some(inputs.clone());
+        intent.fenced_staged_prefix = Some(
+            intent
+                .staged_boundary
+                .as_ref()
+                .map_or(0, |s| s.changes.len()),
+        );
         self.store.commit(
             &serde_json::to_value(intent).map_err(|e| e.to_string())?,
             None,
         )?;
         self.entered = Some(inputs.clone());
         self.engine.execute(inputs, host)
+    }
+    fn database_observation(&mut self, committed: bool) -> Result<Option<DatabaseObservation>> {
+        self.engine.database_observation(committed)
     }
 }
 
@@ -100,6 +133,9 @@ struct ServiceState {
     surface_epochs: BTreeMap<String, u64>,
     #[serde(default)]
     staged_boundary: Option<StagedBoundary>,
+    /// Exact staged prefix included in the fenced input, not a value-based guess.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    fenced_staged_prefix: Option<usize>,
     #[serde(default)]
     surface_sequences: BTreeMap<String, (u64, u64)>,
     #[serde(default)]
@@ -123,15 +159,87 @@ pub struct RuntimeService {
     state: ServiceState,
     store: DurableStore,
     #[cfg(feature = "native-engine")]
+    configured: Runtime,
+    #[cfg(feature = "native-engine")]
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    /// Validate a saved WAL state against the configured pins and the exact
+    /// journal. Shared by `open` and by database recovery reload, so a state
+    /// published by a collaborator is checked as strictly as a restart.
+    fn restore(
+        store: &DurableStore,
+        configured: &Runtime,
+        saved: &Value,
+        catalog: &TrustedExtensionCatalog,
+        configured_reads: &BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
+    ) -> Result<ServiceState> {
+        let mut state: ServiceState =
+            serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+        if state.catalog_pin.as_deref() != catalog.pin() {
+            return Err("recovery extension catalog pin differs from configuration".into());
+        }
+        if state.supervisor_reads.len() != configured_reads.len()
+            || state.supervisor_reads.iter().any(|(id, r)| {
+                configured_reads
+                    .get(id)
+                    .is_none_or(|c| c.request != r.request)
+            })
+        {
+            return Err("recovery supervisor read plan differs from configuration".into());
+        }
+        state.router.validate_recovered()?;
+        let offset = Self::validate_segments(&state, &configured.initial_setup, store.records())?;
+        state.runtime.records = store.records()[offset..].to_vec();
+        let code_files = |runtime: &Runtime| {
+            runtime
+                .files
+                .files()
+                .iter()
+                .filter(|(path, _)| path.starts_with("/code/"))
+                .map(|(p, b)| (p.clone(), b.clone()))
+                .collect::<BTreeMap<_, _>>()
+        };
+        if state.runtime.manifest != configured.manifest
+            || code_files(&state.runtime) != code_files(configured)
+        {
+            return Err("recovery code/manifest pins differ from configuration".into());
+        }
+        state
+            .runtime
+            .validate_recovered(&store.records()[offset..])?;
+        Self::validate_dispatches(&state, catalog)?;
+        state
+            .speech_temporal
+            .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
+        if let Some(staged) = &state.staged_boundary {
+            let mut derived = state.runtime.clone();
+            derived.apply_boundary_changes(&staged.changes)?;
+            // Router sequences may already have been reserved after apply.
+            derived.next_source_seq = staged.runtime.next_source_seq;
+            // Attempt intent belongs to the coordinator, not the applied
+            // boundary snapshot. It cannot change any boundary bytes.
+            derived.unresolved_attempt = staged.runtime.unresolved_attempt.clone();
+            if serde_json::to_value(&derived).map_err(|e| e.to_string())?
+                != serde_json::to_value(&staged.runtime).map_err(|e| e.to_string())?
+            {
+                return Err("recovered staged boundary state mismatch".into());
+            }
+        }
+        Self::validate_source_reservations(&state, configured, store.records())?;
+        Self::validate_queued_wakes(&state)?;
+        Self::validate_private_events(&state)?;
+        Self::attempted_ordinals(&state)?;
+        Ok(state)
+    }
+
     /// ADR-0014 trusted in-process harness only. Recovery requires explicit
     /// fixture authority again; no daemon, C ABI or artifact enables it.
     pub fn open_echo_fixture(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
         let catalog = crate::TrustedExtensionCatalog::echo_fixture();
         Self::open_with_catalog(path, setup, queue_capacity, catalog)
     }
+
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
         Self::open_with_catalog(
             path,
@@ -184,9 +292,9 @@ impl RuntimeService {
         let configured = Runtime::from_fixture(setup)?;
         let configured_reads = Self::configured_reads(setup, &catalog)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
-            let mut state: ServiceState =
+            let saved_state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
-            if let Some(managed) = &state.managed {
+            if let Some(managed) = &saved_state.managed {
                 managed.validate()?;
                 if install.is_some_and(|(identity, _)| managed.identity() != identity) {
                     return Err("conflict: managed install identity differs".into());
@@ -194,68 +302,13 @@ impl RuntimeService {
             } else if install.is_some() {
                 return Err("permission_denied: existing unmanaged WAL cannot be rebound".into());
             }
-            if state.catalog_pin.as_deref() != catalog.pin() {
-                return Err("recovery extension catalog pin differs from configuration".into());
-            }
-            if state.supervisor_reads.len() != configured_reads.len()
-                || state.supervisor_reads.iter().any(|(id, r)| {
-                    configured_reads
-                        .get(id)
-                        .is_none_or(|c| c.request != r.request)
-                })
-            {
-                return Err("recovery supervisor read plan differs from configuration".into());
-            }
-            state.router.validate_recovered()?;
-            let offset =
-                Self::validate_segments(&state, &configured.initial_setup, store.records())?;
-            state.runtime.records = store.records()[offset..].to_vec();
-            let code_files = |runtime: &Runtime| {
-                runtime
-                    .files
-                    .files()
-                    .iter()
-                    .filter(|(path, _)| path.starts_with("/code/"))
-                    .map(|(p, b)| (p.clone(), b.clone()))
-                    .collect::<BTreeMap<_, _>>()
-            };
-            if state.runtime.manifest != configured.manifest
-                || code_files(&state.runtime) != code_files(&configured)
-            {
-                return Err("recovery code/manifest pins differ from configuration".into());
-            }
-            state
-                .runtime
-                .validate_recovered(&store.records()[offset..])?;
-            Self::validate_dispatches(&state, &catalog)?;
-            state
-                .speech_temporal
-                .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
-            if let Some(staged) = &state.staged_boundary {
-                let mut derived = state.runtime.clone();
-                derived.apply_boundary_changes(&staged.changes)?;
-                // Router sequences may already have been reserved after apply.
-                derived.next_source_seq = staged.runtime.next_source_seq;
-                // Attempt intent belongs to the coordinator, not the applied
-                // boundary snapshot. It cannot change any boundary bytes.
-                derived.unresolved_attempt = staged.runtime.unresolved_attempt.clone();
-                if serde_json::to_value(&derived).map_err(|e| e.to_string())?
-                    != serde_json::to_value(&staged.runtime).map_err(|e| e.to_string())?
-                {
-                    return Err("recovered staged boundary state mismatch".into());
-                }
-            }
-            Self::validate_source_reservations(&state, &configured, store.records())?;
-            Self::validate_queued_wakes(&state)?;
-            Self::validate_private_events(&state)?;
-            Self::attempted_ordinals(&state)?;
-            state
+            Self::restore(&store, &configured, saved, &catalog, &configured_reads)?
         } else {
             let mut state = ServiceState {
                 managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
                 supervisor_reads: configured_reads,
-                runtime: configured,
+                runtime: configured.clone(),
                 router: Router::new(queue_capacity)?,
                 completed_segments: Vec::new(),
                 clock_anchor: None,
@@ -263,6 +316,7 @@ impl RuntimeService {
                 dispatches: BTreeMap::new(),
                 surface_epochs: BTreeMap::new(),
                 staged_boundary: None,
+                fenced_staged_prefix: None,
                 surface_sequences: BTreeMap::new(),
                 private_events: BTreeMap::new(),
                 speech_temporal: speech_temporal::SpeechTemporal::default(),
@@ -339,6 +393,8 @@ impl RuntimeService {
             store,
             catalog,
             #[cfg(feature = "native-engine")]
+            configured,
+            #[cfg(feature = "native-engine")]
             native: None,
         };
         if let Some((identity, operation_id)) = install {
@@ -383,7 +439,8 @@ impl RuntimeService {
         Ok(ordinal)
     }
 
-    pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+    /// Gate shared by every live delivery path (ordinary and database).
+    fn require_deliverable(&self) -> Result<()> {
         self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err(
@@ -393,6 +450,15 @@ impl RuntimeService {
         if !self.store.is_healthy() {
             return Err("runtime requires recovery before guest delivery".into());
         }
+        Ok(())
+    }
+
+    /// Everything before guest entry: timers, router batch and the exact step
+    /// inputs. Touches no durable state except due-timer wakes.
+    fn begin_attempt(
+        &mut self,
+        context: &Value,
+    ) -> Result<Option<(Value, Vec<Value>, ServiceState)>> {
         self.expire_private_events(
             context["logical_time"]
                 .as_u64()
@@ -433,6 +499,29 @@ impl RuntimeService {
         inputs["step"] = json!(next.runtime.step);
         inputs["previous"] = next.runtime.previous.clone();
         inputs["events"] = json!(events);
+        Ok(Some((inputs, events, next)))
+    }
+
+    /// Host-side consequences of a recorded step, shared by all commit paths.
+    fn consume_attempt(next: &mut ServiceState, events: &[Value], result: &Value) -> Result<()> {
+        for action in result["journal"]["actions"]
+            .as_array()
+            .ok_or("missing committed actions")?
+        {
+            next.dispatch_order
+                .push(action["id"].as_str().ok_or("missing action id")?.to_owned());
+        }
+        next.router.consume(events.len())?;
+        next.private_events
+            .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
+        Ok(())
+    }
+
+    pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        self.require_deliverable()?;
+        let Some((inputs, events, mut next)) = self.begin_attempt(context)? else {
+            return Ok(None);
+        };
         let mut attempt = DurableAttempt {
             engine,
             store: &mut self.store,
@@ -444,18 +533,15 @@ impl RuntimeService {
         if let Some(inputs) = entered {
             // Also retain the fence on post-engine validation/commit failures.
             self.state.runtime.unresolved_attempt = Some(inputs);
+            self.state.fenced_staged_prefix = Some(
+                self.state
+                    .staged_boundary
+                    .as_ref()
+                    .map_or(0, |s| s.changes.len()),
+            );
         }
         let result = result?;
-        for action in result["journal"]["actions"]
-            .as_array()
-            .ok_or("missing committed actions")?
-        {
-            next.dispatch_order
-                .push(action["id"].as_str().ok_or("missing action id")?.to_owned());
-        }
-        next.router.consume(events.len())?;
-        next.private_events
-            .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
+        Self::consume_attempt(&mut next, &events, &result)?;
         self.store.commit(
             &serde_json::to_value(&next).map_err(|e| e.to_string())?,
             Some(&result["journal"]),
@@ -630,6 +716,9 @@ impl Engine for MockEngine {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
     initial_setup: Value,
+    // Archive observation only; never authority to admit a live database.
+    #[serde(default)]
+    db_revision: Option<u64>,
     #[serde(default)]
     unresolved_attempt: Option<Value>,
     #[serde(default)]
@@ -654,7 +743,12 @@ pub struct Runtime {
 }
 impl Runtime {
     pub fn from_fixture(setup: &Value) -> Result<Self> {
-        validate("manifest", &setup["manifest"])?;
+        // A database deployment pins the explicit 0.2 manifest; 0.1 is unchanged.
+        if setup["manifest"]["version"] == "0.2" {
+            validate("database::db-manifest", &setup["manifest"])?;
+        } else {
+            validate("manifest", &setup["manifest"])?;
+        }
         let files = Snapshot::new(
             serde_json::from_value(setup["initial_files"].clone()).map_err(|e| e.to_string())?,
         )?;
@@ -754,7 +848,12 @@ impl Runtime {
                 return Err("invalid initial pending action ledger".into());
             }
         }
-        Ok(Self {
+        let db_revision = setup
+            .get("initial_db_revision")
+            .map(|value| value.as_u64().ok_or("invalid initial database revision"))
+            .transpose()?;
+        let mut runtime = Self {
+            db_revision,
             initial_setup: json!({"manifest":setup["manifest"],"initial_files":setup["initial_files"],
                 "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
                 "initial_inbox_wakes":setup["initial_inbox_wakes"],"initial_timers":setup["initial_timers"],
@@ -775,7 +874,11 @@ impl Runtime {
             next_source_seq: 0,
             sealed: false,
             trace_id: None,
-        })
+        };
+        if let Some(revision) = db_revision {
+            runtime.initial_setup["initial_db_revision"] = json!(revision);
+        }
+        Ok(runtime)
     }
 
     /// Compute an attempted step. No dispatch occurs here. Integration with the
@@ -914,14 +1017,26 @@ impl Runtime {
         } else {
             input.clone()
         };
+        // A recorded ABI 0.2 record re-enters here only to be re-derived from
+        // its ordinary host calls (offline/durable reconstruction).
+        let recorded_database = inputs.get("version") == Some(&json!("0.2"));
+        let observation = if recorded_database {
+            None
+        } else {
+            engine.database_observation(committed)?
+        };
+        let code_hash = digest(
+            &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
+        );
         let mut record = json!({
-            "version":"0.1", "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
+            "version":if observation.is_some() { "0.2" } else { "0.1" },
+            "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
             "step":self.step,"logical_time":time,"seed":inputs["seed"],"previous":self.previous,
-            "code_hash":digest(&hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?),
+            "code_hash":code_hash,
             "manifest_hash":digest(&cbor(&self.manifest)?),"before_hash":before_hash,
             "input_hash":input.tree_hash()?,"output_hash":output.tree_hash()?,
             "engine":inputs["engine"],"budgets":budgets,"grants":inputs["grants"],
-            "events":events,"boundary":inputs["boundary"],"calls":host.calls,"actions":if committed { host.actions.clone() } else { vec![] },
+            "events":events,"boundary":inputs["boundary"],"calls":if observation.is_some() { vec![] } else { host.calls.clone() },"actions":if committed { host.actions.clone() } else { vec![] },
             "timers":if committed { host.timers.clone() } else { vec![] },
             "llm_requests":if committed { host.llm_requests.clone() } else { vec![] },
             "logs":if committed { host.logs.clone() } else { vec![] },
@@ -931,9 +1046,89 @@ impl Runtime {
         if let Some(failure) = report.failure {
             record["failure"] = failure;
         }
-        record["record_hash"] = Value::String(digest(&cbor(&record)?));
-        validate("step-record", &record)?;
-        let result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
+        let mut raw_record = None;
+        if let Some(observation) = observation {
+            // Native 0.2 record: calls stay native values; the JSON record is
+            // only the projection derived from the final exact bytes.
+            for (key, value) in [
+                ("db_before", observation.db_before),
+                ("db_after", observation.db_after),
+                ("db_schema_version", observation.schema_version),
+            ] {
+                record[key] = json!(value);
+            }
+            record["db_catalog_hash"] = json!(observation.catalog_hash);
+            let mut native = profile_value(&record, 0)?;
+            let coglet_types::Value::Map(entries) = &mut native else {
+                return Err("database record is not a map".into());
+            };
+            let calls = entries
+                .iter_mut()
+                .find(|(k, _)| matches!(k, coglet_types::Value::Text(t) if t == "calls"))
+                .ok_or("missing calls")?;
+            calls.1 = coglet_types::Value::Array(observation.calls);
+            let hash = digest(&coglet_types::encode_profile(&coglet_types::Value::Map(
+                entries.clone(),
+            ))?);
+            entries.push((
+                coglet_types::Value::Text("record_hash".into()),
+                coglet_types::Value::Text(hash),
+            ));
+            let raw = coglet_types::encode("database::db-step-record", &native)?;
+            record = crate::journal::database_projection(&raw)?;
+            raw_record = Some(raw);
+        } else if recorded_database {
+            // Host-owned state was re-derived from the recorded ordinary calls.
+            // Everything derivable must agree with the (already hash-checked)
+            // projection before it is adopted as this runtime's record.
+            let recorded = inputs;
+            let mut derived = record.clone();
+            derived["version"] = json!("0.2");
+            for key in [
+                "version",
+                "trace_id",
+                "coglet",
+                "step",
+                "logical_time",
+                "seed",
+                "previous",
+                "code_hash",
+                "manifest_hash",
+                "before_hash",
+                "input_hash",
+                "output_hash",
+                "engine",
+                "budgets",
+                "grants",
+                "events",
+                "boundary",
+                "actions",
+                "timers",
+                "llm_requests",
+                "logs",
+                "input_files",
+                "output_files",
+                "usage",
+                "status",
+            ] {
+                if recorded.get(key) != derived.get(key) {
+                    return Err(format!(
+                        "recorded database step differs from host state: {key}"
+                    ));
+                }
+            }
+            if recorded.get("failure") != derived.get("failure") {
+                return Err("recorded database failure differs".into());
+            }
+            record = recorded.clone();
+        } else {
+            record["record_hash"] = Value::String(digest(&cbor(&record)?));
+            validate("step-record", &record)?;
+        }
+        let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
+        if let Some(raw) = raw_record {
+            result["record_raw"] = json!(hex::encode(raw));
+        }
         self.previous = record["record_hash"].clone();
         self.trace_id = Some(inputs["trace_id"].clone());
         self.files = output;
@@ -955,6 +1150,9 @@ impl Runtime {
         self.next_source_seq = next_source_seq;
         self.pending_llm = pending_llm;
         self.time = time;
+        if record["version"] == "0.2" {
+            self.db_revision = Some(record["db_after"].as_u64().ok_or("missing DB revision")?);
+        }
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
         self.records.push(record);
         self.unresolved_attempt = None;
@@ -971,6 +1169,9 @@ impl Runtime {
         }
         let derived = Self::reconstruct(&self.initial_setup, records)?;
         if self.files != derived.files
+            || self
+                .db_revision
+                .is_some_and(|revision| Some(revision) != derived.db_revision)
             || self.manifest != derived.manifest
             || self.ledger != derived.ledger
             || self.inbox_wakes != derived.inbox_wakes
@@ -1107,11 +1308,19 @@ impl Runtime {
         }
         let mut next = self.clone();
         next.apply_boundary_changes(changes)?;
-        let mut record = json!({"version":"0.1","trace_id":trace_id,"coglet":self.manifest["id"],
+        let database = self.manifest["version"] == "0.2";
+        let mut record = json!({"version":if database { "0.2" } else { "0.1" },"trace_id":trace_id,"coglet":self.manifest["id"],
             "previous":self.previous,"logical_time":logical_time,"boundary":changes,
             "before_hash":self.files.tree_hash()?,"output_hash":next.files.tree_hash()?,"output_files":next.files.files()});
         record["record_hash"] = json!(digest(&cbor(&record)?));
-        validate("boundary-record", &record)?;
+        validate(
+            if database {
+                "database::db-boundary-record"
+            } else {
+                "boundary-record"
+            },
+            &record,
+        )?;
         next.sealed = true;
         next.trace_id = Some(trace_id.clone());
         next.time = logical_time;

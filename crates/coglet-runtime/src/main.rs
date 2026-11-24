@@ -43,6 +43,8 @@ fn mock_stdio(trace_state: bool) -> Result<(), String> {
                 ]
             }
             Some("abi.admit") => {
+                // ABI 0.2 DB guests stay closed here: this adapter has no
+                // authenticated Database/Catalog back channel.
                 let response = coglet_runtime::admit_module(&request)?;
                 vec![
                     response.clone(),

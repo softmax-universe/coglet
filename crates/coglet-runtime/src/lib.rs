@@ -7,6 +7,8 @@ mod trusted_catalog;
 pub use trusted_catalog::TrustedExtensionCatalog;
 mod device;
 pub use device::{AdapterConfig, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin};
+#[cfg(feature = "native-engine")]
+pub mod database;
 mod execution;
 pub mod ffi;
 mod filesystem;

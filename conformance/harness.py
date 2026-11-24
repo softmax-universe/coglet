@@ -112,7 +112,7 @@ def cases_for(root, suite):
 
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
-               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock'}
+               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock', 'fixture_scheduler'}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -140,6 +140,9 @@ def validate_impl(impl):
     if 'fixture_clock' in impl and (type(impl['fixture_clock']) is not bool
                                       or transport != 'stdio'):
         raise ValueError('fixture_clock requires stdio and a boolean')
+    if 'fixture_scheduler' in impl and (type(impl['fixture_scheduler']) is not bool
+                                       or not impl.get('fixture_clock')):
+        raise ValueError('fixture_scheduler requires fixture_clock and a boolean')
     if 'ready_line' in impl:
         line = impl['ready_line']
         if (transport != 'stdio' or not isinstance(line, str)
@@ -204,11 +207,13 @@ class BufferedOutput:
         self.changed = asyncio.Event()
         self.eof = False
         self.error = None
+        self.received = 0
         self.task = asyncio.create_task(self.drain())
 
     async def drain(self):
         try:
             while chunk := await self.source.read(65536):
+                self.received += len(chunk)
                 if self.error is None:
                     if len(self.buffer) + len(chunk) > self.LIMIT:
                         self.error = ValueError('fixture stdout exceeds 4 MiB unread byte limit')
@@ -221,6 +226,17 @@ class BufferedOutput:
         finally:
             self.eof = True
             self.changed.set()
+
+    async def wait_received(self, total):
+        while True:
+            if self.error is not None:
+                raise self.error
+            if self.received >= total:
+                return
+            if self.eof:
+                raise EOFError('fixture output ended before byte watermark')
+            self.changed.clear()
+            await self.changed.wait()
 
     async def readexactly(self, size):
         if not 0 <= size <= self.LIMIT:
@@ -254,12 +270,16 @@ class Peer:
         self.clock_server = None
         self.clock_dir = None
         self.fixture_time = 0
+        self.fixture_bytes = 0
 
     async def advance_clock(self, micros):
         if self.clock_writer is None:
             return
         if micros < self.fixture_time:
             raise ValueError('retrograde fixture clock')
+        if self.impl.get('fixture_scheduler'):
+            await self.schedule('advance', micros)
+            return
         self.clock_writer.write(micros.to_bytes(8, 'big'))
         await self.clock_writer.drain()
         await self.clock_ack(micros)
@@ -268,10 +288,48 @@ class Peer:
     async def clock_ack(self, micros=None):
         if self.clock_reader is None:
             return
+        if self.impl.get('fixture_scheduler'):
+            await self.scheduler_ack(self.fixture_time, self.fixture_time)
+            return
         expected = self.fixture_time if micros is None else micros
         raw = await self.clock_reader.readexactly(8)
         if int.from_bytes(raw, 'big') != expected:
             raise ValueError('fixture clock acknowledgement mismatch')
+        if isinstance(self.reader, BufferedOutput) and self.reader.error is not None:
+            raise self.reader.error
+
+    async def scheduler_ack(self, minimum, maximum):
+        assert self.clock_reader is not None and isinstance(self.reader, BufferedOutput)
+        raw = await self.clock_reader.readline()
+        if len(raw) > 256 or not raw.endswith(b'\n'):
+            raise ValueError('invalid scheduler acknowledgement framing')
+        ack = json.loads(raw)
+        if (not isinstance(ack, dict) or set(ack) != {'time', 'bytes'}
+                or type(ack['time']) is not int or type(ack['bytes']) is not int
+                or not minimum <= ack['time'] <= maximum
+                or ack['bytes'] < self.fixture_bytes):
+            raise ValueError('invalid scheduler acknowledgement')
+        await self.reader.wait_received(ack['bytes'])
+        self.fixture_time, self.fixture_bytes = ack['time'], ack['bytes']
+
+    async def schedule(self, operation, target):
+        assert self.clock_writer is not None and isinstance(self.reader, BufferedOutput)
+        previous = self.fixture_time
+        self.clock_writer.write(json.dumps({operation: target}).encode() + b'\n')
+        await self.clock_writer.drain()
+        await self.scheduler_ack(target if operation == 'advance' else previous, target)
+        if operation == 'next' and self.fixture_time <= previous and not self.reader.buffer:
+            raise ValueError('fixture scheduler made no progress')
+
+    async def scheduled_receive(self, within_ms):
+        assert isinstance(self.reader, BufferedOutput)
+        deadline = self.fixture_time + round(millis(within_ms) * 1_000_000)
+        while not self.reader.buffer:
+            if self.reader.eof:
+                raise EOFError('fixture output ended')
+            if self.fixture_time >= deadline:
+                raise TimeoutError('logical fixture receive deadline')
+            await self.schedule('next', deadline)
         if isinstance(self.reader, BufferedOutput) and self.reader.error is not None:
             raise self.reader.error
 
@@ -443,11 +501,21 @@ async def timeline(peer, case):
                 if fixture_clock:
                     target = peer.fixture_time + round(millis(step['silence_ms']) * 1_000_000)
                     await asyncio.wait_for(peer.advance_clock(target), timeout)
+                if peer.impl.get('fixture_scheduler'):
+                    if peer.reader.eof:
+                        raise EOFError('fixture output ended during silence')
+                    if peer.reader.buffer:
+                        raise AssertionError('unexpected bytes during silence')
+                    # A satisfied byte watermark does not synchronize EOF on
+                    # the other channel. Retain the ordinary bounded wire probe
+                    # as well; logical time stays frozen during this wait.
                 try:
                     await asyncio.wait_for(peer.reader.readexactly(1), millis(step['silence_ms']))
                 except asyncio.TimeoutError:
                     continue
                 raise AssertionError('unexpected bytes during silence')
+            if peer.impl.get('fixture_scheduler'):
+                await asyncio.wait_for(peer.scheduled_receive(step.get('within_ms', 1000)), timeout)
             raw = await asyncio.wait_for(read_frame(peer.reader, framing), timeout)
             if 'expect_hex' in step:
                 if raw != bytes.fromhex(step['expect_hex']):
