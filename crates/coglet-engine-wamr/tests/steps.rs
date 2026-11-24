@@ -140,7 +140,9 @@ fn runaway_deadline_then_next_fresh_call_succeeds() {
     l.deadline = Instant::now() + Duration::from_secs(1);
     let out = run(&b, l);
     assert_eq!(out.result, Err(Error::DeadlineExceeded));
-    assert!(out.compute_used < i32::MAX as u64 / 10, "{out:?}");
+    // The interpreter meters each iteration; retain at least 2x headroom on
+    // idle hosts too (CPU load reduces compute consumed before the deadline).
+    assert!(out.compute_used < i32::MAX as u64 / 2, "{out:?}");
     println!(
         "deadline interrupted with compute_used={}",
         out.compute_used
