@@ -150,6 +150,25 @@ budgets. Paused is distinct from stopped. Start resumes paused operation.
 Status returns state (`stopped`, `running`, `paused`, `faulted`), live commit,
 last committed step, pending mutation count and last shared error or null.
 
+After daemon restart, before exposing device readiness, recover locally configured
+installed coglets. Durable `running` intent resumes native scheduling only after
+revalidating the installed signed artifact and recovered executable bytes,
+installed identity, current delegation/capability grants, and local kill switch.
+Automatic resume uses the original start's durably retained actor/ticket scope and
+pinned authority generations, never authority inferred from a receipt or status
+reader. Missing recovery context requires a fresh authorized start; it is not
+implicit authorization. Recheck authority expiry and kill state immediately before
+execution admission after validation. Failed/uncertain admission never exposes
+`running`: fail daemon startup without device readiness, or durably report
+`faulted` with an error. Stopped, paused and faulted coglets do not automatically
+resume. Recover committed data, logical time and queued work under the ABI's
+existing recovery/uncertain-attempt fences, without replaying an uncertain guest
+attempt or duplicating committed effects. Recovery creates no new start receipt
+and preserves historical receipt ordering; retrying an old start cannot reverse
+a later stop. Here `running` means scheduler-enabled and eligible to execute when
+input is ready, not continuous CPU use. See
+[ADR-0027](../docs/adr/0027-daemon-restart-resume.md).
+
 Boundary processing is serialized per coglet and durable: (1) finish or abort the
 current step; (2) append audit and apply queued debug/inbox mutations in receipt
 order; (3) verify/apply an admitted router ref change; (4) pin inputs and code for the
