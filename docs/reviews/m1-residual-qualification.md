@@ -30,6 +30,15 @@ is not CI qualification.
   and malformed selected success result are refused. The unchanged authorized
   outcome succeeds, and its duplicate remains deduplicated across reopen.
 
+- `unknown_admission_no_new_id`: after reopening an unresolved prepared action,
+  a substituted ID with no durably pending intent is refused; the original ID
+  still retrieves identical bytes and cannot synthesize an unadmitted success.
+  This does not prohibit a guest from issuing a distinct legitimate action.
+- `terminal_rejection_allows_new_id`: a retained authoritative rejection survives
+  reopening; consuming its wake permits a guest-emitted new action ID to be
+  prepared, while retrying the original ID retrieves its historical bytes and
+  repeating its rejection creates no new wake.
+
 `retry_crash_child` is an ignored subprocess helper explicitly executed by each
 ordinary crash test. Each parent requires its boundary-specific exit code. These
 are process-exit/WAL component proofs, not power-loss durability, transport
@@ -56,15 +65,35 @@ Authority and registry checks execute, but iroh peer authentication is not newly
 qualified. The private event payload is a generic event fixture, not native
 speech/provider qualification. Local delivery/ack is not remote read/debug.
 
+### Router `m1_synthesis`
+
+- `synthesized_success_without_authority_denied_with_authenticated_positive_and_audit`
+- `authorized_terminal_failure_preserves_identity_dedup_and_audit`
+
+Both execute enrollment and outcome submission through real authenticated iroh
+sessions, signed registration/delegation, and actual router dispatch to a fixture
+responder. Unknown and retained-but-unattempted action IDs are refused. After
+positive dispatch admission, wrong source, foreign target, both correlation
+mismatches and unknown ID are refused without queue/audit mutation. Authorized
+success and failure each retain one exact outcome and an authenticated
+peer/target/offset audit. Exact batch retries are idempotent; a second batch with
+the same terminal or a schema-valid conflicting cancellation is rejected with
+`conflict`, without an additional delivery or audit. Reopening preserves the
+exact delivery token, terminal and audit. This is router relay authority, not
+physical-effect proof; the fixture responder only returns action admission.
+Initial cancellation fixture omitted its required error and reached schema
+refusal instead of the conflict branch; corrected before the passing run. No
+historical production RED or mutation sensitivity is claimed.
+
 ## Remaining obligations (all still owned by this card)
 
 | Ledger row | Still unqualified / next proof or decision |
 |---|---|
 | H-transform | Real rewrite before build/commit; pinned transform fuzz and cross-architecture qualification; authenticated publication of the transformed artifact. Existing output-bound provenance/validator tests alone do not prove these. No publication route is enabled here. |
-| H-synthesis | Router-level complete admitted/unadmitted, source/owner/correlation, terminal-failure, duplicate terminal and retained audit matrix. Runtime outcomes above are supporting component evidence, not a substitute. |
+| H-synthesis | The new real-iroh matrix covers retained admission/source/target/correlation, positive success/failure, duplicate/conflicting terminals and durable relay audit. Required-CI execution and independent review remain outstanding; it does not qualify the runtime's underlying physical adapter. |
 | H-private | Subscription-not-authority, ownership transfer purge/fence, private read/event leakage and remote-debug exclusions with positive controls. The current immutable registry has no ownership-transfer API; adding a protocol/API contract is not authorized by a test. |
 | H-relay-grants | Broader method/target matrix over authenticated sessions, including cross-target replay, wrong actor, expiry/revocation and authorized controls. The local component matrix is not all-method wire conformance. |
-| R-retry | Explicit no-new-ID-on-unknown-admission and new-ID-after-terminal controls; crash gaps beyond the three named process boundaries above. Keep existing clock-advance, old-epoch reconnect and ambiguous-WAL tests; no claim that proposed acceptance names already exist. |
+| R-retry | The two new explicit ID controls and three process-exit boundaries need required-CI execution and review. Keep existing clock-advance, old-epoch reconnect and ambiguous-WAL tests. Arbitrary pre/post-fsync crash injection and physical power loss remain outside the named process boundaries; exact original-ledger crash inventory must be reconciled before closure. |
 
 Any migration of an obligation requires an independently reviewed ADR with its
 reason and live owner. The orchestrator has been asked to reserve the next free
@@ -76,9 +105,9 @@ owners named in its body. Production `cogletd` cannot enable `test.echo`.
 
 ```sh
 cargo test --locked -j 2 -p coglet-runtime --test m1_retry_crash
-cargo test --locked -j 2 -p coglet-hub --test m1_authority_matrix
+cargo test --locked -j 2 -p coglet-hub --test m1_authority_matrix --test m1_synthesis
 cargo clippy --locked -j 2 -p coglet-runtime -p coglet-hub \
-  --test m1_retry_crash --test m1_authority_matrix -- -D warnings
+  --test m1_retry_crash --test m1_authority_matrix --test m1_synthesis -- -D warnings
 cargo fmt -p coglet-runtime -p coglet-hub -- --check
 git diff --check
 ```

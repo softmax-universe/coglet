@@ -112,6 +112,83 @@ fn synthesized_success_requires_retained_admission_source_and_correlation() {
     assert_eq!(runtime.queued(), 1);
 }
 
+#[test]
+fn unknown_admission_no_new_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("runtime.wal");
+    let mut runtime = RuntimeService::open(&path, &setup(), 128).unwrap();
+    let original = runtime
+        .prepare_dispatch(&session(true), action()["id"].as_str().unwrap(), 130)
+        .unwrap();
+    drop(runtime);
+    let mut runtime = RuntimeService::open(&path, &setup(), 128).unwrap();
+    assert_eq!(
+        runtime
+            .prepare_dispatch(&session(false), &"a".repeat(32), 2000)
+            .unwrap_err(),
+        "action is not durably pending"
+    );
+    assert_eq!(
+        runtime
+            .prepare_dispatch(&session(false), action()["id"].as_str().unwrap(), 2000)
+            .unwrap(),
+        original
+    );
+    assert!(
+        runtime
+            .record_surface_outcome(&session(false), &outcome(), 2010)
+            .is_err()
+    );
+    assert_eq!(runtime.queued(), 0);
+}
+
+#[test]
+fn terminal_rejection_allows_new_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("runtime.wal");
+    let mut configured = setup();
+    configured["manifest"]["required_capabilities"] = json!(["expression.set_expression"]);
+    configured["manifest"]["exclusive_outputs"] = json!(["display.face"]);
+    let mut runtime = RuntimeService::open(&path, &configured, 128).unwrap();
+    let s = session(true);
+    let original = runtime
+        .prepare_dispatch(&s, action()["id"].as_str().unwrap(), 130)
+        .unwrap();
+    let mut rejected = accept();
+    rejected["accepted"] = json!(false);
+    rejected["error"] =
+        json!({"code":"permission_denied","message":"fixture refusal","retryable":false});
+    runtime.record_surface_accept(&s, &rejected, 140).unwrap();
+    drop(runtime);
+    let mut runtime = RuntimeService::open(&path, &configured, 128).unwrap();
+    assert_eq!(runtime.queued(), 1);
+    let mut context = configured["inputs"].clone();
+    context["logical_time"] = json!(150);
+    context["grants"] = json!(["expression.set_expression"]);
+    let mut replacement = action();
+    replacement["id"] = json!("a".repeat(32));
+    let script = json!({"calls":[{"op":"emit","argument":replacement,"result":0}],"writes":{},"termination":"committed","usage":{"compute":10,"memory_pages":1,"wall_time_us":20,"host_bytes":0}});
+    let result = runtime
+        .run_next(&context, &mut coglet_runtime::MockEngine::new(script))
+        .unwrap()
+        .unwrap();
+    assert_eq!(result["journal"]["actions"], json!([replacement]));
+    let bytes = runtime.prepare_dispatch(&s, &"a".repeat(32), 160).unwrap();
+    assert_ne!(bytes, original);
+    assert_eq!(
+        runtime
+            .prepare_dispatch(&s, action()["id"].as_str().unwrap(), 160)
+            .unwrap(),
+        original
+    );
+    runtime.record_surface_accept(&s, &rejected, 170).unwrap();
+    assert_eq!(
+        runtime.queued(),
+        0,
+        "historical rejection generated another wake"
+    );
+}
+
 fn crash_child(path: &Path, point: &str) {
     let result = Command::new(std::env::current_exe().unwrap())
         .args(["--exact", "retry_crash_child", "--ignored", "--nocapture"])
