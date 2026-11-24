@@ -40,5 +40,9 @@ jobs:
           name: reference-coglets-wasm
           path: target/guests/wasm32-wasip1/release/coglet_*.wasm
           if-no-files-found: error
+      - name: M1 compiled echo, Rust mock, real hub enrollment and offline replay
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash tests/m1/run.sh
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'

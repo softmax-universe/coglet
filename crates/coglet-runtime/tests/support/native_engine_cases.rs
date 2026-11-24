@@ -140,25 +140,45 @@ fn exercise_native(ffi: bool, abort: bool, name: &str) {
 #[cfg(feature = "echo-smoke")]
 #[test]
 fn ffi_compiled_echo_timer_wake_starts_executes_and_stops() {
+    compiled_echo_timer_wake(true, "ffi-compiled-echo");
+}
+#[cfg(feature = "echo-smoke")]
+#[test]
+fn socket_compiled_echo_timer_wake_starts_executes_and_stops() {
+    compiled_echo_timer_wake(false, "socket-compiled-echo");
+}
+#[cfg(feature = "echo-smoke")]
+fn compiled_echo_timer_wake(ffi: bool, name: &str) {
     let _guard = FFI_LOCK.lock().unwrap();
     let path = std::env::var_os("COGLET_ECHO_SMOKE_WASM")
         .expect("echo-smoke requires the compiled guest path");
     let wasm = std::fs::read(path).unwrap();
-    let mut host = Host::new(true, "ffi-compiled-echo");
+    let mut host = Host::new(ffi, name);
+    if !ffi {
+        let mut ready = host.connect();
+        ready.hello();
+        drop(ready);
+    }
     host.stop();
     std::fs::remove_file(host.dir.join("state.wal")).unwrap();
     host.setup = with_wasm(setup(), &wasm);
     host.setup["manifest"]["budgets"]["memory_pages"] = json!(256);
     host.setup["manifest"]["budgets"]["compute"] = json!(100_000_000);
     host.setup["manifest"]["budgets"]["wall_time_us"] = json!(5_000_000);
+    if !ffi {
+        std::fs::write(host.dir.join("setup.json"), serde_json::to_vec(&host.setup).unwrap()).unwrap();
+    }
     host.start();
     let mut link = host.connect();
     link.hello();
     link.grants(1);
-    // Grants synchronously drive the real handle. No health exchange is needed
-    // as a completion barrier: the durable journal below is the execution proof.
-    // Debug-mode guest/setup work can exceed the surface's three-second idle
-    // limit; this lifecycle smoke does not qualify uninterrupted link liveness.
+    // Embedded grants pump synchronously. The socket needs an explicit control
+    // barrier before terminating the child; release-only M1 qualifies that live
+    // exchange without weakening the production inactivity timeout.
+    if !ffi {
+        link.send("health", json!({"state":"ready","clock":1200,"pending":0,"correlation_id":"9".repeat(32)}));
+        assert_eq!(decode(&link.recv())["type"], "health");
+    }
     drop(link);
     host.stop();
     let recovered = RuntimeService::open(&host.dir.join("state.wal"), &host.setup, 128).unwrap();

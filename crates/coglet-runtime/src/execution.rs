@@ -109,6 +109,7 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    pub(crate) echo_fixture: bool,
     state: ServiceState,
     store: DurableStore,
     #[cfg(feature = "native-engine")]
@@ -116,6 +117,19 @@ pub struct RuntimeService {
 }
 impl RuntimeService {
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        Self::open_catalog(path, setup, queue_capacity, false)
+    }
+    /// ADR-0014 trusted harness only. This choice is not serialized, nor exposed
+    /// by the daemon/C ABI. Recovery requires explicit fixture authority again.
+    pub fn open_echo_fixture(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        Self::open_catalog(path, setup, queue_capacity, true)
+    }
+    fn open_catalog(
+        path: &Path,
+        setup: &Value,
+        queue_capacity: usize,
+        echo_fixture: bool,
+    ) -> Result<Self> {
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
@@ -142,7 +156,7 @@ impl RuntimeService {
             state
                 .runtime
                 .validate_recovered(&store.records()[offset..])?;
-            Self::validate_dispatches(&state)?;
+            Self::validate_dispatches(&state, echo_fixture)?;
             state
                 .speech_temporal
                 .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
@@ -251,6 +265,7 @@ impl RuntimeService {
             )?;
         }
         Ok(Self {
+            echo_fixture,
             state,
             store,
             #[cfg(feature = "native-engine")]

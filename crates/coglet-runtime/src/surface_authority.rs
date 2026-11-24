@@ -3,6 +3,26 @@ use super::*;
 use crate::catalog;
 
 impl SurfaceSession {
+    /// Trusted in-process M1 harness constructor (ADR-0014). Not exposed by
+    /// cogletd, the C ABI, a config file, or any transport negotiation.
+    pub fn with_echo_fixture(
+        binding: SurfaceBinding,
+        service: std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
+    ) -> Result<Self> {
+        if !service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .echo_fixture
+        {
+            return Err("echo fixture requires an explicitly trusted fixture service".into());
+        }
+        let mut session = Self::with_service(binding, service)?;
+        session.echo_fixture = true;
+        Ok(session)
+    }
+    pub(crate) fn operation(&self, name: &str, direction: &str) -> Result<&'static Value> {
+        catalog::operation_with_echo(self.echo_fixture, name, direction)
+    }
     /// A live endpoint's epoch high-water mark belongs to the durable runtime,
     /// not a transport connection. Probe-only new() sessions have no persistence.
     pub fn with_service(
@@ -66,7 +86,7 @@ impl SurfaceSession {
             return Err("capability revision/clock rollback".into());
         }
         let mut entries = BTreeSet::new();
-        let mut operations = BTreeMap::new();
+        let mut operations: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut resources = BTreeSet::new();
         for entry in body["entries"].as_array().ok_or("missing entries")? {
             let name = entry["name"].as_str().ok_or("missing entry name")?;
@@ -83,7 +103,7 @@ impl SurfaceSession {
                     let name = value.as_str().ok_or("invalid operation")?;
                     // Unsupported operations never gain authority. Fail closed rather
                     // than falling back to generic profile-map schema validation.
-                    let op = catalog::operation(name, direction)?;
+                    let op = self.operation(name, direction)?;
                     if op["entry"] != entry["name"] {
                         return Err("wrong catalog entry".into());
                     }
@@ -95,10 +115,11 @@ impl SurfaceSession {
                     if entry["schemas"][name] != catalog::uri(rule)? {
                         return Err("untrusted schema URI".into());
                     }
-                    if !advertised.insert(name.to_owned())
-                        || operations
-                            .insert(name.to_owned(), direction.to_owned())
-                            .is_some()
+                    advertised.insert(name.to_owned());
+                    if !operations
+                        .entry(name.to_owned())
+                        .or_default()
+                        .insert(direction.to_owned())
                     {
                         return Err("duplicate operation".into());
                     }
@@ -226,9 +247,11 @@ impl SurfaceSession {
         let allowed: Vec<String> = self
             .operations
             .iter()
-            .filter_map(|(op, direction)| {
-                self.authorize(coglet, op, direction, now)
-                    .ok()
+            .filter_map(|(op, directions)| {
+                directions
+                    .iter()
+                    .all(|direction| self.authorize(coglet, op, direction, now).is_ok())
+                    .then_some(())
                     .map(|_| op.clone())
             })
             .collect();
@@ -258,7 +281,10 @@ impl SurfaceSession {
         let clock = self.surface_now(now)?;
         if self.stopped
             || self.killed
-            || self.operations.get(operation).map(String::as_str) != Some(direction)
+            || !self
+                .operations
+                .get(operation)
+                .is_some_and(|directions| directions.contains(direction))
         {
             return Err("permission_denied: unavailable operation".into());
         }
@@ -290,7 +316,7 @@ impl SurfaceSession {
         validate("action", action)?;
         let op = action["capability"].as_str().ok_or("missing capability")?;
         self.authorize(action["coglet"].as_str().unwrap(), op, "action", now)?;
-        catalog::check(&catalog::operation(op, "action")?["input"], &action["args"])?;
+        catalog::check(&self.operation(op, "action")?["input"], &action["args"])?;
         if op == "speech.speak_chunk"
             && action["args"]["text"]
                 .as_str()

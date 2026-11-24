@@ -15,7 +15,7 @@ impl SurfaceSession {
     pub(crate) fn collects_heard(&self) -> bool {
         self.operations
             .get("speech.heard")
-            .is_some_and(|v| v == "read")
+            .is_some_and(|v| v.contains("read"))
     }
     pub(crate) fn authorize_heard(&self, coglet: &str, now: u64) -> Result<()> {
         self.authorize(coglet, "speech.heard", "read", now)

@@ -71,7 +71,7 @@ impl RuntimeService {
         {
             return Err("unauthenticated or stale event source".into());
         }
-        let op = catalog::operation(kind, "event")?;
+        let op = session.operation(kind, "event")?;
         catalog::check(&op["input"], &event["payload"])?;
         if event["payload"]["text"]
             .as_str()
