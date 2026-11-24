@@ -9,7 +9,14 @@ struct ObservedTransition<'a>(&'a Value);
 impl Engine for ObservedTransition<'_> {
     fn execute(&mut self, _: &Value, host: &mut StepHost) -> Result<EngineReport> {
         let record = self.0;
+        // ABI 0.2 projections keep `db-host-call`s only as audit entries: the
+        // database is never consulted when host state is re-derived. Ordinary
+        // calls (including their JSON arguments) are re-executed exactly.
+        let database = record["version"] == "0.2";
         for call in record["calls"].as_array().ok_or("missing calls")? {
+            if database && call["op"] == "db" {
+                continue;
+            }
             let raw = if let Some(raw) = call["argument_hex"].as_str() {
                 hex::decode(raw).map_err(|e| e.to_string())?
             } else {
@@ -66,14 +73,10 @@ impl Engine for ObservedTransition<'_> {
 pub(super) struct CompletedSegment {
     initial_setup: Value,
     trace_id: Value,
-    end: usize,
+    pub(super) end: usize,
 }
 
 impl RuntimeService {
-    pub(super) fn segment_offset(&self) -> usize {
-        self.state.completed_segments.last().map_or(0, |s| s.end)
-    }
-
     pub(super) fn validate_segments(
         state: &ServiceState,
         root: &Value,
@@ -325,6 +328,9 @@ impl Runtime {
     pub fn export_trace(&self, trace_id: &Value) -> Result<Value> {
         if self.unresolved_attempt.is_some() {
             return Err("unresolved attempt prevents complete export".into());
+        }
+        if self.records.iter().any(|r| r["version"] != "0.1") {
+            return Err("ABI 0.2 database trace export is not implemented".into());
         }
         validate("correlation-id", trace_id)?;
         if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
