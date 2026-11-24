@@ -37,6 +37,12 @@ This is the device path, not the CLI→router deploy path or full protocol quali
   Stop does not depend on a newer pushed ref remaining valid/available.
 - Status projects the frozen `hub-status` fields. Stored installed/stopped state
   and original receipt survive process death and WAL reopening.
+- Start/stop persist peer/method/target/params/actor-ticket intent digests and
+  original receipts in the same WAL frame as the transition. After fresh
+  authorization, an identical retry cannot undo a later transition, including
+  across restart. Changed intent on the same operation ID conflicts. The bounded
+  ledger retains 4096 operations, then refuses new mutations rather than evicting
+  retry evidence; receipt polling remains a separate, unimplemented method.
 
 `hub.git.fetch`, debug, actions, inbox, receipt polling and cancellation methods
 are not implemented by this handler and fail closed. This is not a replacement

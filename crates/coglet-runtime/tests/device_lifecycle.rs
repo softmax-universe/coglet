@@ -1288,7 +1288,7 @@ async fn start_requires_present_well_formed_clear_kill_switch() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
     timed!(async {
-        let mut env = Env::new(0x33, Options::default()).await.unwrap();
+        let mut env = Env::new(0x36, Options::default()).await.unwrap();
         let (bundle, _) = pushed_and_installed(&mut env).await;
         applied(&env.simple("hub.start").await);
         let shared = env
@@ -1380,7 +1380,19 @@ async fn handler_installed_native_guest_commits_a_real_step_and_journal() {
             .wal_root
             .join(coglet_runtime::digest(env.coglet.as_bytes()))
             .join("state.wal");
-        let durable = coglet_runtime::DurableStore::open(&wal).unwrap();
+        // Weak upgrade fails when the last Arc begins Drop, before its nested
+        // store destructor necessarily releases the OS flock. Observe the lock.
+        let durable = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                match coglet_runtime::DurableStore::open(&wal) {
+                    Ok(store) => break store,
+                    Err(e) if e.starts_with("WAL already owned:") => tokio::task::yield_now().await,
+                    Err(e) => panic!("WAL recovery failed: {e}"),
+                }
+            }
+        })
+        .await
+        .expect("retired coordinator releases WAL lock");
         assert_eq!(durable.records(), &[journal]);
     });
 }
@@ -1454,6 +1466,36 @@ async fn first_install_expiry_leaves_no_code_identity_and_new_ref_retries_cleanl
                 receipt["result"]
             );
         }
+    });
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn lifecycle_operation_retries_cannot_reverse_later_transitions_after_restart() {
+    timed!(async {
+        let mut env = Env::new(0x37, Options::default()).await.unwrap();
+        pushed_and_installed(&mut env).await;
+        let start = env.request("hub.start", json!({}));
+        let started = env.call(start.clone()).await;
+        applied(&started);
+        let stop = env.request("hub.stop", json!({}));
+        let stopped = env.call(stop.clone()).await;
+        applied(&stopped);
+        assert_eq!(env.call(start.clone()).await["result"], started["result"]);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        env.restart_handler().await;
+        let mut timeout_retry = start.clone();
+        timeout_retry["timeout_ms"] = json!(299999);
+        assert_eq!(env.call(timeout_retry).await["result"], started["result"]);
+        assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
+        let mut reused = start;
+        reused["method"] = json!("hub.stop");
+        assert_eq!(error_code(&env.call(reused).await), "conflict");
+        applied(&env.simple("hub.start").await);
+        env.restart_handler().await;
+        assert_eq!(env.call(stop).await["result"], stopped["result"]);
+        assert_eq!(state(&env.simple("hub.status").await).0, "running");
+        applied(&env.simple("hub.stop").await);
     });
 }
 

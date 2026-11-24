@@ -13,6 +13,15 @@ pub(super) struct ManagedState {
     // Retain the stop obligation until authoritative reconciliation permits it.
     cancellation_pending: bool,
     stopped_at: u64,
+    #[serde(default)]
+    operations: BTreeMap<String, OperationReceipt>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OperationReceipt {
+    intent: String,
+    receipt: Value,
 }
 
 impl ManagedState {
@@ -36,6 +45,22 @@ impl ManagedState {
             .or_else(|| self.identity.pointer("/update/statement/new"));
         if pin != Some(&self.live_commit) {
             return Err("recovered managed live commit differs from install identity".into());
+        }
+        for (id, saved) in &self.operations {
+            validate("correlation-id", &json!(id))?;
+            validate("hub-mutation-receipt", &saved.receipt)?;
+            if saved.receipt["operation_id"] != *id
+                || saved.intent.len() != 64
+                || !saved
+                    .intent
+                    .bytes()
+                    .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+            {
+                return Err("invalid recovered lifecycle operation receipt".into());
+            }
+        }
+        if self.operations.len() > 4096 {
+            return Err("invalid recovered lifecycle receipt bound".into());
         }
         Ok(())
     }
@@ -103,6 +128,7 @@ impl RuntimeService {
             running: false,
             cancellation_pending: false,
             stopped_at: 0,
+            operations: BTreeMap::new(),
         });
         self.commit_managed(next)?;
         Ok(receipt)
@@ -112,6 +138,10 @@ impl RuntimeService {
     /// Native scheduling, when configured with enable_native, resumes without
     /// resetting its durable step or seed identity.
     pub fn managed_start(&mut self) -> Result<()> {
+        self.managed_start_inner(None)
+    }
+
+    fn managed_start_inner(&mut self, operation: Option<(&str, &str)>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -131,6 +161,7 @@ impl RuntimeService {
             Self::cancel_managed_undelivered(&mut next, now)?;
         }
         next.managed.as_mut().unwrap().running = true;
+        Self::record_operation(&mut next, operation, None)?;
         self.commit_managed(next)
     }
 
@@ -138,6 +169,10 @@ impl RuntimeService {
     /// running concurrently. Retained translated envelopes may have escaped to
     /// an adapter, so never invent outcomes for them or erase their receipts.
     pub fn managed_stop(&mut self, now: u64) -> Result<()> {
+        self.managed_stop_inner(now, None)
+    }
+
+    fn managed_stop_inner(&mut self, now: u64, operation: Option<(&str, &str)>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -162,11 +197,94 @@ impl RuntimeService {
             {
                 // Queue pressure must never leave execution enabled. Preserve a
                 // durable stop obligation and report that cancellation is pending.
+                let mut stopped = stopped;
+                Self::record_operation(&mut stopped, operation, Some(&error))?;
                 self.commit_managed(stopped)?;
                 return Err(error);
             }
         }
+        Self::record_operation(&mut next, operation, None)?;
         self.commit_managed(next)
+    }
+
+    /// Authenticated caller supplies a digest of peer/method/target/params/context,
+    /// excluding timeout. Always reauthorize before this lookup.
+    pub(crate) fn managed_operation_receipt(
+        &self,
+        id: &str,
+        intent: &str,
+    ) -> Result<Option<Value>> {
+        validate("correlation-id", &json!(id))?;
+        let managed = self.state.managed.as_ref().ok_or("not installed")?;
+        if managed.install_receipt["operation_id"] == id {
+            return Err("conflict: operation ID already used for install".into());
+        }
+        if let Some(saved) = managed.operations.get(id) {
+            return if saved.intent == intent {
+                Ok(Some(saved.receipt.clone()))
+            } else {
+                Err("conflict: operation intent differs".into())
+            };
+        }
+        if managed.operations.len() >= 4096 {
+            return Err("resource_exhausted: lifecycle receipt ledger full".into());
+        }
+        Ok(None)
+    }
+
+    pub(crate) fn managed_operation(
+        &mut self,
+        id: &str,
+        intent: &str,
+        start: bool,
+        now: u64,
+    ) -> Result<Value> {
+        if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
+            return Ok(receipt);
+        }
+        let outcome = if start {
+            self.managed_start_inner(Some((id, intent)))
+        } else {
+            self.managed_stop_inner(now, Some((id, intent)))
+        };
+        // A stop cancellation failure still commits the stopped fence and its
+        // failed receipt in one frame; its retry must not stop a later start.
+        if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
+            return Ok(receipt);
+        }
+        outcome?;
+        Err("unavailable: lifecycle receipt missing".into())
+    }
+
+    fn record_operation(
+        next: &mut ServiceState,
+        operation: Option<(&str, &str)>,
+        error: Option<&str>,
+    ) -> Result<()> {
+        let Some((id, intent)) = operation else {
+            return Ok(());
+        };
+        let step = next
+            .runtime
+            .records
+            .last()
+            .and_then(|r| r["step"].as_u64())
+            .unwrap_or(0);
+        let receipt = json!({"operation_id":id,"state":if error.is_some() {"failed"} else {"applied"},
+            "step":step,"error":error.map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false}))});
+        validate("hub-mutation-receipt", &receipt)?;
+        next.managed
+            .as_mut()
+            .ok_or("not installed")?
+            .operations
+            .insert(
+                id.into(),
+                OperationReceipt {
+                    intent: intent.into(),
+                    receipt,
+                },
+            );
+        Ok(())
     }
 
     /// Frozen hub-status projection: `step`, `pending`, `error` are wire names

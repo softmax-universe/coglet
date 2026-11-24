@@ -376,14 +376,19 @@ impl DeviceHandler {
         }
         // Waiting for the service mutex may outlive the authority windows.
         gate()?;
+        let intent = self.operation_intent(request)?;
+        let id = request["correlation_id"]
+            .as_str()
+            .ok_or("invalid_argument")?;
+        if let Some(receipt) = locked.managed_operation_receipt(id, &intent)? {
+            return Ok(receipt);
+        }
         self.enable_native(coglet, &mut locked)?;
         // enable_native can be expensive and the kill switch may latch while
         // waiting: re-read both immediately before the effect.
         self.require_kill_clear()?;
         gate()?;
-        locked.managed_start()?;
-        let receipt = json!({"operation_id":request["correlation_id"],"state":"applied",
-            "step":locked.managed_status()["step"],"error":Value::Null});
+        let receipt = locked.managed_operation(id, &intent, true, 0)?;
         validate("hub-mutation-receipt", &receipt)?;
         Ok(receipt)
     }
@@ -405,6 +410,14 @@ impl DeviceHandler {
         let shared = Arc::new(Mutex::new(opened));
         services.insert(coglet.to_owned(), shared.clone());
         Ok(shared)
+    }
+
+    fn operation_intent(&self, request: &Value) -> Result<String> {
+        Ok(digest(&crate::cbor(&json!({
+            "peer":self.inner.config.hub.to_string(),
+            "method":request["method"], "target":request["target"],
+            "params":request["params"], "context":request["context"]
+        }))?))
     }
 
     fn enable_native(&self, coglet: &str, service: &mut RuntimeService) -> Result<()> {
@@ -454,9 +467,15 @@ impl DeviceHandler {
         let service = self.open_service(coglet, &setup)?;
         let mut locked = service.lock().map_err(|_| "unavailable".to_owned())?;
         let now = gate()?;
-        locked.managed_stop(now)?;
-        let receipt = json!({"operation_id":request["correlation_id"],"state":"applied",
-            "step":locked.managed_status()["step"],"error":Value::Null});
+        let intent = self.operation_intent(request)?;
+        let receipt = locked.managed_operation(
+            request["correlation_id"]
+                .as_str()
+                .ok_or("invalid_argument")?,
+            &intent,
+            false,
+            now,
+        )?;
         validate("hub-mutation-receipt", &receipt)?;
         Ok(receipt)
     }
