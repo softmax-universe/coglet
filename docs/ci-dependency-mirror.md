@@ -30,8 +30,12 @@ Java Maven archive in reviewed candidate `9b5f54198673ff089905d82db874ace4a27bd1
 verified against hardcoded SHA-256 `5957675c303a908498be1b2c9e88475f691806dc043c7046e087fe87ef52a061`.
 This read-only GitHub bootstrap is a partial cache seed: original asset identity
 and provenance remain unchanged, full tests still run, and capture emits a genuinely
-new input-addressed closure. Normal/proof cannot use this seed as a substitute for
-current input keys. This lets preparation fill/save a cold cache even while Central
+new input-addressed closure. Proof never uses this seed, so a proof still shows the
+mirror bundle alone is complete. Normal jobs (including `merge_group`) restore it
+only when the mirror and Actions cache both miss, then resolve offline again; they
+still never contact Central. This is what lets a PR that changes the Maven cache key
+(`pom.xml`, `resolve_maven.py`) pass the merge queue, which cannot read caches
+saved by `pull_request` runs. A dependency the seed lacks still fails clearly. This lets preparation fill/save a cold cache even while Central
 returns 429 and the first shared publication is unavailable. The candidate must
 be retained until a reviewed replacement seed is committed.
 A shared monotonic 165-second budget bounds resolution and seed download together;

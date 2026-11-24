@@ -19,7 +19,7 @@ class MavenResolutionTests(unittest.TestCase):
     def test_normal_warm_or_empty_cache_never_uses_online_resolution(self):
         module = self.load()
         for status in [0, 1]:
-            with self.subTest(status=status), patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], status)) as run:
+            with self.subTest(status=status), patch.object(module, 'seed_maven', return_value=False) as seed, patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], status)) as run:
                 self.assertEqual(module.resolve(prepare=False), status)
                 self.assertEqual(run.call_count, 1)
                 command = run.call_args.args[0]
@@ -27,6 +27,7 @@ class MavenResolutionTests(unittest.TestCase):
                 self.assertNotIn('-U', command)
                 self.assertIn('org.apache.maven.plugins:maven-dependency-plugin:3.11.0:go-offline', command)
                 self.assertLessEqual(run.call_args.kwargs['timeout'], 165)
+                self.assertEqual(seed.call_count, status)
 
     def test_only_explicit_preparation_can_populate_a_miss_with_one_shared_budget(self):
         module = self.load()
@@ -77,9 +78,30 @@ class MavenResolutionTests(unittest.TestCase):
 
     def test_timeout_is_failure_without_online_fallback_in_normal_mode(self):
         module = self.load()
-        with patch.object(module.subprocess, 'run', side_effect=subprocess.TimeoutExpired('mvn', 165)) as run:
+        with patch.object(module, 'seed_maven', return_value=False), patch.object(module.subprocess, 'run', side_effect=subprocess.TimeoutExpired('mvn', 165)) as run:
             self.assertEqual(module.resolve(), 1)
             self.assertEqual(run.call_count, 1)
+
+    def test_normal_miss_restores_pinned_seed_then_resolves_offline_only(self):
+        # merge_group cannot read pull_request caches; a cache-key change must still pass.
+        module = self.load()
+        for retry, expected in [(0, 0), (1, 1)]:
+            with self.subTest(retry=retry), patch.object(module, 'seed_maven', return_value=True) as seed, patch.object(module.subprocess, 'run', side_effect=[subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], retry)]) as run:
+                self.assertEqual(module.resolve(prepare=False), expected)
+                seed.assert_called_once()
+                self.assertEqual(run.call_count, 2)
+                self.assertTrue(all('--offline' in call.args[0] for call in run.call_args_list))
+
+    def test_proof_never_restores_the_seed_or_goes_online(self):
+        import os
+        module = self.load()
+        with patch.object(module, 'seed_maven', return_value=True) as seed, patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1)) as run:
+            self.assertEqual(module.resolve(prepare=False, seed=False), 1)
+            seed.assert_not_called()
+            self.assertEqual(run.call_count, 1)
+        with patch.object(module, 'resolve', return_value=1) as resolve, patch.object(__import__('sys'), 'argv', ['resolve_maven.py', '--proof']), patch.dict(os.environ, {}, clear=False):
+            self.assertEqual(module.main(), 1)
+            self.assertEqual(resolve.call_args.kwargs, {'seed': False})
 
     def test_exhausted_prepare_budget_cannot_start_another_attempt(self):
         module = self.load()
@@ -97,8 +119,10 @@ class MavenResolutionTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as repository:
             started = time.monotonic()
+            # No GH_TOKEN: the pinned seed is unavailable, so this is a true empty cache.
+            env = {k: v for k, v in __import__('os').environ.items() if k != 'GH_TOKEN'}
             result = subprocess.run([__import__('sys').executable, str(root / 'scripts/ci/resolve_maven.py'),
-                                     '--repository', repository], cwd=root,
+                                     '--repository', repository], cwd=root, env=env,
                                     capture_output=True, text=True, timeout=30)
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('offline', result.stdout + result.stderr)

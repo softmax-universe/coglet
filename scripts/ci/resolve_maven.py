@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Resolve the CI Maven closure offline; only preparation may contact Central."""
+"""Resolve the CI Maven closure offline; only preparation may contact Central.
+
+Normal mode may also restore the pinned, hash-checked seed from a GitHub release
+(never Central) when the mirror and Actions cache both miss. Merge-queue runs
+cannot read caches saved by pull_request runs, so without this a PR that changes
+the cache key (pom.xml, this file) could never pass the queue. Proof mode never
+seeds: it must show the mirror bundle alone is complete.
+"""
 import argparse
 import os
 from pathlib import Path
@@ -34,7 +41,7 @@ def seed_maven(repository, deadline):
         return False
 
 
-def resolve(prepare=False, repository=None):
+def resolve(prepare=False, repository=None, seed=True):
     command = ['mvn', '--batch-mode', '--no-transfer-progress', '--offline',
                '-f', 'sdk/surface-java/pom.xml', GOAL]
     if repository is not None:
@@ -52,7 +59,7 @@ def resolve(prepare=False, repository=None):
             return 1
 
     status = attempt(True, 30 if prepare else None)
-    if status and prepare and seed_maven(repository, deadline):
+    if status and (prepare or seed) and seed_maven(repository, deadline):
         status = attempt(True)
     if status and prepare:
         # Only a read-only preparation job may fill a genuinely cold closure.
@@ -65,10 +72,12 @@ def resolve(prepare=False, repository=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--prepare', action='store_true')
+    parser.add_argument('--proof', action='store_true',
+                        help='mirror proof: never restore the pinned seed')
     parser.add_argument('--repository', type=Path)
     args = parser.parse_args()
     try:
-        status = resolve(args.prepare, args.repository)
+        status = resolve(args.prepare, args.repository, seed=not args.proof)
     except subprocess.TimeoutExpired:
         status = 1
     if status:
