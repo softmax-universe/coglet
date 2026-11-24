@@ -1,4 +1,6 @@
 import base64
+import datetime
+import hashlib
 import importlib.util
 import os
 from pathlib import Path
@@ -68,7 +70,19 @@ class ReleasePolicyTests(unittest.TestCase):
             framework.mkdir(parents=True)
             binary=framework/'Test'; binary.write_bytes(b'\xcf\xfa\xed\xfe\0')
             calls=[]
-            with patch.object(release,'run',side_effect=lambda *a,**k:calls.append(tuple(map(str,a)))):
+            certificate=b'fixture-certificate'
+            profile={'ExpirationDate':datetime.datetime.now()+datetime.timedelta(days=1),
+                     'TeamIdentifier':[release.TEAM], 'ApplicationIdentifierPrefix':[release.TEAM],
+                     'DeveloperCertificates':[certificate],
+                     'Entitlements':{'com.apple.application-identifier':release.TEAM+'.com.softmax.app',
+                                     'com.apple.developer.team-identifier':release.TEAM}}
+            (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'com.softmax.app'}))
+            def command(*args, **kwargs):
+                calls.append(tuple(map(str,args)))
+                return plistlib.dumps(profile).decode() if args[:3]==('security','cms','-D') else ''
+            with patch.dict(os.environ, {'PROVISIONING_PROFILE':base64.b64encode(b'fixture-cms').decode()}), \
+                 patch.object(release,'IDENTITY',hashlib.sha1(certificate).hexdigest().upper()), \
+                 patch.object(release,'run',side_effect=command):
                 release.sign_tree(app,'identity','developer-id')
             signatures=[c for c in calls if '--sign' in c]
             self.assertEqual([c[-1] for c in signatures],[str(binary),str(framework),str(app)])
@@ -76,6 +90,40 @@ class ReleasePolicyTests(unittest.TestCase):
             self.assertTrue(all('--deep' not in c for c in signatures))
             self.assertEqual(sum('--entitlements' in c for c in signatures),1)
             self.assertIn('--strict',calls[-1])
+
+    def test_developer_id_signing_refuses_missing_keychain_profile(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Path(d)/'Softmax.app'; (app/'Contents').mkdir(parents=True)
+            with patch.dict(os.environ, {}, clear=True), patch.object(release,'run') as command:
+                with self.assertRaisesRegex(ValueError, 'provisioning profile'):
+                    release.sign_tree(app,'identity','developer-id')
+                command.assert_not_called()
+
+    def test_developer_id_embeds_profile_and_authorized_private_app_identity(self):
+        with tempfile.TemporaryDirectory() as d:
+            app=Path(d)/'Softmax.app'; (app/'Contents').mkdir(parents=True)
+            (app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'com.softmax.app'}))
+            certificate=b'test-certificate-not-a-real-credential'
+            profile={'ExpirationDate':datetime.datetime.now()+datetime.timedelta(days=1),
+                     'TeamIdentifier':[release.TEAM], 'ApplicationIdentifierPrefix':[release.TEAM],
+                     'DeveloperCertificates':[certificate],
+                     'Entitlements':{'com.apple.application-identifier':release.TEAM+'.com.softmax.app',
+                                     'com.apple.developer.team-identifier':release.TEAM}}
+            signed=[]
+            def command(*args, **kwargs):
+                if args[:3]==('security','cms','-D'): return plistlib.dumps(profile).decode()
+                if '--entitlements' in args:
+                    signed.append(plistlib.loads(Path(args[args.index('--entitlements')+1]).read_bytes()))
+                return ''
+            with patch.dict(os.environ, {'PROVISIONING_PROFILE':base64.b64encode(b'test-cms').decode()}), \
+                 patch.object(release,'IDENTITY',hashlib.sha1(certificate).hexdigest().upper()), \
+                 patch.object(release,'run',side_effect=command):
+                release.sign_tree(app,'identity','developer-id')
+            self.assertTrue((app/'Contents/embedded.provisionprofile').is_file(), 'Signed Keychain identity needs embedded authorization')
+            self.assertEqual((app/'Contents/embedded.provisionprofile').read_bytes(),b'test-cms')
+            self.assertEqual(signed[0]['com.apple.application-identifier'],release.TEAM+'.com.softmax.app')
+            self.assertEqual(signed[0]['com.apple.developer.team-identifier'],release.TEAM)
+            self.assertNotIn('keychain-access-groups',signed[0])
 
     def test_minimal_entitlements(self):
         ent=plistlib.loads((SCRIPTS.parent/'release.entitlements').read_bytes())
