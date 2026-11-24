@@ -80,6 +80,31 @@ final class HubNativeConnectionTests: XCTestCase {
         XCTAssertTrue(HubPairing.isHex(try XCTUnwrap(device)))
     }
 
+    /// A live subprocess may close its command channel before terminating. The
+    /// app must report an unavailable ROUTER, not receive a fatal SIGPIPE.
+    func testClosedHelperInputThrowsWithoutTerminatingClient() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let executable = directory.appendingPathComponent("closed-input-helper")
+        let device = String(repeating: "a", count: 64)
+        // Read the initial key without recording it, close stdin, then publish
+        // readiness. This orders the closed-pipe write without a timing guess.
+        let script = "#!/bin/sh\nIFS= read -r key\nunset key\nexec 0<&-\nprintf '%s\\n' '{\"state\":\"ready\",\"device\":\"\(device)\"}'\nexec /bin/sleep 20\n"
+        try Data(script.utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let link = ProcessHubLink(executable: executable)
+        var ready = false
+        try link.start(key: Data(repeating: 7, count: 32)) {
+            if case .ready = $0 { ready = true }
+        }
+        defer { link.stop() }
+        try await eventually { ready }
+        XCTAssertThrowsError(try link.disconnect()) { error in
+            XCTAssertTrue(error is HubError)
+        }
+    }
+
     private func eventually(_ condition: () -> Bool, file: StaticString = #filePath, line: UInt = #line) async throws {
         let deadline = ContinuousClock.now + .seconds(30)
         while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
