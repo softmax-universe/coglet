@@ -199,8 +199,25 @@ pub trait FetchHandler: Send + Sync {
         context: RequestContext,
         request: Value,
         metadata: crate::git_metadata::VerifiedRef,
+        transfer: ReceivedTransfer,
         sink: crate::quarantine::BundleSink,
     ) -> Pin<Box<dyn Future<Output = Result<Value, TransportError>> + Send + 'a>>;
+}
+
+/// Session-validated raw transfer binding, distinct from the signed archive
+/// digest. Only Session constructs a received binding after complete transfer.
+#[derive(Debug)]
+pub struct ReceivedTransfer {
+    size: u64,
+    sha256: String,
+}
+impl ReceivedTransfer {
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+    pub fn sha256(&self) -> &str {
+        &self.sha256
+    }
 }
 
 /// A remote rejection is not local acceptance. The Accepted value is supplied
@@ -489,7 +506,13 @@ impl Session {
                 streams.completed = true;
                 return Ok(FetchResult::Rejected(reply));
             }
-            let accepted = handler.accept(context, request, metadata, sink).await?;
+            let binding = ReceivedTransfer {
+                size,
+                sha256: transfer["sha256"].as_str().unwrap().to_owned(),
+            };
+            let accepted = handler
+                .accept(context, request, metadata, binding, sink)
+                .await?;
             streams.completed = true;
             Ok(FetchResult::Accepted(accepted))
         })

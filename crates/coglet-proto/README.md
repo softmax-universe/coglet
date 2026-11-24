@@ -206,12 +206,26 @@ expanded-limit rejection/cleanup, stale/equal-different pre-credit rejection,
 and revocation after validated custody but before commit. The latter proves that
 terminal transport FIN does not replace the commit-time authority check.
 
-This fixture is not a production service: the sender snapshot and receiver hash
-are trusted test inputs. Reopen is not a process/Session restart proof, and
-statement revalidation is not original-operation receipt deduplication. Full code
-push/provenance integration, atomic operation receipts, real restart and remaining
-adversarial streaming cases still need end-to-end qualification; kernel policy,
-activation and per-disclosure authorization remain their owners' responsibility.
+`FetchHandler::accept` receives a private-field `ReceivedTransfer` carrying the
+Session-validated raw size/SHA-256, separately from signed archive metadata.
+The consumer needs no preknown bundle hash. The sender snapshot remains a
+trusted test input, not a production per-disclosure authorization service.
+
+`accepted_refs::git_acceptance_session::git_push_acceptance::real_iroh_validated_code_push_provenance_replay_and_post_fin_slots`
+sends Git-created code bundles through Session push, fsynced quarantine,
+fsck/archive/Wasm/provenance validation and same-Authority authoritative CAS.
+Invalid Wasm and missing provenance leave no audit or quarantine. Two paused
+validations after end+FIN retain both caller slots; a raw third peer stream
+bypasses caller admission and independently proves responder saturation. One
+concurrent CAS wins, exact bundle bytes are retained, and a new-operation signed
+replay is rejected without polling an instrumented source. Success is queued
+admission, not live activation or qualified build reproduction.
+
+Reopen is not a process/Session restart proof, and statement revalidation is not
+original-operation receipt deduplication. Atomic operation receipts, real restart,
+validated code fetch and remaining adversarial streaming cases still need
+end-to-end qualification; kernel policy, activation and per-disclosure
+authorization remain their owners' responsibility.
 
 ## Tests executed for this milestone
 

@@ -30,6 +30,7 @@ impl coglet_proto::transport::FetchHandler for RawFetch {
         _: RequestContext,
         _: Value,
         _: VerifiedRef,
+        _: coglet_proto::transport::ReceivedTransfer,
         sink: coglet_proto::quarantine::BundleSink,
     ) -> Pin<
         Box<
@@ -64,6 +65,7 @@ impl coglet_proto::transport::FetchHandler for DenyFetch {
         _: RequestContext,
         _: Value,
         _: VerifiedRef,
+        _: coglet_proto::transport::ReceivedTransfer,
         _: coglet_proto::quarantine::BundleSink,
     ) -> Pin<
         Box<
@@ -94,6 +96,7 @@ impl coglet_proto::transport::FetchHandler for HoldFetch {
         _: RequestContext,
         _: Value,
         _: VerifiedRef,
+        _: coglet_proto::transport::ReceivedTransfer,
         sink: coglet_proto::quarantine::BundleSink,
     ) -> Pin<
         Box<
@@ -246,7 +249,9 @@ async fn real_iroh_session_dispatches_push_before_fin_and_fin_precedes_handler_s
         for job in jobs { assert!(matches!(job.await.unwrap().unwrap(),coglet_proto::transport::FetchResult::Accepted(_))); }
         assert_eq!(std::fs::read_dir(&root).unwrap().count(),0);
         let session = initiator.clone(); let local_root = root.clone(); let local_held = held.clone(); let mut short = fetch.clone();
-        short["timeout_ms"] = json!(500);
+        // Leave disk-backed multi-window reception a full request budget; the
+        // observed acceptance gate, not transfer speed, is the timeout subject.
+        short["timeout_ms"] = json!(5000);
         let deadline_job = tokio::spawn(async move { session.fetch_git(short,&local_root,local_held.as_ref()).await });
         held.entered.acquire().await.unwrap().forget();
         assert!(deadline_job.await.unwrap().is_err(),"deadline includes local acceptance");

@@ -17,6 +17,24 @@ use std::{
 };
 
 type Work<'a, T> = Pin<Box<dyn Future<Output = Result<T, TransportError>> + Send + 'a>>;
+// These fixtures intentionally reuse fixed router/runtime keys. The production
+// scheduler shares budgets by authenticated identity, even across connections.
+static SESSION_FIXTURE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+async fn assert_quarantines(root: &Path, expected: usize) {
+    // Concurrent Git fixture subprocesses can briefly inherit a CLOEXEC lease.
+    // Sweep only inactive custody, and bound the wait for those execs to finish.
+    for _ in 0..100 {
+        BundleSink::sweep_orphans(root).await.unwrap();
+        if fs::read_dir(root).unwrap().count() == expected {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    assert_eq!(fs::read_dir(root).unwrap().count(), expected);
+}
+#[path = "git_push_acceptance.rs"]
+mod git_push_acceptance;
 fn error(e: impl std::fmt::Display) -> TransportError {
     TransportError(e.to_string())
 }
@@ -88,7 +106,6 @@ struct Consumer {
     pause: Option<Arc<Gate>>,
     h: Arc<Harness>,
     limits: Limits,
-    hash: String,
     validated: AtomicUsize,
 }
 impl FetchHandler for Consumer {
@@ -119,11 +136,12 @@ impl FetchHandler for Consumer {
         c: RequestContext,
         _: Value,
         metadata: VerifiedRef,
+        transfer: coglet_proto::transport::ReceivedTransfer,
         sink: BundleSink,
     ) -> Work<'a, Value> {
         Box::pin(async move {
             let envelope = sink
-                .check_envelope(&metadata, &self.hash, 100000)
+                .check_envelope(&metadata, transfer.sha256(), 100000)
                 .await
                 .map_err(error)?;
             let bundle = envelope
@@ -155,6 +173,7 @@ impl FetchHandler for Consumer {
 
 #[tokio::test]
 async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits() {
+    let _fixture = SESSION_FIXTURE_LOCK.lock().await;
     tokio::time::timeout(Duration::from_secs(30),async {
         let root=Root::new(); let quarantine=Root::new();
         let bytes=fixture(); let first=metadata(&bytes,1,None);
@@ -169,7 +188,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         ds.request(json!({"method":"hub.enroll","target":null,"correlation_id":"ab".repeat(16),"timeout_ms":5000,"params":{"offer":{"versions":["0.1"]},"invite":null}})).await.unwrap();
         let device_job=tokio::spawn(ds.serve(source.clone()));
         let request=json!({"method":"hub.git.fetch","target":h.coglet(),"context":{"actor":h.scope.actor,"ticket":h.scope.ticket},"correlation_id":"cd".repeat(16),"timeout_ms":5000,"params":{"ref":"refs/heads/logs"}});
-        let consumer=Consumer{pause:None,hash:hex::encode(Sha256::digest(&bytes)),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         let FetchResult::Accepted(receipt)=hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap() else {panic!("rejected")};
         assert_eq!(receipt["changed"],true); assert_eq!(h.current().unwrap().metadata.signed(),first.signed());
         assert_eq!(h.store.audit_bundle(receipt["audit_id"].as_i64().unwrap()).unwrap(),bytes);
@@ -178,22 +197,22 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         assert_eq!(consumer.validated.load(Ordering::SeqCst),2,"identical statements still validate real Git");
         let reopened=Arc::new(Harness::open(&root.0));
         assert_eq!(reopened.current().unwrap().metadata.signed(),first.signed());
-        let consumer=Consumer{pause:None,hash:hex::encode(Sha256::digest(&bytes)),h:reopened,limits:Limits{expanded_bytes:1,..Limits::default()},validated:AtomicUsize::new(0)};
+        let consumer=Consumer{pause:None,h:reopened,limits:Limits{expanded_bytes:1,..Limits::default()},validated:AtomicUsize::new(0)};
         assert!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap_err().0.contains("resource_exhausted"));
-        assert_eq!(h.count("proto_ref_audit"),1); assert_eq!(fs::read_dir(&quarantine.0).unwrap().count(),0);
+        assert_eq!(h.count("proto_ref_audit"),1); assert_quarantines(&quarantine.0,0).await;
         // Even an identical signed statement cannot launder a corrupted pack.
         let mut corrupt=bytes.clone(); *corrupt.last_mut().unwrap() ^= 1;
         *source.snapshot.lock().unwrap()=(first.clone(),corrupt.clone());
-        let consumer=Consumer{pause:None,hash:hex::encode(Sha256::digest(&corrupt)),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         assert!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.is_err());
         assert_eq!(consumer.validated.load(Ordering::SeqCst),0);
-        assert_eq!(h.count("proto_ref_audit"),1); assert_eq!(fs::read_dir(&quarantine.0).unwrap().count(),0);
+        assert_eq!(h.count("proto_ref_audit"),1); assert_quarantines(&quarantine.0,0).await;
         // Skipped publisher generations/old tips are legal for observations.
         let newer_bytes=fixture_data(b"{\"event\":3}\n");
         let newer=metadata(&newer_bytes,3,Some(&"ff".repeat(20)));
         assert_ne!(newer.new_tip(),first.new_tip());
         *source.snapshot.lock().unwrap()=(newer.clone(),newer_bytes.clone());
-        let consumer=Consumer{pause:None,hash:hex::encode(Sha256::digest(&newer_bytes)),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let consumer=Consumer{pause:None,h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         assert!(matches!(hs.fetch_git(request.clone(),&quarantine.0,&consumer).await.unwrap(),FetchResult::Accepted(v) if v["changed"]==true));
         assert_eq!(h.current().unwrap().metadata.generation(),3);
         // Observe actual no-credit rejection: responder never finishes send,
@@ -207,8 +226,9 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         assert_eq!(source.completed.load(Ordering::SeqCst),completed);
         assert_eq!(h.count("proto_ref_audit"),2);
         *source.snapshot.lock().unwrap()=(newer,newer_bytes.clone());
+        assert_quarantines(&quarantine.0,0).await;
         let gate=Arc::new(Gate{entered:tokio::sync::Semaphore::new(0),release:tokio::sync::Semaphore::new(0)});
-        let paused=Consumer{pause:Some(gate.clone()),hash:hex::encode(Sha256::digest(&newer_bytes)),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
+        let paused=Consumer{pause:Some(gate.clone()),h:h.clone(),limits:Limits::default(),validated:AtomicUsize::new(0)};
         let session=hs.clone(); let pending_request=request.clone(); let pending_root=quarantine.0.clone();
         let pending=tokio::spawn(async move {session.fetch_git(pending_request,&pending_root,&paused).await});
         gate.entered.acquire().await.unwrap().forget();
@@ -216,7 +236,7 @@ async fn real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits(
         h.authority.revoke_delegation(h.hub,&h.coglet()).unwrap();
         gate.release.add_permits(1);
         assert!(pending.await.unwrap().unwrap_err().0.contains("permission_denied"),"commit must recheck authority after validation");
-        assert_eq!(fs::read_dir(&quarantine.0).unwrap().count(),0);
+        assert_quarantines(&quarantine.0,0).await;
         assert!(hs.fetch_git(request.clone(),&quarantine.0.join("absent"),&consumer).await.unwrap_err().0.contains("permission_denied"));
         assert!(!quarantine.0.join("absent").exists());
         assert_eq!(h.count("proto_ref_audit"),2);
