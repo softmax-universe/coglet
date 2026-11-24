@@ -1,0 +1,21 @@
+name: Validator portability
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validator-darwin:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build real protocol crate and validator helper on Darwin
+        run: cargo build --locked -p coglet-proto --bins
+      - name: Unsupported validator fails closed before processing arguments
+        run: cargo test --locked -p coglet-proto --test validator_portability -- --exact unsupported_validator_helper_refuses_before_processing_arguments
