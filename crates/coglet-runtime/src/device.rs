@@ -3,6 +3,8 @@
 use crate::{DurableStore, Result, RuntimeService, admit_manifest, digest, validate};
 #[path = "initial_push.rs"]
 mod initial_push;
+#[path = "installed_push.rs"]
+mod installed_push;
 #[path = "receipt.rs"]
 mod receipt;
 use coglet_proto::{
@@ -262,22 +264,33 @@ impl DeviceHandler {
         identity
     }
 
-    async fn recover_setup(&self, coglet: &str) -> Result<Option<(Value, Value)>> {
+    async fn recover_setup(&self, coglet: &str) -> Result<Option<(Value, Value, Value)>> {
         let handler = self.clone();
         let coglet_owned = coglet.to_owned();
-        let identity =
-            match tokio::task::spawn_blocking(move || handler.peek_identity(&coglet_owned))
-                .await
-                .map_err(|_| "unavailable".to_owned())?
-            {
-                Ok(identity) => identity,
-                Err(error) if error == "not_installed" => return Ok(None),
-                Err(error) => return Err(error),
+        let recovered = tokio::task::spawn_blocking(move || {
+            let Some(root) = handler.original_setup(&coglet_owned)? else {
+                return Ok(None);
             };
-        let initial = identity
-            .get("initial")
-            .cloned()
-            .ok_or_else(|| "permission_denied".to_owned())?;
+            let service = handler.open_service(&coglet_owned, &root)?;
+            let locked = service.lock().map_err(|_| "unavailable".to_owned())?;
+            Ok::<_, String>(Some((
+                locked
+                    .managed_identity()
+                    .cloned()
+                    .ok_or("permission_denied")?,
+                root,
+                locked
+                    .managed_code_ref()
+                    .cloned()
+                    .ok_or("permission_denied")?,
+            )))
+        })
+        .await
+        .map_err(|_| "unavailable".to_owned())??;
+        let Some((identity, root, active)) = recovered else {
+            return Ok(None);
+        };
+        let initial = active.clone();
         let handler = self.clone();
         let coglet_owned = coglet.to_owned();
         let loaded = tokio::task::spawn_blocking(move || {
@@ -292,10 +305,17 @@ impl DeviceHandler {
         })
         .await
         .map_err(|_| "unavailable".to_owned())??;
-        Ok(Some((
-            identity,
-            self.setup_from_bundle(&loaded.1, &loaded.0, coglet).await?,
-        )))
+        let verified = self.setup_from_bundle(&loaded.1, &loaded.0, coglet).await?;
+        let service = self.share_service(coglet).ok_or("unavailable")?;
+        tokio::task::spawn_blocking(move || {
+            service
+                .lock()
+                .map_err(|_| "unavailable".to_owned())?
+                .managed_verify_code(&verified)
+        })
+        .await
+        .map_err(|_| "unavailable".to_owned())??;
+        Ok(Some((identity, root, active)))
     }
 
     fn apply_install(
@@ -551,7 +571,8 @@ impl DeviceHandler {
             return Ok(None);
         };
         let setup = state
-            .pointer("/runtime/initial_setup")
+            .pointer("/completed_segments/0/initial_setup")
+            .or_else(|| state.pointer("/runtime/initial_setup"))
             .cloned()
             .map(Some)
             .ok_or_else(|| "unavailable".into());
@@ -707,7 +728,7 @@ impl DeviceHandler {
             .ok_or_else(|| "permission_denied".to_owned())?;
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
-            let (identity, setup) = recovered;
+            let (identity, setup, active) = recovered;
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.start", &coglet, pin.grant_generation);
             handler.inner.authority.runtime_boundary_operation(
@@ -717,7 +738,7 @@ impl DeviceHandler {
                 &scope,
                 &grant,
                 pin.delegation_generation,
-                Some(&identity["initial"]),
+                Some(&active),
                 request["correlation_id"].as_str(),
                 handler.clock_fn(),
                 |proof, recheck| {
@@ -1069,8 +1090,12 @@ impl OperationHandler for DeviceHandler {
                                     .open_service(&acceptance.coglet, &setup)
                                     .map_err(|_| StoreError::Storage)?;
                                 let locked = service.lock().map_err(|_| StoreError::Storage)?;
-                                if locked.managed_contains_operation(
+                                if locked.managed_push_conflicts(
                                     request_for_accept["correlation_id"].as_str().unwrap(),
+                                    &handler
+                                        .operation_intent(&request_for_accept)
+                                        .map_err(|_| StoreError::Storage)?,
+                                    &receipt_scope(&request_for_accept),
                                 ) {
                                     return Err(StoreError::Conflict);
                                 }

@@ -9,6 +9,7 @@ use std::path::Path;
 
 #[path = "clock.rs"]
 mod clock;
+
 #[cfg(feature = "native-engine")]
 #[path = "database_replay.rs"]
 mod database_replay;
@@ -24,6 +25,7 @@ mod heard_deadline_tests;
 mod live_heard;
 #[path = "managed.rs"]
 mod managed;
+pub(crate) use managed::CodeRevision;
 pub(crate) use managed::ReceiptScope;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
@@ -206,8 +208,9 @@ impl RuntimeService {
                 .map(|(p, b)| (p.clone(), b.clone()))
                 .collect::<BTreeMap<_, _>>()
         };
-        if state.runtime.manifest != configured.manifest
-            || code_files(&state.runtime) != code_files(configured)
+        let live_configured = Runtime::from_fixture(&state.runtime.initial_setup)?;
+        if state.runtime.manifest != live_configured.manifest
+            || code_files(&state.runtime) != code_files(&live_configured)
         {
             return Err("recovery code/manifest pins differ from configuration".into());
         }

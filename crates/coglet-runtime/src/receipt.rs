@@ -129,7 +129,11 @@ impl DeviceHandler {
             if let Some(found) =
                 locked.managed_receipt_for(operation_id, &scope.actor, scope.ticket.as_deref())
             {
-                return Ok(Some(found));
+                // Git receipts need the ref-store's exact original push grant
+                // snapshot, including after its WAL completion was reconciled.
+                if found.0 != "hub.git.push" {
+                    return Ok(Some(found));
+                }
             }
         }
         Ok(self
