@@ -130,7 +130,7 @@ fn cross_engine_state_hash() {
             for step in 0..32 {
                 let prev = a.clone();
                 a = execute(&Wamr::interpreter(), &b, &a, step);
-                c = execute(&Wasmtime, &b, &c, step);
+                c = execute(&Wasmtime::default(), &b, &c, step);
                 assert_eq!(a, c, "raw state case {case} bits {bits:x} step {step}");
                 assert_eq!(
                     snapshot(&b, &a).tree_hash(),
@@ -152,7 +152,7 @@ fn unrewritten_float_guest_is_rejected_by_both_engines() {
         Err(Error::UnqualifiedModule)
     ));
     assert!(matches!(
-        Wasmtime.load(&b, &limits(&Wasmtime)),
+        Wasmtime::default().load(&b, &limits(&Wasmtime::default())),
         Err(Error::UnqualifiedModule)
     ));
 }

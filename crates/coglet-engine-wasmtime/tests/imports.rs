@@ -57,7 +57,7 @@ fn guest(ptr: i64, len: i64) -> Vec<u8> {
     .unwrap()
 }
 fn run(b: &[u8], limits: Limits, host: &mut dyn Host) -> coglet_engine::StepOutcome {
-    let e = Wasmtime;
+    let e = Wasmtime::default();
     let module = e.load(b, &limits).unwrap();
     e.instantiate(&module, limits).unwrap().handle(
         StepInput {
@@ -180,4 +180,122 @@ fn replay_recomputes_and_divergence_is_not_masked() {
         Err(Error::ReplayDiverged)
     );
     assert_eq!(h.calls.len(), 1);
+}
+
+#[test]
+fn frozen_engine_rejects_db_import() {
+    let b = wat::parse_str(
+        r#"(module
+ (import "coglet_v0" "db" (func (param i32 i32 i32 i32) (result i32)))
+ (memory (export "memory") 1 2)
+ (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+ (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))"#,
+    )
+    .unwrap();
+    assert!(matches!(
+        Wasmtime::default().load(&b, &limits()),
+        Err(Error::UnqualifiedModule)
+    ));
+}
+
+#[test]
+fn abi02_db_forwards_four_unsigned_args_and_budget() {
+    struct DbHost {
+        args: Option<Vec<u64>>,
+        memory_len: u64,
+        remaining: u64,
+    }
+    impl Host for DbHost {
+        fn call(
+            &mut self,
+            module: &str,
+            name: &str,
+            args: &[u64],
+            memory: &mut dyn GuestMemory,
+            budget: &mut StepBudget,
+        ) -> Result<u32> {
+            assert_eq!((module, name), ("coglet_v0", "db"));
+            memory.contains(args[0] as u32, args[1] as u32)?;
+            memory.contains(args[2] as u32, args[3] as u32)?;
+            self.args = Some(args.to_vec());
+            self.memory_len = memory.memory_len();
+            self.remaining = budget.host_bytes_remaining();
+            Ok(0)
+        }
+    }
+    let b = wat::parse_str(
+        r#"(module
+ (import "coglet_v0" "db" (func $db (param i32 i32 i32 i32) (result i32)))
+ (memory (export "memory") 1 2) (data (i32.const 100) "abc")
+ (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+ (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+  i32.const 100 i32.const 3 i32.const 200 i32.const 16 call $db))"#,
+    )
+    .unwrap();
+    let e = Wasmtime::default().allow_db();
+    let l = limits();
+    let mut host = DbHost {
+        args: None,
+        memory_len: 0,
+        remaining: 0,
+    };
+    let module = e.load(&b, &l).unwrap();
+    let out = e.instantiate(&module, l).unwrap().handle(
+        StepInput {
+            events: vec![0x81, 0xa0],
+            step: 0,
+            logical_time: 0,
+            seed: 0,
+        },
+        &mut host,
+    );
+    assert_eq!(out.result, Ok(()));
+    assert_eq!(host.args.as_deref(), Some(&[100, 3, 200, 16][..]));
+    assert_eq!(host.memory_len, 65536);
+    assert_eq!(host.remaining, 4094);
+}
+
+#[test]
+fn abi02_db_widened_pointer_aborts_before_host_success() {
+    struct Check;
+    impl Host for Check {
+        fn call(
+            &mut self,
+            _: &str,
+            _: &str,
+            args: &[u64],
+            memory: &mut dyn GuestMemory,
+            _: &mut StepBudget,
+        ) -> Result<u32> {
+            memory.contains(args[0] as u32, args[1] as u32)?;
+            Ok(0)
+        }
+    }
+    let b = wat::parse_str(
+        r#"(module
+ (import "coglet_v0" "db" (func $db (param i32 i32 i32 i32) (result i32)))
+ (memory (export "memory") 1 2)
+ (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+ (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+  i32.const -1 i32.const 3 i32.const 200 i32.const 16 call $db))"#,
+    )
+    .unwrap();
+    let e = Wasmtime::default().allow_db();
+    let l = limits();
+    let module = e.load(&b, &l).unwrap();
+    assert_eq!(
+        e.instantiate(&module, l)
+            .unwrap()
+            .handle(
+                StepInput {
+                    events: vec![0x81, 0xa0],
+                    step: 0,
+                    logical_time: 0,
+                    seed: 0,
+                },
+                &mut Check,
+            )
+            .result,
+        Err(Error::InvalidPointer)
+    );
 }

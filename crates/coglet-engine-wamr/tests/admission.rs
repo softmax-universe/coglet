@@ -99,3 +99,40 @@ fn unqualified_aot_mode_rejected_before_execution() {
         Err(Error::UnsupportedMode)
     ));
 }
+#[test]
+fn frozen_abi_rejects_db_import() {
+    let engine = Wamr::interpreter();
+    let bytes = guest(
+        r#"(import "coglet_v0" "db" (func (param i32 i32 i32 i32) (result i32)))"#,
+        "1 2",
+    );
+    assert!(matches!(
+        engine.load(&bytes, &limits()),
+        Err(Error::UnqualifiedModule)
+    ));
+}
+#[test]
+fn abi02_opt_in_admits_exact_db_signature_only() {
+    let engine = Wamr::interpreter().allow_db();
+    assert!(
+        engine
+            .load(
+                &guest(
+                    r#"(import "coglet_v0" "db" (func (param i32 i32 i32 i32) (result i32)))"#,
+                    "1 2"
+                ),
+                &limits()
+            )
+            .is_ok()
+    );
+    assert!(matches!(
+        engine.load(
+            &guest(
+                r#"(import "coglet_v0" "db" (func (param i32 i32) (result i32)))"#,
+                "1 2"
+            ),
+            &limits()
+        ),
+        Err(Error::UnqualifiedModule)
+    ));
+}

@@ -1,6 +1,7 @@
 #include "wasm_export.h"
 #include "wasm_exec_env.h"
 #include "wasm_runtime.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,12 +23,22 @@ static void coglet_call(wasm_exec_env_t env, uint64_t *args) {
     if (!state) { wasm_runtime_set_exception(inst, "missing coglet host"); return; }
     args[0] = ce_host_call(state, "coglet_v0", name, args, 2);
 }
+static void coglet_db_call(wasm_exec_env_t env, uint64_t *args);
 static NativeSymbol coglet_symbols[] = {
     {"timer", coglet_call, "(ii)i", "timer"},
     {"emit", coglet_call, "(ii)i", "emit"},
     {"llm", coglet_call, "(ii)i", "llm"},
     {"log", coglet_call, "(ii)i", "log"},
 };
+static NativeSymbol coglet_db_symbols[] = {
+    {"db", coglet_db_call, "(iiii)i", "db"},
+};
+static void coglet_db_call(wasm_exec_env_t env, uint64_t *args) {
+    wasm_module_inst_t inst = wasm_runtime_get_module_inst(env);
+    void *state = wasm_runtime_get_custom_data(inst);
+    if (!state) { wasm_runtime_set_exception(inst, "missing coglet host"); return; }
+    args[0] = ce_host_call(state, "coglet_v0", "db", args, 4);
+}
 typedef struct { const char *name; uint32_t argc; } WasiImport;
 #define IMPORT(name, sig, argc) static WasiImport wasi_##name = {#name, argc};
 #include "wasi.def"
@@ -59,7 +70,7 @@ void ce_destroy(Context *c) {
     free(c);
 }
 Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
-                   uint32_t stack_size, uint32_t pages) {
+                   uint32_t stack_size, uint32_t pages, int allow_db) {
     Context *c = calloc(1, sizeof(*c));
     if (!c) return NULL;
     c->pool = malloc(pool_size);
@@ -71,6 +82,7 @@ Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
     if (!wasm_runtime_full_init(&init)) { ce_destroy(c); return NULL; }
     c->initialized = 1;
     if (!wasm_runtime_register_natives_raw("coglet_v0", coglet_symbols, sizeof(coglet_symbols)/sizeof(coglet_symbols[0]))) { ce_destroy(c); return NULL; }
+    if (allow_db && !wasm_runtime_register_natives_raw("coglet_v0", coglet_db_symbols, sizeof(coglet_db_symbols)/sizeof(coglet_db_symbols[0]))) { ce_destroy(c); return NULL; }
     if (!wasm_runtime_register_natives_raw("wasi_snapshot_preview1", wasi_symbols, sizeof(wasi_symbols)/sizeof(wasi_symbols[0]))) { ce_destroy(c); return NULL; }
     wasm_runtime_set_log_level(0);
     char error[256] = {0};
@@ -100,6 +112,14 @@ int ce_call(Context *c, const char *name, uint32_t argc, uint32_t *argv) {
 }
 void ce_terminate(Context *c) { wasm_runtime_terminate(c->instance); }
 int ce_valid(Context *c, uint32_t ptr, uint32_t len) { return wasm_runtime_validate_app_addr(c->instance, ptr, len); }
+uint64_t ce_memory_size(Context *c) {
+    wasm_memory_inst_t mem = wasm_runtime_get_default_memory(c->instance);
+    if (!mem) return 0;
+    uint64_t pages = wasm_memory_get_cur_page_count(mem);
+    uint64_t bps = wasm_memory_get_bytes_per_page(mem);
+    if (bps != 0 && pages > UINT64_MAX / bps) return UINT64_MAX;
+    return pages * bps;
+}
 // Copy under WAMR's exception lock: terminate may overwrite its internal
 // buffer concurrently. Never expose a borrowed pointer to that mutable buffer.
 int ce_copy_exception(Context *c, char *output, uint32_t capacity) {

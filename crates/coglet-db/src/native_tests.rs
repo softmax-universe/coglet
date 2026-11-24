@@ -1,4 +1,6 @@
 use super::*;
+#[path = "engine_bridge_tests.rs"]
+mod engine_bridge_tests;
 use coglet_types::Value as V;
 use std::collections::BTreeSet;
 pub(super) const CODE: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
