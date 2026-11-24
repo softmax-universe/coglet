@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "namespace": "game",
+  "entries": {
+    "game.view": [],
+    "game.motor": ["game.control", "game.helper"],
+    "game.presentation": ["game.overlay"]
+  },
+  "schemas": {
+    "https://example.invalid/game/1#empty": "empty",
+    "https://example.invalid/game/1#tile-query": "tile-query",
+    "https://example.invalid/game/1#state": "state",
+    "https://example.invalid/game/1#tiles": "tiles",
+    "https://example.invalid/game/1#observation": "observation"
+  },
+  "operations": {
+    "game.state": {"entry":"game.view","direction":"read","input":"https://example.invalid/game/1#empty","output":"https://example.invalid/game/1#state","resources":[],"single_owner":true},
+    "game.tiles": {"entry":"game.view","direction":"read","input":"https://example.invalid/game/1#tile-query","output":"https://example.invalid/game/1#tiles","resources":[],"single_owner":true},
+    "game.observation": {"entry":"game.view","direction":"event","input":"https://example.invalid/game/1#observation","resources":[],"single_owner":true,"selection":{"operation_field":"operation","args_field":"args","value_field":"value","reads":["game.state","game.tiles"]}},
+    "game.move": {"entry":"game.motor","direction":"action","input":"https://example.invalid/game/1#tile-query","output":"https://example.invalid/game/1#empty","resources":["game.control"],"single_owner":true},
+    "game.helper_spawn": {"entry":"game.motor","direction":"action","input":"https://example.invalid/game/1#empty","output":"https://example.invalid/game/1#empty","resources":["game.control","game.helper"],"single_owner":true},
+    "game.highlight": {"entry":"game.presentation","direction":"action","input":"https://example.invalid/game/1#tile-query","output":"https://example.invalid/game/1#empty","resources":["game.overlay"],"single_owner":true}
+  },
+  "rules": {
+    "empty": {"op":"record","fields":[]},
+    "uint": {"op":"range","min":0,"max":18446744073709551615},
+    "id": {"op":"regexp","pattern":"[0-9a-f]{32}"},
+    "tile-query": {"op":"record","fields":[{"name":"tile","optional":false,"type":{"op":"ref","name":"uint"}}]},
+    "state": {"op":"record","fields":[{"name":"paused","optional":false,"type":{"op":"primitive","name":"bool"}}]},
+    "tiles": {"op":"record","fields":[{"name":"count","optional":false,"type":{"op":"ref","name":"uint"}}]},
+    "observation": {"op":"record","fields":[
+      {"name":"query_id","optional":false,"type":{"op":"ref","name":"id"}},
+      {"name":"operation","optional":false,"type":{"op":"union","items":[{"op":"literal","value":"game.state"},{"op":"literal","value":"game.tiles"}]}},
+      {"name":"args","optional":false,"type":{"op":"union","items":[{"op":"ref","name":"empty"},{"op":"ref","name":"tile-query"}]}},
+      {"name":"revision","optional":false,"type":{"op":"ref","name":"uint"}},
+      {"name":"world_generation","optional":false,"type":{"op":"ref","name":"uint"}},
+      {"name":"grant_epoch","optional":false,"type":{"op":"ref","name":"uint"}},
+      {"name":"value","optional":false,"type":{"op":"union","items":[{"op":"ref","name":"state"},{"op":"ref","name":"tiles"}]}}
+    ]}
+  }
+}

@@ -3,6 +3,8 @@ mod admission;
 pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
+mod trusted_catalog;
+pub use trusted_catalog::TrustedExtensionCatalog;
 mod execution;
 pub mod ffi;
 mod filesystem;
