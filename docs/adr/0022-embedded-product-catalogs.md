@@ -95,14 +95,45 @@ retain an exact durable product-command-to-action mapping rather than truncating
 or treating arbitrary command IDs as valid common IDs. Repeated conflicting
 commands fail closed. The existing runtime grant/resource/epoch rules apply.
 
-Swift receives the committed action and checks its original mapping and current
-PodHost lifecycle/expiry before any effect. PodHost and CommandJournal remain
+The exclusive dispatch seam is the ONE registered `system.status` handler.
+`NativeCapabilities.install` must accept an injected status admission wrapper,
+with the existing direct telemetry closure as its unchanged default. It must
+not register two handlers, disable the command, or resubmit it to PodHost. In
+native mode that wrapper calls the existing telemetry closure once. In selected
+mode PodHost's normal `submit`/`advance`/`tick` claims the journal row and enters
+only the wrapper; the wrapper retains the original completion and native closure,
+records its mapping, and publishes the guest observation without sampling telemetry.
+Only the matching committed action may invoke that retained closure, once, under
+the same main-thread owner fence. Neither `acceptHubClaim` nor `tick` gets an
+alternate direct route to telemetry. Duplicate tick/claim delivery cannot enter
+an already-running handler. This seam must be covered with an actual installed
+NativeCapabilities registration test, not a parallel fake host.
+
+Here `journal.claim` marks conservative product dispatch, BEFORE guest staging.
+A crash/cancel from that point preserves the existing running-to-unknown rule,
+even if telemetry never ran; that possible false uncertainty is preferred to
+replaying an effect. The adapter must not downgrade `.running` to pending after
+any interruption. It checks the original mapping, current lifecycle and immutable
+product expiry again immediately before telemetry. PodHost and CommandJournal remain
 the sole platform executor and authoritative Baby Bear terminal ledger. A
 successful adapter output `{}` means the mapped native command actually completed
 and its original payload is durable; an admission/queue ack is not success.
 That payload goes to the hub through the existing receipt projection. It is not
 copied into an untyped guest result. Failure uses the existing common error;
 unknown product outcomes never become successful adapter outputs.
+
+A bounded no-intent path is mandatory. At admission record the original hub
+wall-clock expiry and a monotonic deadline computed once from a positive remaining
+wall-clock duration, capped at 60 seconds, and the sampled runtime-epoch deadline.
+Never extend these on tick/reconnect; refuse nonpositive or unrepresentable values.
+Check BOTH the original wall-clock expiry and elapsed monotonic allowance before
+native entry; runtime action deadline is an additional fence, not a replacement
+for product expiry. Wall-clock advancement may expire earlier; rollback cannot
+extend the retained monotonic allowance. If no matching intent arrives by either
+fence, close that mapping and cancel the running PodHost command to its existing
+unknown outcome. Guest/startup failure also cancels conservatively; do not call a
+failure completion after cancellation, synthesize a successful receipt, or invoke
+native as fallback. A late action gets a retained rejection and no native entry.
 
 Retain exact translated action bytes, original command expiry, epoch and receipt
 mapping before acknowledgment/dispatch. Query retained identities before fresh
@@ -126,9 +157,13 @@ shadow sessions; do not invent concurrent global instances.
 
 Selected coglet mode retains one product command ledger and one live executor;
 there is no native/coglet race. Close admission and quiesce the old owner before
-selection. Switching modes never resubmits running or unknown IDs. On background,
+selection. Switching modes never resubmits running or unknown IDs. On
 protected-data loss, revocation, panic or failed durability, fence fresh admission
-and preserve original receipts. Rollback closes links before stop, selects native
+and preserve original receipts. Background flush continues the existing rule:
+no fresh hub claims. Do not change native `system.status`'s `foreground:false`
+semantics: while iOS actually grants execution, the same protected-data/expiry
+checks permit this read-only command in either mode. Suspension grants no new
+execution time or wake entitlement. Rollback closes links before stop, selects native
 for future eligible commands only and retains all ledgers/catalog pins for audit.
 It cannot undo a prior effect or reinterpret an unknown result. A stopped or
 failed shadow must not stop the live native executor. No automatic phone cutover,
@@ -180,8 +215,13 @@ Named tests below are REQUIRED, not claims of tests already passing:
   framework and positively executes the compiled product guest, original event,
   committed action and durable terminal receipt; no mocked guest/script fallback.
 - Baby Bear `PodCogletParityTests`: recorded native and isolated real-guest shadow
-  observations match admission/intent/receipt projections; exactly one native
-  handler invocation, positive selected-mode command and unchanged hub payload.
+  observations match admission/intent/receipt projections; the actually installed
+  NativeCapabilities handler has exactly one native telemetry invocation only after
+  guest intent, duplicate tick/claim has no bypass, positive selected-mode command
+  and unchanged hub payload.
+- Baby Bear `PodCogletDeadlineTests`: no emit, late emit, wall-clock jump in either
+  direction, monotonic expiry, original hub expiry and restart cannot extend an
+  admission or invoke a native fallback; background read-only parity is explicit.
 - Baby Bear `PodCogletRollbackTests`: duplicate/conflict/cancel/expiry, lock and
   foreground transitions, restart during dispatch, unknown receipt upload,
   grant/epoch loss, guest failure and rollback never repeat an effect.
