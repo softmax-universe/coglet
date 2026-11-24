@@ -1,5 +1,7 @@
 # Kernel promotion interface — DRAFT 0.1
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+
 **Status: DRAFT; policy/promotion freezes at M3, not v0.**
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md), [PR #40](https://github.com/softmax-universe/coglet/pull/40).
 Imports: [common](conventions.md), [policy](policy.md).
@@ -9,10 +11,10 @@ message records and shared control definitions. Concatenate `common.cddl` after
 for a specific definition. Deterministic CBOR is normative, JSON is a debug view.
 This defines draft operation payloads only. The names `promotion.propose`,
 `promotion.promote`, `promotion.rollback`, `promotion.status` are reserved here
-as logical operations, **not legal methods/frames of frozen hub 0.1**. No second
+as logical operations, **not legal methods/frames of frozen router 0.1**. No second
 ALPN or implicit extension is authorized. A later integration ADR must assign
 negotiated framing, per-method grants, publication and activation-receipt bindings
-before any network implementation. Existing hub build provenance, ref CAS,
+before any network implementation. Existing router build provenance, ref CAS,
 actor/ticket checks and boundary ordering remain authoritative. The fixed kernel,
 never the factory, owns live refs and activation.
 
@@ -23,12 +25,12 @@ branch names and mixed Git object formats within one coglet repo are forbidden.
 `repo` is a nonempty immutable registry repository identifier, not an arbitrary
 URL the kernel fetches. Gate `suite` and evidence/approval references identify
 immutable authenticated artifacts resolvable by the kernel; references themselves
-are not proofs. The enclosing authenticated hub supplies actor identity and
+are not proofs. The enclosing authenticated router supplies actor identity and
 method grants; callers cannot set audit actor or gate authority by a string.
 Common correlation ids identify requests; a common-shaped opaque `proposal_id`
 identifies one durable proposal. A uint64 `generation` is a kernel-owned per-coglet
 fence, incremented for each activation or terminal fenced stop; never reused.
-Overflow fails closed. Coglets are independent even on one surface.
+Overflow fails closed. Coglets are independent even on one adapter.
 
 All mutation requests include `version: "0.1"`, `correlation_id`, `op`, and
 `coglet`. Responses retain correlation id and op. `ok:false` carries only the
@@ -154,7 +156,7 @@ audit records and malformed shapes. `regressions.json` tests absolute-end lexica
 matching with valid controls, including every inherited commit location.
 `test_control.py` validates every fixture against both actual CDDL and JSON Schema,
 checks selected rules/public roots, and separately checks binding and
-status invariants, not signatures or real runtime behavior. A future shared hub
+status invariants, not signatures or real runtime behavior. A future shared router
 suite MUST exercise competing propose/promote, stale base/generation/policy,
 forged/expired evidence, duplicate requests across restart, delayed boundary acks,
 rollback during activation, all probation triggers and first-install failure.

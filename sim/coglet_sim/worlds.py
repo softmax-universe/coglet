@@ -26,6 +26,7 @@ def _samples(seed):
 @dataclass(init=False)
 class Gridbot(World):
     seed: int
+    max_steps: int
     width: int
     height: int
     x: int
@@ -35,7 +36,8 @@ class Gridbot(World):
     steps: int
     done: bool
 
-    def __init__(self, seed, *, width=8, height=8):
+    def __init__(self, seed, *, width=8, height=8, max_steps=10000):
+        self.max_steps = _integer(max_steps, 1, 10000, 'max_steps')
         self.width = _integer(width, 2, 64, 'width')
         self.height = _integer(height, 2, 64, 'height')
         a, b, c, d = _samples(seed)
@@ -47,7 +49,7 @@ class Gridbot(World):
         self.steps, self.done = 0, False
 
     def snapshot(self):
-        return dict(world='gridbot-v1', seed=self.seed, width=self.width,
+        return dict(world='gridbot-v1', seed=self.seed, max_steps=self.max_steps, width=self.width,
                     height=self.height, x=self.x, y=self.y, goal_x=self.goal_x,
                     goal_y=self.goal_y, steps=self.steps, done=self.done)
 
@@ -62,7 +64,7 @@ class Gridbot(World):
         self.y = min(self.height - 1, max(0, self.y + dy))
         self.steps += 1
         self.done = ((self.x, self.y) == (self.goal_x, self.goal_y)
-                     or self.steps >= 10000)
+                     or self.steps >= self.max_steps)
         return self.snapshot()
 
 

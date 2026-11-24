@@ -1,0 +1,27 @@
+test_buffered_unexpected_byte_is_not_silence (conformance.tests.test_fixture_clock.FixtureClockTests.test_buffered_unexpected_byte_is_not_silence) ... ok
+test_clock_requires_stdio_and_exact_boolean (conformance.tests.test_fixture_clock.FixtureClockTests.test_clock_requires_stdio_and_exact_boolean) ... ok
+test_eof_is_not_silence (conformance.tests.test_fixture_clock.FixtureClockTests.test_eof_is_not_silence) ... ok
+test_exit_before_clock_connect_reports_exit (conformance.tests.test_fixture_clock.FixtureClockTests.test_exit_before_clock_connect_reports_exit) ... ok
+test_incorrect_clock_ack_is_failure (conformance.tests.test_fixture_clock.FixtureClockTests.test_incorrect_clock_ack_is_failure) ... ok
+test_inherited_clock_env_is_removed_for_ordinary_adapter (conformance.tests.test_fixture_clock.FixtureClockTests.test_inherited_clock_env_is_removed_for_ordinary_adapter) ... ok
+test_large_initial_reply_before_clock_connection (conformance.tests.test_fixture_clock.FixtureClockTests.test_large_initial_reply_before_clock_connection) ... ok
+test_large_reply_flush_before_send_ack (conformance.tests.test_fixture_clock.FixtureClockTests.test_large_reply_flush_before_send_ack) ... ok
+test_missing_clock_ack_fails_bounded (conformance.tests.test_fixture_clock.FixtureClockTests.test_missing_clock_ack_fails_bounded) ... ok
+test_partial_frame_eof_is_failure (conformance.tests.test_fixture_clock.FixtureClockTests.test_partial_frame_eof_is_failure) ... ok
+test_real_child_slow_io_does_not_advance_fixture_time (conformance.tests.test_fixture_clock.FixtureClockTests.test_real_child_slow_io_does_not_advance_fixture_time) ... ok
+test_stdout_overflow_fails_without_backpressure_deadlock (conformance.tests.test_fixture_clock.FixtureClockTests.test_stdout_overflow_fails_without_backpressure_deadlock) ... ok
+test_step_watchdog_fails_missing_ack_without_total_case_expiry (conformance.tests.test_fixture_clock.FixtureClockTests.test_step_watchdog_fails_missing_ack_without_total_case_expiry) ... ok
+test_unexpected_response_is_not_filtered (conformance.tests.test_fixture_clock.FixtureClockTests.test_unexpected_response_is_not_filtered) ... ok
+test_without_clock_the_old_wall_deadline_still_fails (conformance.tests.test_fixture_clock.FixtureClockTests.test_without_clock_the_old_wall_deadline_still_fails) ... ok
+test_case_watchdog_still_includes_startup (conformance.tests.test_readiness.ReadinessTests.test_case_watchdog_still_includes_startup) ... ok
+test_connect_watchdog_bounds_missing_signal (conformance.tests.test_readiness.ReadinessTests.test_connect_watchdog_bounds_missing_signal) ... ok
+test_marker_is_exact_line_and_can_be_fragmented (conformance.tests.test_readiness.ReadinessTests.test_marker_is_exact_line_and_can_be_fragmented) ... ok
+test_missing_signal_exits_fail_closed_with_stderr (conformance.tests.test_readiness.ReadinessTests.test_missing_signal_exits_fail_closed_with_stderr) ... ok
+test_post_ready_response_still_times_out (conformance.tests.test_readiness.ReadinessTests.test_post_ready_response_still_times_out) ... ok
+test_ready_line_validation (conformance.tests.test_readiness.ReadinessTests.test_ready_line_validation) ... ok
+test_slow_startup_does_not_spend_first_frame_budget (conformance.tests.test_readiness.ReadinessTests.test_slow_startup_does_not_spend_first_frame_budget) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 9.517s
+
+OK
