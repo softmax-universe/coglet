@@ -10,7 +10,8 @@ permissions:
   contents: read
 jobs:
   apple:
-    runs-on: macos-latest
+    # coglet Mac minis (self-hosted)
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 25
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '15.0'
@@ -48,7 +49,7 @@ jobs:
         # Default/native debug suites above still execute unchanged.
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   ios-runtime:
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
