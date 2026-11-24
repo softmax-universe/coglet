@@ -31,4 +31,4 @@ Forbid: class="onboarding-sidebar", class="fourth-stage"
 Capture times are not retained with these PNGs; the cited commit is publication provenance, not a claimed capture timestamp. Four renders listed above were opened and inspected during continuation3; previous runs additionally inspected all eight Settings variants. Native post-change large-text/high-contrast comparison remains required.
 
 ## Verification
-Status: unverified: baseline inspected; no enrollment UI changes or native post-change render comparison yet
+Status: native post-change comparison from run 45403353278 inspected (light Settings hub, light onboarding-2, light menu-idle, dark-contrast large onboarding, light-contrast large Settings hub, dark-contrast large menu-update): layout intact, Router rows added; large-text clipping of the fixed onboarding frame matches the previous baseline. 92 changed baselines updated deliberately; not yet rechecked by CI
