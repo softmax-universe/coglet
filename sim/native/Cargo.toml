@@ -1,0 +1,13 @@
+[package]
+name = "coglet-sandbox-proof"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+coglet-runtime = { path = "../../crates/coglet-runtime", features = ["native-engine"] }
+coglet-engine-wamr = { path = "../../crates/coglet-engine-wamr" }
+serde_json = "1"
+hex = "0.4"
+
+[workspace]

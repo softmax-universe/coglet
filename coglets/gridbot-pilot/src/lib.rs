@@ -60,7 +60,7 @@ pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), H
         };
         let deadline = ctx
             .logical_time
-            .checked_add(1_000_000)
+            .checked_add(10_000_000)
             .ok_or(HostError::InvalidArgument)?;
         let id = ctx.next_id()?;
         ctx.emit(&Action {

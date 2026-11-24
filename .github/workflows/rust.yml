@@ -40,5 +40,7 @@ jobs:
           name: reference-coglets-wasm
           path: target/guests/wasm32-wasip1/release/coglet_*.wasm
           if-no-files-found: error
+      - name: Sandbox worlds through cogletd and independent WAMR replay
+        run: bash sim/check-native.sh
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'

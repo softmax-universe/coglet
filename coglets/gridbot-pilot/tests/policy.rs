@@ -40,7 +40,7 @@ fn gridbot_moves_toward_goal_with_sdk_id_and_deadline() {
         let act = &host.0[0];
         assert_eq!(act["capability"], "sim.gridbot_move");
         assert_eq!(act["args"], json!({"direction":direction}));
-        assert_eq!(act["deadline"], 1_000_010);
+        assert_eq!(act["deadline"], 10_000_010);
         assert_eq!(act["id"].as_str().unwrap().len(), 32);
     }
 }
