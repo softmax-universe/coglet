@@ -38,6 +38,15 @@ pub fn random_id() -> Result<String, String> {
     let mut buf = [0u8; 16];
     let mut filled = 0;
     while filled < buf.len() {
+        #[cfg(target_vendor = "apple")]
+        let n = {
+            // getentropy accepts at most 256 bytes; cap even though IDs need 16.
+            let len = (buf.len() - filled).min(256);
+            // SAFETY: this is a writable tail of buf, bounded by getentropy's limit.
+            let result = unsafe { libc::getentropy(buf[filled..].as_mut_ptr().cast(), len) };
+            if result == 0 { len as isize } else { -1 }
+        };
+        #[cfg(not(target_vendor = "apple"))]
         // SAFETY: the pointer/length pair describes the unfilled tail of `buf`.
         let n =
             unsafe { libc::getrandom(buf[filled..].as_mut_ptr().cast(), buf.len() - filled, 0) };
@@ -70,6 +79,18 @@ pub fn unhex(s: &str) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn random_ids_are_fresh_lowercase_128_bit_values() {
+        let ids: std::collections::HashSet<_> = (0..1024)
+            .map(|_| {
+                let id = random_id().expect("OS CSPRNG must be available");
+                assert!(is_correlation_id(&id));
+                id
+            })
+            .collect();
+        assert_eq!(ids.len(), 1024);
+    }
+
     #[test]
     fn grammars() {
         assert!(is_surface_id(&format!("surface:{}", "a".repeat(64))));
