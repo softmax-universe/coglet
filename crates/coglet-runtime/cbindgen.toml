@@ -1,0 +1,12 @@
+language = "C"
+usize_is_size_t = true
+include_guard = "COGLET_RUNTIME_H"
+sys_includes = ["stdint.h", "stddef.h"]
+after_includes = "typedef struct coglet_surface_link coglet_surface_link;"
+[export]
+include = ["coglet_runtime_configure", "coglet_runtime_start", "coglet_runtime_stop", "coglet_runtime_status", "coglet_surface_open", "coglet_surface_send", "coglet_surface_recv", "coglet_surface_close", "coglet_runtime_test_panic"]
+exclude = ["CogletSurfaceLink"]
+[export.rename]
+"CogletSurfaceLink" = "coglet_surface_link"
+[defines]
+"feature = ffi-test-hooks" = "COGLET_RUNTIME_TEST_HOOKS"

@@ -1,37 +1,88 @@
 #ifndef COGLET_RUNTIME_H
 #define COGLET_RUNTIME_H
+
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-/* Trusted application configuration: UTF-8 JSON with surface and
- * permitted_coglets fields. Immutable per process; call before surface_open.
- * No authority comes from hello. This configuration API is runtime-owned,
- * not a new surface wire message. Returns 0 or -1. */
-int32_t coglet_runtime_configure(const uint8_t *config, size_t n);
-/* Start/recover the durable service before opening surface links. UTF-8 JSON
- * {"wal":"/absolute/private/state.wal","setup":{...}} pins initial runtime
- * configuration. Linux BOOTTIME continuity only; other hosts fail closed.
- * Optional native_schedule: {trace_id, seed, runtime_bytes, stack_bytes};
- * requires native-engine build feature and qualified Wasm, no WASI imports.
- * With native scheduling, send/recv may synchronously execute a bounded guest
- * step; never call from an audio/reflex thread. See native-engine.md.
- * 0 success, -1 invalid config/already started, -2 recovery/clock failure.
- * Without start, surface_open retains the negotiation-only probe behavior. */
-int32_t coglet_runtime_start(const uint8_t *config, size_t n);
-/* 0 stopped, 1 live links (close them first), -2 poisoned state. */
-int32_t coglet_runtime_stop(void);
+#include <stdlib.h>
+#include <stdint.h>
+#include <stddef.h>
 typedef struct coglet_surface_link coglet_surface_link;
+
+#define SURFACE_MAX_FRAME 1048576
+
+#define SURFACE_QUEUE 128
+
+/**
+ * Supervisor status: 0 running, 1 stopped, -2 new guest failure or caught panic.
+ * Historical failed batches are never replayed by Restart.
+ */
+int32_t coglet_runtime_status(void);
+
+/**
+ * Start/recover the durable coordinator from trusted JSON {wal, setup, native_schedule?}.
+ * A caught panic requires closing every link and calling stop before restart.
+ * # Safety
+ * `config` references `n` readable immutable bytes for this call.
+ */
+int32_t coglet_runtime_start(const uint8_t *config, size_t n);
+
+/**
+ * Stop only after all links close. Returns 1 while links hold the runtime.
+ * Poisoned service state is discarded, NEVER unpoisoned for continued execution.
+ */
+int32_t coglet_runtime_stop(void);
+
+/**
+ * Configure the process's immutable supervisor binding from UTF-8 JSON.
+ * Repeating identical configuration is idempotent; replacing identity requires
+ * a new runtime process. This is NOT a surface wire message.
+ * # Safety
+ * `config` must reference `n` readable bytes for this call, with no concurrent mutation.
+ */
+int32_t coglet_runtime_configure(const uint8_t *config, size_t n);
+
+/**
+ * Open an unnegotiated link in the already-configured runtime.
+ * # Safety
+ * `out` must be null or point to writable, aligned storage for one handle pointer.
+ */
 int32_t coglet_surface_open(uint32_t abi_version, coglet_surface_link **out);
-int32_t coglet_surface_send(coglet_surface_link *, const uint8_t *cbor, size_t n);
-int32_t coglet_surface_recv(coglet_surface_link *, uint8_t *out, size_t cap, size_t *n);
-void coglet_surface_close(coglet_surface_link *);
-/* All operations serialized by caller on a non-audio control queue.
- * 0 success; 1 would-block; 2 short output buffer (no dequeue);
- * -1 invalid argument; -2 closed/fatal. recv sets n=0 on would-block.
- * Buffers caller-owned, never retained. No calls after close. */
-#ifdef __cplusplus
-}
+
+/**
+ * Copy and validate one deterministic CBOR message. No caller pointer is retained.
+ * # Safety
+ * `link` must be a live handle, exclusively accessed for the call; `cbor` must
+ * reference `n` readable bytes without concurrent mutation. No calls after close.
+ */
+int32_t coglet_surface_send(coglet_surface_link *link, const uint8_t *cbor, size_t n);
+
+/**
+ * Poll one response; short buffers and size queries do not dequeue it.
+ * # Safety
+ * `link` must be live and exclusively accessed. `n` points to writable usize.
+ * `out` points to `cap` writable bytes, or is null with cap=0 for size query.
+ * Output buffers must not alias the handle or each other.
+ */
+int32_t coglet_surface_recv(coglet_surface_link *link, uint8_t *out, size_t cap, size_t *n);
+
+/**
+ * Apply disconnect and free the handle. Null is a no-op. Fenced links are
+ * discarded without calling into uncertain service state.
+ * # Safety
+ * Non-null `link` must be a live handle from open, with no concurrent access.
+ * The handle must never be used again, including a second close.
+ */
+void coglet_surface_close(coglet_surface_link *link);
+
+#if defined(COGLET_RUNTIME_TEST_HOOKS)
+/**
+ * TEST BUILDS ONLY: inject an unwind while holding both runtime ownership and
+ * service locks, exercising the poisoned-state path through an actual C entry.
+ * Not present in ordinary release artifacts; never exposed as guest authority.
+ */
+int32_t coglet_runtime_test_panic(void);
 #endif
-#endif
+
+#endif  /* COGLET_RUNTIME_H */

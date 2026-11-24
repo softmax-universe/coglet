@@ -1,8 +1,8 @@
 use super::*;
 use coglet_types::Value as V;
 use std::collections::BTreeSet;
-const CODE: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-fn catalog() -> Catalog {
+pub(super) const CODE: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+pub(super) fn catalog() -> Catalog {
     Catalog::approve_typed(vec![
         TypedStatement {
             statement: Statement::new(
@@ -45,7 +45,7 @@ fn setup(root: &Path) -> Database {
     db.provision_for_test("CREATE TABLE objects(id TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL);INSERT INTO objects VALUES('a','first'),('b','second'),('c','third');PRAGMA user_version=1;").unwrap();
     db
 }
-fn admission(db: &Database, cat: &Catalog) -> Admission {
+pub(super) fn admission(db: &Database, cat: &Catalog) -> Admission {
     let (schema_version, schema_hash) = db.schema_pin().unwrap();
     Admission {
         pins: Pins {

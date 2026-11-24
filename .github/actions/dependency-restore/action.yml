@@ -1,0 +1,36 @@
+name: Dependency bundle restore
+description: Restore input-addressed dependencies, optionally fencing registry access.
+inputs:
+  job:
+    required: true
+  mode:
+    default: normal
+  release:
+    default: dependency-mirror-v1
+runs:
+  using: composite
+  steps:
+    - name: Dependency transport regressions
+      shell: bash
+      run: python3 -m unittest discover -s scripts/ci -v
+    - name: Restore durable dependencies before registry access
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BUNDLE_JOB: ${{ inputs.job }}
+        BUNDLE_MODE: ${{ inputs.mode }}
+        BUNDLE_RELEASE: ${{ inputs.release }}
+      run: |
+        required=()
+        if [[ "$BUNDLE_MODE" == proof ]]; then
+          required=(--required)
+          # Hosted runners are fresh. Explicitly discard their preinstalled/cache
+          # copy of the exact pinned toolchain so restore is the only proof source.
+          channel=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')
+          rm -rf "$HOME/.m2/repository" "$HOME/.cargo/registry" "$HOME/.cargo/git" "$HOME/.rustup/toolchains/$channel-x86_64-unknown-linux-gnu"
+        fi
+        python3 scripts/ci/dependency_bundle.py restore --job "$BUNDLE_JOB" --release "$BUNDLE_RELEASE" "${required[@]}"
+    - name: Deny registry access on proof runners
+      if: inputs.mode == 'proof'
+      shell: bash
+      run: python3 scripts/ci/deny_registries.py

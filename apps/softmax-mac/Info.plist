@@ -11,6 +11,7 @@
     <key>LSMinimumSystemVersion</key><string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>LSUIElement</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>Softmax needs microphone access for push-to-talk conversations with your coglets.</string>
+    <key>NSSpeechRecognitionUsageDescription</key><string>Softmax transcribes push-to-talk audio on this Mac before sending speech events to your local coglet. Audio is never uploaded by this recognizer.</string>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>SUFeedURL</key><string>https://github.com/softmax-universe/coglet/releases/download/softmax-mac-updates/appcast.xml</string>
     <key>SUPublicEDKey</key><string>EHjimh35CKewwWRhSL0BiMhe6Lx0yqlQ0+j4jDcRSs0=</string>

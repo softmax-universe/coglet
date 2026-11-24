@@ -4,13 +4,26 @@ on:
     branches: [main]
   pull_request:
   merge_group:
+  workflow_call:
+    inputs:
+      bundle-mode:
+        type: string
+        default: normal
+      bundle-release:
+        type: string
+        default: dependency-mirror-v1
 permissions:
   contents: read
 jobs:
   rust:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/dependency-restore
+        with:
+          job: rust
+          mode: ${{ inputs.bundle-mode || 'normal' }}
+          release: ${{ inputs.bundle-release || 'dependency-mirror-v1' }}
       - name: Install pinned toolchain
         run: rustup show active-toolchain
       - run: cargo fmt --all -- --check
@@ -23,7 +36,10 @@ jobs:
       - name: Build reference guest modules
         run: bash sdk/guest-rust/build-guests.sh
       - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: ${{ inputs.bundle-mode != 'proof' }}
       - name: Duplex-audio simulator to runtime heard history and offline replay
+        if: ${{ (inputs.bundle-mode || 'normal') == 'normal' }}
         run: cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
@@ -39,8 +55,12 @@ jobs:
           python3 sdk/guest-rust/tests/check_reports.py
       - uses: actions/upload-artifact@v4
         with:
-          name: reference-coglets-wasm
+          name: reference-coglets-wasm-${{ inputs.bundle-mode || 'normal' }}
           path: target/guests/wasm32-wasip1/release/coglet_*.wasm
           if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
+      - uses: ./.github/actions/dependency-capture
+        if: inputs.bundle-mode == 'prepare'
+        with:
+          job: rust
