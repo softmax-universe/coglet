@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  merge_group:
   workflow_call:
     inputs:
       bundle-mode:
@@ -23,7 +24,6 @@ jobs:
       - name: Strict Swift codec and recursive schema fixtures
         run: swift test --package-path sdk/surface-swift
   conformance:
-    needs: [swift-codegen]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
