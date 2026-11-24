@@ -1,5 +1,7 @@
 # Coglet ABI — 0.1 (proposed)
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+
 Decision: [ADR-0006](../docs/adr/0006-coglet-abi.md), [PR #8](https://github.com/softmax-universe/coglet/pull/8), amended before freeze by [ADR-0009](../docs/adr/0009-spec-v0-freeze.md).
 Imports [common conventions](conventions.md) unchanged; MUST/SHOULD are normative.
 Core Wasm, not the component model. Engine budget and determinism requirements
@@ -52,7 +54,7 @@ later step. Timer events use `runtime.timer`, payload `{id, at}`, correlation_id
 LLM requires the granted built-in capability `llm.complete`, routing model name,
 id, correlation_id and profile-map input. The exact operation and upstream adapter
 boundary are specified in [capability bindings](capabilities/bindings.md); this is
-not a surface action or an implicit hub RPC. Success/failure arrives in a later
+not an adapter action or an implicit router RPC. Success/failure arrives in a later
 inbox message whose event kind is `llm.reply`, payload is llm-reply and request_id
 matches the request id. Correlation id is retained. Provider timeout/cancellation
 is a recorded failure reply. Spend policy belongs to the gateway, not this ABI.
@@ -62,7 +64,7 @@ fds 3,4,5 respectively. args/environ are empty; proc_exit aborts. stdin is empty
 stdout/stderr append bytes to /logs/stdout and /logs/stderr. No sockets, clocks,
 random_get, poll_oneoff, arbitrary host files or environment. Directory entries
 sort by UTF-8 bytes, timestamps are zero and host device/inode metadata is hidden.
-Surface state comes through recorded events, never live device imports in 0.1.
+Adapter state comes through recorded events, never live device imports in 0.1.
 
 ## Batching and filesystem
 
@@ -74,39 +76,39 @@ drop events. The recorded batch is the replay ordering authority; arrival ordina
 are durable router metadata, not reconstructed from source clocks by replay.
 Record the exact batch, a nondecreasing runtime-epoch microsecond
 logical_time and seed. Preserve source event clocks unchanged. Replay uses the
-recording, not a new scheduling decision. An authorized hub debug.step with no
+recording, not a new scheduling decision. An authorized router debug.step with no
 queued event injects one recorded common `runtime.debug_step` event: source is
 the target coglet, seq uses that source's shared durable sequence, logical_time
 is the step's runtime logical time, payload is `{}`, and correlation_id is the
-hub operation ID. It bypasses subscriptions like runtime.inbox/runtime.timer.
+router operation ID. It bypasses subscriptions like runtime.inbox/runtime.timer.
 With pending events, debug.step consumes the ordinary batch instead; it never
-calls handle with an empty batch. Hub authorization/receipt/audit binds the
+calls handle with an empty batch. Router authorization/receipt/audit binds the
 operation; an external producer cannot self-authorize a runtime-generated wake.
 
 Apply authenticated debug writes/inbox appends between steps only, in recorded
 order. Pin code, manifest, grants and input snapshot before instantiation.
-Each boundary change includes actor, audit_id (hub operation_id or runtime
+Each boundary change includes actor, audit_id (router operation_id or runtime
 materialization ID as defined below), nullable
 ticket, method, target coglet, path and before/after bytes (null means absent).
 The enclosing step or standalone boundary-record supplies before/after tree hashes; a recorded
-boundary change is the successful apply outcome. Rejected hub operations belong
-to the hub audit, not the guest mutation list. Initial_hash is before boundary changes; input_hash is after them.
+boundary change is the successful apply outcome. Rejected router operations belong
+to the router audit, not the guest mutation list. Initial_hash is before boundary changes; input_hash is after them.
 Boundary reconstruction must produce the recorded input (or trailing output) snapshot. Method names
-match hub wire methods: hub.inbox for inbox appends and debug.write for debug
-writes. Runtime terminal receipt materialization uses `runtime.receipt` (not a hub
+match router wire methods: hub.inbox for inbox appends and debug.write for debug
+writes. Runtime terminal receipt materialization uses `runtime.receipt` (not a router
 RPC): actor=target coglet, ticket=null, path=/data/inbox.jsonl. It may only append
 terminal action messages. Journal origin is structural: this method is origin
 `runtime`; `runtime.heard` is also runtime-origin as defined below; other boundary
-changes are origin `hub` (including hub-relayed provider
+changes are origin `hub` (including router-relayed provider
 replies); guest input-to-output writes and calls
 are origin `coglet`. Exporters MUST preserve or explicitly materialize that origin,
 never flatten both into unattributed state deltas. The boundary audit_id equals
-the hub operation_id for hub-origin changes; runtime.receipt allocates a stable
+the router operation_id for router-origin changes; runtime.receipt allocates a stable
 materialization audit ID retained across retries. Actor/ticket/target are unchanged.
 The M-C amendment also defines `runtime.heard` below as a runtime-origin boundary
-mutation, not a hub method or guest event. All other origin rules remain unchanged.
+mutation, not a router method or guest event. All other origin rules remain unchanged.
 The enclosing record and its before/after hashes identify the boundary; only applied
-mutations appear here, with failed/queued outcomes retained in hub receipts/audit.
+mutations appear here, with failed/queued outcomes retained in router receipts/audit.
 
 - /code: read-only pinned revision, including prompts and step.wasm.
 - /data: private read-write persistent state, never git-synced; inbox exception below.
@@ -114,7 +116,7 @@ mutations appear here, with failed/queued outcomes retained in hub receipts/audi
 
 Paths are absolute UTF-8 with no C0 controls (U+0000–U+001F), DEL
 (U+007F), backslash, empty, dot or dot-dot components or trailing slash.
-No Unicode normalization is performed. Hub debug paths are a bounded ASCII
+No Unicode normalization is performed. Router debug paths are a bounded ASCII
 subset of these filesystem paths, not a second filesystem namespace. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
 mount escapes forbidden. Mount permissions apply to descriptors too, including
 open/rename operations; no chmod escalation. Denial returns WASI permission errno
@@ -165,13 +167,13 @@ exhaustion backpressures instead. Failed guest steps do not remove inbox lines.
 
 ## Guest terminal action delivery
 
-A locally staged emit is not a surface acceptance. After commit its complete
+A locally staged emit is not an adapter acceptance. After commit its complete
 common action enters the durable pending-action set. A terminal dispatch/surface
 rejection is delivered as an inbox event `runtime.action_rejected`, with the
 common `action-accept` constrained by ABI `action-rejection` to accepted=false
 (and required error). Its source is the target coglet, generated by the runtime.
 Accepted actions deliver one common `action-outcome` as inbox `action.outcome`;
-retain the original authenticated surface source. A legitimately synthesized
+retain the original authenticated adapter source. A legitimately synthesized
 runtime outcome uses source=target coglet under surface/hub authority rules;
 a source string alone never authorizes synthesis. Authorization must be verified
 against retained surface/hub admission audit by the archive consumer; the ABI
@@ -215,8 +217,8 @@ Live construction from owner reads is specified in
 [speech heard-history](capabilities/speech.md#heard-only-conversation-history-adr-0010) and
 [ADR-0009 M-D](../docs/adr/0009-spec-v0-freeze.md#amendment-m-d-heard-state-construction-from-owner-reads).
 
-`heard-state` contains `items`, ordered by (surface,item), unique per pair. Each
-`heard-item` carries surface, item, duration_ms, played_ms, stopped, ordered spans
+`heard-state` contains `items`, ordered by (adapter,item), unique per pair. Each
+`heard-item` carries adapter, item, duration_ms, played_ms, stopped, ordered spans
 `{end_ms,text}` and the derived `heard` text. Span ends strictly increase within
 duration; played_ms cannot exceed duration. Concatenated span text is alignment
 evidence, NOT conversation history. The heard text is exactly the concatenation
@@ -235,7 +237,7 @@ and archive access follows transcript privacy, never rewriting prior audit bytes
 Validate decoded state shape and these semantic invariants at initial_files and
 every mutation, including its runtime origin and read-only mount. Export includes
 the exact initial file and each before/after state in ordinary hashed records.
-Replay rebuilds history solely from those journal bytes, with no TTS, surface
+Replay rebuilds history solely from those journal bytes, with no TTS, adapter
 read, oracle-injected projection or rewritten intent. This establishes an archive
 contract, not authenticated/native alignment or persistence qualification (M1).
 
@@ -399,7 +401,7 @@ retain all content, never only expiring URLs or hashes.
 
 Every pinned `/code` snapshot MUST include `/code/build/provenance.cbor`, the
 unchanged core-deterministic CBOR `hub-build-record` from the admitted archive
-(see [hub publication](hub-protocol.md)). Replay validates that shared schema and
+(see [router publication](hub-protocol.md)). Replay validates that shared schema and
 requires `rewritten_sha256 == code_hash == SHA256(/code/bin/step.wasm)`; missing,
 malformed, noncanonical or mismatched provenance fails closed before execution.
 Provenance stays unchanged for the trace's pinned code revision. Do not replace

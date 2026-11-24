@@ -5,7 +5,7 @@ Date: 2026-11-22
 
 ## Summary
 
-The Factory is a self-modifiable Wasm coglet with a persistent, private cognitive state and a single event-driven executive. It manages goals, tasks, hypotheses, experiments, knowledge and artifacts; delegates execution to Hermes initially; evaluates outcomes; and proposes candidate code changes through the hub's existing promotion gates. Intelligence and strategy live in Factory Wasm; database, LLM, worker execution, and artifact storage are host-provided capabilities. The kernel alone enforces grants, promotion, probation, and rollback.
+The Factory is a self-modifiable Wasm coglet with a persistent, private cognitive state and a single event-driven executive. It manages goals, tasks, hypotheses, experiments, knowledge and artifacts; delegates execution to Hermes initially; evaluates outcomes; and proposes candidate code changes through the router's existing promotion gates. Intelligence and strategy live in Factory Wasm; database, LLM, worker execution, and artifact storage are host-provided capabilities. The kernel alone enforces grants, promotion, probation, and rollback.
 
 This document describes the intended v1 architecture, not an assertion that the interfaces already exist. It supplements the runtime design and does not supersede existing ABI/hub specs without an accepted ADR.
 
@@ -13,7 +13,7 @@ This document describes the intended v1 architecture, not an assertion that the 
 
 - **Factory Wasm (evolvable):** event handling, context retrieval, goal management, prioritization, planning, prompts, decision validation, experiment selection, repository logic, and outbox intent generation.
 - **Host capabilities:** parameterized database operations and short transactions, asynchronous LLM requests, Hermes adapter, artifact access, code/build/test/evaluation services. No database engine or credentials inside Wasm.
-- **Hub/kernel (trusted):** identity, capability grants, event routing, budgets, replay recording, code verification, deployment and rollback. Inter-coglet messages go through the hub, never through shared database tables.
+- **Hub/kernel (trusted):** identity, capability grants, event routing, budgets, replay recording, code verification, deployment and rollback. Inter-coglet messages go through the router, never through shared database tables.
 - **Private by default:** each Factory owns its own logical database; no other coglet can read goals, hypotheses, or knowledge without explicit grants or published artifacts/APIs.
 
 ## Storage design

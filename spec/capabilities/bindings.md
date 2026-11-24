@@ -1,5 +1,7 @@
 # Operation bindings — 0.1
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+
 Normative pre-freeze amendment: [ADR-0009](../../docs/adr/0009-spec-v0-freeze.md).
 The machine-readable [bindings.json](bindings.json) is the exhaustive release-pinned
 speech/expression, sandbox ([ADR-0016](../../docs/adr/0016-sandbox-world-bindings.md))
@@ -10,12 +12,12 @@ valid operation binding. Entries/resources are not operations.
 
 ## Selection and responses
 
-For each surface event validate `payload` against `input`; for a read or action
+For each adapter event validate `payload` against `input`; for a read or action
 validate `args` against `input`. Reads validate `read_reply.value` against `output`
 only for `ok=true`. For succeeded actions validate `action-outcome.result` against
 `output`, using the persisted original action, not an untrusted claimed operation
 in a reply. Failed replies/outcomes use common `error`, not the successful result
-rule. Every surface action in this catalog returns the CLOSED empty map `{}` on
+rule. Every adapter action in this catalog returns the CLOSED empty map `{}` on
 success: application observations arrive through the defined events/reads, not
 invented result fields. `speech.config`, `speech.work_state` and `expression.state`
 take the CLOSED empty map; `speech.heard` takes `heard-query` and its returned item
@@ -31,7 +33,7 @@ Unknown extension operations require an explicitly configured trusted catalog
 and grant; they are not implicitly authorized by their syntax. Unsupported
 operations fail admission, never select a permissive profile-map fallback.
 
-Reads are runtime-issued surface observations, not a synchronous guest import.
+Reads are runtime-issued adapter observations, not a synchronous guest import.
 The v0 guest observes recorded subscribed events and inbox messages only; a read
 reply MUST NOT be invented as an unspecified guest event. Product adapters needing
 a new guest observation must define its contract through an ADR.
@@ -43,9 +45,9 @@ whole ABI `llm-request` (including capability, request ID, model route and input
 not common `action.args`; its `output` is `llm-reply`. Unknown LLM capability names
 are unsupported unless a later ADR defines them. The runtime commits request
 and outbox before handing to the configured authenticated gateway adapter. This
-is NOT a surface `act`, and NOT a new hub-protocol wire method. Phase 2 gateway
+is NOT an adapter `act`, and NOT a new hub-protocol wire method. Phase 2 gateway
 adapters must implement the existing ABI boundary; any new inter-host gateway
-wire protocol needs an ADR before use. Never tunnel it through an unrelated hub
+wire protocol needs an ADR before use. Never tunnel it through an unrelated router
 method. Adapter setup binds requester identity, grant and route outside provider
 input. Provider input/output remain profile maps, not new grants or endpoints.
 The gateway records the one terminal success/failure and retained request and
@@ -57,18 +59,18 @@ uses recorded replies. Real dispatch/spend/crash qualification is an M1 gate.
 ## Reserved and illustrative names
 
 All `runtime.*` names are reserved to the local runtime, never advertised as
-surface operations, minted by an external producer or accepted merely because a
+adapter operations, minted by an external producer or accepted merely because a
 payload claims runtime origin. Defined event names are `runtime.inbox`,
 `runtime.timer`, `runtime.debug_step`, and terminal inbox
 `runtime.action_rejected`. Their source is the target coglet; the ABI defines
 their exact payloads and authorized triggers. `runtime.receipt` and `runtime.heard`
 are audit methods, NOT events, capabilities or remotely callable RPCs. The latter
 records aligned heard history at a reserved runtime-owned file boundary; it does
-not turn a surface read into a guest event. Unknown runtime names
+not turn an adapter read into a guest event. Unknown runtime names
 are invalid at v0. `action.outcome` is the common terminal action event, not a
-capability grant: bind it to the admitted action and authenticated surface (or
+capability grant: bind it to the admitted action and authenticated adapter (or
 separately retained synthesis authority). `llm.reply` is gateway terminal inbox
-data, not a surface event or a self-authorizing capability. None permits an
+data, not an adapter event or a self-authorizing capability. None permits an
 external sender to mint runtime wakes, bypass grants or change private owners.
 M-A trace tests establish structural/source binding only; M1 must prove authority.
 

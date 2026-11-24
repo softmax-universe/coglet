@@ -1,4 +1,6 @@
-# Surface protocol — 0.1
+# Adapter protocol — 0.1
+
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
 
 Normative vocabulary, identity grammar, versions, clocks, errors and event/action
 envelopes are imported unchanged from [conventions](conventions.md).
@@ -8,23 +10,23 @@ is a closed `{type, body}` record; table names select the body definition.
 
 ## Binding and negotiation
 
-The surface supervises the runtime, owns native I/O and the off-switch. The
+The adapter supervises the runtime, owns native I/O and the off-switch. The
 runtime is the only peer allowed to dispatch for its enrolled coglets. A local
-socket MUST be private to the surface's user (directory 0700, socket 0600), verify
+socket MUST be private to the adapter's user (directory 0700, socket 0600), verify
 OS peer credentials against the configured runtime UID/process supervisor, and
-use a supervisor-provided binding of surface key and permitted coglet keys.
+use a supervisor-provided binding of adapter key and permitted coglet keys.
 There are no credentials in hello. A claimed identity is not authentication.
 Same-UID hostile code is outside this isolation boundary; use OS sandboxing
 where needed. A C ABI caller is trusted application code with the same configured
 binding, not a dynamically loaded coglet. Unbound peers get `unauthenticated`
 and no capabilities, grants or device data. Never expose this socket on a network.
 
-Surface initiates `hello {surface, offer, clock, correlation_id}`. `offer` is the
+Adapter initiates `hello {surface, offer, clock, correlation_id}`. `offer` is the
 common version-offer; clock is its logical microsecond reading at serialization.
 Runtime returns `hello_reply {selection, correlation_id}` using common selection
 rules. On failure it returns `error {error, correlation_id}` and closes. Only 0.1
 is supported here. No operational message precedes a successful reply.
-Surface then sends `capabilities {revision, clock, entries, correlation_id}`;
+Adapter then sends `capabilities {revision, clock, entries, correlation_id}`;
 revision starts at 1 and increases on every full replacement. Entries contain
 `name`, `events`, `reads`, `actions`, `exclusive` (resource names), and `schemas`
 (a map from each advertised event/read/action name to a pinned schema URI).
@@ -33,9 +35,9 @@ operations MUST appear in exactly one entry, and every operation needs a schema.
 Empty lists are allowed. Schema URIs describe data, not executable URLs; never
 fetch untrusted schemas during dispatch. Unknown capabilities may be ignored,
 never assumed available. Capability removal revokes affected grants first.
-Clock samples map runtime deadlines into the surface epoch; elapsed time is
-advanced on the surface's monotonic clock. Before FIRST dispatch, translate the
-guest runtime-epoch deadline once and durably retain the complete surface `act`
+Clock samples map runtime deadlines into the adapter epoch; elapsed time is
+advanced on the adapter's monotonic clock. Before FIRST dispatch, translate the
+guest runtime-epoch deadline once and durably retain the complete adapter `act`
 envelope, including `grant_epoch` and mapped deadline, before sending. The original
 ABI intent remains immutable in its journal. Retries MUST use those identical
 core-deterministic CBOR bytes; new clock samples do not alter an old action ID.
@@ -56,16 +58,16 @@ Reserved runtime/test names cannot acquire authority through advertisement.
 
 | type | Direction | body / semantics |
 |---|---|---|
-| hello, capabilities | surface → runtime | as above |
-| hello_reply | runtime → surface | as above |
-| grants | surface → runtime | full authoritative grant snapshot |
-| event | surface → runtime | common event, source bound to this surface |
-| read | runtime → surface | `{coglet, capability, args, grant_epoch, deadline, correlation_id}` |
-| read_reply | surface → runtime | `{correlation_id, ok:true, value, snapshot}` or `{correlation_id, ok:false, error}` |
-| act | runtime → surface | `{grant_epoch, action}` with common action |
-| accept | surface → runtime | common action-accept |
+| hello, capabilities | adapter → runtime | as above |
+| hello_reply | runtime → adapter | as above |
+| grants | adapter → runtime | full authoritative grant snapshot |
+| event | adapter → runtime | common event, source bound to this adapter |
+| read | runtime → adapter | `{coglet, capability, args, grant_epoch, deadline, correlation_id}` |
+| read_reply | adapter → runtime | `{correlation_id, ok:true, value, snapshot}` or `{correlation_id, ok:false, error}` |
+| act | runtime → adapter | `{grant_epoch, action}` with common action |
+| accept | adapter → runtime | common action-accept |
 | health | either | `{state, clock, pending, correlation_id}` |
-| kill | surface → runtime | `{reason, correlation_id}` |
+| kill | adapter → runtime | `{reason, correlation_id}` |
 | error | either | `{error, correlation_id}`; not a substitute for action outcome |
 
 `event kind=action.outcome` carries the common action-outcome as payload.
@@ -88,18 +90,18 @@ release-pinned trusted schema catalog (not mutable network lookup).
 `grants {epoch, entries, correlation_id}` replaces the full snapshot, not a delta.
 Each entry is `{coglet, operations, resources, expires}`: operations are allowed
 names; resources are owned exclusive resource names such as `audio.mic`,
-`audio.speaker`, `display.face`. Expiry uses the surface clock (exclusive bound).
+`audio.speaker`, `display.face`. Expiry uses the adapter clock (exclusive bound).
 Epoch starts at 1, strictly increases for each replacement and persists across
 restarts. All requests MUST carry the current epoch and the action/read coglet
-MUST be present, unexpired and allowed that operation. Both runtime and surface
-check; the surface is final authority. A mic lease fences capture/private input
+MUST be present, unexpired and allowed that operation. Both runtime and adapter
+check; the adapter is final authority. A mic lease fences capture/private input
 as well as output. A speaker lease fences speech, backchannels and provider audio.
 A resource has at most one coglet owner in a snapshot. Nonexclusive reads can be
 shared. Manifests needing missing capabilities or exclusive resources cannot run.
-Hub policy selects owners, but cannot exceed local OS/user permission or clear
-kill. The trusted surface supervisor installs authenticated hub-policy decisions
+Router policy selects owners, but cannot exceed local OS/user permission or clear
+kill. The trusted adapter supervisor installs authenticated router-policy decisions
 through its local configuration API; that product-specific provisioning path is
-not a surface wire message. It intersects policy with local permissions before
+not an adapter wire message. It intersects policy with local permissions before
 publishing effective grants. Runtime cannot manufacture grants by sending this
 message in reverse. Capability removal publishes the revoking grants epoch
 before the higher capabilities revision.
@@ -122,7 +124,7 @@ outcome event; duration/deadline overrun expires it and stops its physical effec
 Rejections use common errors (`conflict` for conflicting ID reuse, not an override).
 Runtime journals intent before sending. Exact recorded retries are resolved before current-epoch
 admission checks, but only for the originally authenticated/bound coglet; they
-cannot execute an effect or authorize a different owner. Surface durably records full envelope,
+cannot execute an effect or authorize a different owner. Adapter durably records full envelope,
 coglet, epoch, rejections, admission and terminal result before acknowledging; recovery from
 crash stops uncertain physical work and records failed/unavailable, never replays
 an uncertain effect. This provides deduplication, NOT exactly-once physical effects.
@@ -140,7 +142,7 @@ is unknown. Identical retries recover the original receipt first. Rejected reads
 may be resubmitted with a fresh correlation ID and epoch because they have no
 effects. A changed envelope or
 epoch for the same key is conflict. After retention callers MUST NOT retry an
-old ID. On lost ledger, fail closed and require reconciliation plus a new surface
+old ID. On lost ledger, fail closed and require reconciliation plus a new adapter
 identity before accepting new work; never pretend unknown action completion.
 Recovery status is observed via replay of identical requests; no new recovery RPC.
 
@@ -158,7 +160,7 @@ increases on every delivery, including repeated historical action receipts.
 Health state is `ready`, `degraded` or `stopped`; `pending` counts admitted actions.
 Both sides send health at least every 1 second while connected. Three seconds
 without a valid message/health triggers the disconnect procedure. Health is not
-a grant, nor does `ready` restart stopped devices. Surface kill is local and
+a grant, nor does `ready` restart stopped devices. Adapter kill is local and
 latched: immediately stop mic, speaker, display effects and provider sessions,
 revoke all grants, cancel accepted work, then best-effort send kill and stopped
 health. Kill works with a hung runtime or full queue. A kill message is a
@@ -168,10 +170,10 @@ required. If emitted, that snapshot follows kill and stopped health, uses a
 higher epoch and MUST NOT restore authority. No
 message/coglet/hub operation clears it. A still-open link rejects new action IDs
 and reads with permission_denied; previously accepted work is cancelled. The
-surface MAY close after best-effort notification, so clients must also handle
+adapter MAY close after best-effort notification, so clients must also handle
 disconnect rather than wait for rejection. Only explicit local operator reset and
 fresh connection, negotiation and grants may resume. OS suspension on iOS uses
-the same stop/revoke path; hub fallback requires a separate authenticated session
+the same stop/revoke path; router fallback requires a separate authenticated session
 and explicit new grants, not a live local lease duplicated onto another host.
 
 ## Transports
@@ -202,13 +204,13 @@ void coglet_surface_close(coglet_surface_link *);
 `open(1,...)` creates a stopped/unnegotiated channel in an already-configured
 runtime library; other ABI versions return -1 without creating a handle. No
 identity is granted by open. Configure trusted application bindings before open.
-`send` copies one surface→runtime CBOR item (no length header), validating the same
+`send` copies one adapter→runtime CBOR item (no length header), validating the same
 size, profile, schema and state machine as socket. `recv` polls one
-runtime→surface item. Return codes: 0 success, 1 would-block/no data, 2 output
+runtime→adapter item. Return codes: 0 success, 1 would-block/no data, 2 output
 buffer too small (sets required n, does not dequeue), -1 invalid argument/ABI,
 -2 closed/fatal protocol error. Would-block send copies nothing; retry the same
 bytes. On recv=1 set n=0. Buffers are caller-owned; library retains no pointers,
-returns no pointers into its memory, and never calls into surface code. Null
+returns no pointers into its memory, and never calls into adapter code. Null
 pointers are invalid except recv out=NULL/cap=0 for size query (return 2 if data).
 Operations on a handle are serialized by the caller on a non-audio control queue;
 no reentrancy, no calls after close; close frees handle and applies disconnect.

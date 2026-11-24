@@ -1,6 +1,8 @@
 # Expression capability — 0.1
 
-Imports [conventions](../conventions.md) and [surface protocol](../surface-protocol.md).
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+
+Imports [conventions](../conventions.md) and [adapter protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
 Schema rules are in `messages/expression.cddl` and `expression.schema.json`.
 The normative [operation bindings](bindings.md) select set-expression args,

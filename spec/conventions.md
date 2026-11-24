@@ -1,5 +1,7 @@
 # Common conventions — 0.1
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+
 Normative keywords MUST, MUST NOT and SHOULD have their RFC 2119 meanings.
 Decision: [ADR-0002](../docs/adr/0002-common-conventions.md) ([PR #4](https://github.com/softmax-universe/coglet/pull/4)).
 Other specs MUST import these definitions, not restate them. CDDL rules are
@@ -51,8 +53,8 @@ All grammars are ASCII and case-sensitive; regexes match the whole string.
 
 Each coglet has its own node key even when hosted by a shared runtime. Prefixes
 separate roles, not trust domains. A syntactically valid key is not proof of key
-possession or enrollment. Hub protocol MUST bind claimed keys to authenticated
-transport/delegation and enforce per-method grants; local binding is the surface
+possession or enrollment. Router protocol MUST bind claimed keys to authenticated
+transport/delegation and enforce per-method grants; local binding is the adapter
 protocol's responsibility. Never authorize by the string alone.
 
 ## Envelopes and action lifecycle
@@ -73,11 +75,11 @@ Unsolicited events allocate a fresh id. Derived events MAY retain a causal id.
   Deadline is an exclusive expiry instant in logical microseconds, scoped to
   the boundary carrying the envelope (ADR-0009 M-C): an ABI guest intent uses
   its runtime epoch and remains immutable in the journal. A surface-wire action
-  uses the executing surface epoch, translated ONCE before first dispatch and
+  uses the executing adapter epoch, translated ONCE before first dispatch and
   durably retained with the complete act envelope. `hub.actions` uses the
-  RECEIVING runtime epoch, not the hub's epoch: the sender establishes that
-  mapping and retains the mapped hub request before first send; the receiver
-  separately translates once at its surface boundary. Never rewrite a journaled
+  RECEIVING runtime epoch, not the router's epoch: the sender establishes that
+  mapping and retains the mapped router request before first send; the receiver
+  separately translates once at its adapter boundary. Never rewrite a journaled
   intent or retranslate an existing ID on retry/reconnect/new clock samples.
   Missing/stale mapping refuses new dispatch. At or after deadline reject/expire;
   zero is already expired, never "unlimited". Translation MUST reject expired
@@ -130,7 +132,7 @@ MUST be additive only: no removals, changed meanings, stricter bounds or new
 required fields in existing messages. A feature introduced at a higher minor
 MUST NOT be emitted at a lower selected version.
 
-Both surface `hello` and hub `enroll` requests carry the shared `version-offer`
+Both adapter `hello` and router `enroll` requests carry the shared `version-offer`
 object `{versions: [spec-version, ...]}` (nonempty; duplicates have no effect). A successful
 reply carries `version-selection` `{version: spec-version}`. The responder
 selects the numerically greatest (major, minor) pair explicitly present in both

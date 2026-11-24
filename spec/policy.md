@@ -1,5 +1,7 @@
 # Per-coglet policy — DRAFT 0.1
 
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+
 **Status: DRAFT. Freezes at M3, not v0.** Decision:
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md) ([PR #40](https://github.com/softmax-universe/coglet/pull/40)).
 MUST/SHOULD are normative. [Common conventions](conventions.md) govern encoding,
@@ -14,7 +16,7 @@ The fixed kernel reads exactly one policy for each enrolled coglet. An operator,
 not a self-editing coglet or factory, installs policy under separate administrative
 authority. There is no implicit permissive fallback: absent, invalid or unsupported
 policy blocks propose/promote. Policy never grants capabilities or edits the
-kernel. Required manifest capabilities still need current surface grants.
+kernel. Required manifest capabilities still need current adapter grants.
 
 Fields (all required, closed records):
 

@@ -11,7 +11,7 @@ This companion to [the design record](softmax-app.md) defines a future native im
 
 ## Shared state/data flow
 
-Audio surface publishes actual capture/playback state. Hub link publishes connection and identity facts. Runtime publishes per-coglet lifecycle and grants. Updater publishes check/download/verify/install state. The application reducer combines these into menu icon precedence without overwriting underlying facts. Face animation reads a presentation projection of those facts; it never decides whether the microphone is open. Settings and onboarding dispatch validated intents to the same controllers; their state cannot drift from the menu extra.
+Audio surface publishes actual capture/playback state. Router link publishes connection and identity facts. Runtime publishes per-coglet lifecycle and grants. Updater publishes check/download/verify/install state. The application reducer combines these into menu icon precedence without overwriting underlying facts. Face animation reads a presentation projection of those facts; it never decides whether the microphone is open. Settings and onboarding dispatch validated intents to the same controllers; their state cannot drift from the menu extra.
 
 Keep last accepted preferences separate from drafts and errors. A microphone test is an explicit capture session with a Stop affordance. Disconnect, export and deletion use confirmable intents; export redacts secrets before a preview is shown. App termination stops capture and playback before shutting down its local runtime process.
 
@@ -19,7 +19,7 @@ Keep last accepted preferences separate from drafts and errors. A microphone tes
 
 - **Assets**: run `scripts/check-assets.sh`, compile iconset in Xcode, load every template into `NSImage` with `isTemplate=true`, capture seven states on light/dark native menu bars at 1×/2×. Animated listening and speaking remain distinguishable; Reduce Motion is static.
 - **Permissions**: clean-account allow, deny, revoke and return-from-System-Settings flows for microphone and the qualified hotkey API; denial must leave visible Talk/Settings available. Login-item opt-in remains independent.
-- **PTT**: hold/release, repeat, toggle, missed key-up, lost hub, removed device, Escape while held, Escape during thinking, stale response after cancellation, barge-in during speaking. Exactly one send on release; none on cancellation.
+- **PTT**: hold/release, repeat, toggle, missed key-up, lost router, removed device, Escape while held, Escape during thinking, stale response after cancellation, barge-in during speaking. Exactly one send on release; none on cancellation.
 - **Navigation**: every surface by mouse and keyboard, searchable list counts/highlights/empty state, palette synonyms, Arrow/Return, Back, focus restoration after modal dismissal, no hotkey capture while recording a shortcut.
 - **Accessibility**: VoiceOver roles/labels and live announcements, full keyboard access, dark/light and increased contrast, Reduce Motion/Transparency, large text; no indicator depends only on color.
 - **Privacy**: no capture before explicit permission and activation; no raw audio/transcript in default logs; verify invitation identity; grant changes are explicit; destructive actions never fire on initial click.

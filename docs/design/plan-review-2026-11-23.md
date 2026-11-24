@@ -8,7 +8,7 @@ Pacing comments are judgment, not measurement.
 
 - Repo boundary rule to adopt: product-neutral and reused by 2+ products goes in coglet. Tied to one product's world, data or hardware stays in that product.
   - Face passes the rule. Mindister and Baby Bear both want it, and the design doc makes the audio stack and conversation behavior generic (Face section; Pod fit: Echo Dot "another body for the Face coglet").
-- Face is the first real consumer of surface realtime audio, so it forces an audio capability spec that was not in the plan.
+- Face is the first real consumer of adapter realtime audio, so it forces an audio capability spec that was not in the plan.
 - Face-mac is Swift, native audio and Mac-only. That pulls the Swift SDK and Mac cards onto the critical path, reversing my earlier "defer Swift to Phase 4".
 - Baby Bear's Mac pod already has its own Swift audio stack (`pods/macos/Sources/BBMacCapabilities/`: `PodVoice`, `RealtimeRoom`, `EchoLeakMeter`, `RealtimePushToTalk` tests, `PodRealtimeHost`, `NativeCaptureStartup`). Two Mac audio stacks on one machine will fight over the mic and speaker unless the reuse path is planned.
 
@@ -33,9 +33,9 @@ Pacing comments are judgment, not measurement.
    - Contents: a spec file, e.g. `spec/capabilities/speech.md` (and `expression.md`), defining:
      - Events: speech-start, partial transcript, end-of-utterance, playback-position, barge-in notice.
      - Actions: speak-chunk, stop, backchannel, set-expression.
-     - Config: where STT/TTS runs (device or hub). The design doc says both are capabilities so location can be A/B tested (Face section).
-     - Provider speech-to-speech sessions: the design doc says to model the BB provider session as a surface capability whose tool calls arrive as events (Pod fit, "Realtime voice").
-   - Why: with Face in coglet, `coglets/face` must run unchanged on Mac, Echo Dot and EO1 bodies. That only works if bodies differ behind one capability contract. The abstract "surface protocol" alone does not define audio semantics.
+     - Config: where STT/TTS runs (device or router). The design doc says both are capabilities so location can be A/B tested (Face section).
+     - Provider speech-to-speech sessions: the design doc says to model the BB provider session as an adapter capability whose tool calls arrive as events (Pod fit, "Realtime voice").
+   - Why: with Face in coglet, `coglets/face` must run unchanged on Mac, Echo Dot and EO1 bodies. That only works if bodies differ behind one capability contract. The abstract "adapter protocol" alone does not define audio semantics.
    - Where it fits: it is part of the hub/surface specs, written in the spec phase and covered by conformance fixtures. The `duplex-audio` sim world is its mock.
    - Impact: highest of the new items. Without it, `face-mac`, the Face coglet and BB bodies each invent audio semantics.
 
@@ -45,20 +45,20 @@ Pacing comments are judgment, not measurement.
    - Why: design doc sections Coglet repo and git control plane, Debugging, Inbox as a file, Visualizer. Replay, gate, trace store and visualizer depend on them.
 
 5. **Shrink the freeze gate (unchanged).**
-   - Freeze ABI, surface protocol, the minimal hub protocol and the conventions as v0 only after the M1 slice runs.
+   - Freeze ABI, adapter protocol, the minimal router protocol and the conventions as v0 only after the M1 slice runs.
    - Freeze policy and promotion at M3.
    - Why: the freeze is the plan's only serial gate. Specs not exercised by code are the likeliest to be wrong.
 
 6. **Make the runtime embeddable as a library with a C ABI, not only the `cogletd` binary (unchanged).**
-   - Why: the doc calls the runtime a "sidecar", but iOS cannot spawn one (Platform notes, iOS). The surface protocol then needs an in-process transport as well as a local socket.
-   - Face makes this more pressing: a Face on iOS later means the audio surface and runtime share a process.
+   - Why: the doc calls the runtime a "sidecar", but iOS cannot spawn one (Platform notes, iOS). The adapter protocol then needs an in-process transport as well as a local socket.
+   - Face makes this more pressing: a Face on iOS later means the audio adapter and runtime share a process.
 
 7. **Language-neutral black-box conformance harness (unchanged).**
-   - It drives any surface, runtime or hub over the wire with golden fixtures. It must not be Rust-only unit tests.
+   - It drives any adapter, runtime or router over the wire with golden fixtures. It must not be Rust-only unit tests.
    - Face addition: speech-capability fixtures include scripted audio-event timelines and barge-in cases, with no real audio needed in CI.
 
 8. **Reorder around Face: Swift SDK and `face-mac` move up, as a parallel lane after M1.**
-   - Change: after the freeze, run the Swift surface SDK in Phase 2 (not Phase 4), and add milestone M2b: "Face on Mac".
+   - Change: after the freeze, run the Swift adapter SDK in Phase 2 (not Phase 4), and add milestone M2b: "Face on Mac".
    - Exit criteria for M2b:
      - Face in simulated mode against the `duplex-audio` world, with scripted barge-in.
      - Then the real Mac: hold-to-talk, spoken reply, barge-in.
@@ -67,7 +67,7 @@ Pacing comments are judgment, not measurement.
 
 9. **NEW: plan the Baby Bear Mac audio overlap now.**
    - Facts: BB's Mac pod already owns a Swift audio stack (see summary). `face-mac` will own another.
-   - Change: split the new Mac audio code into a Swift package inside coglet (`surfaces/face-mac/` exposing a reusable audio kit: capture, echo cancellation, VAD, playback ducking). Record an ADR: BB's Mac pod adopts that kit or runs as a separate mode and never both at once. Exclusive outputs (mic, speaker) are assigned to one coglet at a time by hub policy (design doc, Many coglets per surface).
+   - Change: split the new Mac audio code into a Swift package inside coglet (`surfaces/face-mac/` exposing a reusable audio kit: capture, echo cancellation, VAD, playback ducking). Record an ADR: BB's Mac pod adopts that kit or runs as a separate mode and never both at once. Exclusive outputs (mic, speaker) are assigned to one coglet at a time by router policy (design doc, Many coglets per adapter).
    - Do not rewrite or delete BB's audio stack in this plan; the BB cutover decides.
    - Impact: avoids a mic/speaker contention bug and duplicate effort.
 
@@ -78,16 +78,16 @@ Pacing comments are judgment, not measurement.
 
 11. **Cross-repo release and pinning (stronger now).**
     - Change: add an early card for coglet release artifacts: `cogletd` binaries, SDK packages (Rust crate, Python wheel, Swift package, Go module), the conformance harness, and the face-mac app build. Mindister and Baby Bear pin versions.
-    - Why: with Face in coglet, Mindister's integration (talk to Face, hub drives avatar) crosses repos. Cutover and rollback need pinned versions.
+    - Why: with Face in coglet, Mindister's integration (talk to Face, router drives avatar) crosses repos. Cutover and rollback need pinned versions.
     - Where the cross-repo integration test lives: in Mindister (consumes released coglet artifacts and runs Face-to-avatar), so coglet CI never needs the game.
 
-12. **Java surface SDK or Mindister-owned Java client (unchanged).**
+12. **Javan adapter SDK or Mindister-owned Java client (unchanged).**
     - Why: the game adapter stays in Mindister and is JVM (Game adapter section). It is the only Java consumer, so Mindister owns it, but it must pass the coglet conformance harness. Make that explicit in the plan.
 
 13. **Baby Bear protocol decision now (unchanged), and Face affects it.**
-    - Decision: BB pods speak the coglet hub protocol on their own ALPN, served beside `rpc/1` during transition. The design doc says to extend `rpc/1` (Moving Baby Bear, item 4), which conflicts with the plan's "no shims".
+    - Decision: BB pods speak the coglet router protocol on their own ALPN, served beside `rpc/1` during transition. The design doc says to extend `rpc/1` (Moving Baby Bear, item 4), which conflicts with the plan's "no shims".
     - Evidence: `rpc/1` appears in `pods/eo1/native/src/bin/bb-pod-iroh.rs`, `pods/echoear/firmware/src/hub.rs`, `pods/ios/acceptance`.
-    - Face effect: Echo Dot and EO1 become Face bodies, so their transport choice affects Face speech and expression events. Where the Rust hub kernel runs for Baby Bear (BB's hub looks like a Worker, `wrangler.jsonc`) is unverified.
+    - Face effect: Echo Dot and EO1 become Face bodies, so their transport choice affects Face speech and expression events. Where the Rust router kernel runs for Baby Bear (BB's router looks like a Worker, `wrangler.jsonc`) is unverified.
 
 14. **Pacing and capacity.**
     - Keep 3 extra workers for Phases 0 and 1, then raise to 8 at the freeze, when about 12 independent Phase 2 cards plus the Swift, Face and speech-fixture cards exist.
@@ -105,22 +105,22 @@ spec/capabilities/   speech.md, expression.md (new)
 sim/worlds/duplex-audio   mock body for Face (exists in plan)
 ```
 
-- Persona prompts and voice choices stay in product repos (Mindister hub config, BB config). The Face coglet keeps only mechanics.
+- Persona prompts and voice choices stay in product repos (Mindister router config, BB config). The Face coglet keeps only mechanics.
 - Echo Dot (LED ring) and EO1 (screen expressions) stay in `babybear/pods/*` as bodies. They implement the speech and expression profiles and run `coglets/face` unchanged. Echo Dot is the "another body for the Face coglet" case in the doc.
 
-## Should other surfaces move the same way?
+## Should other adapters move the same way?
 
 - **Game adapter (Mindustry, Java): stays in Mindister.** One product, tied to the game world.
-- **Avatar coglet and hub config: stay in Mindister.**
+- **Avatar coglet and router config: stay in Mindister.**
 - **EO1, Echo Dot, Linux, iOS pods: stay in Baby Bear.** Hardware and product specific. They must pass the coglet conformance harness. The Go pod library can later be promoted to `sdk/surface-go` if the Linux and Echo Dot code shares it.
-- **EchoEar and Z04: stay in Baby Bear** as peripherals of the Mac surface (Pod fit).
-- **`face-mac`: in coglet,** as a reference surface. No other surface needs to move now.
+- **EchoEar and Z04: stay in Baby Bear** as peripherals of the Mac adapter (Pod fit).
+- **`face-mac`: in coglet,** as a reference surface. No other adapter needs to move now.
 - **BB Mac pod audio: do not move yet** (item 9).
 
 ## Effect on sessions
 
 - Add a "Coglet Face" session in coglet: Swift face-mac, speech capability, face coglet. It takes over from the Mindister Face session after the proofs finish (item 10).
-- Mindister sessions narrow to game adapter, avatar coglet and hub config.
+- Mindister sessions narrow to game adapter, avatar coglet and router config.
 - Baby Bear Coglet session consumes Face for EO1 and Echo Dot, and owns the Mac audio overlap decision with the Face session.
 - Orchestrator tracks one new cross-repo dependency chain: speech spec, then Swift SDK, then face-mac, then Face coglet, then Mindister integration.
 
@@ -149,11 +149,11 @@ Items dropped or softened:
 ## Already right, do not change
 
 - Specs first, with a mock per protocol passing the same suite.
-- Generic framework in coglet, product surfaces in product repos (the Face move follows this).
+- Generic framework in coglet, product adapters in product repos (the Face move follows this).
 - Runtime core on the mock engine so it does not wait for WAMR.
 - Legacy main to `legacy/v0`, fresh main.
 - Phases 3 and 4 filed after the freeze.
 - Wasmtime and cross-engine hash as a later parallel check.
 - Thin game adapter as a separate process.
-- Realtime audio staying native in the surface; the Face coglet decides, the surface reflexes (Face section).
+- Realtime audio staying native in the adapter; the Face coglet decides, the adapter reflexes (Face section).
 - Phase 0 EO1 instinct ("proved on device first"), pulled earlier by item 1.

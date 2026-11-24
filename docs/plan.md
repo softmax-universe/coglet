@@ -8,7 +8,7 @@ Review that shaped this revision: [`docs/design/plan-review-2026-11-23.md`](desi
 
 Build the coglet framework as cleanly factored pieces in the right repos:
 - the framework abstractions and protocols;
-- runtimes and surfaces for Baby Bear and Mindister;
+- runtimes and adapters for Baby Bear and Mindister;
 - a toy-robot simulator to play with;
 - the test tools, mocks, visualizer and conformance suites that tie them together.
 
@@ -22,8 +22,8 @@ Build the coglet framework as cleanly factored pieces in the right repos:
    - Every real implementation and every mock passes the **same** suite.
    - The suite is a language-neutral black-box harness that drives an implementation over the wire. It is not Rust unit tests.
 3. **Boundary rule.** Product-neutral pieces used by two or more products go in `coglet`. Anything tied to one product's world, data or hardware stays in that product.
-   - **coglet:** Face (Mac surface and face coglet), all SDKs, the simulator and the visualizer.
-   - **mindister:** the game adapter, the avatar coglet and Mindister's hub config.
+   - **coglet:** Face (Mac adapter and face coglet), all SDKs, the simulator and the visualizer.
+   - **mindister:** the game adapter, the avatar coglet and Mindister's router config.
    - **babybear:** the pod bodies.
 4. **Spec changes go through an ADR** (`docs/adr/NNNN-*.md`). A card that needs a spec change stops, files the ADR as a PR, and links it.
 5. **WAMR first, behind an `Engine` trait.** Wasmtime comes later as a conformance check; both engines must reach identical state hashes.
@@ -40,8 +40,8 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 | Question | Decision |
 |---|---|
 | Old coglet repo | Moved to branch `legacy/v0` and tag `legacy-v0`; `main` is fresh history. Done 2026-11-23. |
-| Visualizer | Web app served by the hub or simulator; a Mac wrapper can come later. |
-| Baby Bear protocol | Pods speak coglet's own hub protocol on its own ALPN, served next to `babybear/rpc/1` while they move over. It doesn't extend `rpc/1`, which overrides design-doc §Moving Baby Bear item 4. |
+| Visualizer | Web app served by the router or simulator; a Mac wrapper can come later. |
+| Baby Bear protocol | Pods speak coglet's own router protocol on its own ALPN, served next to `babybear/rpc/1` while they move over. It doesn't extend `rpc/1`, which overrides design-doc §Moving Baby Bear item 4. |
 | Worker capacity | 3 extra workers through Phase 1, then revisit at the freeze. |
 | Face | Lives in coglet: `surfaces/face-mac/` (Swift) and `coglets/face/`. Persona and voice config stay in the product repos. |
 | Kanban board | The `default` board, tenant `coglet`, with titles prefixed `coglet:`. Pool workers serve the default board. |
@@ -103,10 +103,10 @@ docs/adr/  docs/design/
 
 **Other repos:**
 - **mindister** owns:
-  - the game adapter, which goes from SP/1 to the coglet surface protocol, is written in Java on `sdk/surface-java`, and must pass the conformance harness;
+  - the game adapter, which goes from SP/1 to the coglet adapter protocol, is written in Java on `sdk/surface-java`, and must pass the conformance harness;
   - the avatar coglet;
-  - its hub config and policy, including the Hermes factory adapter and the fast-loop prompts;
-  - the cross-repo test (Face → hub → avatar) against released coglet artifacts.
+  - its router config and policy, including the Hermes factory adapter and the fast-loop prompts;
+  - the cross-repo test (Face → router → avatar) against released coglet artifacts.
 
   After cutover, delete mindister's `runtime/`, `parts/` and `pp/0`.
 - **babybear** owns:
@@ -142,7 +142,7 @@ P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→hub→avata
 ```
 
 **Notes on the graph:**
-- **The v0 freeze** is the one real serial gate. It covers conventions, ABI, surface, speech and the minimal hub protocol. Policy freezes at M3.
+- **The v0 freeze** is the one real serial gate. It covers conventions, ABI, adapter, speech and the minimal router protocol. Policy freezes at M3.
 - **Spec v0 isn't final.** M1 can still drive spec fixes through ADRs.
 - **Phase 0–2 and M1 cards are filed now.** The orchestrator files M2, M2b, M3 and Phase 4 after the freeze (follow-up card `coglet:file-phase3-4`).
 
@@ -152,7 +152,7 @@ P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→hub→avata
 |---|---|
 | Coglet Orchestrator | The graph: sweeps every 20 min, catches idle lanes, files later phases, routes between lanes |
 | Coglet Core | Specs (conventions, ABI), engine spikes, engine, filesystem, runtime, guest SDK |
-| Coglet Hub | Hub protocol spec, proto, kernel, LLM gateway, gate, trace, release pipeline |
+| Coglet Router | Router protocol spec, proto, kernel, LLM gateway, gate, trace, release pipeline |
 | Coglet Tools | Conformance harness, codegen, mocks, SDKs, simulator, visualizer, CLI |
 | Coglet Face | Speech/expression specs, Swift SDK, face-mac, face coglet; takes over from the Mindister Face session once its current acoustic proofs land, turning their evidence into acceptance thresholds |
 | Mindister sessions (existing) | Finish the current Face and Game proofs, then the Phase 4 Mindister lane |
@@ -162,8 +162,8 @@ P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→hub→avata
 
 - **Linux:** about 4 cards at once (worker-1 plus 3 autoscaled workers). Run the critical path first:
   1. skeleton, conventions, then the spikes;
-  2. ABI, hub protocol and the harness;
-  3. at Phase 2, engine, runtime and hub proto first.
+  2. ABI, router protocol and the harness;
+  3. at Phase 2, engine, runtime and router proto first.
 - **Macs:** at most one Face card per Mac at a time. Swift compile and unit CI run on GitHub macOS runners; the MacBook Pro is only for real acoustic proofs.
 - **Estimates** (unmeasured, likely optimistic):
   - specs and spikes: 2–3 days;
