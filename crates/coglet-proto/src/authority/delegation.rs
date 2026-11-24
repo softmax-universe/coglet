@@ -2,7 +2,7 @@
 use super::*;
 use serde_json::Value;
 
-fn verified(
+pub(super) fn verified(
     hub: EndpointId,
     device: EndpointId,
     coglet: &str,
