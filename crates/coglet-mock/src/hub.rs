@@ -8,10 +8,12 @@ use coglet_proto::{
     transport::{ALPN, Role, Session},
 };
 use iroh::{Endpoint, EndpointAddr, EndpointId, SecretKey, endpoint::presets};
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::Path, sync::Arc, time::Duration};
+use tokio::sync::Mutex;
 use tokio::task::{JoinHandle, JoinSet};
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+type Sessions = Arc<Mutex<HashMap<EndpointId, (u64, Session)>>>;
 
 /// Owns a local-only endpoint, shared authority/kernel and bounded serving tasks.
 /// Call `shutdown` for an orderly close. Dropping aborts the accept task and its
@@ -20,6 +22,7 @@ pub struct MockHub {
     endpoint: Endpoint,
     kernel: Kernel,
     serving: JoinHandle<()>,
+    sessions: Sessions,
     _state: tempfile::TempDir,
 }
 
@@ -50,6 +53,8 @@ impl MockHub {
         let kernel = tokio::task::spawn_blocking(move || Kernel::open(root, id, clock)).await??;
         let server = endpoint.clone();
         let handler = kernel.clone();
+        let sessions = Sessions::default();
+        let active = sessions.clone();
         let serving = tokio::spawn(async move {
             let mut tasks = JoinSet::new();
             loop {
@@ -59,13 +64,20 @@ impl MockHub {
                         let Some(incoming) = incoming else { break };
                         if tasks.len() >= 128 { drop(incoming); continue; }
                         let kernel = handler.clone();
+                        let active = active.clone();
                         let local = server.id();
                         tasks.spawn(async move {
                             if let Ok(Ok(connection)) = tokio::time::timeout(Duration::from_secs(10), incoming).await
                                 && let Ok(session) = Session::new(connection, local, Role::Hub) {
                                 let peer = session.peer();
                                 if let Ok(token) = kernel.transport_connected(peer).await {
+                                    active.lock().await.insert(peer, (token, session.clone()));
                                     let _ = session.serve(Arc::new(kernel.clone())).await;
+                                    let mut sessions = active.lock().await;
+                                    if sessions.get(&peer).is_some_and(|(current, _)| *current == token) {
+                                        sessions.remove(&peer);
+                                    }
+                                    drop(sessions);
                                     let _ = kernel.transport_disconnected(peer, token).await;
                                 }
                             }
@@ -79,6 +91,7 @@ impl MockHub {
             endpoint,
             kernel,
             serving,
+            sessions,
             _state: state,
         })
     }
@@ -92,6 +105,15 @@ impl MockHub {
     /// Local test/operator access; never exposed as an ALPN method.
     pub fn kernel(&self) -> &Kernel {
         &self.kernel
+    }
+    /// Trusted local access to the current hub side of a device-opened session.
+    /// Useful for reverse-direction session conformance; not a wire method.
+    pub async fn session(&self, device: EndpointId) -> Option<Session> {
+        self.sessions
+            .lock()
+            .await
+            .get(&device)
+            .map(|(_, s)| s.clone())
     }
     pub fn state_path(&self) -> &Path {
         self._state.path()

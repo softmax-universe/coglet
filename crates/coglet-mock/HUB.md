@@ -52,9 +52,15 @@ cargo clippy --locked --workspace --all-targets -j 2 -- -D warnings
 cargo fmt --all -- --check
 ```
 
-The conformance runner currently proves only `enroll-reconnect`,
-`enroll-unsupported-version` and `health-minimal`, using unchanged suite JSON and
-real iroh. It is explicitly **not complete part-1 conformance acceptance**:
-fixed-invite enrollment cases await a producer-owned test-control provisioning
-API. Never translate fixture invite bytes, or claim an unknown-token rejection
-proves correctly provisioned expiration/window tests.
+The conformance runner proves all six `enroll-*` cases, `start-before-enroll`
+(including a real hub→device reverse stream) and `health-minimal`: eight unchanged
+suite cases, zero skips. Its stdio bridge only carries harness frames across the
+real iroh connection; kernel/proto remain the policy owners. The bridge enables
+`coglet-mock/test-controls` explicitly, forwarding to the producer-owned
+`coglet-hub/test-controls` fixture API. Default library/launcher builds leave that
+feature disabled. Fixed-token fixtures are provisioned before requests; expiry
+uses a real positive monotonic TTL, closed-window tests provision before closure,
+and wrong-node tests bind the token to another authenticated identity.
+
+This is not full Git/lifecycle hub conformance. Those cases remain with the
+separate hub integration workstream, not skipped acceptance in this subset.

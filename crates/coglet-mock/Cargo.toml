@@ -4,6 +4,14 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+test-controls = ["coglet-hub/test-controls"]
+
+[[example]]
+name = "mock_hub_peer"
+required-features = ["test-controls"]
+
 [dependencies]
 coglet-hub = { path = "../coglet-hub" }
 coglet-proto = { path = "../coglet-proto" }
