@@ -10,7 +10,7 @@
   including exact signed CBOR preimages. Domain prefix is not part of the CBOR
   item. Tests verify signatures and reject changed preimages with OpenSSL.
 - `git.json`: actual Git bundle v2 plus archive, SHA-256 digests, object ID and
-  hub-key signed ref statement. No private `/data` files. Tests import into an
+  router-key signed ref statement. No private `/data` files. Tests import into an
   isolated repository, run strict fsck, reconstruct the archive and verify the
   signature. This is a transfer fixture, not a guest implementing the Wasm ABI.
 
