@@ -188,6 +188,31 @@ cargo test --locked -p coglet-proto --features test-controls --test test_control
 cargo test --locked -p coglet-proto --doc
 ```
 
+## Validated fetch integration (bounded acceptance slice)
+
+`AcceptedRefStore::precheck` checks trusted routing pins, current scoped grants,
+delegation and the durable ref watermark in one SQLite snapshot before credit.
+It is blocking and conveys no lease: use bounded off-reactor execution, a fresh
+trusted clock fenced by the Session deadline, and repeat through `accept` after
+full Git validation. It shares the exact pin/comparison logic with commit.
+
+The real-iroh test
+`accepted_refs::git_acceptance_session::real_iroh_validated_git_fetch_reopen_statement_revalidation_and_limits`
+connects actual Session fetch to a Git-created logs bundle, envelope validation,
+bounded fsck/archive validation and durable same-Authority acceptance. It checks
+retained bundle bytes, identical-statement full revalidation, separate-connection
+reopen visibility, changed-tip skipped-generation observation, corrupted-pack and
+expanded-limit rejection/cleanup, stale/equal-different pre-credit rejection,
+and revocation after validated custody but before commit. The latter proves that
+terminal transport FIN does not replace the commit-time authority check.
+
+This fixture is not a production service: the sender snapshot and receiver hash
+are trusted test inputs. Reopen is not a process/Session restart proof, and
+statement revalidation is not original-operation receipt deduplication. Full code
+push/provenance integration, atomic operation receipts, real restart and remaining
+adversarial streaming cases still need end-to-end qualification; kernel policy,
+activation and per-disclosure authorization remain their owners' responsibility.
+
 ## Tests executed for this milestone
 
 ```sh

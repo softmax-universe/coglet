@@ -193,6 +193,55 @@ async fn validated(root: &Root, bytes: &[u8], metadata: &VerifiedRef) -> Verifie
         .unwrap()
 }
 
+#[path = "support/git_acceptance_session.rs"]
+mod git_acceptance_session;
+
+#[tokio::test]
+async fn precredit_checks_current_authority_and_latest_watermark_without_mutation() {
+    let root = Root::new();
+    let h = Harness::new(&root.0);
+    let bytes = fixture();
+    let first = metadata(&bytes, 1, None);
+    h.store
+        .precheck(&first, &h.context(Mode::Observation), || Some(1))
+        .unwrap();
+    assert!(h.current().is_none());
+    h.store
+        .accept(
+            validated(&root, &bytes, &first).await,
+            &h.context(Mode::Observation),
+            || Some(1),
+        )
+        .unwrap();
+    h.store
+        .precheck(&first, &h.context(Mode::Observation), || Some(1))
+        .unwrap();
+    let newer = metadata(&bytes, 3, Some(&"ff".repeat(20)));
+    h.store
+        .accept(
+            validated(&root, &bytes, &newer).await,
+            &h.context(Mode::Observation),
+            || Some(1),
+        )
+        .unwrap();
+    assert!(matches!(
+        h.store
+            .precheck(&first, &h.context(Mode::Observation), || Some(1)),
+        Err(StoreError::Conflict)
+    ));
+    assert!(matches!(
+        h.store
+            .precheck(&newer, &h.context(Mode::Observation), || None),
+        Err(StoreError::Authority(_))
+    ));
+    assert!(matches!(
+        h.store
+            .precheck(&newer, &h.context(Mode::Observation), || Some(100)),
+        Err(StoreError::Authority(_))
+    ));
+    assert_eq!(h.count("proto_ref_audit"), 2);
+}
+
 #[tokio::test]
 async fn store_rejects_metadata_outside_trusted_routing_pins() {
     let root = Root::new();

@@ -113,6 +113,26 @@ impl AcceptedRefStore {
         load(&state.db, hub, coglet, kind).map(|row| row.map(|(_, value)| value))
     }
 
+    /// Blocking pre-credit authorization and watermark check in one current
+    /// database snapshot. This conveys no lease: `accept` repeats these checks
+    /// under the write lock after complete Git validation. Call off the reactor.
+    pub fn precheck(
+        &self,
+        metadata: &VerifiedRef,
+        context: &Acceptance<'_>,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<()> {
+        check_pins(metadata, context)?;
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state.db.transaction()?;
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        let current = load(&tx, &context.hub.to_string(), &context.coglet, context.kind)?;
+        compare(metadata, context.mode, current.as_ref())?;
+        authorize(&tx, metadata, context.kind, context, &trusted_clock)?;
+        tx.commit()?;
+        Ok(())
+    }
+
     /// Retained exact raw bundle for explicit recovery/revalidation. Returning
     /// bytes does not recreate a VerifiedBundle or authorize any ref mutation.
     pub fn audit_bundle(&self, audit_id: i64) -> Result<Vec<u8>> {
@@ -139,12 +159,7 @@ impl AcceptedRefStore {
         let hub = statement["hub"].as_str().ok_or(StoreError::Storage)?;
         let coglet = statement["coglet"].as_str().ok_or(StoreError::Storage)?;
         let kind = context.kind;
-        if hub != context.hub.to_string()
-            || coglet != context.coglet
-            || statement["ref"] != kind.reference()
-        {
-            return Err(AuthorityError::PermissionDenied.into());
-        }
+        check_pins(metadata, context)?;
         let retained = bundle.retained_bundle().map_err(|_| StoreError::Storage)?;
         let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
         let tx = state
@@ -152,25 +167,8 @@ impl AcceptedRefStore {
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let now = authorize(&tx, metadata, kind, context, &trusted_clock)?;
         let current = load(&tx, hub, coglet, kind)?;
-        if current
-            .as_ref()
-            .is_some_and(|(mode, _)| mode != context.mode.name())
-        {
-            return Err(StoreError::Conflict);
-        }
+        let changed = compare(metadata, context.mode, current.as_ref())?;
         let old = current.as_ref().map(|(_, row)| row);
-        let changed = match context.mode {
-            Mode::Authoritative => {
-                metadata.check_authoritative(
-                    old.map(|r| r.metadata.new_tip()),
-                    old.map(|r| r.metadata.generation()),
-                )?;
-                true
-            }
-            Mode::Observation => {
-                metadata.check_observation(old.map(|r| &r.metadata))? == Observation::Advance
-            }
-        };
         if !changed {
             authorize(&tx, metadata, kind, context, &trusted_clock)?;
             tx.commit()?;
@@ -189,6 +187,38 @@ impl AcceptedRefStore {
             audit_id,
             changed: true,
         })
+    }
+}
+
+fn check_pins(metadata: &VerifiedRef, context: &Acceptance<'_>) -> Result<()> {
+    let statement = &metadata.signed()["statement"];
+    if statement["hub"] != context.hub.to_string()
+        || statement["coglet"] != context.coglet
+        || statement["ref"] != context.kind.reference()
+    {
+        return Err(AuthorityError::PermissionDenied.into());
+    }
+    Ok(())
+}
+
+fn compare(
+    metadata: &VerifiedRef,
+    mode: Mode,
+    current: Option<&(String, AcceptedRef)>,
+) -> Result<bool> {
+    if current.is_some_and(|(stored, _)| stored != mode.name()) {
+        return Err(StoreError::Conflict);
+    }
+    let old = current.map(|(_, row)| &row.metadata);
+    match mode {
+        Mode::Authoritative => {
+            metadata.check_authoritative(
+                old.map(VerifiedRef::new_tip),
+                old.map(VerifiedRef::generation),
+            )?;
+            Ok(true)
+        }
+        Mode::Observation => Ok(metadata.check_observation(old)? == Observation::Advance),
     }
 }
 
