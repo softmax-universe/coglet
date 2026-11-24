@@ -65,6 +65,96 @@ fn wal(name: &str) -> std::path::PathBuf {
     std::fs::create_dir_all(&dir).unwrap();
     dir.join("state.wal")
 }
+#[cfg(feature = "native-engine")]
+#[test]
+fn native_pump_reconciles_retained_actions_but_does_not_dispatch_new_intents_while_fenced() {
+    use coglet_runtime::{Engine, EngineReport, NativeSchedule, RuntimeService, StepHost, digest};
+    use std::sync::{Arc, Mutex};
+    struct Lost;
+    impl Engine for Lost {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> coglet_runtime::Result<EngineReport> {
+            Err("lost after entry".into())
+        }
+    }
+    let path = wal("native-fenced-pump");
+    let mut setup = setup();
+    let wasm = wat::parse_str("(module (memory (export \"memory\") 1 2) (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0) (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))").unwrap();
+    setup["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(&wasm));
+    let raw = hex::decode(
+        setup["initial_files"]["/code/build/provenance.cbor"]
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    let mut provenance: Value = coglet_types::decode("hub-build-record", &raw)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    provenance["rewritten_sha256"] = json!(digest(&wasm));
+    setup["initial_files"]["/code/build/provenance.cbor"] =
+        json!(hex::encode(cbor(&provenance).unwrap()));
+    setup["manifest"]["budgets"]["compute_mode"] = json!(coglet_engine_wamr::COMPUTE_MODE);
+    setup["manifest"]["budgets"]["memory_pages"] = json!(2);
+    setup["manifest"]["subscriptions"] = json!([]);
+    setup["manifest"]["required_capabilities"] = json!(["expression.set_expression"]);
+    setup["manifest"]["exclusive_outputs"] = json!(["display.face"]);
+    let mut later = action();
+    later["id"] = json!("6".repeat(32));
+    setup["initial_actions"] = json!([action(), later]);
+    setup["initial_effect_ids"]["actions"] = json!([action()["id"], later["id"]]);
+    let service = Arc::new(Mutex::new(
+        RuntimeService::open(&path, &setup, 128).unwrap(),
+    ));
+    service.lock().unwrap().supervised_now().unwrap();
+    let mut s = live(service.clone());
+    caps(&mut s);
+    grants(&mut s, 1);
+    let saved = service
+        .lock()
+        .unwrap()
+        .prepare_dispatch(&s, action()["id"].as_str().unwrap(), 130)
+        .unwrap();
+    {
+        let mut service = service.lock().unwrap();
+        let event = setup["inputs"]["events"][0].clone();
+        service.enqueue(event).unwrap();
+        let mut context = setup["inputs"].clone();
+        context["budgets"] = setup["manifest"]["budgets"].clone();
+        assert!(service.run_next(&context, &mut Lost).is_err());
+        service
+            .enable_native(NativeSchedule {
+                trace_id: context["trace_id"].as_str().unwrap().into(),
+                seed: 1,
+                runtime_bytes: 8_388_608,
+                stack_bytes: 65_536,
+            })
+            .unwrap();
+    }
+    assert!(
+        service
+            .lock()
+            .unwrap()
+            .prepare_dispatch(&s, later["id"].as_str().unwrap(), 140)
+            .is_err(),
+        "direct preparation bypassed attempt fence"
+    );
+    s.pump_dispatch(140).unwrap();
+    assert_eq!(
+        s.pop().unwrap(),
+        saved,
+        "retained action no longer reconcilable"
+    );
+    assert!(
+        s.pop().is_none(),
+        "new intent dispatched during unknown guest attempt"
+    );
+    assert_eq!(service.lock().unwrap().queued(), 1);
+    assert!(service.lock().unwrap().records().is_empty());
+    drop(s);
+    drop(service);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+
 #[test]
 fn native_read_is_caller_scoped_and_timeout_discards_late_reply() {
     let mut s = session();
@@ -748,10 +838,19 @@ fn terminal_rejection_is_one_durable_append_and_zero_step_export_includes_it() {
     assert_eq!(service.queued(), 1);
     drop(service);
     let mut recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
-    let record = recovered
-        .seal_boundary(&setup["inputs"]["trace_id"], 200, &[])
+    let exported = recovered
+        .export_trace(&setup["inputs"]["trace_id"], 200)
         .unwrap();
+    let record = &exported["trailing_boundary"];
     assert_eq!(record["boundary"].as_array().unwrap().len(), 1);
+    assert!(exported["records"].as_array().unwrap().is_empty());
+    assert_eq!(
+        coglet_runtime::Runtime::import_trace(&exported)
+            .unwrap()
+            .export_trace(&exported["trace_id"])
+            .unwrap(),
+        exported
+    );
     assert_eq!(recovered.queued(), 1, "seal duplicated the staged wake");
     drop(recovered);
     let recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
@@ -759,6 +858,70 @@ fn terminal_rejection_is_one_durable_append_and_zero_step_export_includes_it() {
     drop(recovered);
     std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
+#[test]
+fn fenced_attempt_with_staged_receipt_reopens_and_defers_later_receipts() {
+    use coglet_runtime::{Engine, EngineReport, Runtime, RuntimeService, StepHost};
+    struct Lost(Option<Value>);
+    impl Engine for Lost {
+        fn execute(
+            &mut self,
+            inputs: &Value,
+            _: &mut StepHost,
+        ) -> coglet_runtime::Result<EngineReport> {
+            self.0 = Some(inputs.clone());
+            Err("lost outcome".into())
+        }
+    }
+    let path = wal("attempt-staged");
+    let mut setup = setup();
+    let mut second = action();
+    second["id"] = json!("6".repeat(32));
+    setup["initial_effect_ids"]["actions"] = json!([action()["id"], second["id"]]);
+    setup["initial_actions"] = json!([action(), second]);
+    let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    for id in [
+        action()["id"].as_str().unwrap(),
+        second["id"].as_str().unwrap(),
+    ] {
+        service.prepare_dispatch(&s, id, 130).unwrap();
+    }
+    let reject = |id: Value| json!({"id":id,"correlation_id":action()["correlation_id"],"accepted":false,"error":{"code":"permission_denied","message":"revoked","retryable":false}});
+    service
+        .record_surface_accept(&s, &reject(action()["id"].clone()), 140)
+        .unwrap();
+    let mut inputs = setup["inputs"].clone();
+    inputs["logical_time"] = json!(200);
+    let mut lost = Lost(None);
+    assert!(service.run_next(&inputs, &mut lost).is_err());
+    assert!(
+        service
+            .record_surface_accept(&s, &reject(second["id"].clone()), 210)
+            .is_err(),
+        "later receipt changed fenced boundary"
+    );
+    drop(service);
+    let mut service = RuntimeService::open(&path, &setup, 128).unwrap();
+    let mut original = Runtime::from_fixture(&setup).unwrap();
+    let result = original
+        .step(
+            lost.0.as_ref().unwrap(),
+            &mut coglet_runtime::MockEngine::new(setup["guest_script"].clone()),
+        )
+        .unwrap();
+    service.recover_attempt(&result["journal"]).unwrap();
+    assert_eq!(service.queued(), 0);
+    service
+        .record_surface_accept(&s, &reject(second["id"].clone()), 210)
+        .unwrap();
+    assert_eq!(service.queued(), 1);
+    drop(service);
+    drop(RuntimeService::open(&path, &setup, 128).unwrap());
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+}
+
 #[test]
 fn retries_remain_reconcilable_until_deadline_plus_retention() {
     let path = wal("retention");
@@ -1000,4 +1163,56 @@ fn duplicate_owner_or_wrong_catalog_uri_does_not_install_grants() {
         -2
     );
     assert!(s.translate_action(&action(), 130).is_err());
+}
+
+#[test]
+fn durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts() {
+    let path = wal("segment-pending");
+    let mut setup = setup();
+    let llm = json!({"id":"7".repeat(32),"correlation_id":"7".repeat(32),"capability":"llm.complete","model":"small","input":{"prompt":"hello"}});
+    setup["initial_effect_ids"]["llm_requests"] = json!(["7".repeat(32)]);
+    setup["initial_llm_requests"] = json!([llm]);
+    let event = setup["inputs"]["events"][0].clone();
+    let message = json!({"id":"a".repeat(32),"index":0,"sender":event["source"],"event":event});
+    setup["initial_files"]["/data/inbox.jsonl"] = json!(hex::encode(format!(
+        "{}\n",
+        serde_json::to_string(&message).unwrap()
+    )));
+    setup["initial_inbox_wakes"] = json!([0]);
+    let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
+    assert_eq!(service.queued(), 1);
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    let id = action()["id"].as_str().unwrap().to_owned();
+    let bytes = service.prepare_dispatch(&s, &id, 130).unwrap();
+    let before = setup["initial_files"]["/data/count"].clone();
+    let change = json!({"actor":format!("hub:{}","3".repeat(64)),"target":C,"audit_id":"d".repeat(32),
+        "ticket":null,"method":"debug.write","path":"/data/count","before":before,"after":"31"});
+    service
+        .seal_boundary(
+            &setup["inputs"]["trace_id"],
+            20,
+            std::slice::from_ref(&change),
+        )
+        .unwrap();
+    let new_id = json!("e".repeat(32));
+    service.start_segment(&new_id).unwrap();
+    assert_eq!(service.queued(), 1);
+    drop(service);
+    let mut recovered = coglet_runtime::RuntimeService::open(&path, &setup, 128).unwrap();
+    assert_eq!(recovered.queued(), 1, "inbox wake dropped across segment");
+    assert_eq!(
+        recovered.prepare_dispatch(&s, &id, 200).unwrap(),
+        bytes,
+        "dispatch receipt mutated or lost"
+    );
+    let fresh = recovered.export_trace(&new_id, 20).unwrap();
+    assert_eq!(fresh["initial_actions"][0]["id"], action()["id"]);
+    assert_eq!(fresh["initial_llm_requests"][0]["id"], "7".repeat(32));
+    assert_eq!(fresh["initial_inbox_wakes"], json!([0]));
+    assert!(fresh["records"].as_array().unwrap().is_empty());
+    coglet_runtime::Runtime::import_trace(&fresh).unwrap();
+    drop(recovered);
+    std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }

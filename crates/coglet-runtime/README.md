@@ -83,9 +83,21 @@ Remaining qualification is owned serially by board cards:
 
 The unimplemented boundaries remain explicit:
 
-- Full ABI profile adapters: module/manifest admission, trace/provenance validation,
-  terminal-receipt and heard archive corpus import/validation (the runtime seams
-  exist, but those language-neutral profiles have not been implemented).
+- All frozen ABI wire profile adapters are exercised by
+  `python3 crates/coglet-runtime/tools/check-abi.py`: 128 cases, zero failures/skips.
+  This is aggregate profile coverage, not one engine executing every program:
+  runtime scripted steps and archive checks, actual WAMR module admission, and
+  the SDK/shared native mock reference-guest route. The launcher builds the
+  `native-engine` feature; feature-free binaries refuse module admission. The
+  admission-only fixture mode explicitly maps `fixture.interpreter` to the pinned
+  WAMR interpreter; unsupported modes fail before instantiation. Manifest admission
+  uses the supplied trusted catalog and authorization snapshot, not transport
+  authentication or live lease freshness. Archive view selection is an explicit
+  process argument (`--trace-view state|validity`), never a case-name lookup.
+  Heard archive fixture setup is entirely supplied in each trace; registry labels
+  require no live provider. Recursive inventory and fresh JUnit checks fail closed
+  on new/unrouted files, failures or skips. All-profile independent replay remains
+  a separate gate; offline archive reconstruction does not satisfy it.
 - Native orchestration now attaches the durable service explicitly in both transports.
   The default probe modes remain negotiation-only. Linux native clock continuity uses
   BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
@@ -127,17 +139,67 @@ The unimplemented boundaries remain explicit:
   feature-free service mode only hosts the outbox. Native execution currently
   refuses all WASI imports; full transactional WASI is the serial ABI qualification
   gate. No arguments still prints the version and exits.
-- Engine admission/attempt-error contract and full recovery-invariant validation.
-  Recovery checks all code files, pending-ledger membership, inbox wake indices,
-  trace identity and journal head/chain, but not a full reconstruction of all host
-  metadata from prior commits yet. Router metadata also needs semantic validation.
-- Trace header/blob import/export and host-state transfer to a new segment after
-  sealing. `seal_boundary` forbids later steps in that segment. The coordinator
-  atomically persists the seal, inbox append/pending removal and newly queued
-  inbox wakes; heard-only seals queue no wake. Terminal surface receipt/outcome methods
-  now persist dedup with exact staged inbox bytes, pending removal and one wake. Staged
-  changes enter the next real step or a trailing seal, including zero-step exports.
+- Trace headers/blob import/export and offline archive validation now cover all
+  frozen boundary/receipt, provenance and heard-archive vectors in the Rust target
+  `complete_frozen_archive_profiles_validate_without_guest_execution`. Import
+  reconstructs host calls/pending state, checks mount-constrained recorded guest
+  deltas and recomputes hashes. It is **not** independent guest re-execution,
+  signature verification or proof of a producer's cutoff/completeness. Use
+  `Runtime::replay` with an independently supplied program for re-execution.
+  `RuntimeService::export_trace` includes reopened journal history and seals any
+  staged applied boundary durably before export; imports retain all verified blobs.
+  `RuntimeService::start_segment` now atomically transfers the complete coordinator
+  state in the same exclusively locked WAL. Retained segment cutoffs and immutable
+  headers bind predecessor seals to successor host state; old journals and dispatch
+  receipts are never cleared. `export_segment` retains sealed predecessor exports.
+  `durable_segment_transfer_retains_history_router_and_trace_local_chain` exercises
+  three segments, reopen, trace-local counters, pending timer delivery, old exports,
+  and forged headers/cutoffs/clock/source-floor rejection. Native scheduling must be
+  re-enabled explicitly with the successor trace identity.
+- Admission and attempt errors are distinct. `Engine::admit` cannot run guest code;
+  native load/instantiate happens there, with one unchanged deadline through entry.
+  Known guest failures return observed usage and produce ordinary aborted records.
+  Before execute, the coordinator durably reserves the exact inputs. Unknown engine
+  errors, malformed reports and uncertain commits retain a non-retryable fence across
+  reopen. No unknown usage is fabricated. `recover_attempt` accepts a complete,
+  caller-authenticated original worker observation, validates its exact inputs and
+  host transitions, and atomically commits it without guest execution. It is not
+  authentication or independent guest replay. If no observation survives (including
+  a crash between durable reservation and guest entry), the guest remains fenced;
+  there is deliberately no unsafe "clear and retry" API. Exports/seals/segmentation
+  refuse unresolved attempts. Later terminal appends backpressure until recovery.
+  Private leases are revoked on restart, but the already-attempted queue prefix is
+  retained solely for reconciliation, never fresh guest delivery.
+- Recovery reconstructs files, lifetime IDs, pending effects and inbox wakes from
+  the configured immutable root and each segment's recorded host transitions.
+  Router checks include capacity, reserved ordinal order, schemas, exact pending
+  inbox-wake completeness, timer bindings and source reservation uniqueness. Fresh
+  services atomically seed all initial inbox wakes. Private leases bind ordinal,
+  exact event, source, epoch, nonzero expiry and source highwaters before cleanup.
+  Recovery verifies retained blob digests and reruns no-guest attempt preflight on
+  a disposable clone, including effective budgets, event/boundary semantics and
+  engine/grants/seed shapes. Own-source reservations are derived from the whole
+  multi-segment WAL, router and host-appended inbox: duplicate reuse and generated
+  wake gaps fail closed; authenticated boundary inputs may advance their source
+  floor. Clock continuity retains cross-segment lower-bound checks. Header-less old WALs fail
+  closed; there is no silent migration. The WAL has a 64 MiB state-frame bound and
+  no reclamation yet; segment headers/history consume storage and can eventually
+  backpressure, rather than evict lifetime data or receipts.
+- `seal_boundary` atomically persists the seal, inbox append/pending removal and
+  newly queued inbox wakes; heard-only seals queue no wake. Applied staged changes
+  enter the next real step or a trailing seal, including zero-step exports.
+- Native pump liveness while fenced retains existing IDs but refuses new dispatches
+  and terminal appends. Typed GuestExit (including zero) maps to guest_return;
+  native WASI is still refused, so this is not a proc_exit execution proof.
+  See [ABI applicability and remaining gates](abi-qualification.md). Real WAMR
+  two-step journal replay now compares state hashes with independent execution:
+  wall duration observations may differ, but both observed limits/status and all
+  deterministic record fields remain checked. Simple enqueue retains bounded
+  tail admission while fenced; it cannot consume or reorder the attempted prefix.
 - Independent exact-head review, green CI, merge, and board review handoff.
+  Segment transfer also retains pending actions, LLM requests, inbox wakes and
+  durable dispatch receipts across successor reopen. Extra malformed
+  header/record/blob and divergent-program replay refusals are named tests.
 
 The internal WAL format is not the exported ABI journal. Each internal commit
 contains runtime host state and an optional ABI record in one checked frame;
