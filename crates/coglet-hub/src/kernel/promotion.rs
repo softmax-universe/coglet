@@ -5,8 +5,16 @@
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+mod admission;
 mod installation;
-pub(crate) use installation::initialize;
+pub use admission::{
+    BoundaryIntent, BuiltCandidate, PromotionAuthority, PromotionBoundary, PromotionCaller,
+    TicketLink, TicketRules,
+};
+pub(crate) fn initialize(db: &rusqlite::Connection) -> Result<()> {
+    installation::initialize(db)?;
+    admission::initialize(db)
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
@@ -16,10 +24,10 @@ pub enum GateKind {
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct GateRequirement {
-    kind: GateKind,
-    suite: String,
-    max_age_ms: u64,
+pub struct GateRequirement {
+    pub kind: GateKind,
+    pub suite: String,
+    pub max_age_ms: u64,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]

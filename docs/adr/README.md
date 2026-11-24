@@ -23,6 +23,7 @@ and the other ADR status decisions remain separate.
 | 0014 | [Isolated M1 echo fixture catalog](0014-m1-echo-fixture-catalog.md) | Accepted; PR #73; implementation qualification separate |
 | 0015 | [Executable companion fixtures for archive-profile replay](0015-archive-executable-guest-fixtures.md) | Proposed |
 | 0017 | [Recorded game observations and motor-only game extensions](0017-game-observations-and-research.md) | Proposed |
+| 0020 | [Vocabulary: router, adapter, runtime](0020-vocabulary.md) | Proposed; stage 1 (prose) only |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,

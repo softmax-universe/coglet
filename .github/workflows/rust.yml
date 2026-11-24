@@ -29,9 +29,10 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
-      - run: cargo test --workspace --locked
+      - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
+        run: scripts/ci/cargo-test --workspace --locked
       - name: AOT feature fails closed under ABI v0
-        run: cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
+        run: scripts/ci/cargo-test --locked -p coglet-engine-wamr --no-default-features --features aot
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked
       - name: Build reference guest modules
         run: bash sdk/guest-rust/build-guests.sh
@@ -47,7 +48,7 @@ jobs:
           python3 sdk/guest-rust/tests/build_reference_cases.py --check
           cargo build --locked -p coglet-guest-rust --example reference_conformance
           for engine in mock wamr; do
-            conformance/run --suite abi --peer-role guest-reference --impl "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance $engine" --junit "target/reference-$engine.xml"
+            conformance/run --quarantine ci/quarantine.toml --suite abi --peer-role guest-reference --impl "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance $engine" --junit "target/reference-$engine.xml"
           done
           python3 sdk/guest-rust/tests/check_reports.py
       - uses: actions/upload-artifact@v4

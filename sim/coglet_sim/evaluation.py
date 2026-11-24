@@ -32,10 +32,10 @@ class NativeTools:
                 raise ValueError('native tool must be an existing absolute executable')
 
 
-def setup(wasm, name):
+def setup(wasm, name, seed=7, coglet=C):
     cases = json.loads((ROOT / 'conformance/abi/cases.json').read_text())
     result = next(c['steps'][0]['send'] for c in cases if c['name'] == 'no-effects')
-    result['manifest'].update(id=C, subscriptions=[f'sim.{name}_state'],
+    result['manifest'].update(id=coglet, subscriptions=[f'sim.{name}_state'],
         required_capabilities=[f'sim.{name}_' + ('move' if name == 'gridbot' else 'force')], exclusive_outputs=[])
     result['manifest']['budgets'].update(compute_mode='wamr-2.4.3-fast-cumulative-v1',
         compute=100_000_000, memory_pages=256, wall_time_us=2_000_000, host_bytes=1_000_000)
@@ -43,7 +43,7 @@ def setup(wasm, name):
     provenance = decode_profile(bytes.fromhex(result['initial_files']['/code/build/provenance.cbor']))
     provenance['rewritten_sha256'] = sha256(wasm).hexdigest()
     result['initial_files']['/code/build/provenance.cbor'] = encode_profile(provenance).hex()
-    result['native_schedule'] = dict(trace_id=result['inputs']['trace_id'], seed=7,
+    result['native_schedule'] = dict(trace_id=result['inputs']['trace_id'], seed=seed,
                                      runtime_bytes=16_777_216, stack_bytes=262_144)
     return result
 
@@ -57,7 +57,7 @@ def exact(sock, size):
     return bytes(data)
 
 
-def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1):
+def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C):
     """Execute exact rewritten bytes, independently replay, check behavior.
 
     Caller pins tools, world and assertions. Returned data is unsigned, not a
@@ -73,25 +73,31 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         raise ValueError('nonempty rewritten wasm bytes required')
     if type(minimum_actions) is not int or minimum_actions < 1:
         raise ValueError('positive minimum_actions required')
+    if type(seed) is not int or not 0 <= seed < 2**64:
+        raise ValueError('u64 seed required')
+    if type(max_steps) is not int or not 1 <= max_steps <= 1024:
+        raise ValueError('bounded max_steps required')
     name = world
     kind = Gridbot if name == 'gridbot' else Cartpole
-    make_world = lambda s: kind(s, max_steps=max_steps) if kind is Cartpole else kind(s)
+
+    make_world = lambda s: kind(s, max_steps=max_steps)
     with tempfile.TemporaryDirectory(prefix='eval-', dir=os.environ['TMPDIR']) as short:
         path = Path(short)
         assert len(str(path / 'sock/control').encode()) < 104
         world = make_world(seed)
-        config = setup(wasm, name)
+        config = setup(wasm, name, seed, coglet)
         (path / 'setup.json').write_text(json.dumps(config))
-        (path / 'binding.json').write_text(json.dumps(runtime_binding(S, [C])))
+        (path / 'binding.json').write_text(json.dumps(runtime_binding(S, [coglet])))
+        surface = WorldSurface(S, [coglet], path / 'ledger', world)
         stderr = (tmp_path / 'daemon.log').open('w+')
-        child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
-            str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
-            str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr)
-        surface = WorldSurface(S, [C], path / 'ledger', world)
         snapshots, actions = [world.state_hash()], []
         received_actions = {}
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        child = None
         try:
+            child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
+                str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
+                str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr)
             deadline = time.monotonic() + 10
             while True:
                 assert child.poll() is None, 'daemon exited: ' + (tmp_path / 'daemon.log').read_text()
@@ -115,7 +121,7 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                 surface.receive(raw)
                 if surface.state == 'ready' and not initialized:
                     initialized = True
-                    surface.grant([dict(coglet=C, operations=list(surface.operations),
+                    surface.grant([dict(coglet=coglet, operations=list(surface.operations),
                                         resources=[], expires=surface.now() + 120_000_000)])
                     surface.publish(epoch=1)
                 if msg['type'] == 'act':
@@ -166,16 +172,18 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
             failure = None
             if kind is Gridbot and (world.x, world.y) != (world.goal_x, world.goal_y):
                 failure = 'goal_not_reached'
+            elif kind is Cartpole and world.steps < max_steps:
+                failure = 'episode_terminated_early'
             elif len(actions) < minimum_actions:
                 failure = 'minimum_actions'
-            return dict(world=name, seed=seed, max_steps=max_steps, minimum_actions=minimum_actions,
+            return dict(world=name, seed=seed, max_steps=max_steps, minimum_actions=minimum_actions, coglet=coglet,
                         rewritten_sha256=sha256(wasm).hexdigest(), action_count=len(actions),
                         world_hashes=snapshots, runtime_state_hashes=report['state_hashes'],
                         independent_guest_reexecution=True, passed=failure is None, failure=failure)
         finally:
             sock.close()
             surface.close()
-            if child.poll() is None:
+            if child is not None and child.poll() is None:
                 child.kill()
                 child.wait(timeout=5)
             stderr.close()

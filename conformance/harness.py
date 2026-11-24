@@ -8,6 +8,7 @@ import re
 import shlex
 import signal
 import sys
+import tempfile
 import time
 import tomllib
 import xml.etree.ElementTree as ET
@@ -111,7 +112,7 @@ def cases_for(root, suite):
 
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
-               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line'}
+               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock'}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -136,6 +137,9 @@ def validate_impl(impl):
         if not re.fullmatch('[0-9a-f]{64}', impl.get('endpoint', '')) or not impl.get('alpn'):
             raise ValueError('iroh requires endpoint hex and alpn')
     millis(impl.get('connect_timeout_ms', 5000))
+    if 'fixture_clock' in impl and (type(impl['fixture_clock']) is not bool
+                                      or transport != 'stdio'):
+        raise ValueError('fixture_clock requires stdio and a boolean')
     if 'ready_line' in impl:
         line = impl['ready_line']
         if (transport != 'stdio' or not isinstance(line, str)
@@ -155,8 +159,21 @@ def validate_impl(impl):
             if not isinstance(command, list) or any(not isinstance(a, str) or not a for a in command):
                 raise ValueError('fixture hook commands must be argv arrays')
         env = hook.get('env', {})
+        if isinstance(env, dict) and 'COGLET_FIXTURE_CLOCK_SOCKET' in env:
+            raise ValueError('clock socket is harness-owned, not a fixture env setting')
         if not isinstance(env, dict) or any(not re.fullmatch(r'COGLET_FIXTURE_[A-Z0-9_]+', k) or not isinstance(v, str) for k, v in env.items()):
             raise ValueError('fixture env requires COGLET_FIXTURE_* string values')
+
+
+def quarantined_ids(path):
+    """[[conformance]] ids from ci/quarantine.toml (validated by scripts/ci/quarantine.py)."""
+    if path is None:
+        return set()
+    entries = tomllib.loads(Path(path).read_text()).get('conformance', [])
+    ids = {entry.get('id') for entry in entries if isinstance(entry, dict)}
+    if not all(isinstance(ident, str) and ident for ident in ids):
+        raise ValueError(f'{path}: every [[conformance]] entry needs a string id')
+    return ids
 
 
 def registry(path):
@@ -172,6 +189,57 @@ def registry(path):
     return data['implementations']
 
 
+class BufferedOutput:
+    """Drain clock-bound stdout while dispatch/flush barriers are outstanding.
+
+    Retain at most 4 MiB of unread wire bytes. Overflow is a hard case failure,
+    not backpressure: continue discarding so the child can flush and acknowledge.
+    Framing, decoding and silence assertions still consume the original bytes.
+    """
+    LIMIT = 4 * 1024 * 1024
+
+    def __init__(self, source):
+        self.source = source
+        self.buffer = bytearray()
+        self.changed = asyncio.Event()
+        self.eof = False
+        self.error = None
+        self.task = asyncio.create_task(self.drain())
+
+    async def drain(self):
+        try:
+            while chunk := await self.source.read(65536):
+                if self.error is None:
+                    if len(self.buffer) + len(chunk) > self.LIMIT:
+                        self.error = ValueError('fixture stdout exceeds 4 MiB unread byte limit')
+                        self.buffer.clear()
+                    else:
+                        self.buffer.extend(chunk)
+                self.changed.set()
+        except Exception as error:
+            self.error = error
+        finally:
+            self.eof = True
+            self.changed.set()
+
+    async def readexactly(self, size):
+        if not 0 <= size <= self.LIMIT:
+            raise ValueError('fixture stdout read exceeds buffer limit')
+        while True:
+            if self.error is not None:
+                raise self.error
+            if len(self.buffer) >= size:
+                result = bytes(self.buffer[:size])
+                del self.buffer[:size]
+                return result
+            if self.eof:
+                partial = bytes(self.buffer)
+                self.buffer.clear()
+                raise asyncio.IncompleteReadError(partial, size)
+            self.changed.clear()
+            await self.changed.wait()
+
+
 class Peer:
     def __init__(self, impl, env=None):
         self.impl = impl
@@ -181,9 +249,49 @@ class Peer:
         self.stderr = bytearray()
         self.stderr_task = None
         self.ready = None
+        self.clock_reader = None
+        self.clock_writer = None
+        self.clock_server = None
+        self.clock_dir = None
+        self.fixture_time = 0
+
+    async def advance_clock(self, micros):
+        if self.clock_writer is None:
+            return
+        if micros < self.fixture_time:
+            raise ValueError('retrograde fixture clock')
+        self.clock_writer.write(micros.to_bytes(8, 'big'))
+        await self.clock_writer.drain()
+        await self.clock_ack(micros)
+        self.fixture_time = micros
+
+    async def clock_ack(self, micros=None):
+        if self.clock_reader is None:
+            return
+        expected = self.fixture_time if micros is None else micros
+        raw = await self.clock_reader.readexactly(8)
+        if int.from_bytes(raw, 'big') != expected:
+            raise ValueError('fixture clock acknowledgement mismatch')
+        if isinstance(self.reader, BufferedOutput) and self.reader.error is not None:
+            raise self.reader.error
 
     async def start(self):
         impl = self.impl
+        connected = None
+        self.env = dict(self.env or os.environ)
+        self.env.pop('COGLET_FIXTURE_CLOCK_SOCKET', None)
+        if impl.get('fixture_clock'):
+            self.clock_dir = tempfile.TemporaryDirectory(prefix='coglet-clock-')
+            path = str(Path(self.clock_dir.name) / 'clock.sock')
+            connected = asyncio.get_running_loop().create_future()
+            def accept(reader, writer):
+                if connected.done():
+                    writer.close()
+                else:
+                    self.clock_reader, self.clock_writer = reader, writer
+                    connected.set_result((reader, writer))
+            self.clock_server = await asyncio.start_unix_server(accept, path=path)
+            self.env = dict(self.env or os.environ, COGLET_FIXTURE_CLOCK_SOCKET=path)
         if impl['transport'] == 'unix':
             self.reader, self.writer = await asyncio.open_unix_connection(impl['socket'])
             return
@@ -200,9 +308,24 @@ class Peer:
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             start_new_session=True, env=self.env)
         self.reader, self.writer = self.process.stdout, self.process.stdin
+        if impl.get('fixture_clock'):
+            # Start before waiting for clock connect/readiness: initial frames
+            # may themselves exceed pipe capacity before the child connects.
+            self.reader = BufferedOutput(self.process.stdout)
         if 'ready_line' in impl:
             self.ready = asyncio.get_running_loop().create_future()
         self.stderr_task = asyncio.create_task(self.drain_stderr())
+        if impl.get('fixture_clock'):
+            assert connected is not None
+            exited = asyncio.create_task(self.process.wait())
+            try:
+                await asyncio.wait((connected, exited), return_when=asyncio.FIRST_COMPLETED)
+                if not connected.done():
+                    raise RuntimeError('adapter exited before fixture clock connection')
+                self.clock_reader, self.clock_writer = connected.result()
+            finally:
+                exited.cancel()
+                await asyncio.gather(exited, return_exceptions=True)
         if self.ready is not None:
             await self.ready
 
@@ -226,14 +349,37 @@ class Peer:
             self.ready.set_exception(RuntimeError('adapter exited before readiness signal'))
 
     async def close(self):
+        if self.clock_server is not None:
+            self.clock_server.close()
+        if self.clock_writer is not None:
+            self.clock_writer.close()
+            try:
+                await asyncio.wait_for(self.clock_writer.wait_closed(), .5)
+            except (OSError, asyncio.TimeoutError):
+                pass
+        if self.clock_server is not None:
+            try:
+                await asyncio.wait_for(self.clock_server.wait_closed(), .5)
+            except (OSError, asyncio.TimeoutError):
+                pass
+        if self.clock_dir is not None:
+            try:
+                self.clock_dir.cleanup()
+            except OSError:
+                pass
         if self.writer:
             self.writer.close()
         if self.process:
             assert self.reader is not None
+            source = self.process.stdout
+            assert source is not None
             async def discard_stdout():
-                while await self.reader.read(4096):
+                while await source.read(4096):
                     pass
-            drain = asyncio.create_task(discard_stdout())
+            if isinstance(self.reader, BufferedOutput):
+                drain = self.reader.task
+            else:
+                drain = asyncio.create_task(discard_stdout())
             # Kill the whole isolated session, including grandchildren on failure.
             try:
                 os.killpg(self.process.pid, signal.SIGTERM)
@@ -252,6 +398,8 @@ class Peer:
         if self.stderr_task:
             self.stderr_task.cancel()
             await asyncio.gather(self.stderr_task, return_exceptions=True)
+        if self.ready is not None and self.ready.done() and not self.ready.cancelled():
+            self.ready.exception()  # consume an early failure even before clock connect
         if self.writer:
             try:
                 await asyncio.wait_for(self.writer.wait_closed(), .5)
@@ -269,9 +417,15 @@ async def timeline(peer, case):
     start = time.monotonic()
     framing = 'u32be' if peer.impl['transport'] == 'iroh' else peer.impl.get('framing', 'u32be')
     for index, step in enumerate(case['steps']):
-        await asyncio.sleep(max(0, start + millis(step.get('at_ms', 0)) - time.monotonic()))
+        fixture_clock = peer.impl.get('fixture_clock', False)
+        if not fixture_clock:
+            await asyncio.sleep(max(0, start + millis(step.get('at_ms', 0)) - time.monotonic()))
         try:
-            timeout = millis(step.get('within_ms', 1000))
+            # ADR-0021: infrastructure liveness is not protocol fixture time.
+            timeout = 3.0 if fixture_clock else millis(step.get('within_ms', 1000))
+            if fixture_clock:
+                target = max(peer.fixture_time, round(millis(step.get('at_ms', 0)) * 1_000_000))
+                await asyncio.wait_for(peer.advance_clock(target), timeout)
             if 'send' in step or 'send_hex' in step:
                 if peer.impl['transport'] != 'iroh' and ('stream' in step or 'finish' in step):
                     raise ValueError('stream/finish controls require iroh transport')
@@ -282,8 +436,13 @@ async def timeline(peer, case):
                     stream = step.get('stream', 2**63 + index)
                     raw = stream.to_bytes(8, 'big') + bytes([step.get('finish', True)]) + raw
                 await asyncio.wait_for(write_frame(peer.writer, raw, framing), timeout)
+                if fixture_clock:
+                    await asyncio.wait_for(peer.clock_ack(), timeout)
                 continue
             if 'silence_ms' in step:
+                if fixture_clock:
+                    target = peer.fixture_time + round(millis(step['silence_ms']) * 1_000_000)
+                    await asyncio.wait_for(peer.advance_clock(target), timeout)
                 try:
                     await asyncio.wait_for(peer.reader.readexactly(1), millis(step['silence_ms']))
                 except asyncio.TimeoutError:
@@ -316,8 +475,10 @@ async def run_hook(command, env):
         await peer.start()
         assert peer.writer is not None and peer.reader is not None and peer.process is not None
         peer.writer.close()
+        source = peer.process.stdout
+        assert source is not None
         async def discard():
-            while await peer.reader.read(4096):
+            while await source.read(4096):
                 pass
         async with asyncio.timeout(10):
             await asyncio.gather(discard(), peer.process.wait())
@@ -418,8 +579,20 @@ async def execute(args):
                 for case in cases_for(args.cases, suite)]
         if not jobs:
             print('No implementations registered; no conformance claims made.')
+        quarantined = quarantined_ids(args.quarantine)
+        if args.only_quarantined and args.quarantine is None:
+            raise ValueError('--only-quarantined requires --quarantine')
+        keys = {f'{impl["name"]}.{suite}/{case["name"]}' for impl, suite, case in jobs}
+        for ident in sorted(quarantined - keys):
+            print(f'QUARANTINE entry matches no case in this run: {ident}', file=sys.stderr)
         for impl, suite, case in jobs:
-            result = await run_case(impl, suite, case)
+            key = f'{impl["name"]}.{suite}/{case["name"]}'
+            if args.only_quarantined and key not in quarantined:
+                continue
+            if key in quarantined and not args.only_quarantined:
+                result = (f'{impl["name"]}.{suite}', case['name'], 0, None, 'quarantined (ci/quarantine.toml)')
+            else:
+                result = await run_case(impl, suite, case)
             results.append(result)
             print(f'{"SKIP" if result[4] else "FAIL" if result[3] else "PASS"} {result[0]}/{result[1]}' + (f': {result[4]}' if result[4] else ''))
             if result[3]:
@@ -448,4 +621,8 @@ def main():
     parser.add_argument('--registry', type=Path, default=SUITES / 'impls.toml')
     parser.add_argument('--cases', type=Path, default=SUITES)
     parser.add_argument('--junit', type=Path, default=ROOT / 'target/conformance-results.xml')
+    parser.add_argument('--quarantine', type=Path,
+                        help='skip the [[conformance]] ids listed in this file (ci/quarantine.toml)')
+    parser.add_argument('--only-quarantined', action='store_true',
+                        help='run only the quarantined cases (stability workflow)')
     return asyncio.run(execute(parser.parse_args()))

@@ -1,11 +1,13 @@
 # Speech capability profiles — 0.1
 
-Imports [conventions](../conventions.md) and [surface protocol](../surface-protocol.md).
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+
+Imports [conventions](../conventions.md) and [adapter protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
 `speech.cddl` and `speech.schema.json` define the CLOSED typed payload/args
 records. Records used inside common envelopes are selected by the normative
 [operation bindings](bindings.md) and [catalog](bindings.json), including empty
-read arguments and successful action results. The surface still checks temporal rules
+read arguments and successful action results. The adapter still checks temporal rules
 and grants; an arbitrary common payload map is not a valid speech message.
 Native capture, echo cancellation, VAD and playback run outside the Wasm step.
 No raw audio/base64 or provider credentials are carried by these messages.
@@ -32,16 +34,16 @@ old epoch/session and publish a new config snapshot before restarting capture.
 Remote audio paths require explicit local privacy permission and authenticated
 media transport configured outside this control protocol. Unavailable routes
 report unavailable; no silent switch to a cloud/provider path. Regardless of
-placement, the surface timestamps, fences and normalizes every resulting event;
+placement, the adapter timestamps, fences and normalizes every resulting event;
 reflex stopping remains local even if recognition/synthesis is remote.
 
 ## Events up
 
-Every event is a common event sourced by the surface, with monotonically
+Every event is a common event sourced by the adapter, with monotonically
 increasing seq. IDs below use the common 32-hex correlation-id grammar. Capture
 and playback `position_ms` refer to their own media timeline, not logical_time.
-These speech events are private owner-unicast observations. Hub relay preserves
-the surface envelope and payload unchanged and MUST retain the same owner-only
+These speech events are private owner-unicast observations. Router relay preserves
+the adapter envelope and payload unchanged and MUST retain the same owner-only
 visibility; delegation or subscription alone cannot widen their audience.
 
 | kind | payload | Meaning |
@@ -56,7 +58,7 @@ visibility; delegation or subscription alone cannot widen their audience.
 Utterance IDs are unique across capture restarts. Revisions start at 1 and strictly
 increase per utterance (end must exceed the latest partial). Start precedes partial
 and end. Exactly one end closes an utterance. A late partial after end, or a lower/
-equal revision, is discarded by the surface normalizer and MUST NOT reopen an
+equal revision, is discarded by the adapter normalizer and MUST NOT reopen an
 utterance or wake the coglet. Record the discard in local diagnostics without
 forwarding private text. An event already in the runtime queue when end arrives
 is processed in source-seq order, with the same closed/revision filter on replay.
@@ -90,9 +92,9 @@ for each accepted chunk in a stream. At most 64 admitted chunks per stream;
 noncontiguous or reused stream/chunk with a new action ID is conflict. Additional
 speak chunks after final/stop/reflex-stop also fail conflict. If a chunk fails or expires,
 stop that stream and cancel all later admitted chunks rather than play a gap.
-Retain closed-stream tombstones for the surface's action-retention interval;
+Retain closed-stream tombstones for the adapter's action-retention interval;
 after that interval stop may return not_found. Callers MUST allocate fresh random
-stream IDs forever; the bounded surface ledger does not certify global uniqueness.
+stream IDs forever; the bounded adapter ledger does not certify global uniqueness.
 An unfinalized idle stream closes after 60 seconds without an admitted chunk.
 Text is
 nonempty and at most 4,096 UTF-8 bytes. `final=true` closes the input side after
@@ -103,14 +105,14 @@ speaker lease, and has one terminal outcome. It fails conflict if its stream ID
 is already known or another stream is active; it does not mix with or overtake
 speech. A different speak stream likewise fails conflict while another is open.
 Every action also has a deadline and admission/outcome
-under the surface protocol. Deadline expiry stops its audio, not just a callback.
+under the adapter protocol. Deadline expiry stops its audio, not just a callback.
 No successful outcome merely because TTS synthesis completed remotely.
 
 Stop requires ownership and cancels queued/playing actions with cancelled outcomes;
 already finished actions are unchanged. Unknown stream is not_found; stopping an
 already stopped known stream succeeds idempotently. Native barge-in reflex MUST
 NOT await this action or any coglet step. On detected user speech while output
-is playing, the surface applies configured stop/duck immediately, emits start then
+is playing, the adapter applies configured stop/duck immediately, emits start then
 barge_in with actual output position, and reports position. With stop, all admitted
 chunks for that stream get cancelled outcomes; with duck, they remain admitted
 and may continue at reduced gain until the coglet stops them. A stopped stream
@@ -135,10 +137,10 @@ cancels outstanding calls and fences late provider callbacks. Config text-mode
 and a provider session cannot simultaneously own these resources. Session-originated
 speech is normalized into the same start/partial/end/position/barge_in events.
 
-Tool names are common method-names. Call IDs are unique per session. Surface
+Tool names are common method-names. Call IDs are unique per session. Adapter
 normalizes allowlisted requests into speech.tool_call, delivered only to the
 session owner; duplicates are not executed again. The coglet routes proposed work
-through ordinary hub policy/grants. Neither provider arguments nor tool names
+through ordinary router policy/grants. Neither provider arguments nor tool names
 confer authority. `speech.tool_result {session, call, ok, value}` supplies one
 profile-map result (on failure value is a common error); only the owner can reply,
 and only once for a live pending call. Unknown/closed calls fail not_found,
@@ -150,7 +152,7 @@ the data permitted by the session's explicit privacy grants.
 
 The existing item/played_ms reports are authoritative, not synthesis completion,
 wall-clock elapsed time, queued duration or cumulative stream position. On
-barge-in the surface MUST cancel provider generation where applicable and truncate
+barge-in the adapter MUST cancel provider generation where applicable and truncate
 its provider conversation item at that item's played_ms, even when all synthesis
 has already completed. With duck, the cutoff is a snapshot; only later actual
 playback can extend it. Stopped items never extend. Queued items have zero heard
@@ -167,7 +169,7 @@ Optional `speech.history` advertises read `speech.heard` with args `heard-query
 {item}` and result `heard-record {item, played_ms, text}`. Only the item's speaker
 owner may read; retain records for the action-retention interval and remove them
 on owner revocation. Unknown/evicted items return not_found. Playback milliseconds
-and text apply to exactly that item. The surface's text MUST be a conservative
+and text apply to exactly that item. The adapter's text MUST be a conservative
 prefix assembled only from aligned spans whose **end** is at or before played_ms.
 Unknown alignment yields empty text, never generated text or a duration-ratio
 estimate. Limit the prefix to 16,384 UTF-8 bytes without splitting a character.
@@ -190,8 +192,8 @@ Before consumption, the runtime writes the ABI `runtime.heard` boundary record
 and reserved `/data/runtime/heard.cbor` state. This is runtime-authored, not a
 read converted into a guest event. No rewriting existing ABI records is permitted.
 Offline replay reads ONLY the archive's initial state and hashed boundaries, not
-TTS, live surface reads or oracle state. Richer native per-item alignment is NOT
-required for v0; M1 qualification belongs to the Phase 2 Rust and Swift surface
+TTS, live adapter reads or oracle state. Richer native per-item alignment is NOT
+required for v0; M1 qualification belongs to the Phase 2 Rust and Swift adapter
 cards named in the ledger. It may only append spans consistently with these
 rules. Private heard archives follow transcript privacy and contain no raw audio.
 An extension-aware runtime requiring history MUST refuse to run without
@@ -211,17 +213,17 @@ read `speech.work_state` (empty args), and action `speech.work_result`:
 
 IDs import correlation-id; epoch is positive uint64 and is separate from the
 grant epoch. `turn` is a normalized utterance ID or a fresh provider turn ID.
-The surface stamps epoch, and binds `(owner, turn, call, epoch)` before dispatch.
+The adapter stamps epoch, and binds `(owner, turn, call, epoch)` before dispatch.
 The work epoch persists across restarts; loss of durable continuity requires a
-new surface identity, never reuse. Native/provider callbacks MUST retain the work
+new adapter identity, never reuse. Native/provider callbacks MUST retain the work
 epoch and session/response identity captured when generation/request processing
 began. Fencing suppresses old response callbacks (including previously unseen call
 IDs); never stamp an old callback with the new current epoch on arrival. A
 provider reconnect starts a fresh fenced generation before accepting new work.
 `speech.work_state` and all events/results are
 owner-only, require the current audio.mic/audio.speaker leases and explicit
-operation grants, and never bypass hub policy for the requested `name`.
-The coglet forwards the explicit intent through its ordinary authorized hub work
+operation grants, and never bypass router policy for the requested `name`.
+The coglet forwards the explicit intent through its ordinary authorized router work
 path; no direct surface-to-agent or coglet-to-coglet execution is introduced.
 
 For a provider session opting into speech.work, map its allowlisted tool call to
@@ -261,7 +263,7 @@ work_result completes only after the value is accepted into the private
 conversation record and provider tool result (if any): emit work_done, then its
 ordinary succeeded action.outcome. Exactly one terminal work_done is allowed.
 New action IDs for already completed tuples fail not_found; exact retries retain
-the surface protocol's historical action receipts and NEVER emit work_done again.
+the adapter protocol's historical action receipts and NEVER emit work_done again.
 Completed-before-interrupt results remain audit facts, not permission for old
 callbacks to restart speech. No automatic speech may follow cancelled/stale work.
 
@@ -275,7 +277,7 @@ instructions, and apply the session's explicit privacy policy before disclosure.
 
 ## Capture-mode capability markers (ADR-0010)
 
-Extension-aware capture surfaces advertise exactly one active marker entry:
+Extension-aware capture adapters advertise exactly one active marker entry:
 `speech.hands_free` or `speech.push_to_talk`. Its events/reads/actions/exclusive
 lists are empty and schemas is `{}`; existing cap-entry shapes are unchanged.
 The marker describes the active native mode, not a coglet branch or grant. Missing

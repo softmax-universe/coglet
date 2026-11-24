@@ -435,10 +435,20 @@ impl Store {
     }
 
     fn append(&mut self, rec: &Record) -> Result<(), StoreError> {
+        self.append_batch(std::slice::from_ref(rec))
+    }
+
+    // Existing independently framed records, one durability barrier. If a crash
+    // leaves only a prefix, replay accepts that prefix; no caller has received
+    // acknowledgement until the entire batch has reached stable storage.
+    fn append_batch(&mut self, records: &[Record]) -> Result<(), StoreError> {
         if self.poisoned {
             return Err(StoreError::Poisoned);
         }
-        let bytes = frame(rec)?;
+        let mut bytes = Vec::new();
+        for rec in records {
+            bytes.extend(frame(rec)?);
+        }
         let before = self.log.metadata()?.len();
         let r = self
             .log
@@ -754,12 +764,29 @@ impl Store {
         } else {
             retain_until
         };
-        self.append(&Record::Terminal {
+        let mut records = vec![Record::Terminal {
             coglet: coglet.into(),
             id: id.into(),
             outcome: outcome.clone(),
             retain_until,
-        })?;
+        }];
+        // A terminal will normally be delivered as an event next. Reserve its
+        // sequence in the SAME sync, not an extra sync on the response path.
+        // Do not consume it: delivery (and replay) still assigns fresh seqs.
+        let reserve = if self.seq_next >= self.seq_reserved {
+            let upto = self
+                .seq_next
+                .checked_add(SEQ_BLOCK)
+                .ok_or_else(|| StoreError::Corrupt("seq overflow".into()))?;
+            records.push(Record::Seq { upto });
+            Some(upto)
+        } else {
+            None
+        };
+        self.append_batch(&records)?;
+        if let Some(upto) = reserve {
+            self.seq_reserved = upto;
+        }
         if let Some(e) = self.entries.get_mut(&key) {
             e.state = EntryState::Terminal {
                 outcome,
@@ -850,6 +877,95 @@ mod tests {
         fs::remove_file(d.join("ledger.log")).unwrap();
         assert!(matches!(Store::open(&d, S), Err(StoreError::LostLedger(_))));
         let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn terminal_reserves_delivery_sequence_before_returning() {
+        let d = tmpdir("terminal-seq");
+        let mut s = Store::open(&d, S).unwrap();
+        s.record_admission("c", "id", "corr", b"env", 1, 99)
+            .unwrap();
+        s.record_terminal("c", "id", json!({"status": "succeeded"}), 0)
+            .unwrap();
+        assert!(
+            s.seq_reserved > s.seq_next,
+            "terminal commit must include delivery reservation"
+        );
+        let log_size = s.log.metadata().unwrap().len();
+        assert_eq!(s.next_seq().unwrap(), 0);
+        assert_eq!(
+            s.log.metadata().unwrap().len(),
+            log_size,
+            "delivery must not append another record"
+        );
+        drop(s);
+        let mut s = Store::open(&d, S).unwrap();
+        assert!(
+            s.next_seq().unwrap() >= SEQ_BLOCK,
+            "restart must skip the durable reservation"
+        );
+        assert!(matches!(
+            s.lookup("c", "id").unwrap().state,
+            EntryState::Terminal { .. }
+        ));
+        drop(s);
+        fs::remove_dir_all(d).unwrap();
+    }
+
+    #[test]
+    fn terminal_batch_failure_does_not_publish_memory_state() {
+        let d = tmpdir("terminal-failure");
+        let mut s = Store::open(&d, S).unwrap();
+        s.record_admission("c", "id", "corr", b"env", 1, 99)
+            .unwrap();
+        // Force a real write error, not a mocked successful durability barrier.
+        s.log = OpenOptions::new()
+            .read(true)
+            .open(d.join("ledger.log"))
+            .unwrap();
+        assert!(s.record_terminal("c", "id", json!({}), 0).is_err());
+        assert!(s.poisoned);
+        assert_eq!(s.seq_reserved, 0);
+        assert!(matches!(
+            s.lookup("c", "id").unwrap().state,
+            EntryState::Pending
+        ));
+        assert!(s.next_seq().is_err());
+        drop(s);
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn terminal_batch_replay_accepts_a_torn_sequence_tail() {
+        let d = tmpdir("terminal-torn-seq");
+        let mut s = Store::open(&d, S).unwrap();
+        s.record_admission("c", "id", "corr", b"env", 1, 99)
+            .unwrap();
+        s.record_terminal("c", "id", json!({"status": "succeeded"}), 0)
+            .unwrap();
+        // Simulate a crash after Terminal reached disk but Seq did not finish.
+        let length = s.log.metadata().unwrap().len();
+        s.log.set_len(length - 1).unwrap();
+        drop(s);
+        let mut s = Store::open(&d, S).unwrap();
+        assert!(matches!(
+            s.lookup("c", "id").unwrap().state,
+            EntryState::Terminal { .. }
+        ));
+        // Nothing was acknowledged before the batch barrier, so reusing zero
+        // here is safe; the terminal result is still available for reconciliation.
+        assert_eq!(s.next_seq().unwrap(), 0);
+        for expected in 1..SEQ_BLOCK {
+            assert_eq!(s.next_seq().unwrap(), expected);
+        }
+        s.record_admission("c", "id2", "corr", b"env2", 1, 99)
+            .unwrap();
+        s.record_terminal("c", "id2", json!({}), 0).unwrap();
+        let length = s.log.metadata().unwrap().len();
+        assert_eq!(s.next_seq().unwrap(), SEQ_BLOCK);
+        assert_eq!(s.log.metadata().unwrap().len(), length);
+        drop(s);
+        fs::remove_dir_all(d).unwrap();
     }
 
     #[test]

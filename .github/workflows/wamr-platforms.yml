@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -47,6 +47,26 @@ jobs:
         # The socket control barrier qualifies release latency, as in tests/m1/run.sh.
         # Default/native debug suites above still execute unchanged.
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
+  ios-runtime:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Test iOS build admission (not native execution)
+        run: python3 scripts/tests/test_ios_runtime.py
+      - name: Install pinned header generator
+        run: cargo install cbindgen --version 0.29.2 --locked
+      - name: Build interpreter-only iOS device and arm64 simulator xcframework
+        env:
+          COGLET_IOS_XCFRAMEWORK_OUTPUT: ${{ runner.temp }}/ios-runtime
+        run: bash scripts/build-ios-runtime-xcframework.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CogletRuntime-iOS-xcframework
+          path: ${{ runner.temp }}/ios-runtime
+          if-no-files-found: error
   armv7-qemu:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

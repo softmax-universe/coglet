@@ -1,4 +1,6 @@
-# Hub protocol — 0.1
+# Router protocol — 0.1
+
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Normative MUST/SHOULD follow RFC 2119. Decision: [ADR-0004](../docs/adr/0004-hub-protocol.md),
 submitted first as [PR #7](https://github.com/softmax-universe/coglet/pull/7).
@@ -12,7 +14,7 @@ This is a new protocol, not compatibility with any prior product protocol.
 
 The only ALPN is the exact ASCII bytes `coglet/hub/0`. Baby Bear serves this
 beside `babybear/rpc/1`; it does not add methods to that ALPN. A device runtime
-dials its configured, pinned hub iroh node ID. Either endpoint may open a
+dials its configured, pinned router iroh node ID. Either endpoint may open a
 bidirectional QUIC stream on the resulting authenticated connection. Each stream
 carries exactly one operation: one request, optional transfer frames, one terminal
 reply, then FIN from both parties. No datagrams, stream reuse or nested RPC.
@@ -42,13 +44,13 @@ is 1..300000, a responder-monotonic duration starting at request receipt, not a
 cross-host wall-clock deadline. Accepted asynchronous mutations may finish after
 that stream times out; query `hub.receipt` before retrying. No implicit cancel on
 FIN/reset. `hub.cancel` explicitly cancels an unapplied queued operation; it cannot
-undo an applied mutation or accepted surface action.
+undo an applied mutation or accepted adapter action.
 
 ## Enrollment, hosting and authorization
 
 An operator opens an enrollment window and creates an invite with at least 256
-random bits (64 lowercase hex characters), a hub-monotonic expiry and a bound
-expected device node ID. The hub stores only a hash of the secret. Invite checking,
+random bits (64 lowercase hex characters), a router-monotonic expiry and a bound
+expected device node ID. The router stores only a hash of the secret. Invite checking,
 allowlist insertion, initial exact-method grants and one-use consumption MUST be
 one durable atomic transaction. Expired, wrong-node, closed-window and used
 invites return `unauthenticated` without identifying which check failed. A lost
@@ -59,9 +61,9 @@ Do not log invite values or include them in error details.
 A runtime hosts many independently keyed coglets on one device connection.
 `hub.install` supplies a coglet-key signed `delegation` statement naming the
 coglet, device node, hub node, generation, expiry and exact allowed methods.
-`signer` MUST equal the node key suffix of the coglet ID. The hub validates this
+`signer` MUST equal the node key suffix of the coglet ID. The router validates this
 proof against authenticated device identity and its own pinned identity; the
-runtime keeps the same binding. A coglet key MUST NOT be supplied to hub builders.
+runtime keeps the same binding. A coglet key MUST NOT be supplied to router builders.
 Local provisioning establishes keys and initial delegation; this protocol does
 not transport private keys. Only the currently registered device may relay for
 that coglet. Device replacement requires operator-approved generation increase;
@@ -72,41 +74,41 @@ counters scoped by (hub, coglet, purpose); overflow requires re-provisioning.
 
 Grant lookup is `(authenticated peer, exact method, target)` with expiry and
 generation. No wildcard/prefix implication and no transitive grant. Effective
-authority is the intersection of hub policy, enrollment grants, delegation and
-local surface grants. The hub remains the only remote caller of device methods;
-external debug clients authenticate to the hub separately, never to the runtime.
-A request delivered by the trusted hub is still checked against local method and
+authority is the intersection of router policy, enrollment grants, delegation and
+local adapter grants. The router remains the only remote caller of device methods;
+external debug clients authenticate to the router separately, never to the runtime.
+A request delivered by the trusted router is still checked against local method and
 path limits. Revocation is checked at admission AND before boundary application,
 each chunk and action dispatch. Outstanding reads terminate and unapplied writes
 fail `permission_denied`. No default debug/log/state export. A ticket ending
 revokes its grants and cancels its unapplied writes; provenance records carry its
-`actor` and optional `ticket` even though the device authenticates the hub.
+`actor` and optional `ticket` even though the device authenticates the router.
 
 | Method | Initiator → responder | Scope and grant |
 |---|---|---|
-| `hub.enroll` | device → hub | null; invite or existing allowlist |
-| `hub.install` | hub → device | coglet; explicit install grant + delegation |
-| `hub.start`, `hub.stop`, `hub.status` | hub → device | coglet; each distinct grant |
-| `hub.git.push` | hub → device | coglet; only `refs/heads/hub` |
-| `hub.git.fetch` | hub → device | coglet; only published/main or logs |
-| `hub.events` | device → hub | coglet; enrolled source + relay binding |
-| `hub.actions` | hub → device | coglet; action/capability/surface grants too |
-| `debug.read` | hub → device | coglet; read paths/step/log range |
-| `debug.write` | hub → device | coglet; bounded `/data` paths only |
-| `debug.pause`, `debug.step` | hub → device | coglet; independent control grants |
-| `hub.inbox` | hub → device | coglet; append only |
-| `hub.health` | device → hub | null; metadata only |
+| `hub.enroll` | device → router | null; invite or existing allowlist |
+| `hub.install` | router → device | coglet; explicit install grant + delegation |
+| `hub.start`, `hub.stop`, `hub.status` | router → device | coglet; each distinct grant |
+| `hub.git.push` | router → device | coglet; only `refs/heads/hub` |
+| `hub.git.fetch` | router → device | coglet; only published/main or logs |
+| `hub.events` | device → router | coglet; enrolled source + relay binding |
+| `hub.actions` | router → device | coglet; action/capability/surface grants too |
+| `debug.read` | router → device | coglet; read paths/step/log range |
+| `debug.write` | router → device | coglet; bounded `/data` paths only |
+| `debug.pause`, `debug.step` | router → device | coglet; independent control grants |
+| `hub.inbox` | router → device | coglet; append only |
+| `hub.health` | device → router | null; metadata only |
 | `hub.receipt`, `hub.cancel` | either | original target; original authenticated caller only |
 
-All hub-originated requests, including status, debug.read and git.fetch,
+All router-originated requests, including status, debug.read and git.fetch,
 MUST carry `context: {actor, ? ticket}` at request level, except debug.write
 and hub.inbox which carry the same fields in params. Receipt/cancel also carry
-context to identify the original actor/ticket scope. The hub authenticates its
+context to identify the original actor/ticket scope. The router authenticates its
 client and asserts this provenance; devices intersect peer authority with local
 `(actor, ticket-or-absent, method, target)` grants and path/ref limits. Missing
 context is invalid; an unknown actor, ended ticket or missing scoped grant is
 `permission_denied`. Omitting a ticket selects only explicitly provisioned
-non-ticket authority, never the union of that actor's ticket grants. The hub
+non-ticket authority, never the union of that actor's ticket grants. The router
 MUST NOT remove/substitute a client's ticket or actor to borrow kernel authority.
 These checks precede status/read disclosure and fetch metadata, and repeat before
 each response/data frame. Revocation terminates the stream without further data;
@@ -134,7 +136,7 @@ if already applied it returns `conflict` without changing that receipt.
 ## Lifecycle and boundary ordering
 
 Install creates a stopped coglet with verified delegation, an empty private data
-namespace, and a verified initial signed hub commit (objects must already be in
+namespace, and a verified initial signed router commit (objects must already be in
 local quarantined storage from a git push or local provisioning). Install checks
 manifest capabilities against local grants and the signed artifact. No compiler
 runs on the device. A repeated identical durable operation returns its original
@@ -142,7 +144,7 @@ receipt; a different install for an existing coglet is `conflict`. Initial git
 push may stage objects for an authorized uninstalled target but cannot run code.
 Start checks verified code, capability grants and kill switch; starting an
 already running coglet is a no-op. Stop waits for a safe boundary, prevents the
-next step and cancels pending actions using the surface's cancellation rules;
+next step and cancels pending actions using the adapter's cancellation rules;
 it cannot retract physical effects. A hung step is interrupted by runtime
 budgets. Paused is distinct from stopped. Start resumes paused operation.
 Status returns state (`stopped`, `running`, `paused`, `faulted`), live commit,
@@ -150,7 +152,7 @@ last committed step, pending mutation count and last shared error or null.
 
 Boundary processing is serialized per coglet and durable: (1) finish or abort the
 current step; (2) append audit and apply queued debug/inbox mutations in receipt
-order; (3) verify/apply an admitted hub ref change; (4) pin inputs and code for the
+order; (3) verify/apply an admitted router ref change; (4) pin inputs and code for the
 next step; (5) run at most one fresh Wasm instance; (6) journal intents before
 dispatch. No writes, code changes or new inbox bytes become visible mid-step.
 If the ABI refines journal encoding, it must preserve this ordering/provenance.
@@ -160,7 +162,7 @@ so crash recovery cannot append an inbox message twice. Stopped/paused coglets
 still process boundary mutations without executing guest code.
 
 `debug.pause` is acknowledged `applied` only once no guest step is running;
-it does not pause real-time surface reflexes or the kill switch. `debug.step`
+it does not pause real-time adapter reflexes or the kill switch. `debug.step`
 requires paused state, applies pending boundary work, executes exactly one nonempty
 event batch, and stays paused, returning the committed step number. If no event
 is queued, the runtime records a synthetic common `runtime.debug_step` event
@@ -200,20 +202,20 @@ resource bound.
 
 | Ref | Authoritative writer and verification |
 |---|---|
-| `refs/heads/hub` | Hub kernel signs `hub-ref` with the pinned **hub iroh Ed25519 node key**; runtime verifies. Only hub pushes. |
-| `refs/published/main` | Hosted coglet runtime signs `published-ref` with that **coglet's own iroh Ed25519 node key**, not the device or hub key. Hub verifies delegation/binding and key. |
-| `refs/heads/logs` | Runtime batch-commits append-only `/logs`; coglet key signs `logs-ref`. Hub fetches only when explicitly granted. |
+| `refs/heads/hub` | Router kernel signs `hub-ref` with the pinned **router iroh Ed25519 node key**; runtime verifies. Only router pushes. |
+| `refs/published/main` | Hosted coglet runtime signs `published-ref` with that **coglet's own iroh Ed25519 node key**, not the device or router key. Router verifies delegation/binding and key. |
+| `refs/heads/logs` | Runtime batch-commits append-only `/logs`; coglet key signs `logs-ref`. Router fetches only when explicitly granted. |
 
 For each update, `ref-statement` includes purpose, hub node, coglet ID, exact ref,
 old commit (null only for creation), new commit, archive SHA-256 and increasing
-generation. The authoritative writer (including the receiver of hub pushes)
+generation. The authoritative writer (including the receiver of router pushes)
 MUST compare `old` with its current authoritative tip and require a strictly
 higher generation in one durable CAS; mismatch/replay is `conflict`.
 
 Fetch is authenticated snapshot observation, NOT replay of a publisher CAS.
 After verifying signer, current delegation, purpose/hub/target/ref, complete
 bundle and archive digest, an observer atomically compares the signed generation
-with its durable watermark scoped by (hub, coglet, ref):
+with its durable watermark scoped by (router, coglet, ref):
 - No watermark: pin the verified current statement as the baseline.
 - Higher generation: accept the current snapshot even if `old` differs from the
   observed tip. For A(gen 1) → B(gen 2) → C(gen 3), an observer at A accepts the
@@ -232,7 +234,7 @@ possession of every intermediate publication; that is not a 0.1 guarantee.
 An exact duplicate operation returns its original receipt instead. No forced ref
 rewind: rollback is a new authorized generation whose new commit restores a
 last-known-good tree, with correct old ref; signed history never loses audit.
-Admission stages hub pushes; their terminal receipt becomes `applied` only at the
+Admission stages router pushes; their terminal receipt becomes `applied` only at the
 boundary after verification. Status exposes the live commit, not just staged tip.
 The published ref attests an explicitly published code tree, never `/data` or
 unfiltered private state. It need not move with every step. Logs commits contain
@@ -241,11 +243,11 @@ not each step. Debug live log reads do not require a git commit.
 
 ### Build, rewrite, sign and replay
 
-Build-then-commit is a hub responsibility. Pin source and build recipe/toolchain,
+Build-then-commit is a router responsibility. Pin source and build recipe/toolchain,
 compile core Wasm into a temporary **original** module, then apply the selected
 publication policy before gates, signing or transfer. When the proposed
 [ADR-0003](../docs/adr/0003-determinism-rules.md) policy is selected, run its
-R1/R2/R4/R5 admission checks and R3 NaN-result rewrite on the hub; validate the
+R1/R2/R4/R5 admission checks and R3 NaN-result rewrite on the router; validate the
 rewritten module and run gates against those exact output bytes. Commit the
 output as `bin/step.wasm` together with source, manifest, prompts and the build
 record below. Do not commit the original under the executable path, run gates
@@ -275,7 +277,7 @@ module hashes may be equal; record the tool/policy anyway. Missing provenance or
 an output hash mismatch is `invalid_argument` at code admission, with no activation.
 Older transfer-only fixtures without this record do not establish code admission.
 
-The hub's `hub-ref` signature authenticates the commit **and its SHA-256 archive**,
+The router's `hub-ref` signature authenticates the commit **and its SHA-256 archive**,
 which includes the rewritten bytes and provenance binding both original and output
 hashes. There is no separate signature on the original module, and the original
 hash never authorizes execution. The coglet-key `published-ref` signature similarly
@@ -301,7 +303,7 @@ All signed values use Ed25519, lowercase 128-hex signature. Sign exactly UTF-8
 `coglet/hub/0:<purpose>\n` followed by core-deterministic CBOR of `statement`,
 excluding `signer` and `signature`. Purposes are `delegation`, `hub-ref`,
 `published-ref`, `logs-ref`. Verifiers select the expected purpose before checking
-and reject foreign hub, target, ref, expired delegation or signer. Domain
+and reject foreign router, target, ref, expired delegation or signer. Domain
 separation prevents replay across purposes/protocols. Public signing fixtures
 contain test-only seeds; never deploy them.
 
@@ -324,19 +326,19 @@ have no ref/data effects and quarantines are removed on timeout/cancellation.
 `hub.events` carries a bounded batch of unchanged common events observed for
 its target coglet. Preserve source, seq, logical_time, correlation_id and payload
 byte-for-byte; never inject provenance into a capability's closed payload. The
-hub records authenticated device, target and relay offset as admission metadata,
-not as event fields. A surface source is asserted by that enrolled device's local
-router, not independent proof of the surface key and never cross-device authority.
+router records authenticated device, target and relay offset as admission metadata,
+not as event fields. An adapter source is asserted by that enrolled device's local
+event router, not independent proof of the adapter key and never cross-device authority.
 A coglet source must equal target and may carry only a runtime-synthesized
-`action.outcome` for an admitted hub action. Foreign coglet sources and all
+`action.outcome` for an admitted router action. Foreign coglet sources and all
 `runtime.*` events are rejected with `permission_denied`; local wakes never relay.
 The router MUST enforce the target's event grants and capability ownership before
-relay. Private speech events remain owner-only at the hub: storage/routing MUST
+relay. Private speech events remain owner-only at the router: storage/routing MUST
 NOT expose them to another coglet. Merely naming a target grants no access.
 
 `params.offset` is a separate durable relay position per (device, target), starting
 at zero. Assign contiguous positions when events enter the durable relay outbox.
-The hub atomically records batch digest, offset and resulting `next_offset` with
+The router atomically records batch digest, offset and resulting `next_offset` with
 admission. New batches require offset equal to the stored next_offset; return
 `next_offset = offset + event count`. Check uint64 overflow before admission.
 An empty batch is a no-op cursor probe at the current offset and creates no
@@ -350,23 +352,23 @@ local wakes consume source seq). Check batch retries before source watermarks.
 Saturation returns `resource_exhausted` before admission; upstream retains reliable
 events or explicitly records local loss before assigning relay positions.
 No direct coglet-to-coglet connection, including siblings on the same device.
-The hub applies routing/policy and creates target inbox entries/events as needed,
+The router applies routing/policy and creates target inbox entries/events as needed,
 subject to the capability's ownership restrictions.
 
 `hub.actions` carries one common action. Its coglet must match target. Its deadline
-is in the receiving runtime epoch, NOT the sending hub epoch. The sender MUST
+is in the receiving runtime epoch, NOT the sending router epoch. The sender MUST
 establish that mapping before first send and durably retain the mapped request;
 no mapping means no new dispatch. The receiver preserves this intent and maps
-the deadline once into the surface epoch before first surface dispatch, retaining
+the deadline once into the adapter epoch before first adapter dispatch, retaining
 the complete act envelope. Retries/reconnects reuse the retained envelopes at
 both boundaries, never a new sample/translation for an old ID (conventions,
-ADR-0009 M-C). Runtime checks hub authority, local capability and exclusive
+ADR-0009 M-C). Runtime checks router authority, local capability and exclusive
 output ownership and returns common action-accept in the result.
 An immediate rejection is terminal, never an outcome. Admission is not completion;
 one eventual common action-outcome is returned as an `action.outcome` event via
 `hub.events` (correlation IDs match). Persist `(coglet,id)` envelope and admission
 before dispatch. Conflicting reuse fails; identical retry does not re-dispatch.
-On restart reconcile admitted actions with surface receipts; when effects are
+On restart reconcile admitted actions with adapter receipts; when effects are
 unknown, report failed with `unavailable` and explicit unknown-effect details,
 never blindly replay. No exactly-once physical-effect guarantee. A kill switch
 always wins. Expired actions cannot be dispatched even after reconnect.
@@ -376,17 +378,17 @@ always wins. Expired actions cannot be dispatched even after reconnect.
 `hub.inbox` queues one delivery `{id, sender, event}`; event is the unchanged
 common event envelope and `event.source` MUST equal sender. The persisted line
 is `inbox-message` per [spec/abi.md (PR #8)](https://github.com/softmax-universe/coglet/pull/8),
-not a second hub-specific file format. The hub's `hub-inbox-delivery` schema is
+not a second router-specific file format. The router's `hub-inbox-delivery` schema is
 only an append request without the runtime-assigned index; it is never a persisted
 line. Runtime assigns the next contiguous index and serializes the ABI line
 (compact sorted-key JSON, unescaped Unicode and standard JSON escapes), journaling
 the exact file JSON bytes,
 appends UTF-8 JSON plus one LF at a boundary, and emits the ABI `runtime.inbox`
 wake `{index,id}`. Index exhaustion fails closed. Newlines inside strings are
-escaped; integers retain full precision. `sender` is authenticated hub identity
+escaped; integers retain full precision. `sender` is authenticated router identity
 (or the hub-validated original source on relay); never trust an arbitrary sender
-string. The hub checks sender authority and the runtime trusts only the pinned
-hub's explicit provenance. LLM results/steering/factory notes use this primitive.
+string. The router checks sender authority and the runtime trusts only the pinned
+router's explicit provenance. LLM results/steering/factory notes use this primitive.
 Runtime owns append; coglet owns its separate read cursor. Neither debug.write
 nor guest code may truncate/rewrite the inbox. No embedded inbox import and no
 implicit git export. Message `id` dedupes per target permanently, or until explicit
@@ -438,8 +440,8 @@ paths. If audit/receipt cannot commit, do not apply a write or inbox append.
 Health is explicit metadata: device node ID, monotonic uptime milliseconds,
 queue depth, available bytes, and per-coglet state/step/live commit. No file
 contents, prompts or transcript. Device reports every 10 seconds while connected;
-a hub marks degraded after 30 seconds without accepted health and disconnected
-on transport loss. These are hub-local elapsed durations, not clock comparison.
+a router marks degraded after 30 seconds without accepted health and disconnected
+on transport loss. These are router-local elapsed durations, not clock comparison.
 Health alone cannot authorize enrollment/start. Reconnection resumes no expired
 grants, and queued operations are recovered from receipts.
 
@@ -450,7 +452,7 @@ inbox/debug text is at most 65536 UTF-8 bytes. Queue capacity is also bounded pe
 target to 256 pending mutations; reject over capacity before admission. Reads
 return at most 65536 bytes per call; a text slice must end on UTF-8 boundaries.
 Wire/schema text character limits are coarse bounds; byte limits are additional
-semantic checks. Hub and device advertise no arbitrary unbounded windows.
+semantic checks. Router and device advertise no arbitrary unbounded windows.
 
 QUIC credit is necessary but insufficient. Only git transfers have multiple data
 frames: receiver sends cumulative `hub-credit.bytes` measured in raw decoded
@@ -482,7 +484,7 @@ Run `python3 -m unittest discover -s spec/tests -v` with
 schemas, exact golden CBOR, framing negatives and test-key signatures.
 [Case data](../conformance/hub/) defines black-box temporal scenarios;
 [the suite contract](../conformance/hub/README.md) specifies observable assertions.
-Case data/schema checks are NOT a claim that a hub/runtime or mock already passes
+Case data/schema checks are NOT a claim that a router/runtime or mock already passes
 wire conformance. The harness owner must execute the same cases against both.
 Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
 SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including
