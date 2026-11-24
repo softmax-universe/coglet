@@ -43,8 +43,10 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
-      - name: C ABI production echo timer-wake smoke (real handle, no surface echo roundtrip)
-        run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
+      - name: Release C ABI and socket production echo timer-wake smoke (no surface echo roundtrip)
+        # The socket control barrier qualifies release latency, as in tests/m1/run.sh.
+        # Default/native debug suites above still execute unchanged.
+        run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   armv7-qemu:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
