@@ -32,6 +32,8 @@ the delayed commit, not at the deadline assertion; no wall sleep is used.
 | Reply at/after the published exclusive deadline disconnects and purges private queues/barriers without archive success | `reply_at_or_after_published_deadline_disconnects_and_purges_private_state` |
 | Negative owner reads fail closed, never become guessed/empty successful heard history | `negative_heard_reply_is_fail_closed_not_a_successful_empty_observation` |
 | Fresh publication rechecks grant expiry and the unchanged three-second inactivity fence | `slow_store_does_not_renew_expired_grants_or_inactivity` |
+| Publication sampling does not advance the transport input clock past its same-entry-time post-send pump | `publication_sample_does_not_invalidate_same_entry_transport_pump` |
+| A timely incoming event resets inactivity at receipt, not after persistence or relative to the previous message | `timely_event_receipt_not_previous_message_anchors_inactivity_during_commit` |
 
 A local mutation restoring the entry-time deadline made the slow-store, FIFO and
 fresh-fence tests fail. The mutation was removed before qualification.

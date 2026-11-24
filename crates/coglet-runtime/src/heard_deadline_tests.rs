@@ -185,6 +185,35 @@ fn slow_durable_store_gives_heard_read_one_second_from_publication() {
 }
 
 #[test]
+fn publication_sample_does_not_invalidate_same_entry_transport_pump() {
+    let mut f = Fixture::new("transport-pump");
+    f.slow_next_commit(600_000);
+    assert_eq!(f.send(&position(1)), 0);
+    let read = f.read();
+    // Default socket/C ABI paths reuse send's entry sample in pump_dispatch.
+    // A retained accepted action makes this exercise the authority check.
+    f.session.pump_dispatch(130).unwrap();
+    assert_eq!(decode(&f.session.pop().unwrap())["type"], "act");
+    f.session.tick(f.clock.load(Ordering::SeqCst));
+    assert!(!f.session.is_closed());
+    assert_eq!(f.send(&reply(&read, 1)), 0);
+}
+
+#[test]
+fn timely_event_receipt_not_previous_message_anchors_inactivity_during_commit() {
+    let mut f = Fixture::new("timely-receipt");
+    // Arrives within 3s of the previous message. Its own commit lasts <3s,
+    // although total time since the previous message exceeds 3s at publication.
+    f.clock.store(2_900_000, Ordering::SeqCst);
+    f.slow_next_commit(600_000);
+    assert_eq!(f.send(&position(1)), 0);
+    let read = f.read();
+    assert_eq!(read["body"]["deadline"], 4_500_000 + OFFSET);
+    assert_eq!(f.send(&reply(&read, 1)), 0);
+    assert!(!f.session.is_closed());
+}
+
+#[test]
 fn queued_replies_behind_slow_store_remain_fifo_and_do_not_extend_issued_deadlines() {
     let mut f = Fixture::new("fifo");
     assert_eq!(f.send(&position(1)), 0);

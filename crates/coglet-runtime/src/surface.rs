@@ -280,7 +280,6 @@ impl SurfaceSession {
         0
     }
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
-        let mut publication_time = now;
         let decoded = coglet_types::decode_profile(raw)?;
         coglet_types::validate("surface-message", &decoded)?;
         let message: Value = decoded.deserialized().map_err(|e| e.to_string())?;
@@ -371,10 +370,14 @@ impl SurfaceSession {
                             .heard_owner();
                         // Persistence is not part of this not-yet-issued read's
                         // allowance. Existing PendingRead deadlines stay fixed.
-                        publication_time = service
+                        let publication_time = service
                             .lock()
                             .map_err(|_| "runtime service poisoned")?
                             .read_publication_now(now)?;
+                        // This event passed the arrival-time inactivity check.
+                        // Count persistence against this receipt, not the prior
+                        // message. A >=3s commit still fails the unchanged fence.
+                        self.last_received = now;
                         self.request_read(
                             &owner,
                             "speech.heard",
@@ -394,7 +397,9 @@ impl SurfaceSession {
                 _ => return Err("wrong direction or lifecycle".into()),
             }
         }
-        self.runtime_clock = publication_time;
+        // This is the transport's input high-water mark, not an internal
+        // publication sample: its post-send pump may reuse the arrival sample.
+        self.runtime_clock = now;
         self.last_received = now;
         Ok(())
     }
