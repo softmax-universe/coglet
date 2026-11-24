@@ -3,7 +3,9 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 use serde_json::{Value, json};
 use std::{path::Path, time::Duration};
 
+pub mod build;
 pub mod kernel;
+pub mod operator;
 pub use kernel::{ActionGrant, EventGrant, Kernel, Registration};
 
 #[derive(Debug, thiserror::Error)]
@@ -16,6 +18,8 @@ pub enum Error {
     Full,
     #[error("permission_denied")]
     Denied,
+    #[error("split authority.db state requires explicit offline migration")]
+    SplitAuthority,
     #[error("{0}")]
     Authority(#[from] coglet_proto::authority::AuthorityError),
     #[error("storage unavailable")]
@@ -53,6 +57,8 @@ impl Store {
           CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;
           CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit BEGIN SELECT RAISE(ABORT,'append only'); END;")?;
         kernel::promotion::initialize(&db)?;
+        operator::initialize(&db)?;
+        build::initialize(&db)?;
         Ok(Self { db })
     }
     /// Caller authorizes the authenticated relay binding before this atomic admission.

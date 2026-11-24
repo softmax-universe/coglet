@@ -1,5 +1,5 @@
 //! Operator-only startup configuration is not a wire RPC or a guest input.
-use coglet_hub::{Kernel, Registration};
+use coglet_hub::{Kernel, Registration, operator::socket::StateLock};
 use coglet_proto::{
     authority::Grant,
     transport::{ALPN, Role, Session},
@@ -20,6 +20,8 @@ use std::{
 #[serde(deny_unknown_fields)]
 struct Config {
     #[serde(default)]
+    operator: Option<coglet_hub::operator::service::Provisioning>,
+    #[serde(default)]
     peers: Vec<Peer>,
     #[serde(default)]
     coglets: Vec<Registration>,
@@ -30,7 +32,7 @@ struct Peer {
     device: String,
     grants: Vec<Grant>,
 }
-fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Error>> {
+fn identity(root: &Path) -> Result<(SecretKey, StateLock), Box<dyn std::error::Error>> {
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     fs::create_dir_all(root)?;
     if !fs::symlink_metadata(root)?.is_dir() {
@@ -38,20 +40,7 @@ fn identity(root: &Path) -> Result<(SecretKey, fs::File), Box<dyn std::error::Er
     }
     // The containing directory protects SQLite, journals and local provisioning.
     fs::set_permissions(root, fs::Permissions::from_mode(0o700))?;
-    let lock_path = root.join("hub.lock");
-    if let Ok(meta) = fs::symlink_metadata(&lock_path)
-        && (!meta.is_file() || meta.permissions().mode() & 0o077 != 0)
-    {
-        return Err("hub.lock must be a private regular file".into());
-    }
-    let lock = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .mode(0o600)
-        .open(lock_path)?;
-    lock.try_lock()?;
+    let lock = StateLock::acquire(root)?;
     let path = root.join("hub.key");
     let missing = match fs::symlink_metadata(&path) {
         Ok(meta) => {
@@ -98,12 +87,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     let root = Path::new(&args[2]);
-    let (key, _state_lock) = identity(root)?;
+    let (key, state_lock) = identity(root)?;
     if args[1] == "identity" {
         println!("{}", json!({"hub":key.public().to_string()}));
         return Ok(());
     }
     let config: Config = serde_json::from_slice(&fs::read(&args[3])?)?;
+    use std::os::unix::fs::MetadataExt;
+    let service_uid = fs::symlink_metadata(root)?.uid();
+    if let Some(provisioning) = &config.operator {
+        provisioning.validate(service_uid)?;
+    }
     let endpoint = Endpoint::builder(presets::Minimal)
         .secret_key(key)
         .alpns(vec![ALPN.to_vec()])
@@ -133,6 +127,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for coglet in config.coglets {
         kernel.register(coglet).await?;
     }
+    let service = Arc::new(match config.operator {
+        Some(p) => coglet_hub::operator::service::Service::new(kernel.clone(), service_uid, p)?,
+        None => coglet_hub::operator::service::Service::unprovisioned(kernel.clone()),
+    });
+    let socket = coglet_hub::operator::socket::OperatorSocket::bind_locked(&state_lock).await?;
+    let (operator_stop, stopped) = tokio::sync::oneshot::channel();
+    let mut operator_task = tokio::spawn(coglet_hub::operator::server::serve(
+        socket,
+        service,
+        128,
+        async {
+            let _ = stopped.await;
+        },
+    ));
     // Explicit local operator bootstrap output, not a log: redirect stdout to a
     // private file. Invite values never enter tracing, errors or the audit store.
     println!(
@@ -144,6 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tasks = tokio::task::JoinSet::new();
     loop {
         tokio::select! {
+            result=&mut operator_task=> { result??; return Err("operator listener ended unexpectedly".into()); },
             _=tokio::signal::ctrl_c()=>break,
             Some(_)=tasks.join_next(), if !tasks.is_empty()=>{},
             incoming=endpoint.accept()=> {
@@ -165,6 +174,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     endpoint.close().await;
+    let _ = operator_stop.send(());
+    operator_task.await??;
     tasks.shutdown().await;
     Ok(())
 }

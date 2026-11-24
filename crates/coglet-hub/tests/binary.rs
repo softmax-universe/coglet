@@ -1,5 +1,25 @@
 use std::process::Command;
 #[test]
+fn operator_state_lock_rejects_hardlink_without_touching_target() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let victim = dir.path().join("victim");
+    std::fs::write(&victim, b"untouched").unwrap();
+    std::fs::set_permissions(&victim, std::fs::Permissions::from_mode(0o600)).unwrap();
+    std::fs::hard_link(&victim, dir.path().join("hub.lock")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_coglet-hub"))
+        .args(["identity", dir.path().to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(
+        !result.status.success(),
+        "identity accepted aliased state lock"
+    );
+    assert!(result.stdout.is_empty());
+    assert!(!dir.path().join("hub.key").exists());
+    assert_eq!(std::fs::read(&victim).unwrap(), b"untouched");
+}
+#[test]
 fn dangling_identity_symlink_is_rejected_without_replacement() {
     let dir = tempfile::tempdir().unwrap();
     let key = dir.path().join("hub.key");

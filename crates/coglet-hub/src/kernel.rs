@@ -17,6 +17,8 @@ use std::{
 };
 use tokio::sync::Semaphore;
 mod actions;
+#[cfg(unix)]
+mod operator;
 pub mod promotion;
 #[cfg(test)]
 mod tests;
@@ -281,9 +283,15 @@ impl Kernel {
         clock: Arc<dyn Fn() -> Option<u64> + Send + Sync>,
         elapsed: Arc<dyn Fn() -> Duration + Send + Sync>,
     ) -> Result<Self> {
+        // Reject any old split entry (including dangling symlinks) before
+        // creating a replacement database. Never silently lose enrollment.
+        match std::fs::symlink_metadata(root.as_ref().join("authority.db")) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            _ => return Err(Error::SplitAuthority),
+        }
         let store = Store::open(root.as_ref().join("kernel.db"))?;
         store.db.execute_batch("CREATE TABLE IF NOT EXISTS registry(target TEXT PRIMARY KEY, config TEXT NOT NULL); CREATE TABLE IF NOT EXISTS ended_tickets(actor TEXT, ticket TEXT, PRIMARY KEY(actor,ticket)); CREATE TABLE IF NOT EXISTS provisioning(target TEXT PRIMARY KEY, config TEXT NOT NULL); CREATE TABLE IF NOT EXISTS health_grants(peer TEXT PRIMARY KEY, generation TEXT NOT NULL); CREATE TABLE IF NOT EXISTS health(peer TEXT PRIMARY KEY, metadata TEXT NOT NULL); CREATE TABLE IF NOT EXISTS deliveries(target TEXT, id TEXT, intent TEXT NOT NULL, request TEXT NOT NULL, attempted INTEGER NOT NULL DEFAULT 0, reply TEXT, PRIMARY KEY(target,id));")?;
-        let authority = Authority::open(root.as_ref().join("authority.db"))?;
+        let authority = Authority::open(root.as_ref().join("kernel.db"))?;
         Ok(Self {
             state: Arc::new(Mutex::new(State {
                 elapsed,

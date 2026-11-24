@@ -35,6 +35,8 @@ type Result<T> = std::result::Result<T, AuthorityError>;
 pub mod accepted_refs;
 mod delegation;
 mod runtime_boundary;
+mod operator;
+pub use operator::{LocalConfiguration, LocalInvite};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Grant {
@@ -65,6 +67,7 @@ impl Scope {
 struct State {
     db: Connection,
     window: Option<Instant>,
+    operator_window: Option<String>,
     invites: HashMap<String, Instant>,
     rate_epoch: Instant,
     attempts: HashMap<EndpointId, u32>,
@@ -102,12 +105,14 @@ impl Authority {
           CREATE TABLE IF NOT EXISTS proto_peers(peer TEXT PRIMARY KEY);
           CREATE TABLE IF NOT EXISTS proto_delegations(hub TEXT NOT NULL, coglet TEXT NOT NULL, purpose TEXT NOT NULL CHECK(purpose='delegation'), device TEXT NOT NULL, generation TEXT NOT NULL, signed TEXT NOT NULL, active INTEGER NOT NULL, PRIMARY KEY(hub,coglet,purpose));
           CREATE TABLE IF NOT EXISTS proto_invites(hash TEXT PRIMARY KEY, peer TEXT NOT NULL, grants TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0);
+          CREATE TABLE IF NOT EXISTS proto_operator_windows(id TEXT PRIMARY KEY, duration_ms TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS proto_scopes(peer TEXT NOT NULL, actor TEXT NOT NULL, ticket TEXT NOT NULL, method TEXT NOT NULL, target TEXT NOT NULL, expires TEXT NOT NULL, generation TEXT NOT NULL, PRIMARY KEY(peer,actor,ticket,method,target));
           CREATE TABLE IF NOT EXISTS proto_ended_tickets(actor TEXT NOT NULL, ticket TEXT NOT NULL, PRIMARY KEY(actor,ticket));
           CREATE TABLE IF NOT EXISTS proto_grants(peer TEXT NOT NULL, method TEXT NOT NULL, target TEXT NOT NULL, expires TEXT NOT NULL, generation TEXT NOT NULL, PRIMARY KEY(peer,method,target));")?;
         Ok(Self(Arc::new(Mutex::new(State {
             db,
             window: None,
+            operator_window: None,
             invites: HashMap::new(),
             rate_epoch: Instant::now(),
             attempts: HashMap::new(),
@@ -119,11 +124,17 @@ impl Authority {
         let until = Instant::now()
             .checked_add(duration)
             .ok_or(AuthorityError::InvalidArgument)?;
-        self.0.lock().map_err(|_| AuthorityError::Storage)?.window = Some(until);
+        let mut state = self.0.lock().map_err(|_| AuthorityError::Storage)?;
+        state.window = Some(until);
+        state.operator_window = None;
+        state.invites.clear();
         Ok(())
     }
     pub fn close_window(&self) -> Result<()> {
-        self.0.lock().map_err(|_| AuthorityError::Storage)?.window = None;
+        let mut state = self.0.lock().map_err(|_| AuthorityError::Storage)?;
+        state.window = None;
+        state.operator_window = None;
+        state.invites.clear();
         Ok(())
     }
     /// Returns a 256-bit OS-random secret once. Only its SHA-256 is persisted.
