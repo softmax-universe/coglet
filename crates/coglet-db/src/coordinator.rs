@@ -335,6 +335,15 @@ impl Database {
     /// before any dispatch. Also the dispatch fence: eligible intents may only be
     /// delivered while this returns Ok.
     pub fn reconciled(&self) -> Result<()> {
+        match fs::symlink_metadata(self.owner_dir().join("restore.isolated")) {
+            Ok(_) => {
+                return Err(format!(
+                    "{HELD} isolated restore; activation is not supported"
+                ));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(held(e)),
+        }
         self.refuse_if_halted()?;
         if !self.pending_files()?.is_empty() || self.unpublished_markers()? != 0 {
             return Err(format!("{HELD} unreconciled decision; run recovery"));

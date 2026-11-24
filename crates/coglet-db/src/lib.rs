@@ -17,12 +17,17 @@ use std::{
 mod admission;
 mod catalog;
 mod coordinator;
+mod maintenance;
 mod outbox;
 mod protocol;
 pub use admission::{Admission, Pins};
 pub use catalog::{CellType, Column, TypedStatement};
 pub use coordinator::{
     CORRUPTION, Decision, HALTED, HELD, Journal, Recovered, StepId, recovery_abort_record,
+};
+pub use maintenance::{
+    ArchivedDecision, CodeRange, CompatibilityFloor, Migration, OperatorApproval, RecoveryBundle,
+    RestoreReport, RestoreVerifier, Snapshot,
 };
 pub use outbox::{Enqueued, Intent};
 pub use protocol::{CallResult, HostBudget};
