@@ -135,6 +135,7 @@ fn run() -> Result<(), String> {
         let initial = peer.start()?;
         (Driver::Direct(Box::new(peer)), initial)
     };
+    eprintln!("COGLET_CONFORMANCE_READY");
     emit(&mut output, initial)?;
     let (tx, rx) = mpsc::sync_channel(transport::QUEUE_BOUND);
     std::thread::spawn(move || {

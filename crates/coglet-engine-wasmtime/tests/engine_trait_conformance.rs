@@ -80,11 +80,24 @@ fn exhausted_init_and_alloc_never_reach_next_export() {
 }
 #[test]
 fn runaway_deadline_then_fresh_success() {
-    let b = guest("", "i32.const 0", "(loop $l br $l) i32.const 0");
-    // Envelope tolerates compilation on loaded hosts; loop must interrupt.
+    // A bare branch can burn even the maximum admitted fuel before the
+    // watchdog runs. Query memory growth per iteration: real guest work (no
+    // host deadline checks), with ample wall-clock work per fuel unit. Unlike
+    // memory.fill, memory.grow by zero does not charge fuel per byte.
+    let b = guest(
+        "",
+        "i32.const 0",
+        "(loop $l i32.const 0 memory.grow drop br $l) i32.const 0",
+    );
     let mut l = limits(i32::MAX as u64);
     l.deadline = Instant::now() + Duration::from_secs(1);
-    assert_eq!(run(&b, l).result, Err(Error::DeadlineExceeded));
+    let out = run(&b, l);
+    assert_eq!(out.result, Err(Error::DeadlineExceeded));
+    assert!(out.compute_used < i32::MAX as u64 / 10, "{out:?}");
+    println!(
+        "deadline interrupted with compute_used={}",
+        out.compute_used
+    );
     assert_eq!(
         run(&guest("", "i32.const 0", "i32.const 0"), limits(1000)).result,
         Ok(())

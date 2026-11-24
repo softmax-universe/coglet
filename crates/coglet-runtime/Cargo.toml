@@ -45,6 +45,14 @@ wasm-encoder = { version = "0.245", features = ["wasmparser"] }
 name = "qualify_apple_guest"
 required-features = ["native-engine"]
 
+[[example]]
+name = "generate_archive_companions"
+required-features = ["native-engine"]
+
+[[test]]
+name = "executable_archive"
+required-features = ["native-engine"]
+
 [[bin]]
 name = "cogletd"
 path = "src/main.rs"

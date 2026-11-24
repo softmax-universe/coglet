@@ -264,6 +264,55 @@ The reserved slot guarantees control admission under **bulk** saturation, not
 under saturation by already-admitted control operations. All operation work,
 including waiting for unary FIN, remains bounded by the request deadline.
 
+## Durable accepted-ref component
+
+`authority::accepted_refs::AcceptedRefStore::new(authority.clone())` uses the
+Authority's **same connection/database**, including in-memory databases. It is
+not a second policy authority and does not wire Session or activate live code.
+Only `validator::VerifiedBundle` can enter `accept`; the store consumes its
+private custody and atomically retains the complete signed statement, uint64
+watermark, tracked tip and append-only acceptance audit (with exact raw bundle
+bytes for recovery). No external Git ref or checkout is changed. Recovery bytes
+from `audit_bundle` are untrusted data until revalidated, not an activation handle.
+
+Supply `Acceptance` from trusted routing/authentication: pinned hub, coglet and
+ref kind, authenticated peer, exact actor/ticket scope, grant generation and
+separate delegation generation. The store rechecks the exact enrollment/scoped
+grant, ticket end marker, current signed device delegation/method/expiry (or the
+pinned hub peer for hub refs) in the same `BEGIN IMMEDIATE` transaction as the
+ref CAS. Revocation/replacement on another Authority connection serializes with
+that commit. Supply a fresh trusted Unix clock callback; no clock is denial. It
+is sampled after lock acquisition and immediately before commit. Callbacks must
+not reenter Authority; run this blocking API on bounded blocking workers.
+
+`Mode::Authoritative` requires `hub.git.push`, exact signed old tip and strictly
+higher generation. `Mode::Observation` requires `hub.git.fetch`, permits skipped
+generations without matching the observer's old tip, and treats only an identical
+equal-generation statement as a no-op with its original audit ID. Even a no-op
+requires a newly validated transfer and current authority. A scope cannot switch
+modes. Use `current` to check metadata before credit; acceptance always repeats
+the comparison against the latest durable value. There is no delete/reset API to
+erase replay state. Generations are stored as text to preserve all uint64 values.
+
+Named tests in `tests/accepted_refs.rs` cover insert/update fault rollback,
+authoritative wrong-old/generation/replay refusal, close/reopen recovery,
+subprocess exits before/after COMMIT, concurrent authoritative writers,
+out-of-order observer completions, skipped/identical/equal-different/older
+observations, real changed tips, retained historical bundles, routing pins,
+peer/ticket/delegation revocation after validation and final-check expiry.
+The ignored child fixture is executed twice by the ordinary process-restart test.
+
+```sh
+cargo test --locked -j 2 -p coglet-proto --test accepted_refs
+```
+
+This is component acceptance, not full push/fetch or conformance acceptance.
+Session request/receipt operation-ID deduplication (distinct from signed-statement
+replay), streaming integration, build qualification/policy and boundary activation
+remain with the streaming/kernel integration owners. A replayed authoritative
+statement on a new operation conflicts; an exact duplicate **operation** must be
+intercepted by its original durable operation receipt before calling this API.
+
 ## Remaining before full protocol acceptance
 
 1. Durable atomic one-use enrollment, exact grants/delegations/context scopes,

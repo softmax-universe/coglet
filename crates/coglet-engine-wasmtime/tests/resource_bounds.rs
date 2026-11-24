@@ -131,7 +131,7 @@ fn concurrent_instances_do_not_share_epoch_deadlines() {
     let other = barrier.clone();
     let handle = std::thread::spawn(move || long.handle(input(), &mut Wait(other)));
     barrier.wait();
-    let b=wat::parse_str(r#"(module (memory (export "memory") 1 32) (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) (loop $l br $l) i32.const 0))"#).unwrap();
+    let b=wat::parse_str(r#"(module (memory (export "memory") 1 32) (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) (loop $l i32.const 0 memory.grow drop br $l) i32.const 0))"#).unwrap();
     let mut l = limits();
     l.compute = i32::MAX as u64;
     l.deadline = Instant::now() + Duration::from_millis(100);

@@ -88,6 +88,50 @@ fn raw_pack(count: u32) -> Vec<u8> {
     bytes.extend_from_slice(&count.to_be_bytes());
     bytes
 }
+#[cfg(not(target_os = "linux"))]
+#[tokio::test]
+async fn unsupported_platform_refuses_validator_execution() {
+    use coglet_proto::validator::{Limits, ValidationError, Validator};
+    let root = Root::new();
+    // Preflight is not full validation: this synthetic pack must never reach
+    // a subprocess on an unsupported platform.
+    let mut bytes = raw_pack(1);
+    bytes.extend_from_slice(&[0; 32]);
+    let mut sink = BundleSink::create(&root.0, bytes.len() as u64)
+        .await
+        .unwrap();
+    sink.append(&bytes).await.unwrap();
+    let envelope = sink
+        .check_envelope(
+            &metadata(&"ab".repeat(20)),
+            &hex::encode(Sha256::digest(&bytes)),
+            100000,
+        )
+        .await
+        .unwrap();
+    // An absolute, nonexistent helper distinguishes the platform refusal from
+    // path validation and spawn errors. No executable needs to be installed.
+    let validator = Validator::new(root.0.join("must-not-execute"));
+    let error = match envelope.validate(&validator, Limits::default()).await {
+        Ok(_) => panic!("unsupported platform accepted validation"),
+        Err(error) => error,
+    };
+    assert!(matches!(error, ValidationError::Unavailable(_)));
+    assert_eq!(
+        error.to_string(),
+        "validator unavailable: Linux and an absolute helper path required"
+    );
+    assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
+
+    // Direct invocation of the installed helper must refuse too, even before
+    // parsing arguments or accessing any quarantine paths.
+    let output = Command::new(env!("CARGO_BIN_EXE_coglet-git-validator"))
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(22));
+    assert_eq!(output.stdout, b"validator unavailable: Linux required\n");
+}
+
 #[tokio::test]
 async fn truncated_pack_cannot_pass_envelope_preflight() {
     let bytes = raw_pack(1);

@@ -1,3 +1,16 @@
+# Go uses the same frozen surface cases and fixture labels as the Rust peers.
+[[implementations]]
+name = "surface-go-reference"
+suites = ["surface"]
+peer_roles = ["runtime"]
+transport = "stdio"
+command = ["target/coglet-go-surface"]
+ready_line = "COGLET_CONFORMANCE_READY"
+[implementations.fixtures.surface-base.env]
+COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
+[implementations.fixtures.kill-at-100ms.env]
+COGLET_FIXTURE_KILL_AT_MS = "100"
+
 # Only self-test claims exist until real/mock protocol implementations register.
 [[implementations]]
 name = "native-mock-engine"
@@ -29,6 +42,7 @@ suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
 command = ["target/release/coglet-reference-surface", "--stdio"]
+ready_line = "COGLET_CONFORMANCE_READY"
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -40,6 +54,7 @@ suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
 command = ["target/release/coglet-mock-surface", "--stdio"]
+ready_line = "COGLET_CONFORMANCE_READY"
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -51,6 +66,7 @@ suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
 command = ["target/release/coglet-reference-surface", "--stdio", "--transport", "in-process"]
+ready_line = "COGLET_CONFORMANCE_READY"
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
@@ -62,6 +78,7 @@ suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
 command = ["target/release/coglet-mock-surface", "--stdio", "--transport", "in-process"]
+ready_line = "COGLET_CONFORMANCE_READY"
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"
 [implementations.fixtures.kill-at-100ms.env]
