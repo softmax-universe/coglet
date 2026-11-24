@@ -1,7 +1,9 @@
 //! Native private database substrate for ADR-0013.
 //!
-//! This crate is not yet wired into runtime ABI 0.2. In particular, no public
-//! successful commit API exists until prepared-decision recovery is integrated.
+//! This crate is not yet wired into runtime ABI 0.2. The only production commit
+//! path is the milestone B coordinator (`Unit::complete`), which prepares a
+//! decision, commits the host marker and publishes the exact journal; recovery is
+//! `Database::recover`. Runtime/engine admission remains closed.
 use fs2::FileExt;
 use rusqlite::{Connection, OpenFlags, params_from_iter, types::ValueRef};
 use sha2::{Digest, Sha256};
@@ -14,10 +16,14 @@ use std::{
 
 mod admission;
 mod catalog;
+mod coordinator;
 mod outbox;
 mod protocol;
 pub use admission::{Admission, Pins};
 pub use catalog::{CellType, Column, TypedStatement};
+pub use coordinator::{
+    CORRUPTION, Decision, HALTED, HELD, Journal, Recovered, StepId, recovery_abort_record,
+};
 pub use outbox::{Enqueued, Intent};
 pub use protocol::{CallResult, HostBudget};
 
@@ -281,9 +287,15 @@ impl Database {
         let lease = options
             .open(directory.join("owner.lock"))
             .map_err(|e| e.to_string())?;
-        lease
-            .try_lock_exclusive()
-            .map_err(|_| "owner already open".to_string())?;
+        // A restarting owner can briefly overlap a dying holder, and a concurrent
+        // fork can hold an inherited descriptor until it execs. Retry briefly.
+        let started = Instant::now();
+        while lease.try_lock_exclusive().is_err() {
+            if started.elapsed() > Duration::from_millis(500) {
+                return Err("owner already open".to_string());
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
         let path = directory.join("private.sqlite3");
         let connection = Connection::open_with_flags(
             &path,
@@ -746,6 +758,8 @@ impl Drop for Unit<'_> {
         }
     }
 }
+#[cfg(test)]
+mod coordinator_tests;
 #[cfg(test)]
 mod native_tests;
 #[cfg(test)]

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+bash ../../scripts/build-runtime-xcframework.sh
 xcodegen generate
 xcodebuild -project Softmax.xcodeproj -scheme Softmax -configuration Debug \
   -destination 'platform=macOS' -derivedDataPath build build CODE_SIGNING_ALLOWED=NO

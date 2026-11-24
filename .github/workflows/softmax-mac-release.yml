@@ -22,6 +22,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build embedded runtime (production features only)
+        run: |
+          cargo install cbindgen --version 0.29.2 --locked
+          bash scripts/build-runtime-xcframework.sh
       - uses: astral-sh/setup-uv@v6
       - name: Release policy tests
         run: uv run --python 3.13 --with pillow==12.0.0 python -m unittest discover -s apps/softmax-mac/scripts/tests -v
@@ -48,6 +53,11 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build embedded runtime (production features only)
+        run: |
+          cargo install cbindgen --version 0.29.2 --locked
+          bash scripts/build-runtime-xcframework.sh
       - name: Install packaging tools
         run: brew install xcodegen create-dmg openssl@3
       - name: Fetch pinned Sparkle tools
