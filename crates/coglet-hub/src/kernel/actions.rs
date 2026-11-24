@@ -5,6 +5,19 @@ use coglet_proto::transport::Session;
 #[path = "receipt_tests.rs"]
 mod receipt_tests;
 
+type RuntimeClock = Arc<dyn Fn() -> Option<u64> + Send + Sync>;
+
+fn check_action_deadline(request: &Value, clock: Option<&RuntimeClock>) -> Result<()> {
+    let now = clock.and_then(|clock| clock()).ok_or(Error::Denied)?;
+    let deadline = request["params"]["action"]["deadline"]
+        .as_u64()
+        .ok_or(Error::Invalid)?;
+    if now >= deadline {
+        return Err(Error::Denied);
+    }
+    Ok(())
+}
+
 struct ActiveDispatch {
     boundary: Arc<Mutex<DispatchFence>>,
     key: (String, String),
@@ -118,6 +131,31 @@ impl Kernel {
     /// fences replay, including after process restart. Recovery must reconcile the
     /// receiver receipt; it must never manufacture a new action ID or deadline.
     pub async fn dispatch_action(&self, target: &str, id: &str, session: Session) -> Result<Value> {
+        self.dispatch_with_clock(target, id, session, None).await
+    }
+    /// Trusted local adapter only: the callback returns a fresh receiving-runtime
+    /// logical time in the exact epoch of the retained mapped envelope. It must
+    /// return None on clock loss, receiver restart/epoch change or uncertain mapping.
+    /// It must be bounded/nonblocking and must not call back into this Kernel.
+    /// No clock is persisted or inferred from Unix authority time. The receiver
+    /// still owns final admission; this sender fence cannot undo delivered bytes.
+    pub async fn dispatch_action_with_clock(
+        &self,
+        target: &str,
+        id: &str,
+        session: Session,
+        clock: Arc<dyn Fn() -> Option<u64> + Send + Sync>,
+    ) -> Result<Value> {
+        self.dispatch_with_clock(target, id, session, Some(clock))
+            .await
+    }
+    async fn dispatch_with_clock(
+        &self,
+        target: &str,
+        id: &str,
+        session: Session,
+        clock: Option<Arc<dyn Fn() -> Option<u64> + Send + Sync>>,
+    ) -> Result<Value> {
         // Reserve before retaining an attempt: local capacity refusal proves no
         // I/O happened and must never become durable unknown-effect uncertainty.
         let driver = Arc::new(
@@ -142,6 +180,7 @@ impl Kernel {
         let t = target.clone();
         let i = id.clone();
         let peer = session.peer();
+        let admission_clock = clock.clone();
         let (request,reply,attempted)=self.work(move|s| {
             let row=s.store.db.query_row("SELECT request,attempted,reply FROM deliveries WHERE target=?1 AND id=?2",params![t,i],|r|Ok((r.get::<_,String>(0)?,r.get::<_,i64>(1)?,r.get::<_,Option<String>>(2)?))).optional()?.ok_or(Error::Denied)?;
             let request:Value=serde_json::from_str(&row.0)?;
@@ -149,6 +188,7 @@ impl Kernel {
             if r.device!=peer.to_string() {return Err(Error::Denied);}
             if let Some(reply)=row.2 {return Ok((request,Some(serde_json::from_str(&reply)?),row.1!=0));}
             if row.1!=0 {return Ok((request,None,true));}
+            check_action_deadline(&request, admission_clock.as_ref())?;
             let tx=s.store.db.transaction()?;
             tx.execute("UPDATE deliveries SET attempted=1 WHERE target=?1 AND id=?2",params![t,i])?;
             audit(&tx,json!({"method":"hub.actions.dispatch","operation_id":i,"target":t,"actor":request["context"]["actor"],"ticket":request["context"]["ticket"],"outcome":"attempted"}))?;
@@ -160,7 +200,7 @@ impl Kernel {
         let mut result = if attempted {
             None
         } else {
-            self.request_fenced(&session, request.clone(), driver.clone())
+            self.request_fenced(&session, request.clone(), driver.clone(), clock)
                 .await
                 .ok()
         };
@@ -169,7 +209,7 @@ impl Kernel {
             // under the original actor/ticket, with a fresh observation correlation.
             let receipt = json!({"method":"hub.receipt","target":target,"correlation_id":hex::encode(&iroh::SecretKey::generate().to_bytes()[..16]),"timeout_ms":5000,"params":{"operation_id":id},"context":request["context"]});
             result = self
-                .request_fenced(&session, receipt, driver.clone())
+                .request_fenced(&session, receipt, driver.clone(), None)
                 .await
                 .ok()
                 .filter(|v| v["type"] == "reply" && v["result"]["operation_id"] == id);
@@ -246,6 +286,7 @@ impl Kernel {
         session: &Session,
         request: Value,
         permit: Arc<tokio::sync::OwnedSemaphorePermit>,
+        clock: Option<Arc<dyn Fn() -> Option<u64> + Send + Sync>>,
     ) -> Result<Value> {
         // Authority is synchronous SQLite, so drive the transport future on a
         // bounded blocking executor. No State/boundary lock survives a poll.
@@ -294,6 +335,7 @@ impl Kernel {
                         ticket.to_owned(),
                     )
                 });
+                let is_action = request["method"] == "hub.actions";
                 let cancel_view = cancelled.clone();
                 let mut sending = Box::pin(session.request(request));
                 loop {
@@ -311,6 +353,12 @@ impl Kernel {
                         let r = s.action_authority(&target, &original)?;
                         if r.device != peer.to_string() {
                             return std::task::Poll::Ready(Err(Error::Denied));
+                        }
+                        // Sample only AFTER all blocking authority/database work.
+                        // The retained mapped deadline is exclusive. Receipt reads
+                        // remain legal after expiry and never resend the action.
+                        if is_action {
+                            check_action_deadline(&original, clock.as_ref())?;
                         }
                         sending
                             .as_mut()
