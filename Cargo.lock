@@ -676,6 +676,7 @@ name = "coglet-surface-rust"
 version = "0.1.0"
 dependencies = [
  "coglet-types",
+ "getrandom 0.4.3",
  "libc",
  "serde",
  "serde_json",
