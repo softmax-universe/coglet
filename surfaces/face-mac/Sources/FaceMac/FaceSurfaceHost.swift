@@ -63,6 +63,16 @@ private final class FaceHostLifetime: @unchecked Sendable {
         try backend.configureHistory(store: historyStore)
         backend.retainClosedStreams(from: try session.retainedAdmittedActions())
         backend.installCaptureClock(clock)
+        backend.installEffectAuthority { [weak self] in
+            guard let self else { throw NativeSurfaceError("unavailable") }
+            // SDK tick expires grants and pending actions before we judge them.
+            try self.session.tick()
+            let now = self.clock()
+            guard let grant = self.grants.first(where: { $0.coglet == self.owner }), grant.expires > now else {
+                throw NativeSurfaceError("permission_denied")
+            }
+            return (now, self.session.grantEpoch)
+        }
     }
     deinit {
         let lifetime = lifetime

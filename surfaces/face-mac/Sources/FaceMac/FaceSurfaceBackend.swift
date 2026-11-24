@@ -80,6 +80,26 @@ public struct FaceCompletion {
     private var lastTick: UInt64 = 0
     private var captureClock: (() -> UInt64)?
     func installCaptureClock(_ clock: @escaping () -> UInt64) { captureClock = clock }
+    /// Host-installed effect authority. It expires grants/actions through the SDK
+    /// (which may synchronously stop this backend), then returns a FRESH clock
+    /// sample and the SDK grant epoch. Absent for direct backend use.
+    typealias EffectAuthority = @MainActor () throws -> (now: UInt64, epoch: UInt64)
+    private var effectAuthority: EffectAuthority?
+    func installEffectAuthority(_ authority: @escaping EffectAuthority) { effectAuthority = authority }
+    /// Re-validate custody after any blocking durable save and immediately before
+    /// a provider call or audio effect. The authority may reenter stop(); only
+    /// unchanged generation/owner/epoch plus a live deadline permits the effect.
+    private func reauthorize(generation token: UUID, owner expectedOwner: String, epoch expectedEpoch: UInt64,
+                             deadline: UInt64, fallbackNow: UInt64) throws {
+        var now = captureClock?() ?? fallbackNow
+        if let effectAuthority {
+            let sampled = try effectAuthority()
+            guard sampled.epoch == expectedEpoch else { throw NativeSurfaceError("permission_denied") }
+            now = sampled.now
+        }
+        guard generation == token, owner == expectedOwner, epoch == expectedEpoch else { throw NativeSurfaceError("cancelled") }
+        guard deadline > now else { throw NativeSurfaceError("deadline_exceeded") }
+    }
     /// Bounded, non-text diagnostics; late callbacks never log transcripts.
     public private(set) var discardedRecognitionUpdates: UInt64 = 0
     public private(set) var recognitionFailures: UInt64 = 0
@@ -242,6 +262,7 @@ public struct FaceCompletion {
         guard epoch == self.epoch, let id = action["id"]?.faceText, let deadline = action["deadline"]?.faceUInt,
               deadline > now else { throw NativeSurfaceError("deadline_exceeded") }
         let args = action["args"]!
+        let custody = generation, custodyOwner = owner!
         if action["capability"] == .text("expression.set_expression") {
             try renderer.set(expression: args["expression"]!.faceText!, intensity: args["intensity"]!.faceUInt!,
                              durationMS: args["duration_ms"]!.faceUInt!, now: now)
@@ -265,17 +286,30 @@ public struct FaceCompletion {
         let cues = ["ack": "mm-hm", "thinking": "working", "agree": "yes"]
         let text = backchannel ? cues[args["cue"]!.faceText!]! : args["text"]!.faceText!
         try history.register(item: id, owner: owner!, epoch: epoch)
+        // Registration saved synchronously; resample before mutating or synthesizing.
+        try reauthorize(generation: custody, owner: custodyOwner, epoch: epoch, deadline: deadline, fallbackNow: now)
         if stream == nil { stream = streamID; streamPosition = 0 }
         nextChunk = chunk + 1; inputClosed = backchannel || args["final"] == .boolean(true); idleSince = now
         items.append(Item(owner: owner!, epoch: epoch, id: id, stream: streamID, chunk: chunk,
                           text: text, deadline: deadline))
-        if items.count == 1 { startSynthesis() }
+        if items.count == 1 { startSynthesis(recheck: false) }
         return nil
     }
-    private func startSynthesis() {
+    private func startSynthesis(recheck: Bool = true) {
         guard let item = items.first else { return }
-        do { try validateSynthesisRoute() } catch { failStream(code: "unavailable"); return }
         let token = generation, id = item.id
+        if recheck {
+            // Preceding playback/history saves may have blocked past expiry.
+            do { try reauthorize(generation: token, owner: item.owner, epoch: item.epoch, deadline: item.deadline, fallbackNow: lastTick) }
+            catch {
+                if generation == token, items.first?.id == id {
+                    failStream(code: (error as? NativeSurfaceError)?.code ?? "unavailable")
+                }
+                return
+            }
+            guard generation == token, items.first?.id == id else { return }
+        }
+        do { try validateSynthesisRoute() } catch { failStream(code: "unavailable"); return }
         let cancel = synthesis.synthesize(text: item.text) { [weak self] result in
             guard let self, self.generation == token, self.items.first?.id == id,
                   self.items.first?.audio == nil else { return }
@@ -309,8 +343,16 @@ public struct FaceCompletion {
                   data.spans.allSatisfy({ $0.endMS <= UInt64(data.samples.count) / 24 }),
                   data.spans.map(\.text).joined().utf8.count <= items[0].text.utf8.count,
                   items[0].text.hasPrefix(data.spans.map(\.text).joined()) else { failStream(code: "invalid_argument"); return }
+            let token = generation, id = items[0].id
             do {
                 try history.append(item: items[0].id, owner: items[0].owner, epoch: items[0].epoch, spans: data.spans)
+                // Alignment save may block: no audio start/enqueue without fresh authority.
+                do { try reauthorize(generation: token, owner: items[0].owner, epoch: items[0].epoch, deadline: items[0].deadline, fallbackNow: now) }
+                catch let denied as NativeSurfaceError {
+                    if generation == token, items.first?.id == id { failStream(code: denied.code) }
+                    return
+                }
+                guard generation == token, items.first?.id == id else { return }
                 try audio.start(); graph = audio.generation
                 items[0].base = audio.renderedFrames
                 try audio.enqueue(data.samples)
