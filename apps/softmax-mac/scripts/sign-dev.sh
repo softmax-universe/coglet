@@ -33,6 +33,9 @@ shopt -s nullglob
 for code in "$app_dir"/Contents/Frameworks/*.framework "$app_dir"/Contents/Frameworks/*.dylib; do
   codesign --force --sign "$identity" --timestamp=none "$code"
 done
+if [[ -f "$app_dir/Contents/Helpers/softmax-hub-link" ]]; then
+  codesign --force --sign "$identity" --timestamp=none "$app_dir/Contents/Helpers/softmax-hub-link"
+fi
 codesign --force --sign "$identity" --timestamp=none "$app_dir"
 codesign --verify --deep --strict --verbose=2 "$app_dir"
 codesign -d -r- "$app_dir"

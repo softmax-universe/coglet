@@ -1,0 +1,25 @@
+[package]
+name = "softmax-hub-link"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+coglet-proto = { path = "../../../crates/coglet-proto" }
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "time", "process"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+
+[dev-dependencies]
+coglet-mock = { path = "../../../crates/coglet-mock" }
+
+[profile.dev]
+debug = 0
+incremental = false
+[profile.test]
+debug = 0
+incremental = false
