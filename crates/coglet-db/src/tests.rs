@@ -724,11 +724,7 @@ fn fk_integrity_enforced() {
         64,
         65536,
     );
-    assert!(
-        result
-            .unwrap_err()
-            .contains("FOREIGN KEY constraint failed")
-    );
+    assert_eq!(result.unwrap_err(), "sqlite constraint");
     assert!(txn.commit_for_test().is_err());
 }
 

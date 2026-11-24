@@ -29,8 +29,14 @@ impl Unit<'_> {
     pub fn enqueue(&mut self, intent: &Intent) -> Result<Enqueued> {
         self.calls = self.calls.saturating_add(1);
         let result = self.enqueue_inner(intent);
+        let result = if result.is_ok() && Instant::now() >= self.deadline {
+            Err("resource exhausted".into())
+        } else {
+            result
+        };
         if result.is_err() {
             self.poisoned = true;
+            self.rollback_failed_unit();
         }
         result
     }
@@ -59,10 +65,14 @@ impl Unit<'_> {
         if self.poisoned {
             return Err("poisoned unit".into());
         }
+        if self.paging {
+            return Err("paging conflict".into());
+        }
         if self.calls > 32 || Instant::now() >= self.deadline {
             return Err("resource exhausted".into());
         }
         let payload = hex::encode(coglet_types::encode_profile(&intent.payload)?);
+        self.start_transaction()?;
         // Canonical content lookup MUST precede proposed intent-ID uniqueness.
         // No UPDATE/REPLACE path can rewrite an existing key, identity or receipt.
         let existing: Option<(String,String,String,String)> = self.db.connection.query_row(
@@ -91,10 +101,14 @@ impl Unit<'_> {
         if reused {
             return Err("intent ID conflict".into());
         }
+        if self.pins.is_some() && self.revision == u64::MAX {
+            return Err("revision overflow".into());
+        }
         self.db.connection.execute(
             "INSERT INTO outbox(intent_id,idempotency_key,kind,payload_cbor_hex,correlation_id,state,attempt,version) VALUES (?1,?2,?3,?4,?5,'pending',0,1)",
             rusqlite::params![intent.intent_id,intent.idempotency_key,intent.kind,payload,intent.correlation_id],
-        ).map_err(|e| e.to_string())?;
+        ).map_err(sqlite_failure)?;
+        self.wrote = true;
         Ok(Enqueued {
             intent_id: intent.intent_id.clone(),
             duplicate: false,

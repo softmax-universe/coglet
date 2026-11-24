@@ -5,8 +5,10 @@ use super::*;
 pub enum CellType {
     Null,
     Integer,
+    Unsigned,
     Text,
     NullableInteger,
+    NullableUnsigned,
     NullableText,
 }
 impl CellType {
@@ -14,10 +16,11 @@ impl CellType {
         matches!(
             (self, cell),
             (
-                Self::Null | Self::NullableInteger | Self::NullableText,
+                Self::Null | Self::NullableInteger | Self::NullableText | Self::NullableUnsigned,
                 Cell::Null
             ) | (Self::Integer | Self::NullableInteger, Cell::Integer(_))
                 | (Self::Text | Self::NullableText, Cell::Text(_))
+                | (Self::Unsigned | Self::NullableUnsigned, Cell::Unsigned(_))
         )
     }
 }
@@ -58,8 +61,10 @@ impl Catalog {
                 text(match k {
                     CellType::Null => "null",
                     CellType::Integer => "int64",
+                    CellType::Unsigned => "uint64",
                     CellType::Text => "text",
                     CellType::NullableInteger => "nullable_int64",
+                    CellType::NullableUnsigned => "nullable_uint64",
                     CellType::NullableText => "nullable_text",
                 })
             };

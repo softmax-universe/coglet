@@ -12,12 +12,25 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod admission;
 mod catalog;
 mod outbox;
+mod protocol;
+pub use admission::{Admission, Pins};
 pub use catalog::{CellType, Column, TypedStatement};
 pub use outbox::{Enqueued, Intent};
+pub use protocol::{CallResult, HostBudget};
 
 pub type Result<T> = std::result::Result<T, String>;
+
+fn sqlite_failure(error: rusqlite::Error) -> String {
+    use rusqlite::ErrorCode;
+    match error.sqlite_error_code() {
+        Some(ErrorCode::ConstraintViolation) => "sqlite constraint".into(),
+        Some(ErrorCode::OperationInterrupted) => "sqlite interrupted".into(),
+        _ => "sqlite unavailable".into(),
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     Read,
@@ -27,9 +40,10 @@ pub enum Mode {
 pub enum Cell {
     Null,
     Integer(i64),
+    Unsigned(u64),
     Text(String),
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Grants {
     pub read: bool,
     pub write: bool,
@@ -124,10 +138,56 @@ pub struct Page {
     pub columns: Vec<String>,
     pub rows: Vec<Vec<Cell>>,
     pub affected: u64,
+    pub next_cursor: Option<String>,
 }
 impl Page {
-    /// Canonical wire reply. Cursor support is not yet implemented; overflowing
-    /// results fail closed. Caller supplies the committed admission revision.
+    /// Exact CBOR size without producing intermediate reply buffers. This keeps
+    /// host-byte accounting tied to the one final result materialization.
+    fn encoded_len(&self, revision: u64) -> usize {
+        fn head(n: u64) -> usize {
+            match n {
+                0..=23 => 1,
+                24..=255 => 2,
+                256..=65535 => 3,
+                65536..=4294967295 => 5,
+                _ => 9,
+            }
+        }
+        fn text(s: &str) -> usize {
+            head(s.len() as u64) + s.len()
+        }
+        fn cell(c: &Cell) -> usize {
+            match c {
+                Cell::Null => 1,
+                Cell::Integer(n) => head(if *n < 0 {
+                    (-1i128 - *n as i128) as u64
+                } else {
+                    *n as u64
+                }),
+                Cell::Unsigned(n) => head(*n),
+                Cell::Text(s) => text(s),
+            }
+        }
+        1 + text("status")
+            + text("page")
+            + text("columns")
+            + head(self.columns.len() as u64)
+            + self.columns.iter().map(|s| text(s)).sum::<usize>()
+            + text("rows")
+            + head(self.rows.len() as u64)
+            + self
+                .rows
+                .iter()
+                .map(|r| head(r.len() as u64) + r.iter().map(cell).sum::<usize>())
+                .sum::<usize>()
+            + text("affected")
+            + head(self.affected)
+            + text("revision")
+            + head(revision)
+            + text("next_cursor")
+            + self.next_cursor.as_ref().map_or(1, |s| text(s))
+    }
+    /// Canonical wire reply. Caller supplies the committed admission revision.
     pub fn encode(&self, revision: u64) -> Result<Vec<u8>> {
         use coglet_types::Value as V;
         let text = |s: &str| V::Text(s.into());
@@ -148,6 +208,7 @@ impl Page {
                                     .map(|c| match c {
                                         Cell::Null => V::Null,
                                         Cell::Integer(i) => V::Integer((*i).into()),
+                                        Cell::Unsigned(i) => V::Integer((*i).into()),
                                         Cell::Text(s) => text(s),
                                     })
                                     .collect(),
@@ -158,7 +219,10 @@ impl Page {
             ),
             (text("affected"), V::Integer(self.affected.into())),
             (text("revision"), V::Integer(revision.into())),
-            (text("next_cursor"), V::Null),
+            (
+                text("next_cursor"),
+                self.next_cursor.as_ref().map_or(V::Null, |s| text(s)),
+            ),
         ]))
     }
 }
@@ -167,6 +231,7 @@ pub struct Database {
     connection: Connection,
     path: PathBuf,
     _lease: File,
+    owner: String,
 }
 impl Database {
     /// Caller supplies a trusted host-only root and authenticated owner identity.
@@ -237,16 +302,23 @@ impl Database {
             .busy_timeout(Duration::ZERO)
             .map_err(|e| e.to_string())?;
         connection.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA trusted_schema=OFF;").map_err(|e| e.to_string())?;
+        let settings = connection.query_row("SELECT (SELECT journal_mode FROM pragma_journal_mode), (SELECT synchronous FROM pragma_synchronous), (SELECT foreign_keys FROM pragma_foreign_keys), (SELECT trusted_schema FROM pragma_trusted_schema)", [], |r| Ok((r.get::<_, String>(0)?, r.get::<_, u32>(1)?, r.get::<_, u32>(2)?, r.get::<_, u32>(3)?))).map_err(sqlite_failure)?;
+        if settings != ("wal".into(), 2, 1, 0) {
+            return Err("database durability configuration refused".into());
+        }
+        admission::initialize(&connection)?;
         Ok(Self {
             connection,
             path,
             _lease: lease,
+            owner: owner.into(),
         })
     }
     pub fn path(&self) -> &Path {
         &self.path
     }
-    pub fn begin<'a>(
+    #[cfg(test)]
+    fn begin<'a>(
         &'a mut self,
         catalog: &'a Catalog,
         grants: Grants,
@@ -274,6 +346,12 @@ impl Database {
             calls: 0,
             intent_grants: None,
             finished: false,
+            pins: None,
+            revision: 0,
+            attempt: 0,
+            wrote: false,
+            paging: false,
+            transaction: true,
         })
     }
     #[cfg(test)]
@@ -295,6 +373,12 @@ pub struct Unit<'a> {
     calls: usize,
     intent_grants: Option<std::collections::BTreeSet<String>>,
     finished: bool,
+    pins: Option<Pins>,
+    revision: u64,
+    attempt: u64,
+    wrote: bool,
+    paging: bool,
+    transaction: bool,
 }
 impl Unit<'_> {
     pub fn statement(
@@ -305,10 +389,27 @@ impl Unit<'_> {
         max_rows: usize,
         max_bytes: usize,
     ) -> Result<Page> {
+        self.statement_page(id, mode, params, max_rows, max_bytes, None)
+    }
+    pub fn statement_page(
+        &mut self,
+        id: &str,
+        mode: Mode,
+        params: &[Cell],
+        max_rows: usize,
+        max_bytes: usize,
+        page_cursor: Option<&str>,
+    ) -> Result<Page> {
         self.calls = self.calls.saturating_add(1);
-        let result = self.execute(id, mode, params, max_rows, max_bytes);
+        let result = self.execute(id, mode, params, max_rows, max_bytes, page_cursor);
+        let result = if result.is_ok() && Instant::now() >= self.deadline {
+            Err("resource exhausted".into())
+        } else {
+            result
+        };
         if result.is_err() {
             self.poisoned = true;
+            self.rollback_failed_unit();
         }
         if let Err(error) = self.db.connection.authorizer(
             None::<fn(rusqlite::hooks::AuthContext<'_>) -> rusqlite::hooks::Authorization>,
@@ -325,12 +426,15 @@ impl Unit<'_> {
         params: &[Cell],
         max_rows: usize,
         max_bytes: usize,
+        page_cursor: Option<&str>,
     ) -> Result<Page> {
         if !(1..=64).contains(&max_rows)
             || !(256..=65536).contains(&max_bytes)
             || params
                 .iter()
                 .any(|p| matches!(p, Cell::Text(s) if s.len() > 4096))
+            || params.len() > 32
+            || page_cursor.is_some_and(|c| c.is_empty() || c.len() > 512 || mode != Mode::Read)
         {
             return Err("invalid bounds".into());
         }
@@ -341,12 +445,19 @@ impl Unit<'_> {
         if self.poisoned {
             return Err("poisoned unit".into());
         }
+        if (mode == Mode::Write && self.paging) || (page_cursor.is_some() && self.wrote) {
+            return Err("paging conflict".into());
+        }
+        let continuation = self.cursor_position(id, params, page_cursor)?;
         if self.calls > 32 || Instant::now() >= self.deadline {
             return Err("resource exhausted".into());
         }
         let spec = self.catalog.statements.get(id).ok_or("unknown statement")?;
         if spec.mode != mode || spec.parameters != params.len() {
             return Err("statement binding mismatch".into());
+        }
+        if mode == Mode::Write && self.pins.is_some() && self.revision == u64::MAX {
+            return Err("revision overflow".into());
         }
         if spec.binding.as_ref().is_some_and(|binding| {
             !binding
@@ -362,9 +473,11 @@ impl Unit<'_> {
             .map(|c| match c {
                 Cell::Null => rusqlite::types::Value::Null,
                 Cell::Integer(i) => (*i).into(),
+                Cell::Unsigned(i) => rusqlite::types::Value::Blob(i.to_be_bytes().to_vec()),
                 Cell::Text(s) => s.clone().into(),
             })
             .collect();
+        self.start_transaction()?;
         if let Some(binding) = &spec.binding {
             binding.validate_order(&self.db.connection)?;
         }
@@ -416,7 +529,8 @@ impl Unit<'_> {
         if mode == Mode::Write {
             let affected = statement
                 .execute(params_from_iter(values))
-                .map_err(|e| e.to_string())? as u64;
+                .map_err(sqlite_failure)? as u64;
+            self.wrote = true;
             if spec
                 .expected_affected
                 .is_some_and(|count| count != affected)
@@ -427,6 +541,7 @@ impl Unit<'_> {
                 columns: vec![],
                 rows: vec![],
                 affected,
+                next_cursor: None,
             });
         }
         let columns = statement
@@ -451,13 +566,18 @@ impl Unit<'_> {
         {
             return Err("invalid result columns".into());
         }
+        let encoding_revision = if self.pins.is_some() {
+            self.revision
+        } else {
+            u64::MAX
+        };
         if (Page {
             columns: columns.clone(),
             rows: vec![],
             affected: 0,
+            next_cursor: None,
         })
-        .encode(u64::MAX)?
-        .len()
+        .encoded_len(encoding_revision)
             > max_bytes
         {
             return Err("resource exhausted".into());
@@ -466,8 +586,10 @@ impl Unit<'_> {
             .query(params_from_iter(values))
             .map_err(|e| e.to_string())?;
         let mut rows = vec![];
-        while let Some(row) = cursor.next().map_err(|e| e.to_string())? {
-            if rows.len() == max_rows || Instant::now() >= self.deadline {
+        let mut position = 0u64;
+        let mut next_position = None;
+        while let Some(row) = cursor.next().map_err(sqlite_failure)? {
+            if Instant::now() >= self.deadline {
                 return Err("resource exhausted".into());
             }
             let mut cells = vec![];
@@ -475,6 +597,17 @@ impl Unit<'_> {
                 cells.push(match row.get_ref(index).map_err(|e| e.to_string())? {
                     ValueRef::Null => Cell::Null,
                     ValueRef::Integer(i) => Cell::Integer(i),
+                    ValueRef::Blob(b)
+                        if b.len() == 8
+                            && spec.binding.as_ref().is_some_and(|s| {
+                                matches!(
+                                    s.columns[index].kind,
+                                    CellType::Unsigned | CellType::NullableUnsigned
+                                )
+                            }) =>
+                    {
+                        Cell::Unsigned(u64::from_be_bytes(b.try_into().unwrap()))
+                    }
                     ValueRef::Text(s) if s.len() <= 4096 => {
                         Cell::Text(std::str::from_utf8(s).map_err(|e| e.to_string())?.into())
                     }
@@ -490,28 +623,109 @@ impl Unit<'_> {
             }) {
                 return Err("result type mismatch".into());
             }
+            if position < continuation.0 {
+                position += 1;
+                if position == continuation.0
+                    && continuation
+                        .1
+                        .as_ref()
+                        .is_some_and(|key| key != &admission::row_key(&cells))
+                {
+                    return Err("cursor conflict".into());
+                }
+                continue;
+            }
+            if rows.len() == max_rows {
+                next_position = Some(position);
+                break;
+            }
             rows.push(cells);
+            position += 1;
             // Reserve the largest possible revision encoding until runtime
             // admission supplies the pinned revision. Never truncate a row.
             let bounded = Page {
                 columns: columns.clone(),
                 rows: rows.clone(),
                 affected: 0,
+                next_cursor: None,
             };
-            if bounded.encode(u64::MAX)?.len() > max_bytes {
-                return Err("resource exhausted".into());
+            if bounded.encoded_len(encoding_revision) > max_bytes {
+                rows.pop();
+                if rows.is_empty() {
+                    return Err("resource exhausted".into());
+                }
+                next_position = Some(position - 1);
+                break;
             }
         }
-        Ok(Page {
+        drop(cursor);
+        drop(statement);
+        if position < continuation.0 {
+            return Err("cursor conflict".into());
+        }
+        // Host cursor metadata is outside the application's authorizer scope.
+        self.db
+            .connection
+            .authorizer(
+                None::<fn(rusqlite::hooks::AuthContext<'_>) -> rusqlite::hooks::Authorization>,
+            )
+            .map_err(|e| e.to_string())?;
+        let next_cursor = if let Some(mut position) = next_position {
+            if self.pins.is_none() {
+                return Err("resource exhausted".into());
+            }
+            if self.wrote {
+                return Err("paging conflict".into());
+            }
+            while (Page {
+                columns: columns.clone(),
+                rows: rows.clone(),
+                affected: 0,
+                next_cursor: Some("0".repeat(64)),
+            })
+            .encoded_len(self.revision)
+                > max_bytes
+            {
+                rows.pop();
+                position -= 1;
+                if rows.is_empty() {
+                    return Err("resource exhausted".into());
+                }
+            }
+            self.mint_cursor(id, params, position, rows.last().unwrap())?
+        } else {
+            None
+        };
+        self.paging |= page_cursor.is_some() || next_cursor.is_some();
+        let page = Page {
             columns,
             rows,
             affected: 0,
-        })
+            next_cursor,
+        };
+        if page.encoded_len(self.revision) > max_bytes {
+            return Err("resource exhausted".into());
+        }
+        Ok(page)
     }
     #[cfg(test)]
     fn commit_for_test(mut self) -> Result<()> {
         if self.poisoned {
             return Err("poisoned unit".into());
+        }
+        if self.wrote && self.pins.is_some() {
+            let next = self.resulting_revision()?;
+            self.db
+                .connection
+                .execute(
+                    "UPDATE _coglet_state SET revision=?1 WHERE singleton=1",
+                    [next.to_be_bytes().to_vec()],
+                )
+                .map_err(|e| e.to_string())?;
+        }
+        if !self.transaction {
+            self.finished = true;
+            return Ok(());
         }
         self.db
             .connection
@@ -532,5 +746,7 @@ impl Drop for Unit<'_> {
         }
     }
 }
+#[cfg(test)]
+mod native_tests;
 #[cfg(test)]
 mod tests;
