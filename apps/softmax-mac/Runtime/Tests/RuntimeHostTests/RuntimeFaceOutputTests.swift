@@ -39,7 +39,8 @@ final class RuntimeFaceOutputTests: XCTestCase {
         output.suspend()
         let receipts = output.drain()
         XCTAssertEqual(receipts.count, 1)
-        guard case .succeeded = receipts.first?.result else { return XCTFail("Native success is immutable") }
+        let receipt = try XCTUnwrap(receipts.first)
+        guard case .succeeded = receipt.result else { return XCTFail("Native success is immutable") }
     }
     private func action(_ index: Int, epoch: UInt64 = 1) -> RuntimeAction {
         RuntimeAction(action: .record([("capability", .text("speech.speak_chunk")),
