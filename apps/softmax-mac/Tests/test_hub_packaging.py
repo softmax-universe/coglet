@@ -32,6 +32,9 @@ printf 'lipo %s\\n' "$*" >> "$BUILD_LOG"
 if [[ "$1" == '-create' ]]; then
   while [[ "$1" != '-output' ]]; do shift; done
   printf 'fixture universal bytes' > "$2"
+else
+  # Match Apple's lipo grammar: input file precedes the variadic arch list.
+  [[ $# == 4 && -f "$1" && "$2" == '-verify_arch' && "$3" == 'arm64' && "$4" == 'x86_64' ]] || exit 64
 fi
 ''',
             }.items():
@@ -52,7 +55,7 @@ fi
             for target in ('aarch64-apple-darwin', 'x86_64-apple-darwin'):
                 self.assertTrue(any('--target ' + target in line for line in cargo))
             self.assertTrue(all('--locked' in line and '--release' in line for line in cargo))
-            self.assertTrue(any('lipo -verify_arch arm64 x86_64' in line for line in log))
+            self.assertTrue(any(' -verify_arch arm64 x86_64' in line for line in log))
 
 
 if __name__ == '__main__':
