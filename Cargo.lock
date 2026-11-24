@@ -662,6 +662,7 @@ dependencies = [
  "coglet-db",
  "coglet-engine",
  "coglet-engine-wamr",
+ "coglet-guest-rust",
  "coglet-mock",
  "coglet-types",
  "hex",
