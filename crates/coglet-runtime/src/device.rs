@@ -120,7 +120,7 @@ impl DeviceHandler {
                 adapter_started: AtomicBool::new(false),
             }),
         };
-        handler.resume_initial_pushes();
+        handler.resume_initial_pushes()?;
         Ok(handler)
     }
 
@@ -230,7 +230,14 @@ impl DeviceHandler {
     }
 
     fn peek_identity(&self, coglet: &str) -> Result<Value> {
-        if let Some(service) = self.share_service(coglet) {
+        // Keep transient WAL opens under the same custody mutex as open_service.
+        let services = self
+            .inner
+            .services
+            .lock()
+            .map_err(|_| "unavailable".to_owned())?;
+        if let Some(service) = services.get(coglet).cloned() {
+            drop(services);
             let locked = service.lock().map_err(|_| "unavailable".to_owned())?;
             return locked
                 .managed_identity()
@@ -245,11 +252,14 @@ impl DeviceHandler {
         let Some(state) = store.state() else {
             return Err("not_installed".into());
         };
-        state
+        let identity = state
             .pointer("/managed/identity")
             .cloned()
             .filter(Value::is_object)
-            .ok_or_else(|| "permission_denied".into())
+            .ok_or_else(|| "permission_denied".into());
+        drop(store);
+        drop(services);
+        identity
     }
 
     async fn recover_setup(&self, coglet: &str) -> Result<Option<(Value, Value)>> {
@@ -517,7 +527,13 @@ impl DeviceHandler {
 
     /// Original private setup (never the newest pushed ref). Blocking I/O.
     fn original_setup(&self, coglet: &str) -> Result<Option<Value>> {
-        if let Some(service) = self.share_service(coglet) {
+        let services = self
+            .inner
+            .services
+            .lock()
+            .map_err(|_| "unavailable".to_owned())?;
+        if let Some(service) = services.get(coglet).cloned() {
+            drop(services);
             return Ok(Some(
                 service
                     .lock()
@@ -534,11 +550,14 @@ impl DeviceHandler {
         let Some(state) = store.state() else {
             return Ok(None);
         };
-        state
+        let setup = state
             .pointer("/runtime/initial_setup")
             .cloned()
             .map(Some)
-            .ok_or_else(|| "unavailable".into())
+            .ok_or_else(|| "unavailable".into());
+        drop(store);
+        drop(services);
+        setup
     }
 
     fn start_adapter(&self, coglet: &str) {
@@ -628,10 +647,12 @@ impl DeviceHandler {
             // accepted-ref presence. Existing installs retain their conflict and
             // original-ID retry semantics. The later SQL boundary pins the same
             // exact signed ref; completion evidence is immutable.
-            if handler
-                .peek_identity(&coglet)
-                .as_ref()
-                .is_err_and(|e| e == "not_installed")
+            let uninstalled = match handler.peek_identity(&coglet) {
+                Ok(_) => false,
+                Err(error) if error == "not_installed" => true,
+                Err(error) => return Err(error),
+            };
+            if uninstalled
                 && !handler
                     .inner
                     .store

@@ -5,8 +5,10 @@ impl DeviceHandler {
     /// Recovery is runtime-owned, independent of a receipt waiter. It retains
     /// original requests and revalidates bytes plus current authority. Failure
     /// leaves queued custody for explicit identical retry/restart reconciliation.
-    pub(super) fn resume_initial_pushes(&self) {
-        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+    pub(super) fn resume_initial_pushes(&self) -> Result<()> {
+        let runtime = tokio::runtime::Handle::try_current()
+            .map_err(|_| "device recovery requires an active Tokio runtime".to_owned())?;
+        {
             let handler = self.clone();
             runtime.spawn(async move {
                 for coglet in handler.inner.config.targets.keys() {
@@ -16,6 +18,7 @@ impl DeviceHandler {
                 }
             });
         }
+        Ok(())
     }
 
     pub(super) async fn finish_initial_pushes(&self, coglet: &str, id: Option<&str>) -> Result<()> {

@@ -27,10 +27,14 @@ evidence.
   effective" window on this device, so these methods never produce `queued`.
   Receipts are immutable and survive restart; an identical retry returns the
   stored receipt without re-executing.
-* `hub.git.push`: the receipt commits with the accepted ref/audit and is
-  `queued`. It stays `queued` for its lifetime: an accepted ref is not boundary
-  activation, and activation is attested by a qualified adapter (ADR-0019), not by
-  this module. Never poll a push receipt expecting `applied` from this device.
+* `hub.git.push`: admission commits a `queued` receipt, retained original request
+  and verified bundle with the accepted ref/audit. For an uninstalled target,
+  the runtime driver performs a fresh validator pass, rechecks current authority
+  and delegation, then atomically commits explicit pre-install quarantine boundary
+  evidence and the ORIGINAL operation's `applied` receipt (ADR-0026). This never
+  executes code or sets `live_commit`. Install requires that exact applied stage.
+  Pushes to installed targets remain queued: installed code activation is owned
+  by the separate step-boundary producer, not this module.
 * `step` of an applied receipt is the last committed step at admission, so
   `receipt.step <= hub.status.step`; no snapshot atomicity is claimed.
 
@@ -41,7 +45,7 @@ in the managed WAL state with the receipt. Push receipts are scoped through the
 accepted-ref audit row (`AcceptedRefStore::push_receipt_for_scope`). Receipts
 written without scope cannot be read through `hub.receipt` (fail closed).
 
-## Qualification and remaining acceptance gate
+## Qualification boundaries
 
 | Requirement | Executed test / boundary |
 | --- | --- |
@@ -53,6 +57,10 @@ written without scope cannot be read through `hub.receipt` (fail closed).
 | Actual daemon SIGKILL with queued push; recovered original-scope lookup | `hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install` |
 | No activation from admission/restart alone | `hub_receipt_queued_never_applied_without_boundary`, `hub_receipt_git_push_queued_not_applied` |
 | Frozen response-schema corpus and non-vacuous malformed request handling | `hub_receipt_request_validation_and_fixtures` |
+| Initial original push completes before install, without live code | `hub_receipt_preinstall_original_push_completes_before_install` |
+| Original push retry/restart retains exactly one audit, intent and boundary | `hub_receipt_original_push_retry_retains_single_boundary` |
+| Missing async recovery executor fails startup closed | `hub_receipt_constructor_refuses_missing_recovery_runtime` |
+| Terminal SQL UPDATE/DELETE/REPLACE refusal and missing-state control | `operation_receipt_storage_is_completion_only_and_terminal_immutable` |
 
 The response-schema fixture suffix `-unknown` means an extra unknown **field**,
 not an unknown operation lookup; the latter is a separate actual-receiver
@@ -60,13 +68,13 @@ not an unknown operation lookup; the latter is a separate actual-receiver
 directly because `Session::request` refuses to send malformed envelopes. Positive
 and original-scope negative receipt requests traverse real iroh sessions.
 
-**Not yet qualified:** a single durable queued operation surviving SIGKILL and
-then transitioning to terminal `applied`. The daemon test above recovers a queued
-push and then installs via a *different* operation; it does not claim that install
-completes that push. Frozen hub 0.1 requires a router ref to become applied only at
-a verified runtime boundary (`spec/hub-protocol.md`, lifecycle ordering and Git
-control plane). PR125's device slice has no queued router-ref application API.
-An accepted-ref record or matching live commit cannot substitute for that boundary
-or attest an applied generation. Do not advance an ADR-0018 deploy saga past a
-queued child using this implementation, and do not treat this test matrix as the
-full card acceptance gate.
+The daemon SIGKILL test uses a test-local second-validator barrier: it kills after
+durable queued admission, reopens still queued, proves install refusal, releases
+verification and requires the SAME push ID applied with exactly one durable
+boundary. A later install is a distinct operation, not evidence completing push.
+
+**Not qualified by this module:** installed-target code activation, generation
+attestation, inbox/actions/cancel receipts or the complete hub conformance suite.
+Never advance an ADR-0018 saga on a queued child. An accepted-ref record or matching
+live commit alone cannot substitute for explicit boundary evidence. Device startup
+requires an active Tokio runtime to retain recovery executor custody.

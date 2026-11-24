@@ -6,6 +6,8 @@
 //! Retained bundles are audit/recovery data, never unchecked activation handles.
 use super::{Authority, AuthorityError, Scope, delegation, valid};
 mod preinstall;
+#[cfg(test)]
+mod retention_tests;
 use crate::{
     git_metadata::{MetadataError, Observation, RefKind, VerifiedRef},
     validator::VerifiedBundle,
@@ -145,8 +147,11 @@ impl AcceptedRefStore {
     /// Bind to the *same* database/lock as authority, including :memory: stores.
     pub fn new(authority: Authority) -> Result<Self> {
         {
-            let state = authority.0.lock().map_err(|_| StoreError::Storage)?;
-            state.db.execute_batch(
+            let mut state = authority.0.lock().map_err(|_| StoreError::Storage)?;
+            let tx = state
+                .db
+                .transaction_with_behavior(TransactionBehavior::Immediate)?;
+            tx.execute_batch(
                 "CREATE TABLE IF NOT EXISTS proto_ref_audit(
                 id INTEGER PRIMARY KEY, hub TEXT NOT NULL, coglet TEXT NOT NULL,
                 ref TEXT NOT NULL, mode TEXT NOT NULL, signed TEXT NOT NULL,
@@ -170,9 +175,10 @@ impl AcceptedRefStore {
                 audit_id INTEGER PRIMARY KEY REFERENCES proto_ref_audit(id),
                 peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
                 completed_at TEXT NOT NULL);
-                CREATE TRIGGER IF NOT EXISTS proto_git_terminal_immutable
+                DROP TRIGGER IF EXISTS proto_git_terminal_immutable;
+                CREATE TRIGGER proto_git_terminal_immutable
                 BEFORE UPDATE ON proto_git_operations
-                WHEN json_extract(OLD.receipt,'$.state') != 'queued'
+                WHEN json_extract(OLD.receipt,'$.state') IS NOT 'queued'
                 BEGIN SELECT RAISE(ABORT,'immutable terminal receipt'); END;
                 CREATE TRIGGER IF NOT EXISTS proto_git_operation_no_delete
                 BEFORE DELETE ON proto_git_operations
@@ -181,12 +187,13 @@ impl AcceptedRefStore {
                 BEFORE INSERT ON proto_git_operations WHEN EXISTS(
                     SELECT 1 FROM proto_git_operations WHERE peer=NEW.peer AND operation_id=NEW.operation_id AND target=NEW.target)
                 BEGIN SELECT RAISE(ABORT,'retained operation'); END;
-                CREATE TRIGGER IF NOT EXISTS proto_git_completion_only
+                DROP TRIGGER IF EXISTS proto_git_completion_only;
+                CREATE TRIGGER proto_git_completion_only
                 BEFORE UPDATE ON proto_git_operations WHEN
                     NEW.peer != OLD.peer OR NEW.operation_id != OLD.operation_id OR NEW.target != OLD.target
                     OR NEW.digest != OLD.digest OR NEW.audit_id != OLD.audit_id
                     OR json_extract(NEW.receipt,'$.operation_id') IS NOT OLD.operation_id
-                    OR json_extract(NEW.receipt,'$.state') NOT IN ('applied','failed','cancelled')
+                    OR COALESCE(json_extract(NEW.receipt,'$.state'),'') NOT IN ('applied','failed','cancelled')
                 BEGIN SELECT RAISE(ABORT,'completion only'); END;
                 CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_update BEFORE UPDATE ON proto_git_intents
                 BEGIN SELECT RAISE(ABORT,'immutable intent'); END;
@@ -203,6 +210,7 @@ impl AcceptedRefStore {
                 WHEN EXISTS(SELECT 1 FROM proto_preinstall_boundaries WHERE audit_id=NEW.audit_id)
                 BEGIN SELECT RAISE(ABORT,'retained boundary'); END;",
             )?;
+            tx.commit()?;
         }
         Ok(Self { authority })
     }

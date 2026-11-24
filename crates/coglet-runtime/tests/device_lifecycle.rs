@@ -1853,6 +1853,104 @@ async fn hub_receipt_preinstall_original_push_completes_before_install() {
     });
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_original_push_retry_retains_single_boundary() {
+    timed!(async {
+        let mut env = Env::new(0x52, Options::receipts()).await.unwrap();
+        let bundle = env.bundle(1, None, &[]);
+        let request = env.request(
+            "hub.git.push",
+            json!({
+                "update":bundle.signed,"size":bundle.bytes.len(),
+                "sha256":hex::encode(Sha256::digest(&bundle.bytes))
+            }),
+        );
+        let first = env
+            .session
+            .push_git(request.clone(), &mut bundle.bytes.as_slice())
+            .await
+            .unwrap();
+        let id = operation_id(&first);
+        let terminal = result_of(&receipt_of(&mut env, &id).await);
+        assert_eq!(terminal["state"], "applied");
+        for restart in [false, true] {
+            if restart {
+                env.restart_handler().await;
+            }
+            let retry = env
+                .session
+                .push_git(request.clone(), &mut bundle.bytes.as_slice())
+                .await
+                .unwrap();
+            assert_eq!(result_of(&retry), terminal);
+            let db = rusqlite::Connection::open(env.root.join("authority.sqlite")).unwrap();
+            for table in [
+                "proto_ref_audit",
+                "proto_git_operations",
+                "proto_git_intents",
+                "proto_preinstall_boundaries",
+            ] {
+                let count: i64 = db
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                    .unwrap();
+                assert_eq!(count, 1, "{table}");
+            }
+            assert_eq!(
+                env.simple("hub.status").await["result"]["live_commit"],
+                Value::Null
+            );
+        }
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_constructor_refuses_missing_recovery_runtime() {
+    timed!(async {
+        let env = Env::new(0x53, Options::receipts()).await.unwrap();
+        let config = env.config.clone();
+        let authority = Authority::open(env.root.join("authority.sqlite")).unwrap();
+        let error = std::thread::spawn(move || {
+            DeviceHandler::new(config, authority, validator_path(), Arc::new(|| Some(T0)))
+                .err()
+                .expect("startup must not silently skip durable recovery")
+        })
+        .join()
+        .unwrap();
+        assert_eq!(error, "device recovery requires an active Tokio runtime");
+    });
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_pending_recovery_selects_current_original_intent() {
+    timed!(async {
+        let mut env = Env::new(0x54, Options::receipts()).await.unwrap();
+        let (installed, _) = pushed_and_installed(&mut env).await;
+        let second = env.bundle(2, Some(&installed.tip), &[("v", b"2")]);
+        let queued_second = env.push(&second).await;
+        let third = env.bundle(3, Some(&second.tip), &[("v", b"3")]);
+        let queued_third = env.push(&third).await;
+        env.restart_handler().await;
+        let store = coglet_proto::authority::accepted_refs::AcceptedRefStore::new(
+            Authority::open(env.root.join("authority.sqlite")).unwrap(),
+        )
+        .unwrap();
+        let pending = store.pending_pushes(env.hub.id(), &env.coglet).unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(
+            pending[0].request["correlation_id"],
+            operation_id(&queued_third)
+        );
+        assert_eq!(pending[0].metadata.signed(), &third.signed);
+        // Neither queued installed-target operation is falsely activated.
+        for original in [&queued_second, &queued_third] {
+            assert_eq!(
+                receipt_of(&mut env, &operation_id(original)).await["result"]["state"],
+                "queued"
+            );
+        }
+    });
+}
+
 // ---- hub.receipt: original-scope operation receipts -------------------------
 
 /// Actual process death with only a durable queued push present. This proves

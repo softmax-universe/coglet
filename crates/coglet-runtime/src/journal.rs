@@ -41,6 +41,16 @@ pub struct DurableStore {
     poisoned: bool,
 }
 
+impl Drop for DurableStore {
+    fn drop(&mut self) {
+        // A concurrently spawned validator may have inherited this open-file
+        // description between fork and exec. Closing only our descriptor leaves
+        // its flock alive in that child; explicitly release retired custody.
+        // Child processes never own or use this WAL descriptor.
+        let _ = self.file.unlock();
+    }
+}
+
 impl DurableStore {
     pub fn open(path: &Path) -> Result<Self> {
         let mut options = OpenOptions::new();

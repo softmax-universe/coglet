@@ -8,8 +8,9 @@
 //!   identity, another ticket, another target, a caller without the original
 //!   method's grant and a never-admitted ID all return the same `not_found`.
 //! * Records are returned verbatim. The device reports no applied generation
-//!   (ADR-0019); `hub.git.push` stays `queued` because an accepted ref is not
-//!   boundary activation, and nothing here promotes it.
+//!   (ADR-0019). Initial pushes complete only through the separate verified
+//!   pre-install boundary driver (ADR-0026); accepted-ref presence alone is not
+//!   completion. Installed-target pushes remain queued in this slice.
 //! * Reading a receipt never executes, retries or mutates an operation.
 use super::*;
 use crate::execution::ReceiptScope;
