@@ -80,7 +80,8 @@ disconnected clears the latch. No wire message, reconnect or ready health does.
   persist; reconnect requires fresh negotiation and a higher grant epoch.
 - At least 24h retention after the later of terminal time and deadline. At most
   4096 retained requests, 64 pending actions, a 64MiB ledger, 128 messages per
-  control queue, 1MiB per wire frame and 60s future action deadlines. Capacity
+  control queue (126 normal/reserved-terminal slots plus 2 kill-notification
+  slots), 1MiB per wire frame and 60s future action deadlines. Capacity
   exhaustion fails closed rather than evicting live receipts. Repeated reads use
   unique correlations (65536 retained per connection). Health is sent every 1s;
   3s inactivity or blocked output disconnects and cancels work.

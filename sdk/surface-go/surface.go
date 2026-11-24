@@ -272,7 +272,9 @@ func (s *Surface) emit(kind string, body any) error {
 	if err != nil {
 		return err
 	}
-	if len(s.queue) >= 128 {
+	// Reserve two slots for kill + stopped health, and one terminal delivery
+	// for every pending admission. A cancellation consumes its reserved slot.
+	if len(s.queue)+s.pending() >= 126 {
 		return errors.New("resource_exhausted: output queue")
 	}
 	s.queue = append(s.queue, queuedFrame{raw, s.generation.Load()})
@@ -581,7 +583,7 @@ func (s *Surface) act(raw []byte, b map[string]any) error {
 		}
 		code = errorCode(e)
 	}
-	if code == "" && (s.pending() >= 64 || len(s.queue) > 124) {
+	if code == "" && (s.pending() >= 64 || len(s.queue)+s.pending()+2 > 126) {
 		code = "resource_exhausted"
 	}
 	if len(s.ledger.data.Actions) >= 4096 {

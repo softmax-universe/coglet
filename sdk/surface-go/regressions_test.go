@@ -2,12 +2,47 @@ package surface
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
 
 	"github.com/softmax-universe/coglet/sdk/surface-go/types"
 )
+
+func TestKillRetainsReceiptsAtReservedCapacity(t *testing.T) {
+	for _, async := range []bool{false, true} {
+		t.Run(fmt.Sprint(async), func(t *testing.T) {
+			h := newHost(t, async)
+			for i := 0; i < 63; i++ {
+				must(t, h.s.Receive(action(t, fmt.Sprintf("%032x", i+1), 1, 10000, args())))
+			}
+			if len(h.s.queue)+h.s.pending() != 126 {
+				t.Fatal("terminal reservation mismatch")
+			}
+			if h.s.health() == nil {
+				t.Fatal("normal frame consumed kill/terminal reserve")
+			}
+			must(t, h.s.Kill("operator"))
+			ms := messages(t, h.s)
+			if len(ms) != 128 || ms[0]["type"] != "kill" || ms[1]["type"] != "health" || body(ms[1])["pending"] != uint64(0) || !h.s.Ready() {
+				t.Fatal("kill lost reserved notifications/receipts", len(ms))
+			}
+			accepts, outcomes := 0, 0
+			for _, m := range ms[2:] {
+				switch m["type"] {
+				case "accept":
+					accepts++
+				case "event":
+					outcomes++
+				}
+			}
+			if accepts != 63 || outcomes != 63 {
+				t.Fatal("admission/terminal deliveries dropped", accepts, outcomes)
+			}
+		})
+	}
+}
 
 func TestInvalidGrantSnapshotIsAtomic(t *testing.T) {
 	h := newHost(t, false)

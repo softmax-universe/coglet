@@ -359,7 +359,7 @@ func TestRetentionAndBoundedQueue(t *testing.T) {
 	if len(h.s.ledger.data.Actions) != 0 {
 		t.Fatal("not pruned")
 	}
-	for i := 0; i < 128; i++ {
+	for i := 0; i < 126; i++ {
 		must(t, h.s.health())
 	}
 	if h.s.health() == nil {
