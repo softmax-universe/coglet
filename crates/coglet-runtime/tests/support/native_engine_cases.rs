@@ -188,6 +188,43 @@ fn socket_real_wasm_trap_discards_staged_emits_and_consumes_once() {
     exercise_native(false, true, "socket-wasm-abort");
 }
 #[test]
+fn real_wamr_journal_reexecutes_two_steps_with_identical_state_hashes() {
+    let code = program(false);
+    let setup = with_wasm(setup(), &code);
+    let mut inputs = setup["inputs"].clone();
+    inputs["coglet"] = setup["manifest"]["id"].clone();
+    inputs["budgets"] = setup["manifest"]["budgets"].clone();
+    inputs["grants"] = json!(["expression.set_expression"]);
+    let engine = || {
+        NativeEngine::new(
+            code.clone(),
+            &setup["manifest"]["budgets"],
+            8_388_608,
+            65_536,
+        )
+        .unwrap()
+    };
+    let mut live = Runtime::from_fixture(&setup).unwrap();
+    let mut expected = Vec::new();
+    for step in 0..2 {
+        inputs["step"] = json!(step);
+        inputs["previous"] = live
+            .records()
+            .last()
+            .map(|r| r["record_hash"].clone())
+            .unwrap_or(Value::Null);
+        let result = live.step(&inputs, &mut engine()).unwrap();
+        assert!(result["journal"]["usage"]["compute"].as_u64().unwrap() > 0);
+        expected.push(result["state_hash"].as_str().unwrap().to_owned());
+    }
+    let replayed = Runtime::from_fixture(&setup)
+        .unwrap()
+        .replay(live.records(), &mut engine())
+        .unwrap();
+    assert_eq!(replayed, expected);
+}
+
+#[test]
 fn native_admission_refuses_mode_memory_wasi_and_preserves_queued_input() {
     let mut s = with_wasm(setup(), &program(false));
     let code = program(false);
