@@ -278,7 +278,8 @@ mod native {
                 expected
             );
         }
-        // Shallow CI checkouts need not have the tag; checker verifies remote ref.
+        // Shallow non-qualification checkouts need not have the tag; the checker
+        // requires the fetched ref and CI uses fetch-depth:0.
         let tag = std::process::Command::new("git")
             .args(["rev-parse", "--verify", "refs/tags/spec-v0"])
             .current_dir(corpus::root())

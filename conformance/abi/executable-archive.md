@@ -38,7 +38,10 @@ and zero failures/ignored/filtered tests. Missing native WAMR or missing results
 fails the checker; default-feature workspace tests alone are not qualification.
 The harness's archive operation remains deliberately nonexecuting. The checker
 separately runs native replay and writes `target/runtime-all-abi/native-replay.xml`.
-It verifies the remote spec-v0 tag as well as pinned frozen file checksums.
+It verifies the fetched spec-v0 tag as well as pinned frozen file checksums.
+CI's unfiltered conformance job fetches tags with `fetch-depth: 0`, runs this
+checker, and uploads both archive and native JUnit reports. No network is needed
+during qualification once build dependencies and the tag are present.
 
 ## Invalid archives are not executed
 

@@ -117,9 +117,11 @@ def main():
     for name in passed:
         ET.SubElement(report, "testcase", name=name)
     ET.ElementTree(report).write(output / "native-replay.xml", encoding="utf-8", xml_declaration=True)
-    tag = subprocess.check_output(["git", "ls-remote", "--refs", "origin", "refs/tags/spec-v0"], cwd=ROOT, text=True).split()
-    if tag != ["c348fdeca3c162bdaeef0f65b4da74f5ecfb59f3", "refs/tags/spec-v0"]:
-        raise RuntimeError("spec-v0 remote tag changed or unavailable")
+    # CI checkout fetch-depth:0 supplies the remote tag without network access
+    # during qualification (also compatible with offline dependency-bundle proofs).
+    tag = subprocess.check_output(["git", "rev-parse", "--verify", "refs/tags/spec-v0"], cwd=ROOT, text=True).strip()
+    if tag != "c348fdeca3c162bdaeef0f65b4da74f5ecfb59f3":
+        raise RuntimeError("spec-v0 tag changed or unavailable")
     print("Executable archive replay: all 32 guest records, 5 named tests, 0 failures, 0 skips; spec-v0 unchanged", flush=True)
 
 

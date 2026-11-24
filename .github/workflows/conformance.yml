@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Include spec-v0 so the ABI checker verifies the freeze ref offline.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -76,6 +78,8 @@ jobs:
         run: cargo test --locked -p coglet-surface-rust -p coglet-mock
       - name: Surface SDK and mock lint
         run: cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
+      - name: Full frozen ABI and executable archive WAMR qualification
+        run: python3 crates/coglet-runtime/tools/check-abi.py
       - name: Every registered implementation and claimed suite
         if: ${{ !cancelled() }}
         run: conformance/run --junit target/conformance-registered.xml
@@ -83,5 +87,7 @@ jobs:
         if: always()
         with:
           name: conformance-junit
-          path: target/conformance-*.xml
+          path: |
+            target/conformance-*.xml
+            target/runtime-all-abi/*.xml
           if-no-files-found: warn
