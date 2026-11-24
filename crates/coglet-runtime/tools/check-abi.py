@@ -8,6 +8,7 @@ Guest-reference exercises the SDK/shared MockEngine, not runtime journaling.
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import shlex
 import subprocess
@@ -23,6 +24,7 @@ PROFILES = {
     "boundary-receipts.json": ("runtime", "target/debug/cogletd --mock-stdio --trace-view state"),
     "heard-archive.json": ("runtime", "target/debug/cogletd --mock-stdio --trace-view state"),
     "provenance.json": ("runtime", "target/debug/cogletd --mock-stdio --trace-view validity"),
+    "executable-archive.json": ("runtime", "target/debug/cogletd --mock-stdio --trace-view state"),
     "reference-guests.json": ("guest-reference", "python3 conformance/engine/adapter.py target/debug/examples/reference_conformance mock"),
 }
 
@@ -93,7 +95,32 @@ def main():
     combined.set("skipped", "0")
     ET.ElementTree(combined).write(output / "all.xml", encoding="utf-8", xml_declaration=True)
     print(f"Full ABI inventory: {len(combined)} passed, 0 failures, 0 skips; {output / 'all.xml'}", flush=True)
-    print("Runtime scripted steps/archive checks + actual WAMR admission + SDK shared native mock. NOT native guest-step, authentication, or independent all-profile replay qualification.", flush=True)
+    print("Archive harness checks are nonexecuting; independent WAMR replay is qualified separately below.", flush=True)
+    frozen = len(combined) - len(json.loads((ROOT / "conformance/abi/executable-archive.json").read_text()))
+    if frozen != 128:
+        raise RuntimeError(f"frozen ABI inventory changed: {frozen} != 128")
+    expected_native = {
+        "executable_archive_inventory_covers_every_source_record",
+        "executable_archive_records_reexecute_on_wamr_with_identical_step_hashes",
+        "executable_archive_corruptions_reject_before_guest_entry",
+        "executable_archive_replay_rejects_guest_program_mismatch",
+        "frozen_archive_corpus_and_spec_v0_remain_unchanged",
+    }
+    native = subprocess.run(["cargo", "test", "--locked", "-p", "coglet-runtime", "--features", "native-engine",
+        "--test", "executable_archive", "--", "--test-threads=1"], cwd=ROOT, text=True, capture_output=True)
+    print(native.stdout, end="", flush=True)
+    print(native.stderr, end="", file=sys.stderr, flush=True)
+    passed = re.findall(r"^test native::([a-z_0-9]+) \.\.\. ok$", native.stdout, re.MULTILINE)
+    if native.returncode or set(passed) != expected_native or len(passed) != 5 or "5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out" not in native.stdout:
+        raise RuntimeError("native replay qualification missing/failed/skipped")
+    report = ET.Element("testsuite", name="executable-archive.native-wamr", tests="5", failures="0", skipped="0")
+    for name in passed:
+        ET.SubElement(report, "testcase", name=name)
+    ET.ElementTree(report).write(output / "native-replay.xml", encoding="utf-8", xml_declaration=True)
+    tag = subprocess.check_output(["git", "ls-remote", "--refs", "origin", "refs/tags/spec-v0"], cwd=ROOT, text=True).split()
+    if tag != ["c348fdeca3c162bdaeef0f65b4da74f5ecfb59f3", "refs/tags/spec-v0"]:
+        raise RuntimeError("spec-v0 remote tag changed or unavailable")
+    print("Executable archive replay: all 32 guest records, 5 named tests, 0 failures, 0 skips; spec-v0 unchanged", flush=True)
 
 
 if __name__ == "__main__":
