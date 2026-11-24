@@ -1,8 +1,8 @@
-# Private native DB substrate — milestone A
+# Private native DB substrate — milestones A and B
 
 This is the native admitted-unit slice of ADR-0013, **not runtime ABI 0.2
 support**. Existing runtime and engine admission reject DB guests. The public
-native API deliberately has no successful commit or schema provisioning method;
+native API deliberately has no schema provisioning method and exposes commit only through the milestone B coordinator;
 all application work rolls back. Successful commits in tests use `cfg(test)`
 helpers, absent from production builds.
 
@@ -57,13 +57,41 @@ These native tests do not establish shared black-box runtime/engine conformance.
 The already-pushed default-off SDK/Factory repository and supplemental compiled
 Wasm probe are retained, not production runtime qualification.
 
-## Remaining serial milestones (not waived)
+## Milestone B: durable full-step coordinator and crash recovery
 
-- B: complete durable prepared step -> transactional DB marker -> exact journal,
-  files, effects and input publication; physical restart/crash recovery, corruption
-  halt and recovery-abort overlay. Only this coordinator may expose successful
-  production commit. Cursor metadata must commit with read markers; dispatcher
-  mutations must advance the same revision under the owner lease.
+`Unit::complete(&Decision, &mut dyn Journal)` is the only production commit path.
+It validates the prepared ABI 0.2 `db-step-record` (closed schema, canonical
+bytes, hash, revision/schema/catalog/owner against the admitted unit), then:
+durably prepares the decision (fsynced file beside the owner DB) -> one SQLite
+commit of application writes, revision, cursors and the host-only
+`_coglet_markers` row -> idempotent exact journal/files/effects/input
+publication -> published flag (opens `dispatch_fence`) -> discard preparation.
+Steps with no DB calls use ordinary ABI commit and are refused here.
+
+`Database::recover(&mut dyn Journal)` takes no guest runner. Marker present:
+roll forward the exact prepared decision. Marker absent: authoritative abort via
+`recovery_abort_record`, the ABI 0.2 `db_recovery_abort` overlay (retains calls,
+events and boundary; drops files/effects; `db_after=db_before`; new record hash),
+published before the preparation is deleted. An unreadable DB or journal is a
+`held:` error, never an inferred abort. A missing preparation with an unpublished
+marker, hash/identity mismatch, torn preparation or duplicate preparations write
+a durable `corruption.halt` and return `corruption:`; admission, recovery and
+dispatch then refuse with `halted:` until an operator repairs the owner. Admission
+and `dispatch_fence` also refuse while a prior decision is unreconciled.
+
+Tests kill real child processes (`process::exit(137)` at each crash point, no
+destructors) and reopen the same SQLite files:
+`restart_rolls_forward_when_marker_present`,
+`restart_aborts_authoritatively_when_marker_absent`,
+`crash_before_prepare_leaves_nothing_to_recover`,
+`crash_during_recovery_publication_is_idempotent`, the corruption halts, and a
+guest-run counter proves recovery never reruns the guest. `txn_rollback_on_failure`
+still passes. The journal is a trait: the real journal, runtime/engine wiring and
+admission are milestone D, so runtime admission stays closed and nothing outside
+this crate can commit yet. Dispatcher mutations will use the crate-private
+`Database::dispatcher_mutation` (same fence, same revision, owner lease).
+
+## Remaining serial milestones (not waived)
 - C: operator-approved forward migrations, digest/owner/code/schema/recovery-plan
   bindings, quiesced WAL-safe backup, isolated verified restore and previous/current
   schema compatibility floor.
