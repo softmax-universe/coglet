@@ -1,11 +1,14 @@
-# ADR-0016: Recorded game observations and motor-only game extensions
+# ADR-0017: Recorded game observations and motor-only game extensions
 
 - Status: Proposed
 - Date: 2026-11-24
 - Authors: Coglet contributors
 - Related task: `t_01a2084a93a874de`
+- Number: 0017. Open PR #78 already uses 0016
+  (`docs/adr/0016-sandbox-world-bindings.md`, opened first). 0011 and 0012
+  stay orchestrator-reserved.
 - Related PR: recorded in the accepting review
-- Supersedes / superseded by: none; extends the trusted extension catalog mechanism, not spec-v0
+- Supersedes / superseded by: none; does not change spec-v0
 
 ## Context
 
@@ -23,13 +26,66 @@ semantics; research has not landed its owner projection. The frozen Mindister
 intent enum excludes research. Neither envelope validation nor renaming research
 as `configure` or `open_panel` authorizes its native effect.
 
+At tag `v0.0.0-rc1` and main `523ab21`, `cogletd` compiles in only
+`spec/capabilities/bindings.json`
+(`crates/coglet-runtime/src/catalog.rs`). Capabilities admission, events,
+reads and action results reject every operation outside that file
+(`surface_authority.rs`, `surface_events.rs`, `surface_reads.rs`,
+`dispatch.rs`). `catalog::uri` hard-codes
+`https://coglet.dev/spec/messages/...` schema URIs, and
+`catalog::resources` hard-codes speech/expression resources. Released rc1
+therefore cannot admit, resource-check or validate `game.*`.
+[bindings.md](../../spec/capabilities/bindings.md) already requires an
+explicitly configured trusted catalog for unknown extension operations and
+forbids a permissive profile-map fallback. That loader is not in the
+released runtime.
+
 ## Decision
 
 Approve the following **product extension design**, conditional on independent
-review and merge of this ADR. Implementation follows in Mindister, with the
-product-neutral Java SDK in Coglet. This document changes no frozen file,
-message discriminator, ABI import, built-in operation or legacy intent enum.
-Merging it approves the design, not production enablement or qualification.
+review and merge of this ADR, and on the coglet runtime deliverable below
+landing before any `game.*` registration. The Mindister adapter and the
+product-neutral Java SDK in Coglet follow that deliverable. They do not
+replace it. This document changes no frozen file, message discriminator, ABI
+import, built-in operation or legacy intent enum. Merging it approves the
+design, not production enablement, qualification or an implementation.
+
+`game.*` must never be added to the frozen
+[bindings.json](../../spec/capabilities/bindings.json). That file is the
+exhaustive v0 built-in speech/expression and ABI LLM catalog.
+
+### Runtime prerequisite: digest-pinned trusted extension catalog
+
+**Deliverable:** `cogletd` trusted extension catalog loader. **Owner:** coglet
+runtime. Ground rule 3 puts this product-neutral piece in coglet. The
+Mindister adapter is not the owner, and this ADR does not implement the
+loader.
+
+The loader reads an explicitly configured, digest-pinned trusted extension
+catalog. It must:
+
+- resolve schema URIs to local trusted bytes, including a URI namespace
+  outside `spec/messages`; no dispatch-time network fetch;
+- enforce operation→entry, direction and resource rules, including
+  `game.control`, `game.overlay` and `game.helper`;
+- select the per-`operation` rule inside `game.observation` (a valid sibling
+  operation shape is not a valid binding);
+- validate action results, reads and events in the runtime as well as on the
+  surface, using the persisted operation rather than an untrusted claimed name;
+- honour grant-intersected unicast for the single-owner binding before
+  materializing a private event, read or result.
+
+An unpinned catalog, or a digest that does not match the configured bytes,
+never gains authority. Released `v0.0.0-rc1` cogletd remains a valid host for
+the frozen built-in catalog and the frozen surface protocol. It is not a
+sufficient host for `game.*` negotiation, admission or validation. Do not
+work around that wall by editing `bindings.json` or by skipping a runtime
+check that the surface already performs.
+
+Named acceptance test, not a claim that it exists or passes:
+`CogletdTrustedExtensionCatalogTest`. It loads a digest-pinned catalog,
+refuses an unpinned digest and a mismatched digest, and covers each rule
+above. A green built-in catalog suite does not satisfy it.
 
 ### Closed, pinned catalog
 
@@ -124,6 +180,27 @@ If the motor does not support a selected extension, it remains unavailable.
 Changing a frozen legacy schema would require its own approved versioned recut;
 this ADR does not authorize editing it.
 
+Resource requirements, from the mapping's shared authority rules (Mindister
+`a7b3212` `docs/components/game-devices-from-companion.md`):
+
+- Presentation actions `game.highlight` and `game.clear_highlights` need their
+  operation grant plus an owner-scoped exclusive `game.overlay` resource. They
+  have no world effect and are admitted locally, without the Hub world motor.
+- Helper actions `game.helper_spawn` and `game.helper_stop` need their
+  operation grant plus `game.control` and `game.helper`.
+- Other world/control actions, including `game.research`, need their operation
+  grant plus exclusive `game.control`.
+
+These are extension-catalog resources, not pre-existing grants, and must never
+be added to frozen `bindings.json`.
+
+The motor→native carrier for `game.research` is a typed lowering, not a
+generic command hook. After the all-ancestor check, and in the same fence as
+the other atomic native checks, lower the call to the pinned coworld fixed
+command row `["researchNode", TechTree.all index]` (coworld `f338647`
+`CAMPAIGN_COMMANDS.md`). That row already exists on the native command-row
+channel and has no frozen enum. The guest does not supply the command name.
+
 `game.research` arguments are the closed `{content}` record: exact unambiguous
 pinned-engine content name, nonempty valid UTF-8, at most 200 encoded bytes.
 A successful result is the closed record
@@ -165,6 +242,19 @@ Semantic `game.recorded` telemetry never mints `action.outcome`, and its loss
 cannot evict authoritative terminal receipts. Use the existing recorder library,
 its selected private fields and digest-only provenance, not a second recorder.
 
+The `game.recorded` guest-observation payload is the mapping's selected record
+(same document, "Journal, recorder and trace export"):
+
+```
+{session, world_generation, record_seq, actor, kind, details,
+ request_id?, action_id?, correlation_id?, relay_id?, native_tick?,
+ source_refs, truncated}
+```
+
+`actor` is `human`, `agent`, `world` or `unknown`. `native_tick` is retained
+separately from surface logical time. This payload is semantic telemetry, not
+proof that an act happened.
+
 Native semantic listeners, inventory/shared-core separate pools, campaign
 eligibility, objective predicates/counters/timers/waves, block availability,
 logistics update hooks and helper ownership need explicit native integration
@@ -182,17 +272,26 @@ cross into guest observations. The selected 100-row page, per-device scan bounds
   frozen-boundary changes and bypass of journals, identity or grant semantics.
 - Adding research to `configure`/`open_panel` or direct local native dispatch:
   rejected; hides authority and bypasses motor fencing and native spend receipts.
+- Adding `game.*` to frozen `bindings.json`, or treating released rc1 `cogletd`
+  as a sufficient game host: rejected. That file is the exhaustive v0 built-in
+  catalog, and rc1 admits only that catalog.
+- A generic native-command hook in place of the pinned `researchNode` row:
+  rejected; it would let a guest select an unreviewed engine command.
 - Advertising fixture-backed devices as native production capabilities: rejected;
   fixture conformance is not evidence of native producers or owner aggregation.
-- Waiting for all M1 work before any adapter work: unnecessary. Build against
-  merged main and released `v0.0.0-rc1` cogletd. If a specific final proof needs
+- Waiting for all M1 work before any adapter work: unnecessary for frozen
+  surface transport and the Java SDK shape. If a specific final proof needs
   M1's proven path, identify and wait only for that proof; do not waive it.
+  Do not treat released rc1 as sufficient for `game.*`.
 
 ## Consequences
 
-This adds no built-in game capability or default grant. Existing frozen peers
-remain unchanged; deployment explicitly opts into trusted game/1 schemas and
-single-owner binding. Device groups can qualify incrementally. Private per-owner
+This adds no built-in game capability or default grant. `game.*` must never be
+added to frozen `bindings.json`. Existing frozen peers, including released rc1
+`cogletd`, remain unchanged and cannot host game registration until the coglet
+runtime loader lands. Deployment then explicitly opts into a digest-pinned
+game/1 catalog and the single-owner binding. Device groups can qualify
+incrementally. Private per-owner
 links cost extra stores/connections, but avoid an unversioned recipient-field
 change. Approval does not authorize debug, hot reload, legacy compatibility or
 native execution without the ordinary Hub motor. Rollback disables game catalog
@@ -203,6 +302,15 @@ registration and fences active work; it cannot undo an already-paid research eff
 The implementation must publish and run these named tests (names are the
 acceptance contract, not a claim they exist or pass yet):
 
+- `CogletdTrustedExtensionCatalogTest`: coglet-runtime acceptance test for the
+  loader above. Load an explicitly configured digest-pinned catalog with local
+  schema bytes and a URI namespace outside `spec/messages`. Prove
+  operation→entry, direction and resource rules for `game.control`,
+  `game.overlay` and `game.helper`; per-`operation` selection inside
+  `game.observation`; runtime validation of results, reads and events; and
+  grant-intersected unicast that honours the single-owner binding. Refuse an
+  unpinned digest and a mismatched digest. Prove `game.*` is absent from frozen
+  `bindings.json` and that the built-in catalog path still rejects it.
 - `GameObservationContractTest`: exact selected args/value schemas, unknown fields,
   sibling-shape rejection, complete payload-byte cap, unavailable/empty continuation,
   bounded query count and no implicit read-reply conversion.
