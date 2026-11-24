@@ -63,6 +63,10 @@ public struct FaceCompletion {
     private var streamPosition: UInt64 = 0
     private var idleSince: UInt64 = 0
     private var graph: UInt64?
+    private var captureGeneration = UUID()
+    private var recognitionInput: (any FaceRecognitionInput)?
+    private var captureOpen = false
+    private var captureNormalizer = SpeechObservations()
     public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer,
                 sttRoute: String = "local", ttsRoute: String = "local") {
         self.audio = audio; self.synthesis = synthesis; self.renderer = renderer
@@ -81,6 +85,31 @@ public struct FaceCompletion {
     func startDuplex() throws {
         guard owner != nil else { throw NativeSurfaceError("permission_denied") }
         try audio.start(); graph = audio.generation
+    }
+    public func beginCapture(recognition: any FaceRecognition, utterance: String, positionMS: UInt64) throws {
+        guard owner != nil else { throw NativeSurfaceError("permission_denied") }
+        captureGeneration = UUID(); let custody = captureGeneration
+        let old = recognitionInput; recognitionInput = nil; captureOpen = false; old?.cancel()
+        captureNormalizer = SpeechObservations()
+        try captureNormalizer.start(utterance: utterance)
+        try speechStart(utterance: utterance, positionMS: positionMS)
+        let emitter = emit // immutable owner/session closure, not a future binding
+        captureOpen = true
+        let input = try recognition.start(utterance: utterance) { [weak self] update in
+            guard let self, self.captureGeneration == custody, self.owner != nil else { return }
+            guard try self.captureNormalizer.transcript(utterance: utterance, revision: update.revision,
+                text: update.text, final: update.final) else { return }
+            var fields: [(String, CBORValue)] = [("utterance", .text(utterance)),
+                ("revision", .unsigned(update.revision)), ("text", .text(update.text))]
+            if update.final { fields.append(("position_ms", .unsigned(update.positionMS))); self.captureOpen = false }
+            try emitter?(update.final ? "speech.end" : "speech.partial", .record(fields))
+        }
+        if captureGeneration == custody { recognitionInput = input } else { input.cancel() }
+    }
+    public func finishCapture() { captureOpen = false; recognitionInput?.finish() }
+    public func pollCapture() throws {
+        let samples = audio.readCapture()
+        if captureOpen, !samples.isEmpty { try recognitionInput?.append(samples) }
     }
     public func takeCompletions() -> [FaceCompletion] {
         let result = completions; completions = []; return result
@@ -167,9 +196,12 @@ public struct FaceCompletion {
         if stream != nil, !inputClosed, now >= idleSince, now - idleSince >= 60_000_000 {
             failStream(code: "cancelled")
         }
+        if let graph, (!audio.isRunning || audio.captureFailed || graph != audio.generation) {
+            stop(owner: nil)
+            throw NativeSurfaceError("unavailable")
+        }
         guard !items.isEmpty else { return }
         if items.contains(where: { $0.deadline <= now }) { failStream(code: "deadline_exceeded"); return }
-        if let graph, (!audio.isRunning || audio.captureFailed || graph != audio.generation) { failStream(code: "unavailable"); return }
         guard let data = items[0].audio else { return }
         if items[0].base == nil {
             guard !data.samples.isEmpty, data.samples.count <= 24_000 * 30,
@@ -272,7 +304,10 @@ public struct FaceCompletion {
     public func stop(owner: String?) {
         guard owner == nil || owner == self.owner else { return }
         failStream(code: "cancelled")
+        captureGeneration = UUID(); captureOpen = false
+        let input = recognitionInput; recognitionInput = nil
         self.owner = nil; emit = nil
+        input?.cancel()
         nextChunk = 0; inputClosed = false; history = SpeechObservations(); graph = nil
         audio.stop(); renderer.reset()
     }

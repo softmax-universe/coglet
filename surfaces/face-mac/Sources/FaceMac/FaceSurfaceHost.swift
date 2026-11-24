@@ -57,13 +57,29 @@ import CogletTypes
             try backend.startDuplex()
         }
     }
+    /// Hold-to-talk / native VAD entrypoint. The route implementation is supplied
+    /// by trusted product configuration, never by a coglet action.
+    @discardableResult public func beginCapture(recognition: any FaceRecognition, positionMS: UInt64) throws -> String {
+        guard token != nil else { throw NativeSurfaceError("permission_denied") }
+        let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        try guarded {
+            try session.tick()
+            try backend.beginCapture(recognition: recognition, utterance: utterance, positionMS: positionMS)
+            try deliverCompletions()
+        }
+        return utterance
+    }
+    public func finishCapture() { backend.finishCapture() }
     public func installGrants(_ replacement: [EffectiveSurfaceGrant]) throws {
         try guarded { try session.installGrants(replacement); grants = replacement; token = nil }
     }
     /// Native timer order matters: expire grants/actions BEFORE any new audio or
     /// completion is released. Session.complete independently resamples deadlines.
     public func pump() throws {
-        try guarded { try session.tick(); try backend.tick(now: clock()); try deliverCompletions() }
+        try guarded {
+            try session.tick(); try backend.tick(now: clock())
+            try backend.pollCapture(); try deliverCompletions()
+        }
     }
     private func deliverCompletions() throws {
         for completion in backend.takeCompletions() {

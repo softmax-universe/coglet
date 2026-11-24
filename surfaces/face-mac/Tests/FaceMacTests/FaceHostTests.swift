@@ -13,6 +13,41 @@ private final class HostLedger: SurfaceLedgerStore {
 final class FaceHostTests: XCTestCase {
     private static let owner = "coglet:" + String(repeating: "a", count: 64)
     private static let identity = "surface:" + String(repeating: "b", count: 64)
+    func testCaptureGraphFailureDisconnectsEvenWithNoPlaybackItems() async throws {
+        try await MainActor.run {
+            let io = TestDuplex()
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try Self.negotiate(host); try host.activateDuplex(localConsent: true)
+            io.captureFailed = true
+            XCTAssertThrowsError(try host.pump())
+            XCTAssertFalse(io.isRunning)
+            XCTAssertTrue(host.drain().isEmpty)
+            try host.close()
+        }
+    }
+    func testHostCapturePublishesWireFinalAndRevocationFencesLateTranscript() async throws {
+        try await MainActor.run {
+            let clock = HostClock(), io = TestDuplex(), recognition = TestRecognition()
+            let backend = FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in })
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(), backend: backend,
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { clock.now })
+            try Self.negotiate(host)
+            XCTAssertThrowsError(try host.beginCapture(recognition: recognition, positionMS: 0))
+            try host.activateDuplex(localConsent: true)
+            _ = try host.beginCapture(recognition: recognition, positionMS: 0)
+            try recognition.callbacks[0](.init(revision: 1, text: "hello", final: true, positionMS: 100))
+            let events = try host.drain().map { try SurfaceWire.decode($0, from: .surface) }
+            XCTAssertEqual(events.map { $0["body"]?["kind"] }, [.text("speech.start"), .text("speech.end")])
+            _ = try host.beginCapture(recognition: recognition, positionMS: 200)
+            try host.installGrants([]); _ = host.drain()
+            try recognition.callbacks[1](.init(revision: 1, text: "private late", final: true, positionMS: 300))
+            XCTAssertTrue(host.drain().isEmpty)
+            XCTAssertTrue(recognition.inputs[1].cancelled)
+            try host.close()
+        }
+    }
     func testRestartRetainsAdmittedStreamTombstoneWithoutReplayingAudio() async throws {
         try await MainActor.run {
             let clock = HostClock(), store = HostLedger(), io = TestDuplex(), tts = TestSynthesis()
