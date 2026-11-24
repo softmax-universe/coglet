@@ -1,6 +1,11 @@
 //! Borrowed ABI 0.2 import execution. This is not daemon admission: the service
 //! must still coordinate the full durable decision through `Unit::complete`.
 //! No DB commit or external dispatch is possible through this adapter.
+//!
+//! The durable path lives in `RuntimeService::run_next_database` and
+//! `RuntimeService::recover_database` (re-exported below): both publish through
+//! one idempotent WAL `Journal` collaborator, so live completion and no-guest
+//! recovery cannot diverge.
 use crate::{Result, StepHost, digest, profile_value, validate};
 use coglet_db::{Admission, CallResult, Catalog, Database, Pins, Unit};
 use coglet_engine::{
@@ -9,6 +14,8 @@ use coglet_engine::{
 use coglet_types::Value as V;
 use serde_json::Value;
 use std::cell::RefCell;
+
+pub use crate::execution::database_service::{DatabaseStep, JournalGate, Publication};
 
 /// Authenticated scheduler configuration, never guest import arguments.
 pub struct Deployment<'a> {
@@ -95,6 +102,7 @@ pub struct DatabaseHost<'h, 'db> {
     unit: &'h mut Unit<'db>,
     ordinary: &'h mut StepHost,
     calls: Vec<V>,
+    poisoned_return: bool,
 }
 impl<'h, 'db> DatabaseHost<'h, 'db> {
     pub fn new(unit: &'h mut Unit<'db>, ordinary: &'h mut StepHost) -> Self {
@@ -102,10 +110,17 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
             unit,
             ordinary,
             calls: vec![],
+            poisoned_return: false,
         }
     }
     pub fn calls(&self) -> &[V] {
         &self.calls
+    }
+    /// True when the guest returned success while the unit was poisoned: the
+    /// spec's `guest_return`/`conflict` abort, observed explicitly (never
+    /// inferred from an error string).
+    pub fn poisoned_return(&self) -> bool {
+        self.poisoned_return
     }
     /// A guest returning zero cannot turn a poisoned DB unit into success.
     /// Rollback also happens immediately on ordinary ABI abort, not at Drop.
@@ -114,6 +129,7 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
     pub fn execute(&mut self, instance: impl Instance, input: StepInput) -> StepOutcome {
         let mut outcome = instance.handle(input, self);
         if outcome.result.is_ok() && self.unit.is_poisoned() {
+            self.poisoned_return = true;
             outcome.result = Err(Error::Trap("database unit conflict".into()));
         }
         if outcome.result.is_err() {
