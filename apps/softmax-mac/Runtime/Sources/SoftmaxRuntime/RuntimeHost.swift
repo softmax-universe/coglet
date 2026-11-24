@@ -16,7 +16,11 @@ public struct RuntimeAction: Sendable, Equatable {
     public let text: String?
     public let expression: String?
 }
-private struct HostFailure: Error, CustomStringConvertible {
+private extension CBORValue {
+    var hostText: String? { if case .text(let value) = self { value } else { nil } }
+}
+
+private struct HostFailure: Swift.Error, CustomStringConvertible {
     let description: String
     init(_ description: String) { self.description = description }
 }
@@ -27,9 +31,9 @@ private final class PendingFaceSink: SurfaceNativeBackend {
     var actions: [RuntimeAction] = []
     func preflight(action: CBORValue, now: UInt64) throws {}
     func begin(action: CBORValue, epoch: UInt64, now: UInt64) throws -> NativeSurfaceResult? {
-        actions.append(RuntimeAction(capability: action["capability"]!.textValue!,
-            text: action["args"]?["text"]?.textValue,
-            expression: action["args"]?["expression"]?.textValue))
+        actions.append(RuntimeAction(capability: action["capability"]!.hostText!,
+            text: action["args"]?["text"]?.hostText,
+            expression: action["args"]?["expression"]?.hostText))
         return .failed(NativeSurfaceError("unavailable"))
     }
     func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
@@ -145,8 +149,8 @@ private actor RuntimeExecutor {
         guard generation == expected, let surface = session else { return [] }
         do {
             try pump()
-            // Never auto-renew authority: local grants are finite. Operator Restart
-            // refreshes the lease. No policy/permission expansion is inferred here.
+            // No in-session renewal: local grants are finite. A healthy start or
+            // explicit Restart issues the configured lease; neither expands policy.
             try surface.tick(); try pump()
             let result = sink.actions; sink.actions = []; return result
         } catch { cleanup(); log("runtime fault; restart required"); throw error }
@@ -176,7 +180,8 @@ private actor RuntimeExecutor {
     }
     #if COGLET_RUNTIME_TEST_HOOKS
     func injectPanic() throws {
-        try check(coglet_runtime_test_panic(), "injected panic")
+        do { try check(coglet_runtime_test_panic(), "injected panic") }
+        catch { cleanup(); log("caught injected runtime panic"); throw error }
     }
     #endif
 }
@@ -245,7 +250,7 @@ private actor RuntimeExecutor {
     private func deliver(_ received: [RuntimeAction]) {
         for action in received { actions.append(action); if actions.count > 128 { actions.removeFirst() }; onAction?(action) }
     }
-    private func fail(_ error: Error) {
+    private func fail(_ error: any Swift.Error) {
         state = .error; errorMessage = String(describing: error)
         coglets = coglets.map { .init(id: $0.id, version: $0.version, status: .error) }
         polling?.cancel(); polling = nil

@@ -59,7 +59,9 @@ A new surface ledger is provisioned only by the explicit installer; app startup
 never creates one from missing history. Ledger loss or
 unclean recovery fails closed. **Restart runtime** is the explicit local operator
 reconciliation/reset, then new negotiation and a higher grants epoch. Grants last
-24 hours and are not automatically renewed; Restart is required after expiry.
+24 hours per healthy launch or explicit Restart, with no in-session renewal;
+Restart is required after expiry. A killed/unclean ledger still refuses ordinary
+launch: only explicit local Restart can reconcile it.
 
 Push-to-talk captures locally and requests speech-recognition permission when an
 utterance is first submitted. Recognition requires on-device support and never
