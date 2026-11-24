@@ -46,7 +46,9 @@ def main():
         status = 1
     if status:
         print('Maven closure unavailable offline; run dependency preparation to populate the mirror/cache.', flush=True)
-    elif 'GITHUB_ENV' in os.environ:
+    elif not args.prepare and 'GITHUB_ENV' in os.environ:
+        # Preparation must also discover dynamically loaded test providers before
+        # capture (go-offline alone does not include Surefire's JUnit provider).
         with open(os.environ['GITHUB_ENV'], 'a') as stream:
             stream.write('MAVEN_ARGS=--offline\n')
     return status

@@ -38,6 +38,19 @@ class MavenResolutionTests(unittest.TestCase):
             self.assertNotIn('--offline', run.call_args_list[1].args[0])
             self.assertIn('--offline', run.call_args_list[2].args[0])
             self.assertEqual([call.kwargs['timeout'] for call in run.call_args_list], [30, 125, 15])
+    def test_prepare_does_not_force_later_test_commands_offline_before_capture(self):
+        import os
+        import tempfile
+        module = self.load()
+        for prepare in [False, True]:
+            with self.subTest(prepare=prepare), tempfile.TemporaryDirectory() as directory:
+                envfile = Path(directory) / 'env'
+                with patch.object(module, 'resolve', return_value=0), patch.object(__import__('sys'), 'argv', ['resolve_maven.py'] + (['--prepare'] if prepare else [])), patch.dict(os.environ, {'GITHUB_ENV': str(envfile)}):
+                    self.assertEqual(module.main(), 0)
+                self.assertEqual(envfile.exists(), not prepare)
+                if not prepare:
+                    self.assertEqual(envfile.read_text(), 'MAVEN_ARGS=--offline\n')
+
     def test_timeout_is_failure_without_online_fallback_in_normal_mode(self):
         module = self.load()
         with patch.object(module.subprocess, 'run', side_effect=subprocess.TimeoutExpired('mvn', 165)) as run:
