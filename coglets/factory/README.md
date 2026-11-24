@@ -3,8 +3,8 @@
 ABI 0.2 is explicitly opted in. Frozen ABI 0.1 loaders still reject
 `coglet_v0.db`. The borrowed runtime service path now executes DB steps, publishes
 full-state decisions through the WAL, and replays recorded DB results offline.
-**Milestone D is not yet qualified or landed:** the shared wire-suite/required-CI
-matrix and final independent exact-head review remain gates. No live deployment,
+**Milestone D is not yet qualified or landed:** hosted exact-head required CI,
+remaining archive/admission boundaries and final independent review remain gates. No live deployment,
 production operator-approval adapter or external dispatcher is certified here.
 
 ## Repository and schema
@@ -53,8 +53,12 @@ The build is cached per test binary in `target/factory-unknown`.
 `database_service` separately exercises real/mock marker-present/absent recovery
 without guest execution, inaccessible-DB holds, exact WAL publication and
 recorded-result replay with missing/extra/changed-call and poison controls.
-Those checks are not yet a claim that the frozen shared wire suite or complete
-archive/backup matrix passes through both adapters in required CI.
+Both adapters now also exercise WAL-safe backup, isolated restore, missing
+reference refusal and actual recorded-result guest replay. Exact Factory records
+roundtrip through 0.2 archives. The full eight-case frozen wire corpus passes
+locally on both adapters; see the detailed
+[requirement matrix](../../crates/coglet-runtime/DATABASE_QUALIFICATION.md).
+This is not a hosted exact-head CI or final milestone acceptance claim.
 
 ## Supplemental guest transport checks
 
@@ -68,11 +72,16 @@ transport**. That path remains supplemental: it does not qualify production
 WASI admission, authorization, recovery or dispatch. The runtime test above
 instead uses a no-WASI guest without widening any engine import allowlist.
 
+The script additionally invokes `crates/coglet-runtime/tools/check-database.py`:
+real/mock native runtime, DB recovery/backup and all frozen wire cases. The
+existing required Rust job already invokes this owned script. Its historical
+workflow step label still says supplemental; no workflow file was edited here.
+
 ## Remaining milestone D gates
 
-- Run all frozen shared DB timelines through both actual engine-seam adapters,
-  including both recovery cases; qualify recovery and verified-backup controls.
-- Invoke those checks, offline replay and Factory execution in required CI.
+- Verify the original seven named phase-1 properties have actual real/mock coverage,
+  separately from the eight frozen wire timeline cases.
+- Run the wired qualification checks on the eventual PR's exact head in hosted CI.
 - Finish the explicit ABI 0.2 archive/admission boundaries without weakening 0.1.
 - Obtain independent exact-head approval, green required CI and merge the one D
   PR. No ADR-0013 gate is waived. External dispatch remains Factory Phase 2.
