@@ -24,7 +24,7 @@ import FaceMac
     func stop() -> [PCMFrame] { [] }
 }
 @MainActor final class RuntimeNativeSynthesis: LocalSpeechSynthesis {
-    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Error>) -> Void) -> (@MainActor () -> Void) {
+    func synthesize(_ text: String, completion: @escaping @MainActor (Result<[PCMFrame], Swift.Error>) -> Void) -> (@MainActor () -> Void) {
         completion(.success([PCMFrame(samples: [0.1, -0.1], sampleRate: 16000, timestamp: 0)])); return {}
     }
 }
