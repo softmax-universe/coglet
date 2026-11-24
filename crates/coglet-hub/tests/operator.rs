@@ -191,6 +191,48 @@ fn operator_receipt_audit_atomicity() {
 }
 
 #[test]
+fn operator_capacity_and_admin_overflow_refuse_before_admission() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("router.db");
+    let mut store = Store::open(&path).unwrap();
+    let sql = rusqlite::Connection::open(&path).unwrap();
+    sql.execute(
+        "UPDATE operator_sequence SET value=?1",
+        [u64::MAX.to_string()],
+    )
+    .unwrap();
+    let req = request(&"ee".repeat(16), 10);
+    assert!(matches!(
+        store.operator_admit(peer(7), &req),
+        Err(coglet_hub::Error::Full)
+    ));
+    assert_eq!(
+        sql.query_row("SELECT count(*) FROM audit", [], |r| r.get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    sql.execute(
+        "UPDATE operator_sequence SET value=?1",
+        [(u64::MAX - 1).to_string()],
+    )
+    .unwrap();
+    let original = store.operator_admit(peer(7), &req).unwrap();
+    assert!(matches!(
+        store.operator_admit(peer(7), &request(&"ff".repeat(16), 10)),
+        Err(coglet_hub::Error::Full)
+    ));
+    assert_eq!(store.operator_admit(peer(7), &req).unwrap(), original);
+    sql.execute("UPDATE operator_sequence SET value='0'", [])
+        .unwrap();
+    sql.execute_batch("WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<4095) INSERT INTO operator_operations SELECT 99, CAST(x AS TEXT), X'01', 'fixture', '{}' FROM n;").unwrap();
+    assert!(matches!(
+        store.operator_admit(peer(7), &request(&"ff".repeat(16), 10)),
+        Err(coglet_hub::Error::Full)
+    ));
+    assert_eq!(store.operator_admit(peer(7), &req).unwrap(), original);
+}
+
+#[test]
 fn operator_idempotency_conflict() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("router.db");

@@ -1,4 +1,6 @@
 //! Trusted-local administration only; never registered as a hub wire method.
+#[cfg(unix)]
+pub mod socket;
 use crate::{Error, Result, Store, audit};
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use serde_json::{Value, json};
@@ -302,6 +304,28 @@ impl Store {
             } else {
                 Err(Error::Conflict(0))
             };
+        }
+        // Permanent records are never evicted. Reserve enough admin sequence
+        // space for every queued operation before admitting another effect.
+        let (count, bytes, pending): (u32, u32, u32) = tx.query_row(
+            "SELECT count(*),coalesce(sum(length(intent)+length(response)),0),coalesce(sum(CASE WHEN json_extract(response,'$.receipt.state')='queued' THEN 1 ELSE 0 END),0) FROM operator_operations",
+            [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+        let sequence: String = tx.query_row(
+            "SELECT value FROM operator_sequence WHERE singleton=1",
+            [],
+            |r| r.get(0),
+        )?;
+        if count >= 4096
+            || u64::from(bytes)
+                .saturating_add(intent.len() as u64)
+                .saturating_add(1024)
+                > 64 * 1024 * 1024
+            || crate::number(sequence)?
+                .checked_add(u64::from(pending))
+                .and_then(|v| v.checked_add(1))
+                .is_none()
+        {
+            return Err(Error::Full);
         }
         let digest = hex::encode(Sha256::digest(&intent));
         let response = json!({"version":"local-1","operation_id":id,"op":request.0["op"],

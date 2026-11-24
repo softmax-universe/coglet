@@ -593,6 +593,7 @@ dependencies = [
  "coglet-types",
  "hex",
  "iroh",
+ "libc",
  "rusqlite",
  "serde",
  "serde_json",
