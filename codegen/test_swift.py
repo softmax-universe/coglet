@@ -59,7 +59,7 @@ class SwiftEmitterTests(unittest.TestCase):
         source = generate_swift(parse('record = {value: tstr}\nchoice = tstr / bool'))
         self.assertNotIn('Equatable', source)
 
-    @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
+    @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression needs swiftc (CI: swift-codegen)')
     def test_expanded_ir_compiles_and_enforces_constraints(self):
         text = {'op': 'primitive', 'name': 'tstr'}
         boolean = {'op': 'primitive', 'name': 'bool'}
@@ -132,7 +132,7 @@ class SwiftEmitterTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('expanded IR passed', result.stdout)
 
-    @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression runs in macOS CI')
+    @unittest.skipUnless(shutil.which('swiftc'), 'Swift compile regression needs swiftc (CI: swift-codegen)')
     def test_keywords_wire_mapping_and_inline_types_compile_and_run(self):
         cddl = '''thing = {
           class: tstr, switch: tstr, let: tstr, var: tstr, protocol: tstr,

@@ -1,8 +1,12 @@
 name: swift
+# macOS runners are scarce (5 concurrent), so this runs only when something it
+# tests changes. The Linux swift-codegen job in conformance.yml covers every PR.
 on:
   push:
     branches: [main]
+    paths: &swift_paths ['sdk/surface-swift/**', 'surfaces/face-mac/**', 'codegen/**', 'spec/**', 'conformance/**', '.github/workflows/swift.yml']
   pull_request:
+    paths: *swift_paths
 permissions:
   contents: read
 jobs:
