@@ -38,6 +38,10 @@ wasm-encoder = { version = "0.245", features = ["wasmparser"] }
 coglet-guest-rust = { path = "../../sdk/guest-rust", features = ["database"] }
 
 [[example]]
+name = "database_adapter"
+required-features = ["native-engine"]
+
+[[example]]
 name = "qualify_apple_guest"
 required-features = ["native-engine"]
 

@@ -21,6 +21,8 @@ use std::{
     },
 };
 
+include!("support/database_backup.rs");
+
 const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 type Plan = Vec<Vec<(&'static str, Vec<u8>)>>;
 

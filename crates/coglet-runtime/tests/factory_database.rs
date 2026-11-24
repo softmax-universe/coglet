@@ -527,6 +527,10 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     assert_eq!(third["journal"]["status"], "committed");
     assert_eq!(fx.object("G1"), ("done".into(), 3, 22));
     let frames = fx.journal(&service);
+    let trace_id = fx.setup["inputs"]["trace_id"].clone();
+    let archive = service.export_trace(&trace_id, 23).unwrap();
+    let imported = coglet_runtime::Runtime::import_trace(&archive).unwrap();
+    assert_eq!(imported.export_trace(&trace_id).unwrap(), archive);
     drop((service, db));
 
     // Offline replay from recorded results alone: no database file exists.
