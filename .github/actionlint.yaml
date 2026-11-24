@@ -1,0 +1,4 @@
+self-hosted-runner:
+  # coglet Mac minis (daveey-mini-0, daveey-mini-1), registered to this repo
+  labels:
+    - coglet-mac
