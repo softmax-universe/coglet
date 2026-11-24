@@ -1,5 +1,7 @@
 use coglet_db::{Database, OutboxState};
-use coglet_factory_host::{FactoryHost, MockAdapter, MockKanbanServer, Outcome, WorkerReport};
+use coglet_factory_host::{
+    FactoryHost, HermesAdapter, MockAdapter, MockKanbanServer, Outcome, WorkerReport,
+};
 use coglet_types::Value;
 
 const OWNER: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -305,4 +307,128 @@ fn http_kanban_adapter_exercises_public_api() {
             .unwrap()
     };
     assert_eq!(cancelled.kind, "task.cancelled");
+}
+
+fn spec() -> coglet_factory_host::TaskSpec {
+    coglet_factory_host::TaskSpec {
+        idempotency_key: KEY.into(),
+        kind: "factory.dispatch".into(),
+        payload_cbor_hex: hex_profile(&[("task_id", TASK)]),
+        correlation_id: TASK.into(),
+        task_id: TASK.into(),
+    }
+}
+
+#[test]
+fn crash_after_binding_is_reconciled() {
+    let (root, mut db) = seed();
+    assert_eq!(db.claim_pending_outbox(1).unwrap().len(), 1);
+    db.put_binding(KEY, &format!("k{KEY}"), TASK).unwrap();
+    drop(db);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    let recovered = host
+        .dispatcher()
+        .recover_and_dispatch(&mut db, 100, 8)
+        .unwrap();
+    assert_eq!(recovered.claimed, 1);
+    assert_eq!(db.get_work_queue(TASK).unwrap().unwrap().state, "leased");
+    assert_eq!(db.get_outbox(KEY).unwrap().unwrap().state, "dispatching");
+    assert_eq!(host.dispatcher().adapter.claims.len(), 1);
+}
+
+#[test]
+fn crash_after_remote_claim_keeps_token_without_reclaim() {
+    let (root, mut db) = seed();
+    let rows = db.claim_pending_outbox(1).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    let remote = host.dispatcher().adapter.create(&spec()).unwrap();
+    db.put_binding(KEY, &remote.remote_id, TASK).unwrap();
+    let lease = host
+        .dispatcher()
+        .adapter
+        .claim(&remote.remote_id, "factory-host", 160_000, rows[0].attempt)
+        .unwrap();
+    db.set_binding_phase(KEY, "claimed", &lease.token).unwrap();
+    let token = lease.token.clone();
+    drop(db);
+    drop(host);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    host.dispatcher()
+        .recover_and_dispatch(&mut db, 100, 8)
+        .unwrap();
+    assert_eq!(
+        db.get_work_queue(TASK)
+            .unwrap()
+            .unwrap()
+            .lease_owner
+            .as_deref(),
+        Some(token.as_str())
+    );
+    assert!(
+        host.dispatcher().adapter.claims.is_empty(),
+        "stored claim token must not be claimed again"
+    );
+}
+
+#[test]
+fn crash_during_uncertain_claim_is_reconciled() {
+    let (root, mut db) = seed();
+    db.claim_pending_outbox(1).unwrap();
+    db.put_binding(KEY, &format!("k{KEY}"), TASK).unwrap();
+    db.set_binding_phase(KEY, "claiming", "").unwrap();
+    drop(db);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    let recovered = host
+        .dispatcher()
+        .recover_and_dispatch(&mut db, 100, 8)
+        .unwrap();
+    assert_eq!(recovered.claimed, 1);
+    assert_eq!(db.get_work_queue(TASK).unwrap().unwrap().state, "leased");
+    assert_eq!(
+        db.get_binding_record(KEY).unwrap().unwrap().phase,
+        "claimed"
+    );
+}
+
+#[test]
+fn quoted_multiline_note_survives_redelivery() {
+    let (root, mut db) = seed();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    host.dispatcher().dispatch_pending(&mut db, 10, 8).unwrap();
+    let note = "trace says \"failed\"\nline two\\path \u{1F9EA}  spaced";
+    let done = report(&db, Outcome::Succeeded { note: note.into() });
+    let initial = host.dispatcher().apply_result(&mut db, KEY, done).unwrap();
+    assert_eq!(initial.note, note);
+    let queue = db.get_work_queue(TASK).unwrap().unwrap();
+    assert_eq!(queue.state, "done");
+    assert_eq!(queue.lease_owner.as_deref(), Some(initial.lease.as_str()));
+    drop(db);
+    drop(host);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(MockAdapter::default());
+    let replay = host.run(&mut db, 11).unwrap();
+    assert_eq!(replay.follow_ups[0].note, note);
+    let pretty = serde_json::to_string_pretty(&serde_json::json!({
+        "task_id": TASK,
+        "note": note,
+        "attempt": replay.follow_ups[0].attempt,
+        "lease": replay.follow_ups[0].lease,
+        "kind": "task.completed",
+    }))
+    .unwrap();
+    let path = db.path().to_owned();
+    drop(db);
+    let conn = rusqlite::Connection::open(&path).unwrap();
+    conn.execute(
+        "UPDATE objects SET data_json=?1 WHERE type='delivery' AND status='pending'",
+        [pretty],
+    )
+    .unwrap();
+    drop(conn);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let pretty_replay = host.run(&mut db, 12).unwrap();
+    assert_eq!(pretty_replay.follow_ups[0].note, note);
 }

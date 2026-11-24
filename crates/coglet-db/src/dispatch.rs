@@ -269,13 +269,13 @@ impl Database {
             return Err("invalid dispatch binding".into());
         }
         let id = binding_id(intent_id);
-        let data = format!("{remote_id}\t{task_id}");
+        let data = encode_binding(remote_id, task_id, "bound", "");
         self.dispatcher_mutation(|conn| {
-            let existing: Option<i64> = conn
+            let existing: Option<(i64, String)> = conn
                 .query_row(
-                    "SELECT version FROM objects WHERE id=?1",
+                    "SELECT version, data_json FROM objects WHERE id=?1",
                     [&id],
-                    |r| r.get(0),
+                    |r| Ok((r.get(0)?, r.get(1)?)),
                 )
                 .optional()
                 .map_err(sqlite_failure)?;
@@ -287,16 +287,12 @@ impl Database {
                     )
                     .map_err(sqlite_failure)?;
                 }
-                Some(version) => {
-                    let n = conn
-                        .execute(
-                            "UPDATE objects SET data_json=?1,updated_at=0,version=version+1 WHERE id=?2 AND version=?3 AND type='dispatch_binding'",
-                            rusqlite::params![&data, &id, version],
-                        )
-                        .map_err(sqlite_failure)?;
-                    if n != 1 {
+                Some((_, current)) => {
+                    let parsed = decode_binding(&current);
+                    if parsed.remote_id != remote_id || parsed.task_id != task_id {
                         return Err("binding conflict".into());
                     }
+                    // Idempotent. Do not regress a claim phase recorded after create.
                 }
             }
             Ok(())
@@ -305,6 +301,10 @@ impl Database {
     }
 
     pub fn get_binding(&self, intent_id: &str) -> Result<Option<String>> {
+        Ok(self.get_binding_record(intent_id)?.map(|row| row.remote_id))
+    }
+
+    pub fn get_binding_record(&self, intent_id: &str) -> Result<Option<DispatchBinding>> {
         let data: Option<String> = self
             .connection
             .query_row(
@@ -314,7 +314,53 @@ impl Database {
             )
             .optional()
             .map_err(sqlite_failure)?;
-        Ok(data.and_then(|raw| raw.split('\t').next().map(str::to_owned)))
+        Ok(data.map(|raw| decode_binding(&raw)))
+    }
+
+    /// Advance the crash marker. Never regresses `claimed` back to `claiming`.
+    pub fn set_binding_phase(&mut self, intent_id: &str, phase: &str, token: &str) -> Result<()> {
+        if !matches!(phase, "bound" | "claiming" | "claimed") {
+            return Err("invalid binding phase".into());
+        }
+        if phase == "claimed" && token.is_empty() {
+            return Err("claimed binding needs a token".into());
+        }
+        if token.contains('\t') || phase.contains('\t') {
+            return Err("invalid binding token".into());
+        }
+        let id = binding_id(intent_id);
+        self.dispatcher_mutation(|conn| {
+            let existing: Option<(i64, String)> = conn
+                .query_row(
+                    "SELECT version, data_json FROM objects WHERE id=?1 AND type='dispatch_binding'",
+                    [&id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()
+                .map_err(sqlite_failure)?;
+            let Some((version, raw)) = existing else {
+                return Err("missing dispatch binding".into());
+            };
+            let current = decode_binding(&raw);
+            if current.phase == "claimed" && phase != "claimed" {
+                return Ok(());
+            }
+            if current.phase == phase && current.token == token {
+                return Ok(());
+            }
+            let data = encode_binding(&current.remote_id, &current.task_id, phase, token);
+            let n = conn
+                .execute(
+                    "UPDATE objects SET data_json=?1,version=version+1 WHERE id=?2 AND version=?3 AND type='dispatch_binding'",
+                    rusqlite::params![&data, &id, version],
+                )
+                .map_err(sqlite_failure)?;
+            if n != 1 {
+                return Err("binding conflict".into());
+            }
+            Ok(())
+        })?;
+        Ok(())
     }
 
     /// Terminal outbox transition, append-only event, and pending delivery in one fence.
@@ -385,10 +431,11 @@ impl Database {
             )
             .map_err(sqlite_failure)?;
             if lease.is_some() {
+                let (token, attempt) = lease.expect("lease checked");
                 let n = conn
                     .execute(
-                        "UPDATE work_queue SET state='done',lease_owner=NULL,lease_until=NULL,version=version+1 WHERE task_id=?1 AND state='leased'",
-                        [task_id],
+                        "UPDATE work_queue SET state='done',lease_until=NULL,version=version+1 WHERE task_id=?1 AND state='leased' AND lease_owner=?2 AND attempt=?3",
+                        rusqlite::params![task_id, token, attempt as i64],
                     )
                     .map_err(sqlite_failure)?;
                 if n != 1 {
@@ -441,6 +488,25 @@ impl Database {
 
 fn binding_id(intent_id: &str) -> String {
     format!("bind:{intent_id}")
+}
+fn encode_binding(remote_id: &str, task_id: &str, phase: &str, token: &str) -> String {
+    format!("{remote_id}\t{task_id}\t{phase}\t{token}")
+}
+fn decode_binding(raw: &str) -> DispatchBinding {
+    let mut parts = raw.splitn(4, '\t');
+    let remote_id = parts.next().unwrap_or("").to_owned();
+    let task_id = parts.next().unwrap_or("").to_owned();
+    let phase = parts
+        .next()
+        .filter(|part| !part.is_empty())
+        .unwrap_or("bound");
+    let token = parts.next().unwrap_or("").to_owned();
+    DispatchBinding {
+        remote_id,
+        task_id,
+        phase: phase.to_owned(),
+        token,
+    }
 }
 fn delivery_id(event_id: &str) -> String {
     format!("delivery:{event_id}")

@@ -318,6 +318,14 @@ fn route(method: &str, path: &str, body: &str, state: &Mutex<Board>) -> String {
             let attempt = number(body, "attempt").unwrap_or(0);
             let owner = field(body, "owner").unwrap_or_default();
             let until = number(body, "until").unwrap_or(0);
+            if !task.cancelled && !task.lease.is_empty() && task.attempt == attempt {
+                return ok(&format!(
+                    "{{\"remote_id\":{id},\"lease\":{lease},\"until\":{until}}}",
+                    id = json_str(remote_id),
+                    lease = json_str(&task.lease),
+                    until = task.until,
+                ));
+            }
             task.attempt = attempt;
             task.owner = owner;
             task.until = until;
@@ -433,19 +441,18 @@ fn status(code: u16, body: &str) -> String {
     )
 }
 fn json_str(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+    serde_json::to_string(value).expect("json string")
 }
 fn field(raw: &str, key: &str) -> Option<String> {
-    let needle = format!("\"{key}\":\"");
-    let start = raw.find(&needle)? + needle.len();
-    let rest = &raw[start..];
-    let end = rest.find('"')?;
-    Some(rest[..end].to_owned())
+    serde_json::from_str::<serde_json::Value>(raw)
+        .ok()?
+        .get(key)?
+        .as_str()
+        .map(str::to_owned)
 }
 fn number(raw: &str, key: &str) -> Option<u64> {
-    let needle = format!("\"{key}\":");
-    let start = raw.find(&needle)? + needle.len();
-    let rest = raw[start..].trim_start();
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-    digits.parse().ok()
+    serde_json::from_str::<serde_json::Value>(raw)
+        .ok()?
+        .get(key)?
+        .as_u64()
 }

@@ -448,9 +448,13 @@ pub fn handle<H: Host + DbHost>(
                             .payload
                             .get("lease")
                             .and_then(coglet_types::Value::as_text);
-                        queue.state == "leased"
+                        let identity = queue
+                            .lease_owner
+                            .as_deref()
+                            .is_some_and(|token| !token.is_empty() && lease == Some(token));
+                        identity
                             && attempt == Some(queue.attempt)
-                            && lease == queue.lease_owner.as_deref()
+                            && matches!(queue.state.as_str(), "leased" | "done")
                     }
                 };
                 if !accepted {

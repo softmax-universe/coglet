@@ -58,6 +58,17 @@ pub struct PendingDelivery {
     pub payload_json: String,
 }
 
+/// Remote create binding plus how far the host got before a crash.
+/// `phase` is `bound` (create recorded), `claiming` (claim in flight or
+/// uncertain), or `claimed` (token durable, local lease may still be missing).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DispatchBinding {
+    pub remote_id: String,
+    pub task_id: String,
+    pub phase: String,
+    pub token: String,
+}
+
 /// Operational scheduling row. Cognitive objects stay in `objects`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WorkQueueRow {
