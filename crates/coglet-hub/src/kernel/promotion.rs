@@ -75,6 +75,147 @@ pub struct GateReport {
 pub trait GateAuthority {
     fn verify(&self, report: &GateReport, binding: &GateBinding) -> Result<()>;
 }
+/// Pure local decision, not a durable transition, authority check or output fence.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProbationDecision {
+    Observe,
+    Stable,
+    Rollback,
+}
+/// Unauthenticated input to the pure reducer. Production callers must verify its
+/// source, epoch mapping and cumulative per-activation counters independently.
+#[derive(Clone, Debug)]
+pub struct ProbationSample {
+    pub coglet: String,
+    pub generation: u64,
+    pub commit: String,
+    pub observed_at_ms: u64,
+    pub healthy: bool,
+    pub step_failures: u64,
+    pub budget_violations: u64,
+}
+/// Pinned decision state. Only the kernel may feed authenticated, clock-mapped
+/// observations after a verified activation. No serialization/recovery API yet;
+/// this component alone cannot establish durable probation or grant authority.
+#[derive(Clone, Debug)]
+pub struct Probation {
+    coglet: String,
+    limits: ProbationLimits,
+    epoch: String,
+    generation: u64,
+    commit: String,
+    started_at: u64,
+    expires_at: u64,
+    last_now: u64,
+    last_sample: Option<(u64, bool)>,
+    consecutive_failures: u64,
+    step_failures: u64,
+    budget_violations: u64,
+    decision: ProbationDecision,
+}
+impl Probation {
+    pub fn start(
+        policy: &Policy,
+        epoch: &str,
+        now_ms: u64,
+        generation: u64,
+        commit: &str,
+    ) -> Result<Self> {
+        if epoch.is_empty() || generation == 0 || !lower_hex(commit, &[40, 64]) {
+            return Err(Error::Invalid);
+        }
+        let expires_at = now_ms
+            .checked_add(policy.0.probation.window_ms)
+            .ok_or(Error::Invalid)?;
+        Ok(Self {
+            coglet: policy.0.coglet.clone(),
+            limits: policy.0.probation.clone(),
+            epoch: epoch.to_owned(),
+            generation,
+            commit: commit.to_owned(),
+            started_at: now_ms,
+            expires_at,
+            last_now: now_ms,
+            last_sample: None,
+            consecutive_failures: 0,
+            step_failures: 0,
+            budget_violations: 0,
+            decision: ProbationDecision::Observe,
+        })
+    }
+    /// Fresh hub supervisor time is required; uncertain time latches rollback.
+    fn advance(&mut self, epoch: &str, now_ms: u64) {
+        if self.decision != ProbationDecision::Observe {
+            return;
+        }
+        let health_at = self.last_sample.map_or(self.started_at, |s| s.0);
+        if epoch != self.epoch
+            || now_ms < self.last_now
+            || now_ms - health_at >= self.limits.health_timeout_ms
+        {
+            self.decision = ProbationDecision::Rollback;
+        }
+        self.last_now = now_ms;
+    }
+    fn finish(&mut self, now_ms: u64) -> ProbationDecision {
+        if self.decision == ProbationDecision::Observe && now_ms >= self.expires_at {
+            self.decision = if self.last_sample.is_some_and(|s| s.1) {
+                ProbationDecision::Stable
+            } else {
+                ProbationDecision::Rollback
+            };
+        }
+        self.decision
+    }
+    pub fn check(&mut self, epoch: &str, now_ms: u64) -> ProbationDecision {
+        self.advance(epoch, now_ms);
+        self.finish(now_ms)
+    }
+    /// Inputs must be ordered hub observations, not peer wall timestamps. Callers
+    /// serialize observation delivery with checks: a timestamp older than the last
+    /// reducer call is conservatively dropped, even if delayed delivery was honest.
+    /// Counters start at activation (zero baseline), not device lifetime. Rejected
+    /// inputs never extend health freshness; time still advances and can expire it.
+    pub fn observe(
+        &mut self,
+        epoch: &str,
+        now_ms: u64,
+        sample: &ProbationSample,
+    ) -> ProbationDecision {
+        let previous_now = self.last_now;
+        self.advance(epoch, now_ms);
+        if self.decision == ProbationDecision::Observe
+            && sample.coglet == self.coglet
+            && sample.generation == self.generation
+            && sample.commit == self.commit
+            && sample.observed_at_ms >= previous_now
+            && sample.observed_at_ms <= now_ms
+            && self.last_sample.is_none_or(|s| sample.observed_at_ms > s.0)
+        {
+            if sample.step_failures < self.step_failures
+                || sample.budget_violations < self.budget_violations
+            {
+                self.decision = ProbationDecision::Rollback;
+            } else {
+                self.consecutive_failures = if sample.healthy {
+                    0
+                } else {
+                    self.consecutive_failures.saturating_add(1)
+                };
+                self.step_failures = sample.step_failures;
+                self.budget_violations = sample.budget_violations;
+                self.last_sample = Some((sample.observed_at_ms, sample.healthy));
+                if self.consecutive_failures >= self.limits.max_consecutive_failures
+                    || self.step_failures >= self.limits.max_step_failures
+                    || self.budget_violations >= self.limits.max_budget_violations
+                {
+                    self.decision = ProbationDecision::Rollback;
+                }
+            }
+        }
+        self.finish(now_ms)
+    }
+}
 fn lower_hex(value: &str, lengths: &[usize]) -> bool {
     lengths.contains(&value.len())
         && value

@@ -25,8 +25,9 @@ authority. An accepted-ref store alone is not runtime activation.
    document status, retaining the shape and all other normative rules. Old draft
    policy is rejected, not silently upgraded. The existing spec-v0 tag and hub
    method set remain unchanged. Promotion's signed-ref requirement is retained:
-   the outbox contains the exact signed `hub-ref`, retained verified bundle and
-   operation context for existing `hub.git.push`, not an unsigned abstract
+   the outbox retains exact `hub-ref` intent, verified bundle and operation
+   context for existing `hub.git.push`; dispatch signs and durably retains the
+   resulting statement after revalidation, not an unsigned abstract
    activate message. A configured adapter incapable of building that command
    makes promote admission fail `unavailable` without changing live state.
    Tickets stay draft; their existing candidate and terminal-result shapes are
@@ -67,10 +68,12 @@ authority. An accepted-ref store alone is not runtime activation.
    production build signing/qualification; production verification remains closed
    until a real qualified build authority and runtime adapter are installed.
 5. Promotion admission produces a durable boundary command, not activation. The
-   command binds coglet, proposal, old/new commit, monotonic generation and policy revision, signed
-   ref/archive, and exact actor/ticket operation context. The runtime adapter
-   recovers the same `hub.git.push` operation through `hub.receipt` and verifies
-   current `hub.status.live_commit` plus the applied signed generation; an
+   command binds coglet, proposal, old/new commit, monotonic generation, policy
+   revision, ref intent/bundle (signed statement retained at dispatch), and exact
+   actor/ticket operation context. The runtime adapter recovers the same
+   `hub.git.push` operation through `hub.receipt`, cross-checks current
+   `hub.status.live_commit`, and independently attests the applied signed
+   generation through the qualified local boundary API described below; an
    arbitrary opaque receipt reference cannot complete activation. Late outcomes
    retain original operation context and never borrow another actor's receipt. Only a verified matching runtime receipt changes live state and starts
    probation. Duplicate/late/superseded receipts cannot activate code. Rollback
@@ -106,6 +109,60 @@ authority. An accepted-ref store alone is not runtime activation.
    done. A rejected promotion has its own rejection audit, not a forged successful
    ticket. Ticket scheduling, spend accounting and provider adapters remain with
    the factory lane; this component does not implement that scheduler.
+
+## Adapter qualification and recovery obligations
+
+These are additional acceptance requirements, not fields added to frozen hub 0.1:
+
+- `hub.status`, `hub.health` and `hub.receipt` do **not** report an applied
+  generation. Commit equality, even with receipt step <= status step, cannot
+  establish generation in an A→B→A sequence. The configured trusted-local adapter
+  must independently attest the applied signed-statement watermark, exact
+  operation identity and active executable at a serialized runtime boundary.
+  Receipt/status reads are necessary cross-checks, not an atomic snapshot or a
+  substitute for that attestation. Without this producer API activation remains
+  `unavailable`; PR85's accepted-ref store does not qualify it.
+- The command's signed ref generation equals the kernel's reserved per-coglet
+  fence value. Every reserved value is burned, including cancelled/unattempted
+  commands and terminal stops; gaps are legal, reuse is not. The adapter retains
+  staged ref tip separately from live commit. A restore's signed `old` is the
+  authoritative staged tip after reconciliation, not an assumed live commit.
+- Admission retains exact command intent and bundle. Signing occurs only at
+  dispatch after current build/policy/actor/ticket checks; its exact bytes are
+  durably retained before sending. No network I/O occurs while holding the
+  kernel fence. Cancellation invalidates the local signing/dispatch capability;
+  an already signed or transmitted command is never assumed revoked by a local
+  tombstone. Reconcile its original receipt, cancel only if unapplied, and use a
+  higher-generation restore or an acknowledged output fence. A cancel conflict
+  means reconcile an already applied operation, not successful cancellation.
+  Unknown effects keep outputs fenced. Policy reinstallation applies this same
+  recovery path to dispatched `activating` work, not simple deletion.
+- Frozen health/status has neither generation-bound failure counters nor all
+  probation health/integrity inputs. A separately authenticated local producer
+  must supply cumulative per-activation step/budget counters, current
+  capabilities/integrity and ordered generation/commit-bound health observations.
+  Missing producer authority means probation is `unavailable`, never healthy by
+  default. A pure probation reducer or fixture adapter cannot qualify this API.
+- Authority checks use the shared control/dispatch fence and fresh checks before
+  commit and every transport poll. Independent Authority database writers still
+  require shared-Authority receiving-side validation; a remembered epoch is not a
+  revocation lease. Derive and retain a unique common-grammar hub operation ID
+  for each exact actor/target/request/command, never reuse it across command kinds.
+- Bound and rate-limit status access before its `observed` audit admission;
+  reserve independent control capacity for rollback/stop. Audit failure cannot
+  leave a known failed candidate authorized to emit outputs: synchronously revoke
+  the local output lease, refuse further activation, and reconcile/dispatch the
+  preconfigured emergency `hub.stop` path with its original operation context.
+  Until an authoritative stop receipt arrives, report fenced/uncertain, not stopped.
+  Persist recovery diagnostics when storage recovers; never fabricate a successful
+  rollback audit when a write failed. This fence/stop producer is itself required
+  adapter qualification, not a best-effort callback.
+
+Before acceptance, update promotion's acknowledgment/recovery text to reference
+these trusted-local obligations (network integration still needs a separate ADR),
+policy status and both policy schemas/fixtures, ADR0005 and the ADR index. **The
+freeze tag remains blocked until real activation, health and emergency-fence
+producers and the named integration proofs qualify; an accepted store is not enough.**
 
 ## Alternatives
 
