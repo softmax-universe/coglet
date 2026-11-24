@@ -11,7 +11,7 @@ CDDL once each, in that order; select `tickets` or `ticket-<definition>` (the
 ticket record is `ticket-ticket`). Edit-path uniqueness is checked separately as
 a semantic invariant in both representations, including submit/amend payloads.
 Wire is deterministic CBOR; JSON is a debugging/fixture view. These are draft
-payloads, not a provider API or currently legal frozen hub-wire operations.
+payloads, not a provider API or currently legal frozen router-wire operations.
 Logical names are `ticket.submit`, `ticket.update` (subscription), `ticket.answer`,
 `ticket.amend`, `ticket.cancel`, `ticket.result` (read latest durable result).
 A later integration ADR must negotiate framing and per-method grants before
