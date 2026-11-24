@@ -2,7 +2,11 @@
 name = "coglet-visualizer"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["cbor2>=5.6,<6"]
+dependencies = ["cbor2>=5.6,<6", "coglet-sim", "coglet-surface"]
+
+[tool.uv.sources]
+coglet-sim = { path = "../../sim", editable = true }
+coglet-surface = { path = "../../sdk/surface-python", editable = true }
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "playwright>=1.50,<2", "cbor2>=5.6,<6"]

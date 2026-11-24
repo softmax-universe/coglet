@@ -65,6 +65,14 @@ jobs:
           bash tests/m1/run.sh
       - name: Sandbox worlds through cogletd and independent WAMR replay
         run: bash sim/check-native.sh
+      - name: Visualizer native M2 replay, scrub and receipt forks in Chromium
+        run: bash tools/visualizer/check-native.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visualizer-native-proof-${{ inputs.bundle-mode || 'normal' }}
+          path: tools/visualizer/proof/native/
+          if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
       - uses: ./.github/actions/dependency-capture
