@@ -29,7 +29,7 @@ def test_disconnected_case_does_not_fill_control_backlog(tmp_path, monkeypatch):
     # A short private path also works on macOS.
     import tempfile
     with tempfile.TemporaryDirectory(prefix='coglet-') as directory:
-        with reference_host(directory, config) as (wire, control):
+        with reference_host(Path(directory).resolve(), config) as (wire, control):
             impl = dict(name='python-reference', transport='unix', socket=str(wire),
                 peer_roles=['runtime'], fixtures={'surface-base': dict(
                     setup=[sys.executable, str(ROOT / 'sdk/surface-python/tests/provision_reference.py')],
@@ -87,6 +87,8 @@ def test_fixture_clock_refuses_rollback():
                 pass
             else:
                 raise AssertionError('retrograde advance acknowledged')
+        except BaseException as exc:
+            raise AssertionError(f'fixture startup/control failed: {exc}; stderr={bytes(peer.stderr)!r}') from exc
         finally:
             await peer.close()
     asyncio.run(check())
@@ -106,6 +108,8 @@ def test_partial_fixture_clock_fails_closed():
             assert await asyncio.wait_for(peer.process.wait(), 3) != 0
             await peer.stderr_task
             assert b'partial fixture clock' in peer.stderr
+        except BaseException as exc:
+            raise AssertionError(f'fixture startup/control failed: {exc}; stderr={bytes(peer.stderr)!r}') from exc
         finally:
             await peer.close()
     asyncio.run(check())
