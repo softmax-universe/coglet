@@ -162,6 +162,30 @@ Kernel integration must keep registry, relay batch dedupe/audit, private-event
 routing and immutable once-mapped sender action envelopes in `coglet-hub`.
 No fixture-only methods may be added to the ALPN.
 
+## Local fixture provisioning (explicit opt-in)
+
+`test-controls` is absent from defaults and production dependency declarations.
+Only trusted local test launchers should enable it. It adds
+`Authority::test_issue_invite(peer, secret: &str, ttl, grants) -> Result<()>`.
+Supply exactly 64 lowercase hex characters (e.g. `"11".repeat(32)`) after
+`open_window`. It uses the same grant validation, hash-only storage, peer binding,
+one-use transaction, monotonic TTL, rate counters and restart invalidation as
+`issue_invite`; production `issue_invite` remains OS-random. Duplicate hashes
+are rejected, including consumed or pre-restart secrets. Use fresh isolated
+stores per fixture; never revive an old token or translate incoming tokens.
+
+For an expired fixture, insert successfully with a short positive TTL, wait past
+it, then run the request. For a closed-window fixture, insert with a live TTL
+then call `close_window`. Unknown-token failures are not expiry/window proof;
+wire failures deliberately remain indistinguishable `unauthenticated`.
+No control bypasses authorization and none is a wire method.
+
+```sh
+cargo test --locked -p coglet-proto --features test-controls --test test_controls
+# Default-only doctest proves the control API is not available:
+cargo test --locked -p coglet-proto --doc
+```
+
 ## Tests executed for this milestone
 
 ```sh
