@@ -53,15 +53,27 @@ async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, frame: &[u8]) -> Res
     Ok(())
 }
 
-async fn bridge<R, W>(conn: iroh::endpoint::Connection, mut input: R, output: W) -> Result<()>
+async fn bridge<R, W>(
+    conn: iroh::endpoint::Connection,
+    mut input: R,
+    output: W,
+    incoming_id: Option<u64>,
+) -> Result<()>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin + Send + 'static,
 {
     let output = Arc::new(Mutex::new(output));
     let mut operations = JoinSet::new();
+    let mut finishes = JoinSet::new();
     let mut sends = HashMap::new();
     let mut used = HashSet::new();
+    let mut waiting_incoming = incoming_id;
+    // Reserve before reading stdin: an early send must never silently open a
+    // different QUIC stream for the reverse-initiated operation.
+    used.extend(incoming_id);
+    let incoming = timeout(LIMIT, conn.accept_bi());
+    tokio::pin!(incoming);
     loop {
         // Keep the read future alive while reaping completed operations: read_exact
         // is not cancellation-safe after consuming a partial frame.
@@ -74,6 +86,19 @@ where
                     Some(result) = operations.join_next(), if !operations.is_empty() => {
                         result??;
                     }
+                    Some(result) = finishes.join_next(), if !finishes.is_empty() => {
+                        result??;
+                    }
+                    streams = &mut incoming, if waiting_incoming.is_some() => {
+                        let (send, recv) = streams.context("incoming operation timeout")??;
+                        let id = waiting_incoming.take().context("missing incoming id")?;
+                        if operations.len() >= 64 {
+                            bail!("too many in-flight operations");
+                        }
+                        // Publish routing before the request bytes reach stdout.
+                        sends.insert(id, send);
+                        operations.spawn(copy_replies(recv, output.clone()));
+                    }
                 }
             }
         };
@@ -83,6 +108,9 @@ where
         }
         let id = u64::from_be_bytes(frame[..8].try_into()?);
         let finish = frame[8] == 1;
+        if waiting_incoming == Some(id) {
+            bail!("send before reserved incoming stream was accepted");
+        }
         if let std::collections::hash_map::Entry::Vacant(entry) = sends.entry(id) {
             if !used.insert(id) || used.len() > 10000 {
                 bail!("stream id reused or operation limit exceeded");
@@ -90,25 +118,34 @@ where
             if operations.len() >= 64 {
                 bail!("too many in-flight operations");
             }
-            let (send, mut recv) = conn.open_bi().await?;
+            let (send, recv) = conn.open_bi().await?;
             entry.insert(send);
-            let output = output.clone();
-            operations.spawn(async move {
-                timeout(LIMIT, async {
-                    while let Some(reply) = read_frame(&mut recv).await? {
-                        write_frame(&mut *output.lock().await, &reply).await?;
-                    }
-                    Ok::<_, anyhow::Error>(())
-                })
-                .await
-                .context("operation timeout")?
-            });
+            operations.spawn(copy_replies(recv, output.clone()));
         }
         let send = sends.get_mut(&id).context("missing send stream")?;
         timeout(LIMIT, write_frame(send, &frame[9..])).await??;
         if finish {
-            sends.remove(&id).context("missing send stream")?.finish()?;
+            if finishes.len() >= 64 {
+                bail!("too many unacknowledged operation FINs");
+            }
+            let mut send = sends.remove(&id).context("missing send stream")?;
+            send.finish()?;
+            // A remote FIN alone does not prove delivery of our final frames.
+            // Keep send custody until transport acknowledgement, without
+            // blocking receipt of reverse requests or other operations.
+            finishes.spawn(async move {
+                if let Some(code) = timeout(LIMIT, send.stopped())
+                    .await
+                    .context("operation FIN acknowledgement timeout")??
+                {
+                    bail!("peer stopped operation stream with code {code}");
+                }
+                Ok::<_, anyhow::Error>(())
+            });
         }
+    }
+    if waiting_incoming.is_some() {
+        bail!("input EOF before expected incoming operation");
     }
     if !sends.is_empty() {
         bail!("input EOF with unfinished operation streams");
@@ -116,13 +153,50 @@ where
     while let Some(result) = operations.join_next().await {
         result??;
     }
+    while let Some(result) = finishes.join_next().await {
+        result??;
+    }
     Ok(())
+}
+
+async fn copy_replies<W: AsyncWrite + Unpin + Send + 'static>(
+    mut recv: iroh::endpoint::RecvStream,
+    output: Arc<Mutex<W>>,
+) -> Result<()> {
+    timeout(LIMIT, async {
+        while let Some(reply) = read_frame(&mut recv).await? {
+            write_frame(&mut *output.lock().await, &reply).await?;
+        }
+        Ok::<_, anyhow::Error>(())
+    })
+    .await
+    .context("operation timeout")?
+}
+
+async fn accept_pinned(endpoint: Endpoint, peer: EndpointId) -> Result<iroh::endpoint::Connection> {
+    let connection = timeout(LIMIT, async {
+        endpoint
+            .accept()
+            .await
+            .context("listener closed")?
+            .await
+            .context("accept handshake")
+    })
+    .await
+    .context("accept timeout")??;
+    if connection.remote_id() != peer {
+        connection.close(1u32.into(), b"unexpected peer");
+        bail!("accepted connection does not match pinned peer");
+    }
+    Ok(connection)
 }
 
 async fn run() -> Result<()> {
     let mut endpoint_id = None;
     let mut address = None;
     let mut alpn = None;
+    let mut mode = "dial".to_owned();
+    let mut incoming_id = None;
     let mut key_file = std::env::var("COGLET_FIXTURE_IROH_KEY_FILE").ok();
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -132,11 +206,26 @@ async fn run() -> Result<()> {
             "--address" => address = Some(value.parse::<SocketAddr>()?),
             "--alpn" => alpn = Some(value),
             "--key-file" => key_file = Some(value),
+            "--mode" => mode = value,
+            "--incoming-stream" => incoming_id = Some(value.parse::<u64>()?),
             _ => bail!("unknown option {arg}"),
         }
     }
-    let mut remote = EndpointAddr::new(endpoint_id.context("--endpoint required")?);
-    let builder = if let Some(address) = address {
+    if !matches!(mode.as_str(), "dial" | "accept") {
+        bail!("--mode must be dial or accept");
+    }
+    let peer = endpoint_id.context("--endpoint required (pinned peer in either mode)")?;
+    let alpn = alpn.context("--alpn required")?;
+    let mut remote = EndpointAddr::new(peer);
+    let builder = if mode == "accept" {
+        let address = address.context("accept mode requires --address for local bind")?;
+        if !address.ip().is_loopback() {
+            bail!("conformance listener requires a loopback address");
+        }
+        Endpoint::builder(presets::Minimal)
+            .alpns(vec![alpn.as_bytes().to_vec()])
+            .bind_addr(address)?
+    } else if let Some(address) = address {
         remote = remote.with_ip_addr(address);
         Endpoint::builder(presets::Minimal)
     } else {
@@ -149,10 +238,36 @@ async fn run() -> Result<()> {
         builder
     };
     let endpoint = builder.bind().await?;
-    let alpn = alpn.context("--alpn required")?;
-    let conn = timeout(LIMIT, endpoint.connect(remote, alpn.as_bytes())).await??;
-    let result = bridge(conn.clone(), tokio::io::stdin(), tokio::io::stdout()).await;
-    conn.close(0u32.into(), b"driver finished");
+    let connection = if mode == "accept" {
+        // Never mix local discovery with the framed stdout protocol. Fixture
+        // launchers parse this single stderr line before dialing the listener.
+        let addr = endpoint.addr();
+        let bound = addr
+            .ip_addrs()
+            .find(|a| a.ip().is_loopback())
+            .context("listener has no loopback address")?;
+        eprintln!("COGLET_IROH_LISTENING {} {bound}", endpoint.id());
+        accept_pinned(endpoint.clone(), peer).await
+    } else {
+        timeout(LIMIT, endpoint.connect(remote, alpn.as_bytes()))
+            .await
+            .context("connect timeout")?
+            .context("connect handshake")
+    };
+    let result = match connection {
+        Ok(conn) => {
+            let result = bridge(
+                conn.clone(),
+                tokio::io::stdin(),
+                tokio::io::stdout(),
+                incoming_id,
+            )
+            .await;
+            conn.close(0u32.into(), b"driver finished");
+            result
+        }
+        Err(error) => Err(error),
+    };
     endpoint.close().await;
     result
 }
@@ -161,6 +276,9 @@ async fn run() -> Result<()> {
 async fn main() -> Result<()> {
     run().await
 }
+
+#[cfg(test)]
+mod reverse_tests;
 
 #[cfg(test)]
 mod tests {
@@ -203,7 +321,7 @@ mod tests {
             let conn = client.connect(remote, alpn).await?;
             let (mut writer, reader) = tokio::io::duplex(1024);
             let (output, mut replies) = tokio::io::duplex(1024);
-            let driver = tokio::spawn(bridge(conn.clone(), reader, output));
+            let driver = tokio::spawn(bridge(conn.clone(), reader, output, None));
             for (id, frame) in [b"first".as_slice(), b"second".as_slice()]
                 .into_iter()
                 .enumerate()

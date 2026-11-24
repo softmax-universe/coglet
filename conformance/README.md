@@ -26,6 +26,10 @@ repository root; the runner itself works from any directory. A fresh process or
 socket connection is made per case, and spawned process groups are cleaned up on
 success, failure and timeout. Unix-socket/server state reset is the fixture's job.
 
+Stdio adapters that own post-run oracles may set `finish_on_eof = true` to
+require clean stdout EOF and exit zero before verification. Other stdio peers
+retain their existing teardown behavior; the option does not alter framing.
+
 Stdio registry entries may set `ready_line = "COGLET_CONFORMANCE_READY"`.
 The adapter emits this exact newline-terminated ASCII line on **stderr** after
 durable initialization, immediately before emitting its initial protocol frame.
@@ -101,7 +105,7 @@ play. A role it does not support is explicitly **skipped**, not passed.
 For direct invocation, use repeatable `--peer-role` to set these roles.
 
 `fixtures` is an optional array of implementation-neutral setup labels. Registry
-entries map each label to `setup`/`teardown` argv hooks and/or `env` configuration:
+entries map each label to `setup`/`verify`/`teardown` argv hooks and/or `env` configuration:
 
 ```toml
 [[implementations]]
@@ -126,7 +130,11 @@ entries can be set. Hooks and the implementation also receive
 `COGLET_CONFORMANCE_CASE`, `COGLET_CONFORMANCE_SUITE`, and
 `COGLET_CONFORMANCE_PEER_ROLE`. All selected fixture env values are provided to
 all hooks and the implementation; avoid conflicting env names between labels.
-Setup runs in label order; teardown runs in reverse order, including the label
+Setup runs in label order. After the wire timeline, optional `verify` hooks run
+in label order to check actual durable effects; any failure fails the case, even
+if every reply matched. They must wait for real terminal state, reopen retained
+stores where required, and cannot substitute expected results for observations.
+Teardown runs in reverse order, including the label
 whose setup failed. Teardown failure fails the case. Hooks must not daemonize
 children: their process groups are cleaned up. Provision external servers in CI
 or use hooks to provision state consumed by the spawned implementation.
@@ -155,6 +163,12 @@ An empty registry explicitly makes no conformance claims. The old bootstrap
   Without a direct address the driver uses iroh's N0 address lookup/relays; local
   tests use Minimal endpoints and no external discovery. There is no implicit
   enrollment or grant: the cases send the real protocol operations.
+  `iroh_mode = "accept"` instead binds the required loopback `address` and accepts
+  only the pinned `endpoint`; `incoming_stream = 100` reserves that tooling ID
+  for the first reverse-initiated operation. See [driver controls](iroh-driver/README.md).
+  At timeline end, stdin is closed and the driver must drain to clean EOF and
+  exit zero before durable verification. Unsent final frames, trailing output
+  and driver failures cannot be counted as passes.
 
 Local pipe/socket framing defaults to `u32be`: a positive 4-byte big-endian
 length followed by one CBOR item, capped at 4 MiB. `framing = "cbor-sequence"`

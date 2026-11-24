@@ -112,7 +112,7 @@ def cases_for(root, suite):
 
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
-               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock'}
+               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock', 'iroh_mode', 'incoming_stream', 'finish_on_eof'}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -136,7 +136,19 @@ def validate_impl(impl):
     if transport == 'iroh':
         if not re.fullmatch('[0-9a-f]{64}', impl.get('endpoint', '')) or not impl.get('alpn'):
             raise ValueError('iroh requires endpoint hex and alpn')
+    if 'iroh_mode' in impl:
+        if transport != 'iroh' or impl['iroh_mode'] not in ('dial', 'accept'):
+            raise ValueError('iroh_mode requires iroh and dial or accept')
+        if impl['iroh_mode'] == 'accept' and not impl.get('address'):
+            raise ValueError('iroh accept requires a local bind address')
+    if 'incoming_stream' in impl:
+        stream = impl['incoming_stream']
+        if transport != 'iroh' or type(stream) is not int or not 0 <= stream < 2**64:
+            raise ValueError('incoming_stream requires iroh and a uint64 tooling id')
     millis(impl.get('connect_timeout_ms', 5000))
+    if 'finish_on_eof' in impl and (type(impl['finish_on_eof']) is not bool
+                                     or transport != 'stdio'):
+        raise ValueError('finish_on_eof requires stdio and a boolean')
     if 'fixture_clock' in impl and (type(impl['fixture_clock']) is not bool
                                       or transport != 'stdio'):
         raise ValueError('fixture_clock requires stdio and a boolean')
@@ -152,9 +164,9 @@ def validate_impl(impl):
     if not isinstance(fixtures, dict):
         raise ValueError('fixtures must be a label map')
     for label, hook in fixtures.items():
-        if not LABEL.fullmatch(label) or not isinstance(hook, dict) or set(hook) - {'setup', 'teardown', 'env'}:
+        if not LABEL.fullmatch(label) or not isinstance(hook, dict) or set(hook) - {'setup', 'verify', 'teardown', 'env'}:
             raise ValueError('invalid fixture hook')
-        for key in ('setup', 'teardown'):
+        for key in ('setup', 'verify', 'teardown'):
             command = hook.get(key, [])
             if not isinstance(command, list) or any(not isinstance(a, str) or not a for a in command):
                 raise ValueError('fixture hook commands must be argv arrays')
@@ -303,6 +315,10 @@ class Peer:
                 command += ['--address', impl['address']]
             if 'key_file' in impl:
                 command += ['--key-file', impl['key_file']]
+            if 'iroh_mode' in impl:
+                command += ['--mode', impl['iroh_mode']]
+            if 'incoming_stream' in impl:
+                command += ['--incoming-stream', str(impl['incoming_stream'])]
         self.process = await asyncio.create_subprocess_exec(
             *command, cwd=ROOT, stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
@@ -347,6 +363,28 @@ class Peer:
                     pending = b'\x00' + pending[-128:]
         if self.ready is not None and not self.ready.done():
             self.ready.set_exception(RuntimeError('adapter exited before readiness signal'))
+
+    async def finish_wire(self):
+        """Drain final sends/FIN before teardown or durable oracles.
+
+        A script ending in send is not evidence that the driver transmitted it.
+        Require clean stdout EOF and a successful driver exit, rejecting trailing
+        frames. The enclosing case timeout bounds a stalled remote operation.
+        """
+        if self.impl['transport'] != 'iroh' and not self.impl.get('finish_on_eof', False):
+            return
+        assert self.writer is not None and self.process is not None and self.reader is not None
+        self.writer.close()
+        try:
+            await self.reader.readexactly(1)
+        except asyncio.IncompleteReadError as error:
+            if error.partial:
+                raise AssertionError('trailing driver output') from error
+        else:
+            raise AssertionError('trailing driver output')
+        status = await self.process.wait()
+        if status:
+            raise RuntimeError(f'wire peer exited {status}')
 
     async def close(self):
         if self.clock_server is not None:
@@ -512,6 +550,12 @@ async def run_case(impl, suite, case):
                 await run_hook(hooks[label].get('setup', []), env)
             await asyncio.wait_for(peer.start(), millis(impl.get('connect_timeout_ms', 5000)))
             await timeline(peer, case)
+            await peer.finish_wire()
+            # Wire reply matches are not durable-effect proof. Run test-local
+            # oracles before fixture teardown; any failure fails the case, and
+            # teardown still runs. Nothing here adds a protocol method.
+            for label in entered:
+                await run_hook(hooks[label].get('verify', []), env)
     except Exception as exc:
         error = f'{type(exc).__name__}: {exc}'
     finally:
