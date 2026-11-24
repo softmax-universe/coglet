@@ -20,8 +20,10 @@ import CogletSurface
 @MainActor private final class TestSynthesis: FaceSynthesis {
     var callbacks: [(Result<FaceSynthesizedAudio, Swift.Error>) -> Void] = []
     var cancelled = 0
+    var immediateFailure = false
     func synthesize(text: String, completion: @escaping @MainActor (Result<FaceSynthesizedAudio, Swift.Error>) -> Void) -> @MainActor () -> Void {
         callbacks.append(completion)
+        if immediateFailure { completion(.failure(NativeSurfaceError("unavailable"))) }
         return { self.cancelled += 1 }
     }
 }
@@ -114,6 +116,76 @@ final class FaceSurfaceTests: XCTestCase {
             _ = try face.begin(action: stop, epoch: 1, now: 3)
             XCTAssertTrue(face.takeCompletions().isEmpty)
             XCTAssertEqual(try face.read(operation: "speech.heard", args: .record([("item", a["id"]!)]), owner: Self.owner, now: 4)["played_ms"], .unsigned(500))
+        }
+    }
+    func testSpeechConfigReadIsConfiguredSnapshotWithoutFallback() async throws {
+        try await MainActor.run {
+            let face = FaceSurfaceBackend(audio: TestDuplex(), synthesis: TestSynthesis(), renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            let config = try face.read(operation: "speech.config", args: .map([]), owner: Self.owner, now: 0)
+            try CBORCodec.validate("speech::speech-config", config)
+            XCTAssertEqual(config["barge"], .text("stop"))
+            XCTAssertEqual(config["session_mode"], .text("text"))
+            XCTAssertThrowsError(try face.read(operation: "speech.config", args: .map([]), owner: "other", now: 0))
+        }
+    }
+    func testExpressionWireActionAndStateReadUseNativeExpiry() async throws {
+        try await MainActor.run {
+            let face = FaceSurfaceBackend(audio: TestDuplex(), synthesis: TestSynthesis(), renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            let action = CBORValue.record([("id", .text("00000000000000000000000000000001")), ("coglet", .text(Self.owner)),
+                ("capability", .text("expression.set_expression")), ("deadline", .unsigned(2_000_000)),
+                ("args", .record([("expression", .text("happy")), ("intensity", .unsigned(700)), ("duration_ms", .unsigned(100))]))])
+            try face.preflight(action: action, now: 0)
+            XCTAssertEqual(face.renderer.snapshot(now: 0).expression, "neutral", "preflight has no native effects")
+            if case .succeeded = try face.begin(action: action, epoch: 1, now: 0) {} else { XCTFail("renderer must apply synchronously") }
+            let value = try face.read(operation: "expression.state", args: .map([]), owner: Self.owner, now: 50_000)
+            XCTAssertEqual(value["expression"], .text("happy")); XCTAssertEqual(value["remaining_ms"], .unsigned(50))
+            try face.tick(now: 100_000)
+            XCTAssertEqual(try face.read(operation: "expression.state", args: .map([]), owner: Self.owner, now: 100_000)["expression"], .text("neutral"))
+        }
+    }
+    func testDuplicateSynthesisCompletionCannotReplacePlayingMedia() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis()
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            _ = try face.begin(action: Self.speak(id: "00000000000000000000000000000001"), epoch: 1, now: 0)
+            tts.callbacks[0](.success(.init(samples: [Int16](repeating: 1, count: 2400))))
+            try face.tick(now: 1)
+            tts.callbacks[0](.success(.init(samples: [Int16](repeating: 1, count: 24))))
+            tts.callbacks[0](.failure(NativeSurfaceError("unavailable")))
+            io.renderedFrames = 24; try face.tick(now: 2)
+            XCTAssertTrue(face.takeCompletions().isEmpty)
+            io.renderedFrames = 2400; try face.tick(now: 3)
+            if case .succeeded = face.takeCompletions().first?.result {} else { XCTFail("first synthesis result must win") }
+        }
+    }
+    func testSynchronousSynthesisFailureCancelsReturnedHandleBeforeNewWork() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis(); tts.immediateFailure = true
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            _ = try face.begin(action: Self.speak(id: "00000000000000000000000000000001"), epoch: 1, now: 0)
+            XCTAssertEqual(tts.cancelled, 1)
+            XCTAssertEqual(face.takeCompletions().count, 1)
+            face.stop(owner: nil)
+            XCTAssertEqual(tts.cancelled, 1, "failed handle must not remain installed")
+        }
+    }
+    func testUnfinalizedStreamClosesAtSixtySecondsWithoutAnotherChunk() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis()
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in })
+            face.activate(owner: Self.owner, epoch: 1, emit: { _, _ in })
+            _ = try face.begin(action: Self.speak(id: "00000000000000000000000000000001", final: false), epoch: 1, now: 0)
+            tts.callbacks[0](.success(.init(samples: [Int16](repeating: 1, count: 24))))
+            try face.tick(now: 1); io.renderedFrames = 24; try face.tick(now: 2)
+            _ = face.takeCompletions()
+            try face.tick(now: 59_999_999)
+            try face.preflight(action: Self.speak(id: "00000000000000000000000000000002", chunk: 1), now: 59_999_999)
+            try face.tick(now: 60_000_000)
+            XCTAssertThrowsError(try face.preflight(action: Self.speak(id: "00000000000000000000000000000002", chunk: 1), now: 60_000_000))
         }
     }
     private static let owner = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

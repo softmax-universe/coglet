@@ -44,6 +44,8 @@ public struct FaceCompletion {
         var playedMS: UInt64 = 0
     }
     private let audio: any FaceDuplexIO
+    private let sttRoute: String
+    private let ttsRoute: String
     private let synthesis: any FaceSynthesis
     public let renderer: FaceExpressionRenderer
     private var owner: String?
@@ -61,8 +63,10 @@ public struct FaceCompletion {
     private var streamPosition: UInt64 = 0
     private var idleSince: UInt64 = 0
     private var graph: UInt64?
-    public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer) {
+    public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer,
+                sttRoute: String = "local", ttsRoute: String = "local") {
         self.audio = audio; self.synthesis = synthesis; self.renderer = renderer
+        self.sttRoute = sttRoute; self.ttsRoute = ttsRoute
     }
     /// Trusted host calls after opening an SDK native observation session. The
     /// emitter closes over that immutable token, never the newest session token.
@@ -76,6 +80,11 @@ public struct FaceCompletion {
         guard action["coglet"] == owner.map(CBORValue.text), let operation = action["capability"]?.faceText,
               let args = action["args"] else { throw NativeSurfaceError("permission_denied") }
         switch operation {
+        case "expression.set_expression":
+            try CBORCodec.validate("expression::set-expression", args)
+            guard let duration = args["duration_ms"]?.faceUInt, now <= UInt64.max - duration * 1000 else {
+                throw NativeSurfaceError("invalid_argument")
+            }
         case "speech.speak_chunk":
             try CBORCodec.validate("speech::speak-chunk", args)
             guard let text = args["text"]?.faceText, text.utf8.count <= 4096 else { throw NativeSurfaceError("invalid_argument") }
@@ -98,7 +107,13 @@ public struct FaceCompletion {
         try preflight(action: action, now: now)
         guard epoch == self.epoch, let id = action["id"]?.faceText, let deadline = action["deadline"]?.faceUInt,
               deadline > now else { throw NativeSurfaceError("deadline_exceeded") }
-        let args = action["args"]!, streamID = args["stream"]!.faceText!
+        let args = action["args"]!
+        if action["capability"] == .text("expression.set_expression") {
+            try renderer.set(expression: args["expression"]!.faceText!, intensity: args["intensity"]!.faceUInt!,
+                             durationMS: args["duration_ms"]!.faceUInt!, now: now)
+            return .succeeded(.map([]))
+        }
+        let streamID = args["stream"]!.faceText!
         if action["capability"] == .text("speech.stop") {
             if stream == streamID {
                 var snapshot = items.first
@@ -125,16 +140,24 @@ public struct FaceCompletion {
     private func startSynthesis() {
         guard let item = items.first else { return }
         let token = generation, id = item.id
-        cancellation = synthesis.synthesize(text: item.text) { [weak self] result in
-            guard let self, self.generation == token, self.items.first?.id == id else { return }
+        let cancel = synthesis.synthesize(text: item.text) { [weak self] result in
+            guard let self, self.generation == token, self.items.first?.id == id,
+                  self.items.first?.audio == nil else { return }
             switch result {
             case .success(let value): self.items[0].audio = value
             case .failure: self.failStream(code: "unavailable")
             }
         }
+        // A provider may fail synchronously before returning its handle. Never
+        // install that obsolete handle over a newer request or after failure.
+        if generation == token, items.first?.id == id { cancellation = cancel }
+        else { cancel() }
     }
     public func tick(now: UInt64) throws {
         renderer.tick(now: now)
+        if stream != nil, !inputClosed, now >= idleSince, now - idleSince >= 60_000_000 {
+            failStream(code: "cancelled")
+        }
         guard !items.isEmpty else { return }
         if items.contains(where: { $0.deadline <= now }) { failStream(code: "deadline_exceeded"); return }
         if let graph, (!audio.isRunning || audio.captureFailed || graph != audio.generation) { failStream(code: "unavailable"); return }
@@ -217,6 +240,21 @@ public struct FaceCompletion {
     }
     public func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
         guard owner == self.owner else { throw NativeSurfaceError("permission_denied") }
+        if operation == "speech.config" {
+            try CBORCodec.validate("surface::empty-map", args)
+            let config = CBORValue.record([
+                ("stt", .record([("placement", .text("surface")), ("route", .text(sttRoute))])),
+                ("tts", .record([("placement", .text("surface")), ("route", .text(ttsRoute))])),
+                ("barge", .text("stop")), ("session_mode", .text("text"))])
+            try CBORCodec.validate("speech::speech-config", config)
+            return config
+        }
+        if operation == "expression.state" {
+            try CBORCodec.validate("surface::empty-map", args)
+            let value = renderer.snapshot(now: now)
+            return .record([("expression", .text(value.expression)), ("intensity", .unsigned(value.intensity)),
+                            ("remaining_ms", .unsigned(value.remainingMS))])
+        }
         if operation == "speech.heard", let item = args["item"]?.faceText {
             return try history.heard(item: item, owner: owner, epoch: epoch)
         }
