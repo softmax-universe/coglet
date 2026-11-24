@@ -63,8 +63,9 @@ compute mode, memory maxima and import policy before accepting a package.
 build (`build.rs`/proc macros are not sandboxed); `--wasm` must be an artifact
 reported by that exact invocation, not an unrelated stale file. `--target`
 defaults to `wasm32-unknown-unknown`; install that rustup target first. Optional
-`wasm32-wasip1` is accepted for compilation, but current native runtime admission
-**refuses WASI imports**. Not every echo/counter guest is runnable in this slice.
+`wasm32-wasip1` is accepted for compilation. Native runtime admission hosts the
+restricted WASI preview1 file preopens (`/code`, `/data`, `/logs`) and still
+refuses clock, random, poll, symlink-create and hard-link imports.
 
 `batches.json` is an array of 1..1024 nonempty arrays of frozen common `event`
 objects. Each event has `source`, `kind`, `seq`, `logical_time`, `correlation_id`

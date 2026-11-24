@@ -15,5 +15,8 @@ coglet-surface = { path = "../sdk/surface-python", editable = true }
 [dependency-groups]
 dev = ["pytest>=8,<10"]
 
+[tool.hatch.build.targets.wheel]
+packages = ["coglet_sim"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

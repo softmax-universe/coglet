@@ -2,7 +2,7 @@
 //!
 //! This is dispatch metadata, not a replacement for the immutable ABI intent.
 use super::*;
-use crate::{SurfaceSession, catalog};
+use crate::{SurfaceSession, TrustedExtensionCatalog};
 #[cfg(test)]
 #[path = "dispatch_tests.rs"]
 mod tests;
@@ -26,7 +26,12 @@ impl Dispatch {
             && self.intent["args"]["session"] == args["session"]
             && self.intent["args"]["call"] == args["call"]
     }
-    fn validate(&self, id: &str, runtime: &Runtime) -> Result<()> {
+    fn validate(
+        &self,
+        id: &str,
+        runtime: &Runtime,
+        catalog: &TrustedExtensionCatalog,
+    ) -> Result<()> {
         validate("action", &self.intent)?;
         validate("surface-id", &json!(self.surface))?;
         if self.intent["id"] != id
@@ -55,7 +60,7 @@ impl Dispatch {
             self.check_accept(accept)?;
         }
         if let Some(outcome) = &self.outcome {
-            self.check_outcome(outcome)?;
+            self.check_outcome(outcome, catalog)?;
         }
         Ok(())
     }
@@ -68,7 +73,7 @@ impl Dispatch {
         }
         Ok(())
     }
-    fn check_outcome(&self, body: &Value) -> Result<()> {
+    fn check_outcome(&self, body: &Value, catalog: &TrustedExtensionCatalog) -> Result<()> {
         validate("action-outcome", body)?;
         if self.accept.as_ref().is_none_or(|a| a["accepted"] != true)
             || body["id"] != self.intent["id"]
@@ -78,10 +83,7 @@ impl Dispatch {
         }
         if body["status"] == "succeeded" {
             let op = self.intent["capability"].as_str().unwrap();
-            catalog::check(
-                &catalog::operation(op, "action")?["output"],
-                &body["result"],
-            )?;
+            catalog.check(op, "action", true, &body["result"])?;
         }
         Ok(())
     }
@@ -242,6 +244,14 @@ impl RuntimeService {
             if saved.surface != session.surface() {
                 return Err("dispatch belongs to another authenticated surface".into());
             }
+            if self.catalog.single_owner(
+                saved.intent["capability"]
+                    .as_str()
+                    .ok_or("missing operation")?,
+            ) {
+                session
+                    .check_single_owner(saved.intent["coglet"].as_str().ok_or("missing owner")?)?;
+            }
             // Completed records may expire at the surface. Never silently retry
             // beyond even the minimum guaranteed retention window.
             let retained_until = saved.intent["deadline"]
@@ -311,6 +321,14 @@ impl RuntimeService {
         if dispatch.surface != session.surface() {
             return Err("accept from wrong authenticated surface".into());
         }
+        if self.catalog.single_owner(
+            dispatch.intent["capability"]
+                .as_str()
+                .ok_or("missing operation")?,
+        ) {
+            session
+                .check_single_owner(dispatch.intent["coglet"].as_str().ok_or("missing owner")?)?;
+        }
         dispatch.check_accept(body)?;
         if let Some(saved) = &dispatch.accept {
             return if saved == body {
@@ -357,7 +375,15 @@ impl RuntimeService {
         if dispatch.surface != session.surface() {
             return Err("outcome from wrong authenticated surface".into());
         }
-        dispatch.check_outcome(&event["payload"])?;
+        if self.catalog.single_owner(
+            dispatch.intent["capability"]
+                .as_str()
+                .ok_or("missing operation")?,
+        ) {
+            session
+                .check_single_owner(dispatch.intent["coglet"].as_str().ok_or("missing owner")?)?;
+        }
+        dispatch.check_outcome(&event["payload"], &self.catalog)?;
         if let Some(saved) = &dispatch.outcome {
             if saved != &event["payload"] {
                 return Err("conflicting terminal result".into());
@@ -365,9 +391,38 @@ impl RuntimeService {
             self.commit_dispatch(next)?;
             return Ok(false);
         }
+        // Keep late effects as durable audit, but never materialize extension
+        // private results under a replacement/revoked grant. Built-in receipt
+        // reconciliation deliberately retains its frozen historical semantics.
+        let operation = dispatch.intent["capability"]
+            .as_str()
+            .ok_or("missing operation")?;
+        let publish = if self.catalog.single_owner(operation) {
+            let envelope: Value = coglet_types::decode(
+                "surface-message",
+                &hex::decode(&dispatch.envelope_hex).map_err(|e| e.to_string())?,
+            )?
+            .deserialized()
+            .map_err(|e| e.to_string())?;
+            envelope["body"]["grant_epoch"] == session.grant_epoch()
+                && self.state.surface_epochs.get(session.surface()).copied()
+                    == Some(session.grant_epoch())
+                && session
+                    .authorize(
+                        dispatch.intent["coglet"].as_str().ok_or("missing owner")?,
+                        operation,
+                        "action",
+                        now,
+                    )
+                    .is_ok()
+        } else {
+            true
+        };
         dispatch.outcome = Some(event["payload"].clone());
         dispatch.terminal_at = Some(now);
-        Self::stage_terminal(&mut next, event.clone(), now)?;
+        if publish {
+            Self::stage_terminal(&mut next, event.clone(), now)?;
+        }
         self.commit_dispatch(next)?;
         Ok(true)
     }
@@ -527,7 +582,10 @@ impl RuntimeService {
         }
         Ok(())
     }
-    pub(super) fn validate_dispatches(state: &ServiceState) -> Result<()> {
+    pub(super) fn validate_dispatches(
+        state: &ServiceState,
+        catalog: &TrustedExtensionCatalog,
+    ) -> Result<()> {
         for surface in state.surface_sequences.keys() {
             validate("surface-id", &json!(surface))?;
         }
@@ -538,7 +596,7 @@ impl RuntimeService {
             }
         }
         for (id, dispatch) in &state.dispatches {
-            dispatch.validate(id, &state.runtime)?;
+            dispatch.validate(id, &state.runtime, catalog)?;
         }
         Ok(())
     }

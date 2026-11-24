@@ -1,4 +1,6 @@
-//! Opt-in, qualified interpreter route. No ambient WASI or native I/O.
+//! Opt-in, qualified interpreter route. No ambient host I/O.
+#[path = "wasi.rs"]
+mod wasi;
 use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
 use coglet_engine::{
     Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,
@@ -20,19 +22,6 @@ impl NativeEngine {
         runtime_bytes: u32,
         stack_bytes: u32,
     ) -> Result<Self> {
-        // Reject the unavailable WASI route at admission, not halfway through a
-        // guest. The engine still validates all Wasm/signatures/memory limits.
-        for payload in wasmparser::Parser::new(0).parse_all(&code) {
-            if let wasmparser::Payload::ImportSection(imports) =
-                payload.map_err(|e| e.to_string())?
-            {
-                for import in imports.into_imports() {
-                    if import.map_err(|e| e.to_string())?.module != "coglet_v0" {
-                        return Err("native runtime WASI host is not qualified".into());
-                    }
-                }
-            }
-        }
         let engine = Self {
             code,
             runtime_bytes,
@@ -65,7 +54,19 @@ impl NativeEngine {
         })
     }
 }
-struct TransactionHost<'a>(&'a mut StepHost);
+struct TransactionHost<'a> {
+    host: &'a mut StepHost,
+    wasi: wasi::Wasi,
+}
+impl TransactionHost<'_> {
+    fn new(host: &mut StepHost) -> Result<TransactionHost<'_>> {
+        let wasi = wasi::Wasi::new(&host.files)?;
+        Ok(TransactionHost { host, wasi })
+    }
+    fn commit(self) -> Result<()> {
+        self.wasi.commit(&mut self.host.files)
+    }
+}
 impl Host for TransactionHost<'_> {
     fn call(
         &mut self,
@@ -76,21 +77,29 @@ impl Host for TransactionHost<'_> {
         budget: &mut StepBudget,
     ) -> coglet_engine::Result<u32> {
         budget.check_deadline()?;
-        if module != "coglet_v0"
-            || !["emit", "timer", "llm", "log"].contains(&name)
-            || args.len() != 2
+        if module == "coglet_v0"
+            && ["emit", "timer", "llm", "log"].contains(&name)
+            && args.len() == 2
         {
-            return Err(coglet_engine::Error::UnqualifiedModule);
+            let ptr = u32::try_from(args[0]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
+            let len = u32::try_from(args[1]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
+            let raw = memory.read(ptr, len)?;
+            let result = self
+                .host
+                .import(name, &raw)
+                .map_err(coglet_engine::Error::Trap)?;
+            if name == "log" && result == 0 {
+                self.wasi
+                    .sync_events_log(&self.host.files)
+                    .map_err(coglet_engine::Error::Trap)?;
+            }
+            budget.check_deadline()?;
+            return Ok(result as u32);
         }
-        let ptr = u32::try_from(args[0]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
-        let len = u32::try_from(args[1]).map_err(|_| coglet_engine::Error::InvalidPointer)?;
-        let raw = memory.read(ptr, len)?;
-        let result = self
-            .0
-            .import(name, &raw)
-            .map_err(coglet_engine::Error::Trap)?;
-        budget.check_deadline()?;
-        Ok(result as u32)
+        if module == "wasi_snapshot_preview1" {
+            return self.wasi.call(name, args, memory, budget);
+        }
+        Err(coglet_engine::Error::UnqualifiedModule)
     }
 }
 impl Engine for NativeEngine {
@@ -128,8 +137,12 @@ impl Engine for NativeEngine {
             .prepared
             .take()
             .ok_or("native execution requires successful admission")?;
-        let outcome = instance.handle(input, &mut TransactionHost(host));
+        let mut tx = TransactionHost::new(host)?;
+        let outcome = instance.handle(input, &mut tx);
         let failure = outcome.result.err().map(engine_failure);
+        if failure.is_none() {
+            tx.commit()?;
+        }
         Ok(EngineReport {
             // Engine API exposes copied bytes/compute, not peak linear pages.
             // Report the conservative admitted page bound, never invented RSS.
@@ -159,8 +172,7 @@ mod tests {
     use super::*;
     #[test]
     fn guest_exit_is_guest_return_abort_including_zero_status() {
-        // Mapping proof only: native WASI admission is still refused. Do not
-        // mistake these typed outcomes for execution of a proc_exit import.
+        // Mapping proof only: proc_exit is intercepted before the file host.
         for code in [0, 1, u32::MAX] {
             let failure = engine_failure(coglet_engine::Error::GuestExit(code));
             assert_eq!(failure["kind"], "guest_return");

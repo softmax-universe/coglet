@@ -201,4 +201,28 @@ mod tests {
         extended["items"][0]["duration_ms"] = json!(31);
         assert!(transition(Some(&c), &hex::encode(cbor(&extended).unwrap())).is_err());
     }
+    #[test]
+    fn heard_truncation_hello_world_1200_of_3000() {
+        let surface = format!("surface:{}", "a".repeat(64));
+        let item = "1".repeat(32);
+        let encoded = collect(
+            None,
+            &surface,
+            &json!({"item":item,"played_ms":1200,"text":"Hello"}),
+            true,
+        )
+        .unwrap();
+        let state = decode(Some(&encoded)).unwrap();
+        assert_eq!(state["items"][0]["heard"], "Hello");
+        assert_eq!(state["items"][0]["played_ms"], 1200);
+        assert_eq!(state["items"][0]["stopped"], true);
+        let replay = collect(
+            Some(&encoded),
+            &surface,
+            &json!({"item":item,"played_ms":1200,"text":"Hello"}),
+            true,
+        )
+        .unwrap();
+        assert_eq!(replay, encoded);
+    }
 }

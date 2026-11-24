@@ -42,7 +42,8 @@ boundary inputs may advance the source floor; generated wakes cannot invent gaps
 exercises the actual native-enabled session pump, retained translated bytes,
 new-intent refusal (including direct preparation), and untouched queued attempt.
 `guest_exit_is_guest_return_abort_including_zero_status` proves typed outcome
-classification only. Native WASI/proc_exit execution remains admission-refused.
+classification only. Restricted native WASI file execution is covered separately
+by `tests/support/native_wasi.rs`; `proc_exit` aborts the guest step.
 
 `durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts`
 carries pending actions, LLM requests, inbox wakes and translated dispatch

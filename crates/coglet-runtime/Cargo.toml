@@ -13,11 +13,12 @@ default = []
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
 echo-smoke = ["native-engine"]
-native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser"]
+native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:coglet-fs", "dep:wasmparser"]
 
 [dependencies]
 coglet-engine = { path = "../coglet-engine", optional = true }
 coglet-engine-wamr = { path = "../coglet-engine-wamr", optional = true }
+coglet-fs = { path = "../coglet-fs", optional = true }
 wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 coglet-types = { path = "../coglet-types" }
