@@ -58,6 +58,22 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertEqual(hub.deviceID, String(repeating: "a", count: 64))
     }
 
+    func testTransientHelperLaunchFailureRestartsWithoutRotatingIdentity() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        let key = Data(repeating: 6, count: 32)
+        link.failStarts = 1
+        let hub = HubConnection(account: HubAccount(store: store, generate: { key }), link: link)
+        hub.start()
+        defer { hub.stop() }
+        XCTAssertEqual(hub.state, .offline)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while link.starts < 2, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(link.starts, 2, "A transient helper launch failure must re-arm startup")
+        XCTAssertEqual(try store.loadKey(), key)
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(hub.deviceID, String(repeating: "a", count: 64))
+    }
+
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))
@@ -84,7 +100,12 @@ final class FakeHubLink: HubLink {
     var callback: ((HubLinkEvent) -> Void)?
     var lastPairing: HubPairing?
     var starts = 0
-    func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws { starts += 1; callback = event }
+    var failStarts = 0
+    func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws {
+        starts += 1
+        if failStarts > 0 { failStarts -= 1; throw HubError.unavailable }
+        callback = event
+    }
     func connect(_ pairing: HubPairing) throws { lastPairing = pairing }
     func stop() { callback = nil }
     func emit(_ event: HubLinkEvent) { callback?(event) }
