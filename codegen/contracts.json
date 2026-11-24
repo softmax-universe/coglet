@@ -5,6 +5,7 @@
   "surface": "generated",
   "speech": "generated",
   "expression": "generated",
+  "sandbox": "generated",
   "database": "generated",
   "policy": "draft-validated",
   "promotion": "draft-validated",

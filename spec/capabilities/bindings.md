@@ -1,8 +1,9 @@
 # Operation bindings — 0.1
 
 Normative pre-freeze amendment: [ADR-0009](../../docs/adr/0009-spec-v0-freeze.md).
-The machine-readable [bindings.json](bindings.json) is the exhaustive v0 built-in
-speech/expression and ABI LLM operation catalog. Its `family:rule` references
+The machine-readable [bindings.json](bindings.json) is the exhaustive release-pinned
+speech/expression, sandbox ([ADR-0016](../../docs/adr/0016-sandbox-world-bindings.md))
+and ABI LLM operation catalog. Its `family:rule` references
 select `spec/messages/<family>.cddl` and the corresponding JSON Schema `$defs`.
 It imports, rather than duplicates, those records. A valid root union is NOT a
 valid operation binding. Entries/resources are not operations.

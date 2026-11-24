@@ -6,6 +6,10 @@ build-backend = "hatchling.build"
 name = "coglet-sim"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = ["coglet-surface"]
+
+[tool.uv.sources]
+coglet-surface = { path = "../sdk/surface-python", editable = true }
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]

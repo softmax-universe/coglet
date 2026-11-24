@@ -188,6 +188,12 @@ internal enum GeneratedSchema {
         "hub::hub-transfer-type": .literal(.text("transfer")),
         "hub::hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
         "hub::hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
+        "sandbox::sandbox-entry": .reference("sandbox::sandbox-profile"),
+        "sandbox::gridbot-state": .record([.init(name: "x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "width", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "height", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
+        "sandbox::gridbot-move": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]))]),
+        "sandbox::cartpole-state": .record([.init(name: "x", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "velocity", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "angle", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "angular_velocity", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
+        "sandbox::cartpole-force": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("left")), .literal(.text("right"))]))]),
+        "sandbox::sandbox-profile": .union([.reference("sandbox::gridbot-state"), .reference("sandbox::gridbot-move"), .reference("sandbox::cartpole-state"), .reference("sandbox::cartpole-force")]),
         "speech::speech-entry": .reference("speech::speech-profile"),
         "speech::speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
         "speech::speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
@@ -412,6 +418,12 @@ internal enum GeneratedSchema {
         "hub-transfer-type": .literal(.text("transfer")),
         "hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
         "hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
+        "sandbox-entry": .reference("sandbox::sandbox-profile"),
+        "gridbot-state": .record([.init(name: "x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "width", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "height", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
+        "gridbot-move": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]))]),
+        "cartpole-state": .record([.init(name: "x", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "velocity", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "angle", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "angular_velocity", optional: false, node: .range(.negative(-2147483648), .unsigned(2147483647))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
+        "cartpole-force": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("left")), .literal(.text("right"))]))]),
+        "sandbox-profile": .union([.reference("sandbox::gridbot-state"), .reference("sandbox::gridbot-move"), .reference("sandbox::cartpole-state"), .reference("sandbox::cartpole-force")]),
         "speech-entry": .reference("speech::speech-profile"),
         "speech-start": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "position_ms", optional: false, node: .reference("common::uint64"))]),
         "speech-partial": .record([.init(name: "utterance", optional: false, node: .reference("common::correlation-id")), .init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "text", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{0,16384}$")]))]),
@@ -484,6 +496,8 @@ internal enum GeneratedSchema {
         "@DatabaseDbBoundaryRecordPrevious": .union([.reference("abi::hash"), .literal(.null)]),
         "@ExpressionSetExpressionExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
         "@ExpressionExpressionStateExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@SandboxGridbotMoveDirection": .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]),
+        "@SandboxCartpoleForceDirection": .union([.literal(.text("left")), .literal(.text("right"))]),
         "@SpeechSpeechPositionState": .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]),
         "@SpeechSpeechBargeInReflex": .union([.literal(.text("stopped")), .literal(.text("ducked"))]),
         "@SpeechBackchannelCue": .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]),
@@ -542,6 +556,8 @@ internal enum GeneratedSchema {
         "@DbBoundaryRecordPrevious": .union([.reference("abi::hash"), .literal(.null)]),
         "@SetExpressionExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
         "@ExpressionStateExpression": .union([.literal(.text("neutral")), .literal(.text("listening")), .literal(.text("thinking")), .literal(.text("speaking")), .literal(.text("happy")), .literal(.text("concerned"))]),
+        "@GridbotMoveDirection": .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]),
+        "@CartpoleForceDirection": .union([.literal(.text("left")), .literal(.text("right"))]),
         "@SpeechPositionState": .union([.literal(.text("playing")), .literal(.text("ducked")), .literal(.text("stopped")), .literal(.text("finished"))]),
         "@SpeechBargeInReflex": .union([.literal(.text("stopped")), .literal(.text("ducked"))]),
         "@BackchannelCue": .union([.literal(.text("ack")), .literal(.text("thinking")), .literal(.text("agree"))]),
@@ -775,6 +791,12 @@ internal enum GeneratedSchema {
         case "hub::hub-transfer-type": typed = try HubHubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-transfer": typed = try HubHubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-frame": typed = try HubHubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::sandbox-entry": typed = try SandboxSandboxEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::gridbot-state": typed = try SandboxGridbotState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::gridbot-move": typed = try SandboxGridbotMove.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::cartpole-state": typed = try SandboxCartpoleState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::cartpole-force": typed = try SandboxCartpoleForce.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox::sandbox-profile": typed = try SandboxSandboxProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-entry": typed = try SpeechSpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-start": typed = try SpeechSpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech::speech-partial": typed = try SpeechSpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -999,6 +1021,12 @@ internal enum GeneratedSchema {
         case "hub-transfer-type": typed = try HubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-transfer": typed = try HubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-frame": typed = try HubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox-entry": typed = try SandboxEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "gridbot-state": typed = try GridbotState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "gridbot-move": typed = try GridbotMove.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "cartpole-state": typed = try CartpoleState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "cartpole-force": typed = try CartpoleForce.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "sandbox-profile": typed = try SandboxProfile.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-entry": typed = try SpeechEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-start": typed = try SpeechStart.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "speech-partial": typed = try SpeechPartial.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -5984,6 +6012,200 @@ public indirect enum HubHubFrame: CBORMessage, Sendable {
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-transfer"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias SandboxSandboxEntry = SandboxSandboxProfile
+
+public struct SandboxGridbotState: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox::gridbot-state"
+    public var `x`: Swift.UInt64
+    public var `y`: Swift.UInt64
+    public var `goal_x`: Swift.UInt64
+    public var `goal_y`: Swift.UInt64
+    public var `width`: Swift.UInt64
+    public var `height`: Swift.UInt64
+    public var `steps`: Swift.UInt64
+    public var `done`: Swift.Bool
+    public var `state_hash`: CBORValue
+    public init(`x`: Swift.UInt64, `y`: Swift.UInt64, `goal_x`: Swift.UInt64, `goal_y`: Swift.UInt64, `width`: Swift.UInt64, `height`: Swift.UInt64, `steps`: Swift.UInt64, `done`: Swift.Bool, `state_hash`: CBORValue) {
+        self.`x` = `x`
+        self.`y` = `y`
+        self.`goal_x` = `goal_x`
+        self.`goal_y` = `goal_y`
+        self.`width` = `width`
+        self.`height` = `height`
+        self.`steps` = `steps`
+        self.`done` = `done`
+        self.`state_hash` = `state_hash`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`x` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "x")), depth: depth + 1)
+        self.`y` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "y")), depth: depth + 1)
+        self.`goal_x` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "goal_x")), depth: depth + 1)
+        self.`goal_y` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "goal_y")), depth: depth + 1)
+        self.`width` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "width")), depth: depth + 1)
+        self.`height` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "height")), depth: depth + 1)
+        self.`steps` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "steps")), depth: depth + 1)
+        self.`done` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "done")), depth: depth + 1)
+        self.`state_hash` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state_hash")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("x", try self.`x`.cborValue(depth: depth + 1)))
+        entries.append(.init("y", try self.`y`.cborValue(depth: depth + 1)))
+        entries.append(.init("goal_x", try self.`goal_x`.cborValue(depth: depth + 1)))
+        entries.append(.init("goal_y", try self.`goal_y`.cborValue(depth: depth + 1)))
+        entries.append(.init("width", try self.`width`.cborValue(depth: depth + 1)))
+        entries.append(.init("height", try self.`height`.cborValue(depth: depth + 1)))
+        entries.append(.init("steps", try self.`steps`.cborValue(depth: depth + 1)))
+        entries.append(.init("done", try self.`done`.cborValue(depth: depth + 1)))
+        entries.append(.init("state_hash", try self.`state_hash`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SandboxGridbotMove: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox::gridbot-move"
+    public var `direction`: SandboxGridbotMoveDirection
+    public init(`direction`: SandboxGridbotMoveDirection) {
+        self.`direction` = `direction`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`direction` = try SandboxGridbotMoveDirection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "direction")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("direction", try self.`direction`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SandboxCartpoleState: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox::cartpole-state"
+    public var `x`: Swift.Int64
+    public var `velocity`: Swift.Int64
+    public var `angle`: Swift.Int64
+    public var `angular_velocity`: Swift.Int64
+    public var `steps`: Swift.UInt64
+    public var `done`: Swift.Bool
+    public var `state_hash`: CBORValue
+    public init(`x`: Swift.Int64, `velocity`: Swift.Int64, `angle`: Swift.Int64, `angular_velocity`: Swift.Int64, `steps`: Swift.UInt64, `done`: Swift.Bool, `state_hash`: CBORValue) {
+        self.`x` = `x`
+        self.`velocity` = `velocity`
+        self.`angle` = `angle`
+        self.`angular_velocity` = `angular_velocity`
+        self.`steps` = `steps`
+        self.`done` = `done`
+        self.`state_hash` = `state_hash`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`x` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "x")), depth: depth + 1)
+        self.`velocity` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "velocity")), depth: depth + 1)
+        self.`angle` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "angle")), depth: depth + 1)
+        self.`angular_velocity` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "angular_velocity")), depth: depth + 1)
+        self.`steps` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "steps")), depth: depth + 1)
+        self.`done` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "done")), depth: depth + 1)
+        self.`state_hash` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state_hash")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("x", try self.`x`.cborValue(depth: depth + 1)))
+        entries.append(.init("velocity", try self.`velocity`.cborValue(depth: depth + 1)))
+        entries.append(.init("angle", try self.`angle`.cborValue(depth: depth + 1)))
+        entries.append(.init("angular_velocity", try self.`angular_velocity`.cborValue(depth: depth + 1)))
+        entries.append(.init("steps", try self.`steps`.cborValue(depth: depth + 1)))
+        entries.append(.init("done", try self.`done`.cborValue(depth: depth + 1)))
+        entries.append(.init("state_hash", try self.`state_hash`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct SandboxCartpoleForce: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox::cartpole-force"
+    public var `direction`: SandboxCartpoleForceDirection
+    public init(`direction`: SandboxCartpoleForceDirection) {
+        self.`direction` = `direction`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`direction` = try SandboxCartpoleForceDirection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "direction")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("direction", try self.`direction`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SandboxSandboxProfile: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox::sandbox-profile"
+    case variant1(SandboxGridbotState)
+    case variant2(SandboxGridbotMove)
+    case variant3(SandboxCartpoleState)
+    case variant4(SandboxCartpoleForce)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("sandbox::gridbot-state"), cborValue)) != nil {
+            self = .variant1(try SandboxGridbotState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::gridbot-move"), cborValue)) != nil {
+            self = .variant2(try SandboxGridbotMove.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::cartpole-state"), cborValue)) != nil {
+            self = .variant3(try SandboxCartpoleState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::cartpole-force"), cborValue)) != nil {
+            self = .variant4(try SandboxCartpoleForce.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::gridbot-state"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::gridbot-move"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::cartpole-state"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::cartpole-force"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -12290,6 +12512,200 @@ public indirect enum HubFrame: CBORMessage, Sendable {
     }
 }
 
+public typealias SandboxEntry = SandboxSandboxProfile
+
+public struct GridbotState: CBORMessage, Sendable {
+    public static let schemaRule = "gridbot-state"
+    public var `x`: Swift.UInt64
+    public var `y`: Swift.UInt64
+    public var `goal_x`: Swift.UInt64
+    public var `goal_y`: Swift.UInt64
+    public var `width`: Swift.UInt64
+    public var `height`: Swift.UInt64
+    public var `steps`: Swift.UInt64
+    public var `done`: Swift.Bool
+    public var `state_hash`: CBORValue
+    public init(`x`: Swift.UInt64, `y`: Swift.UInt64, `goal_x`: Swift.UInt64, `goal_y`: Swift.UInt64, `width`: Swift.UInt64, `height`: Swift.UInt64, `steps`: Swift.UInt64, `done`: Swift.Bool, `state_hash`: CBORValue) {
+        self.`x` = `x`
+        self.`y` = `y`
+        self.`goal_x` = `goal_x`
+        self.`goal_y` = `goal_y`
+        self.`width` = `width`
+        self.`height` = `height`
+        self.`steps` = `steps`
+        self.`done` = `done`
+        self.`state_hash` = `state_hash`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`x` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "x")), depth: depth + 1)
+        self.`y` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "y")), depth: depth + 1)
+        self.`goal_x` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "goal_x")), depth: depth + 1)
+        self.`goal_y` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "goal_y")), depth: depth + 1)
+        self.`width` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "width")), depth: depth + 1)
+        self.`height` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "height")), depth: depth + 1)
+        self.`steps` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "steps")), depth: depth + 1)
+        self.`done` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "done")), depth: depth + 1)
+        self.`state_hash` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state_hash")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("x", try self.`x`.cborValue(depth: depth + 1)))
+        entries.append(.init("y", try self.`y`.cborValue(depth: depth + 1)))
+        entries.append(.init("goal_x", try self.`goal_x`.cborValue(depth: depth + 1)))
+        entries.append(.init("goal_y", try self.`goal_y`.cborValue(depth: depth + 1)))
+        entries.append(.init("width", try self.`width`.cborValue(depth: depth + 1)))
+        entries.append(.init("height", try self.`height`.cborValue(depth: depth + 1)))
+        entries.append(.init("steps", try self.`steps`.cborValue(depth: depth + 1)))
+        entries.append(.init("done", try self.`done`.cborValue(depth: depth + 1)))
+        entries.append(.init("state_hash", try self.`state_hash`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct GridbotMove: CBORMessage, Sendable {
+    public static let schemaRule = "gridbot-move"
+    public var `direction`: GridbotMoveDirection
+    public init(`direction`: GridbotMoveDirection) {
+        self.`direction` = `direction`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`direction` = try GridbotMoveDirection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "direction")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("direction", try self.`direction`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CartpoleState: CBORMessage, Sendable {
+    public static let schemaRule = "cartpole-state"
+    public var `x`: Swift.Int64
+    public var `velocity`: Swift.Int64
+    public var `angle`: Swift.Int64
+    public var `angular_velocity`: Swift.Int64
+    public var `steps`: Swift.UInt64
+    public var `done`: Swift.Bool
+    public var `state_hash`: CBORValue
+    public init(`x`: Swift.Int64, `velocity`: Swift.Int64, `angle`: Swift.Int64, `angular_velocity`: Swift.Int64, `steps`: Swift.UInt64, `done`: Swift.Bool, `state_hash`: CBORValue) {
+        self.`x` = `x`
+        self.`velocity` = `velocity`
+        self.`angle` = `angle`
+        self.`angular_velocity` = `angular_velocity`
+        self.`steps` = `steps`
+        self.`done` = `done`
+        self.`state_hash` = `state_hash`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`x` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "x")), depth: depth + 1)
+        self.`velocity` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "velocity")), depth: depth + 1)
+        self.`angle` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "angle")), depth: depth + 1)
+        self.`angular_velocity` = try Swift.Int64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "angular_velocity")), depth: depth + 1)
+        self.`steps` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "steps")), depth: depth + 1)
+        self.`done` = try Swift.Bool.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "done")), depth: depth + 1)
+        self.`state_hash` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state_hash")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("x", try self.`x`.cborValue(depth: depth + 1)))
+        entries.append(.init("velocity", try self.`velocity`.cborValue(depth: depth + 1)))
+        entries.append(.init("angle", try self.`angle`.cborValue(depth: depth + 1)))
+        entries.append(.init("angular_velocity", try self.`angular_velocity`.cborValue(depth: depth + 1)))
+        entries.append(.init("steps", try self.`steps`.cborValue(depth: depth + 1)))
+        entries.append(.init("done", try self.`done`.cborValue(depth: depth + 1)))
+        entries.append(.init("state_hash", try self.`state_hash`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct CartpoleForce: CBORMessage, Sendable {
+    public static let schemaRule = "cartpole-force"
+    public var `direction`: CartpoleForceDirection
+    public init(`direction`: CartpoleForceDirection) {
+        self.`direction` = `direction`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`direction` = try CartpoleForceDirection.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "direction")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("direction", try self.`direction`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SandboxProfile: CBORMessage, Sendable {
+    public static let schemaRule = "sandbox-profile"
+    case variant1(SandboxGridbotState)
+    case variant2(SandboxGridbotMove)
+    case variant3(SandboxCartpoleState)
+    case variant4(SandboxCartpoleForce)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("sandbox::gridbot-state"), cborValue)) != nil {
+            self = .variant1(try SandboxGridbotState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::gridbot-move"), cborValue)) != nil {
+            self = .variant2(try SandboxGridbotMove.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::cartpole-state"), cborValue)) != nil {
+            self = .variant3(try SandboxCartpoleState.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("sandbox::cartpole-force"), cborValue)) != nil {
+            self = .variant4(try SandboxCartpoleForce.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::gridbot-state"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::gridbot-move"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::cartpole-state"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("sandbox::cartpole-force"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public typealias SpeechEntry = SpeechSpeechProfile
 
 public struct SpeechStart: CBORMessage, Sendable {
@@ -15236,6 +15652,86 @@ public indirect enum ExpressionExpressionStateExpression: CBORMessage, Sendable 
     }
 }
 
+public indirect enum SandboxGridbotMoveDirection: CBORMessage, Sendable {
+    public static let schemaRule = "@SandboxGridbotMoveDirection"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("north")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("south")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("east")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("west")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("north")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("south")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("east")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("west")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum SandboxCartpoleForceDirection: CBORMessage, Sendable {
+    public static let schemaRule = "@SandboxCartpoleForceDirection"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("left")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("right")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("left")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("right")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum SpeechSpeechPositionState: CBORMessage, Sendable {
     public static let schemaRule = "@SpeechSpeechPositionState"
     case variant1(Swift.String)
@@ -17614,6 +18110,86 @@ public indirect enum ExpressionStateExpression: CBORMessage, Sendable {
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("concerned")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum GridbotMoveDirection: CBORMessage, Sendable {
+    public static let schemaRule = "@GridbotMoveDirection"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("north")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("south")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("east")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("west")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("north")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("south")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("east")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("west")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum CartpoleForceDirection: CBORMessage, Sendable {
+    public static let schemaRule = "@CartpoleForceDirection"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("left")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("right")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("left")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("right")), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value

@@ -121,6 +121,30 @@
       "input": "surface:empty-map",
       "output": "expression:expression-state"
     },
+    "sim.gridbot_state": {
+      "entry": "sim.gridbot",
+      "direction": "event",
+      "input": "sandbox:gridbot-state",
+      "output": null
+    },
+    "sim.gridbot_move": {
+      "entry": "sim.gridbot",
+      "direction": "action",
+      "input": "sandbox:gridbot-move",
+      "output": "surface:empty-map"
+    },
+    "sim.cartpole_state": {
+      "entry": "sim.cartpole",
+      "direction": "event",
+      "input": "sandbox:cartpole-state",
+      "output": null
+    },
+    "sim.cartpole_force": {
+      "entry": "sim.cartpole",
+      "direction": "action",
+      "input": "sandbox:cartpole-force",
+      "output": "surface:empty-map"
+    },
     "llm.complete": {
       "entry": null,
       "direction": "gateway",
