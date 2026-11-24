@@ -14,6 +14,14 @@ on:
 permissions:
   contents: read
 jobs:
+  swift-startup-budget:
+    runs-on: [self-hosted, macOS, coglet-mac]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build --package-path sdk/surface-swift
+      - name: Real Swift slow-start regression and counterfactual
+        run: python3 sdk/surface-swift/test_readiness.py -v
   startup-budget:
     runs-on: ubuntu-latest
     timeout-minutes: 15
