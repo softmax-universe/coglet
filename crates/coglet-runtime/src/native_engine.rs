@@ -218,6 +218,8 @@ impl crate::RuntimeService {
     }
     pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
         if !self.managed_running()
+            || self.managed_paused()
+            || self.receiver_pending_for_execution()
             || self.native.is_none()
             || self.state.runtime.unresolved_attempt.is_some()
             || self.surface_epoch(session.surface()) != session.grant_epoch()

@@ -139,6 +139,8 @@ impl RuntimeService {
             next.dispatch_order
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
+        #[cfg(feature = "device")]
+        Self::receiver_finish_step(&mut next, &json!({"journal":record}))?;
         Ok(next)
     }
 
@@ -167,6 +169,13 @@ impl RuntimeService {
             }
         }
         for event in state.router.events() {
+            observe(event)?;
+        }
+        #[cfg(feature = "device")]
+        for event in Self::receiver_retired_wakes(state) {
+            if &event["source"] != owner {
+                return Err("invalid retired wake source".into());
+            }
             observe(event)?;
         }
         let runtime = state
@@ -225,6 +234,12 @@ impl RuntimeService {
                 }
             }
             match kind {
+                #[cfg(feature = "device")]
+                "runtime.debug_step" => {
+                    if !Self::receiver_valid_debug_wake(state, event) {
+                        return Err("recovered debug-step wake has no original operation".into());
+                    }
+                }
                 "runtime.inbox" => {
                     let index = event["payload"]["index"]
                         .as_u64()

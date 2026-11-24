@@ -12,6 +12,8 @@ pub(super) struct ManagedState {
     install_receipt: Value,
     live_commit: Value,
     running: bool,
+    #[serde(default)]
+    pub(super) paused: bool,
     // Unknown attempts cannot be changed to fabricate a cancellation receipt.
     // Retain the stop obligation until authoritative reconciliation permits it.
     cancellation_pending: bool,
@@ -102,6 +104,11 @@ impl RuntimeService {
 
     #[cfg(feature = "device")]
     pub(crate) fn managed_contains_operation(&self, id: &str) -> bool {
+        self.receiver_contains(id) || self.managed_contains_lifecycle_operation(id)
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_contains_lifecycle_operation(&self, id: &str) -> bool {
         self.state.managed.as_ref().is_some_and(|m| {
             m.install_receipt["operation_id"] == id || m.operations.contains_key(id)
         })
@@ -127,6 +134,10 @@ impl RuntimeService {
         scope: Option<&ReceiptScope>,
     ) -> Result<Value> {
         validate("correlation-id", &json!(operation_id))?;
+        #[cfg(feature = "device")]
+        if self.receiver_contains(operation_id) {
+            return Err("conflict: operation belongs to the back channel".into());
+        }
         if let Some(saved) = &self.state.managed {
             // An identical installed identity is not permission to borrow a
             // different caller's receipt or collide with another method's ID.
@@ -173,6 +184,7 @@ impl RuntimeService {
             install_receipt: receipt.clone(),
             live_commit,
             running: false,
+            paused: false,
             cancellation_pending: false,
             stopped_at: 0,
             operations: BTreeMap::new(),
@@ -216,6 +228,7 @@ impl RuntimeService {
             Self::cancel_managed_undelivered(&mut next, now)?;
         }
         next.managed.as_mut().unwrap().running = true;
+        next.managed.as_mut().unwrap().paused = false;
         Self::record_operation(&mut next, operation, None)?;
         self.commit_managed(next)
     }
@@ -240,6 +253,7 @@ impl RuntimeService {
             dispatch.stopped = true;
         }
         managed.running = false;
+        managed.paused = false;
         managed.cancellation_pending = true;
         managed.stopped_at = now.max(next.runtime.time).max(managed.stopped_at);
         let now = managed.stopped_at;
@@ -271,6 +285,9 @@ impl RuntimeService {
         intent: &str,
     ) -> Result<Option<Value>> {
         validate("correlation-id", &json!(id))?;
+        if self.receiver_contains(id) {
+            return Err("conflict: operation ID already used by receiver".into());
+        }
         let managed = self.state.managed.as_ref().ok_or("not installed")?;
         if managed.install_receipt["operation_id"] == id {
             return Err("conflict: operation ID already used for install".into());
@@ -323,6 +340,9 @@ impl RuntimeService {
         actor: &str,
         ticket: Option<&str>,
     ) -> Option<(String, Value)> {
+        if self.receiver_contains(id) {
+            return self.receiver_receipt_for(id, actor, ticket);
+        }
         let managed = self.state.managed.as_ref()?;
         let same = |s: &ReceiptScope| s.actor == actor && s.ticket.as_deref() == ticket;
         if managed.install_receipt["operation_id"] == id {
@@ -334,7 +354,7 @@ impl RuntimeService {
         Some((scope.method.clone(), saved.receipt.clone()))
     }
 
-    fn last_step(state: &ServiceState) -> u64 {
+    pub(super) fn last_step(state: &ServiceState) -> u64 {
         state
             .runtime
             .records
@@ -390,12 +410,15 @@ impl RuntimeService {
                 .cloned()
                 .unwrap_or(Value::Null)
         };
-        json!({"state":if self.managed_running() {"running"} else {"stopped"},
+        json!({"state":if self.managed_paused() {"paused"} else if self.managed_running() {"running"} else {"stopped"},
             "live_commit":self.state.managed.as_ref().map(|m| &m.live_commit),
             "step":last.and_then(|r| r["step"].as_u64()).unwrap_or(0),
-            // This seam has no queued router mutation API. Runtime receipts and
-            // event batches are not pending router mutations.
-            "pending":0,"error":error})
+            // Event batches and adapter receipts are not router mutations.
+            "pending":self.receiver_pending_count(),"error":error})
+    }
+
+    pub(super) fn managed_paused(&self) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| m.paused)
     }
 
     pub(super) fn managed_running(&self) -> bool {
@@ -404,6 +427,22 @@ impl RuntimeService {
             .as_ref()
             .is_none_or(|m| m.running && !m.cancellation_pending)
     }
+    #[cfg(feature = "native-engine")]
+    pub(super) fn receiver_pending_for_execution(&self) -> bool {
+        self.receiver_pending_count() != 0
+    }
+
+    fn receiver_pending_count(&self) -> usize {
+        #[cfg(feature = "device")]
+        {
+            self.receiver_pending_len()
+        }
+        #[cfg(not(feature = "device"))]
+        {
+            0
+        }
+    }
+
     pub(super) fn require_managed_running(&self) -> Result<()> {
         if self.managed_running() {
             Ok(())

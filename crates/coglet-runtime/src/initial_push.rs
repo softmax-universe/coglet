@@ -15,6 +15,9 @@ impl DeviceHandler {
                     if let Err(error) = handler.finish_initial_pushes(coglet, None).await {
                         eprintln!("cogletd initial-push reconciliation: {error}");
                     }
+                    if let Err(error) = handler.drain_receiver(coglet).await {
+                        eprintln!("cogletd back-channel reconciliation: {error}");
+                    }
                 }
             });
         }

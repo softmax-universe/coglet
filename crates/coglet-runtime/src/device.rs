@@ -18,6 +18,14 @@ use coglet_proto::{
 };
 use iroh::EndpointId;
 use receipt::receipt_scope;
+#[path = "back_channel.rs"]
+mod back_channel;
+pub use back_channel::BackChannelLimits;
+#[path = "receiver_fetch.rs"]
+mod receiver_fetch;
+pub use receiver_fetch::PublishedSnapshot;
+#[path = "receiver_actions.rs"]
+mod receiver_actions;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -58,6 +66,11 @@ pub struct DeviceConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetPin {
+    /// Explicit publications only; empty by default. Keys are exact Git refs.
+    #[serde(default)]
+    pub fetch_snapshots: BTreeMap<String, PublishedSnapshot>,
+    #[serde(default)]
+    pub back_channel: BackChannelLimits,
     pub grant_generation: u64,
     pub delegation_generation: u64,
     #[serde(default)]
@@ -590,6 +603,9 @@ impl DeviceHandler {
     }
 
     async fn handle_lifecycle(&self, context: RequestContext, request: Value) -> Value {
+        if validate("hub-request", &request).is_err() {
+            return fail(&request, "invalid_argument");
+        }
         if let Err(code) = self.pinned_peer(&context) {
             return fail(&request, code);
         }
@@ -600,10 +616,10 @@ impl DeviceHandler {
             return fail(&request, "invalid_argument");
         };
         match method {
-            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt" => {}
-            "hub.git.push" | "hub.git.fetch" | "hub.actions" | "hub.events" | "hub.inbox"
-            | "hub.health" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
-            | "debug.step" | "hub.enroll" => {
+            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt"
+            | "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
+            | "debug.step" | "hub.actions" => {}
+            "hub.git.push" | "hub.git.fetch" | "hub.events" | "hub.health" | "hub.enroll" => {
                 return fail(&request, "permission_denied");
             }
             _ => return fail(&request, "invalid_argument"),
@@ -618,6 +634,52 @@ impl DeviceHandler {
             "hub.stop" => self.stop(context, request.clone(), coglet, pin).await,
             "hub.status" => self.status(context, request.clone(), coglet, pin).await,
             "hub.receipt" => self.receipt(context, request.clone(), coglet, pin).await,
+            "hub.actions" => {
+                self.receive_action(context, request.clone(), coglet, pin)
+                    .await
+            }
+            "debug.pause" | "debug.step" => {
+                let first = self
+                    .back_channel(
+                        context.clone(),
+                        request.clone(),
+                        coglet.clone(),
+                        pin.clone(),
+                    )
+                    .await;
+                match first {
+                    Ok(result) if result["state"] == "queued" => {
+                        match self.drain_receiver(&coglet).await {
+                            Ok(()) => {
+                                let result = self
+                                    .back_channel(context, request.clone(), coglet, pin)
+                                    .await;
+                                if result.as_ref().is_ok_and(|r| r["state"] == "queued") {
+                                    Err("unavailable".into())
+                                } else {
+                                    result
+                                }
+                            }
+                            Err(error) => Err(error),
+                        }
+                    }
+                    other => other,
+                }
+            }
+            "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" => {
+                let result = self
+                    .back_channel(context, request.clone(), coglet.clone(), pin)
+                    .await;
+                if result.as_ref().is_ok_and(|r| r["state"] == "queued") {
+                    let handler = self.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = handler.drain_receiver(&coglet).await {
+                            eprintln!("runtime back-channel remains queued: {error}");
+                        }
+                    });
+                }
+                result
+            }
             _ => Err("permission_denied".into()),
         };
         match result {
@@ -968,6 +1030,9 @@ impl OperationHandler for DeviceHandler {
         mut stream: GitStream<'a>,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<Value, TransportError>> + Send + 'a>> {
         Box::pin(async move {
+            if request["method"] == "hub.git.fetch" {
+                return self.fetch_snapshot(context, request, stream).await;
+            }
             if request["method"] != "hub.git.push" {
                 return Ok(fail(&request, "permission_denied"));
             }
