@@ -91,6 +91,17 @@ class RecordStream:
                 "omitted": max(0, count - MAX_HISTORY), "modified_at": before.st_mtime}
 
 
+def browser_values(value):
+    """Lossless display JSON: JavaScript cannot represent all ABI uint64s."""
+    if type(value) is int and abs(value) > 2**53 - 1:
+        return str(value)
+    if isinstance(value, dict):
+        return {key: browser_values(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [browser_values(item) for item in value]
+    return value
+
+
 class LocalServer(ThreadingHTTPServer):
     url: str
     # The TCP backlog bounds pending requests; private data still requires token.
@@ -133,7 +144,7 @@ def make_server(path, *, port=0, world_path=None, source_format="jsonl"):
                 except (OSError, ValueError, RecursionError):
                     data = {"state": "error", "records": [], "error": "Selected export is missing, invalid, or over its size limit"}
                 data["world_path"] = world_path
-                body, content_type = json.dumps(data).encode(), "application/json"
+                body, content_type = json.dumps(browser_values(data)).encode(), "application/json"
             elif route in {"/", "/app.js", "/worlds.js", "/style.css"}:
                 filename, content_type = {
                     "/": ("index.html", "text/html"),

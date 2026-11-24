@@ -28,7 +28,7 @@ function draw() {
   if (pinned && !records.some(r => key(r) === pinned)) pinned = null;
   const record = records.find(r => key(r) === pinned) || records.at(-1);
   q('[data-testid=mode]').textContent = pinned ? `History · step ${record.step}` : 'Following latest export';
-  if (!record) return;
+  if (!record) { q('#provenance').textContent = 'Waiting for a complete exported record. Runtime readiness is unknown.'; return; }
   q('#step').textContent = `Step ${record.step} · ${record.status}`;
   q('#provenance').textContent = `Trace ${record.trace_id} · logical time ${record.logical_time} · exported record; not independent replay verification`;
   q('[data-testid=hash]').textContent = record.output_hash;

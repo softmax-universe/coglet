@@ -150,6 +150,26 @@ def test_real_inbox_boundary_and_surface_source_are_inspectable(live):
     assert errors == []
 
 
+def test_uint64_history_and_empty_replacement_keep_exact_state(live):
+    from test_stream import record
+    page, server, runtime, errors = live
+    runtime.step()
+    values = [record(9007199254740992), record(9007199254740993)]
+    values[0]['output_hash'] = 'b' * 64
+    values[1]['output_hash'] = 'c' * 64
+    runtime.export.write_text(''.join(json.dumps(value) + '\n' for value in values))
+    page.goto(server.url)
+    expect(page.get_by_role('button', name='Step 9007199254740993', exact=True)).to_be_visible()
+    page.get_by_role('button', name='Step 9007199254740993', exact=True).click()
+    expect(page.get_by_test_id('hash')).to_have_text('c' * 64)
+    assert page.get_by_test_id('timeline').locator('[aria-pressed=true]').count() == 1
+    runtime.export.write_text('')
+    expect(page.get_by_test_id('connection')).to_have_text('Waiting for exported records')
+    expect(page.locator('#provenance')).not_to_contain_text('55555555')
+    expect(page.get_by_test_id('files')).to_be_empty()
+    assert errors == []
+
+
 def test_surface_observation_and_untrusted_text_render_as_text(live):
     page, server, runtime, errors = live
     event = runtime.request['inputs']['events'][0]

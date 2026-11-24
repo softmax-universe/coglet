@@ -20,30 +20,43 @@ def observe(binary, path):
     # Never clobber an existing operator export or follow a symlink.
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'wb', buffering=0) as export:
-        child = subprocess.Popen([binary, '--mock-stdio'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        assert child.stdin is not None and child.stdout is not None
+        child = None
+        cancelled = False
+        previous = {}
         def stop(signum, frame):
-            child.terminate()
-        signal.signal(signal.SIGTERM, stop)
-        signal.signal(signal.SIGINT, stop)
-        def forward():
-            try:
-                while chunk := os.read(sys.stdin.fileno(), 65536):
-                    child.stdin.write(chunk)
-                    child.stdin.flush()
-            except (BrokenPipeError, OSError):
-                pass
-            finally:
-                child.stdin.close()
-        threading.Thread(target=forward, daemon=True).start()
-        written = 0
-        def exact(size):
-            data = child.stdout.read(size)
-            if len(data) != size:
-                raise ValueError('Truncated runtime response')
-            return data
+            # Nonraising handlers cover Popen's return/reference handoff. A
+            # pending cancellation is applied immediately after child assignment.
+            nonlocal cancelled
+            cancelled = True
+            if child is not None:
+                child.terminate()
         try:
-            while header := child.stdout.read(4):
+            for signum in (signal.SIGTERM, signal.SIGINT):
+                previous[signum] = signal.signal(signum, stop)
+            if cancelled:
+                return 130
+            child = subprocess.Popen([binary, '--mock-stdio'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            if cancelled:
+                return 130
+            assert child.stdin is not None and child.stdout is not None
+            sink, source = child.stdin, child.stdout
+            def forward():
+                try:
+                    while chunk := os.read(sys.stdin.fileno(), 65536):
+                        sink.write(chunk)
+                        sink.flush()
+                except (BrokenPipeError, OSError):
+                    pass
+                finally:
+                    sink.close()
+            threading.Thread(target=forward, daemon=True).start()
+            written = 0
+            def exact(size):
+                data = source.read(size)
+                if len(data) != size:
+                    raise ValueError('Truncated runtime response')
+                return data
+            while header := source.read(4):
                 if len(header) != 4:
                     raise ValueError('Truncated runtime frame header')
                 size = int.from_bytes(header, 'big')
@@ -61,13 +74,19 @@ def observe(binary, path):
                 sys.stdout.buffer.flush()
             return child.wait(timeout=5)
         finally:
-            if child.poll() is None:
-                child.terminate()
-                try:
-                    child.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    child.kill(); child.wait()
-            child.stdout.close()
+            if child is not None:
+                if child.poll() is None:
+                    child.terminate()
+                    try:
+                        child.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        child.kill(); child.wait()
+                if child.stdout is not None:
+                    child.stdout.close()
+                # The CLI exits after observe; its daemon stdin forwarder cannot
+                # retain a live child. Do not block on the parent's stdin here.
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
 
 
 def main():
