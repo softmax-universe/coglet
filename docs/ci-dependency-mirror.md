@@ -13,9 +13,38 @@ version, nested manifests/locks, codegen dependency logic and mirror setup/workf
 code. Whole hosted-image versions are deliberately excluded: GitHub rolls multiple
 images out concurrently, including within one preparation/proof run. Compiled
 `target/` outputs are not restored.
-Missing, corrupt or unavailable assets are logged; ordinary CI uses upstream with
-PR #59's existing Maven retries/cache. A simultaneous GitHub/upstream outage or
-an unpublished dependency addition is not covered.
+Missing, corrupt or unavailable assets are logged. Cargo/rustup retain upstream
+fallback. **Maven normal/proof jobs never fall back to Central:** after mirror and
+Actions cache restore, `resolve_maven.py` invokes the fully versioned
+`org.apache.maven.plugins:maven-dependency-plugin:3.11.0:go-offline` with `--offline`.
+It does not perform plugin-prefix/latest-version lookup or force metadata refresh
+with `-U`. Successful normal/proof resolution exports `MAVEN_ARGS=--offline` for
+subsequent Maven invocations (including Python subprocesses). Preparation leaves
+later full tests online until capture, including dynamically loaded Surefire
+providers that go-offline alone does not fetch. A missing closure fails clearly
+instead of waiting on Central. Local contributor builds remain unchanged.
+
+Only explicit `bundle-mode: prepare` may fill a cold Maven cache online, after
+trying offline first. On a preparation miss it first seeds from the exact original
+Java Maven archive in reviewed candidate `9b5f54198673ff089905d82db874ace4a27bd101`,
+verified against hardcoded SHA-256 `5957675c303a908498be1b2c9e88475f691806dc043c7046e087fe87ef52a061`.
+This read-only GitHub bootstrap is a partial cache seed: original asset identity
+and provenance remain unchanged, full tests still run, and capture emits a genuinely
+new input-addressed closure. Proof never uses this seed, so a proof still shows the
+mirror bundle alone is complete. Normal jobs (including `merge_group`) restore it
+only when the mirror and Actions cache both miss, then resolve offline again; they
+still never contact Central. This is what lets a PR that changes the Maven cache key
+(`pom.xml`, `resolve_maven.py`) pass the merge queue, which cannot read caches
+saved by `pull_request` runs. A dependency the seed lacks still fails clearly. This lets preparation fill/save a cold cache even while Central
+returns 429 and the first shared publication is unavailable. The candidate must
+be retained until a reviewed replacement seed is committed.
+A shared monotonic 165-second budget bounds resolution and seed download together;
+both Java and conformance also impose a native three-minute step timeout. The
+empty-cache regression invokes real Maven offline and requires failure in under
+30 seconds. When adding Maven dependencies/plugins, publish a validated candidate
+from successful preparation before rerunning normal/proof checks with a cold
+cache. The scheduled/main refresh populates the shared release. A simultaneous
+GitHub/upstream outage or an unpublished dependency addition is not covered.
 
 `dependency-mirror` runs daily, on dependency/setup changes on main, or manually.
 Read-only preparation runs the existing workflows' commands, fetches every Cargo
