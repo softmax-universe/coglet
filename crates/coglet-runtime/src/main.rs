@@ -84,6 +84,9 @@ fn mock_stdio(trace_state: bool) -> Result<(), String> {
     }
 }
 
+#[cfg(feature = "native-engine")]
+mod sandbox;
+
 fn main() {
     match std::env::args().skip(1).collect::<Vec<_>>().as_slice() {
         args if matches!(args, [flag] if flag == "--mock-stdio")
@@ -160,6 +163,17 @@ fn main() {
             })();
             if let Err(error) = result {
                 eprintln!("cogletd surface probe: {error}");
+                std::process::exit(1);
+            }
+        }
+        [flag] if flag == "--sandbox-stdio" => {
+            #[cfg(feature = "native-engine")]
+            let result = sandbox::run();
+            #[cfg(not(feature = "native-engine"))]
+            let result: Result<(), String> =
+                Err("sandbox requires native-engine; no mock fallback".into());
+            if let Err(error) = result {
+                eprintln!("cogletd sandbox: {error}");
                 std::process::exit(1);
             }
         }
