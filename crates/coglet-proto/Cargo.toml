@@ -4,6 +4,11 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+# Trusted local fixture provisioning only; never enabled by production defaults.
+test-controls = []
+
 [dependencies]
 coglet-types = { path = "../coglet-types" }
 ciborium = "0.2"

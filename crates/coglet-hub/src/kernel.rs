@@ -328,6 +328,36 @@ impl Kernel {
         ttl: Duration,
         grants: Vec<Grant>,
     ) -> Result<String> {
+        self.configure_invite(peer, grants, move |authority, grants| {
+            Ok(authority.issue_invite(peer, ttl, grants)?)
+        })
+        .await
+    }
+    /// Trusted local fixture provisioning only, gated out of default builds.
+    #[cfg(feature = "test-controls")]
+    pub async fn test_invite(
+        &self,
+        peer: EndpointId,
+        secret: String,
+        ttl: Duration,
+        grants: Vec<Grant>,
+    ) -> Result<()> {
+        self.configure_invite(peer, grants, move |authority, grants| {
+            Ok(authority.test_issue_invite(peer, &secret, ttl, grants)?)
+        })
+        .await
+    }
+    /// Close the real enrollment window for a local negative fixture.
+    #[cfg(feature = "test-controls")]
+    pub async fn test_close_window(&self) -> Result<()> {
+        self.work(|s| Ok(s.authority.close_window()?)).await
+    }
+    async fn configure_invite<T: Send + 'static>(
+        &self,
+        peer: EndpointId,
+        grants: Vec<Grant>,
+        issue: impl FnOnce(&Authority, Vec<Grant>) -> Result<T> + Send + 'static,
+    ) -> Result<T> {
         self.work(move |s| {
             let health: Vec<_> = grants.iter().filter(|g| g.method=="hub.health" && g.target.is_none()).collect();
             if health.len()>1 {return Err(Error::Invalid);}
@@ -335,7 +365,7 @@ impl Kernel {
                 let previous: Option<String> = s.store.db.query_row("SELECT generation FROM health_grants WHERE peer=?1",[peer.to_string()],|r|r.get(0)).optional()?;
                 if previous.is_some_and(|p|p!=g.generation.to_string()) { return Err(Error::Conflict(0)); }
             }
-            let invite=s.authority.issue_invite(peer, ttl, grants.clone())?;
+            let invite=issue(&s.authority, grants.clone())?;
             if let Some(g)=health.first() {
                 let tx=s.store.db.transaction()?;
                 tx.execute("INSERT OR IGNORE INTO health_grants VALUES(?1,?2)",params![peer.to_string(),g.generation.to_string()])?;
