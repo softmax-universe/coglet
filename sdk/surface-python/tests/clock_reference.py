@@ -7,10 +7,6 @@ import socket
 import sys
 import tempfile
 
-# [DEBUG-python-startup] Attribute pre-main import and durable startup stalls.
-import faulthandler
-faulthandler.dump_traceback_later(2, repeat=True)
-
 from coglet_surface.reference import ReferenceDevice
 from coglet_surface.surface import Surface
 from coglet_surface.transport import Frames, frame

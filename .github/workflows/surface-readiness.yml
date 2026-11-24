@@ -25,19 +25,31 @@ jobs:
         run: uv run --no-project --python 3.12 python sdk/surface-swift/test_readiness.py -v
       - name: Bounded readiness and unchanged response deadlines
         run: uv run --no-project --python 3.12 python -m unittest discover -s conformance/tests -p test_readiness.py -v
-      - name: Python delayed negotiation and supervisor backlog regressions
-        run: uv run --project sdk/surface-python --python 3.12 pytest sdk/surface-python/tests/test_reference_readiness.py -v
-      - name: 20 consecutive full Python functional registries under CPU load
-        run: uv run --project sdk/surface-python --python 3.12 python sdk/surface-python/tests/repeat_registry.py
       - name: 20 consecutive full Swift registry passes under CPU load
         run: uv run --no-project --python 3.12 python sdk/surface-swift/repeat_registry.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: swift-readiness-proof
-          path: |
-            target/swift-readiness/
-            target/python-readiness/
+          path: target/swift-readiness/
+          if-no-files-found: error
+  python-startup-budget:
+    # Match the required Python job: this is Linux fixture qualification, not
+    # an expansion of the SDK's macOS peer-credential/SQLite support.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Python delayed negotiation and supervisor backlog regressions
+        run: uv run --project sdk/surface-python --python 3.12 pytest sdk/surface-python/tests/test_reference_readiness.py -v
+      - name: 20 consecutive full Python functional registries under CPU load
+        run: uv run --project sdk/surface-python --python 3.12 python sdk/surface-python/tests/repeat_registry.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-readiness-proof
+          path: target/python-readiness/
           if-no-files-found: error
   startup-budget:
     runs-on: ubuntu-latest
