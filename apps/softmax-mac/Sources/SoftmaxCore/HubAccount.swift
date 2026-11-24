@@ -19,7 +19,7 @@ public final class HubAccount {
     public init(store: any HubStore, generate: @escaping () throws -> Data = HubAccount.randomKey) {
         self.store = store; self.generate = generate
     }
-    public static func randomKey() throws -> Data {
+    public nonisolated static func randomKey() throws -> Data {
         var bytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { throw HubError.identity }
         return Data(bytes)
