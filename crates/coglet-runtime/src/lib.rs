@@ -5,6 +5,8 @@ mod boundary;
 mod catalog;
 mod trusted_catalog;
 pub use trusted_catalog::TrustedExtensionCatalog;
+#[cfg(feature = "native-engine")]
+pub mod database;
 mod execution;
 pub mod ffi;
 mod filesystem;

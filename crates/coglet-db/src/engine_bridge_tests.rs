@@ -115,11 +115,16 @@ fn engine_bridge_reserves_maximum_reply_before_starting_sql() {
 }
 
 #[test]
-fn engine_bridge_invalid_pointer_and_capacity_never_copy() {
+fn engine_bridge_invalid_pointer_never_copies_and_capacity_records_bounded_input() {
     for args in [
         [-1, 2, OUTPUT as i32, 65540],
         [INPUT as i32, 10, INPUT as i32, 65540],
-        [INPUT as i32, 10, OUTPUT as i32, 65539],
+        [
+            INPUT as i32,
+            request("scan", "read").len() as i32,
+            OUTPUT as i32,
+            65539,
+        ],
     ] {
         let root = tempfile::tempdir().unwrap();
         let mut db = setup(root.path());
@@ -136,8 +141,16 @@ fn engine_bridge_invalid_pointer_and_capacity_never_copy() {
                     response: None
                 }
         ));
-        assert_eq!(memory.copied.get(), 0);
+        assert_eq!(
+            memory.copied.get(),
+            if args[3] == 65539 {
+                memory.input.len() as u64
+            } else {
+                0
+            }
+        );
         assert_eq!(budget.host_bytes_used(), 0);
+        assert!(memory.output.iter().all(|b| *b == 0x55));
         assert_eq!(unit.calls, 1);
         assert!(unit.poisoned);
         assert!(!unit.transaction);

@@ -217,7 +217,7 @@ impl Unit<'_> {
             self.rollback_failed_unit();
             return CallResult::InvalidPointer;
         }
-        if n > 65536 || c < 65540 {
+        if n > 65536 {
             return self.reject(1);
         }
         // Charge the input copy even if profile/shape/grant validation rejects it.
@@ -228,6 +228,11 @@ impl Unit<'_> {
             return self.reject(3);
         };
         budget.remaining -= n;
+        // Preserve the bounded copied argument for rejected-call journaling.
+        // Capacity still rejects before any SQL or output reservation.
+        if c < 65540 {
+            return self.reject(1);
+        }
         let value = match coglet_types::decode_profile(&input).and_then(|v| {
             coglet_types::validate("database::db-request", &v)?;
             Ok(v)
