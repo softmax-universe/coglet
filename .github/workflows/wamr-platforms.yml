@@ -1,14 +1,46 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-runtime/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-runtime/**', 'Cargo.lock', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
+  apple:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    env:
+      IPHONEOS_DEPLOYMENT_TARGET: '15.0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert native arm64 host and install targets
+        run: |
+          test "$(uname -m)" = arm64
+          rustup show active-toolchain
+          rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1
+      - name: Build and test default engine/runtime (no ignored tests)
+        run: |
+          cargo build --locked -p coglet-engine-wamr -p coglet-runtime
+          cargo test --locked -p coglet-engine-wamr -p coglet-runtime -- --test-threads=1
+      - name: Build and test native WAMR runtime (C ABI start/stop and real Wasm)
+        run: |
+          cargo build --locked -p coglet-runtime --features native-engine
+          cargo test --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine -- --test-threads=1
+          cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
+      - name: Compile production echo without ambient WASI imports
+        run: |
+          rustup target add wasm32-unknown-unknown
+          CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_OPT_LEVEL=z cargo rustc --locked --manifest-path coglets/echo/Cargo.toml --lib --release --target wasm32-unknown-unknown -- -C strip=symbols -C link-arg=--max-memory=16777216
+          cargo run --quiet --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm
+      - name: Cross-build x86_64 Darwin (not an execution claim)
+        run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
+      - name: iOS interpreter archive and SDK link probe (not a device run)
+        run: bash crates/coglet-runtime/tools/apple-link-probe.sh
+      - name: C ABI production echo timer-wake smoke (real handle, no surface echo roundtrip)
+        run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   armv7-qemu:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
