@@ -13,9 +13,13 @@ import pytest
 from coglet_surface.codec import decode, encode
 from coglet_surface.surface import WIRE
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 TIMELINES = json.loads((ROOT / 'spec/fixtures/speech/timelines.json').read_text())
 OWNER = 'coglet:' + 'b' * 64
+# The macOS Swift lane explicitly builds and selects this adapter. Ordinary sim
+# tests do not provision Swift; that lane's skip is not Face qualification.
+pytestmark = pytest.mark.skipif(not os.environ.get('FACE_MAC_EXECUTABLE'),
+                                reason='compiled Face adapter not selected')
 
 
 class Face:

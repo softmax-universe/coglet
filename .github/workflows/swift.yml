@@ -24,12 +24,13 @@ jobs:
           name: swift-surface-conformance
           path: target/swift-surface.xml
       - run: swift test --package-path surfaces/face-mac
+      - run: swift build --package-path surfaces/face-mac --target FaceMacEmbeddingExample
       - run: swift build --package-path surfaces/face-mac --product face-mac
       - name: Compiled Face adapter speech timelines (simulated media)
         working-directory: sim
         env:
           FACE_MAC_EXECUTABLE: ${{ github.workspace }}/surfaces/face-mac/.build/debug/face-mac
-        run: uv run --locked pytest -q ../surfaces/face-mac/tests/test_executable_timelines.py
+        run: uv run --locked --python 3.12 pytest -q tests/test_face_mac_executable.py
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1

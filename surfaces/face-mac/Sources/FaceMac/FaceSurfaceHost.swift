@@ -32,6 +32,8 @@ import CogletTypes
         backend.retainClosedStreams(from: try session.retainedAdmittedActions())
     }
     public var grantEpoch: UInt64 { session.grantEpoch }
+    /// Canonical capture-frame timeline for configured native recognition routes.
+    public var capturePositionMS: UInt64 { backend.capturePositionMS }
     /// Attach once, before start. Authenticated socket and embedded ABI adapters
     /// use exactly the same host and deadline/native-stop paths.
     public func attach(link: any FaceControlLink) throws {

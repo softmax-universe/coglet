@@ -20,6 +20,7 @@ let package = Package(
     dependencies: [.package(path: "../../sdk/surface-swift")],
     targets: [
         .target(name: "FaceMac", dependencies: faceDependencies),
+        .target(name: "FaceMacEmbeddingExample", dependencies: ["FaceMac", "FaceAudioKit", .product(name: "CogletSurface", package: "surface-swift")], path: "Examples"),
         .executableTarget(name: "FaceMacHost", dependencies: ["FaceMac", .product(name: "CogletSurface", package: "surface-swift"), .product(name: "CogletTypes", package: "surface-swift")]),
         .testTarget(name: "FaceMacTests", dependencies: ["FaceMac"]),
         .target(name: "CAudioRing", publicHeadersPath: "include"),
@@ -30,6 +31,6 @@ let package = Package(
 #if !os(macOS)
 // Portable semantic tests do not compile AVFoundation. Native CI still builds
 // both audio targets and exercises the real production callbacks.
-package.targets.removeAll { ["FaceAudioKit", "FaceAudioKitTests", "CAudioRing"].contains($0.name) }
+package.targets.removeAll { ["FaceAudioKit", "FaceAudioKitTests", "CAudioRing", "FaceMacEmbeddingExample"].contains($0.name) }
 package.products.removeAll { $0.name == "FaceAudioKit" }
 #endif

@@ -61,7 +61,7 @@ Run the named black-box timeline tests from `sim/`:
 
 ```sh
 FACE_MAC_EXECUTABLE="$PWD/../surfaces/face-mac/.build/debug/face-mac" \
-  uv run --locked pytest -q ../surfaces/face-mac/tests/test_executable_timelines.py
+  uv run --locked --python 3.12 pytest -q tests/test_face_mac_executable.py
 ```
 
 `test_compiled_face_conformance_timeline` drives the frozen `barge-in-stop` and
@@ -81,7 +81,30 @@ journaled guest consumption of capture, heard-history equality or guest-engine e
 The macOS Swift workflow explicitly runs all three executable cases and this runtime
 case, plus the separate Face controller's unit tests and Wasm build.
 
-Remaining acceptance work: native recognition/synthesis and product embedding example,
+## Configured native local routes
+
+`AppleLocalRecognition` requires already granted microphone and Speech permissions,
+an available recognizer with on-device support, and sets
+`requiresOnDeviceRecognition = true`. It accepts the shared graph's capture PCM;
+it opens no microphone or network route and never prompts or falls back to a server.
+Supply `FaceSurfaceHost.capturePositionMS` through its position closure, not wall time.
+Its bounded mailbox copies only transcript snapshots across the MainActor hop.
+
+`AppleLocalSynthesis(voiceIdentifier:)` selects an explicitly installed OS voice
+and uses `AVSpeechSynthesizer.write` to collect bounded PCM (30 seconds maximum).
+It does not call `speak` or create a second speaker graph. Conversion preserves
+resampling phase across callbacks and fails closed on malformed/oversized data.
+Word alignment is unknown (empty spans), not guessed. The backend's actual render
+counter remains authoritative. Cancellation/replacement invalidates callback custody.
+
+`Examples/LocalFaceEmbedding.swift` is compiled as `FaceMacEmbeddingExample` by
+macOS CI. The app still owns permission UI, Info.plist usage descriptions,
+sandbox entitlement, grants, identity/ledger and qualified runtime transport.
+The CLI remains simulator-only; there is no native command-line permission UI.
+Native route source and deterministic conversion/callback tests do not establish
+installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
+
+Remaining acceptance work: native route CI qualification,
 history retention/advertisement and heard-state replay, full operation/lifecycle audit,
 production embedded-runtime qualification, final macOS CI and independent exact-head
 review. `FaceEmbeddedTests` still uses an ABI fixture. The Face guest compiles but its
