@@ -1,6 +1,8 @@
 //! Authenticated router→device lifecycle. Authority and accepted refs are never
 //! inferred from a remote proof; native execution is not implied by start.
 use crate::{DurableStore, Result, RuntimeService, admit_manifest, digest, validate};
+#[path = "receipt.rs"]
+mod receipt;
 use coglet_proto::{
     authority::{
         Authority, Grant, Scope,
@@ -13,6 +15,7 @@ use coglet_proto::{
     validator::{Limits, ValidationError, Validator, VerifiedContents},
 };
 use iroh::EndpointId;
+use receipt::receipt_scope;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -331,7 +334,11 @@ impl DeviceHandler {
                 if locked.managed_identity().is_none() {
                     return Err("permission_denied".into());
                 }
-                locked.managed_install(&identity, operation_id)?
+                locked.managed_install_scoped(
+                    &identity,
+                    operation_id,
+                    Some(&receipt_scope(request)),
+                )?
             } else {
                 let path = self.wal(coglet);
                 create_private_dir(path.parent().ok_or("invalid WAL path")?)?;
@@ -341,6 +348,7 @@ impl DeviceHandler {
                     QUEUE,
                     &identity,
                     operation_id,
+                    &receipt_scope(request),
                     gate,
                 )?;
                 let receipt = opened
@@ -388,7 +396,7 @@ impl DeviceHandler {
         // waiting: re-read both immediately before the effect.
         self.require_kill_clear()?;
         gate()?;
-        let receipt = locked.managed_operation(id, &intent, true, 0)?;
+        let receipt = locked.managed_operation(id, &intent, true, 0, &receipt_scope(request))?;
         validate("hub-mutation-receipt", &receipt)?;
         Ok(receipt)
     }
@@ -475,6 +483,7 @@ impl DeviceHandler {
             &intent,
             false,
             now,
+            &receipt_scope(request),
         )?;
         validate("hub-mutation-receipt", &receipt)?;
         Ok(receipt)
@@ -568,10 +577,10 @@ impl DeviceHandler {
             return fail(&request, "invalid_argument");
         };
         match method {
-            "hub.install" | "hub.start" | "hub.stop" | "hub.status" => {}
+            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt" => {}
             "hub.git.push" | "hub.git.fetch" | "hub.actions" | "hub.events" | "hub.inbox"
-            | "hub.health" | "hub.receipt" | "hub.cancel" | "debug.read" | "debug.write"
-            | "debug.pause" | "debug.step" | "hub.enroll" => {
+            | "hub.health" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
+            | "debug.step" | "hub.enroll" => {
                 return fail(&request, "permission_denied");
             }
             _ => return fail(&request, "invalid_argument"),
@@ -585,6 +594,7 @@ impl DeviceHandler {
             "hub.start" => self.start(context, request.clone(), coglet, pin).await,
             "hub.stop" => self.stop(context, request.clone(), coglet, pin).await,
             "hub.status" => self.status(context, request.clone(), coglet, pin).await,
+            "hub.receipt" => self.receipt(context, request.clone(), coglet, pin).await,
             _ => Err("permission_denied".into()),
         };
         match result {
@@ -883,6 +893,7 @@ fn wire(error: impl std::fmt::Display) -> &'static str {
         "unauthenticated" => "unauthenticated",
         "invalid_argument" => "invalid_argument",
         "conflict" => "conflict",
+        "not_found" => "not_found",
         "resource_exhausted" => "resource_exhausted",
         "unavailable" | "authority storage unavailable" => "unavailable",
         other if other.starts_with("conflict:") => "conflict",

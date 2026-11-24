@@ -15,13 +15,32 @@ pub(super) struct ManagedState {
     stopped_at: u64,
     #[serde(default)]
     operations: BTreeMap<String, OperationReceipt>,
+    /// Original actor/ticket/method of the install admission. Absent only for
+    /// receipts written without scope; those are never readable via hub.receipt.
+    #[serde(default)]
+    install_scope: Option<ReceiptScope>,
 }
+
+/// Original authenticated scope of an admitted lifecycle operation, persisted
+/// in the same frame as the receipt it protects.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ReceiptScope {
+    pub(crate) actor: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) ticket: Option<String>,
+    pub(crate) method: String,
+}
+
+type Operation<'a> = (&'a str, &'a str, &'a ReceiptScope);
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct OperationReceipt {
     intent: String,
     receipt: Value,
+    #[serde(default)]
+    scope: Option<ReceiptScope>,
 }
 
 impl ManagedState {
@@ -88,6 +107,15 @@ impl RuntimeService {
     /// `live_commit` is explicit, or comes from `initial.statement.new` (the signed
     /// install ref) / `update.statement.new` (trusted provisioning metadata).
     pub fn managed_install(&mut self, identity: &Value, operation_id: &str) -> Result<Value> {
+        self.managed_install_scoped(identity, operation_id, None)
+    }
+
+    pub(crate) fn managed_install_scoped(
+        &mut self,
+        identity: &Value,
+        operation_id: &str,
+        scope: Option<&ReceiptScope>,
+    ) -> Result<Value> {
         validate("correlation-id", &json!(operation_id))?;
         if let Some(saved) = &self.state.managed {
             return if saved.identity == *identity {
@@ -130,6 +158,7 @@ impl RuntimeService {
             cancellation_pending: false,
             stopped_at: 0,
             operations: BTreeMap::new(),
+            install_scope: scope.cloned(),
         });
         self.commit_managed(next)?;
         Ok(receipt)
@@ -142,7 +171,7 @@ impl RuntimeService {
         self.managed_start_inner(None)
     }
 
-    fn managed_start_inner(&mut self, operation: Option<(&str, &str)>) -> Result<()> {
+    fn managed_start_inner(&mut self, operation: Option<Operation<'_>>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -173,7 +202,7 @@ impl RuntimeService {
         self.managed_stop_inner(now, None)
     }
 
-    fn managed_stop_inner(&mut self, now: u64, operation: Option<(&str, &str)>) -> Result<()> {
+    fn managed_stop_inner(&mut self, now: u64, operation: Option<Operation<'_>>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -241,14 +270,15 @@ impl RuntimeService {
         intent: &str,
         start: bool,
         now: u64,
+        scope: &ReceiptScope,
     ) -> Result<Value> {
         if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
             return Ok(receipt);
         }
         let outcome = if start {
-            self.managed_start_inner(Some((id, intent)))
+            self.managed_start_inner(Some((id, intent, scope)))
         } else {
-            self.managed_stop_inner(now, Some((id, intent)))
+            self.managed_stop_inner(now, Some((id, intent, scope)))
         };
         // A stop cancellation failure still commits the stopped fence and its
         // failed receipt in one frame; its retry must not stop a later start.
@@ -259,12 +289,32 @@ impl RuntimeService {
         Err("unavailable: lifecycle receipt missing".into())
     }
 
+    /// Receipt of an operation admitted by exactly this actor/ticket, with the
+    /// method it was admitted under. Unknown IDs and other scopes are `None`.
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_receipt_for(
+        &self,
+        id: &str,
+        actor: &str,
+        ticket: Option<&str>,
+    ) -> Option<(String, Value)> {
+        let managed = self.state.managed.as_ref()?;
+        let same = |s: &ReceiptScope| s.actor == actor && s.ticket.as_deref() == ticket;
+        if managed.install_receipt["operation_id"] == id {
+            let scope = managed.install_scope.as_ref().filter(|s| same(s))?;
+            return Some((scope.method.clone(), managed.install_receipt.clone()));
+        }
+        let saved = managed.operations.get(id)?;
+        let scope = saved.scope.as_ref().filter(|s| same(s))?;
+        Some((scope.method.clone(), saved.receipt.clone()))
+    }
+
     fn record_operation(
         next: &mut ServiceState,
-        operation: Option<(&str, &str)>,
+        operation: Option<Operation<'_>>,
         error: Option<&str>,
     ) -> Result<()> {
-        let Some((id, intent)) = operation else {
+        let Some((id, intent, scope)) = operation else {
             return Ok(());
         };
         let step = next
@@ -285,6 +335,7 @@ impl RuntimeService {
                 OperationReceipt {
                     intent: intent.into(),
                     receipt,
+                    scope: Some(scope.clone()),
                 },
             );
         Ok(())

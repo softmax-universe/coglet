@@ -21,6 +21,7 @@ mod dispatch;
 mod live_heard;
 #[path = "managed.rs"]
 mod managed;
+pub(crate) use managed::ReceiptScope;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
@@ -267,6 +268,7 @@ impl RuntimeService {
         queue_capacity: usize,
         identity: &Value,
         operation_id: &str,
+        scope: &ReceiptScope,
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         Self::open_configured(
@@ -274,7 +276,7 @@ impl RuntimeService {
             setup,
             queue_capacity,
             crate::TrustedExtensionCatalog::default(),
-            Some((identity, operation_id)),
+            Some((identity, operation_id, Some(scope))),
             gate,
         )
     }
@@ -284,7 +286,7 @@ impl RuntimeService {
         setup: &Value,
         queue_capacity: usize,
         catalog: crate::TrustedExtensionCatalog,
-        install: Option<(&Value, &str)>,
+        install: Option<(&Value, &str, Option<&ReceiptScope>)>,
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         let catalog = std::sync::Arc::new(catalog);
@@ -297,7 +299,7 @@ impl RuntimeService {
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
             if let Some(managed) = &saved_state.managed {
                 managed.validate()?;
-                if install.is_some_and(|(identity, _)| managed.identity() != identity) {
+                if install.is_some_and(|(identity, _, _)| managed.identity() != identity) {
                     return Err("conflict: managed install identity differs".into());
                 }
             } else if install.is_some() {
@@ -398,9 +400,9 @@ impl RuntimeService {
             #[cfg(feature = "native-engine")]
             native: None,
         };
-        if let Some((identity, operation_id)) = install {
+        if let Some((identity, operation_id, scope)) = install {
             gate()?;
-            service.managed_install(identity, operation_id)?;
+            service.managed_install_scoped(identity, operation_id, scope)?;
         } else if fresh {
             service.store.commit(
                 &serde_json::to_value(&service.state).map_err(|e| e.to_string())?,
