@@ -1,6 +1,6 @@
 # Coglet ABI — 0.1 (proposed)
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Decision: [ADR-0006](../docs/adr/0006-coglet-abi.md), [PR #8](https://github.com/softmax-universe/coglet/pull/8), amended before freeze by [ADR-0009](../docs/adr/0009-spec-v0-freeze.md).
 Imports [common conventions](conventions.md) unchanged; MUST/SHOULD are normative.
@@ -73,7 +73,7 @@ attempt, including failure. At admission assign a durable arrival ordinal; selec
 the oldest prefix up to max_events without comparing cross-source clocks. Events
 arriving during execution stay queued. Backpressure on overflow; never silently
 drop events. The recorded batch is the replay ordering authority; arrival ordinals
-are durable router metadata, not reconstructed from source clocks by replay.
+are durable event-router metadata, not reconstructed from source clocks by replay.
 Record the exact batch, a nondecreasing runtime-epoch microsecond
 logical_time and seed. Preserve source event clocks unchanged. Replay uses the
 recording, not a new scheduling decision. An authorized router debug.step with no
@@ -185,7 +185,7 @@ correlation_id MUST equal the pending action's correlation_id, and payload id
 MUST equal its id. Positive accepts are upstream bookkeeping, not guest terminal
 messages. A rejection produces no outcome.
 
-Only `runtime.receipt` may materialize these terminal inbox messages. The router
+Only `runtime.receipt` may materialize these terminal inbox messages. The event router
 MUST NOT also enqueue the enclosed receipt/outcome as a direct guest event.
 Terminal messages bypass guest subscriptions through the ordinary runtime.inbox
 wake, whose source is the target coglet (as for runtime.timer). Terminal
@@ -217,8 +217,8 @@ Live construction from owner reads is specified in
 [speech heard-history](capabilities/speech.md#heard-only-conversation-history-adr-0010) and
 [ADR-0009 M-D](../docs/adr/0009-spec-v0-freeze.md#amendment-m-d-heard-state-construction-from-owner-reads).
 
-`heard-state` contains `items`, ordered by (adapter,item), unique per pair. Each
-`heard-item` carries adapter, item, duration_ms, played_ms, stopped, ordered spans
+`heard-state` contains `items`, ordered by (surface,item), unique per pair. Each
+`heard-item` carries surface, item, duration_ms, played_ms, stopped, ordered spans
 `{end_ms,text}` and the derived `heard` text. Span ends strictly increase within
 duration; played_ms cannot exceed duration. Concatenated span text is alignment
 evidence, NOT conversation history. The heard text is exactly the concatenation

@@ -8,9 +8,9 @@ Read alongside [the build plan](../plan.md) and [the runtime design](coglet-runt
 
 ## Audience and jobs
 
-For a person installing Softmax on their own Mac, not a runtime developer. They want to speak to Face without switching apps, know when audio is live, connect a trusted router, and know which coglets run locally. Secondary jobs: repair a connection, select audio devices, inspect grants, and update safely.
+For a person installing Softmax on their own Mac, not a runtime developer. They want to speak to Face without switching apps, know when audio is live, connect a trusted hub, and know which coglets run locally. Secondary jobs: repair a connection, select audio devices, inspect grants, and update safely.
 
-The app hosts one local coglet runtime and the Face audio surface; Face is a coglet, not a second runtime. Router connection, local-runtime health, microphone capture and speech playback are independent facts. A disconnected router does not mean local coglets stopped. No router-only action is presented as successful while offline.
+The app hosts one local coglet runtime and the Face audio surface; Face is a coglet, not a second runtime. Hub connection, local-runtime health, microphone capture and speech playback are independent facts. A disconnected hub does not mean local coglets stopped. No hub-only action is presented as successful while offline.
 
 ## Composition decision
 
@@ -28,11 +28,11 @@ Eight flat icon concepts are preserved in `Design/concepts/`. Companion's two ey
 
 | Surface | Geometry / purpose | States and recovery |
 |---|---|---|
-| Menu bar extra | 322 pt, anchored under the status item; status, Show Face, local runtime, Router, Coglets, Settings, Updates, About, Quit | Idle; listening; thinking; speaking; offline/no router → Connect/Retry; update available → Updates; error → relevant Settings. Never hide Settings or Quit behind an error. Dismiss outside or Escape. |
+| Menu bar extra | 322 pt, anchored under the status item; status, Show Face, local runtime, Hub, Coglets, Settings, Updates, About, Quit | Idle; listening; thinking; speaking; offline/no hub → Connect/Retry; update available → Updates; error → relevant Settings. Never hide Settings or Quit behind an error. Dismiss outside or Escape. |
 | Face overlay | 280 pt floating utility panel, lower-right of the active screen's visible frame; draggable; no screen takeover | Idle; listening; thinking; speaking with Stop; happy; concerned; sleeping/paused; offline with Reconnect; error with Audio/diagnostics action. Closing hides Face, not the runtime. Capture does not silently continue when hiding via Escape. |
 | PTT HUD | ~300 × 72 pt, bottom-center above Dock and safe area, does not take keyboard focus | Idle hint; listening with release instruction; thinking; speaking; cancelled/nothing sent; microphone denied; offline; error. Never animate an invented level: native bars use local capture/playback level. Demo bars are explicitly simulated. |
 | Settings | 760 pt window, 180 pt sidebar; searchable, grouped rows | Sections below. Valid changes save immediately; input requiring validation saves only after validation. Destructive operations require a separate confirmation; errors preserve the previous setting. |
-| First run | 620 pt, three chapters: Welcome; Voice & shortcut (permission substeps); Router & ready | Welcome; microphone explanatory prompt/granted/denied; hotkey permission/granted/denied; optional login item enabled/disabled/denied; router disconnected/connecting/verification failure/connected; ready. Back retains choices; Not now skips optional work. Permission substeps are progressive disclosure inside the chapters, not a long marketing tour. |
+| First run | 620 pt, three chapters: Welcome; Voice & shortcut (permission substeps); Hub & ready | Welcome; microphone explanatory prompt/granted/denied; hotkey permission/granted/denied; optional login item enabled/disabled/denied; hub disconnected/connecting/verification failure/connected; ready. Back retains choices; Not now skips optional work. Permission substeps are progressive disclosure inside the chapters, not a long marketing tour. |
 | About | 420 pt, app icon/name/version/build/channel, support, acknowledgements | Default; licenses/attributions. Runtime version and app version are separate in the real build. The demo's version is a sample. Copy version information is accessible; no fabricated release number in production. |
 
 ### Settings inventory
@@ -42,8 +42,8 @@ Eight flat icon concepts are preserved in `Design/concepts/`. Companion's two ey
 | General | Start at login (default off), Show Dock icon (default off), appearance System/Light/Dark, keep Face visible | Saved; login item denied or disabled externally → link to macOS General → Login Items. Honor an external disable. |
 | Hotkey | Recorder, hold/toggle mode, permission status, restore default | Valid; recording; conflicting/reserved shortcut; denied global access; unavailable device/layout. Default proposal ⌥Space, subject to conflict detection; never seize another shortcut. In-window Talk remains usable. |
 | Audio | Input/output device, explicit microphone test/stop, sound cues | Ready; testing; denied; missing device; disconnected while recording. Stop capture on input loss; do not hot-switch to another microphone without notice. |
-| Router / Account | Invitation/address, verified node identity, account identity, Connect/Cancel/Disconnect | No router; connecting; identity confirmation; connected; offline retry; authentication or enrollment denied. Credentials are never echoed in diagnostics. Disconnect confirms effects without claiming all local coglets stop. |
-| Coglets | Type-ahead list; name, actual lifecycle, granted capabilities; inspect detail; pause/resume as policy allows | Loading; empty; running/paused; crashed/refused grants; unavailable hub. Do not infer running from registration. Inspect shows capability grant provenance; app cannot grant itself router authority. |
+| Hub / Account | Invitation/address, verified node identity, account identity, Connect/Cancel/Disconnect | No hub; connecting; identity confirmation; connected; offline retry; authentication or enrollment denied. Credentials are never echoed in diagnostics. Disconnect confirms effects without claiming all local coglets stop. |
+| Coglets | Type-ahead list; name, actual lifecycle, granted capabilities; inspect detail; pause/resume as policy allows | Loading; empty; running/paused; crashed/refused grants; unavailable hub. Do not infer running from registration. Inspect shows capability grant provenance; app cannot grant itself hub authority. |
 | Updates | Current app version/channel, automatic checks, Check now, install/relaunch | Checking; up to date; available; downloading/verified/installing; error; deferred while capture/playback active. Sparkle owns verification and installation; unsigned or invalid updates fail closed. |
 | Privacy | Microphone and shortcut permission status, per-coglet grants, redacted diagnostics export, local-data deletion | Granted/denied/revoked; export preview/confirmation/error; deletion confirmation. No delete on first click. Never include invitations, raw transcripts or audio in default diagnostics. |
 
@@ -62,7 +62,7 @@ Orthogonal facts: `hubConnection`, `runtimeHealth`, `permissionState`, `updateAv
 5. Update available.
 6. Idle.
 
-Do not cover a live microphone indicator with an update badge. The opened menu always shows the orthogonal router, local runtime and update facts even when another state wins the small icon. Offline is a diagonal cut; thinking is three dots; error is an exclamation; update is an upper-right dot; listening is three input bars; speaking is eyes plus opening mouth; idle is eyes. Tooltip and VoiceOver label carry the full phrase; color is never the only signal.
+Do not cover a live microphone indicator with an update badge. The opened menu always shows the orthogonal hub, local runtime and update facts even when another state wins the small icon. Offline is a diagonal cut; thinking is three dots; error is an exclamation; update is an upper-right dot; listening is three input bars; speaking is eyes plus opening mouth; idle is eyes. Tooltip and VoiceOver label carry the full phrase; color is never the only signal.
 
 | Input/event | State/result |
 |---|---|
@@ -71,7 +71,7 @@ Do not cover a live microphone indicator with an update badge. The opened menu a
 | Toggle activation | Alternate listening and submit; obvious Stop/Cancel buttons remain reachable. |
 | Escape / explicit Cancel | Stop capture/playback; discard unsent audio; invalidate pending response; show “Cancelled · nothing sent”. |
 | Response starts/ends | Speaking while actual playback is active; return to idle on completion. |
-| Router lost during capture | Stop, retain no implicit queued send; show offline and explain retry. Local coglets retain their actual independent state. |
+| Hub lost during capture | Stop, retain no implicit queued send; show offline and explain retry. Local coglets retain their actual independent state. |
 | Audio permission revoked/device removed | Stop capture; error and focused recovery action. |
 | App resigns active while PTT is held | Global native key monitoring continues to track key-up; if tracking is lost, cancel rather than leaving microphone open. Demo blur always cancels. |
 | Capture stalled / key-up lost | Surface watchdog cancels and reports failure; no infinite listening. Native timeout configured by audio owner, not guessed by animation. |
@@ -85,7 +85,7 @@ Static templates: 16 and 18 pt, each 1×/2×, monochrome with transparent backgr
 - **Global shortcut:** implementation must choose an API first. A non-intercepting registered shortcut may need no Input Monitoring or Accessibility permission; hold/release observation can need Input Monitoring, an intercepting event tap can need Accessibility. Request only the actual API-required permission, not both as a ritual. Explain it is for the global shortcut and that typed text is not retained. Denial keeps the visible Talk button and local settings usable. The prototype explicitly models both denied and review states; it is not evidence of API qualification.
 - **Login item:** separate opt-in, default off, using macOS ServiceManagement. Do not call it an audio permission. Show enabled/pending approval/disabled externally/registration error. Link to General → Login Items. Do not repeatedly re-register after external disable.
 - **Hub:** paste a trusted enrollment invitation, show verified node/account identity, then confirm. Invalid/expired invitation preserves non-secret input only as appropriate and offers replacement. Connecting has Cancel. No connection is implied merely because a field is filled.
-- **Ready:** rehearse hold/release with a harmless utterance and show the menu bar location. Users who skipped microphone or router finish with an honest “Voice not set up” status and Settings path, never a false ready promise.
+- **Ready:** rehearse hold/release with a harmless utterance and show the menu bar location. Users who skipped microphone or hub finish with an honest “Voice not set up” status and Settings path, never a false ready promise.
 
 ## Face visual language
 
@@ -116,17 +116,17 @@ Sound cues (optional, independent of spoken content): capture-start = one soft 7
 
 SF Pro is deliberately chosen for the native Mac app, not an unconsidered web default. Body 13 pt, caption 11 pt, title 20 pt, display 28 pt; native text scaling follows platform preferences. Focus rings visible in both themes, no essential text below 11 pt. Token foreground/surface pairs are checked at ≥4.5:1, including muted and error copy. The large Face and state labels are redundant; screen readers do not have to infer mouth shapes.
 
-VoiceOver names the status item “Softmax, [activity], [router state]”; announcements on capture start/stop and errors are concise, not per-frame. Menu and Settings use native roles and predictable focus order. HUD is nonactivating unless explicitly opened for keyboard interaction; an accessible Talk/Stop button exists in the Face panel for users who cannot hold the shortcut. Permission recovery returns focus to the initiating control. Standard keyboard navigation and full keyboard access must work. A colorblind user can distinguish offline slash, error mark, listening bars and update dot.
+VoiceOver names the status item “Softmax, [activity], [hub state]”; announcements on capture start/stop and errors are concise, not per-frame. Menu and Settings use native roles and predictable focus order. HUD is nonactivating unless explicitly opened for keyboard interaction; an accessible Talk/Stop button exists in the Face panel for users who cannot hold the shortcut. Permission recovery returns focus to the initiating control. Standard keyboard navigation and full keyboard access must work. A colorblind user can distinguish offline slash, error mark, listening bars and update dot.
 
-Tone: brief, literal, calm. “Listening · release to send”, “Router disconnected”, “Cancelled · nothing sent”, “Microphone access is off”, “Could not verify this router”. Avoid “All systems optimal”, anthropomorphic claims about understanding, and technical node keys as primary labels. Place identity details behind Inspect. Do not promise all computation or audio processing stays on-device: processing placement is configured by capabilities and must be disclosed at enrollment.
+Tone: brief, literal, calm. “Listening · release to send”, “Hub disconnected”, “Cancelled · nothing sent”, “Microphone access is off”, “Could not verify this hub”. Avoid “All systems optimal”, anthropomorphic claims about understanding, and technical node keys as primary labels. Place identity details behind Inspect. Do not promise all computation or audio processing stays on-device: processing placement is configured by capabilities and must be disclosed at enrollment.
 
 ## Distribution assets
 
-`AppIcon.svg` is the editable 1024 master. `AppIcon.appiconset` has all ten required macOS slots (16/32/128/256/512 pt × 1×/2×), including 1024 px. `DMG/background.svg` is the 660×440 source; PNG exports at 660×440 and 1320×880. Installer positions: app at (180,230), Applications alias at (480,230), in a Finder window whose content area is 660×440; verify Finder coordinate origin in packaging. Arrow and instructional text are background only, never a fake application/folder icon. Onboarding vectors cover introduction, permissions and router connection. `DesignTokens.json` is source; Swift values are generated, not hand maintained.
+`AppIcon.svg` is the editable 1024 master. `AppIcon.appiconset` has all ten required macOS slots (16/32/128/256/512 pt × 1×/2×), including 1024 px. `DMG/background.svg` is the 660×440 source; PNG exports at 660×440 and 1320×880. Installer positions: app at (180,230), Applications alias at (480,230), in a Finder window whose content area is 660×440; verify Finder coordinate origin in packaging. Arrow and instructional text are background only, never a fake application/folder icon. Onboarding vectors cover introduction, permissions and hub connection. `DesignTokens.json` is source; Swift values are generated, not hand maintained.
 
 ## v1 non-goals
 
-No Dock icon by default; no web dashboard or developer trace explorer inside this app; no wake word/always-on capture; no transcript archive or audio retention by default; no auto-enrollment into an unverified router; no silent capability expansion; no persona/voice marketplace; no multi-hub switching; no autonomous self-update during a conversation; no new expression protocol invented in UI code; no unsigned updater. This design package does not deliver a signed/notarized binary, acoustic qualification or native TCC permission proof.
+No Dock icon by default; no web dashboard or developer trace explorer inside this app; no wake word/always-on capture; no transcript archive or audio retention by default; no auto-enrollment into an unverified hub; no silent capability expansion; no persona/voice marketplace; no multi-hub switching; no autonomous self-update during a conversation; no new expression protocol invented in UI code; no unsigned updater. This design package does not deliver a signed/notarized binary, acoustic qualification or native TCC permission proof.
 
 ## Verification and acceptance boundary
 

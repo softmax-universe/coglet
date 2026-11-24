@@ -1,6 +1,6 @@
 # Speech capability profiles — 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Imports [conventions](../conventions.md) and [adapter protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).
@@ -176,7 +176,7 @@ estimate. Limit the prefix to 16,384 UTF-8 bytes without splitting a character.
 No fields are added to this read, speech.position or speech.barge_in.
 
 The runtime constructs the private ABI `heard-state` from these owner reads
-(ADR-0009 M-D), separately from offline replay. For each live (adapter,item),
+(ADR-0009 M-D), separately from offline replay. For each live (surface,item),
 duration_ms MUST be the maximum played_ms observed so far: known media extent
 at that recording, never decreasing. When played_ms exceeds the last archived
 span end (zero if none), and the read text strictly extends the concatenation of

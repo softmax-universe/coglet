@@ -1,7 +1,7 @@
 # ADR-0020: Vocabulary — router, adapter, runtime
 
 - Status: Proposed
-- Date: 2026-11-24
+- Date: 2026-11-23
 - Authors: David Bloomin (direction); drafted by a Claude Code session
 - Number: 0020. 0018 and 0019 are in use by open work; the orchestrator may
   renumber.
@@ -11,7 +11,7 @@
 
 ## Context
 
-The cogent design pages (`docs/cogent-design/`) describe the system in four
+The cogent design pages (`docs/cogent-design/`, added by PR #103) describe the system in four
 words: a **cogent** is one agent made of **coglets**; a coglet runs in a
 **runtime**; a runtime reaches apps and hardware through **adapters**; and the
 cogent's **router** carries messages and patches between runtimes.
@@ -44,12 +44,22 @@ action, grant.
 
 ### Stage 1: words (this ADR's PR)
 
-- Design documents and the prose of every spec page say adapter and router.
+- The repo README, `docs/plan.md`, the runtime and factory design documents,
+  and the spec pages under `spec/`, `spec/capabilities/` and `spec/messages/`
+  say adapter and router in their prose.
 - Identifiers do not change: method names (`hub.enroll`), id prefixes
   (`surface:`), schema and type names, file names (`hub-protocol.md`), crate
   and SDK names, fixtures. Anything in backticks or a code block is untouched.
 - Each changed spec page carries a one-line note saying so.
-- ADRs and review records are history and are not rewritten.
+- ADRs and review records are history and are not rewritten. Neither are the
+  two Softmax app design documents, where "Hub" is literal UI copy and
+  "surface" means a screen or panel.
+- Unquoted field names in prose, such as the `(surface, item)` key, keep the
+  old word, because they are identifiers.
+- The runtime already had a "router" of its own, the part that orders and
+  delivers events. It is now always called the **event router**, so that
+  "router" alone means the cogent's router. Five sentences in the spec prose
+  change for this; none changes a rule.
 - New prose, new cards and new documents use the new words from now on.
 
 Stage 1 changes no schema, no fixture and no behaviour, so it is not a change

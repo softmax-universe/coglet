@@ -152,7 +152,7 @@ P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→hub→avata
 |---|---|
 | Coglet Orchestrator | The graph: sweeps every 20 min, catches idle lanes, files later phases, routes between lanes |
 | Coglet Core | Specs (conventions, ABI), engine spikes, engine, filesystem, runtime, guest SDK |
-| Coglet Router | Router protocol spec, proto, kernel, LLM gateway, gate, trace, release pipeline |
+| Coglet Hub | Router protocol spec, proto, kernel, LLM gateway, gate, trace, release pipeline |
 | Coglet Tools | Conformance harness, codegen, mocks, SDKs, simulator, visualizer, CLI |
 | Coglet Face | Speech/expression specs, Swift SDK, face-mac, face coglet; takes over from the Mindister Face session once its current acoustic proofs land, turning their evidence into acceptance thresholds |
 | Mindister sessions (existing) | Finish the current Face and Game proofs, then the Phase 4 Mindister lane |

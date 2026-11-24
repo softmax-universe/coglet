@@ -1,6 +1,6 @@
 # Kernel promotion interface — DRAFT 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 **Status: DRAFT; policy/promotion freezes at M3, not v0.**
 [ADR-0005](../docs/adr/0005-policy-promotion-tickets.md), [PR #40](https://github.com/softmax-universe/coglet/pull/40).
@@ -30,7 +30,7 @@ method grants; callers cannot set audit actor or gate authority by a string.
 Common correlation ids identify requests; a common-shaped opaque `proposal_id`
 identifies one durable proposal. A uint64 `generation` is a kernel-owned per-coglet
 fence, incremented for each activation or terminal fenced stop; never reused.
-Overflow fails closed. Coglets are independent even on one surface.
+Overflow fails closed. Coglets are independent even on one adapter.
 
 All mutation requests include `version: "0.1"`, `correlation_id`, `op`, and
 `coglet`. Responses retain correlation id and op. `ok:false` carries only the

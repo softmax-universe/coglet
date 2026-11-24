@@ -1,6 +1,6 @@
 # Expression capability — 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Imports [conventions](../conventions.md) and [adapter protocol](../surface-protocol.md).
 Decision: [ADR-0007](../../docs/adr/0007-surface-speech.md).

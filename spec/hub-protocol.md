@@ -1,6 +1,6 @@
 # Router protocol — 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Normative MUST/SHOULD follow RFC 2119. Decision: [ADR-0004](../docs/adr/0004-hub-protocol.md),
 submitted first as [PR #7](https://github.com/softmax-universe/coglet/pull/7).
@@ -70,7 +70,7 @@ that coglet. Device replacement requires operator-approved generation increase;
 revocation immediately fences old sessions/streams. A signature alone cannot
 replace an active binding. Expiry is Unix seconds checked by the verifier's trusted
 clock; unverifiable time fails closed. Generations are uint64 persistent monotonic
-counters scoped by (router, coglet, purpose); overflow requires re-provisioning.
+counters scoped by (hub, coglet, purpose); overflow requires re-provisioning.
 
 Grant lookup is `(authenticated peer, exact method, target)` with expiry and
 generation. No wildcard/prefix implication and no transitive grant. Effective
@@ -82,7 +82,7 @@ path limits. Revocation is checked at admission AND before boundary application,
 each chunk and action dispatch. Outstanding reads terminate and unapplied writes
 fail `permission_denied`. No default debug/log/state export. A ticket ending
 revokes its grants and cancels its unapplied writes; provenance records carry its
-`actor` and optional `ticket` even though the device authenticates the hub.
+`actor` and optional `ticket` even though the device authenticates the router.
 
 | Method | Initiator → responder | Scope and grant |
 |---|---|---|
@@ -206,7 +206,7 @@ resource bound.
 | `refs/published/main` | Hosted coglet runtime signs `published-ref` with that **coglet's own iroh Ed25519 node key**, not the device or router key. Router verifies delegation/binding and key. |
 | `refs/heads/logs` | Runtime batch-commits append-only `/logs`; coglet key signs `logs-ref`. Router fetches only when explicitly granted. |
 
-For each update, `ref-statement` includes purpose, router node, coglet ID, exact ref,
+For each update, `ref-statement` includes purpose, hub node, coglet ID, exact ref,
 old commit (null only for creation), new commit, archive SHA-256 and increasing
 generation. The authoritative writer (including the receiver of router pushes)
 MUST compare `old` with its current authoritative tip and require a strictly
@@ -328,12 +328,12 @@ its target coglet. Preserve source, seq, logical_time, correlation_id and payloa
 byte-for-byte; never inject provenance into a capability's closed payload. The
 router records authenticated device, target and relay offset as admission metadata,
 not as event fields. An adapter source is asserted by that enrolled device's local
-router, not independent proof of the adapter key and never cross-device authority.
+event router, not independent proof of the adapter key and never cross-device authority.
 A coglet source must equal target and may carry only a runtime-synthesized
 `action.outcome` for an admitted router action. Foreign coglet sources and all
 `runtime.*` events are rejected with `permission_denied`; local wakes never relay.
-The router MUST enforce the target's event grants and capability ownership before
-relay. Private speech events remain owner-only at the hub: storage/routing MUST
+The runtime's event router MUST enforce the target's event grants and capability ownership before
+relay. Private speech events remain owner-only at the router: storage/routing MUST
 NOT expose them to another coglet. Merely naming a target grants no access.
 
 `params.offset` is a separate durable relay position per (device, target), starting

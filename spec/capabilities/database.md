@@ -1,6 +1,6 @@
 # Private database capability — ABI 0.2 extension (proposed)
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Decision: [ADR-0013](../../docs/adr/0013-factory-db-capability.md),
 [PR #41](https://github.com/softmax-universe/coglet/pull/41).

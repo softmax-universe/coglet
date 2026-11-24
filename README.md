@@ -128,12 +128,12 @@ The reference Kernel test exercises real encrypted enrollment, reconnect/null
 recovery and refusal of the consumed invitation with no secret in output/audit.
 
 **`deploy` and its alias `push` currently fail nonzero without effects.** The frozen
-`hub.git.push`, `hub.install` and `hub.start` methods are router→device, not CLI→hub.
-The merged reference router has no qualified operator deployment adapter, and the
+`hub.git.push`, `hub.install` and `hub.start` methods are router→device, not CLI→router.
+The merged reference router has no qualified operator deployment tool, and the
 streaming Git/device lifecycle producer chain is incomplete. No invented reverse
 RPC, direct device bypass, registration-only success or local spool is advertised
 as deployment. The M2 card's end-to-end enroll/deploy acceptance remains open
-until that adapter is integrated and exercised against the reference hub.
+until that tool is integrated and exercised against the reference router.
 
 ### Named CLI checks
 

@@ -1,6 +1,6 @@
 # Adapter protocol — 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Normative vocabulary, identity grammar, versions, clocks, errors and event/action
 envelopes are imported unchanged from [conventions](conventions.md).

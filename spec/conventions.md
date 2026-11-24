@@ -1,6 +1,6 @@
 # Common conventions — 0.1
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Normative keywords MUST, MUST NOT and SHOULD have their RFC 2119 meanings.
 Decision: [ADR-0002](../docs/adr/0002-common-conventions.md) ([PR #4](https://github.com/softmax-universe/coglet/pull/4)).
@@ -69,7 +69,7 @@ Unsolicited events allocate a fresh id. Derived events MAY retain a causal id.
   and survive reconnect/restart (rotate identity if continuity is lost).
   Logical time is nondecreasing integer microseconds in that source's runtime
   epoch, not Unix/wall time; it is recorded for replay. Cross-source ordering
-  and epoch mapping belong to the ABI/router, not numeric comparison of clocks.
+  and epoch mapping belong to the ABI and the runtime's event router, not numeric comparison of clocks.
 - `action`: `id` (action-id), `coglet` (coglet-id), `capability`
   (capability-name), `args` (map), `deadline` (uint64), `correlation_id`.
   Deadline is an exclusive expiry instant in logical microseconds, scoped to

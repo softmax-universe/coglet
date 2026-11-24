@@ -4,9 +4,9 @@ Design notes from the November 2026 discussion with David. Mindister is the in-p
 
 ## Vocabulary
 
-- **Adapter**: an adapter embedded in any host software (the Mac, Mindustry). It owns real-time I/O and grants capabilities.
+- **Adapter**: an interface embedded in any host software (the Mac, Mindustry). It owns real-time I/O and grants capabilities.
 - **Coglet**: semi-autonomous code that runs inside an adapter and reads and writes only through granted capabilities. Mindister currently calls this an Appendage, and legacy code says Part.
-- **Router**: runs anywhere. Coglets dial in, register, and are controlled by the hub.
+- **Router**: runs anywhere. Coglets dial in, register, and are controlled by the router.
 
 First test: a **Face** coglet on the Mac (hold to talk, it talks back) and a **Mindustry avatar** coglet. You talk to the face, the router decides, and the router drives the avatar.
 
@@ -39,7 +39,7 @@ Private state in `/data` is never synced through git.
 
 ## Runtime
 
-One Rust binary, the same on the Mac and next to the game, and language agnostic. The historical component/WIT sketch below is superseded by [Revised runtime model](#revised-runtime-model): v0 uses plain core Wasm on the WAMR interpreter, including on Macs and the hub.
+One Rust binary, the same on the Mac and next to the game, and language agnostic. The historical component/WIT sketch below is superseded by [Revised runtime model](#revised-runtime-model): v0 uses plain core Wasm on the WAMR interpreter, including on Macs and the router.
 
 ### Step loop
 
@@ -140,7 +140,7 @@ Repo changes:
 
 ## Router control
 
-All traffic flows through the hub: coglets never talk to each other directly. The router is itself made of coglets, edited by the same factory, on top of a small fixed kernel.
+All traffic flows through the router: coglets never talk to each other directly. The router is itself made of coglets, edited by the same factory, on top of a small fixed kernel.
 
 ### Structure
 
@@ -213,7 +213,7 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 
 - No component model. The contract is a plain core Wasm module with bytes (JSON or CBOR) across a few host functions, and plain WASI file access.
 - The engine sits behind one small interface: load, set compute cap and deadline, wire host functions, call handle.
-- **Build WAMR first, interpreter in v0 on all hosts, including Macs and the hub.** [ADR 0001](../adr/0001-engine-findings-cap.md) found interpreter instruction metering and watchdog interruption work with caveats; ahead-of-time (AOT) execution does not meter compute. Wasmtime remains a later engine behind the same interface; bringing it forward for fuel/epochs is an open option, not a decision. Cross-engine state-hash comparison is a required conformance goal, not an established guarantee for arbitrary guests.
+- **Build WAMR first, interpreter in v0 on all hosts, including Macs and the router.** [ADR 0001](../adr/0001-engine-findings-cap.md) found interpreter instruction metering and watchdog interruption work with caveats; ahead-of-time (AOT) execution does not meter compute. Wasmtime remains a later engine behind the same interface; bringing it forward for fuel/epochs is an open option, not a decision. Cross-engine state-hash comparison is a required conformance goal, not an established guarantee for arbitrary guests.
 - What WAMR gives up: Wasmtime's heavier fuzzing and auditing, some speed when interpreted, and newest-WASI features. None matter much for small decision-making coglets.
 - The spike findings below constrain engine admission; they do not implement the production engine or freeze the ABI. ADRs 0001 and [0008](../adr/0008-engine-findings-platforms.md) remain Proposed.
 
@@ -232,10 +232,10 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 
 ### Platform notes
 
-- **Macs and hub:** WAMR interpreter in v0 so both the compute cap and deadline are available. Earlier Wasmtime adoption remains an open option. Apple source-head evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005) at `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: native arm64 macOS engine/runtime default and native-engine suites (zero ignored), clock/WAL recovery, and compiled echo through C ABI passed. x86_64 Darwin was cross-built, not executed. AOT/JIT remain fail-closed on every host.
+- **Macs and router:** WAMR interpreter in v0 so both the compute cap and deadline are available. Earlier Wasmtime adoption remains an open option. Apple source-head evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005) at `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: native arm64 macOS engine/runtime default and native-engine suites (zero ignored), clock/WAL recovery, and compiled echo through C ABI passed. x86_64 Darwin was cross-built, not executed. AOT/JIT remain fail-closed on every host.
 - **iOS:** WAMR interpreter-only build, avoiding runtime machine-code generation/loading. The same Apple job built the arm64 runtime static archive and linked the C start/stop probe with the iPhoneOS SDK, minimum iOS 15.0. This closes the earlier ADR 0008 SDK/archive/link gap, **not** simulator or device qualification. Signed device execution, sandbox availability of boot-session identity, and suspension behavior remain unverified. When suspended, the phone is intended to become a remote adapter with coglets on the router; distribution/downloaded-code policy needs separate validation, not a blanket personal/TestFlight assurance. See the [runtime evidence table](../../crates/coglet-runtime/native-engine.md#apple-platform-evidence) and [PR #62](https://github.com/softmax-universe/coglet/pull/62) for source-head vs final-head evidence.
 - **32-bit ARM (EO1) and other small devices:** WAMR interpreter. **ARMv7 verified only under QEMU**, not on a real EO1. ADR 0008's modern-sysroot binary requires GLIBC_2.34 and is not suitable for the frame's unmodified Ubuntu 18.04 baseline. An EO1-compatible sysroot/artifact and an identified physical EO1 run (including realistic native RSS/peak and runtime conformance) remain open verification items. Emulator memory measurements are not native-device guarantees.
-- **Devices too small for a runtime:** become remote adapters, with reflexes on the device and decisions on the hub.
+- **Devices too small for a runtime:** become remote adapters, with reflexes on the device and decisions on the router.
 
 ### Many coglets per adapter
 
@@ -243,9 +243,9 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 - The adapter offers everything it has; each coglet's manifest is checked against its own share.
 - Coglets subscribe to the events they want, and the runtime fans events out.
 - Reads are shared. Exclusive outputs, such as a speaker or screen, belong to one coglet at a time, assigned by router policy.
-- The router promotes and rolls back each coglet separately. Coglets on the same device still talk only through the hub.
+- The router promotes and rolls back each coglet separately. Coglets on the same device still talk only through the router.
 
-The name "adapter" stays.
+The name was "surface" when this was written; it is now "adapter" (ADR-0020).
 
 ## Components to build
 
@@ -259,7 +259,7 @@ Two specs everything plugs into, then the pieces built on them. Any new adapter 
 ### On each device
 
 3. **Coglet runtime.** Rust sidecar hosting many coglets: engine interface (WAMR first), event router (subscriptions, batching, timers), copy-on-write filesystem per coglet, policy and budgets, replay journal (events in, actions out), git sync, router link, debug agent (reads and writes applied between steps).
-4. **Surfaces.** Native apps built on the SDK: Mac, iOS, Linux and Echo Dot (shared Go library), EO1, Mindustry. Peripherals such as EchoEar and the Z04 badge are capabilities of a host surface.
+4. **Adapters.** Native apps built on the SDK: Mac, iOS, Linux and Echo Dot (shared Go library), EO1, Mindustry. Peripherals such as EchoEar and the Z04 badge are capabilities of a host adapter.
 
 ### Router
 
@@ -273,7 +273,7 @@ Two specs everything plugs into, then the pieces built on them. Any new adapter 
 
 ### Tooling
 
-12. **Coglet CLI and mock surface.** Scaffold, build, run locally, replay, attach a debugger.
+12. **Coglet CLI and mock adapter.** Scaffold, build, run locally, replay, attach a debugger.
 13. **Network visualizer and simulator** (see below).
 
 ## Visualizer, simulator and mocks
@@ -289,9 +289,9 @@ One Mac app with two modes.
 
 Every piece talks to its neighbors through a narrow protocol, so each has a fake that speaks the same protocol:
 
-- **Mock surface:** replays recorded events, records actions.
+- **Mock adapter:** replays recorded events, records actions.
 - **Mock engine:** a native function standing in for a coglet, to test the runtime without Wasm.
-- **Mock hub:** scripted links, inbox appends and promotions.
+- **Mock router:** scripted links, inbox appends and promotions.
 - **Mock LLM:** replays recorded responses.
 
 One shared contract suite per protocol runs against both the real piece and its mock, so mocks cannot drift. The simulator is the mocks wired together, with real pieces swapped in one at a time.
@@ -301,7 +301,7 @@ One shared contract suite per protocol runs against both the real piece and its 
 The coglet design replaces Baby Bear's architecture (the first prototype), migrated incrementally because Baby Bear runs the house daily.
 
 1. **One shared runtime** for Mindister and Baby Bear, run as a sidecar on each pod.
-2. **Pods become surfaces.** A pod's `device_agent_v1` capability list becomes coglet manifests; native handlers become capabilities. Realtime audio stays native.
+2. **Pods become adapters.** A pod's `device_agent_v1` capability list becomes coglet manifests; native handlers become capabilities. Realtime audio stays native.
 3. **Pilot: EO1.** Split it into the adapter (existing app minus decision logic: screen, sensors, signed updates), the coglet runtime, and a display coglet the factory can rewrite without an EO1 release.
 4. **Reuse what works:** add coglet methods to the existing `babybear/rpc/1` iroh protocol rather than adding a protocol; grow `hub_runtime` deploy and rollback into per-coglet promotion; point Hermes dev cards at coglet repos.
 5. **Router last:** move the conversation route into a fast-loop coglet once the pattern is proven on pods.
@@ -372,5 +372,5 @@ Inspiration now, substrate later. Matching ideas: git trees as values, content-a
 - Physical EO1 verification with a compatible sysroot, and iOS sandbox/suspension plus signed-device verification (archive/SDK link is now evidenced above; ADR 0008).
 - Acceptance and qualification of ADR 0003's router-side publish-time float rewrite, including cross-architecture determinism and resource-limit outcomes.
 - Flush interval and size cap for the in-memory filesystem.
-- Whether steps default to event-driven or fixed rate per surface.
+- Whether steps default to event-driven or fixed rate per adapter.
 - Desktop-app adapters (Chrome via native messaging, Blender via an add-on) on the Companion pattern: a product decision for after the Mindister lane, not yet scoped.
