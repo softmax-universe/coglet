@@ -15,6 +15,7 @@ struct Fixture {
     actor: String,
     ticket: String,
     time: Arc<AtomicU64>,
+    samples: Arc<AtomicU64>,
 }
 impl Fixture {
     async fn new() -> Self {
@@ -94,6 +95,7 @@ impl Fixture {
             actor,
             ticket,
             time: Arc::new(AtomicU64::new(1)),
+            samples: Arc::new(AtomicU64::new(0)),
         }
     }
     async fn prepare(&self, large: bool) -> Value {
@@ -113,12 +115,14 @@ impl Fixture {
         let t = self.target.clone();
         let s = self.hs.clone();
         let time = self.time.clone();
+        let samples = self.samples.clone();
         tokio::spawn(async move {
             k.dispatch_action_with_clock(
                 &t,
                 &"44".repeat(16),
                 s,
                 Arc::new(move || {
+                    samples.fetch_add(1, Ordering::SeqCst);
                     let now = time.load(Ordering::SeqCst);
                     (now != u64::MAX).then_some(now)
                 }),
@@ -146,8 +150,30 @@ impl Fixture {
     }
     async fn close(self) {
         self.serving.abort();
+        let _ = self.serving.await;
         self.device.close().await;
         self.hub.close().await;
+    }
+    async fn reopen(self) -> (tempfile::TempDir, Kernel) {
+        let hub_id = self.hub.id();
+        let Fixture {
+            _dir,
+            hub,
+            device,
+            kernel,
+            hs,
+            dc,
+            hc,
+            serving,
+            ..
+        } = self;
+        serving.abort();
+        let _ = serving.await;
+        device.close().await;
+        hub.close().await;
+        drop((kernel, hs, dc, hc, device, hub));
+        let reopened = Kernel::open(_dir.path(), hub_id, Arc::new(|| Some(1))).unwrap();
+        (_dir, reopened)
     }
 }
 
@@ -206,15 +232,10 @@ async fn blocked_open_cannot_send_after_ticket_end_or_caller_abort() {
                 "fixture did not exhaust actual stream credit"
             );
             let task = f.dispatch();
-            // Wait for durable attempt, then the per-poll driver to enter open_bi.
-            let db = rusqlite::Connection::open(f._dir.path().join("kernel.db")).unwrap();
-            loop {
-                let attempted: i64 = db
-                    .query_row("SELECT attempted FROM deliveries", [], |r| r.get(0))
-                    .unwrap();
-                if attempted == 1 {
-                    break;
-                }
+            // One admission sample plus two poll samples proves at least one
+            // actual sending.poll returned Pending before the stop trigger.
+            // All stream credit remains held, so that poll is blocked open_bi.
+            while f.samples.load(Ordering::SeqCst) < 3 {
                 tokio::task::yield_now().await;
             }
             f.stop(mode, &task).await;
@@ -256,13 +277,14 @@ async fn mapping_absence_overflow_and_restart_never_create_or_remap_intent() {
         let db=rusqlite::Connection::open(f._dir.path().join("kernel.db")).unwrap();
         let count:i64=db.query_row("SELECT count(*) FROM deliveries",[],|r|r.get(0)).unwrap();assert_eq!(count,0);
         let mapped=f.kernel.prepare_action(&f.target,action.clone(),context.clone(),Some(1000)).await.unwrap();
-        // A new Kernel process-equivalent reopens persisted Authority and deliveries;
-        // no mapping or live runtime clock is reconstructed from stored offset/time.
-        let reopened=Kernel::open(f._dir.path(),f.hub.id(),Arc::new(||Some(1))).unwrap();
-        assert_eq!(reopened.prepare_action(&f.target,action,context,Some(-100)).await.unwrap(),mapped);
-        assert!(reopened.dispatch_action(&f.target,&"44".repeat(16),f.hs.clone()).await.is_err());
+        let target=f.target.clone();let session=f.hs.clone();
+        // Drop every old Kernel/handler before reopening persisted state. No
+        // logical clock or offset is recovered as authority for a new send.
+        let (_dir,reopened)=f.reopen().await;
+        assert_eq!(reopened.prepare_action(&target,action,context,Some(-100)).await.unwrap(),mapped);
+        assert!(reopened.dispatch_action(&target,&"44".repeat(16),session).await.is_err());
         let attempted:i64=db.query_row("SELECT attempted FROM deliveries",[],|r|r.get(0)).unwrap();assert_eq!(attempted,0);
-        drop(reopened);f.close().await;
+        drop(reopened);
     }).await.unwrap();
 }
 
@@ -281,8 +303,9 @@ async fn ticket_end_during_live_reply_wait_resets_and_survives_restart() {
         assert_eq!(send.stopped().await.unwrap().unwrap().into_inner(), 1);
         let result = task.await.unwrap().unwrap();
         assert_eq!(result["error"]["details"]["ticket_ended"], true);
-        let reopened = Kernel::open(f._dir.path(), f.hub.id(), Arc::new(|| Some(1))).unwrap();
-        let db = rusqlite::Connection::open(f._dir.path().join("kernel.db")).unwrap();
+        let target = f.target.clone();
+        let (dir, reopened) = f.reopen().await;
+        let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
         let saved: String = db
             .query_row("SELECT reply FROM deliveries", [], |r| r.get(0))
             .unwrap();
@@ -290,7 +313,7 @@ async fn ticket_end_during_live_reply_wait_resets_and_survives_restart() {
         assert!(
             reopened
                 .prepare_action(
-                    &f.target,
+                    &target,
                     request["params"]["action"].clone(),
                     request["context"].clone(),
                     None
@@ -299,7 +322,6 @@ async fn ticket_end_during_live_reply_wait_resets_and_survives_restart() {
                 .is_err()
         );
         drop(reopened);
-        f.close().await;
     })
     .await
     .unwrap();
