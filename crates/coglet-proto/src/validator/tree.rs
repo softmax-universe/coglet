@@ -86,7 +86,11 @@ fn commit(object: &Object) -> Result<([u8; 20], Vec<[u8; 20]>)> {
 /// guess that only applies once an entry exists.
 const ARCHIVE_OVERHEAD: u64 = 10240;
 
-pub(super) fn check(objects: &Objects, job: &Job) -> Result<()> {
+/// Verified tip-tree files as `(path, blob oid)`, charged under the same
+/// precharged archive budget as the validation walk.
+pub(super) type Files = BTreeMap<String, [u8; 20]>;
+
+pub(super) fn check(objects: &Objects, job: &Job) -> Result<Files> {
     // Precharge before any entry walk. A check only inside the entry loop lets
     // an empty tree skip the budget, reach Git, and exceed the limit before the
     // streaming reader rejects it.
@@ -199,5 +203,5 @@ pub(super) fn check(objects: &Objects, job: &Job) -> Result<()> {
             return Err(invalid("provenance output digest"));
         }
     }
-    Ok(())
+    Ok(files)
 }

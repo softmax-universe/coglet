@@ -106,8 +106,68 @@ impl Validator {
 /// Provenance validity is structural/output binding, NOT build qualification.
 pub struct VerifiedBundle {
     envelope: BundleEnvelope,
+    contents: VerifiedContents,
+}
+
+/// Immutable bytes of every regular file in the validated tip tree, captured from
+/// the same bounded validation pass (framed size <= `Limits::expanded_bytes`).
+/// There is no public constructor, so values only come from a `VerifiedBundle`;
+/// it exposes no filesystem path and cannot be mutated.
+#[derive(Debug)]
+pub struct VerifiedContents {
+    files: std::collections::BTreeMap<String, Box<[u8]>>,
+}
+impl VerifiedContents {
+    /// Bytes of a validated `/`-separated relative path, e.g. `bin/step.wasm`.
+    pub fn file(&self, path: &str) -> Option<&[u8]> {
+        self.files.get(path).map(|b| &**b)
+    }
+    /// All validated files in path order.
+    pub fn files(&self) -> impl Iterator<Item = (&str, &[u8])> {
+        self.files.iter().map(|(p, b)| (p.as_str(), &**b))
+    }
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+}
+/// Helper stdout after `verified\n`: repeated `u32be path_len, path,
+/// u64be len, bytes`. The helper is trusted, but the parse still rejects
+/// truncation, empty/oversized/duplicate paths and trailing bytes.
+fn parse_contents(mut raw: &[u8]) -> Result<VerifiedContents> {
+    fn take<'a>(raw: &mut &'a [u8], n: usize) -> Result<&'a [u8]> {
+        if raw.len() < n {
+            return Err(invalid("content frame"));
+        }
+        let (head, tail) = raw.split_at(n);
+        *raw = tail;
+        Ok(head)
+    }
+    let mut files = std::collections::BTreeMap::new();
+    while !raw.is_empty() {
+        let path_len = u32::from_be_bytes(take(&mut raw, 4)?.try_into().unwrap()) as usize;
+        if path_len == 0 || path_len > 4096 {
+            return Err(invalid("content path"));
+        }
+        let path = std::str::from_utf8(take(&mut raw, path_len)?)
+            .map_err(|_| invalid("content path"))?
+            .to_owned();
+        let len = u64::from_be_bytes(take(&mut raw, 8)?.try_into().unwrap());
+        let len = usize::try_from(len).map_err(|_| invalid("content frame"))?;
+        let bytes = take(&mut raw, len)?;
+        if files.insert(path, bytes.into()).is_some() {
+            return Err(invalid("duplicate content path"));
+        }
+    }
+    Ok(VerifiedContents { files })
 }
 impl VerifiedBundle {
+    /// Immutable validated file contents; the only content export.
+    pub fn contents(&self) -> &VerifiedContents {
+        &self.contents
+    }
     pub fn metadata(&self) -> &VerifiedRef {
         self.envelope.metadata()
     }
@@ -173,6 +233,17 @@ pub(crate) async fn validate(
             // Command retains its configured Stdio after spawn. Close that extra
             // lease now, not after the result has been delivered to the async caller.
             drop(command);
+            // Drain concurrently (the helper blocks on a full pipe) under a hard
+            // cap: per-file framing is within the archive budget the helper charged.
+            let cap = limits.expanded_bytes + 64;
+            let mut stdout = child.stdout.take().expect("piped stdout");
+            let reader = std::thread::spawn(move || {
+                let mut out = Vec::new();
+                (&mut stdout)
+                    .take(cap + 1)
+                    .read_to_end(&mut out)
+                    .map(|_| out)
+            });
             loop {
                 if cancelled.load(Ordering::Acquire)
                     || start.elapsed() >= Duration::from_millis(limits.wall_millis)
@@ -197,20 +268,22 @@ pub(crate) async fn validate(
             // still in uninterruptible I/O after SIGKILL.
             kill_group(child.id());
             let status = child.wait()?;
-            let mut message = String::new();
-            if let Some(stdout) = child.stdout.take() {
-                stdout.take(1024).read_to_string(&mut message)?;
-            }
+            let output = reader
+                .join()
+                .map_err(|_| io::Error::other("validator output reader"))??;
+            let text =
+                |n: usize| String::from_utf8_lossy(&output[..output.len().min(n)]).into_owned();
             match status.code() {
-                Some(0) if message == "verified\n" => Ok(()),
-                Some(20) => Err(invalid(message.trim())),
-                Some(21) => Err(resource(message.trim())),
-                Some(22) => Err(ValidationError::Unavailable(message.trim().into())),
+                Some(0) if output.len() as u64 > cap => Err(resource("verified content bytes")),
+                Some(0) if output.starts_with(b"verified\n") => parse_contents(&output[9..]),
+                Some(20) => Err(invalid(text(1024).trim())),
+                Some(21) => Err(resource(text(1024).trim())),
+                Some(22) => Err(ValidationError::Unavailable(text(1024).trim().into())),
                 _ => Err(resource("helper CPU/memory/process limit")),
             }
         })();
         match outcome {
-            Ok(()) => Ok(VerifiedBundle { envelope }),
+            Ok(contents) => Ok(VerifiedBundle { envelope, contents }),
             Err(error) => {
                 // Drop captured custody before publishing the failed worker
                 // result; don't depend on closure-environment drop ordering.
@@ -371,8 +444,17 @@ pub fn helper_main() -> i32 {
         run(&directory, &job)
     })();
     match outcome {
-        Ok(()) => {
-            println!("verified");
+        Ok(frames) => {
+            use std::io::Write;
+            let mut out = io::stdout().lock();
+            if out
+                .write_all(b"verified\n")
+                .and_then(|()| out.write_all(&frames))
+                .and_then(|()| out.flush())
+                .is_err()
+            {
+                return 21;
+            }
             0
         }
         Err(error) => {
@@ -431,7 +513,7 @@ impl Disk {
         Ok(())
     }
 }
-fn run(directory: &Path, job: &Job) -> Result<()> {
+fn run(directory: &Path, job: &Job) -> Result<Vec<u8>> {
     let stat = nix::sys::statvfs::statvfs(directory).map_err(io::Error::other)?;
     if stat.block_size() > 4096 || stat.fragment_size() > 4096 {
         return Err(ValidationError::Unavailable(
@@ -456,7 +538,7 @@ fn run(directory: &Path, job: &Job) -> Result<()> {
         return Err(invalid("bundle header"));
     }
     let objects = pack::decode(&raw[header.len()..], job.limits)?;
-    tree::check(&objects, job)?;
+    let files = tree::check(&objects, job)?;
     let repo = directory.join("repo");
     disk.directory(&repo)?;
     disk.directory(&repo.join("objects"))?;
@@ -556,7 +638,20 @@ fn run(directory: &Path, job: &Job) -> Result<()> {
     fs::File::open(repo.join("refs"))?.sync_all()?;
     fs::File::open(&repo)?.sync_all()?;
     fs::File::open(directory)?.sync_all()?;
-    Ok(())
+    // Export only after every check succeeded; tree::check already charged each
+    // path and blob against `expanded_bytes`.
+    let mut frames = Vec::new();
+    for (path, id) in files {
+        let bytes = &objects
+            .get(&id)
+            .ok_or_else(|| invalid("missing object"))?
+            .bytes;
+        frames.extend_from_slice(&(path.len() as u32).to_be_bytes());
+        frames.extend_from_slice(path.as_bytes());
+        frames.extend_from_slice(&(bytes.len() as u64).to_be_bytes());
+        frames.extend_from_slice(bytes);
+    }
+    Ok(frames)
 }
 fn git(repo: &Path, cpu: u64) -> Command {
     let mut command = limited_command(Path::new("/usr/bin/git"), cpu);

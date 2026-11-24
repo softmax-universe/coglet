@@ -12,6 +12,7 @@ fn dispatch(id: &str, session: &str, epoch: u64, operation: &str) -> Dispatch {
         terminal_at: Some(10),
         accept: Some(json!({"accepted":true})),
         outcome: Some(json!({"status":"succeeded"})),
+        stopped: false,
     }
 }
 #[test]

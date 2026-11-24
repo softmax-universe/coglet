@@ -19,6 +19,8 @@ pub mod database_service;
 mod dispatch;
 #[path = "live_heard.rs"]
 mod live_heard;
+#[path = "managed.rs"]
+mod managed;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
@@ -111,6 +113,8 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[serde(default)]
+    managed: Option<managed::ManagedState>,
     #[serde(default)]
     catalog_pin: Option<String>,
     #[serde(default)]
@@ -250,14 +254,59 @@ impl RuntimeService {
         queue_capacity: usize,
         catalog: crate::TrustedExtensionCatalog,
     ) -> Result<Self> {
+        Self::open_configured(path, setup, queue_capacity, catalog, None, &|| Ok(0))
+    }
+
+    /// Construct and pin the stopped identity in the very first state frame.
+    /// Failure/expiry before that frame leaves only an empty WAL, never an
+    /// unmanaged service whose code could be rebound to a later install.
+    #[cfg(feature = "device")]
+    pub(crate) fn open_for_install(
+        path: &Path,
+        setup: &Value,
+        queue_capacity: usize,
+        identity: &Value,
+        operation_id: &str,
+        gate: &dyn Fn() -> Result<u64>,
+    ) -> Result<Self> {
+        Self::open_configured(
+            path,
+            setup,
+            queue_capacity,
+            crate::TrustedExtensionCatalog::default(),
+            Some((identity, operation_id)),
+            gate,
+        )
+    }
+
+    fn open_configured(
+        path: &Path,
+        setup: &Value,
+        queue_capacity: usize,
+        catalog: crate::TrustedExtensionCatalog,
+        install: Option<(&Value, &str)>,
+        gate: &dyn Fn() -> Result<u64>,
+    ) -> Result<Self> {
         let catalog = std::sync::Arc::new(catalog);
         let mut store = DurableStore::open(path)?;
+        let fresh = store.state().is_none();
         let configured = Runtime::from_fixture(setup)?;
         let configured_reads = Self::configured_reads(setup, &catalog)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
+            let saved_state: ServiceState =
+                serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            if let Some(managed) = &saved_state.managed {
+                managed.validate()?;
+                if install.is_some_and(|(identity, _)| managed.identity() != identity) {
+                    return Err("conflict: managed install identity differs".into());
+                }
+            } else if install.is_some() {
+                return Err("permission_denied: existing unmanaged WAL cannot be rebound".into());
+            }
             Self::restore(&store, &configured, saved, &catalog, &configured_reads)?
         } else {
             let mut state = ServiceState {
+                managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
                 supervisor_reads: configured_reads,
                 runtime: configured.clone(),
@@ -284,10 +333,6 @@ impl RuntimeService {
                     "seq":seq,"logical_time":state.runtime.time,"payload":{"index":index,"id":message["id"]},
                     "correlation_id":message["event"]["correlation_id"]}))?;
             }
-            store.commit(
-                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
-                None,
-            )?;
             state
         };
         // Reconstruct from immutable initial intent order and committed call
@@ -344,7 +389,7 @@ impl RuntimeService {
                 None,
             )?;
         }
-        Ok(Self {
+        let mut service = Self {
             state,
             store,
             catalog,
@@ -352,7 +397,17 @@ impl RuntimeService {
             configured,
             #[cfg(feature = "native-engine")]
             native: None,
-        })
+        };
+        if let Some((identity, operation_id)) = install {
+            gate()?;
+            service.managed_install(identity, operation_id)?;
+        } else if fresh {
+            service.store.commit(
+                &serde_json::to_value(&service.state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
+        Ok(service)
     }
 
     /// Number of durably failed guest attempts. Supervisor status, not a wire message.
@@ -387,6 +442,7 @@ impl RuntimeService {
 
     /// Gate shared by every live delivery path (ordinary and database).
     fn require_deliverable(&self) -> Result<()> {
+        self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err(
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
@@ -498,6 +554,7 @@ impl RuntimeService {
     /// Atomically retain timer wake and shared source sequence before execution.
     /// A full router defers firing without discarding or reordering admitted input.
     pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
+        self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("timers deferred until attempt reconciliation".into());
         }
