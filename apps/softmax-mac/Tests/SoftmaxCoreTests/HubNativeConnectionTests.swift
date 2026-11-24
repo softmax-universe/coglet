@@ -46,6 +46,7 @@ final class HubNativeConnectionTests: XCTestCase {
         }
         defer { timeout.cancel(); reader.cancel() }
         let bootstrap = try await reader.value
+        timeout.cancel()
         var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: bootstrap) as? [String: Any])
         envelope["name"] = "Native mock hub"
         let pairing = try HubPairing.parse(String(decoding: JSONSerialization.data(withJSONObject: envelope), as: UTF8.self))

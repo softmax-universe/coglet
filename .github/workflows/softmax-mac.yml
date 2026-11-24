@@ -23,6 +23,16 @@ jobs:
         with:
           targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
+      - name: Build real hub helper and mock launcher
+        run: |
+          cargo build --locked --manifest-path apps/softmax-mac/HubTransport/Cargo.toml -j 2
+          cargo build --locked -p coglet-mock --example hub -j 2
+      - name: HubConnectionTests against real coglet-mock
+        env:
+          SOFTMAX_HUB_HELPER: ${{ github.workspace }}/apps/softmax-mac/HubTransport/target/debug/softmax-hub-link
+          SOFTMAX_MOCK_HUB: ${{ github.workspace }}/target/debug/examples/hub
+          SOFTMAX_REQUIRE_HUB_TESTS: '1'
+        run: swift test --package-path apps/softmax-mac --filter HubNativeConnectionTests
       - name: Install pinned header generator
         run: cargo install cbindgen --version 0.29.2 --locked
       - name: Build test runtime xcframework (real WAMR, both Apple architectures)
