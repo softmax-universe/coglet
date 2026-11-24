@@ -58,6 +58,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
     pub fn run_cycle(&mut self, db: &mut Database, now: i64, limit: u32) -> Result<DispatchBatch> {
         let reconciled = self.reconcile_bound_unleased(db, now)?;
         let mut follow_ups = self.pending_follow_ups(db)?;
+        // A durable result may precede local lease expiry. Consume it before
+        // unsupported remote retry can hold the remaining operational backlog.
+        follow_ups.extend(self.ingest(db, now)?);
         let expired = self.expire_leases(db, now)?;
         let rebound = self.redispatch_pending(db, now, limit)?;
         let fresh = self.dispatch_pending(db, now, limit)?;
@@ -165,7 +168,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
             Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => return Err(note),
         };
         db.set_binding_phase(&row.intent_id, "claimed", &claimed.token)?;
-        self.persist_local_lease(db, task_id, &claimed.token, attempt, now)
+        self.persist_local_lease(db, task_id, &claimed.token, attempt, claimed.until as i64)
     }
 
     fn persist_local_lease(
@@ -174,13 +177,12 @@ impl<A: HermesAdapter> Dispatcher<A> {
         task_id: &str,
         token: &str,
         attempt: u64,
-        now: i64,
+        until: i64,
     ) -> Result<()> {
         let current = db.get_work_queue(task_id)?;
         if current.as_ref().is_some_and(|row| row.state == "leased") {
             return Ok(());
         }
-        let until = now.saturating_add(LEASE_MS);
         let version = current.as_ref().map(|row| row.version).unwrap_or(1);
         let priority = current.as_ref().map(|row| row.priority).unwrap_or(0);
         db.put_work_queue(&WorkQueueRow {
@@ -209,7 +211,51 @@ impl<A: HermesAdapter> Dispatcher<A> {
                 continue;
             }
             if binding.phase == "claimed" && !binding.token.is_empty() {
-                self.persist_local_lease(db, &task_id, &binding.token, row.attempt, now)?;
+                // The remote run may have finished before the crashed host
+                // wrote its local lease. Reconcile that exact saved run first;
+                // a terminal run cannot (and must not) be renewed/reclaimed.
+                match self
+                    .adapter
+                    .poll(&binding.remote_id, row.attempt, &binding.token)
+                {
+                    Ok(Some(report)) => {
+                        self.persist_local_lease(
+                            db,
+                            &task_id,
+                            &binding.token,
+                            row.attempt,
+                            now.saturating_add(LEASE_MS),
+                        )?;
+                        self.apply_result(db, &row.intent_id, report)?;
+                        finished += 1;
+                        continue;
+                    }
+                    Ok(None) => {}
+                    Err(AdapterError::Uncertain) => continue,
+                    Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                        return Err(note);
+                    }
+                }
+                let restored = match self.adapter.restore_lease(
+                    &binding.remote_id,
+                    HOST_OWNER,
+                    now.saturating_add(LEASE_MS) as u64,
+                    row.attempt,
+                    &binding.token,
+                ) {
+                    Ok(lease) => lease,
+                    Err(AdapterError::Uncertain) => continue,
+                    Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                        return Err(note);
+                    }
+                };
+                self.persist_local_lease(
+                    db,
+                    &task_id,
+                    &binding.token,
+                    row.attempt,
+                    restored.until as i64,
+                )?;
             } else {
                 let spec = crate::adapter::TaskSpec {
                     idempotency_key: row.idempotency_key.clone(),
@@ -417,7 +463,13 @@ impl<A: HermesAdapter> Dispatcher<A> {
             let Some(remote) = db.get_binding(&row.intent_id)? else {
                 continue;
             };
-            let report = match self.adapter.poll(&remote) {
+            let Some(queue) = db.get_work_queue(&task_id_of(&row))? else {
+                continue;
+            };
+            let Some(token) = queue.lease_owner.as_deref() else {
+                continue;
+            };
+            let report = match self.adapter.poll(&remote, queue.attempt, token) {
                 Ok(Some(report)) => report,
                 Ok(None) => continue,
                 Err(AdapterError::Uncertain) => continue,

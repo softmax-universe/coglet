@@ -266,6 +266,16 @@ pub fn handle<H: Host + DbHost>(
             coglet_types::validate("abi::llm-reply", &payload).map_err(|_| bad())?;
             return handle(context, &enclosed);
         }
+        if matches!(
+            enclosed.kind.as_str(),
+            "task.completed"
+                | "task.failed"
+                | "task.cancelled"
+                | "task.heartbeat"
+                | "task.lease_expired"
+        ) {
+            return handle(context, &enclosed);
+        }
         return Ok(());
     }
     let kind = event.kind.as_str();
