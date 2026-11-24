@@ -127,12 +127,24 @@ fn host_stack_and_memory_bound() {
 
 #[test]
 fn runaway_deadline_then_next_fresh_call_succeeds() {
-    let b = bytes("", "i32.const 0", "(loop $l br $l) i32.const 0");
+    // Keep wall-clock work per compute unit high, as in the Wasmtime fixture:
+    // a bare branch races the finite compute allowance against the watchdog.
+    let b = bytes(
+        "",
+        "i32.const 0",
+        "(loop $l i32.const 0 memory.grow drop br $l) i32.const 0",
+    );
     let mut l = limits(i32::MAX as u64);
     // Setup can wait behind the runtime lock while the memory-bound fixture
     // validates thousands of functions; 20ms races that unrelated work.
     l.deadline = Instant::now() + Duration::from_secs(1);
-    assert_eq!(run(&b, l).result, Err(Error::DeadlineExceeded));
+    let out = run(&b, l);
+    assert_eq!(out.result, Err(Error::DeadlineExceeded));
+    assert!(out.compute_used < i32::MAX as u64 / 10, "{out:?}");
+    println!(
+        "deadline interrupted with compute_used={}",
+        out.compute_used
+    );
     assert_eq!(
         run(&bytes("", "i32.const 0", "i32.const 0"), limits(1000)).result,
         Ok(())
