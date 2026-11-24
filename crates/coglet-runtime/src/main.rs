@@ -214,7 +214,7 @@ fn main() {
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         _ => {
             eprintln!(
-                "usage: cogletd --version | --mock-stdio | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON\nService mode hosts committed outbox/receipts; production guest scheduling is not yet implemented."
+                "usage: cogletd --version | --mock-stdio | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration."
             );
             std::process::exit(2);
         }

@@ -16,6 +16,8 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 - shared binding-checked surface negotiation, bounded replies and health/inactivity;
 - real embedded C ABI and Linux/Apple UID-authenticated private Unix socket framing.
 - pinned operation-schema selection, capability replacement and grant/resource checks;
+- opt-in digest-pinned local trusted extension catalogs, single-owner routing and
+  original read/result bindings (see [provisioning and qualification](trusted-extension-catalog.md));
 - one-time clock translation and complete deterministic act bytes fsynced before exposure;
 - durable bound-surface admission/outcomes, terminal dedup and staged inbox boundary mutations.
 - lease-scoped private event routing with durable shared surface sequence/clock highwaters;

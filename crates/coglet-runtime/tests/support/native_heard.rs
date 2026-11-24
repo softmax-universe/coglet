@@ -11,7 +11,7 @@ fn exercise_heard(ffi: bool, name: &str, revoke: bool) {
     exercise_heard_order(ffi, name, revoke, false);
 }
 fn exercise_heard_order(ffi: bool, name: &str, revoke: bool, reverse: bool) {
-    let _guard = FFI_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     drop(host.connect());
     host.stop();

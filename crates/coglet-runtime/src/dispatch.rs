@@ -391,9 +391,38 @@ impl RuntimeService {
             self.commit_dispatch(next)?;
             return Ok(false);
         }
+        // Keep late effects as durable audit, but never materialize extension
+        // private results under a replacement/revoked grant. Built-in receipt
+        // reconciliation deliberately retains its frozen historical semantics.
+        let operation = dispatch.intent["capability"]
+            .as_str()
+            .ok_or("missing operation")?;
+        let publish = if self.catalog.single_owner(operation) {
+            let envelope: Value = coglet_types::decode(
+                "surface-message",
+                &hex::decode(&dispatch.envelope_hex).map_err(|e| e.to_string())?,
+            )?
+            .deserialized()
+            .map_err(|e| e.to_string())?;
+            envelope["body"]["grant_epoch"] == session.grant_epoch()
+                && self.state.surface_epochs.get(session.surface()).copied()
+                    == Some(session.grant_epoch())
+                && session
+                    .authorize(
+                        dispatch.intent["coglet"].as_str().ok_or("missing owner")?,
+                        operation,
+                        "action",
+                        now,
+                    )
+                    .is_ok()
+        } else {
+            true
+        };
         dispatch.outcome = Some(event["payload"].clone());
         dispatch.terminal_at = Some(now);
-        Self::stage_terminal(&mut next, event.clone(), now)?;
+        if publish {
+            Self::stage_terminal(&mut next, event.clone(), now)?;
+        }
         self.commit_dispatch(next)?;
         Ok(true)
     }

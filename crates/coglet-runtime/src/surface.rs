@@ -122,6 +122,7 @@ impl SurfaceSession {
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
+        self.pump_supervisor_reads(now)?;
         #[cfg(feature = "native-engine")]
         service
             .lock()

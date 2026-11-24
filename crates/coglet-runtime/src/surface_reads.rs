@@ -11,6 +11,45 @@ pub(super) struct PendingRead {
 }
 
 impl SurfaceSession {
+    pub(crate) fn pump_supervisor_reads(&mut self, now: u64) -> Result<()> {
+        let Some(service) = self.service.clone() else {
+            return Ok(());
+        };
+        let requests = service
+            .lock()
+            .map_err(|_| "runtime service poisoned")?
+            .pending_supervisor_reads(self.surface());
+        for request in requests {
+            if self
+                .authorize(&request.coglet, &request.operation, "read", now)
+                .is_err()
+            {
+                continue;
+            }
+            let deadline = now
+                .checked_add(request.timeout_us)
+                .ok_or("supervisor read deadline overflow")?;
+            // Queue locally, commit original intent before the transport can pop bytes.
+            self.request_read(
+                &request.coglet,
+                &request.operation,
+                request.args,
+                &request.correlation_id,
+                deadline,
+                now,
+            )?;
+            let persisted = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .mark_supervisor_read_attempted(&request.correlation_id);
+            if let Err(error) = persisted {
+                self.disconnect();
+                return Err(error);
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn collects_heard(&self) -> bool {
         self.operations
             .get("speech.heard")
@@ -220,6 +259,18 @@ impl SurfaceSession {
             self.heard_reads.remove(id);
             self.reads.remove(id);
             return Ok(());
+        }
+        if let Some(service) = &self.service {
+            service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .record_supervisor_read(
+                    self.surface(),
+                    &read.coglet,
+                    &read.operation,
+                    &read.args,
+                    body,
+                )?;
         }
         let read = self.reads.remove(id).unwrap();
         self.read_results

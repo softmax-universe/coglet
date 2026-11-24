@@ -19,6 +19,8 @@ const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const OTHER: &str = "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 const S: &str = "surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const RAW: &[u8] = include_bytes!("../examples/trusted-extension-catalog.json");
+#[path = "support/trusted_extension_cases.rs"]
+mod extra;
 fn catalog(raw: &[u8]) -> TrustedExtensionCatalog {
     TrustedExtensionCatalog::from_pinned_bytes(raw, &digest(raw)).unwrap()
 }
@@ -289,6 +291,9 @@ impl Link {
 #[test]
 #[allow(non_snake_case)]
 fn CogletdTrustedExtensionCatalogTest() {
+    extra::daemon_reads();
+    extra::resource_matrix();
+    extra::fenced_results();
     let a = artifact();
     // Real production socket event admission, with exact canonical event bytes in WAL.
     let mut h = Host::new("positive-events", false, RAW, &[C]);
@@ -739,5 +744,7 @@ fn pinned_loader_rejects_untrusted_or_open_catalogs() {
             TrustedExtensionCatalog::from_pinned_bytes(&raw, &digest(&raw)).is_err(),
             "accepted {label}"
         );
+        let h = Host::new(&format!("invalid-catalog-{label}"), false, &raw, &[C]);
+        h.startup_fails(&h.pin_args(&digest(&raw)));
     }
 }

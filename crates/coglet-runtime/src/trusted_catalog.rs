@@ -334,9 +334,16 @@ fn closed_ir(
             &["op", "name"]
         }
         "range" | "size" => {
-            if e["min"].as_i64().is_none() && e["min"].as_u64().is_none()
-                || e["max"].as_i64().is_none() && e["max"].as_u64().is_none()
-            {
+            let bound = |v: &Value| {
+                v.as_i64()
+                    .map(i128::from)
+                    .or_else(|| v.as_u64().map(i128::from))
+            };
+            let (lo, hi) = (
+                bound(&e["min"]).ok_or("invalid IR bounds")?,
+                bound(&e["max"]).ok_or("invalid IR bounds")?,
+            );
+            if lo > hi || (e["op"] == "size" && lo < 0) {
                 return Err("invalid IR bounds".into());
             }
             &["op", "min", "max"]

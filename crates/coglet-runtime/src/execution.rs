@@ -1,4 +1,6 @@
-use crate::{DurableStore, Router};
+use crate::{DurableStore, Router, TrustedExtensionCatalog};
+#[path = "supervisor_reads.rs"]
+mod supervisor_reads;
 use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, validate};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -78,6 +80,8 @@ pub struct EngineReport {
 struct ServiceState {
     #[serde(default)]
     catalog_pin: Option<String>,
+    #[serde(default)]
+    supervisor_reads: BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
     runtime: Runtime,
     router: Router,
     #[serde(default)]
@@ -135,11 +139,21 @@ impl RuntimeService {
         let catalog = std::sync::Arc::new(catalog);
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
+        let configured_reads = Self::configured_reads(setup, &catalog)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
             let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
             if state.catalog_pin.as_deref() != catalog.pin() {
                 return Err("recovery extension catalog pin differs from configuration".into());
+            }
+            if state.supervisor_reads.len() != configured_reads.len()
+                || state.supervisor_reads.iter().any(|(id, r)| {
+                    configured_reads
+                        .get(id)
+                        .is_none_or(|c| c.request != r.request)
+                })
+            {
+                return Err("recovery supervisor read plan differs from configuration".into());
             }
             state.router.validate_recovered()?;
             let offset =
@@ -188,6 +202,7 @@ impl RuntimeService {
         } else {
             let mut state = ServiceState {
                 catalog_pin: catalog.pin().map(str::to_owned),
+                supervisor_reads: configured_reads,
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
                 completed_segments: Vec::new(),
@@ -293,7 +308,10 @@ impl RuntimeService {
     /// before calling this internal coordinator seam.
     pub fn enqueue(&mut self, event: Value) -> Result<u64> {
         if event["kind"].as_str().is_some_and(|kind| {
-            kind.starts_with("runtime.") || kind == "action.outcome" || kind == "llm.reply"
+            kind.starts_with("runtime.")
+                || kind == "action.outcome"
+                || kind == "llm.reply"
+                || self.catalog.single_owner(kind)
         }) {
             return Err("reserved runtime/inbox event cannot enter external event router".into());
         }
