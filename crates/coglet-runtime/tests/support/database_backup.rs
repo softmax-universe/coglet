@@ -60,7 +60,7 @@ fn backup_restore<E: SharedEngine>(engine: E, fx: Fx) {
     let snapshot = db
         .snapshot(&fx.root.path().join("backup"), &bundle, &mut verifier)
         .unwrap();
-    let isolated = tempfile::tempdir().unwrap();
+    let isolated = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
     let restored_root = isolated.path().join("restored");
     let report = Database::restore_isolated(&restored_root, C, &snapshot, &mut verifier).unwrap();
     assert_eq!(report.revision, 1);

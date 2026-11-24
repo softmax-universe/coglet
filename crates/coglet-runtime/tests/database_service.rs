@@ -181,7 +181,7 @@ struct Fx {
 }
 impl Fx {
     fn new(code: Vec<u8>, mode: &str) -> Self {
-        let root = tempfile::tempdir().unwrap();
+        let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
         let cat = catalog();
         let manifest = json!({"version":"0.2","id":C,"subscriptions":[],
             "required_capabilities":["db.read","db.write","expression.set_expression"],
@@ -212,7 +212,7 @@ impl Fx {
         provenance["rewritten_sha256"] = json!(digest(&code));
         setup["initial_files"]["/code/build/provenance.cbor"] =
             json!(hex::encode(cbor(&provenance).unwrap()));
-        let db = Database::open(root.path(), C).unwrap();
+        let db = Database::open(&root.path().canonicalize().unwrap(), C).unwrap();
         let db_path = db.path().to_owned();
         let observer = rusqlite::Connection::open(&db_path).unwrap();
         observer
@@ -249,7 +249,7 @@ impl Fx {
         RuntimeService::open(&self.wal, &self.setup, 4).unwrap()
     }
     fn db(&self) -> Database {
-        Database::open(self.root.path(), C).unwrap()
+        Database::open(&self.root.path().canonicalize().unwrap(), C).unwrap()
     }
     fn observer(&self) -> rusqlite::Connection {
         rusqlite::Connection::open(&self.db_path).unwrap()
@@ -722,7 +722,7 @@ fn wal_keeps_zero_one_closed_and_database_bytes_exact() {
     let frames = fx.journal(&service);
     let projection = service.records()[0].clone();
     drop((service, db));
-    let dir = tempfile::tempdir().unwrap();
+    let dir = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
     let mut store = DurableStore::open(&dir.path().join("w.wal")).unwrap();
     assert!(store.commit(&json!({}), Some(&projection)).is_err());
     let mut tampered = frames[0].clone();

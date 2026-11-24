@@ -141,7 +141,7 @@ impl Fixture {
         provenance["rewritten_sha256"] = json!(digest(&code));
         setup["initial_files"]["/code/build/provenance.cbor"] =
             json!(hex::encode(cbor(&provenance).unwrap()));
-        let db = Database::open(root.path(), OWNER).unwrap();
+        let db = Database::open(&root.path().canonicalize().unwrap(), OWNER).unwrap();
         let sql = rusqlite::Connection::open(db.path()).unwrap();
         // Host-owned disposable fixture provisioning, not guest migration authority.
         sql.execute_batch("CREATE TABLE objects(id TEXT PRIMARY KEY NOT NULL,type TEXT NOT NULL,version BIGINT NOT NULL); INSERT INTO objects VALUES('a','goal',1),('b','goal',1),('c','goal',1);
@@ -161,7 +161,7 @@ impl Fixture {
         }
     }
     fn db(&self) -> Database {
-        Database::open(self.root.path(), OWNER).unwrap()
+        Database::open(&self.root.path().canonicalize().unwrap(), OWNER).unwrap()
     }
     fn pins(&self, db: &Database) -> Pins {
         let (schema_version, schema_hash) = db.schema_pin().unwrap();

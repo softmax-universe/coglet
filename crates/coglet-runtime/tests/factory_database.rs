@@ -190,8 +190,8 @@ fn migration_sql() -> String {
     head.trim().to_owned()
 }
 fn target_schema_hash() -> String {
-    let root = tempfile::tempdir().unwrap();
-    let db = Database::open(root.path(), C).unwrap();
+    let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
+    let db = Database::open(&root.path().canonicalize().unwrap(), C).unwrap();
     let path = db.path().to_owned();
     drop(db);
     rusqlite::Connection::open(&path)
@@ -201,7 +201,7 @@ fn target_schema_hash() -> String {
             migration_sql()
         ))
         .unwrap();
-    Database::open(root.path(), C)
+    Database::open(&root.path().canonicalize().unwrap(), C)
         .unwrap()
         .schema_pin()
         .unwrap()
@@ -223,7 +223,7 @@ const GRANTS: [&str; 3] = ["db.read", "db.write", "factory.work"];
 impl Fx {
     fn new(mode: &str) -> Self {
         let (code, _, max_pages) = factory_wasm().clone();
-        let root = tempfile::tempdir().unwrap();
+        let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
         let cat = catalog();
         let manifest = json!({"version":"0.2","id":C,"subscriptions":[],
             "required_capabilities":["db.read","db.write"],
@@ -254,7 +254,7 @@ impl Fx {
         provenance["rewritten_sha256"] = json!(digest(&code));
         setup["initial_files"]["/code/build/provenance.cbor"] =
             json!(hex::encode(cbor(&provenance).unwrap()));
-        let mut db = Database::open(root.path(), C).unwrap();
+        let mut db = Database::open(&root.path().canonicalize().unwrap(), C).unwrap();
         let db_path = db.path().to_owned();
         let (from_version, from_schema_hash) = db.schema_pin().unwrap();
         let range = CodeRange {
@@ -321,7 +321,7 @@ impl Fx {
         RuntimeService::open(&self.wal, &self.setup, 4).unwrap()
     }
     fn db(&self) -> Database {
-        Database::open(self.root.path(), C).unwrap()
+        Database::open(&self.root.path().canonicalize().unwrap(), C).unwrap()
     }
     fn observer(&self) -> rusqlite::Connection {
         rusqlite::Connection::open(&self.db_path).unwrap()

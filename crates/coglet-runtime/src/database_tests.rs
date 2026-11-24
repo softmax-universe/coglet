@@ -122,7 +122,7 @@ fn input() -> StepInput {
 fn exercise<E: Engine>(engine: &E, code: &[u8], requests: &[Vec<u8>], mode: &str, fail: bool) {
     let root = tempfile::tempdir().unwrap();
     let mut db = Database::open(
-        root.path(),
+        &root.path().canonicalize().unwrap(),
         "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
     .unwrap();
@@ -266,7 +266,7 @@ fn db_deployment_pins_refuse_before_instantiation() {
     }
     let root = tempfile::tempdir().unwrap();
     let mut db = Database::open(
-        root.path(),
+        &root.path().canonicalize().unwrap(),
         "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
     .unwrap();

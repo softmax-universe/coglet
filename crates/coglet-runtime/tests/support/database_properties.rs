@@ -20,7 +20,7 @@ fn exercise_property<E: SharedEngine>(property: Property, engine: E, fx: Fx) {
     service.enqueue(fx.event(0)).unwrap();
     if matches!(property, Property::Isolation) {
         let other = "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-        let mut foreign = Database::open(fx.root.path(), other).unwrap();
+        let mut foreign = Database::open(&fx.root.path().canonicalize().unwrap(), other).unwrap();
         let sql = rusqlite::Connection::open(foreign.path()).unwrap();
         sql.execute_batch("CREATE TABLE objects(id TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL); INSERT INTO objects VALUES('b','foreign-secret'); PRAGMA user_version=1;").unwrap();
         assert_ne!(foreign.path(), db.path());

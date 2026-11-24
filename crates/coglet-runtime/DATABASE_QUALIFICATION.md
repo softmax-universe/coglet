@@ -8,8 +8,10 @@ strict native clippy, then executes **every** frozen `conformance/database` case
 through the official language-neutral harness on both `real` (WAMR interpreter)
 and `mock` (shared native engine). Fresh JUnit inventories must equal the corpus
 with no failures/skips. `coglets/factory/check.sh`, already called by the required
-Rust job, invokes this gate. Its workflow step label still describes the earlier
-supplemental guest slice; no shared workflow file was edited for this milestone.
+Rust job, invokes this gate. The Rust and Apple jobs install the no-WASI target
+before their first runtime tests, which also compile the actual Factory guest.
+Disposable DB roots are canonicalized so macOS's `/var` alias does not violate
+SQLite's production `NOFOLLOW` policy; that production policy is unchanged.
 Hosted exact-head results remain a landing gate, not a claim from local execution.
 
 | Requirement | Named proof |
