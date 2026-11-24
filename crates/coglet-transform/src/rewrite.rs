@@ -1,6 +1,6 @@
 //! Pure original→output rewrite. No keys, network, registry or clock.
 use crate::{
-    F32_CANON, F64_CANON, PROFILE, Refuse, profile_bytes, sha256_hex, transform_artifact_bytes,
+    F32_CANON, F64_CANON, PROFILE, Refuse, profile_bytes, sha256_hex, transform_source_bytes,
 };
 use wasm_encoder::reencode::{Error as ReencodeError, Reencode};
 use wasm_encoder::{CodeSection, Function, Ieee32, Ieee64, Instruction as I, Module, ValType};
@@ -11,6 +11,7 @@ pub struct Pins {
     pub profile: String,
     pub max_bytes: usize,
     pub max_ops: u32,
+    pub max_locals: u32,
 }
 
 impl Default for Pins {
@@ -19,16 +20,18 @@ impl Default for Pins {
             profile: PROFILE.into(),
             max_bytes: 1_048_576,
             max_ops: 100_000,
+            max_locals: 4096,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DigestRecord {
+    pub parameters: Pins,
     pub profile: String,
     pub original_sha256: String,
     pub output_sha256: String,
-    pub transform_artifact_sha256: String,
+    pub transform_source_sha256: String,
     pub profile_bytes_sha256: String,
     pub wrapped: u32,
 }
@@ -62,10 +65,11 @@ pub fn rewrite(original: &[u8], pins: &Pins) -> Result<Rewrite, Refuse> {
     }
     admit_subset(&output, pins)?;
     let record = DigestRecord {
+        parameters: pins.clone(),
         profile: PROFILE.into(),
         original_sha256: sha256_hex(original),
         output_sha256: sha256_hex(&output),
-        transform_artifact_sha256: sha256_hex(transform_artifact_bytes()),
+        transform_source_sha256: sha256_hex(transform_source_bytes()),
         profile_bytes_sha256: sha256_hex(profile_bytes()),
         wrapped,
     };
@@ -129,6 +133,14 @@ fn admit_subset(bytes: &[u8], pins: &Pins) -> Result<(), Refuse> {
             }
             Payload::StartSection { .. } => return Err(Refuse::Unsupported("start")),
             Payload::CodeSectionEntry(body) => {
+                let mut locals = 0u32;
+                for local in body.get_locals_reader().map_err(|_| Refuse::Malformed)? {
+                    let (count, _) = local.map_err(|_| Refuse::Malformed)?;
+                    locals = locals.checked_add(count).ok_or(Refuse::Limit)?;
+                    if locals > pins.max_locals {
+                        return Err(Refuse::Limit);
+                    }
+                }
                 let reader = body.get_operators_reader().map_err(|_| Refuse::Malformed)?;
                 for op in reader {
                     let op = op.map_err(|_| Refuse::Malformed)?;
@@ -156,28 +168,24 @@ fn allowed_import(module: &str, name: &str, ty: &FuncType) -> bool {
     if module != "wasi_snapshot_preview1" {
         return false;
     }
-    matches!(
-        name,
-        "args_get"
-            | "args_sizes_get"
-            | "environ_get"
-            | "environ_sizes_get"
-            | "fd_close"
-            | "fd_datasync"
-            | "fd_sync"
-            | "fd_fdstat_get"
-            | "fd_filestat_get"
-            | "fd_prestat_get"
-            | "fd_prestat_dir_name"
-            | "fd_read"
-            | "fd_write"
-            | "fd_seek"
-            | "path_open"
-            | "path_create_directory"
-            | "path_remove_directory"
-            | "path_unlink_file"
-            | "proc_exit"
-    )
+    // This profile intentionally admits a strict subset of frozen R4, but never
+    // relaxes its signatures. Keep the table cross-tested against Engine loading.
+    use wasmparser::ValType::I64;
+    let params: &[wasmparser::ValType] = match name {
+        "args_get" | "args_sizes_get" | "environ_get" | "environ_sizes_get" | "fd_fdstat_get"
+        | "fd_filestat_get" | "fd_prestat_get" => &[I32, I32],
+        "fd_close" | "fd_datasync" | "fd_sync" => &[I32],
+        "fd_prestat_dir_name"
+        | "path_create_directory"
+        | "path_remove_directory"
+        | "path_unlink_file" => &[I32, I32, I32],
+        "fd_read" | "fd_write" => &[I32, I32, I32, I32],
+        "fd_seek" => &[I32, I64, I32, I32],
+        "path_open" => &[I32, I32, I32, I32, I32, I64, I64, I32, I32],
+        "proc_exit" => return sig(&[I32], &[]),
+        _ => return false,
+    };
+    sig(params, &[I32])
 }
 
 fn wrap_kind(op: &wasmparser::Operator<'_>) -> Option<u8> {

@@ -7,7 +7,7 @@ pub mod oracle;
 pub mod rewrite;
 
 pub use admit::{
-    AdmissionStatement, Allowlist, Authority, CiBinding, QualifiedPins, SignedAdmission,
+    AdmissionStatement, Allowlist, Authority, Evidence, QualifiedPins, SignedAdmission,
     admit_publication, integer_profile_admitted,
 };
 pub use oracle::{Op, Width, r3_bits};
@@ -47,6 +47,22 @@ pub fn profile_bytes() -> &'static [u8] {
     include_bytes!("../PROFILE.md")
 }
 
-pub fn transform_artifact_bytes() -> &'static [u8] {
-    include_bytes!("rewrite.rs")
+/// A source-closure identity only. The actual built tool artifact is a separate
+/// mandatory pin in retained publication evidence; source bytes are not it.
+pub fn transform_source_bytes() -> &'static [u8] {
+    concat!(
+        "lib.rs\0",
+        include_str!("lib.rs"),
+        "\0rewrite.rs\0",
+        include_str!("rewrite.rs"),
+        "\0admit.rs\0",
+        include_str!("admit.rs"),
+        "\0Cargo.toml\0",
+        include_str!("../Cargo.toml"),
+        "\0Cargo.lock\0",
+        include_str!("../../../Cargo.lock"),
+        "\0PROFILE.md\0",
+        include_str!("../PROFILE.md"),
+    )
+    .as_bytes()
 }

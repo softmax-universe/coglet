@@ -64,8 +64,8 @@ fn main() {
     let mut out = Vec::new();
     out.extend(std::env::consts::ARCH.as_bytes());
     out.push(0);
-    for seed in rest.chunks_exact(8) {
-        let seed = u64::from_le_bytes(seed.try_into().unwrap());
+    for seed in rest.as_chunks::<8>().0 {
+        let seed = u64::from_le_bytes(*seed);
         out.extend(run(&wamr, module, seed).to_le_bytes());
         out.extend(run(&wasmtime, module, seed).to_le_bytes());
     }

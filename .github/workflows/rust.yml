@@ -46,6 +46,17 @@ jobs:
           echo "COGLET_TRANSFORM_PEER_EVAL=$wrap" >>"$GITHUB_ENV"
           echo "COGLET_TRANSFORM_PEER_ARCH=aarch64" >>"$GITHUB_ENV"
           echo "COGLET_TRANSFORM_PEER_MODE=emulated-qemu" >>"$GITHUB_ENV"
+      - name: R3 component proofs (exact inventory, no quarantine or skips)
+        run: |
+          evidence="$RUNNER_TEMP/transform-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.bundle-mode || 'normal' }}"
+          echo "COGLET_TRANSFORM_EVIDENCE_DIR=$evidence" >>"$GITHUB_ENV"
+          python3 crates/coglet-transform/tests/check_runner.py
+          COGLET_TRANSFORM_EVIDENCE_DIR="$evidence" python3 crates/coglet-transform/check.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transform-component-proof-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ env.COGLET_TRANSFORM_EVIDENCE_DIR }}
+          if-no-files-found: error
       - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
         run: scripts/ci/cargo-test --workspace --locked
       - name: AOT feature fails closed under ABI v0
