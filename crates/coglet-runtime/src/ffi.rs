@@ -10,12 +10,15 @@ static BINDING: OnceLock<SurfaceBinding> = OnceLock::new();
 static RUNTIME: Mutex<Option<Arc<Mutex<crate::RuntimeService>>>> = Mutex::new(None);
 
 /// Start/recover the durable coordinator from trusted JSON {wal, setup}.
-/// Call before opening links. Non-Linux clocks currently fail closed.
+/// Call before opening links. Linux and Apple supervised clocks fail closed if
+/// kernel continuity is unavailable. Trusted startup JSON includes hex-encoded
+/// guest code, so its separate bound is 16 MiB (surface frames remain unchanged).
 /// # Safety
 /// `config` references `n` readable immutable bytes for this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i32 {
-    if config.is_null() || n == 0 || n > SURFACE_MAX_FRAME || BINDING.get().is_none() {
+    const MAX_START_CONFIG: usize = 16 * 1024 * 1024;
+    if config.is_null() || n == 0 || n > MAX_START_CONFIG || BINDING.get().is_none() {
         return -1;
     }
     #[derive(serde::Deserialize)]

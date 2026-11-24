@@ -232,8 +232,8 @@ These decisions supersede the earlier Runtime section where they differ: coglets
 
 ### Platform notes
 
-- **Macs and hub:** WAMR interpreter in v0 so both the compute cap and deadline are available. Earlier Wasmtime adoption remains an open option.
-- **iOS:** planned WAMR interpreter-only execution, avoiding runtime machine-code generation/loading. **Unverified:** ADR 0008's Linux host had no Apple SDK, `xcrun` or Apple linker, so no iOS archive/link, simulator or device result exists. Archive/link on Xcode and a signed device harness remain open verification items. When suspended, the phone is intended to become a remote surface with coglets on the hub; distribution/downloaded-code policy needs separate validation, not a blanket personal/TestFlight assurance.
+- **Macs and hub:** WAMR interpreter in v0 so both the compute cap and deadline are available. Earlier Wasmtime adoption remains an open option. Apple source-head evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005) at `a73a322472c11478857a81c2aa1ab42b8b7c6d3e`: native arm64 macOS engine/runtime default and native-engine suites (zero ignored), clock/WAL recovery, and compiled echo through C ABI passed. x86_64 Darwin was cross-built, not executed. AOT/JIT remain fail-closed on every host.
+- **iOS:** WAMR interpreter-only build, avoiding runtime machine-code generation/loading. The same Apple job built the arm64 runtime static archive and linked the C start/stop probe with the iPhoneOS SDK, minimum iOS 15.0. This closes the earlier ADR 0008 SDK/archive/link gap, **not** simulator or device qualification. Signed device execution, sandbox availability of boot-session identity, and suspension behavior remain unverified. When suspended, the phone is intended to become a remote surface with coglets on the hub; distribution/downloaded-code policy needs separate validation, not a blanket personal/TestFlight assurance. See the [runtime evidence table](../../crates/coglet-runtime/native-engine.md#apple-platform-evidence) and [PR #62](https://github.com/softmax-universe/coglet/pull/62) for source-head vs final-head evidence.
 - **32-bit ARM (EO1) and other small devices:** WAMR interpreter. **ARMv7 verified only under QEMU**, not on a real EO1. ADR 0008's modern-sysroot binary requires GLIBC_2.34 and is not suitable for the frame's unmodified Ubuntu 18.04 baseline. An EO1-compatible sysroot/artifact and an identified physical EO1 run (including realistic native RSS/peak and runtime conformance) remain open verification items. Emulator memory measurements are not native-device guarantees.
 - **Devices too small for a runtime:** become remote surfaces, with reflexes on the device and decisions on the hub.
 
@@ -314,11 +314,11 @@ From the repo docs, not a code-level audit of each pod.
 
 | Pod | Kind | Notes |
 |---|---|---|
-| Mac | Standalone surface | Most work: delegation and job logic must move into coglets |
+| Mac | Standalone surface | Runtime arm64 engine + clock/WAL + C-ABI echo executed in [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005); x86_64 cross-build only. Product delegation/job migration remains open. |
 | EO1 | Standalone surface | Planned 32-bit ARM WAMR interpreter; QEMU only, physical EO1 verification open |
 | Echo Dot | Standalone surface | Clean fit; already does audio; shares the Go pod library with Linux; another body for the Face coglet, using the LED ring instead of expressions |
 | Linux | Standalone surface | Clean fit via the Go library |
-| iOS | Standalone surface | Planned interpreter only and hub fallback when suspended; SDK/link and device verification open |
+| iOS | Standalone surface | Interpreter runtime archive + iPhoneOS SDK link (minimum 15.0) passed in [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005); no device run. Sandbox identity/suspension, signed device and hub fallback qualification remain open. |
 | EchoEar | Peripheral | USB mic, speaker and face on the Mac surface |
 | Z04 badge | Peripheral | Bluetooth, through the Mac surface |
 
@@ -369,7 +369,7 @@ Inspiration now, substrate later. Matching ideas: git trees as values, content-a
 
 - Keep or cut the hub's ledger and motor journal? Pacing and player-wins for acts are likely still needed.
 - Engine-specific compute and deadline budgets per step for each surface; whether to bring Wasmtime fuel/epochs forward (not decided).
-- Physical EO1 verification with a compatible sysroot, and iOS SDK/archive/link plus signed-device verification (ADR 0008).
+- Physical EO1 verification with a compatible sysroot, and iOS sandbox/suspension plus signed-device verification (archive/SDK link is now evidenced above; ADR 0008).
 - Acceptance and qualification of ADR 0003's hub-side publish-time float rewrite, including cross-architecture determinism and resource-limit outcomes.
 - Flush interval and size cap for the in-memory filesystem.
 - Whether steps default to event-driven or fixed rate per surface.

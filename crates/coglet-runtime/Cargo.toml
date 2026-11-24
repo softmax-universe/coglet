@@ -9,6 +9,8 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]
 default = []
+# Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
+echo-smoke = ["native-engine"]
 native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser"]
 
 [dependencies]
@@ -24,6 +26,12 @@ hex = "0.4"
 
 [dev-dependencies]
 wat = "1.245.1"
+anyhow = "1"
+wasm-encoder = { version = "0.245", features = ["wasmparser"] }
+
+[[example]]
+name = "qualify_apple_guest"
+required-features = ["native-engine"]
 
 [[bin]]
 name = "cogletd"
