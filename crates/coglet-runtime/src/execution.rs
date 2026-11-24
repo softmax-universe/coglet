@@ -76,6 +76,8 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[serde(default)]
+    catalog_pin: Option<String>,
     runtime: Runtime,
     router: Router,
     #[serde(default)]
@@ -109,6 +111,7 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    pub(crate) catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     state: ServiceState,
     store: DurableStore,
     #[cfg(feature = "native-engine")]
@@ -116,11 +119,28 @@ pub struct RuntimeService {
 }
 impl RuntimeService {
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        Self::open_with_catalog(
+            path,
+            setup,
+            queue_capacity,
+            crate::TrustedExtensionCatalog::default(),
+        )
+    }
+    pub fn open_with_catalog(
+        path: &Path,
+        setup: &Value,
+        queue_capacity: usize,
+        catalog: crate::TrustedExtensionCatalog,
+    ) -> Result<Self> {
+        let catalog = std::sync::Arc::new(catalog);
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
             let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            if state.catalog_pin.as_deref() != catalog.pin() {
+                return Err("recovery extension catalog pin differs from configuration".into());
+            }
             state.router.validate_recovered()?;
             let offset =
                 Self::validate_segments(&state, &configured.initial_setup, store.records())?;
@@ -142,7 +162,7 @@ impl RuntimeService {
             state
                 .runtime
                 .validate_recovered(&store.records()[offset..])?;
-            Self::validate_dispatches(&state)?;
+            Self::validate_dispatches(&state, &catalog)?;
             state
                 .speech_temporal
                 .validate(&state.surface_epochs, &state.runtime.manifest["id"])?;
@@ -167,6 +187,7 @@ impl RuntimeService {
             state
         } else {
             let mut state = ServiceState {
+                catalog_pin: catalog.pin().map(str::to_owned),
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
                 completed_segments: Vec::new(),
@@ -253,6 +274,7 @@ impl RuntimeService {
         Ok(Self {
             state,
             store,
+            catalog,
             #[cfg(feature = "native-engine")]
             native: None,
         })

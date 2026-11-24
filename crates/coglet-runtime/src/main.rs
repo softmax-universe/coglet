@@ -99,16 +99,47 @@ fn main() {
             }
         }
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
-        [flag, path, binding, uid, wal, setup] if flag == "--surface-service-socket" => {
+        args if args
+            .first()
+            .is_some_and(|flag| flag == "--surface-service-socket") =>
+        {
             let result = (|| {
+                let (path, binding, uid, wal, setup, catalog) = match args {
+                    [_, path, binding, uid, wal, setup] => (
+                        path,
+                        binding,
+                        uid,
+                        wal,
+                        setup,
+                        coglet_runtime::TrustedExtensionCatalog::default(),
+                    ),
+                    [_, path, binding, uid, wal, setup, option, file, pin]
+                        if option == "--trusted-extension-catalog" =>
+                    {
+                        let raw = std::fs::read(file).map_err(|e| e.to_string())?;
+                        (
+                            path,
+                            binding,
+                            uid,
+                            wal,
+                            setup,
+                            coglet_runtime::TrustedExtensionCatalog::from_pinned_bytes(&raw, pin)?,
+                        )
+                    }
+                    _ => return Err("invalid surface service/catalog arguments".to_owned()),
+                };
                 let binding = coglet_runtime::SurfaceBinding::from_config(
                     &std::fs::read(binding).map_err(|e| e.to_string())?,
                 )?;
                 let setup: Value =
                     serde_json::from_slice(&std::fs::read(setup).map_err(|e| e.to_string())?)
                         .map_err(|e| e.to_string())?;
-                let mut service =
-                    coglet_runtime::RuntimeService::open(std::path::Path::new(wal), &setup, 128)?;
+                let mut service = coglet_runtime::RuntimeService::open_with_catalog(
+                    std::path::Path::new(wal),
+                    &setup,
+                    128,
+                    catalog,
+                )?;
                 if let Some(schedule) = setup.get("native_schedule") {
                     #[cfg(feature = "native-engine")]
                     service.enable_native(

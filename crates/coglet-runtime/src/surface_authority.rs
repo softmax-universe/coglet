@@ -1,6 +1,5 @@
 //! Authority established only by authenticated, negotiated surface messages.
 use super::*;
-use crate::catalog;
 
 impl SurfaceSession {
     /// A live endpoint's epoch high-water mark belongs to the durable runtime,
@@ -9,11 +8,12 @@ impl SurfaceSession {
         binding: SurfaceBinding,
         service: std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
     ) -> Result<Self> {
-        let epoch = service
-            .lock()
-            .map_err(|_| "runtime service poisoned")?
-            .surface_epoch(binding.surface());
+        let guard = service.lock().map_err(|_| "runtime service poisoned")?;
+        let epoch = guard.surface_epoch(binding.surface());
+        let catalog = guard.catalog.clone();
+        drop(guard);
         let mut session = Self::new(binding);
+        session.catalog = catalog;
         session.epoch = epoch;
         session.service = Some(service);
         Ok(session)
@@ -88,16 +88,15 @@ impl SurfaceSession {
                     let name = value.as_str().ok_or("invalid operation")?;
                     // Unsupported operations never gain authority. Fail closed rather
                     // than falling back to generic profile-map schema validation.
-                    let op = catalog::operation(name, direction)?;
-                    if op["entry"] != entry["name"] {
+                    let (expected_entry, uri) = self.catalog.binding(name, direction)?;
+                    if expected_entry != entry["name"] {
                         return Err("wrong catalog entry".into());
                     }
-                    let rule = if direction == "read" {
-                        &op["output"]
-                    } else {
-                        &op["input"]
-                    };
-                    if entry["schemas"][name] != catalog::uri(rule)? {
+                    if self.catalog.single_owner(name) && self.binding.permitted_coglets.len() != 1
+                    {
+                        return Err("extension requires exactly one supervisor-bound owner".into());
+                    }
+                    if entry["schemas"][name] != uri {
                         return Err("untrusted schema URI".into());
                     }
                     if !advertised.insert(name.to_owned())
@@ -126,7 +125,7 @@ impl SurfaceSession {
                     "speech.control" | "speech.session" => {
                         matches!(resource, "audio.mic" | "audio.speaker")
                     }
-                    _ => false,
+                    _ => self.catalog.resource_in_entry(name, resource),
                 };
                 if !known || !resources.insert(resource.to_owned()) {
                     return Err("unsupported/duplicate exclusive resource".into());
@@ -277,7 +276,7 @@ impl SurfaceSession {
                 .unwrap()
                 .iter()
                 .any(|op| op == operation)
-            || catalog::resources(operation).iter().any(|resource| {
+            || self.catalog.resources(operation).iter().any(|resource| {
                 !grant["resources"]
                     .as_array()
                     .unwrap()
@@ -295,7 +294,7 @@ impl SurfaceSession {
         validate("action", action)?;
         let op = action["capability"].as_str().ok_or("missing capability")?;
         self.authorize(action["coglet"].as_str().unwrap(), op, "action", now)?;
-        catalog::check(&catalog::operation(op, "action")?["input"], &action["args"])?;
+        self.catalog.check(op, "action", false, &action["args"])?;
         if op == "speech.speak_chunk"
             && action["args"]["text"]
                 .as_str()

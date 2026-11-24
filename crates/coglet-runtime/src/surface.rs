@@ -46,6 +46,7 @@ impl SurfaceBinding {
 }
 
 pub struct SurfaceSession {
+    catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     binding: SurfaceBinding,
     negotiated: bool,
     closed: bool,
@@ -84,6 +85,7 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
+            catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
             binding,
             negotiated: false,
             closed: false,

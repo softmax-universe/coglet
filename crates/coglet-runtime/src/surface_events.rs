@@ -1,6 +1,6 @@
 //! Durable private observation admission and lease-scoped queue retention.
 use super::*;
-use crate::{SurfaceSession, catalog};
+use crate::SurfaceSession;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -71,8 +71,11 @@ impl RuntimeService {
         {
             return Err("unauthenticated or stale event source".into());
         }
-        let op = catalog::operation(kind, "event")?;
-        catalog::check(&op["input"], &event["payload"])?;
+        self.catalog
+            .check(kind, "event", false, &event["payload"])?;
+        if self.catalog.single_owner(kind) && crate::cbor(&event["payload"])?.len() > 262_144 {
+            return Err("event payload exceeds encoded byte limit".into());
+        }
         if event["payload"]["text"]
             .as_str()
             .is_some_and(|s| s.len() > 16_384)
@@ -81,6 +84,9 @@ impl RuntimeService {
         }
         let coglet = self.state.runtime.manifest["id"].as_str().unwrap();
         let expires = session.event_lease(coglet, kind, now)?;
+        if let Some(read) = self.catalog.selected_read(kind, &event["payload"])? {
+            session.authorize(coglet, read, "read", now)?;
+        }
         if kind == "speech.tool_call" {
             self.check_provider_session(session, coglet, &event["payload"]["session"])?;
         }

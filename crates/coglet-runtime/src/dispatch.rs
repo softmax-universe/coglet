@@ -2,7 +2,7 @@
 //!
 //! This is dispatch metadata, not a replacement for the immutable ABI intent.
 use super::*;
-use crate::{SurfaceSession, catalog};
+use crate::{SurfaceSession, TrustedExtensionCatalog};
 #[cfg(test)]
 #[path = "dispatch_tests.rs"]
 mod tests;
@@ -26,7 +26,12 @@ impl Dispatch {
             && self.intent["args"]["session"] == args["session"]
             && self.intent["args"]["call"] == args["call"]
     }
-    fn validate(&self, id: &str, runtime: &Runtime) -> Result<()> {
+    fn validate(
+        &self,
+        id: &str,
+        runtime: &Runtime,
+        catalog: &TrustedExtensionCatalog,
+    ) -> Result<()> {
         validate("action", &self.intent)?;
         validate("surface-id", &json!(self.surface))?;
         if self.intent["id"] != id
@@ -55,7 +60,7 @@ impl Dispatch {
             self.check_accept(accept)?;
         }
         if let Some(outcome) = &self.outcome {
-            self.check_outcome(outcome)?;
+            self.check_outcome(outcome, catalog)?;
         }
         Ok(())
     }
@@ -68,7 +73,7 @@ impl Dispatch {
         }
         Ok(())
     }
-    fn check_outcome(&self, body: &Value) -> Result<()> {
+    fn check_outcome(&self, body: &Value, catalog: &TrustedExtensionCatalog) -> Result<()> {
         validate("action-outcome", body)?;
         if self.accept.as_ref().is_none_or(|a| a["accepted"] != true)
             || body["id"] != self.intent["id"]
@@ -78,10 +83,7 @@ impl Dispatch {
         }
         if body["status"] == "succeeded" {
             let op = self.intent["capability"].as_str().unwrap();
-            catalog::check(
-                &catalog::operation(op, "action")?["output"],
-                &body["result"],
-            )?;
+            catalog.check(op, "action", true, &body["result"])?;
         }
         Ok(())
     }
@@ -357,7 +359,7 @@ impl RuntimeService {
         if dispatch.surface != session.surface() {
             return Err("outcome from wrong authenticated surface".into());
         }
-        dispatch.check_outcome(&event["payload"])?;
+        dispatch.check_outcome(&event["payload"], &self.catalog)?;
         if let Some(saved) = &dispatch.outcome {
             if saved != &event["payload"] {
                 return Err("conflicting terminal result".into());
@@ -527,7 +529,10 @@ impl RuntimeService {
         }
         Ok(())
     }
-    pub(super) fn validate_dispatches(state: &ServiceState) -> Result<()> {
+    pub(super) fn validate_dispatches(
+        state: &ServiceState,
+        catalog: &TrustedExtensionCatalog,
+    ) -> Result<()> {
         for surface in state.surface_sequences.keys() {
             validate("surface-id", &json!(surface))?;
         }
@@ -538,7 +543,7 @@ impl RuntimeService {
             }
         }
         for (id, dispatch) in &state.dispatches {
-            dispatch.validate(id, &state.runtime)?;
+            dispatch.validate(id, &state.runtime, catalog)?;
         }
         Ok(())
     }

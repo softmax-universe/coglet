@@ -1,7 +1,6 @@
 //! Native observations, never synthetic guest events. All results stay scoped to
 //! the requesting coglet; correlation tombstones fence late replies and ID reuse.
 use super::*;
-use crate::catalog;
 
 pub(super) struct PendingRead {
     pub coglet: String,
@@ -41,8 +40,7 @@ impl SurfaceSession {
         {
             return Err("stale surface grant epoch".into());
         }
-        let op = catalog::operation(operation, "read")?;
-        catalog::check(&op["input"], &args)?;
+        self.catalog.check(operation, "read", false, &args)?;
         if operation == "speech.heard" {
             let service = self
                 .service
@@ -191,10 +189,8 @@ impl SurfaceSession {
         };
         self.authorize(&read.coglet, &read.operation, "read", now)?;
         if body["ok"] == true {
-            catalog::check(
-                &catalog::operation(&read.operation, "read")?["output"],
-                &body["value"],
-            )?;
+            self.catalog
+                .check(&read.operation, "read", true, &body["value"])?;
             if read.operation == "speech.heard" && body["value"]["item"] != read.args["item"] {
                 return Err("heard read returned another item".into());
             }
