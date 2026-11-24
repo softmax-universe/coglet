@@ -63,6 +63,15 @@ struct State {
 }
 impl Drop for State {
     fn drop(&mut self) {
+        // Serialize with create/sweep across the metadata/open/remove sequence.
+        // On gate failure leave the orphan intact for later recovery.
+        let Some(parent) = self.directory.parent() else {
+            return;
+        };
+        let Ok(gate) = File::open(parent) else { return };
+        if gate.lock().is_err() {
+            return;
+        }
         // A helper/descendant inherits our locked open description. Never unlink
         // while one still owns it (including a killed task stuck in kernel I/O).
         // If service/helper dies first, startup sweep resumes cleanup only after
