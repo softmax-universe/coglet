@@ -19,7 +19,14 @@ Named tests:
   script (events, played/heard/truncation, replay from every intermediate
   snapshot), per-item heard history, stop semantics.
 - `tests/test_duplex_conformance.py`: every `conformance/speech/` case through the
-  AF_UNIX surface with the shared conformance runner.
+  framed stdio adapter with the shared conformance runner and ADR-0024 scheduled
+  fixture clock (`fixture_clock = true`, `fixture_scheduler = true`).
+- `tests/test_duplex_supervisor.py`: real Unix disconnect/truncated-client recovery
+  followed by a fresh scenario on the same listeners.
+- `tests/test_duplex_fixture_clock.py`: >200 ms real negotiation stalls, unchanged
+  logical receive deadlines, unexpected-byte silence, monotonic clock controls
+  and chronological callback progression. The private `fixture_peer` uses the
+  actual adapter/codec/ledger; it requires the harness-owned clock socket.
 - `tests/test_duplex_wire.py`: real `Surface.receive` regressions for every
   advertised operation (accept, reject, terminal result, and cancellation or
   fencing where the spec defines them). See the contract table below.
@@ -32,6 +39,13 @@ Named tests:
 
 Timing: render starts 20 ms (wall) after admission; virtual media then advances
 10x faster than wall time. Wire positions are virtual media milliseconds.
+Functional conformance uses the same 20 ms and 10x schedule on logical time,
+independent of runner/durable-store delays. Its private control acknowledges
+cumulative flushed wire bytes; the runner waits for those bytes before silence
+or clock progression. Existing `within_ms` remains the logical receive bound,
+with a separate 3-second I/O watchdog and the unchanged whole-case watchdog.
+This does not qualify acoustic latency. Ordinary `host`/Unix paths and the wire
+tests retain their real clocks; only the explicit test-only binding opts in.
 Expression expiry uses the separate native monotonic clock and runs on every
 device tick, including idle ticks with no reads; media capture never advances it.
 The native stop reflex fences pending work before grant reassignment, kill,
