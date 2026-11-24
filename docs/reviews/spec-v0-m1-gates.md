@@ -1,5 +1,11 @@
 # Spec-v0 residual ledger and M1 qualification inventory
 
+Residual qualification owner after bounded ADR-0014 M1 acceptance:
+**t_01a20c2f7b9bb95a**. Its [work-in-progress evidence map](m1-residual-qualification.md)
+tracks transform publication, broader synthesis/private/relay matrices and retry
+crash points. Local supporting tests do not close the B rows below; required-CI
+qualification or an accepted ADR disposition remains necessary.
+
 Scope owner/final acceptance: **t_01a205d727e02f52**. Serial M-B repair:
 **t_01a2073e2797f99d**, on existing PR #36 only. This inventory is normative
 qualification gating under ADR-0009, not permission to execute unqualified code.
