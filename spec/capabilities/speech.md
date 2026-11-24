@@ -28,7 +28,7 @@ Read `speech.config` returns a snapshot of `speech-config`:
 `{stt, tts, barge, session_mode}`. STT and TTS are each `{placement, route}`;
 placement is `surface`, `runtime`, `hub` or `provider`; route is a nonempty opaque
 configured route name, not a URL/token. `barge` is `stop` or `duck`; session_mode
-is `text` or `speech_to_speech`. Configuration is installed by trusted operator/hub
+is `text` or `speech_to_speech`. Configuration is installed by trusted operator/router
 policy before grant issuance, not by arbitrary coglet writes. Changes revoke the
 old epoch/session and publish a new config snapshot before restarting capture.
 Remote audio paths require explicit local privacy permission and authenticated
@@ -224,7 +224,7 @@ provider reconnect starts a fresh fenced generation before accepting new work.
 owner-only, require the current audio.mic/audio.speaker leases and explicit
 operation grants, and never bypass router policy for the requested `name`.
 The coglet forwards the explicit intent through its ordinary authorized router work
-path; no direct surface-to-agent or coglet-to-coglet execution is introduced.
+path; no direct adapter-to-agent or coglet-to-coglet execution is introduced.
 
 For a provider session opting into speech.work, map its allowlisted tool call to
 ONE work_intent (provider call IDs are mapped to native correlation IDs); do not

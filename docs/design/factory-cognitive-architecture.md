@@ -7,7 +7,7 @@ Date: 2026-11-22
 
 The Factory is a self-modifiable Wasm coglet with a persistent, private cognitive state and a single event-driven executive. It manages goals, tasks, hypotheses, experiments, knowledge and artifacts; delegates execution to Hermes initially; evaluates outcomes; and proposes candidate code changes through the router's existing promotion gates. Intelligence and strategy live in Factory Wasm; database, LLM, worker execution, and artifact storage are host-provided capabilities. The kernel alone enforces grants, promotion, probation, and rollback.
 
-This document describes the intended v1 architecture, not an assertion that the interfaces already exist. It supplements the runtime design and does not supersede existing ABI/hub specs without an accepted ADR.
+This document describes the intended v1 architecture, not an assertion that the interfaces already exist. It supplements the runtime design and does not supersede existing ABI/router specs without an accepted ADR.
 
 ## Boundaries
 
