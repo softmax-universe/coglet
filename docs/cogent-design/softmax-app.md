@@ -7,7 +7,7 @@ It is one app that does three things:
 1. **It is the user's way in.** A menu bar icon, a floating orb, and
    push-to-talk.
 2. **It provides capabilities.** Through its adapter, coglets can listen, speak,
-   change the avatar's expression and add to the menu.
+   change the orb's expression and add to the menu.
 3. **It has a runtime and runs coglets locally,** on the user's own machine.
 
 ## What the user sees
@@ -168,7 +168,8 @@ that need to be close to the user run there, on the user's machine:
 - the coglets that drive the apps the user has connected, using
   [those apps' adapters](app-integration.md#adapter).
 
-Running them locally keeps conversation fast, keeps voice on the machine, and
+Running them locally keeps conversation fast, keeps voice off Softmax
+infrastructure, and
 lets the coglets reach apps that only exist on this computer.
 
 On first run the orb notices what is installed ("I see you have Blender, can

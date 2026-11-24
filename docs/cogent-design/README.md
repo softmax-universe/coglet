@@ -115,7 +115,7 @@ Coglet
   register(Manifest)
       Declare the capabilities it wants: events to subscribe to, actions it needs.
   handle(event)
-      Process one event.
+      Process an event, or a small batch of them.
 
   -- back channel, to its manager
 
@@ -240,7 +240,7 @@ runtime, including the user's own machine.
 
 ## A request, end to end
 
-"Make me a torus", said to a user who has only Blender installed, when the
+"Make me a torus", said by a user who has only Blender installed, when the
 Blender coglet does not yet know how.
 
 ![A spoken request goes from Face to the Blender coglet, which asks for help; Face files a feature request, the factory builds a patch, and the cogent applies it.](diagrams/turn.svg)

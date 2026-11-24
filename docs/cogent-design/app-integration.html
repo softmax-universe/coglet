@@ -168,16 +168,14 @@ game master), and a runtime may be connected to several adapters at once.</p>
 <p>The adapter sits between the runtime and the real world: a microphone, a
 speaker, an app such as Blender or Chrome, a job scheduler. It holds no coglet logic. An
 adapter is built by the app's developer and exposes only what they choose, in
-the way a web API or an MCP server does. It speaks the
-the messages below to one runtime over a private local link. How that
+the way a web API or an MCP server does. It speaks the messages below to one runtime over a private local link. How that
 link is carried (a separate process, or the runtime embedded in the app) is a
 deployment detail and changes none of the messages.</p>
 <h3 id="adapterapi"><code>AdapterApi</code><a class="headerlink" href="#adapterapi" title="Permanent link">#</a></h3>
 <p>What the runtime may ask of an adapter.</p>
 <div class="codehilite idl"><pre><span class="nc">AdapterApi</span>
-  <span class="nf">read</span>(<span class="ty">Read</span>) -&gt; <span class="ty">ReadReply</span>
-      <span class="sd">Return one bounded snapshot. No side effects. Today only the runtime issues reads; a coglet</span>
-      <span class="sd">learns what it can see through events.</span>
+  <span class="nf">observe</span>(<span class="ty">Read</span>) -&gt; <span class="ty">ReadReply</span>
+      <span class="sd">Return one bounded snapshot of something in the app. No side effects.</span>
   <span class="nf">act</span>(<span class="ty">Act</span>) -&gt; <span class="ty">Accept</span>
       <span class="sd">Admit or reject one action. If accepted, the adapter later sends exactly one Event of kind</span>
       <span class="sd">`action.outcome` carrying an Outcome.</span></pre></div>

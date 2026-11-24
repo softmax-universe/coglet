@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render README.md and architecture.md to self-contained HTML pages.
+"""Render the five Markdown pages in this folder to HTML.
 
 Needs the `markdown` and `pygments` packages:
     python3 docs/cogent-design/render.py

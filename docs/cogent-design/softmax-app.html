@@ -135,7 +135,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 <li><strong>It is the user's way in.</strong> A menu bar icon, a floating orb, and
    push-to-talk.</li>
 <li><strong>It provides capabilities.</strong> Through its adapter, coglets can listen, speak,
-   change the avatar's expression and add to the menu.</li>
+   change the orb's expression and add to the menu.</li>
 <li><strong>It has a runtime and runs coglets locally,</strong> on the user's own machine.</li>
 </ol>
 <h2 id="what-the-user-sees">What the user sees<a class="headerlink" href="#what-the-user-sees" title="Permanent link">#</a></h2>
@@ -601,7 +601,8 @@ that need to be close to the user run there, on the user's machine:</p>
 <li>the coglets that drive the apps the user has connected, using
   <a href="app-integration.html#adapter">those apps' adapters</a>.</li>
 </ul>
-<p>Running them locally keeps conversation fast, keeps voice on the machine, and
+<p>Running them locally keeps conversation fast, keeps voice off Softmax
+infrastructure, and
 lets the coglets reach apps that only exist on this computer.</p>
 <p>On first run the orb notices what is installed ("I see you have Blender, can
 I connect to it?"). When the user agrees, the app installs a coglet for it

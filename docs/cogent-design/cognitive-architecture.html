@@ -442,13 +442,15 @@ connected apps, next to their adapters. The cogent's centre runs in its own runt
 the router joins them.</em></p>
 <h2 id="facecoglet">FaceCoglet<a class="headerlink" href="#facecoglet" title="Permanent link">#</a></h2>
 <p>The local half of the conversation. It subscribes to the Softmax app's
-push-to-talk and voice events, controls the hovering avatar, and talks to the
+push-to-talk and voice events, controls the floating orb, and talks to the
 user itself. Voice is transcribed on the user's machine or sent from there
 straight to the speech provider; it does not pass through Softmax infrastructure.</p>
 <h3 id="facecoglet_1"><code>FaceCoglet</code><a class="headerlink" href="#facecoglet_1" title="Permanent link">#</a></h3>
 <div class="codehilite idl"><pre><span class="nc">FaceCoglet</span>
-  <span class="kw">subscribes</span>  <span class="op">speech.start, speech.partial, speech.end, speech.position, speech.barge_in</span>
-  <span class="kw">needs</span>       <span class="op">speech.speak_chunk, speech.stop, speech.backchannel, expression.set_expression,</span>
+  <span class="kw">subscribes</span>  <span class="op">speech.start, speech.partial, speech.end, speech.position, speech.barge_in,</span>
+              <span class="sd">speech.tool_call</span>
+  <span class="kw">needs</span>       <span class="op">speech.speak_chunk, speech.stop, speech.backchannel, speech.session_open,</span>
+              <span class="sd">speech.session_close, speech.tool_result, expression.set_expression,</span>
               <span class="sd">llm.complete, intent.request, feature.request</span>
   <span class="kw">owns</span>        <span class="op">audio.mic, audio.speaker, display.face</span>
 
@@ -619,6 +621,9 @@ through a factory adapter, so it can be replaced.</p>
   <span class="na">ticket_id</span>  <span class="ty">Id</span>
   <span class="na">after_seq</span>  <span class="ty">u64</span>  <span class="sd">Zero replays from the start.</span></pre></div>
 <h3 id="ticket-reports">Ticket reports<a class="headerlink" href="#ticket-reports" title="Permanent link">#</a></h3>
+<p>The <code>Candidate</code> in a finished ticket is what gets applied: its commit becomes
+the <code>revision</code> of the <a href="coglets-and-runtime.html#back-channel"><code>Patch</code></a> sent on
+the target coglet's back channel.</p>
 <p>Factory to the submitter.</p>
 <div class="codehilite idl"><pre><span class="nc">TicketReceipt</span>
   <span class="sd">The answer to submit, answer, amend or cancel. It carries the same `correlation_id` as the</span>
@@ -642,7 +647,7 @@ through a factory adapter, so it can be replaced.</p>
   <span class="na">revision</span>   <span class="ty">u64</span>
   <span class="na">seq</span>        <span class="ty">u64</span>          <span class="sd">Strictly rising per ticket. A gap means: call `ticket.replay`.</span>
   <span class="na">state</span>      <span class="ty">TicketState</span>
-  <span class="na">summary</span>    <span class="ty">str</span>          <span class="sd">One or two plain sentences the fast loop can say aloud.</span>
+  <span class="na">summary</span>    <span class="ty">str</span>          <span class="sd">One or two plain sentences Face can say aloud.</span>
   <span class="na">question</span>   <span class="ty">Question?</span>    <span class="sd">Present only when state is `needs_input`.</span>
 
 <span class="nc">Question</span>
@@ -764,7 +769,7 @@ shared. Version 0 matches on tags and keywords and uses no model.</p>
   <span class="na">record</span>      <span class="ty">Id</span>
   <span class="na">text</span>        <span class="ty">str</span>
   <span class="na">tags</span>        <span class="ty">[Tag]</span>
-  <span class="na">writer</span>      <span class="ty">CogletId</span>  <span class="sd">The caller that wrote it, as checked by the router.</span>
+  <span class="na">writer</span>      <span class="ty">CogletId</span>  <span class="sd">The caller that wrote it, as checked by its runtime.</span>
   <span class="na">written_at</span>  <span class="ty">u64</span>       <span class="sd">The memory coglet&#x27;s logical time when it was stored.</span></pre></div>
 <h2 id="routercoglet">RouterCoglet<a class="headerlink" href="#routercoglet" title="Permanent link">#</a></h2>
 <p>The coglet that reaches devices. It knows which runtimes the cogent may use,

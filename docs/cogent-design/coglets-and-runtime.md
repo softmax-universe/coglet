@@ -345,7 +345,7 @@ RuntimeToRouter
       Hand over a message for a coglet in another runtime.
   relay_events(coglet, [Event])
       Pass adapter events upward for coglets that subscribed from elsewhere.
-  report_health(Health)
+  report_health(RuntimeHealth)
       Say how the runtime and each of its coglets are doing.
 
 RouterToRuntime
@@ -369,7 +369,7 @@ JoinResult
   runtime  NodeId
   router   RouterId
 
-Health
+RuntimeHealth
   runtime          NodeId
   uptime_ms        u64
   waiting          u64             Events waiting across all coglets.
@@ -493,3 +493,17 @@ VersionSelection
   # The answer: the one version both sides will speak.
   version  SpecVersion
 ```
+
+## Names used in the spec
+
+These pages are a design, written in the names we now use. The files under
+`spec/` are still the source of truth for what is built today, and they use
+older names for the same things:
+
+| Here | In `spec/` |
+|---|---|
+| adapter | surface |
+| router | hub |
+| runtime | device, runtime |
+| message between coglets | not defined yet |
+| back channel | the `debug.*` and `hub.git.*` methods |

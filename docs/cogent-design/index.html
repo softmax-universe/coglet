@@ -613,7 +613,7 @@ wants when it registers, and can use only those.</p>
   <span class="nf">register</span>(<span class="ty">Manifest</span>)
       <span class="sd">Declare the capabilities it wants: events to subscribe to, actions it needs.</span>
   <span class="nf">handle</span>(<span class="ty">event</span>)
-      <span class="sd">Process one event.</span>
+      <span class="sd">Process an event, or a small batch of them.</span>
 
   -- back channel, to its manager
 
@@ -903,7 +903,7 @@ that is where the microphone or the app is, and where latency matters. The
 centre usually runs on Softmax infrastructure, but its coglets can run on any
 runtime, including the user's own machine.</p>
 <h2 id="a-request-end-to-end">A request, end to end<a class="headerlink" href="#a-request-end-to-end" title="Permanent link">#</a></h2>
-<p>"Make me a torus", said to a user who has only Blender installed, when the
+<p>"Make me a torus", said by a user who has only Blender installed, when the
 Blender coglet does not yet know how.</p>
 <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1090" height="762" viewBox="0 0 1090 762" role="img" aria-label="A spoken request goes from Face to the Blender coglet, which asks for help; Face files a feature request, the factory builds a patch, and the cogent applies it.">
 <style>

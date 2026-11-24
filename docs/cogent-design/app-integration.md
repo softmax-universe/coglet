@@ -24,8 +24,7 @@ game master), and a runtime may be connected to several adapters at once.
 The adapter sits between the runtime and the real world: a microphone, a
 speaker, an app such as Blender or Chrome, a job scheduler. It holds no coglet logic. An
 adapter is built by the app's developer and exposes only what they choose, in
-the way a web API or an MCP server does. It speaks the
-the messages below to one runtime over a private local link. How that
+the way a web API or an MCP server does. It speaks the messages below to one runtime over a private local link. How that
 link is carried (a separate process, or the runtime embedded in the app) is a
 deployment detail and changes none of the messages.
 
@@ -35,9 +34,8 @@ What the runtime may ask of an adapter.
 
 ```idl
 AdapterApi
-  read(Read) -> ReadReply
-      Return one bounded snapshot. No side effects. Today only the runtime issues reads; a coglet
-      learns what it can see through events.
+  observe(Read) -> ReadReply
+      Return one bounded snapshot of something in the app. No side effects.
   act(Act) -> Accept
       Admit or reject one action. If accepted, the adapter later sends exactly one Event of kind
       `action.outcome` carrying an Outcome.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the SVG diagrams for docs/cogent-design/README.md.
+"""Generate the SVG diagrams used by the pages in this folder.
 
 No dependencies:  python3 docs/cogent-design/diagrams.py
 Each diagram is a standalone SVG with its own light and dark palette, so it
-reads on GitHub and when render.py inlines it into index.html.
+reads on GitHub and when render.py inlines it into the HTML pages.
 """
 from __future__ import annotations
 

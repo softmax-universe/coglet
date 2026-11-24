@@ -37,7 +37,7 @@ the router joins them.*
 ## FaceCoglet
 
 The local half of the conversation. It subscribes to the Softmax app's
-push-to-talk and voice events, controls the hovering avatar, and talks to the
+push-to-talk and voice events, controls the floating orb, and talks to the
 user itself. Voice is transcribed on the user's machine or sent from there
 straight to the speech provider; it does not pass through Softmax infrastructure.
 
@@ -45,8 +45,10 @@ straight to the speech provider; it does not pass through Softmax infrastructure
 
 ```idl
 FaceCoglet
-  subscribes  speech.start, speech.partial, speech.end, speech.position, speech.barge_in
-  needs       speech.speak_chunk, speech.stop, speech.backchannel, expression.set_expression,
+  subscribes  speech.start, speech.partial, speech.end, speech.position, speech.barge_in,
+              speech.tool_call
+  needs       speech.speak_chunk, speech.stop, speech.backchannel, speech.session_open,
+              speech.session_close, speech.tool_result, expression.set_expression,
               llm.complete, intent.request, feature.request
   owns        audio.mic, audio.speaker, display.face
 
@@ -246,6 +248,10 @@ TicketReplay
 
 ### Ticket reports
 
+The `Candidate` in a finished ticket is what gets applied: its commit becomes
+the `revision` of the [`Patch`](coglets-and-runtime.md#back-channel) sent on
+the target coglet's back channel.
+
 Factory to the submitter.
 
 ```idl
@@ -271,7 +277,7 @@ TicketUpdate
   revision   u64
   seq        u64          Strictly rising per ticket. A gap means: call `ticket.replay`.
   state      TicketState
-  summary    str          One or two plain sentences the fast loop can say aloud.
+  summary    str          One or two plain sentences Face can say aloud.
   question   Question?    Present only when state is `needs_input`.
 
 Question
@@ -415,7 +421,7 @@ MemoryRecord
   record      Id
   text        str
   tags        [Tag]
-  writer      CogletId  The caller that wrote it, as checked by the router.
+  writer      CogletId  The caller that wrote it, as checked by its runtime.
   written_at  u64       The memory coglet's logical time when it was stored.
 ```
 

@@ -124,7 +124,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
   <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html" class="here">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
-  <li class="h2"><a href="#anatomy-of-a-coglet">Anatomy of a coglet</a></li><li class="h2"><a href="#front-end">Front end</a></li><li class="h3"><a href="#registering-the-manifest">Registering: the manifest</a></li><li class="h3"><a href="#handling-events">Handling events</a></li><li class="h3"><a href="#what-wakes-a-coglet">What wakes a coglet</a></li><li class="h3"><a href="#the-inbox">The inbox</a></li><li class="h3"><a href="#asking-for-things">Asking for things</a></li><li class="h2"><a href="#back-channel">Back channel</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h3"><a href="#where-a-request-goes">Where a request goes</a></li><li class="h3"><a href="#messages-between-coglets">Messages between coglets</a></li><li class="h3"><a href="#runtime-and-router">Runtime and router</a></li><li class="h2"><a href="#shared-types">Shared types</a></li><li class="h3"><a href="#scalars">Scalars</a></li><li class="h3"><a href="#event"><code>Event</code></a></li><li class="h3"><a href="#action"><code>Action</code></a></li><li class="h3"><a href="#accept"><code>Accept</code></a></li><li class="h3"><a href="#outcome"><code>Outcome</code></a></li><li class="h3"><a href="#error"><code>Error</code></a></li><li class="h3"><a href="#versions">Versions</a></li>
+  <li class="h2"><a href="#anatomy-of-a-coglet">Anatomy of a coglet</a></li><li class="h2"><a href="#front-end">Front end</a></li><li class="h3"><a href="#registering-the-manifest">Registering: the manifest</a></li><li class="h3"><a href="#handling-events">Handling events</a></li><li class="h3"><a href="#what-wakes-a-coglet">What wakes a coglet</a></li><li class="h3"><a href="#the-inbox">The inbox</a></li><li class="h3"><a href="#asking-for-things">Asking for things</a></li><li class="h2"><a href="#back-channel">Back channel</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h3"><a href="#where-a-request-goes">Where a request goes</a></li><li class="h3"><a href="#messages-between-coglets">Messages between coglets</a></li><li class="h3"><a href="#runtime-and-router">Runtime and router</a></li><li class="h2"><a href="#shared-types">Shared types</a></li><li class="h3"><a href="#scalars">Scalars</a></li><li class="h3"><a href="#event"><code>Event</code></a></li><li class="h3"><a href="#action"><code>Action</code></a></li><li class="h3"><a href="#accept"><code>Accept</code></a></li><li class="h3"><a href="#outcome"><code>Outcome</code></a></li><li class="h3"><a href="#error"><code>Error</code></a></li><li class="h3"><a href="#versions">Versions</a></li><li class="h2"><a href="#names-used-in-the-spec">Names used in the spec</a></li>
   </ul>
 </nav>
 <main>
@@ -841,7 +841,7 @@ Delivery to the receiver is a separate step.</em></p>
       <span class="sd">Hand over a message for a coglet in another runtime.</span>
   <span class="nf">relay_events</span>(<span class="ty">coglet, [Event]</span>)
       <span class="sd">Pass adapter events upward for coglets that subscribed from elsewhere.</span>
-  <span class="nf">report_health</span>(<span class="ty">Health</span>)
+  <span class="nf">report_health</span>(<span class="ty">RuntimeHealth</span>)
       <span class="sd">Say how the runtime and each of its coglets are doing.</span>
 
 <span class="nc">RouterToRuntime</span>
@@ -865,7 +865,7 @@ Delivery to the receiver is a separate step.</em></p>
   <span class="na">runtime</span>  <span class="ty">NodeId</span>
   <span class="na">router</span>   <span class="ty">RouterId</span>
 
-<span class="nc">Health</span>
+<span class="nc">RuntimeHealth</span>
   <span class="na">runtime</span>          <span class="ty">NodeId</span>
   <span class="na">uptime_ms</span>        <span class="ty">u64</span>
   <span class="na">waiting</span>          <span class="ty">u64</span>             <span class="sd">Events waiting across all coglets.</span>
@@ -959,6 +959,40 @@ Delivery to the receiver is a separate step.</em></p>
 <span class="nc">VersionSelection</span>
   <span class="sd">The answer: the one version both sides will speak.</span>
   <span class="na">version</span>  <span class="ty">SpecVersion</span></pre></div>
+<h2 id="names-used-in-the-spec">Names used in the spec<a class="headerlink" href="#names-used-in-the-spec" title="Permanent link">#</a></h2>
+<p>These pages are a design, written in the names we now use. The files under
+<code>spec/</code> are still the source of truth for what is built today, and they use
+older names for the same things:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Here</th>
+<th>In <code>spec/</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>adapter</td>
+<td>surface</td>
+</tr>
+<tr>
+<td>router</td>
+<td>hub</td>
+</tr>
+<tr>
+<td>runtime</td>
+<td>device, runtime</td>
+</tr>
+<tr>
+<td>message between coglets</td>
+<td>not defined yet</td>
+</tr>
+<tr>
+<td>back channel</td>
+<td>the <code>debug.*</code> and <code>hub.git.*</code> methods</td>
+</tr>
+</tbody>
+</table></div>
 </main>
 </div>
 <script>
