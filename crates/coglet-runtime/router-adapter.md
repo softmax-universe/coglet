@@ -41,8 +41,11 @@ This is the device path, not the CLI→router deploy path or full protocol quali
   original receipts in the same WAL frame as the transition. After fresh
   authorization, an identical retry cannot undo a later transition, including
   across restart. Changed intent on the same operation ID conflicts. The bounded
-  ledger retains 4096 operations, then refuses new mutations rather than evicting
-  retry evidence; receipt polling remains a separate, unimplemented method.
+  ledger retains 4096 operations and never evicts retry evidence. Its last slot
+  is reserved for a stop: with one slot left, every start is refused
+  (`resource_exhausted`) and one more stop is still applied and recorded. After
+  that the coglet stays stopped and new operation IDs are refused. Receipt
+  polling remains a separate, unimplemented method.
 
 `hub.git.fetch`, debug, actions, inbox, receipt polling and cancellation methods
 are not implemented by this handler and fail closed. This is not a replacement

@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Linux CI only (bash 4+). Type-check every workspace crate for an Apple target, so Apple-only
+# breaks (libc::getrandom, nix waitid, ...) fail a PR without a macOS runner.
+# Build scripts that compile C use Zig as the Apple C compiler. Each crate is
+# checked on its own, so workspace feature unification does not pull in
+# dependencies that crate does not use. Default features and lib/bin targets
+# only: Apple-only code behind other features or in tests is still covered by the
+# macOS jobs on the coglet Mac minis.
+#   scripts/ci/apple-check [aarch64-apple-darwin|x86_64-apple-darwin]
+set -euo pipefail
+target=${1:-aarch64-apple-darwin}
+case "$target" in
+  aarch64-apple-darwin) zig_target=aarch64-macos ;;
+  x86_64-apple-darwin) zig_target=x86_64-macos ;;
+  *) echo "apple-check: unsupported target $target" >&2; exit 2 ;;
+esac
+
+# Crates whose build needs Apple SDK headers that Zig does not ship. The macOS
+# jobs (swift, WAMR platforms) still cover them on the coglet Mac minis.
+declare -A EXCLUDE=(
+  [coglet-engine-wamr]='WAMR darwin platform needs sys/timeb.h'
+  [coglet-cli]='depends on coglet-engine-wamr'
+  [coglet-llm]='reqwest/rustls -> aws-lc-sys needs CoreServices.h'
+  [coglet-mock]='depends on coglet-llm'
+)
+
+command -v python3 >/dev/null
+python3 -m ziglang version >/dev/null 2>&1 || python3 -m pip install --quiet 'ziglang==0.13.0'
+shim=$(mktemp -d)
+for tool in cc c++; do
+  cat > "$shim/$tool" <<SHIM
+#!/usr/bin/env bash
+# cc-rs passes its own --target=<llvm triple>; Zig takes -target <zig triple>.
+args=()
+for a in "\$@"; do case "\$a" in --target=*) ;; *) args+=("\$a") ;; esac; done
+exec python3 -m ziglang $tool -target $zig_target "\${args[@]}"
+SHIM
+done
+printf '#!/bin/sh\nexec python3 -m ziglang ar "$@"\n' > "$shim/ar"
+chmod +x "$shim"/*
+triple=${target//-/_}
+export "CC_$triple=$shim/cc" "CXX_$triple=$shim/c++" "AR_$triple=$shim/ar"
+
+rustup target add "$target" >/dev/null
+crates=$(cargo metadata --locked --no-deps --format-version 1 |
+  python3 -c 'import json,sys; print("\n".join(p["name"] for p in json.load(sys.stdin)["packages"]))')
+for name in "${!EXCLUDE[@]}"; do
+  grep -qx "$name" <<< "$crates" || { echo "apple-check: exclusion names a crate that no longer exists: $name" >&2; exit 1; }
+done
+mapfile -t crate_list <<< "$crates"
+
+failed=()
+checked=0
+for crate in "${crate_list[@]}"; do
+  if [ -n "${EXCLUDE[$crate]:-}" ]; then
+    echo "::notice::apple-check skips $crate: ${EXCLUDE[$crate]}"
+    continue
+  fi
+  echo "::group::cargo check -p $crate --target $target"
+  if cargo check --locked -p "$crate" --target "$target" < /dev/null; then
+    echo "::endgroup::"
+  else
+    echo "::endgroup::"
+    echo "::error::$crate does not compile for $target"
+    failed+=("$crate")
+  fi
+  checked=$((checked + 1))
+done
+expected=$(( ${#crate_list[@]} - ${#EXCLUDE[@]} ))
+if [ "$checked" -ne "$expected" ]; then
+  echo "apple-check: checked $checked crates, expected $expected" >&2
+  exit 1
+fi
+if [ ${#failed[@]} -gt 0 ]; then
+  echo "apple-check: failed for $target: ${failed[*]}" >&2
+  exit 1
+fi
+echo "apple-check: all $checked checked crates compile for $target (${#EXCLUDE[@]} excluded)"

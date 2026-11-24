@@ -74,7 +74,8 @@ targets without filters or ignores.
 Authenticated router→device Git/lifecycle (`hub.git.push` / install / start /
 stop / status) is documented in [router-adapter.md](router-adapter.md). It is
 not native execution qualification: start does not run Wasm without a connected
-adapter session, and this card does not add named wire tests.
+adapter session. Its named wire tests are `tests/device_lifecycle.rs` (mock
+router over real iroh), mapped to requirements in router-adapter.md.
 
 ## Reproduction and results
 
