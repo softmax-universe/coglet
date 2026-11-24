@@ -48,9 +48,24 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
+  # Own 25-minute budget. On a slow runner the debug suites above already use
+  # about 21 of the apple job's 25 minutes, and this release rebuild was
+  # cancelled mid-smoke (job cap, not a test failure). Splitting does not raise
+  # either cap and does not take a second runner until apple has finished.
+  apple-release-smoke:
+    needs: apple
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Compile production echo without ambient WASI imports
+        run: |
+          CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_OPT_LEVEL=z cargo rustc --locked --manifest-path coglets/echo/Cargo.toml --lib --release --target wasm32-unknown-unknown -- -C strip=symbols -C link-arg=--max-memory=16777216
+          cargo run --quiet --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm
       - name: Release C ABI and socket production echo timer-wake smoke (no surface echo roundtrip)
         # The socket control barrier qualifies release latency, as in tests/m1/run.sh.
-        # Default/native debug suites above still execute unchanged.
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   ios-runtime:
     runs-on: macos-15
