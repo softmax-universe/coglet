@@ -97,13 +97,25 @@ output is substituted for the binary. Named browser cases:
 - `test_filter_keyboard_error_and_recovery`
 - `test_real_inbox_boundary_and_surface_source_are_inspectable`
 - `test_surface_observation_and_untrusted_text_render_as_text`
+- `test_native_cli_wamr_trace_events_state_hash_and_history`
 
-They drive actual rc1 ABI steps through `observe.py`, assert produced record
-identity/events/files/hash, live history arrival, both world renderers, genuine
-inbox boundary effects, escaped untrusted text, keyboard interactions, failure
-and recovery, and 390px overflow checks when collecting screenshots. The world
-inputs are labeled reference scenarios written by the scripted engine; **these
-tests do not qualify M2 world dynamics, WAMR, M1 or a real hub debug client**.
+The first five drive actual rc1 ABI steps through `observe.py`, assert produced
+record identity/events/files/hash, live history arrival, both world renderers,
+genuine inbox boundary effects, escaped untrusted text, keyboard interactions,
+failure and recovery, and 390px overflow checks when collecting screenshots. The
+world inputs are labeled reference scenarios written by the scripted engine;
+**they do not qualify M2 world dynamics, WAMR, M1 or a real hub debug client**.
+
+`test_native_cli_wamr_trace_events_state_hash_and_history` loads a records-only
+`--trace` export from an actual child-cogletd WAMR sandbox run (`coglet run`
+from PR https://github.com/softmax-universe/coglet/pull/82 at
+`866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d`). It asserts two committed steps,
+`runtime.debug_step` events, distinct state hashes, history selection, and that
+`/code` is not shown. Provenance pins the producer SHA and omits
+`initial_files`/blobs. This is **not** merged-main CLI, not live hub debug, and
+not independent replay verification. rc1 has no `--sandbox-stdio`, so CI does
+not rebuild the producer; it re-reads the pinned actual records.
+
 Unit/HTTP tests cover partial writes, atomic trace replacement, bounds, unsafe
 files, malformed records, bearer authorization, origin/Host checks, and headers.
 The observer test checks byte-preserving replies, actual journal export, private
@@ -116,6 +128,7 @@ authenticated external debug client/relay. Frozen `hub-protocol.md` requires
 explicit exact grants and actor/ticket provenance for remote reads and forbids
 default state export. This viewer does **not** bypass that boundary or claim a
 production hub connection. Native CLI/M1/M2 producers can supply authorized
-exports through the `--trace` seam; real-run acceptance must exercise that
-producer when available. Until then the live proof is the actual rc1 reference
-runtime route above, not a substitute for the card's full M1/M2 acceptance.
+exports through the `--trace` seam. The named WAMR browser case above exercises
+an actual unpublished PR82 child-sandbox export; it does not wait on CLI merge
+or invent a hub debug transport. Full card acceptance still needs required CI,
+independent exact-head review, and merge.

@@ -10,6 +10,9 @@ import pytest
 from playwright.sync_api import sync_playwright, expect
 from test_stream import load
 
+NATIVE_TRACE = Path(__file__).parent / "fixtures" / "native-cli-wamr-trace.json"
+NATIVE_PROVENANCE = Path(__file__).parent / "fixtures" / "native-cli-wamr-trace.provenance.json"
+
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -168,6 +171,49 @@ def test_uint64_history_and_empty_replacement_keep_exact_state(live):
     expect(page.locator('#provenance')).not_to_contain_text('55555555')
     expect(page.get_by_test_id('files')).to_be_empty()
     assert errors == []
+
+
+def test_native_cli_wamr_trace_events_state_hash_and_history():
+    """Actual child-WAMR CLI trace, not the rc1 observer and not a live hub."""
+    provenance = json.loads(NATIVE_PROVENANCE.read_text())
+    assert provenance["producer_sha"] == "866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d"
+    assert provenance["producer_pr"] == "https://github.com/softmax-universe/coglet/pull/82"
+    assert provenance["engine"] == "wamr"
+    trace = json.loads(NATIVE_TRACE.read_text())
+    assert "initial_files" not in trace and "blobs" not in trace
+    records = trace["records"]
+    assert len(records) == 2
+    assert records[0]["output_hash"] != records[1]["output_hash"]
+    assert any(event["kind"] == "runtime.debug_step" for event in records[0]["events"])
+    snapshot = load().RecordStream(NATIVE_TRACE, source_format="trace").snapshot()
+    assert snapshot["records"][-1]["output_hash"] == records[1]["output_hash"]
+    assert all(not path.startswith("/code") for record in snapshot["records"] for path in record["output_files"])
+    server = load().make_server(NATIVE_TRACE, port=0, source_format="trace")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            page = browser.new_page(viewport={"width": 1440, "height": 1000})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(server.url)
+            expect(page.get_by_test_id("connection")).to_contain_text("runtime readiness unknown")
+            expect(page.get_by_test_id("coglets")).to_contain_text(records[0]["coglet"])
+            expect(page.get_by_test_id("events")).to_contain_text("runtime.debug_step")
+            expect(page.get_by_test_id("hash")).to_have_text(records[1]["output_hash"])
+            expect(page.get_by_role("button", name="Step 0", exact=True)).to_be_visible()
+            page.get_by_role("button", name="Step 0", exact=True).click()
+            expect(page.get_by_test_id("hash")).to_have_text(records[0]["output_hash"])
+            expect(page.get_by_test_id("mode")).to_have_text("History · step 0")
+            expect(page.get_by_test_id("files")).not_to_contain_text("/code")
+            expect(page.locator("#provenance")).to_contain_text("not independent replay verification")
+            assert errors == []
+            browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 def test_surface_observation_and_untrusted_text_render_as_text(live):
