@@ -29,7 +29,12 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
-      - run: cargo test --workspace --locked
+      - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
+        run: |
+          args=$(python3 scripts/ci/quarantine.py rust-args)
+          extra=()
+          if [ -n "$args" ]; then mapfile -t extra <<< "$args"; fi
+          cargo test --workspace --locked -- "${extra[@]}"
       - name: AOT feature fails closed under ABI v0
         run: cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked

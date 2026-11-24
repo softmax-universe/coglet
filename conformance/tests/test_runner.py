@@ -68,6 +68,35 @@ class RunnerTests(unittest.TestCase):
     def case(self, steps, **options):
         return dict(name='test-case', steps=steps, **options)
 
+    def test_quarantine_skips_listed_case_and_only_mode_runs_just_it(self):
+        listed = 'loopback.self-test/malformed-wire-error'
+        quarantine = self.root / 'quarantine.toml'
+        quarantine.write_text(f'[[conformance]]\nid = "{listed}"\ncard = "t_0123456789abcdef"\n'
+                              'since = 2026-11-24\nreason = "fixture"\n')
+        result, report = self.invoke('--self-test', '--quarantine', str(quarantine))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('SKIP ' + listed + ': quarantined (ci/quarantine.toml)', result.stdout)
+        skipped = [case.get('name') for case in report.iter('testcase') if case.find('skipped') is not None]
+        self.assertEqual(skipped, ['malformed-wire-error'])
+        self.assertGreater(int(report.get('tests')), 1)
+        result, report = self.invoke('--self-test', '--quarantine', str(quarantine), '--only-quarantined')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([case.get('name') for case in report.iter('testcase')], ['malformed-wire-error'])
+        self.assertIn('PASS ' + listed, result.stdout)
+
+    def test_only_quarantined_without_a_file_is_a_configuration_error(self):
+        result, report = self.invoke('--self-test', '--only-quarantined')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('--only-quarantined requires --quarantine', result.stderr)
+
+    def test_stale_quarantine_entry_is_reported_not_fatal(self):
+        quarantine = self.root / 'quarantine.toml'
+        quarantine.write_text('[[conformance]]\nid = "gone.self-test/nothing"\ncard = "t_0123456789abcdef"\n'
+                              'since = 2026-11-24\nreason = "fixture"\n')
+        result, _ = self.invoke('--self-test', '--quarantine', str(quarantine))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('QUARANTINE entry matches no case in this run: gone.self-test/nothing', result.stderr)
+
     def test_implicit_runtime_role_skips_for_guest_adapter(self):
         result = self.direct(self.case([{'send': {}}]), peer_roles=['guest-reference'])
         self.assertIsNone(result[3])

@@ -1,0 +1,52 @@
+name: stability
+# Non-required. Finds flaky tests before they eject merge-queue entries, and tracks
+# the tests quarantined from the required checks (ci/quarantine.toml): repeated
+# full conformance, repeated quarantined Rust tests, and quarantine expiry.
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      repeats:
+        type: number
+        default: 20
+  push:
+    branches: [main]
+    paths: ['ci/quarantine.toml', 'scripts/ci/quarantine.py', '.github/workflows/stability.yml']
+permissions:
+  contents: read
+concurrency:
+  group: stability
+  cancel-in-progress: false
+jobs:
+  quarantine-age:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every quarantined test has an owner and is under 14 days old
+        run: python3 scripts/ci/quarantine.py check --fail-expired
+  conformance:
+    uses: ./.github/workflows/conformance.yml
+    with:
+      stability-repeats: ${{ inputs.repeats || 20 }}
+  rust-quarantined:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+      - name: Quarantined Rust tests, repeated
+        env:
+          REPEATS: ${{ inputs.repeats || 20 }}
+        run: |
+          args=$(python3 scripts/ci/quarantine.py rust-args --only)
+          if [ -z "$args" ]; then
+            echo "No quarantined Rust tests."
+            exit 0
+          fi
+          mapfile -t only <<< "$args"
+          for iteration in $(seq 1 "$REPEATS"); do
+            echo "::group::iteration $iteration"
+            cargo test --workspace --locked -- "${only[@]}"
+            echo "::endgroup::"
+          done

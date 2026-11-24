@@ -159,6 +159,17 @@ def validate_impl(impl):
             raise ValueError('fixture env requires COGLET_FIXTURE_* string values')
 
 
+def quarantined_ids(path):
+    """[[conformance]] ids from ci/quarantine.toml (validated by scripts/ci/quarantine.py)."""
+    if path is None:
+        return set()
+    entries = tomllib.loads(Path(path).read_text()).get('conformance', [])
+    ids = {entry.get('id') for entry in entries if isinstance(entry, dict)}
+    if not all(isinstance(ident, str) and ident for ident in ids):
+        raise ValueError(f'{path}: every [[conformance]] entry needs a string id')
+    return ids
+
+
 def registry(path):
     data = tomllib.loads(path.read_text())
     if set(data) != {'implementations'} or not isinstance(data['implementations'], list):
@@ -418,8 +429,20 @@ async def execute(args):
                 for case in cases_for(args.cases, suite)]
         if not jobs:
             print('No implementations registered; no conformance claims made.')
+        quarantined = quarantined_ids(args.quarantine)
+        if args.only_quarantined and args.quarantine is None:
+            raise ValueError('--only-quarantined requires --quarantine')
+        keys = {f'{impl["name"]}.{suite}/{case["name"]}' for impl, suite, case in jobs}
+        for ident in sorted(quarantined - keys):
+            print(f'QUARANTINE entry matches no case in this run: {ident}', file=sys.stderr)
         for impl, suite, case in jobs:
-            result = await run_case(impl, suite, case)
+            key = f'{impl["name"]}.{suite}/{case["name"]}'
+            if args.only_quarantined and key not in quarantined:
+                continue
+            if key in quarantined and not args.only_quarantined:
+                result = (f'{impl["name"]}.{suite}', case['name'], 0, None, 'quarantined (ci/quarantine.toml)')
+            else:
+                result = await run_case(impl, suite, case)
             results.append(result)
             print(f'{"SKIP" if result[4] else "FAIL" if result[3] else "PASS"} {result[0]}/{result[1]}' + (f': {result[4]}' if result[4] else ''))
             if result[3]:
@@ -448,4 +471,8 @@ def main():
     parser.add_argument('--registry', type=Path, default=SUITES / 'impls.toml')
     parser.add_argument('--cases', type=Path, default=SUITES)
     parser.add_argument('--junit', type=Path, default=ROOT / 'target/conformance-results.xml')
+    parser.add_argument('--quarantine', type=Path,
+                        help='skip the [[conformance]] ids listed in this file (ci/quarantine.toml)')
+    parser.add_argument('--only-quarantined', action='store_true',
+                        help='run only the quarantined cases (stability workflow)')
     return asyncio.run(execute(parser.parse_args()))
