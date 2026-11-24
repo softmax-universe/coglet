@@ -20,8 +20,7 @@ an output directory; an existing framework is refused rather than overwritten.
 
 The `ios-runtime` job in WAMR platforms builds this archive on a GitHub macOS
 runner and retains the framework, symbol inventory and link diagnostics. That
-job is **archive/link evidence**, not simulator or device execution. The three
-Python source/admission tests are not compiler evidence. CI execution must be
+job is **archive/link evidence**, not simulator or device execution. The Python source/admission tests are not compiler evidence. CI execution must be
 recorded before accepting a target; Linux engine tests cannot establish it.
 
 The current immutable `v0.0.0-rc1` Release has no xcframework and predates Apple

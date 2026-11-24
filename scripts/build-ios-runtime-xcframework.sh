@@ -22,12 +22,16 @@ mkdir -p "$OUT/headers"
 cbindgen --config crates/coglet-runtime/cbindgen.toml --crate coglet-runtime --output "$OUT/headers/coglet_runtime.h"
 printf 'module CogletRuntime { header "coglet_runtime.h" export * }\n' > "$OUT/headers/module.modulemap"
 rustup target add aarch64-apple-ios aarch64-apple-ios-sim
-while read -r target sdk arch; do
+# Apple's nm cannot read newer rustc LLVM bitcode members. Match rustc's LLVM.
+rustup component add llvm-tools-preview
+LLVM_NM="$(rustc --print sysroot)/lib/rustlib/$(rustc --print host-tuple)/bin/llvm-nm"
+[[ -x "$LLVM_NM" ]] || { printf '%s\n' 'Rust LLVM symbol reader is unavailable' >&2; exit 1; }
+while read -r -u 3 target sdk arch; do
   IPHONEOS_DEPLOYMENT_TARGET=15.0 cargo build --locked --release -p coglet-runtime --features native-engine --target "$target"
   mkdir -p "$OUT/$target"
   cp "$CARGO_TARGET_DIR/$target/release/libcoglet_runtime.a" "$OUT/$target/libCogletRuntime.a"
   xcrun lipo "$OUT/$target/libCogletRuntime.a" -verify_arch "$arch"
-  xcrun nm -g "$OUT/$target/libCogletRuntime.a" > "$OUT/$target/symbols.txt"
+  "$LLVM_NM" -g "$OUT/$target/libCogletRuntime.a" > "$OUT/$target/symbols.txt"
   if grep -q ' _coglet_runtime_test_panic$' "$OUT/$target/symbols.txt"; then
     printf '%s\n' 'Refusing distribution with fault-injection hooks' >&2; exit 1
   fi
@@ -37,11 +41,11 @@ while read -r target sdk arch; do
     clang_target+=-simulator
     expected_platform=IOSSIMULATOR
   fi
-  printf '#include "coglet_runtime.h"\nint main(void){return coglet_runtime_status()==1?0:1;}\n' |
-    xcrun --sdk "$sdk" clang -target "$clang_target" -isysroot "$(xcrun --sdk "$sdk" --show-sdk-path)" -x c - -I "$OUT/headers" "$OUT/$target/libCogletRuntime.a" -framework Security -framework CoreFoundation -liconv -o "$OUT/$target/link-probe"
+  printf '#include "coglet_runtime.h"\nint main(void){return coglet_runtime_configure(NULL,0)+coglet_runtime_start(NULL,0)+coglet_runtime_stop()+coglet_runtime_status();}\n' |
+    xcrun --sdk "$sdk" clang -target "$clang_target" -isysroot "$(xcrun --sdk "$sdk" --show-sdk-path)" -x c - -x none -I "$OUT/headers" "$OUT/$target/libCogletRuntime.a" -framework Security -framework CoreFoundation -liconv -lresolv -lpthread -lm -ldl -o "$OUT/$target/link-probe"
   xcrun vtool -show-build "$OUT/$target/link-probe" > "$OUT/$target/link-platform.txt"
   grep -Eq "platform[[:space:]]+$expected_platform$" "$OUT/$target/link-platform.txt"
-done < <(plan)
+done 3< <(plan)
 xcodebuild -create-xcframework \
   -library "$OUT/aarch64-apple-ios/libCogletRuntime.a" -headers "$OUT/headers" \
   -library "$OUT/aarch64-apple-ios-sim/libCogletRuntime.a" -headers "$OUT/headers" \

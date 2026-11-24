@@ -23,6 +23,16 @@ class IOSRuntimeAdmissionTests(unittest.TestCase):
             'aarch64-apple-ios-sim iphonesimulator arm64',
         ])
 
+    def test_symbol_inventory_uses_the_rust_llvm_reader(self):
+        source = (ROOT / 'scripts/build-ios-runtime-xcframework.sh').read_text()
+        self.assertIn('llvm-tools-preview', source)
+        self.assertIn('llvm-nm', source)
+        self.assertNotIn('xcrun nm', source)
+
+    def test_inline_c_language_does_not_apply_to_static_archive(self):
+        source = (ROOT / 'scripts/build-ios-runtime-xcframework.sh').read_text()
+        self.assertIn('-x c - -x none', source)
+
     def test_distribution_refuses_fault_injection_request_before_writing(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'must-not-exist'
