@@ -1,6 +1,6 @@
 # Cogent
 
-![A friendly critter with a tiny workshop in its head, its long arms reaching behind a monitor, a laptop, a phone and a robot dog, with its hands inside each one.](images/cogent.png)
+![The Softmax logo as the router at the centre, with pipes to a robot dog, a monitor, a laptop, a phone, two factories and a library; the pipes to the dog, the factories and the library are lit.](images/cogent.png)
 
 A **cogent** is one logical agent. It has an **identity**, a **name** and an
 **owner**, and it runs as a **collection of coglets**: a few always running at
