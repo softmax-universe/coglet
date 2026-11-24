@@ -98,6 +98,7 @@ output is substituted for the binary. Named browser cases:
 - `test_real_inbox_boundary_and_surface_source_are_inspectable`
 - `test_surface_observation_and_untrusted_text_render_as_text`
 - `test_native_cli_wamr_trace_events_state_hash_and_history`
+- `test_native_m2_gridbot_data_state_and_history`
 
 The first five drive actual rc1 ABI steps through `observe.py`, assert produced
 record identity/events/files/hash, live history arrival, both world renderers,
@@ -112,9 +113,25 @@ from PR https://github.com/softmax-universe/coglet/pull/82 at
 `866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d`). It asserts two committed steps,
 `runtime.debug_step` events, distinct state hashes, history selection, and that
 `/code` is not shown. Provenance pins the producer SHA and omits
-`initial_files`/blobs. This is **not** merged-main CLI, not live hub debug, and
-not independent replay verification. rc1 has no `--sandbox-stdio`, so CI does
-not rebuild the producer; it re-reads the pinned actual records.
+`initial_files`/blobs. Its projected `/data/inbox.jsonl` is empty, so it is not
+the state-rendering proof. This is **not** live hub debug and not independent
+replay verification. rc1 has no `--sandbox-stdio`, so CI does not rebuild the
+producer; it re-reads the pinned actual records.
+
+`test_native_m2_gridbot_data_state_and_history` loads a display trace from an
+actual child-cogletd WAMR Gridbot episode of reviewed PR
+https://github.com/softmax-universe/coglet/pull/83 at
+`dd98c4239d505401c9403213b9efd931d392234f`. The producer proof independently
+replayed nine guest steps (four actions, goal reached). The committed file
+copies `/data` hex, events, engine and step hashes verbatim from that WAL
+export. The full records file is 44,275,377 bytes because every step repeats
+the 1.2 MiB guest, which is above this viewer's 16 MiB cap, so `/code`,
+`input_files` and blobs are omitted from the fixture and named in its
+provenance. The browser test asserts the exact decoded `/data/inbox.jsonl`
+receipts on the latest step and on an earlier step, the stable `/data/count`
+byte, history selection, and that `/code` is absent. Receipt clocks are the
+producer clock, so a second episode is not byte-identical. This does not drive
+the world canvas and is not a hub debug client.
 
 Unit/HTTP tests cover partial writes, atomic trace replacement, bounds, unsafe
 files, malformed records, bearer authorization, origin/Host checks, and headers.
@@ -128,7 +145,9 @@ authenticated external debug client/relay. Frozen `hub-protocol.md` requires
 explicit exact grants and actor/ticket provenance for remote reads and forbids
 default state export. This viewer does **not** bypass that boundary or claim a
 production hub connection. Native CLI/M1/M2 producers can supply authorized
-exports through the `--trace` seam. The named WAMR browser case above exercises
-an actual unpublished PR82 child-sandbox export; it does not wait on CLI merge
-or invent a hub debug transport. Full card acceptance still needs required CI,
-independent exact-head review, and merge.
+exports through the `--trace` seam. The CLI WAMR case above is pinned to PR82
+`866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d` and does not render nonempty native
+`/data`. The Gridbot case renders verbatim `/data` from reviewed PR83
+`dd98c4239d505401c9403213b9efd931d392234f`. Neither invents a hub debug
+transport. Full card acceptance still needs required CI, independent exact-head
+review, and merge.

@@ -12,6 +12,8 @@ from test_stream import load
 
 NATIVE_TRACE = Path(__file__).parent / "fixtures" / "native-cli-wamr-trace.json"
 NATIVE_PROVENANCE = Path(__file__).parent / "fixtures" / "native-cli-wamr-trace.provenance.json"
+M2_TRACE = Path(__file__).parent / "fixtures" / "native-m2-gridbot-trace.json"
+M2_PROVENANCE = Path(__file__).parent / "fixtures" / "native-m2-gridbot-trace.provenance.json"
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -173,8 +175,17 @@ def test_uint64_history_and_empty_replacement_keep_exact_state(live):
     assert errors == []
 
 
+def _inbox(record):
+    raw = record["output_files"].get("/data/inbox.jsonl", "")
+    return bytes.fromhex(raw).decode() if raw else ""
+
+
 def test_native_cli_wamr_trace_events_state_hash_and_history():
-    """Actual child-WAMR CLI trace, not the rc1 observer and not a live hub."""
+    """Actual child-WAMR CLI trace, not the rc1 observer and not a live hub.
+
+    This log guest leaves /data/inbox.jsonl empty. Nonempty changing /data
+    state is test_native_m2_gridbot_data_state_and_history.
+    """
     provenance = json.loads(NATIVE_PROVENANCE.read_text())
     assert provenance["producer_sha"] == "866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d"
     assert provenance["producer_pr"] == "https://github.com/softmax-universe/coglet/pull/82"
@@ -208,6 +219,80 @@ def test_native_cli_wamr_trace_events_state_hash_and_history():
             expect(page.get_by_test_id("mode")).to_have_text("History · step 0")
             expect(page.get_by_test_id("files")).not_to_contain_text("/code")
             expect(page.locator("#provenance")).to_contain_text("not independent replay verification")
+            assert errors == []
+            browser.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_m2_gridbot_data_state_and_history():
+    """Actual PR83 Gridbot/WAMR /data, not the empty CLI inbox and not hub debug."""
+    provenance = json.loads(M2_PROVENANCE.read_text())
+    assert provenance["producer_sha"] == "dd98c4239d505401c9403213b9efd931d392234f"
+    assert provenance["producer_pr"] == "https://github.com/softmax-universe/coglet/pull/83"
+    assert provenance["engine"] == "wamr"
+    assert provenance["independent_guest_reexecution"] is True
+    trace = json.loads(M2_TRACE.read_text())
+    assert "initial_files" not in trace and "blobs" not in trace
+    records = trace["records"]
+    assert [step["inbox_bytes"] for step in provenance["steps"]] == [len(_inbox(record).encode()) for record in records]
+    assert [step["output_hash"] for step in provenance["steps"]] == [record["output_hash"] for record in records]
+    first, earlier, latest = records[0], records[2], records[-1]
+    earlier_inbox, latest_inbox = _inbox(earlier), _inbox(latest)
+    assert earlier_inbox and latest_inbox.startswith(earlier_inbox) and latest_inbox != earlier_inbox
+    latest_only = latest_inbox.splitlines()[-1]
+    assert latest_only not in earlier_inbox
+    assert bytes.fromhex(first["output_files"]["/data/count"]).decode() == "0"
+    assert "/data/inbox.jsonl" not in first["output_files"]
+    assert "wamr" in json.dumps(latest["engine"]).lower()
+    observation = next(event for event in first["events"] if event["kind"] == "sim.gridbot_state")
+    moved = next(event for event in records[3]["events"] if event["kind"] == "sim.gridbot_state")
+    assert observation["payload"]["x"] != moved["payload"]["x"]
+    server = load().make_server(M2_TRACE, port=0, source_format="trace")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch()
+            page = browser.new_page(viewport={"width": 1440, "height": 1000})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(server.url)
+            expect(page.get_by_test_id("connection")).to_contain_text("runtime readiness unknown")
+            expect(page.get_by_test_id("coglets")).to_contain_text(latest["coglet"])
+            expect(page.get_by_test_id("hash")).to_have_text(latest["output_hash"])
+            files = page.get_by_test_id("files").inner_text()
+            assert "/code" not in files
+            assert "/data/count" in files and "/data/inbox.jsonl" in files
+            for line in latest_inbox.splitlines():
+                assert line in files
+            assert latest_only in page.get_by_test_id("inbox").inner_text()
+            page.get_by_role("button", name="Step 0", exact=True).click()
+            expect(page.get_by_test_id("hash")).to_have_text(first["output_hash"])
+            expect(page.get_by_test_id("mode")).to_have_text("History · step 0")
+            files = page.get_by_test_id("files").inner_text()
+            assert "/data/count" in files and "0" in files.splitlines()
+            assert "/data/inbox.jsonl" not in files and latest_only not in files and "/code" not in files
+            events = page.get_by_test_id("events").inner_text()
+            assert "sim.gridbot_state" in events
+            assert observation["payload"]["state_hash"] in events
+            page.get_by_role("button", name="Step 3", exact=True).click()
+            expect(page.get_by_test_id("hash")).to_have_text(records[3]["output_hash"])
+            assert moved["payload"]["state_hash"] in page.get_by_test_id("events").inner_text()
+            assert observation["payload"]["state_hash"] not in page.get_by_test_id("events").inner_text()
+            page.get_by_role("button", name="Step 2", exact=True).click()
+            expect(page.get_by_test_id("hash")).to_have_text(earlier["output_hash"])
+            expect(page.get_by_test_id("mode")).to_have_text("History · step 2")
+            files = page.get_by_test_id("files").inner_text()
+            for line in earlier_inbox.splitlines():
+                assert line in files
+            assert latest_only not in files and "/code" not in files
+            page.get_by_role("button", name="Follow live").click()
+            expect(page.get_by_test_id("hash")).to_have_text(latest["output_hash"])
+            expect(page.get_by_test_id("mode")).to_have_text("Following latest export")
+            assert latest_only in page.get_by_test_id("files").inner_text()
             assert errors == []
             browser.close()
     finally:
