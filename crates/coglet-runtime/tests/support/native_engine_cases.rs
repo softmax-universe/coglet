@@ -61,7 +61,7 @@ fn program_delay(abort: bool, delay: bool) -> Vec<u8> {
         (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) {calls} {} i32.const 0))", if abort {"unreachable"} else {""})).unwrap()
 }
 fn exercise_native(ffi: bool, abort: bool, name: &str) {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut host = Host::new(ffi, name);
     if !ffi {
         let mut ready = host.connect();
@@ -140,7 +140,7 @@ fn exercise_native(ffi: bool, abort: bool, name: &str) {
 #[cfg(feature = "echo-smoke")]
 #[test]
 fn ffi_compiled_echo_timer_wake_starts_executes_and_stops() {
-    let _guard = FFI_LOCK.lock().unwrap();
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let path = std::env::var_os("COGLET_ECHO_SMOKE_WASM")
         .expect("echo-smoke requires the compiled guest path");
     let wasm = std::fs::read(path).unwrap();
