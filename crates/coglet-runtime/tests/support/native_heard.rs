@@ -41,7 +41,7 @@ fn exercise_heard_order(ffi: bool, name: &str, revoke: bool, reverse: bool) {
         {"name":"speech.history","events":[],"reads":["speech.heard"],"actions":[],"exclusive":[],"schemas":{"speech.heard":"https://coglet.dev/spec/messages/speech.schema.json#/$defs/heard-record"}}
     ],"correlation_id":"2".repeat(32)}));
     link.send("grants",json!({"epoch":1,"entries":[{"coglet":C,"operations":["speech.position","speech.heard","speech.speak_chunk"],"resources":["audio.speaker"],"expires":100_000_000}],"correlation_id":"3".repeat(32)}));
-    assert_eq!(decode(&link.recv())["type"], "act");
+    assert_eq!(link.recv_until("act")["type"], "act");
     link.send(
         "accept",
         json!({"id":"4".repeat(32),"correlation_id":"5".repeat(32),"accepted":true}),
@@ -52,7 +52,7 @@ fn exercise_heard_order(ffi: bool, name: &str, revoke: bool, reverse: bool) {
         .enumerate()
     {
         link.send("event",json!({"source":S,"seq":index+1,"logical_time":1200+index,"kind":"speech.position","payload":{"stream":"a".repeat(32),"chunk":0,"item":"4".repeat(32),"played_ms":played,"position_ms":played,"state":if index==2 {"stopped"} else {"playing"}},"correlation_id":"6".repeat(32)}));
-        let read = decode(&link.recv());
+        let read = link.recv_until("read");
         assert_eq!(
             read["type"], "read",
             "native route did not initiate owner read"
