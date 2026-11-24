@@ -280,6 +280,7 @@ impl SurfaceSession {
         0
     }
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
+        let mut publication_time = now;
         let decoded = coglet_types::decode_profile(raw)?;
         coglet_types::validate("surface-message", &decoded)?;
         let message: Value = decoded.deserialized().map_err(|e| e.to_string())?;
@@ -368,13 +369,21 @@ impl SurfaceSession {
                             .lock()
                             .map_err(|_| "runtime service poisoned")?
                             .heard_owner();
+                        // Persistence is not part of this not-yet-issued read's
+                        // allowance. Existing PendingRead deadlines stay fixed.
+                        publication_time = service
+                            .lock()
+                            .map_err(|_| "runtime service poisoned")?
+                            .read_publication_now(now)?;
                         self.request_read(
                             &owner,
                             "speech.heard",
                             json!({"item":body["payload"]["item"]}),
                             &id,
-                            now.checked_add(1_000_000).ok_or("read deadline overflow")?,
-                            now,
+                            publication_time
+                                .checked_add(1_000_000)
+                                .ok_or("read deadline overflow")?,
+                            publication_time,
                         )?;
                         self.heard_reads.insert(id);
                     }
@@ -385,7 +394,7 @@ impl SurfaceSession {
                 _ => return Err("wrong direction or lifecycle".into()),
             }
         }
-        self.runtime_clock = now;
+        self.runtime_clock = publication_time;
         self.last_received = now;
         Ok(())
     }
