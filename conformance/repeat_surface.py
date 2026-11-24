@@ -18,6 +18,9 @@ async def run(args):
     impl = next(i for i in registry(SUITES / 'impls.toml') if i['name'] == args.implementation)
     if args.without_readiness:
         impl.pop('ready_line', None)
+        # The clock connection is another readiness wait; the exec-only
+        # counterfactual must disable it too, rather than mask startup stalls.
+        impl.pop('fixture_clock', None)
     args.output.mkdir(parents=True, exist_ok=True)
     if args.slow_startup:
         if not shutil.which('strace'):

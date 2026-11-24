@@ -84,3 +84,56 @@ caught): startup-only injection in PR87 never perturbed action-path syncs.
 Countermeasures: batch terminal + sequence; explicit restart/failure regressions;
 CPU-loaded old/new uniform action-sync-delay control. Historical host attribution
 and general durable-response latency policy remain distinct evidence questions.
+
+## Residual timing-family repair (ADR-0021)
+
+The queue did expose that residual: readiness run45341088504 failed read-config
+step2 and kill-latched step7. Baseline main run45340588562 also failed negotiation
+and deadline-exclusive admission after readiness. We read both failed logs; no
+failed job was rerun into green. PR100 was explicitly dequeued before revision.
+
+ADR-0021 separates adapter fixture time from the runner watchdog with an explicit
+private test-control socket. Its initial proposal was submitted as ADR-0020 in
+913eb39 before implementation; concurrent vocabulary PR105 reserved0020, so the
+proposal was renumbered0021. Existing package/path/wire identifiers are unchanged.
+The implementation drives actual receive/tick and persistence, not canned replies.
+The prior durability batching is retained. Production timing requirements remain
+unchanged; deterministic functional tests do not claim live latency qualification.
+
+Executed commands and raw evidence:
+
+```
+python3 -m unittest discover -s conformance/tests -p test_fixture_clock.py -v
+python3 -m unittest discover -s conformance/tests -p test_readiness.py -v
+cargo test --locked -p coglet-surface-rust -p coglet-mock
+cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
+python3 conformance/repeat_surface_clock.py --iterations 50 --output target/clock-final-cpu
+python3 conformance/repeat_surface_clock.py --iterations 1 --sync-delay-ms 250 --without-fixture-clock --expect-timeouts --output target/clock-red
+python3 conformance/repeat_surface_clock.py --iterations 1 --sync-delay-ms 250 --output target/clock-final-delayed
+python3 conformance/repeat_surface.py --iterations 50 --slow-startup --without-readiness --output target/clock-startup-red
+```
+
+- `clock-final-cpu.jsonl`:50 complete loops of all four adapter variants under
+  two owned busy processes sharing one CPU:2200 results,1800 executed passes,
+  400 unsupported-role skips,zero failures. Each of action-accept-outcome,
+  dedup-terminal,read-config,kill-latched executed200 times without failure.
+- `clock-red.jsonl`:same current binaries, old wall-clock binding, identical250ms
+  delay on EVERY fdatasync from ordinal2 (negotiation) onward:36/36 executed
+  cases time out,8 expected skips. This is a deterministic mechanism control,
+  not an attribution of historical runner stalls.
+- `clock-final-delayed.jsonl`:identical perturbation with explicit fixture-clock
+  binding:36/36 executed cases pass,8 expected skips. One full loop only; the
+  50-loop acceptance above is CPU-only, not50 loops with250ms storage delays.
+- `clock-startup-red.jsonl`:clock binding and readiness both disabled for the
+  old exec-only startup counterfactual;450/450 executed cases fail at step0,
+  100 expected skips. The clock connection is itself a startup barrier, so it
+  must be disabled to preserve this counterfactual.
+-10 new harness tests and7 existing readiness tests pass. New controls include
+  slow real child I/O with unchanged logical time, missing/bad control ack,
+  per-step and whole-case watchdogs, early child exit, inherited env isolation,
+  unexpected frame and EOF failures. Rust tests cover exact ack time and
+  rollback refusal. SDK/mock suites and clippy pass; logs adjacent.
+
+The original20-run CI proof and independent approval cover d74a69f ONLY. New
+exact-head20-run CI, readiness CI, independent review and queue/postmerge proofs
+are still required for this revision; these local logs do not satisfy those gates.

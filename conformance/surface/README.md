@@ -34,6 +34,36 @@ the surface itself enforces 1 MiB. Framing vectors (zero, oversize, truncated,
 trailing CBOR and bytes) live in `spec/fixtures/surface/framing.json` and are
 checked by the fixture tests; a future native transport adapter must reject them.
 
+## Fixture clock and runner watchdog (ADR-0021)
+
+The four Rust reference/mock registrations opt into `fixture_clock=true`.
+The harness provides a private Unix socket in a mode-0700 temporary directory
+through `COGLET_FIXTURE_CLOCK_SOCKET`; fixture hooks may not supply that variable.
+The socket is a test-control binding, not a surface wire message. Each control
+request is an eight-byte big-endian microsecond time; the adapter drives the real
+core's `tick(now)` and echoes that time only after stdout has been flushed. Each
+ordinary stdin frame is likewise acknowledged after real `receive` and flush.
+The harness waits for the send acknowledgement before the next clock advance,
+so the separate input readers cannot reorder a frame across an advance.
+Malformed/truncated/retrograde controls fail the adapter; there are no retries.
+
+Time starts at zero and advances only at explicit case `at_ms` boundaries (or
+through a silence interval). Repeated equal-time ticks are allowed. A jump tests
+observation at that supplied time, not intermediate sampling or a real-time SLO;
+real monotonic SDK tests remain necessary for health/silence/native kill. The
+kill fixture is triggered before ticking/dispatching at or after 100ms; the
+post-kill stimulus remains at 110ms. Real frame bodies, durable stores, rejection,
+effects and direct/in-process transport paths are unchanged.
+
+For this explicit binding only, send/receive/control operations have a 3-second
+wall watchdog; case total bounds remain unchanged. Existing case `within_ms`
+values retain their meaning for non-opted-in implementations. The 200ms case
+values are not surface-protocol latency promises. No unexpected frames are
+filtered, no missing messages retried, and EOF is not silence. Ordinary stdio,
+readiness-disabled startup counterfactuals and live-time SDK tests retain their
+real-monotonic paths. Disabling readiness in the startup counterfactual also
+turns off the clock socket, since connecting it would be another startup wait.
+
 ## Embedded ABI coverage boundary
 
 An ABI bridge runs the same JSON cases through send/recv without socket framing.

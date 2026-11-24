@@ -1,10 +1,9 @@
 //! Fixture-only framed stdio adapter; stdout contains protocol frames only.
 use coglet_mock::surface::{MAX_CONFIG_BYTES, MockSurface};
+use coglet_surface_rust::fixture_clock::{FixtureInput, Input};
 use coglet_surface_rust::transport::{self, ControlPeer};
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::time::{Duration, Instant};
 
 struct StateDir(PathBuf);
 impl StateDir {
@@ -137,36 +136,26 @@ fn run() -> Result<(), String> {
     };
     eprintln!("COGLET_CONFORMANCE_READY");
     emit(&mut output, initial)?;
-    let (tx, rx) = mpsc::sync_channel(transport::QUEUE_BOUND);
-    std::thread::spawn(move || {
-        let mut input = std::io::stdin().lock();
-        loop {
-            let frame = transport::read_frame(&mut input).map_err(|e| e.to_string());
-            let done = !matches!(&frame, Ok(Some(_)));
-            if tx.send(frame).is_err() || done {
-                break;
-            }
-        }
-    });
-    let clock = Instant::now();
+    let mut input = FixtureInput::open()?;
     let result = (|| {
         loop {
-            let input = rx.recv_timeout(Duration::from_millis(1));
-            let now = u64::try_from(clock.elapsed().as_micros()).unwrap_or(u64::MAX);
+            let incoming = input.next_input()?;
+            let now = input.now();
             if kill_at.is_some_and(|at| now >= at) && !kill.is_latched() {
                 kill.trigger("fixture local kill");
             }
-            let frames = match input {
-                Ok(Ok(Some(frame))) => driver.receive(&frame, now)?,
-                Ok(Ok(None)) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                Ok(Err(e)) => return Err(e),
-                Err(mpsc::RecvTimeoutError::Timeout) => driver.tick(now)?,
+            let frames = match incoming {
+                Some(Input::Frame(Ok(Some(frame)))) => driver.receive(&frame, now)?,
+                Some(Input::Frame(Ok(None))) => break,
+                Some(Input::Frame(Err(e)) | Input::ClockError(e)) => return Err(e),
+                Some(Input::Advance(_)) | None => driver.tick(now)?,
             };
             emit(&mut output, frames)?;
+            input.acknowledge()?;
         }
         Ok(())
     })();
-    let now = u64::try_from(clock.elapsed().as_micros()).unwrap_or(u64::MAX);
+    let now = input.now();
     let disconnected = driver.disconnect(now);
     result.and(disconnected)
 }

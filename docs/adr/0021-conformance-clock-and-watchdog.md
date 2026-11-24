@@ -1,4 +1,4 @@
-# ADR-0020: Separate surface fixture time from runner watchdogs
+# ADR-0021: Separate surface fixture time from runner watchdogs
 
 - Status: Proposed
 - Date: 2026-11-24
