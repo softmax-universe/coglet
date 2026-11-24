@@ -73,6 +73,15 @@ public struct FaceCompletion {
     public func activate(owner: String, epoch: UInt64, emit: @escaping (String, CBORValue) throws -> Void) {
         stop(owner: nil); self.owner = owner; self.epoch = epoch; self.emit = emit
     }
+    func retainClosedStreams(from actions: [CBORValue]) {
+        for action in actions where action["capability"] == .text("speech.speak_chunk") || action["capability"] == .text("speech.backchannel") {
+            if let stream = action["args"]?["stream"]?.faceText { closedStreams.insert(stream) }
+        }
+    }
+    func startDuplex() throws {
+        guard owner != nil else { throw NativeSurfaceError("permission_denied") }
+        try audio.start(); graph = audio.generation
+    }
     public func takeCompletions() -> [FaceCompletion] {
         let result = completions; completions = []; return result
     }
@@ -262,10 +271,10 @@ public struct FaceCompletion {
     }
     public func stop(owner: String?) {
         guard owner == nil || owner == self.owner else { return }
-        generation = UUID(); let cancel = cancellation; cancellation = nil
-        self.owner = nil; emit = nil; items = []; stream = nil; completions = []
-        nextChunk = 0; inputClosed = false; closedStreams = []; history = SpeechObservations(); graph = nil
-        audio.flush(); audio.stop(); cancel?(); renderer.reset()
+        failStream(code: "cancelled")
+        self.owner = nil; emit = nil
+        nextChunk = 0; inputClosed = false; history = SpeechObservations(); graph = nil
+        audio.stop(); renderer.reset()
     }
 }
 

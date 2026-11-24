@@ -3,7 +3,7 @@ import CogletTypes
 import CogletSurface
 @testable import FaceMac
 
-@MainActor private final class TestDuplex: FaceDuplexIO {
+@MainActor final class TestDuplex: FaceDuplexIO {
     var renderedFrames: UInt64 = 0
     var isRunning = false
     var generation: UInt64 = 0
@@ -17,7 +17,7 @@ import CogletSurface
     func flush() { flushes += 1 }
     func readCapture() -> [Int16] { let value = captured; captured = []; return value }
 }
-@MainActor private final class TestSynthesis: FaceSynthesis {
+@MainActor final class TestSynthesis: FaceSynthesis {
     var callbacks: [(Result<FaceSynthesizedAudio, Swift.Error>) -> Void] = []
     var cancelled = 0
     var immediateFailure = false

@@ -107,6 +107,15 @@ public final class SurfaceSession {
     private var observationTokens: [String: NativeObservationToken] = [:]
     private var normalizers: [String: SpeechObservations] = [:]
     public var grantEpoch: UInt64 { ledger.epoch }
+    /// Trusted embedding hosts may reconstruct native admission tombstones, never
+    /// replay effects. Only durable accepted actions are returned, in key order;
+    /// rejected attempts are not admissions. Copies cannot mutate the ledger.
+    public func retainedAdmittedActions() throws -> [CBORValue] {
+        try ledger.records.sorted { $0.key < $1.key }.compactMap { _, record in
+            guard record.accept["accepted"] == .boolean(true) else { return nil }
+            return try SurfaceWire.decode(record.envelope, from: .runtime)["body"]!["action"]!
+        }
+    }
     public var isKilled: Bool { ledger.killed }
 
     public init(identity: String, boundCoglets: Set<String>, operations: [SurfaceOperation],
