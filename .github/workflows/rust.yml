@@ -15,9 +15,39 @@ on:
 permissions:
   contents: read
 jobs:
+  transform-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute native R3 component inventory without skips
+        env:
+          CARGO_BUILD_JOBS: 2
+          COGLET_TRANSFORM_EVIDENCE_DIR: ${{ runner.temp }}/transform-proof
+        run: |
+          test "$(uname -m)" = '${{ matrix.arch }}'
+          rustup show active-toolchain
+          python3 crates/coglet-transform/tests/check_runner.py
+          python3 crates/coglet-transform/check.py --native-leg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transform-native-${{ matrix.arch }}-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/transform-proof
+          if-no-files-found: error
   rust:
+    needs: transform-native
+    if: always()
     runs-on: ubuntu-24.04
     steps:
+      - name: Both native architecture legs are mandatory
+        run: test '${{ needs.transform-native.result }}' = 'success'
       - uses: actions/checkout@v4
       - uses: ./.github/actions/dependency-restore
         with:
@@ -31,32 +61,14 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
-      - name: aarch64 R3 transform peer (qemu user emulation)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu qemu-user-static libc6-dev-arm64-cross
-          rustup target add aarch64-unknown-linux-gnu
-          export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
-          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-          cargo build --locked -p coglet-transform --features peer --bin coglet-transform-peer --target aarch64-unknown-linux-gnu
-          wrap="$PWD/target/coglet-transform-peer-aarch64"
-          printf '%s\n' '#!/bin/bash' "exec qemu-aarch64-static -cpu cortex-a72 -L /usr/aarch64-linux-gnu \"$PWD/target/aarch64-unknown-linux-gnu/debug/coglet-transform-peer\" \"\$@\"" >"$wrap"
-          chmod +x "$wrap"
-          echo "COGLET_TRANSFORM_PEER_EVAL=$wrap" >>"$GITHUB_ENV"
-          echo "COGLET_TRANSFORM_PEER_ARCH=aarch64" >>"$GITHUB_ENV"
-          echo "COGLET_TRANSFORM_PEER_MODE=emulated-qemu-cortex-a72" >>"$GITHUB_ENV"
-      - name: R3 component proofs (exact inventory, no quarantine or skips)
-        run: |
-          evidence="$RUNNER_TEMP/transform-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ inputs.bundle-mode || 'normal' }}"
-          echo "COGLET_TRANSFORM_EVIDENCE_DIR=$evidence" >>"$GITHUB_ENV"
-          python3 crates/coglet-transform/tests/check_runner.py
-          COGLET_TRANSFORM_EVIDENCE_DIR="$evidence" python3 crates/coglet-transform/check.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: transform-component-proof-${{ inputs.bundle-mode || 'normal' }}
-          path: ${{ env.COGLET_TRANSFORM_EVIDENCE_DIR }}
-          if-no-files-found: error
+          pattern: transform-native-*-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/transform-native-pair
+      - name: R3 native cross-architecture aggregation (required)
+        run: |
+          echo "COGLET_TRANSFORM_NATIVE_PAIR=$RUNNER_TEMP/transform-native-pair" >>"$GITHUB_ENV"
+          COGLET_TRANSFORM_NATIVE_PAIR="$RUNNER_TEMP/transform-native-pair" python3 crates/coglet-transform/check.py --aggregate-test
       - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
         run: scripts/ci/cargo-test --workspace --locked
       - name: AOT feature fails closed under ABI v0

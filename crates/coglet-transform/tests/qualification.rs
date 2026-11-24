@@ -7,7 +7,6 @@ use coglet_engine_wasmtime::Wasmtime;
 use coglet_transform::oracle::{Op, Width, r3_bits};
 use coglet_transform::rewrite::{Pins, rewrite};
 use coglet_transform::sha256_hex;
-use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 struct Capture(Vec<u8>);
@@ -253,83 +252,4 @@ fn pinned_transform_fuzz_differential() {
     }
     assert_eq!(results.len(), 960 * 80);
     retain("fuzz", &bytes, &results);
-}
-#[test]
-fn pinned_transform_cross_arch_replay() {
-    assert_eq!(
-        std::env::consts::ARCH,
-        "x86_64",
-        "this executed pairing is x86_64/native vs aarch64/emulated-qemu-cortex-a72 only"
-    );
-    let peer = std::env::var("COGLET_TRANSFORM_PEER_EVAL")
-        .expect("missing peer execution refuses qualification");
-    assert_eq!(
-        std::env::var("COGLET_TRANSFORM_PEER_ARCH").unwrap(),
-        "aarch64"
-    );
-    assert_eq!(
-        std::env::var("COGLET_TRANSFORM_PEER_MODE").unwrap(),
-        "emulated-qemu-cortex-a72"
-    );
-    let cases = corpus();
-    let bytes = corpus_bytes(&cases);
-    let mut results = Vec::new();
-    let wamr = Wamr::interpreter();
-    let wasmtime = Wasmtime::default();
-    for case in &cases {
-        let mut input = Vec::new();
-        input.extend(u32::try_from(case.output.len()).unwrap().to_le_bytes());
-        input.extend(&case.output);
-        for seed in &case.seeds {
-            input.extend(seed.to_le_bytes());
-        }
-        if let Ok(dir) = std::env::var("COGLET_TRANSFORM_EVIDENCE_DIR") {
-            std::fs::write(
-                std::path::Path::new(&dir)
-                    .join(format!("peer-input-{:?}-{:?}.bin", case.op, case.width)),
-                &input,
-            )
-            .unwrap();
-        }
-        let mut child = Command::new(&peer)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
-        {
-            use std::io::Write;
-            child.stdin.take().unwrap().write_all(&input).unwrap();
-        }
-        let out = child.wait_with_output().unwrap();
-        assert!(
-            out.status.success(),
-            "peer {:?} {:?} failed {}: {}",
-            case.op,
-            case.width,
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-        );
-        let z = out.stdout.iter().position(|b| *b == 0).unwrap();
-        assert_eq!(&out.stdout[..z], b"aarch64");
-        let rest = &out.stdout[z + 1..];
-        assert_eq!(rest.len(), case.seeds.len() * 16);
-        for (i, seed) in case.seeds.iter().enumerate() {
-            let expected = expected(case, *seed);
-            assert_eq!(run(&wamr, &case.output, *seed).unwrap(), expected);
-            assert_eq!(run(&wasmtime, &case.output, *seed).unwrap(), expected);
-            for chunk in rest[i * 16..i * 16 + 16].as_chunks::<8>().0 {
-                let peer_bits = u64::from_le_bytes(*chunk);
-                assert_eq!(
-                    peer_bits, expected,
-                    "{:?} {:?} seed={seed:x}",
-                    case.op, case.width
-                );
-                results.extend(peer_bits.to_le_bytes());
-                results.extend(sha256_hex(chunk).as_bytes());
-            }
-        }
-    }
-    assert_eq!(results.len(), 960 * 144);
-    retain("cross-arch", &bytes, &results);
 }

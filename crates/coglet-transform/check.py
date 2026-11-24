@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Required component-proof runner. Not a publication qualification authority.
+"""Native component proofs and same-run pairing, not publication authority.
 
-Bypasses the workspace quarantine wrapper and fails if any declared test is
-missing, renamed, ignored, filtered, duplicated or failed. Retains exact corpus,
-results, executed test binaries, and environment/source pins for later review.
+CI owns artifact authentication/custody; this parser never accepts a caller's
+identity string as production trust. See README for remaining integration gates.
 """
 import hashlib
 import json
@@ -12,9 +11,9 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = Path(os.environ.get("COGLET_TRANSFORM_EVIDENCE_DIR", ROOT / "target/transform-evidence"))
 EXPECTED = {
     "admission_regressions": {
         "rewrite_refuses_excessive_locals_before_expansion",
@@ -28,9 +27,9 @@ EXPECTED = {
     "qualification": {
         "rewrite_component_changes_arithmetic_and_preserves_identity",
         "pinned_transform_fuzz_differential",
-        "pinned_transform_cross_arch_replay",
     },
 }
+REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "admission_regressions", "qualification", "admission_regressions.log", "qualification.log", "fuzz.corpus", "fuzz.results"}
 
 
 def run(args, **kw):
@@ -50,60 +49,90 @@ def validate_report(text, expected):
     assert summaries == [(str(len(expected)), "0", "0", "0", "0")], summaries
 
 
-def main():
-    # The evidence directory is a new invocation's private output, never recycled.
-    OUT.mkdir(parents=True, exist_ok=False)
-    env = dict(os.environ, COGLET_TRANSFORM_EVIDENCE_DIR=str(OUT))
-    native_arch = run(["uname", "-m"], capture_output=True).stdout.strip()
-    assert native_arch == "x86_64", native_arch
-    assert env["COGLET_TRANSFORM_PEER_ARCH"] == "aarch64"
-    assert env["COGLET_TRANSFORM_PEER_MODE"] == "emulated-qemu-cortex-a72"
+def compiler_identity(text):
+    # Target host differs; compiler version, source revision and LLVM must not.
+    return "\n".join(line for line in text.splitlines() if not line.startswith("host:"))
+
+
+def verify_pair(root, head, run_id, attempt):
+    directories = sorted(p for p in root.iterdir() if p.is_dir())
+    assert len(directories) == 2, "exactly two architecture artifacts required"
+    legs = {}
+    for path in directories:
+        manifest = json.loads((path / "manifest.json").read_text())
+        arch = manifest["arch"]
+        assert arch in {"x86_64", "aarch64"} and arch not in legs, "missing or duplicated architecture"
+        assert manifest["mode"] == "native"
+        assert manifest["actual_checkout"] == head
+        assert manifest["github_run"] == run_id and manifest["github_attempt"] == attempt
+        assert manifest["tests"] == {key: sorted(value) for key, value in EXPECTED.items()}
+        assert set(manifest["files"]) == REQUIRED_FILES
+        assert {p.name for p in path.iterdir()} == REQUIRED_FILES | {"manifest.json"}
+        for name, expected in manifest["files"].items():
+            file = path / name
+            assert file.is_file() and not file.is_symlink()
+            assert file.stat().st_size > 0 and digest(file) == expected, name
+        for name, expected in EXPECTED.items():
+            validate_report((path / f"{name}.log").read_text(), expected)
+        assert (path / "fuzz.results").stat().st_size == 960 * 80
+        legs[arch] = path
+    assert set(legs) == {"x86_64", "aarch64"}
+    x86, arm = legs["x86_64"], legs["aarch64"]
+    for name in ("Cargo.lock", "fuzz.corpus", "fuzz.results"):
+        assert (x86 / name).read_bytes() == (arm / name).read_bytes(), name
+    assert compiler_identity((x86 / "rustc.txt").read_text()) == compiler_identity((arm / "rustc.txt").read_text())
+    print("native x86_64/aarch64: 960 paired WAMR+Wasmtime/oracle cases; component-only")
+
+
+def native_leg():
+    out = Path(os.environ.get("COGLET_TRANSFORM_EVIDENCE_DIR", ROOT / "target/transform-evidence"))
+    out.mkdir(parents=True, exist_ok=False)
+    env = dict(os.environ, COGLET_TRANSFORM_EVIDENCE_DIR=str(out))
+    arch = run(["uname", "-m"], capture_output=True).stdout.strip()
+    assert arch in {"x86_64", "aarch64"}
     run(["git", "diff", "--exit-code", "HEAD", "--", "crates/coglet-transform", "crates/coglet-engine", "crates/coglet-engine-wamr", "crates/coglet-engine-wasmtime", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".cargo/config.toml"])
     head = run(["git", "rev-parse", "HEAD"], capture_output=True).stdout.strip()
-    toolchain = run(["rustc", "-vV"], capture_output=True).stdout
-    (OUT / "rustc.txt").write_text(toolchain)
-    shutil.copy2(ROOT / "Cargo.lock", OUT / "Cargo.lock")
-    # Cargo tells us the actual executables; do not guess hashed target paths.
+    (out / "rustc.txt").write_text(run(["rustc", "-vV"], capture_output=True).stdout)
+    shutil.copy2(ROOT / "Cargo.lock", out / "Cargo.lock")
     built = run(["cargo", "test", "--locked", "-p", "coglet-transform", "--test", "admission_regressions", "--test", "qualification", "--no-run", "--message-format=json"], capture_output=True)
-    (OUT / "build.jsonl").write_text(built.stdout)
+    (out / "build.jsonl").write_text(built.stdout)
     bins = {}
     for line in built.stdout.splitlines():
         msg = json.loads(line)
         if msg.get("reason") == "compiler-artifact" and msg.get("executable") and msg.get("target", {}).get("name") in EXPECTED:
             name = msg["target"]["name"]
-            assert name not in bins, name
+            assert name not in bins
             bins[name] = Path(msg["executable"])
-    assert set(bins) == set(EXPECTED), bins
+    assert set(bins) == set(EXPECTED)
     for name, binary in bins.items():
-        shutil.copy2(binary, OUT / name)
+        shutil.copy2(binary, out / name)
         result = subprocess.run([str(binary), "--test-threads=1"], cwd=ROOT, env=env, capture_output=True, text=True)
-        (OUT / f"{name}.log").write_text(result.stdout + result.stderr)
+        (out / f"{name}.log").write_text(result.stdout + result.stderr)
         print(result.stdout + result.stderr, flush=True)
         result.check_returncode()
         validate_report(result.stdout, EXPECTED[name])
-    for kind in ("fuzz", "cross-arch"):
-        assert (OUT / f"{kind}.corpus").stat().st_size > 0
-        assert (OUT / f"{kind}.results").stat().st_size > 0
-    assert (OUT / "fuzz.corpus").read_bytes() == (OUT / "cross-arch.corpus").read_bytes()
-    shutil.copy2(ROOT / "target/aarch64-unknown-linux-gnu/debug/coglet-transform-peer", OUT / "peer-aarch64")
-    qemu = shutil.which("qemu-aarch64-static")
-    assert qemu is not None, "missing executed emulator"
-    shutil.copy2(qemu, OUT / "qemu-aarch64-static")
-    shutil.copy2(env["COGLET_TRANSFORM_PEER_EVAL"], OUT / "peer-wrapper")
-    (OUT / "packages.txt").write_text(run(["dpkg-query", "-W", "qemu-user-static", "libc6-arm64-cross", "libstdc++6-arm64-cross"], capture_output=True).stdout)
+    assert {p.name for p in out.iterdir()} == REQUIRED_FILES
     manifest = {
         "scope": "component-only; builder/CI-identity/provenance/CAS not qualified",
         "actual_checkout": head,
-        "github_head": env.get("GITHUB_SHA"),
-        "github_run": env.get("GITHUB_RUN_ID"),
-        "github_attempt": env.get("GITHUB_RUN_ATTEMPT"),
-        "modes": ["x86_64/native/wamr-interpreter+wasmtime", "aarch64/emulated-qemu-cortex-a72/wamr-interpreter+wasmtime"],
+        "github_run": env.get("GITHUB_RUN_ID"), "github_attempt": env.get("GITHUB_RUN_ATTEMPT"),
+        "arch": arch, "mode": "native",
         "tests": {key: sorted(value) for key, value in EXPECTED.items()},
-        "files": {p.name: digest(p) for p in sorted(OUT.iterdir()) if p.is_file()},
+        "files": {name: digest(out / name) for name in sorted(REQUIRED_FILES)},
     }
-    (OUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    print("Component proof manifest:", OUT / "manifest.json")
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    print("Component proof manifest:", out / "manifest.json")
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--native-leg"]:
+        native_leg()
+    elif len(sys.argv) == 3 and sys.argv[1] == "--aggregate":
+        verify_pair(Path(sys.argv[2]), run(["git", "rev-parse", "HEAD"], capture_output=True).stdout.strip(), os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"])
+    elif sys.argv[1:] == ["--aggregate-test"]:
+        result = subprocess.run(["cargo", "test", "--locked", "-p", "coglet-transform", "--test", "cross_arch"], cwd=ROOT, capture_output=True, text=True)
+        print(result.stdout + result.stderr)
+        result.check_returncode()
+        validate_report(result.stdout, {"pinned_transform_cross_arch_replay"})
+    else:
+        raise SystemExit("use --native-leg, --aggregate SAME_RUN_ARTIFACT_DIR, or --aggregate-test")
