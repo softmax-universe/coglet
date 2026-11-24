@@ -1,6 +1,8 @@
 //! Authenticated router→device lifecycle. Authority and accepted refs are never
 //! inferred from a remote proof; native execution is not implied by start.
 use crate::{DurableStore, Result, RuntimeService, admit_manifest, digest, validate};
+#[path = "initial_push.rs"]
+mod initial_push;
 #[path = "receipt.rs"]
 mod receipt;
 use coglet_proto::{
@@ -107,7 +109,7 @@ impl DeviceHandler {
         create_private_dir(&config.wal_root)?;
         create_private_dir(&config.quarantine)?;
         let store = AcceptedRefStore::new(authority.clone()).map_err(store_text)?;
-        Ok(Self {
+        let handler = Self {
             inner: Arc::new(Inner {
                 config,
                 authority,
@@ -117,7 +119,9 @@ impl DeviceHandler {
                 services: Mutex::new(BTreeMap::new()),
                 adapter_started: AtomicBool::new(false),
             }),
-        })
+        };
+        handler.resume_initial_pushes();
+        Ok(handler)
     }
 
     pub fn config(&self) -> &DeviceConfig {
@@ -620,6 +624,22 @@ impl DeviceHandler {
                 &coglet,
             )
             .map_err(|_| "permission_denied".to_owned())?;
+            // Initial install requires explicit completion custody, never just
+            // accepted-ref presence. Existing installs retain their conflict and
+            // original-ID retry semantics. The later SQL boundary pins the same
+            // exact signed ref; completion evidence is immutable.
+            if handler
+                .peek_identity(&coglet)
+                .as_ref()
+                .is_err_and(|e| e == "not_installed")
+                && !handler
+                    .inner
+                    .store
+                    .preinstall_applied(handler.inner.config.hub, &coglet, metadata.signed())
+                    .map_err(store_text)?
+            {
+                return Err("permission_denied".into());
+            }
             handler
                 .load_accepted(&coglet, metadata.signed())
                 .map(|(metadata, bytes)| (coglet, metadata, bytes))
@@ -988,6 +1008,7 @@ impl OperationHandler for DeviceHandler {
                 .map_err(|e| transport(validation_text(e)))?;
             let handler = self.clone();
             let request_for_accept = request.clone();
+            let target = coglet.clone();
             let receipt = tokio::task::spawn_blocking(move || {
                 let scope = DeviceHandler::scope(&request_for_accept);
                 let acceptance = Acceptance {
@@ -1009,6 +1030,20 @@ impl OperationHandler for DeviceHandler {
             .await
             .map_err(transport)?
             .map_err(transport)?;
+            let driver = self.clone();
+            let id = request["correlation_id"]
+                .as_str()
+                .ok_or_else(|| transport("invalid_argument"))?
+                .to_owned();
+            // Dropping the requester/waiter does not cancel durable work.
+            if let Err(error) =
+                tokio::spawn(async move { driver.finish_initial_pushes(&target, Some(&id)).await })
+                    .await
+                    .map_err(transport)?
+            {
+                // Admission is durable even when boundary authority is absent.
+                eprintln!("cogletd initial-push remains queued: {error}");
+            }
             Ok(reply(&request, receipt))
         })
     }

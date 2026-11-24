@@ -5,11 +5,14 @@
 //! other connections' commits. Only fully validated private artifacts enter.
 //! Retained bundles are audit/recovery data, never unchecked activation handles.
 use super::{Authority, AuthorityError, Scope, delegation, valid};
+mod preinstall;
 use crate::{
     git_metadata::{MetadataError, Observation, RefKind, VerifiedRef},
     validator::VerifiedBundle,
 };
 use iroh::EndpointId;
+pub use preinstall::PendingPush;
+
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -24,6 +27,7 @@ pub struct PushOperation {
     context: Value,
     params: Value,
     digest: String,
+    request: Value,
 }
 impl PushOperation {
     pub fn new(peer: EndpointId, request: &Value) -> Result<Self> {
@@ -45,6 +49,7 @@ impl PushOperation {
             context: request["context"].clone(),
             params: request["params"].clone(),
             digest: hex::encode(Sha256::digest(bytes)),
+            request: request.clone(),
         })
     }
     fn check(&self, metadata: &VerifiedRef, context: &Acceptance<'_>) -> Result<()> {
@@ -157,7 +162,46 @@ impl AcceptedRefStore {
                 peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
                 digest TEXT NOT NULL, receipt TEXT NOT NULL,
                 audit_id INTEGER NOT NULL REFERENCES proto_ref_audit(id),
-                PRIMARY KEY(peer,operation_id,target));",
+                PRIMARY KEY(peer,operation_id,target));
+                CREATE TABLE IF NOT EXISTS proto_git_intents(
+                peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
+                request TEXT NOT NULL, PRIMARY KEY(peer,operation_id,target));
+                CREATE TABLE IF NOT EXISTS proto_preinstall_boundaries(
+                audit_id INTEGER PRIMARY KEY REFERENCES proto_ref_audit(id),
+                peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
+                completed_at TEXT NOT NULL);
+                CREATE TRIGGER IF NOT EXISTS proto_git_terminal_immutable
+                BEFORE UPDATE ON proto_git_operations
+                WHEN json_extract(OLD.receipt,'$.state') != 'queued'
+                BEGIN SELECT RAISE(ABORT,'immutable terminal receipt'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_operation_no_delete
+                BEFORE DELETE ON proto_git_operations
+                BEGIN SELECT RAISE(ABORT,'retained operation'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_operation_no_replace
+                BEFORE INSERT ON proto_git_operations WHEN EXISTS(
+                    SELECT 1 FROM proto_git_operations WHERE peer=NEW.peer AND operation_id=NEW.operation_id AND target=NEW.target)
+                BEGIN SELECT RAISE(ABORT,'retained operation'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_completion_only
+                BEFORE UPDATE ON proto_git_operations WHEN
+                    NEW.peer != OLD.peer OR NEW.operation_id != OLD.operation_id OR NEW.target != OLD.target
+                    OR NEW.digest != OLD.digest OR NEW.audit_id != OLD.audit_id
+                    OR json_extract(NEW.receipt,'$.operation_id') IS NOT OLD.operation_id
+                    OR json_extract(NEW.receipt,'$.state') NOT IN ('applied','failed','cancelled')
+                BEGIN SELECT RAISE(ABORT,'completion only'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_update BEFORE UPDATE ON proto_git_intents
+                BEGIN SELECT RAISE(ABORT,'immutable intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_delete BEFORE DELETE ON proto_git_intents
+                BEGIN SELECT RAISE(ABORT,'retained intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_replace BEFORE INSERT ON proto_git_intents
+                WHEN EXISTS(SELECT 1 FROM proto_git_intents WHERE peer=NEW.peer AND operation_id=NEW.operation_id AND target=NEW.target)
+                BEGIN SELECT RAISE(ABORT,'retained intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_update BEFORE UPDATE ON proto_preinstall_boundaries
+                BEGIN SELECT RAISE(ABORT,'immutable boundary'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_delete BEFORE DELETE ON proto_preinstall_boundaries
+                BEGIN SELECT RAISE(ABORT,'retained boundary'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_replace BEFORE INSERT ON proto_preinstall_boundaries
+                WHEN EXISTS(SELECT 1 FROM proto_preinstall_boundaries WHERE audit_id=NEW.audit_id)
+                BEGIN SELECT RAISE(ABORT,'retained boundary'); END;",
             )?;
         }
         Ok(Self { authority })
@@ -388,6 +432,7 @@ impl AcceptedRefStore {
         let receipt = operation.map(PushOperation::queued);
         if let Some(op) = operation {
             tx.execute("INSERT INTO proto_git_operations(peer,operation_id,target,digest,receipt,audit_id) VALUES(?1,?2,?3,?4,?5,?6)", params![op.peer.to_string(),op.id,op.target,op.digest,serde_json::to_string(receipt.as_ref().ok_or(StoreError::Storage)?).map_err(|_| StoreError::Storage)?,audit_id])?;
+            tx.execute("INSERT INTO proto_git_intents(peer,operation_id,target,request) VALUES(?1,?2,?3,?4)", params![op.peer.to_string(),op.id,op.target,serde_json::to_string(&op.request).map_err(|_| StoreError::Storage)?])?;
         }
         authorize(&tx, metadata, kind, context, &trusted_clock)?;
         tx.commit()?;
@@ -412,9 +457,7 @@ fn lookup_operation(db: &Connection, op: &PushOperation) -> Result<Option<(i64, 
             return Err(StoreError::Conflict);
         }
         let receipt: Value = serde_json::from_str(&receipt).map_err(|_| StoreError::Storage)?;
-        // This component owns only queued admission. Activation/boundary receipt
-        // updates belong to the router/runtime, not this ref-storage primitive.
-        if receipt != op.queued() {
+        if !valid("hub-mutation-receipt", &receipt) || receipt["operation_id"] != op.id {
             return Err(StoreError::Storage);
         }
         Ok((audit_id, receipt))

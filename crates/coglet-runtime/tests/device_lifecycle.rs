@@ -1819,6 +1819,40 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
     });
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn hub_receipt_preinstall_original_push_completes_before_install() {
+    timed!(async {
+        let mut env = Env::new(0x51, Options::receipts()).await.unwrap();
+        let bundle = env.bundle(1, None, &[]);
+        let pushed = env.push(&bundle).await;
+        let id = operation_id(&pushed);
+        let mut terminal = Value::Null;
+        for _ in 0..200 {
+            let receipt = receipt_of(&mut env, &id).await;
+            let found = result_of(&receipt);
+            assert_eq!(found["operation_id"], id);
+            if found["state"] == "applied" {
+                terminal = found;
+                break;
+            }
+            assert_eq!(found["state"], "queued", "{receipt}");
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        assert_eq!(
+            terminal["state"], "applied",
+            "original preinstall push never completed"
+        );
+        let status = env.simple("hub.status").await;
+        assert_eq!(status["result"]["live_commit"], Value::Null);
+        assert_eq!(status["result"]["step"], 0);
+        assert_eq!(terminal["step"], 0);
+        assert!(terminal.get("generation").is_none());
+        assert_eq!(result_of(&receipt_of(&mut env, &id).await), terminal);
+        let delegation = env.delegation();
+        applied(&env.install(&bundle.signed, &delegation).await);
+    });
+}
+
 // ---- hub.receipt: original-scope operation receipts -------------------------
 
 /// Actual process death with only a durable queued push present. This proves
@@ -1915,19 +1949,43 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
                 "native_schedule":if NATIVE { json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}) } else { Value::Null }}},
             "kill_switch":env.root.join("kill.json"),"hub_addr":addr,"invite":invite});
         std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        let wrapper = root.join("validator-barrier");
+        let first = root.join("first-validation");
+        let entered = root.join("boundary-validation");
+        let release = root.join("release-boundary");
+        std::fs::write(&wrapper, format!(
+            "#!/bin/sh\nif [ -f '{}' ]; then\n : > '{}'\n while [ ! -f '{}' ]; do /bin/sleep 0.01; done\nelse\n : > '{}'\nfi\nexec '{}' \"$@\"\n",
+            first.display(), entered.display(), release.display(), first.display(), validator_path().display()
+        )).unwrap();
+        std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700)).unwrap();
+        config["validator_path"] = json!(wrapper);
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
         let log = root.join("child.log");
         let mut child = ChildGuard::spawn(&config_path, &log);
         env.session = child_session(&env.hub, device, &mut child, &log).await;
         assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
         let bundle = env.bundle(1, None, &[]);
-        let pushed = env.push(&bundle).await;
-        assert_eq!(pushed["result"]["state"], "queued", "{pushed}");
-        let push_id = operation_id(&pushed);
-        assert_eq!(
-            result_of(&receipt_of(&mut env, &push_id).await),
-            pushed["result"]
-        );
+        let push_request = env.request("hub.git.push", json!({"update":bundle.signed,"size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}));
+        let push_id = push_request["correlation_id"].as_str().unwrap().to_owned();
+        let session = env.session.clone();
+        let bytes = bundle.bytes.clone();
+        let push =
+            tokio::spawn(
+                async move { session.push_git(push_request, &mut bytes.as_slice()).await },
+            );
+        tokio::time::timeout(Duration::from_secs(15), async {
+            while !entered.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("second validation did not start after admission");
+        let queued = result_of(&receipt_of(&mut env, &push_id).await);
+        assert_eq!(queued["state"], "queued");
+        assert_eq!(queued["step"], Value::Null);
         child.kill_and_wait();
+        let _ = push.await;
         for _ in 0..2000 {
             if env.hub.session(device).await.is_none() {
                 break;
@@ -1940,9 +1998,36 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
         let restart_log = root.join("restart.log");
         let mut restarted = ChildGuard::spawn(&config_path, &restart_log);
         env.session = child_session(&env.hub, device, &mut restarted, &restart_log).await;
+        assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), queued);
+        denied(&env.install(&bundle.signed, &delegation).await);
+        std::fs::write(&release, b"release").unwrap();
+        let terminal = tokio::time::timeout(Duration::from_secs(15), async {
+            loop {
+                let receipt = result_of(&receipt_of(&mut env, &push_id).await);
+                if receipt["state"] == "applied" {
+                    break receipt;
+                }
+                assert_eq!(receipt["state"], "queued");
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(terminal["operation_id"], push_id);
+        assert_eq!(terminal["step"], 0);
         assert_eq!(
-            result_of(&receipt_of(&mut env, &push_id).await),
-            pushed["result"]
+            env.simple("hub.status").await["result"]["live_commit"],
+            Value::Null
+        );
+        let db = rusqlite::Connection::open(&authority_path).unwrap();
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM proto_preinstall_boundaries",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            1
         );
         let actor = env.actor.clone();
         let denied = receipt_as(&mut env, &push_id, &actor, Some(OTHER_TICKET)).await;
@@ -1974,11 +2059,8 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
             before,
             "retry must not append another effect"
         );
-        // A separate install cannot manufacture an applied push receipt.
-        assert_eq!(
-            result_of(&receipt_of(&mut env, &push_id).await),
-            pushed["result"]
-        );
+        // Install and retry cannot change the original terminal push.
+        assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), terminal);
         restarted.kill_and_wait();
     });
 }
@@ -1999,6 +2081,17 @@ async fn receipt_as(env: &mut Env, id: &str, actor: &str, ticket: Option<&str>) 
 async fn receipt_of(env: &mut Env, id: &str) -> Value {
     let (actor, ticket) = (env.actor.clone(), env.ticket.clone());
     receipt_as(env, id, &actor, Some(&ticket)).await
+}
+
+/// Expected terminal projection for an initial push's earlier admission
+/// observation. No reply is injected; callers poll the actual device above.
+fn terminal_initial(reply: &Value) -> Value {
+    let mut result = reply["result"].clone();
+    if result["state"] == "queued" {
+        result["state"] = json!("applied");
+        result["step"] = json!(0);
+    }
+    result
 }
 
 fn result_of(reply: &Value) -> Value {
@@ -2053,12 +2146,12 @@ async fn hub_receipt_original_scope_roundtrip() {
                 "{polled} {status}"
             );
         }
-        // The pushed ref is only admitted/queued, never applied: no boundary
-        // activation exists for it on this device.
+        // Initial push completed at its own verified quarantine boundary,
+        // before install. It does not claim guest execution or a generation.
         let push_id = operation_id(&pushed);
         let polled = receipt_of(&mut env, &push_id).await;
-        assert_eq!(result_of(&polled), pushed["result"]);
-        coglet_runtime::validate("hub-receipt-queued", &polled["result"]).unwrap();
+        assert_eq!(result_of(&polled), terminal_initial(&pushed));
+        coglet_runtime::validate("hub-receipt-applied", &polled["result"]).unwrap();
         // The receipt carries no applied generation or commit: exactly the four
         // frozen receipt fields.
         let mut keys: Vec<_> = polled["result"]
@@ -2120,7 +2213,7 @@ async fn hub_receipt_denies_cross_identity() {
         // The original caller still reads every receipt.
         for original in [&pushed, &installed, &stopped] {
             let polled = receipt_of(&mut env, &operation_id(original)).await;
-            assert_eq!(result_of(&polled), original["result"]);
+            assert_eq!(result_of(&polled), terminal_initial(original));
         }
         // A cross-identity retry of the original method does not borrow it.
         let reused = env.request_with(
@@ -2143,23 +2236,22 @@ async fn hub_receipt_survives_restart() {
         env.restart_handler().await;
         for original in [&pushed, &installed, &stopped] {
             let polled = receipt_of(&mut env, &operation_id(original)).await;
-            assert_eq!(result_of(&polled), original["result"], "{polled}");
+            assert_eq!(result_of(&polled), terminal_initial(original), "{polled}");
         }
         // Original scope survived too: other identities stay denied after restart.
         let (actor, id) = (env.actor.clone(), operation_id(&installed));
         let other = receipt_as(&mut env, &id, &actor, Some(OTHER_TICKET)).await;
         assert_eq!(error_code(&other), "not_found");
         assert_eq!(env.simple("hub.status").await["result"], before_status);
-        // Restart before any install: only the queued push exists, and it is
-        // still queued and readable by its original scope.
+        // Initial pre-install completion survives even without any install.
         let mut early = Env::new(0x44, Options::receipts()).await.unwrap();
         let bundle = early.bundle(1, None, &[]);
         let queued = early.push(&bundle).await;
         assert_eq!(queued["result"]["state"], "queued");
         early.restart_handler().await;
         let polled = receipt_of(&mut early, &operation_id(&queued)).await;
-        assert_eq!(result_of(&polled), queued["result"]);
-        assert_eq!(polled["result"]["step"], Value::Null);
+        assert_eq!(result_of(&polled), terminal_initial(&queued));
+        assert_eq!(polled["result"]["step"], 0);
     });
 }
 
@@ -2267,9 +2359,10 @@ async fn hub_receipt_install_retry_cannot_borrow_scope_or_reuse_stop_id() {
 async fn hub_receipt_queued_never_applied_without_boundary() {
     timed!(async {
         let mut env = Env::new(0x47, Options::receipts()).await.unwrap();
-        // Crash between ref admission and any runtime boundary: the push receipt is
-        // durable and queued, and restart does not promote it.
-        let bundle = env.bundle(1, None, &[]);
+        // Installed-target activation is owned by a separate producer. Staging
+        // and recovery cannot promote this push without its actual boundary.
+        let (initial, _) = pushed_and_installed(&mut env).await;
+        let bundle = env.bundle(2, Some(&initial.tip), &[]);
         let pushed = env.push(&bundle).await;
         let id = operation_id(&pushed);
         for round in 0..2 {
@@ -2279,10 +2372,10 @@ async fn hub_receipt_queued_never_applied_without_boundary() {
             assert_eq!(result["step"], Value::Null);
             assert_eq!(result["error"], Value::Null);
             coglet_runtime::validate("hub-receipt-queued", &result).unwrap();
-            // Status is not an activation: nothing is installed or live.
+            // Status still names the original installed commit, not staging.
             assert_eq!(
                 state(&env.simple("hub.status").await),
-                ("stopped".into(), Value::Null)
+                ("stopped".into(), json!(initial.tip))
             );
             env.restart_handler().await;
         }
@@ -2296,9 +2389,11 @@ async fn hub_receipt_queued_never_applied_without_boundary() {
 async fn hub_receipt_git_push_queued_not_applied() {
     timed!(async {
         let mut env = Env::new(0x48, Options::receipts()).await.unwrap();
-        let (pushed, installed, _) = push_install_stop(&mut env).await;
-        // The install did boundary-confirm its own receipt, but the push (accepted
-        // ref only) is not reported applied by it, by a later stop, or by restart.
+        let (initial, installed) = pushed_and_installed(&mut env).await;
+        let bundle = env.bundle(2, Some(&initial.tip), &[]);
+        let pushed = env.push(&bundle).await;
+        // An installed-target push is not completed at the initial-deploy
+        // quarantine boundary, by a later stop, or by restart.
         applied(&installed);
         for _ in 0..2 {
             let polled = receipt_of(&mut env, &operation_id(&pushed)).await;
@@ -2308,12 +2403,6 @@ async fn hub_receipt_git_push_queued_not_applied() {
             assert_eq!(result, pushed["result"]);
             env.restart_handler().await;
         }
-        // Identical retry of the push returns the same queued receipt.
-        let again = env.push(&env.bundle(1, None, &[])).await;
-        assert!(
-            again["result"]["state"] == "queued" || again["type"] == "error",
-            "{again}"
-        );
     });
 }
 
