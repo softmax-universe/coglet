@@ -298,6 +298,50 @@ async fn validator_enforces_expanded_object_and_disk_fences() {
 }
 
 #[tokio::test]
+async fn validator_precharges_empty_logs_archive_before_git() {
+    let source = Root::new();
+    source.git(&["init", "--initial-branch=logs"]);
+    source.git(&["commit", "--allow-empty", "-m", "empty logs"]);
+    let tip = String::from_utf8(source.git(&["rev-parse", "HEAD"])).unwrap();
+    let archive = source.git(&["archive", "--format=tar", "HEAD"]);
+    assert!(archive.len() > 1, "empty tar overhead must be measurable");
+    source.git(&["bundle", "create", "transfer.bundle", "refs/heads/logs"]);
+    let bytes = fs::read(source.0.join("transfer.bundle")).unwrap();
+    let metadata = signed(tip.trim(), &archive);
+    // One byte under the real archive. "expanded archive" is the pre-Git
+    // precharge; "archive bytes" is the streaming reader after Git has already
+    // exceeded the cap. The empty tree must hit the former.
+    let early = validate_bytes(
+        &bytes,
+        &metadata,
+        Limits {
+            expanded_bytes: (archive.len() as u64) - 1,
+            ..Limits::default()
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(early, coglet_proto::validator::ValidationError::Resource(_)),
+        "{early}"
+    );
+    assert!(
+        early.to_string().ends_with("expanded archive"),
+        "empty archive must fail before Git, not in the streaming reader: {early}"
+    );
+    validate_bytes(
+        &bytes,
+        &metadata,
+        Limits {
+            expanded_bytes: archive.len() as u64,
+            ..Limits::default()
+        },
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn validator_rejects_archive_digest_and_pack_corruption() {
     let (mut bytes, metadata) = fixture();
     let wrong = signed(metadata.new_tip(), b"not the signed archive");

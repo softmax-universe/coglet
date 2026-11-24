@@ -81,7 +81,18 @@ fn commit(object: &Object) -> Result<([u8; 20], Vec<[u8; 20]>)> {
     }
     Ok((tree, parents))
 }
+/// `git archive --format=tar` always emits this overhead (global header plus
+/// block rounding), including for an empty root. It is a lower bound, not a
+/// guess that only applies once an entry exists.
+const ARCHIVE_OVERHEAD: u64 = 10240;
+
 pub(super) fn check(objects: &Objects, job: &Job) -> Result<()> {
+    // Precharge before any entry walk. A check only inside the entry loop lets
+    // an empty tree skip the budget, reach Git, and exceed the limit before the
+    // streaming reader rejects it.
+    if job.limits.expanded_bytes < ARCHIVE_OVERHEAD {
+        return Err(resource("expanded archive"));
+    }
     let tip = oid(job.tip.as_bytes())?;
     let logs = job.reference == "refs/heads/logs";
     // Check every stored tree (not just the tip). Reachability/type checking also
@@ -119,10 +130,11 @@ pub(super) fn check(objects: &Objects, job: &Job) -> Result<()> {
     }
     // Traverse expanded paths under a precharged archive-size budget. A small
     // DAG can represent exponentially many files: unique object bytes alone are
-    // NOT an archive bound. Charge generous PAX/header overhead BEFORE enqueue.
+    // NOT an archive bound. ARCHIVE_OVERHEAD was already admitted; charge
+    // per-entry PAX/header overhead BEFORE enqueue.
     let (root, _) = commit(get(objects, &tip, "commit")?)?;
     let mut paths = vec![(root, String::new(), 0usize)];
-    let mut archive_bound = 10240u64; // tar block rounding + global header
+    let mut archive_bound = ARCHIVE_OVERHEAD;
     let mut files = BTreeMap::new();
     while let Some((id, prefix, depth)) = paths.pop() {
         if depth >= 128 {
