@@ -129,6 +129,11 @@ work-queue token is this service run UID. Poll now receives the durable attempt
 and token explicitly, so reopening an HTTP client loses no correlation state.
 A conservative local deadline is capped by remaining server lease duration;
 unsupported retry/cancellation leave the work held rather than invent effects.
+Local HTTP lease expiry retains the exact saved attempt for evidence polling and
+never requeues it or aborts sibling dispatch cycles. Transport/auth/admission
+errors are not worker failures: missing configuration refuses, and non-success
+HTTP responses preserve uncertainty rather than publishing `task.failed`.
+Heartbeat persistence is capped by the returned server lease deadline.
 This is idempotent reconciliation, **not exactly-once worker execution**.
 
 ### Recorded wire fixtures and provenance

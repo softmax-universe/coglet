@@ -82,8 +82,8 @@ impl HttpKanban {
             || self.gateway.is_empty()
             || self.assignee.is_empty()
         {
-            return Err(failed(
-                "Board, enrolled gateway bearer, gateway and assignee are required",
+            return Err(AdapterError::Conflict(
+                "Board, enrolled gateway bearer, gateway and assignee are required".into(),
             ));
         }
         let mut request = self
@@ -104,7 +104,9 @@ impl HttpKanban {
             return Err(AdapterError::Uncertain);
         }
         if !status.is_success() {
-            return Err(failed(&format!("Board HTTP {}", status.as_u16())));
+            // Auth, admission, rate limiting and protocol refusal are not
+            // evidence that a worker executed and failed the requested task.
+            return Err(AdapterError::Uncertain);
         }
         // Bound external result size, including chunked bodies.
         use std::io::Read;
@@ -114,7 +116,7 @@ impl HttpKanban {
             .read_to_end(&mut bytes)
             .map_err(|_| AdapterError::Uncertain)?;
         if bytes.len() > 1_048_576 {
-            return Err(failed("Board response exceeds limit"));
+            return Err(AdapterError::Uncertain);
         }
         serde_json::from_slice(&bytes).map_err(|_| AdapterError::Uncertain)
     }
@@ -192,6 +194,9 @@ impl HttpKanban {
 }
 
 impl HermesAdapter for HttpKanban {
+    fn supports_retry(&self) -> bool {
+        false
+    }
     fn create(&mut self, spec: &TaskSpec) -> Result<RemoteTask, AdapterError> {
         if spec.idempotency_key.len() != 32
             || !spec
@@ -283,12 +288,12 @@ impl HermesAdapter for HttpKanban {
         until: u64,
         attempt: u64,
         token: &str,
-    ) -> Result<(), AdapterError> {
+    ) -> Result<u64, AdapterError> {
         if Self::run(remote, attempt)? != token {
             return Err(AdapterError::Conflict("stale run".into()));
         }
-        self.lease("renew", remote, attempt, until)?;
-        Ok(())
+        let lease = self.lease("renew", remote, attempt, until)?;
+        local_deadline(&lease, until)
     }
 
     fn retry(&mut self, _remote: &str) -> Result<(), AdapterError> {
