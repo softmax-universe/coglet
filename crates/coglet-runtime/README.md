@@ -34,8 +34,9 @@ This crate is **not yet an M1-qualified runtime**. The current library provides:
 The mock seam remains for fixture execution. Opt-in `native-engine` connects
 the shared `coglet-engine` API to transactional `StepHost` imports and the
 qualified WAMR interpreter. It is a bounded, real-Wasm route, not full ABI
-qualification: WASI-importing modules are refused before input consumption.
-The snapshot filesystem seam is still separate from `coglet-fs`.
+qualification: restricted WASI preview1 file imports use the `coglet-fs`
+step overlay with `/code`, `/data` and `/logs` preopens. Forbidden imports
+still fail admission; no ambient host filesystem is exposed.
 
 ## Verification
 

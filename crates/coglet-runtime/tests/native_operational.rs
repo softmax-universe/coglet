@@ -19,6 +19,9 @@ mod native_engine_cases;
 mod native_heard;
 #[path = "support/native_playback.rs"]
 mod native_playback;
+#[cfg(feature = "native-engine")]
+#[path = "support/native_wasi.rs"]
+mod native_wasi;
 
 static FFI_LOCK: Mutex<()> = Mutex::new(());
 
