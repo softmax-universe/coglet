@@ -178,6 +178,57 @@ def registry(path):
     return data['implementations']
 
 
+class BufferedOutput:
+    """Drain clock-bound stdout while dispatch/flush barriers are outstanding.
+
+    Retain at most 4 MiB of unread wire bytes. Overflow is a hard case failure,
+    not backpressure: continue discarding so the child can flush and acknowledge.
+    Framing, decoding and silence assertions still consume the original bytes.
+    """
+    LIMIT = 4 * 1024 * 1024
+
+    def __init__(self, source):
+        self.source = source
+        self.buffer = bytearray()
+        self.changed = asyncio.Event()
+        self.eof = False
+        self.error = None
+        self.task = asyncio.create_task(self.drain())
+
+    async def drain(self):
+        try:
+            while chunk := await self.source.read(65536):
+                if self.error is None:
+                    if len(self.buffer) + len(chunk) > self.LIMIT:
+                        self.error = ValueError('fixture stdout exceeds 4 MiB unread byte limit')
+                        self.buffer.clear()
+                    else:
+                        self.buffer.extend(chunk)
+                self.changed.set()
+        except Exception as error:
+            self.error = error
+        finally:
+            self.eof = True
+            self.changed.set()
+
+    async def readexactly(self, size):
+        if not 0 <= size <= self.LIMIT:
+            raise ValueError('fixture stdout read exceeds buffer limit')
+        while True:
+            if self.error is not None:
+                raise self.error
+            if len(self.buffer) >= size:
+                result = bytes(self.buffer[:size])
+                del self.buffer[:size]
+                return result
+            if self.eof:
+                partial = bytes(self.buffer)
+                self.buffer.clear()
+                raise asyncio.IncompleteReadError(partial, size)
+            self.changed.clear()
+            await self.changed.wait()
+
+
 class Peer:
     def __init__(self, impl, env=None):
         self.impl = impl
@@ -210,6 +261,8 @@ class Peer:
         raw = await self.clock_reader.readexactly(8)
         if int.from_bytes(raw, 'big') != expected:
             raise ValueError('fixture clock acknowledgement mismatch')
+        if isinstance(self.reader, BufferedOutput) and self.reader.error is not None:
+            raise self.reader.error
 
     async def start(self):
         impl = self.impl
@@ -244,6 +297,10 @@ class Peer:
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             start_new_session=True, env=self.env)
         self.reader, self.writer = self.process.stdout, self.process.stdin
+        if impl.get('fixture_clock'):
+            # Start before waiting for clock connect/readiness: initial frames
+            # may themselves exceed pipe capacity before the child connects.
+            self.reader = BufferedOutput(self.process.stdout)
         if 'ready_line' in impl:
             self.ready = asyncio.get_running_loop().create_future()
         self.stderr_task = asyncio.create_task(self.drain_stderr())
@@ -303,10 +360,15 @@ class Peer:
             self.writer.close()
         if self.process:
             assert self.reader is not None
+            source = self.process.stdout
+            assert source is not None
             async def discard_stdout():
-                while await self.reader.read(4096):
+                while await source.read(4096):
                     pass
-            drain = asyncio.create_task(discard_stdout())
+            if isinstance(self.reader, BufferedOutput):
+                drain = self.reader.task
+            else:
+                drain = asyncio.create_task(discard_stdout())
             # Kill the whole isolated session, including grandchildren on failure.
             try:
                 os.killpg(self.process.pid, signal.SIGTERM)
@@ -402,8 +464,10 @@ async def run_hook(command, env):
         await peer.start()
         assert peer.writer is not None and peer.reader is not None and peer.process is not None
         peer.writer.close()
+        source = peer.process.stdout
+        assert source is not None
         async def discard():
-            while await peer.reader.read(4096):
+            while await source.read(4096):
                 pass
         async with asyncio.timeout(10):
             await asyncio.gather(discard(), peer.process.wait())

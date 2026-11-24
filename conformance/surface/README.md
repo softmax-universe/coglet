@@ -45,6 +45,12 @@ core's `tick(now)` and echoes that time only after stdout has been flushed. Each
 ordinary stdin frame is likewise acknowledged after real `receive` and flush.
 The harness waits for the send acknowledgement before the next clock advance,
 so the separate input readers cannot reorder a frame across an advance.
+Stdout is drained concurrently from process startup, including while an
+acknowledgement is outstanding; otherwise a large reply can fill the pipe before
+its flush completes. The unread-byte buffer has a 4 MiB ceiling. Overflow fails
+the case explicitly while draining/discarding further bytes to avoid deadlock;
+there is no promise to accept arbitrary output bursts. Frames remain limited by
+the existing wire reader, and buffered bytes still fail silence assertions.
 Malformed/truncated/retrograde controls fail the adapter; there are no retries.
 
 Time starts at zero and advances only at explicit case `at_ms` boundaries (or

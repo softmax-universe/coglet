@@ -43,6 +43,11 @@ Ordinary frame waits do not advance logical fixture time. The control channel mu
 be bounded, fail closed on malformed/retrograde time, and be closed/reaped on all
 failure paths. Existing non-opted-in implementations retain existing semantics.
 No case-name-based reply synthesis or skipping unsolicited frames is permitted.
+The harness concurrently drains opted-in stdout before clock connection and while
+waiting for dispatch/flush acknowledgements. It retains at most 4 MiB of unread
+wire bytes; overflow is a hard test failure, not adapter backpressure. The bound
+allows maximum-size individual frames but does not promise arbitrary output bursts.
+Raw framing, EOF and unexpected-byte/silence assertions remain unchanged.
 
 Use a separately named bounded runner I/O watchdog for this fixture binding and
 retain a whole-case watchdog. These are test infrastructure liveness bounds, not
@@ -76,7 +81,12 @@ The prior 75-ms residual proof remains part of the record.
 
 ## Verification
 
-Implementation and all evidence below are REQUIRED and currently UNEXECUTED:
+The implementation and local evidence are recorded in
+[`../reviews/conformance-step5/README.md`](../reviews/conformance-step5/README.md).
+CI, independent exact-head review, queue landing and postmerge acceptance remain
+separate required gates; local results alone do not satisfy them.
+
+Required evidence:
 
 - A regression demonstrating current 200-ms failures with identical >200-ms
   durability stalls at negotiation and post-kill rejection; corrected runs use the

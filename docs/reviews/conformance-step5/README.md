@@ -137,3 +137,49 @@ python3 conformance/repeat_surface.py --iterations 50 --slow-startup --without-r
 The original20-run CI proof and independent approval cover d74a69f ONLY. New
 exact-head20-run CI, readiness CI, independent review and queue/postmerge proofs
 are still required for this revision; these local logs do not satisfy those gates.
+
+## Backpressure review repair
+
+Independent review of 86772f6 found that a flush-before-ack adapter could block
+when the harness awaited the ack without consuming stdout. The same problem
+applied to a large initial frame emitted before clock connection. This is a real
+binding defect even though the current small fixture replies did not expose it.
+
+`backpressure-red.log` records both new 1 MiB regression tests failing on that
+head: send step 0 times out awaiting the ack, and initial output times out during
+startup. The repair starts a concurrent stdout collector immediately after spawn,
+retains at most 4 MiB unread bytes, and fails on overflow while continuing to drain
+without retention. The acknowledgement still follows actual dispatch/flush. No
+unexpected messages are filtered; raw frame, partial EOF and silence checks remain.
+
+Executed after the repair:
+
+```
+python3 -m unittest conformance.tests.test_fixture_clock conformance.tests.test_readiness -v
+cargo test --locked -p coglet-surface-rust -p coglet-mock
+cargo clippy --locked -p coglet-surface-rust -p coglet-mock --all-targets -- -D warnings
+python3 conformance/repeat_surface_clock.py --iterations 50 --output ../clock-buffer-final-cpu
+python3 conformance/repeat_surface_clock.py --iterations 1 --sync-delay-ms 250 --output ../clock-buffer-final-delayed
+```
+
+- `backpressure-green.log`: 22 tests pass (15 clock-binding, 7 readiness), including
+  1 MiB initial and post-send replies, explicit overflow failure without timeout,
+  partial-frame EOF and buffered unexpected-byte/silence negatives.
+- `buffer-rust-tests.log` and `buffer-clippy.log`: SDK/mock tests and Clippy pass.
+- `clock-buffer-final-cpu.jsonl`: all 50 complete loops under two owned CPU workers
+  on one core pass: 1800 executed passes, 400 expected unsupported-role skips,
+  zero failures. The four named cases each execute 200 times. The final summary
+  records CPU and elapsed time; raw per-case results are retained.
+- `clock-buffer-final-delayed.jsonl`: the same 250 ms post-initialization sync
+  perturbation still passes all 36 executed cases (8 expected role skips). This
+  is one full delayed loop, not 50 delayed loops. The earlier `clock-red.jsonl`
+  remains the wall-clock-binding negative control.
+
+A separate full Python discovery attempt failed the default-registry test because
+this fresh worker lacked WAMR/Wasmtime example executables. The independent
+reviewer confirmed that CI explicitly builds them; no local full-discovery pass
+is claimed. The required CI run must execute that path before landing.
+
+Final exact-head CI/review and queue/postmerge proof remain required and are
+published as PR comments once available. Preliminary source review is not final
+exact-head approval.

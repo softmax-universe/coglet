@@ -58,6 +58,53 @@ class FixtureClockTests(unittest.TestCase):
         result = asyncio.run(run_case(impl, 'test', case))
         self.assertIsNone(result[3], result)
 
+    def test_large_reply_flush_before_send_ack(self):
+        # One maximum-size wire frame exceeds both kernel and asyncio pipe buffers.
+        child = CHILD.replace("out = b'\\x1a' + now.to_bytes(4, 'big')",
+                              "out = b'x' * (1024 * 1024)")
+        case = dict(name='large-reply', timeout_ms=5000, steps=[
+            {'send': {}, 'at_ms': 100},
+            {'expect_hex': (b'x' * (1024 * 1024)).hex()},
+        ])
+        result = asyncio.run(run_case(self.impl(child), 'test', case))
+        self.assertIsNone(result[3], result)
+
+    def test_large_initial_reply_before_clock_connection(self):
+        child = CHILD.replace("s = socket.socket(socket.AF_UNIX)",
+            "sys.stdout.buffer.write((1024 * 1024).to_bytes(4, 'big') + b'x' * (1024 * 1024)); sys.stdout.buffer.flush()\ns = socket.socket(socket.AF_UNIX)")
+        case = dict(name='large-initial', timeout_ms=5000, steps=[
+            {'expect_hex': (b'x' * (1024 * 1024)).hex()},
+        ])
+        result = asyncio.run(run_case(self.impl(child), 'test', case))
+        self.assertIsNone(result[3], result)
+
+    def test_stdout_overflow_fails_without_backpressure_deadlock(self):
+        child = CHILD.replace("out = b'\\x1a' + now.to_bytes(4, 'big')",
+                              "out = b'x' * (5 * 1024 * 1024)")
+        case = dict(name='stdout-overflow', timeout_ms=5000, steps=[
+            {'send': {}, 'at_ms': 100}, {'expect': {}},
+        ])
+        result = asyncio.run(run_case(self.impl(child), 'test', case))
+        self.assertIn('4 MiB unread byte limit', str(result[3]))
+        self.assertNotIn('TimeoutError', str(result[3]))
+        self.assertLess(result[2], 2)
+
+    def test_buffered_unexpected_byte_is_not_silence(self):
+        case = dict(name='buffered-silence', steps=[
+            {'send': {}, 'at_ms': 100}, {'silence_ms': 20},
+        ])
+        result = asyncio.run(run_case(self.impl(), 'test', case))
+        self.assertIn('unexpected bytes during silence', str(result[3]))
+
+    def test_partial_frame_eof_is_failure(self):
+        child = CHILD.replace("out = b'\\x1a' + now.to_bytes(4, 'big')", "out = b'x'")
+        child = child.replace("len(out).to_bytes(4, 'big')", "(100).to_bytes(4, 'big')")
+        child = child.replace("s.sendall(now.to_bytes(8, 'big'))",
+                              "s.sendall(now.to_bytes(8, 'big')); os.close(1)")
+        case = dict(name='partial-eof', steps=[{'send': {}, 'at_ms': 100}, {'expect': {}}])
+        result = asyncio.run(run_case(self.impl(child), 'test', case))
+        self.assertIn('IncompleteReadError', str(result[3]))
+
     def test_clock_requires_stdio_and_exact_boolean(self):
         for options in [dict(fixture_clock=1), dict(transport='unix', socket='unused')]:
             impl = self.impl()
