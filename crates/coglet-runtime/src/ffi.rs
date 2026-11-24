@@ -59,7 +59,8 @@ fn guarded(call: impl FnOnce() -> i32) -> i32 {
     }
 }
 
-/// Start/recover the durable coordinator from trusted JSON {wal, setup, native_schedule?}.
+/// Start/recover from trusted JSON {wal, setup, native_schedule?, trusted_extension_catalog?}.
+/// The optional closed catalog record is {json, sha256}; pins cover exact UTF-8 bytes.
 /// A caught panic requires closing every link and calling stop before restart.
 /// # Safety
 /// `config` references `n` readable immutable bytes for this call.
@@ -80,6 +81,14 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
             setup: serde_json::Value,
             #[serde(default)]
             native_schedule: Option<serde_json::Value>,
+            #[serde(default)]
+            trusted_extension_catalog: Option<serde_json::Map<String, serde_json::Value>>,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct CatalogConfig {
+            json: String,
+            sha256: String,
         }
         let Ok(config) =
             serde_json::from_slice::<Config>(unsafe { slice::from_raw_parts(config, n) })
@@ -89,28 +98,45 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
         if !config.wal.is_absolute() {
             return -1;
         }
+        let catalog = match config.trusted_extension_catalog {
+            Some(fields) => {
+                match serde_json::from_value::<CatalogConfig>(serde_json::Value::Object(fields)) {
+                    Ok(catalog) => Some(catalog),
+                    Err(_) => return -1,
+                }
+            }
+            None => None,
+        };
         let Ok(mut runtime) = RUNTIME.lock() else {
             return -2;
         };
         if runtime.is_some() {
             return -1;
         }
-        let result =
-            crate::RuntimeService::open(&config.wal, &config.setup, 128).and_then(|mut service| {
-                service.supervised_now()?;
-                if let Some(schedule) = config.native_schedule {
-                    #[cfg(feature = "native-engine")]
-                    service.enable_native(
-                        serde_json::from_value(schedule).map_err(|e| e.to_string())?,
-                    )?;
-                    #[cfg(not(feature = "native-engine"))]
-                    {
-                        let _ = schedule;
-                        return Err("native-engine feature unavailable".into());
-                    }
+        let opened = match catalog {
+            Some(catalog) => crate::TrustedExtensionCatalog::from_pinned_bytes(
+                catalog.json.as_bytes(),
+                &catalog.sha256,
+            )
+            .and_then(|catalog| {
+                crate::RuntimeService::open_with_catalog(&config.wal, &config.setup, 128, catalog)
+            }),
+            None => crate::RuntimeService::open(&config.wal, &config.setup, 128),
+        };
+        let result = opened.and_then(|mut service| {
+            service.supervised_now()?;
+            if let Some(schedule) = config.native_schedule {
+                #[cfg(feature = "native-engine")]
+                service
+                    .enable_native(serde_json::from_value(schedule).map_err(|e| e.to_string())?)?;
+                #[cfg(not(feature = "native-engine"))]
+                {
+                    let _ = schedule;
+                    return Err("native-engine feature unavailable".into());
                 }
-                Ok(service)
-            });
+            }
+            Ok(service)
+        });
         match result {
             Ok(service) => {
                 FAILED_AT_START.store(service.failed_attempts() as u64, Ordering::SeqCst);

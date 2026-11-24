@@ -2,10 +2,10 @@
 
 This is supervisor provisioning, **not a wire message, guest import, grant source,
 or production game registration**. Built-in bindings remain unchanged. A default
-`RuntimeService::open` or `SurfaceSession::new` has no extensions. C ABI global
-configuration does not install an extension catalog; use the Rust service API or
-the production socket daemon below. Linux socket tests do not qualify Apple
-sandbox/device execution, native game producers, motor/research effects or SDKs.
+`RuntimeService::open` or `SurfaceSession::new` has no extensions. The embedded
+C ABI can opt in through trusted start configuration (ADR-0022), as below.
+Linux pointer/socket tests do not qualify Apple sandbox/device execution,
+native game producers, motor/research effects or SDKs.
 
 ## Exact consumer API
 
@@ -26,6 +26,24 @@ Production daemon (the existing arguments retain their meaning):
 cogletd --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON \
   --trusted-extension-catalog CATALOG_JSON SHA256
 ```
+
+Embedded C ABI start (after the unchanged immutable `coglet_runtime_configure`):
+
+```json
+{"wal":"/absolute/product/state.wal","setup":{},"trusted_extension_catalog":{"json":"<exact reviewed catalog JSON text>","sha256":"<separately pinned lowercase SHA-256>"}}
+```
+
+`setup` above is a placeholder for the normal complete runtime setup, not an
+executable example. The optional catalog must be a closed JSON object with both
+string members; arrays, unknown fields and missing members return -1. Invalid
+catalog/pin or WAL pin mismatch returns -2 without publishing a service (status
+remains 1). The outer config is bounded to 16 MiB; decoded `json` bytes to 1 MiB.
+The digest covers decoded UTF-8 bytes, not the JSON string's escaping. Omitted
+(or null) provisioning preserves built-ins-only startup; the immutable binding
+is never changed. Close every live link before stop; a new identity still needs
+a new process. Ordinary startup refusal does not prohibit negotiation-only open.
+Both default and native-engine builds validate provisioning identically; only
+native-engine executes Wasm. No headers or C signatures change.
 
 A missing file/pin, invalid pin, unknown option or digest mismatch fails before
 listening. The exact digest is stored with the WAL; reopening requires the same
@@ -139,6 +157,8 @@ Target: `cargo test -p coglet-runtime --locked --test trusted_extension_catalog`
 
 | Requirement | Named executable proof |
 |---|---|
+| Actual embedded C pointers, default rejection, exact event/action WAL, size bounds and real event-woken WAMR | `embedded_trusted_catalog_start` (`--test embedded_trusted_catalog`, default/native-engine) |
+| Closed start record, invalid pin/schema/owner/resource, startup no-service, live link stop and WAL pin fences | `embedded_trusted_catalog_failure_fences` (same target, default/native-engine) |
 | Production daemon, private AF_UNIX, local URI schemas, exact pins, journal reopen | `CogletdTrustedExtensionCatalogTest` |
 | Per-operation sibling args/value, missing event/read grant, wrong source/owner, multi-owner refusal | `CogletdTrustedExtensionCatalogTest` |
 | Exact entry/direction/URI/resource advertisement, built-ins-only refusal | `CogletdTrustedExtensionCatalogTest` |
