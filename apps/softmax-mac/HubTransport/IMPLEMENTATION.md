@@ -24,7 +24,7 @@ Full logs from Softmax Mac run45386256577 at e0c953981e5a19dc367fb67c20b7180808c
 
 Durable run: https://github.com/softmax-universe/coglet/actions/runs/45386256577/job/138417833696 . Worker raw logs: macos-45386256577-{full,failed}.log.
 
-## Packaging repair and UI RED pending
+## Packaging repair and UI RED (historical pre-UI slice)
 
 The later native failure is `lipo: unknown architecture specification flag: <staging path>`: the input filename followed the variadic `-verify_arch` list. Tightened the portable lipo fake to enforce actual argument grammar; observed RED exit64. Production commit eb605f9 moves the input before `-verify_arch arm64 x86_64`; portable GREEN follows. All five portable packaging/signing tests also pass on5e07553 (portable-run1-5e07553.log). Fake orchestration is not native architecture/signature proof.
 
@@ -46,6 +46,18 @@ Still required:
 4. Verify actual universal helper in the app bundle, resource lookup, inside-out signing; revisit private-pipe SIGPIPE and process-crash/restart regression coverage.
 5. Independent exact-head review, every required check green, repository merge queue, then kanban_request_review with published_pr after merge. No delivery claim yet.
 
+## Current UI/native verification slice — authoritative
+
+Native45391611490@5e07553 completed FAILURE with the intended UI RED: SoftmaxUITests.swift:315 `Final onboarding must expose router enrollment` (raw failed log line9655). The actual app artifact was downloaded and inspected with file(1): Contents/Helpers/softmax-hub-link is a Mach-O universal arm64+x86_64 executable. This verifies native lipo packaging, NOT signing. Other native test failures and snapshot results must still be reconciled; no all-green claim.
+
+PR98 OPEN/DRAFT source b4f0e9e5d0d49308dde1de21efde97f63b4c5abc implements HubSettings.swift shared summary/sheet in existing Settings and final onboarding groups. Secure pasted local envelope, bounded local QR image import through CoreImage, manual pinned-node/address/relay/invite disclosure; public device identity copy, name/status/signout. ShellModel.configureHub starts separately from voice and returns before any Keychain/transport in isolated testing. App shutdown stops it; menu availability reflects actual connection. Native workflow now explicitly verifies real bundled architectures and inside-out ad-hoc helper/app signatures. No notarization or stable-TCC identity claim.
+
+Native UI/signature/render GREEN pending run45398673357 at exact b4f0e9e. Prior source/token baseline checker rerun PASS before UI edits; light Settings and dark final-onboarding renders reinspected. Native post-change comparison remains required. Portable packaging1+signing4 cases pass again locally; no Swift toolchain here.
+
+Independent TEST-ONLY regression head99ee88264cc48c8c03e057a6bb5de36a37572bed is on wip/t_01a205f93f231486 with dispatched native45398062674 (QUEUED at last check). It adds pre-pairing helper-crash restart and ordered closed-input/SIGPIPE probes. Production unchanged there; inspect actual RED before fixing. PR UI head deliberately excludes99ee882 so an expected early regression failure does not prevent the UI lane executing. Local resume-native-failure at a9b5a9e contains99ee882 plus same UI, while current hub-ui-integration is the PR source (plus these docs). Integrate regression/fixes only after exact probe results; preserve both streams on migration.
+
+Remaining: native UI behavior GREEN, actual large/contrast render comparisons and reviewed intentional snapshot updates; native signing/resource proof; observed crash/SIGPIPE regression RED→GREEN and restart-error recovery; independent exact-head review, all checks green, merge queue, then final kanban_request_review with published_pr after merge. Python on prior5e07553 failed speech heard-truncation step7 timeout; no waiver/rerun or fix claimed.
+
 ## TDD provenance
 
-Rust initial library RED then real-iroh GREEN. Swift missing core API RED45337370014; missing process bridge RED45339321655; missing Keychain injection RED45339491432; focused native readiness RED45382448795 then GREEN45386256577. UI behavior probe is pending, not a claimed RED. Linux worker has no Swift toolchain; native results are hosted evidence, never local execution. Earlier Rust real-iroh two-test/strict-Clippy/fmt passes at4d8c674 are historical, not rerun during this packaging/UI-probe slice.
+Rust initial library RED then real-iroh GREEN. Swift missing core API RED45337370014; missing process bridge RED45339321655; missing Keychain injection RED45339491432; focused native readiness RED45382448795 then GREEN45386256577. UI entry RED45391611490 is confirmed; production UI GREEN remains pending45398673357. Linux worker has no Swift toolchain; native results are hosted evidence, never local execution. Earlier Rust real-iroh two-test/strict-Clippy/fmt passes at4d8c674 are historical, not rerun during this packaging/UI-probe slice.
