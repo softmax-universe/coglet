@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cogent cognitive architecture</title>
+<style>
+:root {
+  --paper: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b6558;
+  --rule: #e2dccd; --accent: #0b6e69; --accent-soft: #d9ece9;
+  --code-bg: #fbf9f3; --code-ink: #2a2721;
+  --kw: #8a3b12; --cls: #0b6e69; --fn: #1f4e8c; --str: #5d6b1e; --doc: #6b6558;
+  --num: #8c2f5a; --deco: #7a4fa3; --cmt: #9a9384;
+  --frozen-bg: #dfe9f5; --frozen-ink: #1f4e8c;
+  --adr-bg: #f3e6c8; --adr-ink: #7a5200;
+  --draft-bg: #e9e4f3; --draft-ink: #5b3f8f;
+  --proposed-bg: #d9ece9; --proposed-ink: #0b5a56;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161a; --panel: #1b1e24; --ink: #e9e6df; --muted: #9a968c;
+    --rule: #2c3038; --accent: #5cc8bf; --accent-soft: #17302f;
+    --code-bg: #171a1f; --code-ink: #dcd8cf;
+    --kw: #e8a06a; --cls: #5cc8bf; --fn: #8fb8f0; --str: #b9c97a; --doc: #9a968c;
+    --num: #e58fb6; --deco: #c3a2e8; --cmt: #6f6b62;
+    --frozen-bg: #1c2b40; --frozen-ink: #9cc2f2;
+    --adr-bg: #3a2f14; --adr-ink: #ecc56b;
+    --draft-bg: #2b2440; --draft-ink: #c3a2e8;
+    --proposed-bg: #17302f; --proposed-ink: #7fdcd3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--rule); background: var(--panel); }
+nav .brand { font: 600 1.15rem/1.2 var(--serif); letter-spacing: .01em; margin-bottom: .2rem; }
+nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+nav input { width: 100%; padding: .45rem .6rem; margin-bottom: 1rem; font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+nav input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav ul { list-style: none; margin: 0; padding: 0; }
+nav li.h2 > a { display: block; margin-top: .9rem; padding: .15rem .5rem; font-weight: 600;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+nav li.h3 > a { display: block; padding: .12rem .5rem .12rem .9rem; font-size: .84rem;
+  color: var(--muted); border-left: 2px solid transparent; }
+nav li.h3 > a code { font: inherit; font-family: var(--mono); font-size: .78rem; }
+nav a:hover { text-decoration: none; color: var(--accent); }
+nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+main { padding: 3rem clamp(1rem, 4vw, 4rem) 6rem; max-width: 62rem; }
+h1 { font: 600 2.6rem/1.1 var(--serif); margin: 0 0 1rem; letter-spacing: -.01em; }
+h2 { font: 600 1.75rem/1.2 var(--serif); margin: 4rem 0 .8rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink); }
+h3 { font: 600 1.05rem/1.3 var(--sans); margin: 2.4rem 0 .6rem; display: flex;
+  flex-wrap: wrap; align-items: center; gap: .5rem; }
+h3 code { font-family: var(--mono); font-size: 1rem; background: none; padding: 0; color: var(--cls); }
+p, li { max-width: 46rem; }
+p code, li code, td code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft);
+  color: var(--ink); padding: .08em .35em; border-radius: 4px; white-space: nowrap; }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+  padding: .3em .6em; border-radius: 99px; white-space: nowrap; }
+.badge.frozen { background: var(--frozen-bg); color: var(--frozen-ink); }
+.badge.adr { background: var(--adr-bg); color: var(--adr-ink); }
+.badge.draft { background: var(--draft-bg); color: var(--draft-ink); }
+.badge.proposed { background: var(--proposed-bg); color: var(--proposed-ink); }
+.headerlink { opacity: 0; margin-left: .2rem; color: var(--muted); font-weight: 400; }
+h2:hover .headerlink, h3:hover .headerlink { opacity: 1; }
+.codehilite { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 8px; margin: .8rem 0 1.2rem; overflow-x: auto; }
+.codehilite pre { margin: 0; padding: 1rem 1.2rem; font: 13.5px/1.6 var(--mono); color: var(--code-ink); }
+.codehilite .k, .codehilite .kn, .codehilite .kc, .codehilite .kd, .codehilite .kt, .codehilite .ow { color: var(--kw); }
+.codehilite .nc, .codehilite .nn { color: var(--cls); font-weight: 600; }
+.codehilite .nf, .codehilite .fm { color: var(--fn); font-weight: 600; }
+.codehilite .nd { color: var(--deco); }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sr { color: var(--str); }
+.codehilite .sd { color: var(--doc); font-family: var(--sans); font-size: 13.5px; }
+.codehilite .mi, .codehilite .mf, .codehilite .mh { color: var(--num); }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: var(--cmt); font-style: italic; }
+.codehilite .nb, .codehilite .bp { color: var(--fn); }
+.tablewrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--ink); padding: .5rem .8rem .5rem 0; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: .55rem .8rem .55rem 0; vertical-align: top; }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+ol, ul { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+.idl .nc { color: var(--cls); font-weight: 600; }
+.idl .nf { color: var(--fn); font-weight: 600; }
+.idl .na { color: var(--code-ink); }
+.idl .ty { color: var(--kw); }
+.idl .op { color: var(--str); }
+.idl .kw, .idl .rt { color: var(--deco); }
+.idl .sd { color: var(--doc); font-family: var(--sans); }
+.idl .c { color: var(--cmt); font-style: italic; }
+main p > img { display: block; max-width: min(100%, 34rem); height: auto; margin: 1rem 0; border-radius: 14px; }
+figure.diagram { margin: 1.4rem 0 .4rem; }
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram + p { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+nav .pages { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+nav .pages a { padding: .35rem .6rem; font-size: .8rem; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 6px; color: var(--muted); }
+nav .pages a.here { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); max-height: 45vh; }
+  h1 { font-size: 2rem; }
+}
+@media print { nav { display: none; } .layout { display: block; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">Cogent cognitive architecture</div>
+  <div class="sub">Generated from cognitive-architecture.md. Do not edit.</div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html" class="here">Cognitive architecture</a></div>
+  <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
+  <ul>
+  <li class="h2"><a href="#who-talks-to-whom">Who talks to whom</a></li><li class="h2"><a href="#where-everything-runs">Where everything runs</a></li><li class="h2"><a href="#facecoglet">FaceCoglet</a></li><li class="h3"><a href="#facecoglet_1"><code>FaceCoglet</code></a></li><li class="h3"><a href="#face-types">Face types</a></li><li class="h2"><a href="#fastloopcoglet">FastLoopCoglet</a></li><li class="h3"><a href="#fastloopcoglet_1"><code>FastLoopCoglet</code></a></li><li class="h2"><a href="#factorycoglet">FactoryCoglet</a></li><li class="h3"><a href="#factorycoglet_1"><code>FactoryCoglet</code></a></li><li class="h3"><a href="#ticket"><code>Ticket</code></a></li><li class="h3"><a href="#ticket-requests">Ticket requests</a></li><li class="h3"><a href="#ticket-reports">Ticket reports</a></li><li class="h3"><a href="#factory-adapter-workercontrol">Factory adapter: <code>worker.control</code></a></li><li class="h2"><a href="#optimizercoglet">OptimizerCoglet</a></li><li class="h3"><a href="#optimizercoglet_1"><code>OptimizerCoglet</code></a></li><li class="h2"><a href="#memorycoglet">MemoryCoglet</a></li><li class="h3"><a href="#memorycoglet_1"><code>MemoryCoglet</code></a></li><li class="h3"><a href="#memory-types">Memory types</a></li><li class="h2"><a href="#routercoglet">RouterCoglet</a></li>
+  </ul>
+</nav>
+<main>
+<h1 id="cogent-cognitive-architecture">Cogent cognitive architecture<a class="headerlink" href="#cogent-cognitive-architecture" title="Permanent link">#</a></h1>
+<p>Part of the <a href="index.html">cogent design</a>: which coglets sit at the cogent's
+centre and how they are wired.</p>
+<h2 id="who-talks-to-whom">Who talks to whom<a class="headerlink" href="#who-talks-to-whom" title="Permanent link">#</a></h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="770" height="344" viewBox="0 0 770 344" role="img" aria-label="Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent&#x27;s centre the fast loop and the optimizer use memory and file tickets with the factory.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="calls-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="calls-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="calls-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="calls-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="calls-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="calls-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="calls-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="calls-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="769" height="343" rx="12" class="dg-bg"/>
+<rect x="20" y="30" width="190" height="294" rx="14" class="dg-group"/>
+<text x="38" y="54" text-anchor="start" class="dg-cap">ON A DEVICE</text>
+<rect x="40" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="115.0" y="95.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<text x="115.0" y="111.0" text-anchor="middle" class="dg-m">talks with the user</text>
+<rect x="40" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="115.0" y="275.0" text-anchor="middle" class="dg-b">App coglets</text>
+<text x="115.0" y="291.0" text-anchor="middle" class="dg-m">drive the apps</text>
+<rect x="310" y="30" width="440" height="294" rx="14" class="dg-group"/>
+<text x="328" y="54" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<rect x="330" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="405.0" y="95.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="405.0" y="111.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
+<rect x="580" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="655.0" y="95.0" text-anchor="middle" class="dg-b">Memory</text>
+<text x="655.0" y="111.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
+<rect x="330" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="405.0" y="275.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="405.0" y="291.0" text-anchor="middle" class="dg-m">tickets in, patches out</text>
+<rect x="580" y="250" width="150" height="56" rx="8" class="dg-coglet"/>
+<text x="655.0" y="275.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="655.0" y="291.0" text-anchor="middle" class="dg-m">watches, improves</text>
+<line x1="110" y1="128" x2="110" y2="248" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="122" y="172" text-anchor="start" class="dg-b">intent</text>
+<text x="122" y="187" text-anchor="start" class="dg-m">request</text>
+<text x="122" y="200" text-anchor="start" class="dg-m">report</text>
+<line x1="192" y1="98" x2="328" y2="98" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="260" y="74" text-anchor="middle" class="dg-b">feature</text>
+<text x="260" y="89" text-anchor="middle" class="dg-m">request · update</text>
+<line x1="482" y1="98" x2="578" y2="98" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="530" y="88" text-anchor="middle" class="dg-b">memory</text>
+<text x="530" y="100" text-anchor="middle" class="dg-b"></text>
+<text x="530" y="115" text-anchor="middle" class="dg-m">write</text>
+<text x="530" y="128" text-anchor="middle" class="dg-m">query</text>
+<line x1="405" y1="128" x2="405" y2="248" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="417" y="152" text-anchor="start" class="dg-b">ticket</text>
+<text x="417" y="167" text-anchor="start" class="dg-m">submit</text>
+<text x="417" y="180" text-anchor="start" class="dg-m">answer</text>
+<text x="417" y="193" text-anchor="start" class="dg-m">amend</text>
+<text x="417" y="206" text-anchor="start" class="dg-m">cancel</text>
+<text x="417" y="219" text-anchor="start" class="dg-m">replay</text>
+<line x1="578" y1="278" x2="482" y2="278" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="530" y="268" text-anchor="middle" class="dg-b">ticket</text>
+<text x="530" y="280" text-anchor="middle" class="dg-b"></text>
+<text x="530" y="295" text-anchor="middle" class="dg-m">submit</text>
+<line x1="655" y1="248" x2="655" y2="128" class="dg-teal" stroke-width="1.6" marker-end="url(#calls-teal)" marker-start="url(#calls-teal-s)"/>
+<text x="667" y="178" text-anchor="start" class="dg-b">memory</text>
+<text x="667" y="193" text-anchor="start" class="dg-m">query</text>
+<path d="M328 116H270V278H194" class="dg-blue" stroke-width="1.6" marker-end="url(#calls-blue)"/>
+<text x="282" y="204" text-anchor="start" class="dg-b">patch</text>
+<path d="M470 128V190H620V248" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#calls-blue)"/>
+<text x="545" y="182" text-anchor="middle" class="dg-b">logs</text>
+</svg>
+</figure>
+<p><em>Teal arrows are families of messages between two coglets, with the calls
+listed beside them. Blue arrows are the back channel, which is separate: a
+patch going in to a coglet, and logs streaming out of one. The full list is in
+the table below.</em></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>From</th>
+<th>Message</th>
+<th>Payload</th>
+<th>To</th>
+<th>Carried by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Face</td>
+<td><code>intent.request</code></td>
+<td><code>UserIntent</code></td>
+<td>an app coglet</td>
+<td>the Softmax app's runtime</td>
+</tr>
+<tr>
+<td>app coglet</td>
+<td><code>intent.report</code></td>
+<td><code>IntentReport</code></td>
+<td>Face</td>
+<td>the Softmax app's runtime</td>
+</tr>
+<tr>
+<td>Face</td>
+<td><code>feature.request</code></td>
+<td><code>FeatureRequest</code></td>
+<td>fast loop</td>
+<td>the router</td>
+</tr>
+<tr>
+<td>fast loop</td>
+<td><code>feature.update</code></td>
+<td><code>FeatureUpdate</code></td>
+<td>Face</td>
+<td>the router</td>
+</tr>
+<tr>
+<td>fast loop</td>
+<td><code>ticket.submit</code>, <code>.answer</code>, <code>.amend</code>, <code>.cancel</code>, <code>.replay</code></td>
+<td>ticket requests</td>
+<td>factory</td>
+<td>the cogent's runtime</td>
+</tr>
+<tr>
+<td>optimizer</td>
+<td><code>ticket.submit</code>, <code>.replay</code></td>
+<td>ticket requests</td>
+<td>factory</td>
+<td>the cogent's runtime</td>
+</tr>
+<tr>
+<td>factory</td>
+<td><code>ticket.receipt</code>, <code>.update</code>, <code>.result</code></td>
+<td>ticket reports</td>
+<td>the submitter</td>
+<td>the cogent's runtime</td>
+</tr>
+<tr>
+<td>fast loop, optimizer</td>
+<td><code>patch</code></td>
+<td>a <code>Candidate</code></td>
+<td>any coglet</td>
+<td>the back channel, through the router</td>
+</tr>
+<tr>
+<td>optimizer</td>
+<td><code>tail_log</code>, <code>read_state</code></td>
+<td></td>
+<td>fast loop</td>
+<td>the back channel</td>
+</tr>
+<tr>
+<td>fast loop, optimizer</td>
+<td><code>memory.write</code>, <code>memory.query</code></td>
+<td><code>MemoryWrite</code>, <code>MemoryQuery</code></td>
+<td>memory</td>
+<td>the cogent's runtime</td>
+</tr>
+<tr>
+<td>memory</td>
+<td><code>memory.result</code></td>
+<td><code>MemoryResult</code></td>
+<td>the asker</td>
+<td>the cogent's runtime</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="where-everything-runs">Where everything runs<a class="headerlink" href="#where-everything-runs" title="Permanent link">#</a></h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-label="The Softmax app on the user&#x27;s machine runs Face and the coglets for its connected apps; the cogent&#x27;s centre runs the fast loop, factory, optimizer and memory.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="deployment-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="deployment-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="deployment-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="deployment-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="deployment-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="deployment-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="deployment-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="deployment-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="499" rx="12" class="dg-bg"/>
+<rect x="28" y="92" width="464" height="262" rx="12" class="dg-group"/>
+<text x="40" y="344" text-anchor="start" class="dg-cap">USER&#x27;S MACHINE: THE SOFTMAX APP</text>
+<rect x="48.0" y="24" width="121.33333333333334" height="40" rx="8" class="dg-world"/>
+<text x="108.66666666666667" y="48.0" text-anchor="middle" class="dg-b">Orb, mic, speaker</text>
+<rect x="40.0" y="108" width="137.33333333333334" height="50" rx="8" class="dg-adapter"/>
+<text x="108.66666666666667" y="137.0" text-anchor="middle" class="dg-b">Softmax app</text>
+<line x1="108.66666666666667" y1="66" x2="108.66666666666667" y2="106" class="dg-ink" stroke-width="1.6" marker-end="url(#deployment-ink)" marker-start="url(#deployment-ink-s)"/>
+<line x1="108.66666666666667" y1="160" x2="108.66666666666667" y2="202" class="dg-warm" stroke-width="1.6" marker-end="url(#deployment-warm)" marker-start="url(#deployment-warm-s)"/>
+<text x="118.66666666666667" y="90" text-anchor="start" class="dg-m">native I/O</text>
+<text x="118.66666666666667" y="186" text-anchor="start" class="dg-m">events, actions</text>
+<rect x="199.33333333333334" y="24" width="121.33333333333334" height="40" rx="8" class="dg-world"/>
+<text x="260.0" y="48.0" text-anchor="middle" class="dg-b">Blender</text>
+<rect x="191.33333333333334" y="108" width="137.33333333333334" height="50" rx="8" class="dg-adapter"/>
+<text x="260.0" y="137.0" text-anchor="middle" class="dg-b">Blender adapter</text>
+<line x1="260.0" y1="66" x2="260.0" y2="106" class="dg-ink" stroke-width="1.6" marker-end="url(#deployment-ink)" marker-start="url(#deployment-ink-s)"/>
+<line x1="260.0" y1="160" x2="260.0" y2="202" class="dg-warm" stroke-width="1.6" marker-end="url(#deployment-warm)" marker-start="url(#deployment-warm-s)"/>
+<rect x="350.6666666666667" y="24" width="121.33333333333334" height="40" rx="8" class="dg-world"/>
+<text x="411.33333333333337" y="48.0" text-anchor="middle" class="dg-b">Chrome</text>
+<rect x="342.6666666666667" y="108" width="137.33333333333334" height="50" rx="8" class="dg-adapter"/>
+<text x="411.33333333333337" y="137.0" text-anchor="middle" class="dg-b">Chrome adapter</text>
+<line x1="411.33333333333337" y1="66" x2="411.33333333333337" y2="106" class="dg-ink" stroke-width="1.6" marker-end="url(#deployment-ink)" marker-start="url(#deployment-ink-s)"/>
+<line x1="411.33333333333337" y1="160" x2="411.33333333333337" y2="202" class="dg-warm" stroke-width="1.6" marker-end="url(#deployment-warm)" marker-start="url(#deployment-warm-s)"/>
+<rect x="40" y="204" width="440" height="118" rx="8" class="dg-runtime"/>
+<text x="52" y="224" text-anchor="start" class="dg-b">CogletRuntime</text>
+<text x="468" y="224" text-anchor="end" class="dg-m">runs coglets</text>
+<rect x="52.0" y="240" width="133.33333333333334" height="66" rx="8" class="dg-coglet"/>
+<text x="118.66666666666667" y="277.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<rect x="193.33333333333334" y="240" width="133.33333333333334" height="66" rx="8" class="dg-coglet"/>
+<text x="260.0" y="277.0" text-anchor="middle" class="dg-b">BlenderCoglet</text>
+<rect x="334.6666666666667" y="240" width="133.33333333333334" height="66" rx="8" class="dg-coglet"/>
+<text x="401.33333333333337" y="277.0" text-anchor="middle" class="dg-b">BrowserCoglet</text>
+<line x1="260.0" y1="324" x2="260.0" y2="408" class="dg-blue" stroke-width="1.6" marker-end="url(#deployment-blue)" marker-start="url(#deployment-blue-s)"/>
+<text x="270.0" y="384" text-anchor="start" class="dg-m">messages, patches</text>
+<rect x="528" y="92" width="404" height="262" rx="12" class="dg-group"/>
+<text x="540" y="344" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<rect x="548.0" y="24" width="364.0" height="40" rx="8" class="dg-world"/>
+<text x="730.0" y="48.0" text-anchor="middle" class="dg-b">Workers</text>
+<rect x="540.0" y="108" width="380.0" height="50" rx="8" class="dg-adapter"/>
+<text x="730.0" y="130.0" text-anchor="middle" class="dg-b">Factory adapter</text>
+<text x="730.0" y="146.0" text-anchor="middle" class="dg-m">runs the jobs</text>
+<line x1="730.0" y1="66" x2="730.0" y2="106" class="dg-ink" stroke-width="1.6" marker-end="url(#deployment-ink)" marker-start="url(#deployment-ink-s)"/>
+<line x1="730.0" y1="160" x2="730.0" y2="202" class="dg-warm" stroke-width="1.6" marker-end="url(#deployment-warm)" marker-start="url(#deployment-warm-s)"/>
+<text x="740.0" y="90" text-anchor="start" class="dg-m">native I/O</text>
+<text x="740.0" y="186" text-anchor="start" class="dg-m">events, actions</text>
+<rect x="540" y="204" width="380" height="118" rx="8" class="dg-runtime"/>
+<text x="552" y="224" text-anchor="start" class="dg-b">CogletRuntime</text>
+<text x="908" y="224" text-anchor="end" class="dg-m">runs coglets</text>
+<rect x="552.0" y="240" width="83.0" height="66" rx="8" class="dg-coglet"/>
+<text x="593.5" y="277.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<rect x="643.0" y="240" width="83.0" height="66" rx="8" class="dg-coglet"/>
+<text x="684.5" y="277.0" text-anchor="middle" class="dg-b">Factory</text>
+<rect x="734.0" y="240" width="83.0" height="66" rx="8" class="dg-coglet"/>
+<text x="775.5" y="277.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<rect x="825.0" y="240" width="83.0" height="66" rx="8" class="dg-coglet"/>
+<text x="866.5" y="277.0" text-anchor="middle" class="dg-b">Memory</text>
+<line x1="730.0" y1="324" x2="730.0" y2="408" class="dg-blue" stroke-width="1.6" marker-end="url(#deployment-blue)" marker-start="url(#deployment-blue-s)"/>
+<text x="740.0" y="384" text-anchor="start" class="dg-m">messages, patches</text>
+<rect x="40" y="410" width="880" height="62" rx="8" class="dg-hub"/>
+<text x="480" y="437" text-anchor="middle" class="dg-b">Router</text>
+<text x="480" y="456" text-anchor="middle" class="dg-m">finds runtimes · carries messages between them · carries patches and logs</text>
+</svg>
+</figure>
+<p><em>One device in detail. The Softmax app runs Face and the coglets for its
+connected apps, next to their adapters. The cogent's centre runs in its own runtime, and
+the router joins them.</em></p>
+<h2 id="facecoglet">FaceCoglet<a class="headerlink" href="#facecoglet" title="Permanent link">#</a></h2>
+<p>The local half of the conversation. It subscribes to the Softmax app's
+push-to-talk and voice events, controls the hovering avatar, and talks to the
+user itself. Voice is transcribed on the user's machine or sent from there
+straight to the speech provider; it does not pass through Softmax infrastructure.</p>
+<h3 id="facecoglet_1"><code>FaceCoglet</code><a class="headerlink" href="#facecoglet_1" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">FaceCoglet</span>
+  <span class="kw">subscribes</span>  <span class="op">speech.start, speech.partial, speech.end, speech.position, speech.barge_in</span>
+  <span class="kw">needs</span>       <span class="op">speech.speak_chunk, speech.stop, speech.backchannel, expression.set_expression,</span>
+              <span class="sd">llm.complete, intent.request, feature.request</span>
+  <span class="kw">owns</span>        <span class="op">audio.mic, audio.speaker, display.face</span>
+
+  <span class="kw">on</span>        <span class="op">speech.end</span>          <span class="ty">SpeechEnd</span>
+            <span class="sd">Decide which app the request is for, or ask. Send that app&#x27;s coglet a UserIntent</span>
+            <span class="sd">and acknowledge aloud.</span>
+  <span class="kw">on</span>        <span class="op">speech.barge_in</span>     <span class="ty">SpeechBargeIn</span>
+            <span class="sd">The adapter already stopped the audio. Record how far playback got.</span>
+  <span class="kw">provides</span>  <span class="op">intent.report</span>       <span class="ty">IntentReport</span>    <span class="rt">addressed</span>
+            <span class="sd">Tell the user the result. On `needs_help`, ask the user to explain or demonstrate,</span>
+            <span class="sd">then send a FeatureRequest.</span>
+  <span class="kw">provides</span>  <span class="op">feature.update</span>      <span class="ty">FeatureUpdate</span>   <span class="rt">addressed</span>
+            <span class="sd">Tell the user when a new ability has arrived.</span>
+  <span class="kw">calls</span>     <span class="op">intent.request</span>      <span class="ty">UserIntent</span>      <span class="rt">addressed</span>
+  <span class="kw">calls</span>     <span class="op">feature.request</span>     <span class="ty">FeatureRequest</span>  <span class="rt">bound</span></pre></div>
+<h3 id="face-types">Face types<a class="headerlink" href="#face-types" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">UserIntent</span>
+  <span class="sd">Face to an app coglet: the user wants this done.</span>
+  <span class="na">to</span>        <span class="ty">CogletId</span>            <span class="sd">The app coglet the request is for.</span>
+  <span class="na">intent</span>    <span class="ty">Id</span>
+  <span class="na">text</span>      <span class="ty">str 1..4096 chars</span>   <span class="sd">What the user asked, for example &quot;make me a torus&quot;.</span>
+  <span class="na">context</span>   <span class="ty">ProfileMap?</span>         <span class="sd">Anything Face already knows that helps.</span>
+
+<span class="nc">IntentReport</span>
+  <span class="sd">App coglet to Face. Sent on each change of state.</span>
+  <span class="na">to</span>        <span class="ty">CogletId</span>
+  <span class="na">intent</span>    <span class="ty">Id</span>
+  <span class="na">state</span>     <span class="ty">&quot;working&quot; | &quot;done&quot; | &quot;failed&quot; | &quot;needs_help&quot;</span>
+  <span class="na">summary</span>   <span class="ty">str</span>                 <span class="sd">One or two plain sentences Face can say aloud.</span>
+  <span class="na">question</span>  <span class="ty">str?</span>                <span class="sd">Present with `needs_help`: what the coglet does not know.</span>
+
+<span class="nc">FeatureRequest</span>
+  <span class="sd">Face to the fast loop: an app coglet could not do something the user wants.</span>
+  <span class="na">request</span>      <span class="ty">Id</span>
+  <span class="na">coglet</span>       <span class="ty">CogletId</span>         <span class="sd">The app coglet that needs the new ability.</span>
+  <span class="na">text</span>         <span class="ty">str</span>              <span class="sd">What the user asked for.</span>
+  <span class="na">guidance</span>     <span class="ty">str</span>              <span class="sd">The user&#x27;s explanation, in their words.</span>
+  <span class="na">context</span>      <span class="ty">[ContextRef]</span>     <span class="sd">References to the transcript and to what the user did. Never</span>
+                                <span class="sd">raw content.</span>
+
+<span class="nc">FeatureUpdate</span>
+  <span class="sd">Fast loop to Face.</span>
+  <span class="na">to</span>        <span class="ty">CogletId</span>
+  <span class="na">request</span>   <span class="ty">Id</span>
+  <span class="na">state</span>     <span class="ty">&quot;received&quot; | &quot;building&quot; | &quot;shipped&quot; | &quot;failed&quot;</span>
+  <span class="na">summary</span>   <span class="ty">str</span>                 <span class="sd">One or two plain sentences Face can say aloud.</span></pre></div>
+<blockquote>
+<p><strong>Not settled:</strong> whether the fast loop or the optimizer files tickets with
+the factory and applies the patches. Both are written below as able to; only
+one may end up doing it.</p>
+</blockquote>
+<h2 id="fastloopcoglet">FastLoopCoglet<a class="headerlink" href="#fastloopcoglet" title="Permanent link">#</a></h2>
+<p>Handles events from other coglets: it responds, or forwards them on. Today
+that means taking feature requests from Face, checking memory,
+filing tickets with the factory, applying the patches that come back, and
+telling Face.</p>
+<h3 id="fastloopcoglet_1"><code>FastLoopCoglet</code><a class="headerlink" href="#fastloopcoglet_1" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">FastLoopCoglet</span>
+  <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
+  <span class="kw">needs</span>       <span class="op">llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,</span>
+              <span class="sd">ticket.cancel, ticket.replay, memory.write, memory.query</span>
+  <span class="kw">owns</span>        <span class="op">(nothing)</span>
+
+  <span class="kw">provides</span>  <span class="op">feature.request</span>     <span class="ty">FeatureRequest</span>  <span class="rt">bound</span>
+            <span class="sd">Ask memory. If the ability exists, patch it in. If not, file a ticket.</span>
+  <span class="kw">provides</span>  <span class="op">ticket.receipt</span>      <span class="ty">TicketReceipt</span>   <span class="rt">addressed</span>
+  <span class="kw">provides</span>  <span class="op">ticket.update</span>       <span class="ty">TicketUpdate</span>    <span class="rt">addressed</span>
+            <span class="sd">Pass progress on to Face.</span>
+  <span class="kw">provides</span>  <span class="op">ticket.result</span>       <span class="ty">TicketResult</span>    <span class="rt">addressed</span>
+            <span class="sd">On `done`, apply the candidate to the target coglet through its back channel, then</span>
+            <span class="sd">send a FeatureUpdate.</span>
+  <span class="kw">calls</span>     <span class="op">feature.update</span>      <span class="ty">FeatureUpdate</span>   <span class="rt">addressed</span>
+  <span class="kw">calls</span>     <span class="op">ticket.submit</span>       <span class="ty">TicketSubmit</span>    <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">ticket.answer</span>       <span class="ty">TicketAnswer</span>    <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">ticket.amend</span>        <span class="ty">TicketAmend</span>     <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">ticket.cancel</span>       <span class="ty">TicketCancel</span>    <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">ticket.replay</span>       <span class="ty">TicketReplay</span>    <span class="rt">bound</span>
+  <span class="kw">provides</span>  <span class="op">memory.result</span>       <span class="ty">MemoryResult</span>    <span class="rt">addressed</span>
+  <span class="kw">calls</span>     <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span></pre></div>
+<p>It also uses the back channel's <code>patch</code> on the coglets it is granted.</p>
+<h2 id="factorycoglet">FactoryCoglet<a class="headerlink" href="#factorycoglet" title="Permanent link">#</a></h2>
+<p>Takes tickets and produces artifacts: a new skill, a changed coglet. It tests
+its work, for example against a local simulator of the target app, before it
+reports. It does not apply its own output; it returns a patch and the fast loop
+or the optimizer applies it. The scheduler that does the work is reached
+through a factory adapter, so it can be replaced.</p>
+<h3 id="factorycoglet_1"><code>FactoryCoglet</code><a class="headerlink" href="#factorycoglet_1" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">FactoryCoglet</span>
+  <span class="kw">subscribes</span>  <span class="op">worker.progress, worker.question, worker.done</span>
+  <span class="kw">needs</span>       <span class="op">worker.dispatch, worker.cancel, ticket.receipt, ticket.update, ticket.result</span>
+  <span class="kw">owns</span>        <span class="op">(nothing)</span>
+
+  <span class="kw">provides</span>  <span class="op">ticket.submit</span>       <span class="ty">TicketSubmit</span>    <span class="rt">bound</span>
+            <span class="sd">Admit a new ticket, answer with `ticket.receipt`, then dispatch.</span>
+  <span class="kw">provides</span>  <span class="op">ticket.answer</span>       <span class="ty">TicketAnswer</span>    <span class="rt">bound</span>
+  <span class="kw">provides</span>  <span class="op">ticket.amend</span>        <span class="ty">TicketAmend</span>     <span class="rt">bound</span>
+  <span class="kw">provides</span>  <span class="op">ticket.cancel</span>       <span class="ty">TicketCancel</span>    <span class="rt">bound</span>
+  <span class="kw">provides</span>  <span class="op">ticket.replay</span>       <span class="ty">TicketReplay</span>    <span class="rt">bound</span>
+  <span class="kw">on</span>        <span class="op">worker.progress</span>     <span class="ty">WorkerProgress</span>
+  <span class="kw">on</span>        <span class="op">worker.question</span>     <span class="ty">WorkerQuestion</span>
+  <span class="kw">on</span>        <span class="op">worker.done</span>         <span class="ty">WorkerDone</span>
+  <span class="kw">calls</span>     <span class="op">ticket.receipt</span>      <span class="ty">TicketReceipt</span>   <span class="rt">addressed</span>
+  <span class="kw">calls</span>     <span class="op">ticket.update</span>       <span class="ty">TicketUpdate</span>    <span class="rt">addressed</span>
+  <span class="kw">calls</span>     <span class="op">ticket.result</span>       <span class="ty">TicketResult</span>    <span class="rt">addressed</span></pre></div>
+<h3 id="ticket"><code>Ticket</code><a class="headerlink" href="#ticket" title="Permanent link">#</a></h3>
+<p>From <code>spec/tickets.md</code>. Contains no provider, model or board fields.</p>
+<div class="codehilite idl"><pre><span class="nc">Ticket</span>
+  <span class="na">target</span>        <span class="ty">TicketTarget</span>
+  <span class="na">goal</span>          <span class="ty">TicketGoal</span>
+  <span class="na">context</span>       <span class="ty">[ContextRef]</span>
+  <span class="na">capabilities</span>  <span class="ty">TicketCapabilities</span>
+  <span class="na">gates</span>         <span class="ty">TicketGates</span>
+  <span class="na">budget</span>        <span class="ty">TicketBudget</span>
+
+<span class="nc">TicketTarget</span>
+  <span class="na">coglet</span>  <span class="ty">CogletId</span>  <span class="sd">The coglet to change.</span>
+  <span class="na">repo</span>    <span class="ty">str</span>
+  <span class="na">base</span>    <span class="ty">str</span>       <span class="sd">The full commit the change starts from.</span>
+
+<span class="nc">TicketGoal</span>
+  <span class="na">description</span>  <span class="ty">str</span>                     <span class="sd">The request in plain words.</span>
+  <span class="na">acceptance</span>   <span class="ty">[str] at least 1 items</span>  <span class="sd">Testable criteria, written by whoever files the ticket.</span>
+
+<span class="nc">ContextRef</span>
+  <span class="na">kind</span>  <span class="ty">&quot;world_snapshot&quot; | &quot;transcript&quot; | &quot;trace&quot; | &quot;document&quot;</span>
+  <span class="na">ref</span>   <span class="ty">str</span>                             <span class="sd">An immutable, access-controlled reference. Never raw</span>
+                                        <span class="sd">content.</span>
+
+<span class="nc">TicketCapabilities</span>
+  <span class="na">edit_paths</span>   <span class="ty">[str]</span>  <span class="sd">Repo-relative roots the work may edit. Empty means analysis only.</span>
+  <span class="na">debug_read</span>   <span class="ty">bool</span>
+  <span class="na">debug_write</span>  <span class="ty">bool</span>
+
+<span class="nc">TicketGates</span>
+  <span class="na">required</span>        <span class="ty">[&quot;journal_replay&quot; | &quot;headless_game&quot;]</span>
+                    <span class="sd">Always includes `journal_replay`.</span>
+  <span class="na">human_approval</span>  <span class="ty">bool</span>
+
+<span class="nc">TicketBudget</span>
+  <span class="na">time_ms</span>           <span class="ty">u64</span>
+  <span class="na">spend_microunits</span>  <span class="ty">u64</span>               <span class="sd">Millionths of `currency`. A hard ceiling.</span>
+  <span class="na">currency</span>          <span class="ty">str /^[A-Z]{3}$/</span>
+
+<span class="nc">TicketState</span> = <span class="ty">&quot;queued&quot; | &quot;planning&quot; | &quot;building&quot; | &quot;gate_running&quot; | &quot;needs_input&quot; | &quot;cancelling&quot; | &quot;done&quot; | &quot;failed&quot; | &quot;abandoned&quot;</span></pre></div>
+<h3 id="ticket-requests">Ticket requests<a class="headerlink" href="#ticket-requests" title="Permanent link">#</a></h3>
+<p>From whoever files the ticket to the factory.</p>
+<div class="codehilite idl"><pre><span class="nc">TicketSubmit</span>
+  <span class="na">ticket</span>  <span class="ty">Ticket</span>
+
+<span class="nc">TicketAnswer</span>
+  <span class="na">ticket_id</span>          <span class="ty">Id</span>
+  <span class="na">expected_revision</span>  <span class="ty">u64</span>
+  <span class="na">question_id</span>        <span class="ty">Id</span>
+  <span class="na">answer</span>             <span class="ty">str</span>
+
+<span class="nc">TicketAmend</span>
+  <span class="na">ticket_id</span>          <span class="ty">Id</span>
+  <span class="na">expected_revision</span>  <span class="ty">u64</span>     <span class="sd">The call fails with `conflict` if the ticket has moved on.</span>
+  <span class="na">ticket</span>             <span class="ty">Ticket</span>  <span class="sd">A complete replacement, not a patch. The target cannot change.</span>
+
+<span class="nc">TicketCancel</span>
+  <span class="na">ticket_id</span>          <span class="ty">Id</span>
+  <span class="na">expected_revision</span>  <span class="ty">u64</span>
+  <span class="na">reason</span>             <span class="ty">str</span>
+
+<span class="nc">TicketReplay</span>
+  <span class="na">ticket_id</span>  <span class="ty">Id</span>
+  <span class="na">after_seq</span>  <span class="ty">u64</span>  <span class="sd">Zero replays from the start.</span></pre></div>
+<h3 id="ticket-reports">Ticket reports<a class="headerlink" href="#ticket-reports" title="Permanent link">#</a></h3>
+<p>Factory to the submitter.</p>
+<div class="codehilite idl"><pre><span class="nc">TicketReceipt</span>
+  <span class="sd">The answer to submit, answer, amend or cancel. It carries the same `correlation_id` as the</span>
+  <span class="sd">request it answers.</span>
+  <span class="na">to</span>       <span class="ty">CogletId</span>
+  <span class="na">op</span>       <span class="ty">&quot;submit&quot; | &quot;answer&quot; | &quot;amend&quot; | &quot;cancel&quot;</span>
+  <span class="na">ok</span>       <span class="ty">bool</span>
+  <span class="na">receipt</span>  <span class="ty">Receipt?</span>
+  <span class="na">error</span>    <span class="ty">Error?</span>
+
+<span class="nc">Receipt</span>
+  <span class="na">ticket_id</span>  <span class="ty">Id</span>
+  <span class="na">revision</span>   <span class="ty">u64</span>          <span class="sd">Rises on amend and cancel.</span>
+  <span class="na">state</span>      <span class="ty">TicketState</span>
+  <span class="na">seq</span>        <span class="ty">u64</span>
+
+<span class="nc">TicketUpdate</span>
+  <span class="sd">One step of progress.</span>
+  <span class="na">to</span>         <span class="ty">CogletId</span>
+  <span class="na">ticket_id</span>  <span class="ty">Id</span>
+  <span class="na">revision</span>   <span class="ty">u64</span>
+  <span class="na">seq</span>        <span class="ty">u64</span>          <span class="sd">Strictly rising per ticket. A gap means: call `ticket.replay`.</span>
+  <span class="na">state</span>      <span class="ty">TicketState</span>
+  <span class="na">summary</span>    <span class="ty">str</span>          <span class="sd">One or two plain sentences the fast loop can say aloud.</span>
+  <span class="na">question</span>   <span class="ty">Question?</span>    <span class="sd">Present only when state is `needs_input`.</span>
+
+<span class="nc">Question</span>
+  <span class="na">id</span>      <span class="ty">Id</span>
+  <span class="na">prompt</span>  <span class="ty">str</span>
+
+<span class="nc">TicketResult</span>
+  <span class="sd">The terminal report, or a question snapshot.</span>
+  <span class="na">to</span>         <span class="ty">CogletId</span>
+  <span class="na">ticket_id</span>  <span class="ty">Id</span>
+  <span class="na">revision</span>   <span class="ty">u64</span>
+  <span class="na">seq</span>        <span class="ty">u64</span>
+  <span class="na">state</span>      <span class="ty">&quot;done&quot; | &quot;failed&quot; | &quot;abandoned&quot; | &quot;needs_input&quot;</span>
+  <span class="na">summary</span>    <span class="ty">str</span>
+  <span class="na">candidate</span>  <span class="ty">Candidate?</span>                      <span class="sd">Present only when done.</span>
+  <span class="na">gates</span>      <span class="ty">ProfileMap?</span>                     <span class="sd">The gate report from `spec/promotion.md`. Present</span>
+                                             <span class="sd">only when done.</span>
+  <span class="na">question</span>   <span class="ty">Question?</span>
+  <span class="na">error</span>      <span class="ty">Error?</span>                          <span class="sd">Present when failed or abandoned.</span>
+
+<span class="nc">Candidate</span>
+  <span class="sd">The patch: what is applied to the target coglet through its back channel.</span>
+  <span class="na">commit</span>         <span class="ty">str</span>  <span class="sd">A signed, built commit. Never a branch name.</span>
+  <span class="na">signature_ref</span>  <span class="ty">str</span></pre></div>
+<h3 id="factory-adapter-workercontrol">Factory adapter: <code>worker.control</code><a class="headerlink" href="#factory-adapter-workercontrol" title="Permanent link">#</a></h3>
+<p>The adapter wraps a real scheduler (Hermes Kanban first). One <code>job</code> is one
+attempt at one ticket revision.</p>
+<div class="codehilite idl"><pre><span class="c">-- actions, coglet to adapter</span>
+
+<span class="nc">WorkerDispatch</span>
+  <span class="sd">`worker.dispatch`. Succeeds when the scheduler has queued the job.</span>
+  <span class="na">job</span>         <span class="ty">Id</span>
+  <span class="na">ticket_id</span>   <span class="ty">Id</span>
+  <span class="na">revision</span>    <span class="ty">u64</span>
+  <span class="na">brief</span>       <span class="ty">str</span>           <span class="sd">The goal, acceptance criteria and context references, as text.</span>
+  <span class="na">edit_paths</span>  <span class="ty">[str]</span>
+  <span class="na">budget</span>      <span class="ty">TicketBudget</span>
+
+<span class="nc">WorkerCancel</span>
+  <span class="sd">`worker.cancel`. Succeeds when the job is confirmed stopped.</span>
+  <span class="na">job</span>  <span class="ty">Id</span>
+
+<span class="c">-- events, adapter to coglet</span>
+
+<span class="nc">WorkerProgress</span>
+  <span class="na">job</span>      <span class="ty">Id</span>
+  <span class="na">phase</span>    <span class="ty">&quot;planning&quot; | &quot;building&quot; | &quot;gate_running&quot;</span>
+  <span class="na">summary</span>  <span class="ty">str</span>
+
+<span class="nc">WorkerQuestion</span>
+  <span class="na">job</span>       <span class="ty">Id</span>
+  <span class="na">question</span>  <span class="ty">Question</span>
+
+<span class="nc">WorkerDone</span>
+  <span class="na">job</span>        <span class="ty">Id</span>
+  <span class="na">status</span>     <span class="ty">&quot;done&quot; | &quot;failed&quot; | &quot;cancelled&quot;</span>
+  <span class="na">candidate</span>  <span class="ty">Candidate?</span>
+  <span class="na">gates</span>      <span class="ty">ProfileMap?</span>
+  <span class="na">error</span>      <span class="ty">Error?</span></pre></div>
+<h2 id="optimizercoglet">OptimizerCoglet<a class="headerlink" href="#optimizercoglet" title="Permanent link">#</a></h2>
+<p>Watches how the fast loop's interactions go, files tickets with the factory to
+make things better, and patches coglets as needed. It has no messages of its
+own: it reads through the back channel and files ordinary tickets.</p>
+<h3 id="optimizercoglet_1"><code>OptimizerCoglet</code><a class="headerlink" href="#optimizercoglet_1" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">OptimizerCoglet</span>
+  <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
+  <span class="kw">needs</span>       <span class="op">llm.complete, ticket.submit, ticket.replay, memory.write, memory.query</span>
+  <span class="kw">owns</span>        <span class="op">(nothing)</span>
+
+  <span class="kw">provides</span>  <span class="op">memory.result</span>       <span class="ty">MemoryResult</span>    <span class="rt">addressed</span>
+  <span class="kw">provides</span>  <span class="op">ticket.receipt</span>      <span class="ty">TicketReceipt</span>   <span class="rt">addressed</span>
+  <span class="kw">provides</span>  <span class="op">ticket.update</span>       <span class="ty">TicketUpdate</span>    <span class="rt">addressed</span>
+  <span class="kw">provides</span>  <span class="op">ticket.result</span>       <span class="ty">TicketResult</span>    <span class="rt">addressed</span>
+            <span class="sd">On `done`, apply the candidate through the target coglet&#x27;s back channel.</span>
+  <span class="kw">calls</span>     <span class="op">ticket.submit</span>       <span class="ty">TicketSubmit</span>    <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">ticket.replay</span>       <span class="ty">TicketReplay</span>    <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
+  <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span></pre></div>
+<p>It uses the back channel's <code>tail_log</code> and <code>read_state</code> on the fast loop, and
+<code>patch</code> on the coglets it is granted.</p>
+<h2 id="memorycoglet">MemoryCoglet<a class="headerlink" href="#memorycoglet" title="Permanent link">#</a></h2>
+<p>The cogent's memory: what it has learned about the user, the apps and what has
+worked, kept in one place so every coglet in the centre can read and add to it.
+Each coglet still keeps its own working state in its own files; this is what is
+shared. Version 0 matches on tags and keywords and uses no model.</p>
+<h3 id="memorycoglet_1"><code>MemoryCoglet</code><a class="headerlink" href="#memorycoglet_1" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">MemoryCoglet</span>
+  <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
+  <span class="kw">needs</span>       <span class="op">memory.result</span>
+  <span class="kw">owns</span>        <span class="op">(nothing)</span>
+
+  <span class="kw">provides</span>  <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
+            <span class="sd">Store one note. Repeating the same writer and record id changes nothing.</span>
+  <span class="kw">provides</span>  <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span>
+            <span class="sd">Find matching notes and answer with `memory.result`.</span>
+  <span class="kw">calls</span>     <span class="op">memory.result</span>       <span class="ty">MemoryResult</span>    <span class="rt">addressed</span></pre></div>
+<h3 id="memory-types">Memory types<a class="headerlink" href="#memory-types" title="Permanent link">#</a></h3>
+<div class="codehilite idl"><pre><span class="nc">Tag</span> = <span class="ty">str /^[a-z0-9_-]{1,32}$/</span>
+
+<span class="nc">MemoryWrite</span>
+  <span class="na">record</span>      <span class="ty">Id</span>                    <span class="sd">Chosen by the writer.</span>
+  <span class="na">text</span>        <span class="ty">str 1..4096 chars</span>
+  <span class="na">tags</span>        <span class="ty">[Tag] up to 16 items</span>
+  <span class="na">supersedes</span>  <span class="ty">Id?</span>                   <span class="sd">An older record of the same writer that this one replaces.</span>
+
+<span class="nc">MemoryQuery</span>
+  <span class="na">query</span>  <span class="ty">Id</span>                    <span class="sd">Echoed in the result.</span>
+  <span class="na">text</span>   <span class="ty">str up to 1024 chars</span>  <span class="sd">Keywords. Empty means match on tags alone.</span>
+  <span class="na">tags</span>   <span class="ty">[Tag] up to 16 items</span>  <span class="sd">A note must carry all of these.</span>
+  <span class="na">limit</span>  <span class="ty">int 1..16</span>
+
+<span class="nc">MemoryResult</span>
+  <span class="na">to</span>         <span class="ty">CogletId</span>
+  <span class="na">query</span>      <span class="ty">Id</span>
+  <span class="na">records</span>    <span class="ty">[MemoryRecord]</span>  <span class="sd">Newest first. Superseded notes are left out.</span>
+  <span class="na">truncated</span>  <span class="ty">bool</span>            <span class="sd">True if more notes matched than `limit`.</span>
+
+<span class="nc">MemoryRecord</span>
+  <span class="na">record</span>      <span class="ty">Id</span>
+  <span class="na">text</span>        <span class="ty">str</span>
+  <span class="na">tags</span>        <span class="ty">[Tag]</span>
+  <span class="na">writer</span>      <span class="ty">CogletId</span>  <span class="sd">The caller that wrote it, as checked by the router.</span>
+  <span class="na">written_at</span>  <span class="ty">u64</span>       <span class="sd">The memory coglet&#x27;s logical time when it was stored.</span></pre></div>
+<h2 id="routercoglet">RouterCoglet<a class="headerlink" href="#routercoglet" title="Permanent link">#</a></h2>
+<p>The coglet that reaches devices. It knows which runtimes the cogent may use,
+installs coglets on them, and carries two things between runtimes: messages
+from one coglet to another, and back-channel operations such as <code>patch</code>.</p>
+<p>It is a coglet like the others in the centre: it has a policy, memory and a
+back channel, so it can be patched and watched the same way. What passes
+between it and a runtime is listed under
+<a href="coglets-and-runtime.html#runtime-and-router">Runtime and router</a>.</p>
+<p>Messages between two coglets on the same runtime do not go through the router;
+their runtime delivers them.</p>
+</main>
+</div>
+<script>
+const links = [...document.querySelectorAll('nav a[href^="#"]')];
+const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) {
+    links.forEach(a => a.classList.remove('active'));
+    const a = byId.get(e.target.id);
+    if (a) { a.classList.add('active'); a.scrollIntoView({block: 'nearest'}); }
+  }
+}, {rootMargin: '0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id], main h3[id]').forEach(h => seen.observe(h));
+document.getElementById('filter').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('nav li').forEach(li => {
+    li.hidden = q !== '' && !li.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>

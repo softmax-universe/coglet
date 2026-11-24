@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cogent</title>
+<style>
+:root {
+  --paper: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b6558;
+  --rule: #e2dccd; --accent: #0b6e69; --accent-soft: #d9ece9;
+  --code-bg: #fbf9f3; --code-ink: #2a2721;
+  --kw: #8a3b12; --cls: #0b6e69; --fn: #1f4e8c; --str: #5d6b1e; --doc: #6b6558;
+  --num: #8c2f5a; --deco: #7a4fa3; --cmt: #9a9384;
+  --frozen-bg: #dfe9f5; --frozen-ink: #1f4e8c;
+  --adr-bg: #f3e6c8; --adr-ink: #7a5200;
+  --draft-bg: #e9e4f3; --draft-ink: #5b3f8f;
+  --proposed-bg: #d9ece9; --proposed-ink: #0b5a56;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161a; --panel: #1b1e24; --ink: #e9e6df; --muted: #9a968c;
+    --rule: #2c3038; --accent: #5cc8bf; --accent-soft: #17302f;
+    --code-bg: #171a1f; --code-ink: #dcd8cf;
+    --kw: #e8a06a; --cls: #5cc8bf; --fn: #8fb8f0; --str: #b9c97a; --doc: #9a968c;
+    --num: #e58fb6; --deco: #c3a2e8; --cmt: #6f6b62;
+    --frozen-bg: #1c2b40; --frozen-ink: #9cc2f2;
+    --adr-bg: #3a2f14; --adr-ink: #ecc56b;
+    --draft-bg: #2b2440; --draft-ink: #c3a2e8;
+    --proposed-bg: #17302f; --proposed-ink: #7fdcd3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--rule); background: var(--panel); }
+nav .brand { font: 600 1.15rem/1.2 var(--serif); letter-spacing: .01em; margin-bottom: .2rem; }
+nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+nav input { width: 100%; padding: .45rem .6rem; margin-bottom: 1rem; font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+nav input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav ul { list-style: none; margin: 0; padding: 0; }
+nav li.h2 > a { display: block; margin-top: .9rem; padding: .15rem .5rem; font-weight: 600;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+nav li.h3 > a { display: block; padding: .12rem .5rem .12rem .9rem; font-size: .84rem;
+  color: var(--muted); border-left: 2px solid transparent; }
+nav li.h3 > a code { font: inherit; font-family: var(--mono); font-size: .78rem; }
+nav a:hover { text-decoration: none; color: var(--accent); }
+nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+main { padding: 3rem clamp(1rem, 4vw, 4rem) 6rem; max-width: 62rem; }
+h1 { font: 600 2.6rem/1.1 var(--serif); margin: 0 0 1rem; letter-spacing: -.01em; }
+h2 { font: 600 1.75rem/1.2 var(--serif); margin: 4rem 0 .8rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink); }
+h3 { font: 600 1.05rem/1.3 var(--sans); margin: 2.4rem 0 .6rem; display: flex;
+  flex-wrap: wrap; align-items: center; gap: .5rem; }
+h3 code { font-family: var(--mono); font-size: 1rem; background: none; padding: 0; color: var(--cls); }
+p, li { max-width: 46rem; }
+p code, li code, td code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft);
+  color: var(--ink); padding: .08em .35em; border-radius: 4px; white-space: nowrap; }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+  padding: .3em .6em; border-radius: 99px; white-space: nowrap; }
+.badge.frozen { background: var(--frozen-bg); color: var(--frozen-ink); }
+.badge.adr { background: var(--adr-bg); color: var(--adr-ink); }
+.badge.draft { background: var(--draft-bg); color: var(--draft-ink); }
+.badge.proposed { background: var(--proposed-bg); color: var(--proposed-ink); }
+.headerlink { opacity: 0; margin-left: .2rem; color: var(--muted); font-weight: 400; }
+h2:hover .headerlink, h3:hover .headerlink { opacity: 1; }
+.codehilite { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 8px; margin: .8rem 0 1.2rem; overflow-x: auto; }
+.codehilite pre { margin: 0; padding: 1rem 1.2rem; font: 13.5px/1.6 var(--mono); color: var(--code-ink); }
+.codehilite .k, .codehilite .kn, .codehilite .kc, .codehilite .kd, .codehilite .kt, .codehilite .ow { color: var(--kw); }
+.codehilite .nc, .codehilite .nn { color: var(--cls); font-weight: 600; }
+.codehilite .nf, .codehilite .fm { color: var(--fn); font-weight: 600; }
+.codehilite .nd { color: var(--deco); }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sr { color: var(--str); }
+.codehilite .sd { color: var(--doc); font-family: var(--sans); font-size: 13.5px; }
+.codehilite .mi, .codehilite .mf, .codehilite .mh { color: var(--num); }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: var(--cmt); font-style: italic; }
+.codehilite .nb, .codehilite .bp { color: var(--fn); }
+.tablewrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--ink); padding: .5rem .8rem .5rem 0; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: .55rem .8rem .55rem 0; vertical-align: top; }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+ol, ul { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+.idl .nc { color: var(--cls); font-weight: 600; }
+.idl .nf { color: var(--fn); font-weight: 600; }
+.idl .na { color: var(--code-ink); }
+.idl .ty { color: var(--kw); }
+.idl .op { color: var(--str); }
+.idl .kw, .idl .rt { color: var(--deco); }
+.idl .sd { color: var(--doc); font-family: var(--sans); }
+.idl .c { color: var(--cmt); font-style: italic; }
+main p > img { display: block; max-width: min(100%, 34rem); height: auto; margin: 1rem 0; border-radius: 14px; }
+figure.diagram { margin: 1.4rem 0 .4rem; }
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram + p { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+nav .pages { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+nav .pages a { padding: .35rem .6rem; font-size: .8rem; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 6px; color: var(--muted); }
+nav .pages a.here { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); max-height: 45vh; }
+  h1 { font-size: 2rem; }
+}
+@media print { nav { display: none; } .layout { display: block; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">Cogent</div>
+  <div class="sub">Generated from README.md. Do not edit.</div>
+  <div class="pages"><a href="index.html" class="here">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
+  <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
+  <ul>
+  <li class="h2"><a href="#adapter">Adapter</a></li><li class="h2"><a href="#coglet">Coglet</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h2"><a href="#cogent_1">Cogent</a></li><li class="h2"><a href="#a-request-end-to-end">A request, end to end</a></li>
+  </ul>
+</nav>
+<main>
+<h1 id="cogent">Cogent<a class="headerlink" href="#cogent" title="Permanent link">#</a></h1>
+<p><img alt="A friendly critter with a tiny workshop in its head, its long arms reaching behind a monitor, a laptop, a phone and a robot dog, with its hands inside each one." src="images/cogent.png" /></p>
+<p>A <strong>cogent</strong> is one logical agent. It has an <strong>identity</strong>, a <strong>name</strong> and an
+<strong>owner</strong>, and it runs as a <strong>collection of coglets</strong>: a few always running at
+its centre, and more on the devices it reaches. This is the design, split into
+pieces so they can be built in parallel.</p>
+<p>Pages: <a href="coglets-and-runtime.html">Coglets and runtime</a> ·
+<a href="app-integration.html">App integration</a> ·
+<a href="softmax-app.html">The Softmax app</a> ·
+<a href="cognitive-architecture.html">Cognitive architecture</a></p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1040" height="580" viewBox="0 0 1040 580" role="img" aria-label="A cogent sits at the centre: a set of coglets plus a router. Around it are devices and hosted apps, and for each one it runs coglets that talk to the apps through their adapters.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="cogent-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="cogent-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="cogent-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="cogent-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="cogent-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="cogent-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="cogent-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="cogent-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="1039" height="579" rx="12" class="dg-bg"/>
+<g transform="translate(0,190)">
+<rect x="330" y="30" width="380" height="280" rx="14" class="dg-group"/>
+<rect x="350" y="44" width="18" height="13" rx="3" class="dg-ink" stroke-width="1.5"/><path d="M359 44V39" class="dg-ink" stroke-width="1.5"/><circle cx="359" cy="37.5" r="1.6" class="dg-ink" stroke-width="1.5"/><circle cx="355" cy="50" r="1.4" class="dg-ink-h"/><circle cx="363" cy="50" r="1.4" class="dg-ink-h"/><path d="M347 48V53M371 48V53" class="dg-ink" stroke-width="1.5"/>
+<text x="380" y="55" text-anchor="start" class="dg-cap">THE COGENT</text>
+<rect x="345" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
+<text x="430.0" y="173.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="430.0" y="189.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
+<rect x="525" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
+<text x="610.0" y="173.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="610.0" y="189.0" text-anchor="middle" class="dg-m">tickets in, patches out</text>
+<rect x="345" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
+<text x="430.0" y="245.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="430.0" y="261.0" text-anchor="middle" class="dg-m">watches, improves</text>
+<rect x="525" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
+<text x="610.0" y="245.0" text-anchor="middle" class="dg-b">Memory</text>
+<text x="610.0" y="261.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
+<rect x="345" y="70" width="350" height="62" rx="8" class="dg-coglet"/>
+<text x="520.0" y="98.0" text-anchor="middle" class="dg-b">Router</text>
+<text x="520.0" y="114.0" text-anchor="middle" class="dg-m">finds devices, carries messages and patches</text>
+<rect x="20" y="30" width="270" height="280" rx="12" class="dg-bg"/>
+<rect x="37" y="43" width="16" height="11" rx="1.5" class="dg-ink" stroke-width="1.5"/><path d="M34 57H56" class="dg-ink" stroke-width="1.5"/>
+<text x="64" y="55" text-anchor="start" class="dg-cap">LAPTOP</text>
+<rect x="34" y="72" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="132" y="72" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="83" y="95" text-anchor="middle" class="dg-t">Softmax app</text>
+<line x1="146" y1="91" x2="176" y2="91" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="34" y="118" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="132" y="118" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="83" y="141" text-anchor="middle" class="dg-t">Blender</text>
+<line x1="146" y1="137" x2="176" y2="137" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="34" y="164" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="132" y="164" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="83" y="187" text-anchor="middle" class="dg-t">Chrome</text>
+<line x1="146" y1="183" x2="176" y2="183" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="34" y="210" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="132" y="210" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="83" y="233" text-anchor="middle" class="dg-t">Minecraft</text>
+<line x1="146" y1="229" x2="176" y2="229" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="34" y="256" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="132" y="256" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="83" y="279" text-anchor="middle" class="dg-t">Mindustry</text>
+<line x1="146" y1="275" x2="176" y2="275" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="178" y="72" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="227.0" y="95.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="178" y="118" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="227.0" y="141.0" text-anchor="middle" class="dg-b">Blender</text>
+<rect x="178" y="164" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="227.0" y="187.0" text-anchor="middle" class="dg-b">Browser</text>
+<rect x="178" y="210" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="227.0" y="233.0" text-anchor="middle" class="dg-b">Minecraft</text>
+<rect x="178" y="256" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="227.0" y="279.0" text-anchor="middle" class="dg-b">Mindustry</text>
+<rect x="750" y="30" width="270" height="280" rx="12" class="dg-bg"/>
+<path d="M775 37V40" class="dg-ink" stroke-width="1.5"/><circle cx="775" cy="36" r="1.3" class="dg-ink-h"/><rect x="768.5" y="40" width="13" height="9" rx="3" class="dg-ink" stroke-width="1.5"/><circle cx="772.5" cy="44.5" r="1.2" class="dg-ink-h"/><circle cx="777.5" cy="44.5" r="1.2" class="dg-ink-h"/><rect x="770" y="51" width="10" height="8" rx="2.5" class="dg-ink" stroke-width="1.5"/><path d="M767 52V57M783 52V57" class="dg-ink" stroke-width="1.5"/>
+<text x="794" y="55" text-anchor="start" class="dg-cap">ROBOT</text>
+<rect x="896" y="72" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="896" y="72" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="957" y="95" text-anchor="middle" class="dg-t">Microphone</text>
+<line x1="864" y1="91" x2="894" y2="91" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="896" y="118" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="896" y="118" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="957" y="141" text-anchor="middle" class="dg-t">Display</text>
+<line x1="864" y1="137" x2="894" y2="137" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="896" y="164" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="896" y="164" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="957" y="187" text-anchor="middle" class="dg-t">Camera</text>
+<line x1="864" y1="173" x2="894" y2="173" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<path d="M864 217H879V193H894" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="896" y="210" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="896" y="210" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="957" y="233" text-anchor="middle" class="dg-t">Wheels</text>
+<line x1="864" y1="234" x2="894" y2="234" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="896" y="256" width="110" height="38" rx="8" class="dg-world"/>
+<rect x="896" y="256" width="12" height="38" rx="5" class="dg-adapter"/>
+<text x="957" y="279" text-anchor="middle" class="dg-t">Hand</text>
+<line x1="864" y1="275" x2="894" y2="275" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="764" y="72" width="98" height="130" rx="8" class="dg-coglet"/>
+<text x="813.0" y="141.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="764" y="210" width="98" height="84" rx="8" class="dg-coglet"/>
+<text x="813.0" y="256.0" text-anchor="middle" class="dg-b">Controller</text>
+<line x1="343" y1="101" x2="292" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="697" y1="101" x2="748" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+</g>
+<rect x="213" y="20" width="344" height="168" rx="12" class="dg-bg"/>
+<text x="259" y="45" text-anchor="start" class="dg-cap">SOFTMAX UNIVERSE</text>
+<rect x="227.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
+<rect x="227.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
+<text x="277.0" y="80" text-anchor="middle" class="dg-t">Paintbot</text>
+<line x1="277.0" y1="104" x2="277.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="227.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
+<text x="277.0" y="159.0" text-anchor="middle" class="dg-b">Paintbot</text>
+<rect x="335.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
+<rect x="335.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
+<text x="385.0" y="80" text-anchor="middle" class="dg-t">GOTA</text>
+<line x1="385.0" y1="104" x2="385.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="335.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
+<text x="385.0" y="159.0" text-anchor="middle" class="dg-b">GOTA</text>
+<rect x="443.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
+<rect x="443.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
+<text x="493.0" y="80" text-anchor="middle" class="dg-t">PudgeWars</text>
+<line x1="493.0" y1="104" x2="493.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="443.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
+<text x="493.0" y="159.0" text-anchor="middle" class="dg-b">PudgeWars</text>
+<circle cx="238" cy="40" r="6" class="dg-ink" stroke-width="1.5"/><ellipse cx="238" cy="40" rx="11" ry="3.6" transform="rotate(-20 238 40)" class="dg-ink" stroke-width="1.5"/>
+<rect x="587" y="20" width="240" height="168" rx="12" class="dg-bg"/>
+<text x="633" y="45" text-anchor="start" class="dg-cap">PHONE</text>
+<rect x="601.0" y="60" width="102.0" height="42" rx="8" class="dg-world"/>
+<rect x="601.0" y="90" width="102.0" height="12" rx="5" class="dg-adapter"/>
+<text x="652.0" y="80" text-anchor="middle" class="dg-t">Softmax app</text>
+<line x1="652.0" y1="104" x2="652.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="601.0" y="134" width="102.0" height="42" rx="8" class="dg-coglet"/>
+<text x="652.0" y="159.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="711.0" y="60" width="102.0" height="42" rx="8" class="dg-world"/>
+<rect x="711.0" y="90" width="102.0" height="12" rx="5" class="dg-adapter"/>
+<text x="762.0" y="80" text-anchor="middle" class="dg-t">A phone app</text>
+<line x1="762.0" y1="104" x2="762.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
+<rect x="711.0" y="134" width="102.0" height="42" rx="8" class="dg-coglet"/>
+<text x="762.0" y="159.0" text-anchor="middle" class="dg-b">App coglet</text>
+<rect x="607" y="31" width="10" height="17" rx="2.5" class="dg-ink" stroke-width="1.5"/><path d="M610.5 45H613.5" class="dg-ink" stroke-width="1.5"/>
+<line x1="500" y1="190" x2="500" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="650" y1="190" x2="650" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<text x="488" y="209" text-anchor="end" class="dg-m">installs, patches, messages</text>
+<line x1="40" y1="545" x2="74" y2="545" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)"/>
+<text x="82" y="549" text-anchor="start" class="dg-m">the cogent reaches a device</text>
+<line x1="262" y1="545" x2="296" y2="545" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)"/>
+<text x="304" y="549" text-anchor="start" class="dg-m">a coglet uses an app through its adapter</text>
+<rect x="680" y="535" width="20" height="20" rx="4" class="dg-coglet"/>
+<text x="708" y="549" text-anchor="start" class="dg-m">coglet</text>
+<rect x="776" y="535" width="20" height="20" rx="4" class="dg-adapter"/>
+<text x="804" y="549" text-anchor="start" class="dg-m">adapter</text>
+<rect x="878" y="535" width="20" height="20" rx="4" class="dg-world"/>
+<text x="906" y="549" text-anchor="start" class="dg-m">app or hardware</text>
+</svg>
+</figure>
+<p><em>A cogent: a handful of coglets and a router at the centre, with devices around
+it. On each device there are apps, each app has an adapter, and the cogent runs coglets
+that talk to the apps through those adapters.</em></p>
+<h2 id="adapter">Adapter<a class="headerlink" href="#adapter" title="Permanent link">#</a></h2>
+<p>An adapter is an interface that an app exposes: whatever <strong>observations</strong>,
+<strong>events</strong> and <strong>actions</strong> the app's developer chooses to offer.</p>
+<p><strong>What it does.</strong> It is the boundary between an app and a cogent. It <strong>reports</strong>
+what happens in the app, <strong>carries out</strong> what coglets ask for, and <strong>decides
+what is allowed</strong>. Without it an agent would have unscoped control of the app. A
+developer usually builds it as a mod, an add-on or an extension, and an app can
+have more than one: for example one for its UI and one for a player.</p>
+<p><strong>Example.</strong> One app can offer several adapters, each a different scope of
+control. Minecraft might have three:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>What it lets a coglet do</th>
+<th>What it lets a coglet see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Avatar</td>
+<td>Control one player character, with only the moves a player can legally make.</td>
+<td>What that character observes.</td>
+</tr>
+<tr>
+<td>Builder</td>
+<td>Create arbitrary objects in the world.</td>
+<td>Everything that is going on in the world.</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>Make panels and other controls, and modify the user interface.</td>
+<td>What the user does with them.</td>
+</tr>
+</tbody>
+</table></div>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="330" viewBox="0 0 960 330" role="img" aria-label="Minecraft offers three adapters. Each coglet uses more than one of them, and each adapter can serve more than one coglet.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="adapters-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="adapters-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="adapters-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="adapters-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="adapters-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="adapters-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="adapters-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="adapters-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="329" rx="12" class="dg-bg"/>
+<text x="30" y="30" text-anchor="start" class="dg-cap">COGLETS</text>
+<text x="470" y="30" text-anchor="start" class="dg-cap">ADAPTERS</text>
+<rect x="600" y="40" width="330" height="262" rx="8" class="dg-world"/>
+<text x="765" y="64" text-anchor="middle" class="dg-b">Minecraft</text>
+<rect x="30" y="82" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="107.0" text-anchor="middle" class="dg-b">PlayerCoglet</text>
+<text x="120.0" y="123.0" text-anchor="middle" class="dg-m">plays alongside you</text>
+<rect x="30" y="156" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="181.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<text x="120.0" y="197.0" text-anchor="middle" class="dg-m">talks with you</text>
+<rect x="30" y="230" width="180" height="56" rx="8" class="dg-coglet"/>
+<text x="120.0" y="255.0" text-anchor="middle" class="dg-b">BuilderCoglet</text>
+<text x="120.0" y="271.0" text-anchor="middle" class="dg-m">builds what you ask for</text>
+<rect x="470" y="82" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="114.0" text-anchor="middle" class="dg-b">UI adapter</text>
+<rect x="616" y="82" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="114" text-anchor="middle" class="dg-t">the user interface</text>
+<rect x="470" y="156" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="188.0" text-anchor="middle" class="dg-b">Avatar adapter</text>
+<rect x="616" y="156" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="188" text-anchor="middle" class="dg-t">one player character</text>
+<rect x="470" y="230" width="130" height="56" rx="8" class="dg-adapter"/>
+<text x="535.0" y="262.0" text-anchor="middle" class="dg-b">Builder adapter</text>
+<rect x="616" y="230" width="298" height="56" rx="8" class="dg-group"/>
+<text x="765" y="262" text-anchor="middle" class="dg-t">the whole world</text>
+<line x1="212" y1="96" x2="468" y2="96" class="dg-teal" stroke-width="1.6" marker-end="url(#adapters-teal)" marker-start="url(#adapters-teal-s)"/>
+<path d="M212 114H340V176H468" class="dg-teal" stroke-width="1.6" marker-end="url(#adapters-teal)" marker-start="url(#adapters-teal-s)"/>
+<path d="M212 166H290V128H468" class="dg-warm" stroke-width="1.6" marker-end="url(#adapters-warm)" marker-start="url(#adapters-warm-s)"/>
+<line x1="212" y1="190" x2="468" y2="190" class="dg-warm" stroke-width="1.6" marker-end="url(#adapters-warm)" marker-start="url(#adapters-warm-s)"/>
+<path d="M212 242H400V204H468" class="dg-blue" stroke-width="1.6" marker-end="url(#adapters-blue)" marker-start="url(#adapters-blue-s)"/>
+<line x1="212" y1="268" x2="468" y2="268" class="dg-blue" stroke-width="1.6" marker-end="url(#adapters-blue)" marker-start="url(#adapters-blue-s)"/>
+</svg>
+</figure>
+<p><em>Coglets and adapters are many-to-many. The player and the face both use the UI
+and avatar adapters; the builder uses the avatar and builder adapters; the
+avatar adapter serves all three.</em></p>
+<p>The relationship runs both ways: a coglet can be granted several adapters, and
+an adapter can be granted to several coglets.</p>
+<p>A coglet granted only the avatar adapter can play the game and nothing more. A
+coglet granted the builder adapter can reshape the world. The developer decides
+which adapters exist, and each one is granted separately.</p>
+<p><strong>Interfaces.</strong></p>
+<div class="codehilite idl"><pre><span class="nc">Adapter</span>
+  <span class="nf">capabilities</span>()
+      <span class="sd">List the events, observations and actions it offers.</span>
+  <span class="nf">grants</span>()
+      <span class="sd">Say which coglet may use which of them. Only the adapter can grant.</span>
+  <span class="nf">observe</span>(<span class="ty">Read</span>) -&gt; <span class="ty">ReadReply</span>
+      <span class="sd">Return a snapshot of something in the app.</span>
+  <span class="nf">act</span>(<span class="ty">Act</span>) -&gt; <span class="ty">Accept</span>
+      <span class="sd">Do something in the app, or refuse. As narrow as &quot;move the player&quot; or as broad as</span>
+      <span class="sd">&quot;run this script&quot;, whichever the developer chose to offer.</span></pre></div>
+<p><strong>Messages.</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>It generates</th>
+<th>It processes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Events: things that happened in the app</td>
+<td>Actions from coglets</td>
+</tr>
+<tr>
+<td>An accept or a refusal for each action, then one outcome</td>
+<td>Read requests</td>
+</tr>
+<tr>
+<td>Its capability list and its grants</td>
+<td></td>
+</tr>
+<tr>
+<td>A notice when its off-switch is pulled</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<p>Detail: <a href="app-integration.html#adapter">App integration</a>.</p>
+<h2 id="coglet">Coglet<a class="headerlink" href="#coglet" title="Permanent link">#</a></h2>
+<p>A coglet is a <strong>policy</strong>, a <strong>memory</strong>, an <strong>event loop</strong> and <strong>capabilities</strong>.
+It handles events, and it has a <strong>back channel</strong> for receiving patches and
+streaming logs to its manager.</p>
+<p><strong>What it does.</strong> It does one job: being the face, driving one app, running the
+factory. It waits for events, and for each one decides what to do using its
+policy and its memory. It is a generalization of a game policy script: a
+tree of files where a policy is one file, and <code>handle(event)</code> for many kinds of
+event where a policy has only <code>step()</code>.</p>
+<p>The policy is whatever decides what the coglet does: <strong>symbolic code</strong>, <strong>LLM
+prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can change any of it. The code part can be
+in any language its runtime supports.</p>
+<p>A coglet can use several adapters at once, and several coglets can use the same
+one. On a robot, both the face and the controller use the camera.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="coglet-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="coglet-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="coglet-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="coglet-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="coglet-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="coglet-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="coglet-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="coglet-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="429" rx="12" class="dg-bg"/>
+<text x="280" y="40" text-anchor="middle" class="dg-cap">FRONT END: EVENTS AND CAPABILITIES</text>
+<text x="685" y="40" text-anchor="middle" class="dg-cap">BACK CHANNEL: PATCHES AND LOGS</text>
+<rect x="370" y="64" width="220" height="214" rx="8" class="dg-coglet"/>
+<text x="480" y="90" text-anchor="middle" class="dg-b">Coglet</text>
+<rect x="384" y="104" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="125" text-anchor="start" class="dg-code">policy</text>
+<text x="564" y="125" text-anchor="end" class="dg-m">code, prompts, skills</text>
+<rect x="384" y="146" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="167" text-anchor="start" class="dg-code">memory</text>
+<text x="564" y="167" text-anchor="end" class="dg-m">what it remembers</text>
+<rect x="384" y="188" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="209" text-anchor="start" class="dg-code">event loop</text>
+<text x="564" y="209" text-anchor="end" class="dg-m">handles events</text>
+<rect x="384" y="230" width="192" height="34" rx="6" class="dg-runtime"/>
+<text x="396" y="251" text-anchor="start" class="dg-code">capabilities</text>
+<text x="564" y="251" text-anchor="end" class="dg-m">what it may use</text>
+<rect x="30" y="86" width="162" height="170" rx="10" class="dg-group"/>
+<text x="44" y="110" text-anchor="start" class="dg-cap">ADAPTERS</text>
+<rect x="44" y="122" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="141" text-anchor="middle" class="dg-t">An app</text>
+<rect x="44" y="162" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="181" text-anchor="middle" class="dg-t">A camera</text>
+<rect x="44" y="202" width="134" height="30" rx="6" class="dg-adapter"/>
+<text x="111" y="221" text-anchor="middle" class="dg-t">A display</text>
+<line x1="194" y1="142" x2="368" y2="142" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="134" text-anchor="middle" class="dg-code">handle(event)</text>
+<line x1="368" y1="206" x2="194" y2="206" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="281" y="198" text-anchor="middle" class="dg-code">actions</text>
+<rect x="232" y="334" width="496" height="76" rx="10" class="dg-group"/>
+<text x="246" y="356" text-anchor="start" class="dg-cap">THE RUNTIME</text>
+<rect x="246" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="301.5" y="385" text-anchor="middle" class="dg-t">LLM</text>
+<rect x="365" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="420.5" y="385" text-anchor="middle" class="dg-t">Database</text>
+<rect x="484" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="539.5" y="385" text-anchor="middle" class="dg-t">Random numbers</text>
+<rect x="603" y="366" width="111" height="30" rx="6" class="dg-runtime"/>
+<text x="658.5" y="385" text-anchor="middle" class="dg-t">Timer</text>
+<line x1="450" y1="280" x2="450" y2="332" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="440" y="310" text-anchor="end" class="dg-code">requests</text>
+<line x1="510" y1="332" x2="510" y2="280" class="dg-teal" stroke-width="1.6" marker-end="url(#coglet-teal)"/>
+<text x="520" y="310" text-anchor="start" class="dg-code">replies, timer wakes</text>
+<rect x="780" y="96" width="150" height="150" rx="8" class="dg-hub"/>
+<text x="855.0" y="168.0" text-anchor="middle" class="dg-b">Its manager</text>
+<text x="855.0" y="184.0" text-anchor="middle" class="dg-m">a person or a coglet</text>
+<line x1="778" y1="124" x2="592" y2="124" class="dg-blue" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="116" text-anchor="middle" class="dg-code">patch</text>
+<line x1="592" y1="174" x2="778" y2="174" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="166" text-anchor="middle" class="dg-code">tail_log</text>
+<line x1="592" y1="224" x2="778" y2="224" class="dg-blue dg-dash" stroke-width="1.6" marker-end="url(#coglet-blue)"/>
+<text x="685" y="216" text-anchor="middle" class="dg-code">read_state · status</text>
+<text x="685" y="244" text-anchor="middle" class="dg-m">each needs its own grant</text>
+</svg>
+</figure>
+<p><em>The coglet in the centre. Apps and hardware, reached through adapters, on the
+left. What the runtime provides below. Its manager on the right, with patches
+coming in and logs going out.</em></p>
+<p><strong>Capabilities.</strong> A capability is anything a coglet is allowed to use. Some come
+from <strong>adapters</strong> and some from the <strong>runtime</strong> itself. A coglet names the ones it
+wants when it registers, and can use only those.</p>
+<p><strong>Interfaces.</strong></p>
+<div class="codehilite idl"><pre><span class="nc">Coglet</span>
+  -- front end
+
+  <span class="nf">register</span>(<span class="ty">Manifest</span>)
+      <span class="sd">Declare the capabilities it wants: events to subscribe to, actions it needs.</span>
+  <span class="nf">handle</span>(<span class="ty">event</span>)
+      <span class="sd">Process one event.</span>
+
+  -- back channel, to its manager
+
+  <span class="nf">patch</span>(<span class="ty">change</span>)
+      <span class="sd">Receive a patch to its policy: code, prompts or skills. This is how it learns.</span>
+  <span class="nf">tail_log</span>()
+      <span class="sd">Stream its log to its manager.</span></pre></div>
+<p><strong>Messages.</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>It generates</th>
+<th>It processes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Actions on an adapter</td>
+<td>Events from the adapters it subscribed to</td>
+</tr>
+<tr>
+<td>Messages to other coglets</td>
+<td>Messages from other coglets</td>
+</tr>
+<tr>
+<td>Requests to a model</td>
+<td>Replies from a model</td>
+</tr>
+<tr>
+<td>Timers, and log lines for its manager</td>
+<td>Timer wakes, the outcome of each action it asked for, and patches from its manager</td>
+</tr>
+</tbody>
+</table></div>
+<p>Detail: <a href="coglets-and-runtime.html#anatomy-of-a-coglet">Anatomy of a coglet</a>.</p>
+<h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">#</a></h2>
+<p>A runtime supports running a set of coglets. It manages <strong>routing events</strong>,
+<strong>executing the coglet code</strong>, and <strong>providing and managing capabilities</strong>.</p>
+<p><strong>What it does.</strong> It loads each coglet and runs its event loop. It <strong>delivers events</strong> to the coglets that subscribed to them, and <strong>carries
+what a coglet asks for</strong> to the right place: an adapter, another coglet, a
+model. It also serves each
+coglet's back channel, so the coglet's own code never has to. A runtime can sit
+inside an app, on the user's machine, or on Softmax infrastructure, and it can
+be connected to several adapters at once.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1180" height="392" viewBox="0 0 1180 392" role="img" aria-label="Two runtimes joined by a network link. Each has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers; it runs coglets and connects to adapters outside it. Messages pass between coglets inside a runtime and between runtimes over the network.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="runtime-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="runtime-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="runtime-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="runtime-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="runtime-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="runtime-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="runtime-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="runtime-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="1179" height="391" rx="12" class="dg-bg"/>
+<rect x="30" y="104" width="520" height="266" rx="14" class="dg-group"/>
+<rect x="42" y="116" width="100" height="242" rx="10" class="dg-bg"/>
+<text x="92" y="138" text-anchor="middle" class="dg-cap">ENGINES</text>
+<rect x="50" y="150" width="84" height="32" rx="6" class="dg-e-basic"/>
+<text x="92" y="170" text-anchor="middle" class="dg-t">BASIC</text>
+<rect x="50" y="190" width="84" height="32" rx="6" class="dg-e-wasm"/>
+<text x="92" y="210" text-anchor="middle" class="dg-t">WASM</text>
+<rect x="50" y="230" width="84" height="32" rx="6" class="dg-e-js"/>
+<text x="92" y="250" text-anchor="middle" class="dg-t">JavaScript</text>
+<rect x="50" y="270" width="84" height="32" rx="6" class="dg-e-java"/>
+<text x="92" y="290" text-anchor="middle" class="dg-t">Java</text>
+<rect x="50" y="310" width="84" height="32" rx="6" class="dg-e-llm"/>
+<text x="92" y="330" text-anchor="middle" class="dg-t">Python</text>
+<text x="346" y="128" text-anchor="middle" class="dg-cap">RUNTIME</text>
+<rect x="154" y="146" width="104" height="56" rx="8" class="dg-e-basic"/>
+<text x="206.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="206.0" y="187.0" text-anchor="middle" class="dg-m">BASIC</text>
+<rect x="294" y="146" width="104" height="56" rx="8" class="dg-e-llm"/>
+<text x="346.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="346.0" y="187.0" text-anchor="middle" class="dg-m">Python</text>
+<rect x="434" y="146" width="104" height="56" rx="8" class="dg-e-wasm"/>
+<text x="486.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="486.0" y="187.0" text-anchor="middle" class="dg-m">WASM</text>
+<rect x="146" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
+<text x="206.0" y="52.0" text-anchor="middle" class="dg-b">App adapter</text>
+<line x1="206" y1="70" x2="206" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<rect x="426" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
+<text x="486.0" y="52.0" text-anchor="middle" class="dg-b">Camera adapter</text>
+<line x1="486" y1="70" x2="486" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<line x1="260" y1="174" x2="292" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
+<text x="276" y="164" text-anchor="middle" class="dg-m">local</text>
+<rect x="154" y="276" width="384" height="82" rx="10" class="dg-bg"/>
+<rect x="168.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="210.25" y="309" text-anchor="middle" class="dg-t">Database</text>
+<rect x="258.5" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="300.75" y="309" text-anchor="middle" class="dg-t">KV store</text>
+<rect x="349.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="391.25" y="309" text-anchor="middle" class="dg-t">LLM</text>
+<rect x="439.5" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="481.75" y="309" text-anchor="middle" class="dg-t">Random</text>
+<text x="346" y="345" text-anchor="middle" class="dg-cap">CAPABILITIES IT PROVIDES</text>
+<line x1="194" y1="204" x2="194" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<path d="M218 204V246H278.5V286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<line x1="334" y1="204" x2="334" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<line x1="358" y1="204" x2="358" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<line x1="486" y1="204" x2="486" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<rect x="630" y="104" width="520" height="266" rx="14" class="dg-group"/>
+<rect x="1038" y="116" width="100" height="242" rx="10" class="dg-bg"/>
+<text x="1088" y="138" text-anchor="middle" class="dg-cap">ENGINES</text>
+<rect x="1046" y="150" width="84" height="32" rx="6" class="dg-e-js"/>
+<text x="1088" y="170" text-anchor="middle" class="dg-t">JavaScript</text>
+<rect x="1046" y="190" width="84" height="32" rx="6" class="dg-e-java"/>
+<text x="1088" y="210" text-anchor="middle" class="dg-t">Java</text>
+<rect x="1046" y="230" width="84" height="32" rx="6" class="dg-e-llm"/>
+<text x="1088" y="250" text-anchor="middle" class="dg-t">Python</text>
+<text x="834" y="128" text-anchor="middle" class="dg-cap">RUNTIME</text>
+<rect x="642" y="146" width="104" height="56" rx="8" class="dg-e-java"/>
+<text x="694.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="694.0" y="187.0" text-anchor="middle" class="dg-m">Java</text>
+<rect x="782" y="146" width="104" height="56" rx="8" class="dg-e-js"/>
+<text x="834.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="834.0" y="187.0" text-anchor="middle" class="dg-m">JavaScript</text>
+<rect x="922" y="146" width="104" height="56" rx="8" class="dg-e-llm"/>
+<text x="974.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
+<text x="974.0" y="187.0" text-anchor="middle" class="dg-m">Python</text>
+<rect x="634" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
+<text x="694.0" y="52.0" text-anchor="middle" class="dg-b">Game adapter</text>
+<line x1="694" y1="70" x2="694" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<line x1="748" y1="174" x2="780" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
+<text x="764" y="164" text-anchor="middle" class="dg-m">local</text>
+<rect x="642" y="276" width="384" height="82" rx="10" class="dg-bg"/>
+<rect x="656.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="698.25" y="309" text-anchor="middle" class="dg-t">KV store</text>
+<rect x="746.5" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="788.75" y="309" text-anchor="middle" class="dg-t">Random</text>
+<rect x="837.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="879.25" y="309" text-anchor="middle" class="dg-t">LLM</text>
+<rect x="927.5" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
+<text x="969.75" y="309" text-anchor="middle" class="dg-t">GPU</text>
+<text x="834" y="345" text-anchor="middle" class="dg-cap">CAPABILITIES IT PROVIDES</text>
+<line x1="694" y1="204" x2="694" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<path d="M854 204V246H811.0V286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<path d="M960 204V246H901.5V286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<line x1="984" y1="204" x2="984" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
+<line x1="540" y1="174" x2="640" y2="174" class="dg-blue" stroke-width="1.6" marker-end="url(#runtime-blue)" marker-start="url(#runtime-blue-s)"/>
+<text x="590.0" y="164" text-anchor="middle" class="dg-m dg-halo">network</text>
+</svg>
+</figure>
+<p><em>Two runtimes with a network link between them. Coglets run inside and
+adapters sit outside. Each coglet has the colour of the engine it runs on, and
+the arrows down show which of the runtime's capabilities it uses.</em></p>
+<p><strong>Execution engines.</strong> A runtime may have several execution engines, one for
+each language a policy's code can be written in: for example BASIC, WASM,
+JavaScript, Java and Python. Engines are pluggable, so two runtimes need not
+offer the same set. A coglet's policy picks the engine; everything else about
+the coglet stays the same.</p>
+<p>An LLM is not an engine. It is a capability: a policy that relies on prompts
+and skills runs on one of these engines and calls the LLM capability.</p>
+<p><strong>Capabilities.</strong> A runtime also provides capabilities of its own to the
+coglets it runs: for example a database, a key-value store, a random number
+generator, an LLM and a GPU. Like engines, these can differ from one runtime to the
+next.</p>
+<p><strong>Routing.</strong> A message between two coglets in the same runtime is delivered
+inside it. A message to a coglet in another runtime goes over the network.
+Either way the coglets see the same thing.</p>
+<p><strong>Interfaces.</strong></p>
+<div class="codehilite idl"><pre><span class="nc">Runtime</span>
+  <span class="nf">run</span>(<span class="ty">coglet</span>)
+      <span class="sd">Load a coglet and run its event loop. Nothing fancier is required.</span>
+  <span class="nf">stop</span>(<span class="ty">coglet</span>)
+  <span class="nf">connect</span>(<span class="ty">adapter</span>)
+      <span class="sd">Open a link to an adapter and learn its capabilities and grants.</span>
+  <span class="nf">join</span>(<span class="ty">router</span>)
+      <span class="sd">Make itself known to a cogent, so the cogent can run coglets here.</span></pre></div>
+<p><strong>Messages.</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>It generates</th>
+<th>It processes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Timer wakes</td>
+<td>Everything passing between its coglets and its adapters</td>
+</tr>
+<tr>
+<td>A notice to a coglet when something it asked for was refused</td>
+<td>Messages between two of its own coglets, which it delivers itself</td>
+</tr>
+<tr>
+<td>Health reports to the router</td>
+<td>From the router: install, start, stop, patch and read requests, and messages for its coglets</td>
+</tr>
+</tbody>
+</table></div>
+<p>A runtime writes almost nothing of its own. Its work is carrying other parts'
+messages to the right place, in order.</p>
+<p>Detail: <a href="coglets-and-runtime.html#runtime">Coglets and runtime</a>.</p>
+<p><strong>Rules.</strong></p>
+<ul>
+<li>Coglets never connect to each other directly; the runtime carries every
+  message.</li>
+<li>Nothing returns a value in place; a result arrives later as a new event.</li>
+<li>An adapter has the final say over its own app or hardware.</li>
+<li>Latency-sensitive work, such as voice, stays on the local runtime.</li>
+</ul>
+<h2 id="cogent_1">Cogent<a class="headerlink" href="#cogent_1" title="Permanent link">#</a></h2>
+<p>A cogent is one logical agent. It has an <strong>identity</strong>, a <strong>name</strong> and an
+<strong>owner</strong>. It runs as a <strong>collection of coglets</strong>.</p>
+<p>At its centre are a few coglets that are always running:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="cognitive-architecture.html#fastloopcoglet">FastLoop</a></td>
+<td>Handles events from other coglets: responds, or forwards them on.</td>
+</tr>
+<tr>
+<td><a href="cognitive-architecture.html#factorycoglet">Factory</a></td>
+<td>Takes tickets, produces artifacts.</td>
+</tr>
+<tr>
+<td><a href="cognitive-architecture.html#optimizercoglet">Optimizer</a></td>
+<td>Watches the fast loop's interactions, files tickets for improvements, patches coglets.</td>
+</tr>
+<tr>
+<td><a href="cognitive-architecture.html#memorycoglet">Memory</a></td>
+<td>Holds what the cogent knows, for the other coglets to read and add to.</td>
+</tr>
+<tr>
+<td><a href="cognitive-architecture.html#routercoglet">Router</a></td>
+<td>A coglet like the others. Finds the devices the cogent may use and carries messages and patches to the coglets on them.</td>
+</tr>
+</tbody>
+</table></div>
+<p>Around that centre are <strong>devices</strong>, and the cogent runs coglets on each one:</p>
+<ul>
+<li>a <strong>Face</strong>, wherever it needs to talk with the user;</li>
+<li><strong>app coglets</strong> for the apps on that device it has been connected to. One
+  coglet can drive several apps, and several coglets can share one app.</li>
+<li>a <strong>controller</strong>, on a device that can move, to drive hardware such as wheels
+  or a hand.</li>
+</ul>
+<p>Not everything it connects to is a device the user owns. Games hosted in the
+Softmax Universe, such as Paintbot, GOTA and PudgeWars, have adapters too, and
+the cogent runs coglets for them in the same way.</p>
+<p>Those coglets are part of the cogent too. They run out on the device because
+that is where the microphone or the app is, and where latency matters. The
+centre usually runs on Softmax infrastructure, but its coglets can run on any
+runtime, including the user's own machine.</p>
+<h2 id="a-request-end-to-end">A request, end to end<a class="headerlink" href="#a-request-end-to-end" title="Permanent link">#</a></h2>
+<p>"Make me a torus", said to a user who has only Blender installed, when the
+Blender coglet does not yet know how.</p>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1090" height="762" viewBox="0 0 1090 762" role="img" aria-label="A spoken request goes from Face to the Blender coglet, which asks for help; Face files a feature request, the factory builds a patch, and the cogent applies it.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="turn-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="turn-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="turn-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="turn-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="turn-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="turn-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="turn-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="turn-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="1089" height="761" rx="12" class="dg-bg"/>
+<line x1="100" y1="64" x2="100" y2="722" class="dg-life" stroke-width="1.4"/>
+<rect x="32.0" y="24" width="136" height="40" rx="8" class="dg-adapter"/>
+<text x="100.0" y="48.0" text-anchor="middle" class="dg-b">App UI adapter</text>
+<line x1="305" y1="64" x2="305" y2="722" class="dg-life" stroke-width="1.4"/>
+<rect x="237.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="305.0" y="48.0" text-anchor="middle" class="dg-b">FaceCoglet</text>
+<line x1="510" y1="64" x2="510" y2="722" class="dg-life" stroke-width="1.4"/>
+<rect x="442.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="510.0" y="48.0" text-anchor="middle" class="dg-b">BlenderCoglet</text>
+<line x1="715" y1="64" x2="715" y2="722" class="dg-life" stroke-width="1.4"/>
+<rect x="647.0" y="24" width="136" height="40" rx="8" class="dg-group"/>
+<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">Cogent centre</text>
+<line x1="920" y1="64" x2="920" y2="722" class="dg-life" stroke-width="1.4"/>
+<rect x="852.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="920.0" y="48.0" text-anchor="middle" class="dg-b">Factory</text>
+<line x1="104" y1="108" x2="301" y2="108" class="dg-warm dg-dash" stroke-width="1.6" marker-end="url(#turn-warm)"/>
+<circle cx="118" cy="108" r="8" class="dg-num"/>
+<text x="118" y="111.5" text-anchor="middle" class="dg-numt">1</text>
+<text x="211.5" y="100" text-anchor="middle" class="dg-code dg-halo">speech.end</text>
+<line x1="309" y1="154" x2="506" y2="154" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="323" cy="154" r="8" class="dg-num"/>
+<text x="323" y="157.5" text-anchor="middle" class="dg-numt">2</text>
+<text x="416.5" y="146" text-anchor="middle" class="dg-code dg-halo">intent.request</text>
+<line x1="301" y1="200" x2="104" y2="200" class="dg-warm" stroke-width="1.6" marker-end="url(#turn-warm)"/>
+<circle cx="287" cy="200" r="8" class="dg-num"/>
+<text x="287" y="203.5" text-anchor="middle" class="dg-numt">3</text>
+<text x="193.5" y="192" text-anchor="middle" class="dg-code dg-halo">speak &quot;On it.&quot;</text>
+<path d="M510 234h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#turn-ink)"/>
+<circle cx="496" cy="243" r="8" class="dg-num"/>
+<text x="496" y="246.5" text-anchor="middle" class="dg-numt">4</text>
+<text x="554" y="247" text-anchor="start" class="dg-code dg-halo">no skill for this</text>
+<line x1="506" y1="292" x2="309" y2="292" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="492" cy="292" r="8" class="dg-num"/>
+<text x="492" y="295.5" text-anchor="middle" class="dg-numt">5</text>
+<text x="398.5" y="284" text-anchor="middle" class="dg-code dg-halo">intent.report needs_help</text>
+<line x1="301" y1="338" x2="104" y2="338" class="dg-warm" stroke-width="1.6" marker-end="url(#turn-warm)"/>
+<circle cx="287" cy="338" r="8" class="dg-num"/>
+<text x="287" y="341.5" text-anchor="middle" class="dg-numt">6</text>
+<text x="193.5" y="330" text-anchor="middle" class="dg-code dg-halo">ask the user to explain</text>
+<line x1="104" y1="384" x2="301" y2="384" class="dg-warm dg-dash" stroke-width="1.6" marker-end="url(#turn-warm)"/>
+<circle cx="118" cy="384" r="8" class="dg-num"/>
+<text x="118" y="387.5" text-anchor="middle" class="dg-numt">7</text>
+<text x="211.5" y="376" text-anchor="middle" class="dg-code dg-halo">speech.end</text>
+<line x1="309" y1="430" x2="711" y2="430" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="323" cy="430" r="8" class="dg-num"/>
+<text x="323" y="433.5" text-anchor="middle" class="dg-numt">8</text>
+<text x="519.0" y="422" text-anchor="middle" class="dg-code dg-halo">feature.request</text>
+<line x1="719" y1="476" x2="916" y2="476" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="733" cy="476" r="8" class="dg-num"/>
+<text x="733" y="479.5" text-anchor="middle" class="dg-numt">9</text>
+<text x="826.5" y="468" text-anchor="middle" class="dg-code dg-halo">ticket.submit</text>
+<path d="M920 510h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#turn-ink)"/>
+<circle cx="906" cy="519" r="8" class="dg-num"/>
+<text x="906" y="522.5" text-anchor="middle" class="dg-numt">10</text>
+<text x="964" y="523" text-anchor="start" class="dg-code dg-halo">build, test</text>
+<line x1="916" y1="568" x2="719" y2="568" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="902" cy="568" r="8" class="dg-num"/>
+<text x="902" y="571.5" text-anchor="middle" class="dg-numt">11</text>
+<text x="808.5" y="560" text-anchor="middle" class="dg-code dg-halo">ticket.result</text>
+<line x1="711" y1="614" x2="514" y2="614" class="dg-blue" stroke-width="1.6" marker-end="url(#turn-blue)"/>
+<circle cx="697" cy="614" r="8" class="dg-num"/>
+<text x="697" y="617.5" text-anchor="middle" class="dg-numt">12</text>
+<text x="603.5" y="606" text-anchor="middle" class="dg-code dg-halo">patch</text>
+<line x1="711" y1="660" x2="309" y2="660" class="dg-teal" stroke-width="1.6" marker-end="url(#turn-teal)"/>
+<circle cx="697" cy="660" r="8" class="dg-num"/>
+<text x="697" y="663.5" text-anchor="middle" class="dg-numt">13</text>
+<text x="501.0" y="652" text-anchor="middle" class="dg-code dg-halo">feature.update shipped</text>
+<line x1="301" y1="706" x2="104" y2="706" class="dg-warm" stroke-width="1.6" marker-end="url(#turn-warm)"/>
+<circle cx="287" cy="706" r="8" class="dg-num"/>
+<text x="287" y="709.5" text-anchor="middle" class="dg-numt">14</text>
+<text x="193.5" y="698" text-anchor="middle" class="dg-code dg-halo">tell the user</text>
+</svg>
+</figure>
+<p><em>The first two steps are the whole flow when the app coglet already knows
+what to do. The rest is how it learns. "Cogent centre" stands for whichever
+coglet there handles the request; see the note below.</em></p>
+<ol>
+<li>The user holds push-to-talk and speaks. Face gets the voice event and the
+   transcript, decides the request is for Blender (or asks), sends the Blender
+   coglet a <code>UserIntent</code> and says "On it."</li>
+<li>The Blender coglet looks in its skill library. If it knows how, it acts
+   through the Blender adapter and reports <code>done</code>.</li>
+<li>If it does not, it reports <code>needs_help</code>. Face tells the user, asks for an
+   explanation or a demonstration, and captures the answer and its context.</li>
+<li>Face sends a <code>FeatureRequest</code> to the cogent's centre.</li>
+<li>The centre checks memory for whether the cogent already knows how, finds
+   nothing, and a ticket is filed with the factory.</li>
+<li>The factory writes the new skill, tests it against a local Blender
+   simulator, and returns the patch in its ticket result.</li>
+<li>The patch is applied to the Blender coglet through its back channel, and
+   Face is told. Face tells the user it can now draw tori.</li>
+</ol>
+<p><strong>Not settled: who files the ticket.</strong> It could be the fast loop, acting on the
+request as it arrives, or the optimizer, acting on what it sees in the fast
+loop's interactions. The same question applies to who applies the patch. The
+messages are the same either way (<code>ticket.submit</code> to the factory, <code>patch</code> on
+the back channel), so the other pieces can be built before this is decided.</p>
+</main>
+</div>
+<script>
+const links = [...document.querySelectorAll('nav a[href^="#"]')];
+const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) {
+    links.forEach(a => a.classList.remove('active'));
+    const a = byId.get(e.target.id);
+    if (a) { a.classList.add('active'); a.scrollIntoView({block: 'nearest'}); }
+  }
+}, {rootMargin: '0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id], main h3[id]').forEach(h => seen.observe(h));
+document.getElementById('filter').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('nav li').forEach(li => {
+    li.hidden = q !== '' && !li.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>
