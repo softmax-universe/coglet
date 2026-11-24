@@ -88,6 +88,13 @@ jobs:
         run: cargo build --locked -p coglet-mock --example mock-conformance
       - name: Build surface adapters
         run: cargo build --locked --release -p coglet-surface-rust -p coglet-mock --bins
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/surface-go/go.mod
+          cache: false
+      - name: Build Go surface adapter before every registry consumer
+        working-directory: sdk/surface-go
+        run: go build -o ../../target/coglet-go-surface ./cmd/conformance
       - run: python3 -m unittest discover -s conformance/tests -v
       - run: cargo fmt --manifest-path conformance/iroh-driver/Cargo.toml --check
       - run: cargo clippy --locked --manifest-path conformance/iroh-driver/Cargo.toml --all-targets -- -D warnings

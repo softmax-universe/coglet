@@ -1,0 +1,155 @@
+{
+  "version": "0.1",
+  "operations": {
+    "speech.start": {
+      "entry": "speech.control",
+      "direction": "event",
+      "input": "speech:speech-start",
+      "output": null
+    },
+    "speech.partial": {
+      "entry": "speech.control",
+      "direction": "event",
+      "input": "speech:speech-partial",
+      "output": null
+    },
+    "speech.end": {
+      "entry": "speech.control",
+      "direction": "event",
+      "input": "speech:speech-end",
+      "output": null
+    },
+    "speech.position": {
+      "entry": "speech.control",
+      "direction": "event",
+      "input": "speech:speech-position",
+      "output": null
+    },
+    "speech.barge_in": {
+      "entry": "speech.control",
+      "direction": "event",
+      "input": "speech:speech-barge-in",
+      "output": null
+    },
+    "speech.config": {
+      "entry": "speech.control",
+      "direction": "read",
+      "input": "surface:empty-map",
+      "output": "speech:speech-config"
+    },
+    "speech.speak_chunk": {
+      "entry": "speech.control",
+      "direction": "action",
+      "input": "speech:speak-chunk",
+      "output": "surface:empty-map"
+    },
+    "speech.stop": {
+      "entry": "speech.control",
+      "direction": "action",
+      "input": "speech:stop",
+      "output": "surface:empty-map"
+    },
+    "speech.backchannel": {
+      "entry": "speech.control",
+      "direction": "action",
+      "input": "speech:backchannel",
+      "output": "surface:empty-map"
+    },
+    "speech.session_open": {
+      "entry": "speech.session",
+      "direction": "action",
+      "input": "speech:session-open",
+      "output": "surface:empty-map"
+    },
+    "speech.session_close": {
+      "entry": "speech.session",
+      "direction": "action",
+      "input": "speech:session-close",
+      "output": "surface:empty-map"
+    },
+    "speech.tool_call": {
+      "entry": "speech.session",
+      "direction": "event",
+      "input": "speech:tool-call",
+      "output": null
+    },
+    "speech.tool_result": {
+      "entry": "speech.session",
+      "direction": "action",
+      "input": "speech:tool-result",
+      "output": "surface:empty-map"
+    },
+    "speech.heard": {
+      "entry": "speech.history",
+      "direction": "read",
+      "input": "speech:heard-query",
+      "output": "speech:heard-record"
+    },
+    "speech.work_state": {
+      "entry": "speech.work",
+      "direction": "read",
+      "input": "surface:empty-map",
+      "output": "speech:work-state"
+    },
+    "speech.work_intent": {
+      "entry": "speech.work",
+      "direction": "event",
+      "input": "speech:work-intent",
+      "output": null
+    },
+    "speech.work_done": {
+      "entry": "speech.work",
+      "direction": "event",
+      "input": "speech:work-done",
+      "output": null
+    },
+    "speech.work_result": {
+      "entry": "speech.work",
+      "direction": "action",
+      "input": "speech:work-result",
+      "output": "surface:empty-map"
+    },
+    "expression.set_expression": {
+      "entry": "expression.control",
+      "direction": "action",
+      "input": "expression:set-expression",
+      "output": "surface:empty-map"
+    },
+    "expression.state": {
+      "entry": "expression.control",
+      "direction": "read",
+      "input": "surface:empty-map",
+      "output": "expression:expression-state"
+    },
+    "sim.gridbot_state": {
+      "entry": "sim.gridbot",
+      "direction": "event",
+      "input": "sandbox:gridbot-state",
+      "output": null
+    },
+    "sim.gridbot_move": {
+      "entry": "sim.gridbot",
+      "direction": "action",
+      "input": "sandbox:gridbot-move",
+      "output": "surface:empty-map"
+    },
+    "sim.cartpole_state": {
+      "entry": "sim.cartpole",
+      "direction": "event",
+      "input": "sandbox:cartpole-state",
+      "output": null
+    },
+    "sim.cartpole_force": {
+      "entry": "sim.cartpole",
+      "direction": "action",
+      "input": "sandbox:cartpole-force",
+      "output": "surface:empty-map"
+    },
+    "llm.complete": {
+      "entry": null,
+      "direction": "gateway",
+      "input": "abi:llm-request",
+      "output": "abi:llm-reply"
+    }
+  }
+}
