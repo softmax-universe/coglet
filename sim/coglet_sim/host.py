@@ -21,7 +21,7 @@ import tempfile
 import time
 
 from coglet_surface.codec import decode, encode_profile
-from coglet_surface.surface import CATALOG, RESOURCES, WIRE, Operation, Rejection, Surface, correlation_id
+from coglet_surface.surface import CATALOG, RESOURCES, WIRE, Operation, ProtocolError, Rejection, Surface, correlation_id
 from coglet_surface.transport import serve
 
 from .duplex import WORK_RESULT_BYTES, DuplexEngine
@@ -169,6 +169,7 @@ class DuplexDevice:
         self.capture_stream = None
         self.captured = False
         self.native_epoch = None  # grant epoch owning provider-native items
+        self.fixture_time = None  # only the private conformance adapter opts in
 
     # Native off-switch and callback fencing --------------------------------
 
@@ -227,6 +228,8 @@ class DuplexDevice:
         self.engine.reset_expression()
 
     def now_ms(self):
+        if self.fixture_time is not None:
+            return self.fixture_time() // 1000
         return (time.monotonic_ns() - self.origin_ns) // 1_000_000
 
     def surface(self):
@@ -512,14 +515,17 @@ def grant_entries(names):
                  resources=sorted(set(resources)), expires=5_000_000)]
 
 
-def bind_session(case, ledger):
+def bind_session(case, ledger, *, fixture_time=None):
     names = operations_for(case)
     marker = marker_for(case)
     started = time.monotonic_ns()
     negotiated = [False]
     clock = lambda: CONFIG['clock'] + ((time.monotonic_ns() - started) // 1000 if negotiated[0] else 0)
+    if fixture_time is not None:
+        clock = lambda: CONFIG['clock'] + fixture_time()
     holder = [None]
     device = DuplexDevice(case, clock, holder)
+    device.fixture_time = fixture_time
     surface = MarkerSurface(CONFIG['surface'], {COGLET}, ledger, create=True, clock=clock,
                             stop=device.stop, marker=marker, revoked=device.revoke_heard)
     holder[0] = surface
@@ -561,26 +567,41 @@ def unix_supervisor(directory):
                     index = 0
                     try:
                         while True:
-                            with control.accept() as peer:
-                                raw = b''
-                                while not raw.endswith(b'\n'):
-                                    raw += peer.recv(4096)
-                                setup = json_mod.loads(raw)
-                                if setup.get('stop'):
-                                    return
-                                index += 1
-                                case = setup.get('case') or ''
-                                surface, device, configured = bind_session(
-                                    case, root / f'ledger-{index}')
-                                peer.sendall(b'ready\n')
-                            with wire.accept() as connection:
-                                try:
+                            surface = None
+                            try:
+                                with control.accept() as peer:
+                                    peer.settimeout(10)
+                                    raw = b''
+                                    while not raw.endswith(b'\n'):
+                                        chunk = peer.recv(4096)
+                                        if not chunk:
+                                            break
+                                        raw += chunk
+                                    if not raw.endswith(b'\n'):
+                                        continue
+                                    setup = json_mod.loads(raw)
+                                    if setup.get('stop'):
+                                        return
+                                    index += 1
+                                    case = setup.get('case') or ''
+                                    surface, device, configured = bind_session(
+                                        case, root / f'ledger-{index}')
+                                    peer.sendall(b'ready\n')
+                                with wire.accept() as connection:
                                     serve(surface, connection.fileno(), connection.fileno(),
                                           hello_id=HELLO_ID, configured=configured, poll=device.tick)
-                                finally:
+                            except (BrokenPipeError, ConnectionResetError):
+                                # A failed scenario must not strand bound listeners.
+                                # Other errors remain visible at context teardown.
+                                continue
+                            except ProtocolError as exc:
+                                if str(exc) != 'EOF mid-frame':
+                                    raise
+                                # The failed client observes EOF; later scenarios
+                                # still get a fresh ledger and live accept loop.
+                            finally:
+                                if surface is not None:
                                     surface.close()
-                    except BrokenPipeError:
-                        pass
                     except BaseException as exc:
                         errors.append(exc)
 
