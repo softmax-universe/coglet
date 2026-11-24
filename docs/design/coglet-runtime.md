@@ -280,7 +280,7 @@ Two specs everything plugs into, then the pieces built on them. Any new adapter 
 
 One Mac app with two modes.
 
-- **Live:** connects to the real router as a debug client. Shows the router, adapters around it, coglets inside each adapter, and links colored by health and latency, with events animating along them.
+- **Live:** connects to the real router as a back-channel client. Shows the router, adapters around it, coglets inside each adapter, and links colored by health and latency, with events animating along them.
 - **Simulated:** router, runtimes and mock adapters all run on the Mac, fed by recorded traces (a game session, a voice conversation). Supports fault injection: drop a link, kill a runtime.
 - Clicking a coglet shows its live commit, probation state, `/data`, logs and a steppable journal. Factory tickets appear on the coglet they target.
 - Build the live view first; it needs only the router's status and debug streams.

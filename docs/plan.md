@@ -76,7 +76,7 @@ crates/                     Cargo workspace
   coglet-engine-wamr        interpreter + AOT; interpreter-only on iOS and the EO1
   coglet-engine-wasmtime    later
   coglet-fs                 copy-on-write, content-addressed FS, tree hashes, flush
-  coglet-runtime            library (C ABI) + bin `cogletd`: router, timers, batching, budgets,
+  coglet-runtime            library (C ABI) + bin `cogletd`: event router, timers, batching, budgets,
                             journal/replay, git sync, router link, debug agent
   coglet-proto              router protocol over iroh
   coglet-hub                kernel: identity/enroll, registry, routing, promotion, policy,
@@ -84,7 +84,7 @@ crates/                     Cargo workspace
   coglet-llm                LLM gateway: routing, spend ledger, recordings
   coglet-gate               journal replay gates, headless forks
   coglet-trace              trace store + training export
-  coglet-mock               mock engine / surface / hub / LLM
+  coglet-mock               mock engine / adapter / router / LLM
   coglet-cli                coglet new|build|run|replay|attach|push
 sdk/
   guest-rust/               write coglets in Rust → wasm32-wasip1

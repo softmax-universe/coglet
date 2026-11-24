@@ -1,4 +1,4 @@
-# Hub fixture catalog
+# Router (hub-protocol) fixture catalog
 
 - `cases.json`: shape-valid/shape-invalid JSON views, selected CDDL rule and
   JSON Schema definition, and core-deterministic `cbor_hex` for each positive.
