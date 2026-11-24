@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
+[features]
+default = []
+database = []
+
 [dependencies]
 coglet-types = { path = "../../crates/coglet-types" }
 serde = { version = "1", features = ["derive"] }

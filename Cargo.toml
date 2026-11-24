@@ -3,6 +3,7 @@ resolver = "3"
 exclude = ["coglets/echo", "coglets/counter"]
 members = [
     "crates/coglet-types",
+    "crates/coglet-db",
     "crates/coglet-engine",
     "crates/coglet-engine-wamr",
     "crates/coglet-engine-wasmtime",
