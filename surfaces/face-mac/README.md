@@ -127,8 +127,13 @@ The CLI remains simulator-only; there is no native command-line permission UI.
 Native route source and deterministic conversion/callback tests do not establish
 installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
 
-Remaining acceptance work: native macOS execution of the new production C ABI
-probe, final operation/lifecycle audit and independent full exact-head review.
+The production C ABI probe and operation/lifecycle audit passed on Linux and
+macOS at source head `693aff5` (Swift Actions run `45470479845`), with separate
+independent exact-head source and operational approval. That head's required Rust
+check failed in the separately owned lifecycle restart test. The landed PR #136
+repair is integrated; the resulting head still requires fresh CI and independent
+operational delta review before merge. Historical native success is not proof of
+the new head.
 `FaceEmbeddedTests` remains explicitly an ABI wrapper fixture. `Integration/` is
 separate: it links the real release native-engine library without test hooks,
 asserts off-main entry at every C symbol, and drives the real scheduled persisted
