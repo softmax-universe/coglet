@@ -749,4 +749,6 @@ impl Drop for Unit<'_> {
 #[cfg(test)]
 mod native_tests;
 #[cfg(test)]
+mod precedence_tests;
+#[cfg(test)]
 mod tests;

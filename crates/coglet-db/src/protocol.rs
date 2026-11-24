@@ -248,6 +248,15 @@ impl Unit<'_> {
         if self.paging && (op == "enqueue" || text(v, "mode")? == "write") {
             return Err("paging conflict".into());
         }
+        if op == "enqueue" {
+            self.enqueue_identity(&Intent {
+                intent_id: text(v, "intent_id")?.into(),
+                idempotency_key: text(v, "idempotency_key")?.into(),
+                kind: text(v, "kind")?.into(),
+                payload: field(v, "payload").ok_or("invalid request")?.clone(),
+                correlation_id: text(v, "correlation_id")?.into(),
+            })?;
+        }
         if let Some(cursor) = field(v, "cursor").and_then(V::as_text) {
             if self.wrote {
                 return Err("paging conflict".into());
