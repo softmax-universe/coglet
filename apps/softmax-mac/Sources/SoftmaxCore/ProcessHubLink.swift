@@ -18,7 +18,11 @@ public final class ProcessHubLink: HubLink {
     public init(executable: URL) { self.executable = executable }
     // Kept internal for a deterministic descriptor-lifetime test.
     nonisolated static func readerDescriptor(for handle: FileHandle) throws -> Int32 {
-        handle.fileDescriptor
+        // Duplicate after spawning so the child cannot inherit this descriptor.
+        // Only the detached reader closes it; stop() owns the original handle.
+        let descriptor = fcntl(handle.fileDescriptor, F_DUPFD_CLOEXEC, 0)
+        guard descriptor != -1 else { throw HubError.unavailable }
+        return descriptor
     }
     public func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws {
         stop()
@@ -46,6 +50,7 @@ public final class ProcessHubLink: HubLink {
         do { descriptor = try Self.readerDescriptor(for: stdout.fileHandleForReading) }
         catch { stop(); throw HubError.unavailable }
         reader = Task.detached { [weak self] in
+            defer { close(descriptor) }
             do {
                 var pending = Data()
                 var buffer = [UInt8](repeating: 0, count: 4096)
