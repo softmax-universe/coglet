@@ -98,6 +98,20 @@ jobs:
           name: Softmax-live-window-audit-evidence
           path: apps/softmax-mac/build/LiveWindowAttachments
           if-no-files-found: warn
+      - name: Verify bundled universal ROUTER helper and inside-out signing
+        if: ${{ !cancelled() }}
+        working-directory: apps/softmax-mac
+        env:
+          SOFTMAX_DEV_SIGNING_IDENTITY: '-'
+          SOFTMAX_DEV_IDENTITY_FILE: ${{ runner.temp }}/softmax-hub-signing-identity
+        run: |
+          app=build/Build/Products/Debug/Softmax.app
+          helper="$app/Contents/Helpers/softmax-hub-link"
+          test -x "$helper"
+          lipo "$helper" -verify_arch arm64 x86_64
+          bash scripts/sign-dev.sh "$app"
+          codesign --verify --strict --verbose=2 "$helper"
+          codesign --verify --deep --strict --verbose=2 "$app"
       - name: Package app artifact
         if: always()
         working-directory: apps/softmax-mac
