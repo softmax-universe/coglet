@@ -191,6 +191,14 @@ type ServeOptions struct {
 	Configured func() error
 	Poll       func() error
 	Ready      func()
+	// Control is a test-only fixture clock descriptor (ADR-0021); never set it on a
+	// production connection. Zero (stdin) means none. Each 8-byte big-endian value read
+	// is a logical microsecond advance, passed to Advance. After a frame or advance has
+	// been dispatched, ticked and its output fully written, the logical time Now returns
+	// is echoed back as 8 big-endian bytes. Advance errors are fatal.
+	Control int
+	Advance func(micros uint64) error
+	Now     func() uint64
 }
 
 // ServeUnix serves one authenticated socket. Listener remains reusable for a
@@ -271,6 +279,13 @@ func ServeFD(ctx context.Context, s *Surface, in, out int, opts ServeOptions) (e
 	buf := make([]byte, 65536)
 	ready := false
 	blocked := time.Time{}
+	control := opts.Control > 0 && opts.Advance != nil && opts.Now != nil
+	if control && opts.Control >= 1024 {
+		return errors.New("descriptor exceeds select capacity")
+	}
+	var acks []uint64 // logical times awaiting acknowledgement, one per input
+	var advance [8]byte
+	have := 0
 	for {
 		if err = ctx.Err(); err != nil {
 			return err
@@ -324,6 +339,22 @@ func ServeFD(ctx context.Context, s *Surface, in, out int, opts ServeOptions) (e
 				}
 			}
 		}
+		// Acknowledge only after the input's tick and all resulting output are written.
+		for control && len(pending) == 0 && len(acks) > 0 {
+			var raw [8]byte
+			binary.BigEndian.PutUint64(raw[:], acks[0])
+			for sent := 0; sent < len(raw); {
+				n, e := syscall.Write(opts.Control, raw[sent:])
+				if e == syscall.EINTR {
+					continue
+				}
+				if e != nil {
+					return e
+				}
+				sent += n
+			}
+			acks = acks[1:]
+		}
 		if len(pending) > 0 {
 			if blocked.IsZero() {
 				blocked = time.Now()
@@ -336,11 +367,14 @@ func ServeFD(ctx context.Context, s *Surface, in, out int, opts ServeOptions) (e
 		}
 		var r, w syscall.FdSet
 		fdset(&r, in)
+		if control {
+			fdset(&r, opts.Control)
+		}
 		if len(pending) > 0 {
 			fdset(&w, out)
 		}
 		tv := syscall.Timeval{Usec: 10000}
-		_, e := syscall.Select(max(in, out)+1, &r, &w, nil, &tv)
+		_, e := syscall.Select(max(in, out, opts.Control)+1, &r, &w, nil, &tv)
 		if e == syscall.EINTR {
 			continue
 		}
@@ -373,6 +407,25 @@ func ServeFD(ctx context.Context, s *Surface, in, out int, opts ServeOptions) (e
 				}
 			}
 		}
+		if control && isset(&r, opts.Control) {
+			n, e := syscall.Read(opts.Control, advance[have:])
+			if n == 0 && e == nil {
+				return errors.New("fixture clock closed")
+			}
+			if e != nil && e != syscall.EAGAIN && e != syscall.EINTR {
+				return e
+			}
+			if n > 0 {
+				have += n
+			}
+			if have == len(advance) {
+				have = 0
+				if e = opts.Advance(binary.BigEndian.Uint64(advance[:])); e != nil {
+					return e
+				}
+				acks = append(acks, opts.Now())
+			}
+		}
 		if isset(&r, in) {
 			n, e := syscall.Read(in, buf)
 			if e == syscall.EAGAIN || e == syscall.EINTR {
@@ -391,6 +444,9 @@ func ServeFD(ctx context.Context, s *Surface, in, out int, opts ServeOptions) (e
 			for _, raw := range frames {
 				if e = s.Receive(raw); e != nil {
 					return e
+				}
+				if control {
+					acks = append(acks, opts.Now())
 				}
 				if !ready && s.Ready() {
 					ready = true
