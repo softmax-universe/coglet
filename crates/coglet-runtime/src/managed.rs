@@ -18,13 +18,32 @@ pub(super) struct ManagedState {
     stopped_at: u64,
     #[serde(default)]
     operations: BTreeMap<String, OperationReceipt>,
+    /// Original actor/ticket/method of the install admission. Absent only for
+    /// receipts written without scope; those are never readable via hub.receipt.
+    #[serde(default)]
+    install_scope: Option<ReceiptScope>,
 }
+
+/// Original authenticated scope of an admitted lifecycle operation, persisted
+/// in the same frame as the receipt it protects.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ReceiptScope {
+    pub(crate) actor: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) ticket: Option<String>,
+    pub(crate) method: String,
+}
+
+type Operation<'a> = (&'a str, &'a str, &'a ReceiptScope);
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct OperationReceipt {
     intent: String,
     receipt: Value,
+    #[serde(default)]
+    scope: Option<ReceiptScope>,
 }
 
 impl ManagedState {
@@ -81,6 +100,13 @@ impl RuntimeService {
         self.state.managed.as_ref().map(|m| &m.install_receipt)
     }
 
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_contains_operation(&self, id: &str) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| {
+            m.install_receipt["operation_id"] == id || m.operations.contains_key(id)
+        })
+    }
+
     /// Original code/manifest/private-files configuration, not live private data.
     pub fn managed_setup(&self) -> &Value {
         &self.state.runtime.initial_setup
@@ -91,8 +117,25 @@ impl RuntimeService {
     /// `live_commit` is explicit, or comes from `initial.statement.new` (the signed
     /// install ref) / `update.statement.new` (trusted provisioning metadata).
     pub fn managed_install(&mut self, identity: &Value, operation_id: &str) -> Result<Value> {
+        self.managed_install_scoped(identity, operation_id, None)
+    }
+
+    pub(crate) fn managed_install_scoped(
+        &mut self,
+        identity: &Value,
+        operation_id: &str,
+        scope: Option<&ReceiptScope>,
+    ) -> Result<Value> {
         validate("correlation-id", &json!(operation_id))?;
         if let Some(saved) = &self.state.managed {
+            // An identical installed identity is not permission to borrow a
+            // different caller's receipt or collide with another method's ID.
+            if scope.is_some()
+                && (scope != saved.install_scope.as_ref()
+                    || saved.operations.contains_key(operation_id))
+            {
+                return Err("conflict: managed install operation scope differs".into());
+            }
             return if saved.identity == *identity {
                 Ok(saved.install_receipt.clone())
             } else {
@@ -133,6 +176,7 @@ impl RuntimeService {
             cancellation_pending: false,
             stopped_at: 0,
             operations: BTreeMap::new(),
+            install_scope: scope.cloned(),
         });
         self.commit_managed(next)?;
         Ok(receipt)
@@ -145,7 +189,7 @@ impl RuntimeService {
         self.managed_start_inner(None)
     }
 
-    fn managed_start_inner(&mut self, operation: Option<(&str, &str)>) -> Result<()> {
+    fn managed_start_inner(&mut self, operation: Option<Operation<'_>>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -183,7 +227,7 @@ impl RuntimeService {
         self.managed_stop_inner(now, None)
     }
 
-    fn managed_stop_inner(&mut self, now: u64, operation: Option<(&str, &str)>) -> Result<()> {
+    fn managed_stop_inner(&mut self, now: u64, operation: Option<Operation<'_>>) -> Result<()> {
         if self.state.managed.is_none() {
             return Err("managed service is not installed".into());
         }
@@ -251,14 +295,15 @@ impl RuntimeService {
         intent: &str,
         start: bool,
         now: u64,
+        scope: &ReceiptScope,
     ) -> Result<Value> {
         if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
             return Ok(receipt);
         }
         let outcome = if start {
-            self.managed_start_inner(Some((id, intent)))
+            self.managed_start_inner(Some((id, intent, scope)))
         } else {
-            self.managed_stop_inner(now, Some((id, intent)))
+            self.managed_stop_inner(now, Some((id, intent, scope)))
         };
         // A stop cancellation failure still commits the stopped fence and its
         // failed receipt in one frame; its retry must not stop a later start.
@@ -267,6 +312,26 @@ impl RuntimeService {
         }
         outcome?;
         Err("unavailable: lifecycle receipt missing".into())
+    }
+
+    /// Receipt of an operation admitted by exactly this actor/ticket, with the
+    /// method it was admitted under. Unknown IDs and other scopes are `None`.
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_receipt_for(
+        &self,
+        id: &str,
+        actor: &str,
+        ticket: Option<&str>,
+    ) -> Option<(String, Value)> {
+        let managed = self.state.managed.as_ref()?;
+        let same = |s: &ReceiptScope| s.actor == actor && s.ticket.as_deref() == ticket;
+        if managed.install_receipt["operation_id"] == id {
+            let scope = managed.install_scope.as_ref().filter(|s| same(s))?;
+            return Some((scope.method.clone(), managed.install_receipt.clone()));
+        }
+        let saved = managed.operations.get(id)?;
+        let scope = saved.scope.as_ref().filter(|s| same(s))?;
+        Some((scope.method.clone(), saved.receipt.clone()))
     }
 
     fn last_step(state: &ServiceState) -> u64 {
@@ -280,10 +345,10 @@ impl RuntimeService {
 
     fn record_operation(
         next: &mut ServiceState,
-        operation: Option<(&str, &str)>,
+        operation: Option<Operation<'_>>,
         error: Option<&str>,
     ) -> Result<()> {
-        let Some((id, intent)) = operation else {
+        let Some((id, intent, scope)) = operation else {
             return Ok(());
         };
         let step = Self::last_step(next);
@@ -302,6 +367,7 @@ impl RuntimeService {
                 OperationReceipt {
                     intent: intent.into(),
                     receipt,
+                    scope: Some(scope.clone()),
                 },
             );
         Ok(())
@@ -382,6 +448,14 @@ impl RuntimeService {
 mod tests {
     use super::*;
 
+    fn scope(start: bool) -> ReceiptScope {
+        ReceiptScope {
+            actor: "ledger-test".into(),
+            ticket: None,
+            method: if start { "hub.start" } else { "hub.stop" }.into(),
+        }
+    }
+
     fn setup() -> Value {
         fixture("no-effects")
     }
@@ -416,6 +490,7 @@ mod tests {
                 OperationReceipt {
                     intent: "b".repeat(64),
                     receipt,
+                    scope: None,
                 },
             );
         }
@@ -435,7 +510,7 @@ mod tests {
         fill_ledger_to(&mut service, OPERATION_LEDGER - 2);
         let start_id = "2".repeat(32);
         let start = service
-            .managed_operation(&start_id, &"a".repeat(64), true, 0)
+            .managed_operation(&start_id, &"a".repeat(64), true, 0, &scope(true))
             .unwrap();
         assert_eq!(start["state"], "applied");
         assert!(service.managed_running());
@@ -445,7 +520,7 @@ mod tests {
         // The stop takes the reserved slot and is recorded like any other.
         let stop_id = "4".repeat(32);
         let stopped = service
-            .managed_operation(&stop_id, &"d".repeat(64), false, 7)
+            .managed_operation(&stop_id, &"d".repeat(64), false, 7, &scope(false))
             .unwrap();
         assert_eq!(
             stopped,
@@ -457,13 +532,13 @@ mod tests {
         // No start of any kind is admitted any more, so nothing can run again
         // for a replayed stop to reverse. Nothing is evicted.
         let refused = service
-            .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
+            .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0, &scope(true))
             .unwrap_err();
         assert!(refused.starts_with("resource_exhausted:"), "{refused}");
         let refused = service.managed_start().unwrap_err();
         assert!(refused.starts_with("resource_exhausted:"), "{refused}");
         let refused = service
-            .managed_operation(&"6".repeat(32), &"d".repeat(64), false, 8)
+            .managed_operation(&"6".repeat(32), &"d".repeat(64), false, 8, &scope(false))
             .unwrap_err();
         assert!(refused.starts_with("resource_exhausted:"), "{refused}");
         assert!(!service.managed_running());
@@ -476,19 +551,19 @@ mod tests {
         assert_eq!(service.managed_status()["state"], "stopped");
         assert_eq!(
             service
-                .managed_operation(&stop_id, &"d".repeat(64), false, 9)
+                .managed_operation(&stop_id, &"d".repeat(64), false, 9, &scope(false))
                 .unwrap(),
             stopped
         );
         assert_eq!(
             service
-                .managed_operation(&start_id, &"a".repeat(64), true, 0)
+                .managed_operation(&start_id, &"a".repeat(64), true, 0, &scope(true))
                 .unwrap(),
             start
         );
         for (id, intent) in [(&stop_id, "e"), (&start_id, "e"), (&"1".repeat(32), "e")] {
             let conflict = service
-                .managed_operation(id, &intent.repeat(64), false, 0)
+                .managed_operation(id, &intent.repeat(64), false, 0, &scope(false))
                 .unwrap_err();
             assert!(conflict.starts_with("conflict:"), "{conflict}");
         }
@@ -505,7 +580,7 @@ mod tests {
         fill_ledger_to(&mut service, OPERATION_LEDGER - 1);
         for refused in [
             service
-                .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
+                .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0, &scope(true))
                 .unwrap_err(),
             service.managed_start().unwrap_err(),
         ] {
@@ -528,7 +603,7 @@ mod tests {
         let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
         service.managed_install(&identity, &"1".repeat(32)).unwrap();
         service
-            .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0)
+            .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0, &scope(true))
             .unwrap();
         let event = setup["inputs"]["events"][0].clone();
         service.enqueue(event.clone()).unwrap();
@@ -545,7 +620,7 @@ mod tests {
 
         let stop_id = "4".repeat(32);
         let failed = service
-            .managed_operation(&stop_id, &"d".repeat(64), false, 100)
+            .managed_operation(&stop_id, &"d".repeat(64), false, 100, &scope(false))
             .unwrap();
         validate("hub-mutation-receipt", &failed).unwrap();
         assert_eq!(failed["operation_id"], stop_id);
@@ -561,13 +636,22 @@ mod tests {
         let mut service = RuntimeService::open(&path, &setup, 1).unwrap();
         assert_eq!(service.managed_status()["state"], "stopped");
         assert_eq!(
+            service.managed_receipt_for(&stop_id, "ledger-test", None),
+            Some(("hub.stop".into(), failed.clone()))
+        );
+        assert_eq!(service.managed_receipt_for(&stop_id, "other", None), None);
+        assert_eq!(
+            service.managed_receipt_for(&stop_id, "ledger-test", Some("foreign")),
+            None
+        );
+        assert_eq!(
             service
-                .managed_operation(&stop_id, &"d".repeat(64), false, 200)
+                .managed_operation(&stop_id, &"d".repeat(64), false, 200, &scope(false))
                 .unwrap(),
             failed
         );
         let conflict = service
-            .managed_operation(&stop_id, &"e".repeat(64), false, 200)
+            .managed_operation(&stop_id, &"e".repeat(64), false, 200, &scope(false))
             .unwrap_err();
         assert!(conflict.starts_with("conflict:"), "{conflict}");
         assert!(!service.managed_running());

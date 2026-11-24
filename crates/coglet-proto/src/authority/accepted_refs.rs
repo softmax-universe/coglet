@@ -5,11 +5,16 @@
 //! other connections' commits. Only fully validated private artifacts enter.
 //! Retained bundles are audit/recovery data, never unchecked activation handles.
 use super::{Authority, AuthorityError, Scope, delegation, valid};
+mod preinstall;
+#[cfg(test)]
+mod retention_tests;
 use crate::{
     git_metadata::{MetadataError, Observation, RefKind, VerifiedRef},
     validator::VerifiedBundle,
 };
 use iroh::EndpointId;
+pub use preinstall::PendingPush;
+
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -24,6 +29,7 @@ pub struct PushOperation {
     context: Value,
     params: Value,
     digest: String,
+    request: Value,
 }
 impl PushOperation {
     pub fn new(peer: EndpointId, request: &Value) -> Result<Self> {
@@ -45,6 +51,7 @@ impl PushOperation {
             context: request["context"].clone(),
             params: request["params"].clone(),
             digest: hex::encode(Sha256::digest(bytes)),
+            request: request.clone(),
         })
     }
     fn check(&self, metadata: &VerifiedRef, context: &Acceptance<'_>) -> Result<()> {
@@ -140,8 +147,11 @@ impl AcceptedRefStore {
     /// Bind to the *same* database/lock as authority, including :memory: stores.
     pub fn new(authority: Authority) -> Result<Self> {
         {
-            let state = authority.0.lock().map_err(|_| StoreError::Storage)?;
-            state.db.execute_batch(
+            let mut state = authority.0.lock().map_err(|_| StoreError::Storage)?;
+            let tx = state
+                .db
+                .transaction_with_behavior(TransactionBehavior::Immediate)?;
+            tx.execute_batch(
                 "CREATE TABLE IF NOT EXISTS proto_ref_audit(
                 id INTEGER PRIMARY KEY, hub TEXT NOT NULL, coglet TEXT NOT NULL,
                 ref TEXT NOT NULL, mode TEXT NOT NULL, signed TEXT NOT NULL,
@@ -157,8 +167,50 @@ impl AcceptedRefStore {
                 peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
                 digest TEXT NOT NULL, receipt TEXT NOT NULL,
                 audit_id INTEGER NOT NULL REFERENCES proto_ref_audit(id),
-                PRIMARY KEY(peer,operation_id,target));",
+                PRIMARY KEY(peer,operation_id,target));
+                CREATE TABLE IF NOT EXISTS proto_git_intents(
+                peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
+                request TEXT NOT NULL, PRIMARY KEY(peer,operation_id,target));
+                CREATE TABLE IF NOT EXISTS proto_preinstall_boundaries(
+                audit_id INTEGER PRIMARY KEY REFERENCES proto_ref_audit(id),
+                peer TEXT NOT NULL, operation_id TEXT NOT NULL, target TEXT NOT NULL,
+                completed_at TEXT NOT NULL);
+                DROP TRIGGER IF EXISTS proto_git_terminal_immutable;
+                CREATE TRIGGER proto_git_terminal_immutable
+                BEFORE UPDATE ON proto_git_operations
+                WHEN json_extract(OLD.receipt,'$.state') IS NOT 'queued'
+                BEGIN SELECT RAISE(ABORT,'immutable terminal receipt'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_operation_no_delete
+                BEFORE DELETE ON proto_git_operations
+                BEGIN SELECT RAISE(ABORT,'retained operation'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_operation_no_replace
+                BEFORE INSERT ON proto_git_operations WHEN EXISTS(
+                    SELECT 1 FROM proto_git_operations WHERE peer=NEW.peer AND operation_id=NEW.operation_id AND target=NEW.target)
+                BEGIN SELECT RAISE(ABORT,'retained operation'); END;
+                DROP TRIGGER IF EXISTS proto_git_completion_only;
+                CREATE TRIGGER proto_git_completion_only
+                BEFORE UPDATE ON proto_git_operations WHEN
+                    NEW.peer != OLD.peer OR NEW.operation_id != OLD.operation_id OR NEW.target != OLD.target
+                    OR NEW.digest != OLD.digest OR NEW.audit_id != OLD.audit_id
+                    OR json_extract(NEW.receipt,'$.operation_id') IS NOT OLD.operation_id
+                    OR COALESCE(json_extract(NEW.receipt,'$.state'),'') NOT IN ('applied','failed','cancelled')
+                BEGIN SELECT RAISE(ABORT,'completion only'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_update BEFORE UPDATE ON proto_git_intents
+                BEGIN SELECT RAISE(ABORT,'immutable intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_delete BEFORE DELETE ON proto_git_intents
+                BEGIN SELECT RAISE(ABORT,'retained intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_git_intent_no_replace BEFORE INSERT ON proto_git_intents
+                WHEN EXISTS(SELECT 1 FROM proto_git_intents WHERE peer=NEW.peer AND operation_id=NEW.operation_id AND target=NEW.target)
+                BEGIN SELECT RAISE(ABORT,'retained intent'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_update BEFORE UPDATE ON proto_preinstall_boundaries
+                BEGIN SELECT RAISE(ABORT,'immutable boundary'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_delete BEFORE DELETE ON proto_preinstall_boundaries
+                BEGIN SELECT RAISE(ABORT,'retained boundary'); END;
+                CREATE TRIGGER IF NOT EXISTS proto_preinstall_no_replace BEFORE INSERT ON proto_preinstall_boundaries
+                WHEN EXISTS(SELECT 1 FROM proto_preinstall_boundaries WHERE audit_id=NEW.audit_id)
+                BEGIN SELECT RAISE(ABORT,'retained boundary'); END;",
             )?;
+            tx.commit()?;
         }
         Ok(Self { authority })
     }
@@ -240,6 +292,71 @@ impl AcceptedRefStore {
         Ok(receipt)
     }
 
+    /// Read-only lookup of an admitted `hub.git.push` receipt bound to its
+    /// original actor/ticket/target. A different scope, an unknown ID, an
+    /// observation-mode row, an ended ticket or a caller whose current
+    /// `hub.git.push` scope/grant is expired, revoked or of another generation
+    /// are all `None`: callers must not distinguish them. Conveys no authority.
+    /// Missing trusted time is also `None`. BEGIN IMMEDIATE serializes this
+    /// snapshot with other connections' commits. The clock is sampled after that
+    /// custody and again before returning a receipt; it must not call Authority.
+    pub fn push_receipt_for_scope(
+        &self,
+        peer: EndpointId,
+        target: &str,
+        operation_id: &str,
+        scope: &Scope,
+        grant_generation: u64,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<Option<Value>> {
+        let mut state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let tx = state
+            .db
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let Some(now) = trusted_clock() else {
+            return Ok(None);
+        };
+        let live: Option<(String, String, String, String)> = tx.query_row(
+            "SELECT g.expires,g.generation,s.expires,s.generation FROM proto_scopes s JOIN proto_grants g ON g.peer=s.peer AND g.method=s.method AND g.target=s.target JOIN proto_peers p ON p.peer=s.peer WHERE s.peer=?1 AND s.actor=?2 AND s.ticket=?3 AND s.method='hub.git.push' AND s.target=?4 AND NOT EXISTS(SELECT 1 FROM proto_ended_tickets e WHERE e.actor=s.actor AND e.ticket=s.ticket)",
+            params![peer.to_string(), scope.actor, scope.ticket.as_deref().unwrap_or_default(), target],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+        ).optional()?;
+        let Some((grant_expiry, scope_expiry)) = live
+            .as_ref()
+            .and_then(|(ge, _, se, _)| Some((ge.parse::<u64>().ok()?, se.parse::<u64>().ok()?)))
+        else {
+            return Ok(None);
+        };
+        if !live.is_some_and(|(ge, gg, se, sg)| {
+            ge.parse::<u64>().is_ok_and(|e| now < e)
+                && se.parse::<u64>().is_ok_and(|e| now < e)
+                && gg.parse::<u64>() == Ok(grant_generation)
+                && sg.parse::<u64>() == Ok(grant_generation)
+        }) {
+            return Ok(None);
+        }
+        let raw: Option<String> = tx.query_row(
+            "SELECT o.receipt FROM proto_git_operations o JOIN proto_ref_audit a ON a.id=o.audit_id WHERE o.peer=?1 AND o.operation_id=?2 AND o.target=?3 AND a.mode='authoritative' AND a.actor=?4 AND a.ticket IS ?5",
+            params![peer.to_string(), operation_id, target, scope.actor, scope.ticket],
+            |r| r.get(0),
+        ).optional()?;
+        let Some(raw) = raw else {
+            return Ok(None);
+        };
+        let receipt: Value = serde_json::from_str(&raw).map_err(|_| StoreError::Storage)?;
+        if !valid("hub-mutation-receipt", &receipt) {
+            return Err(StoreError::Storage);
+        }
+        let Some(fresh) = trusted_clock() else {
+            return Ok(None);
+        };
+        if fresh < now || fresh >= grant_expiry || fresh >= scope_expiry {
+            return Ok(None);
+        }
+        drop(tx);
+        Ok(Some(receipt))
+    }
+
     /// Retained exact raw bundle for explicit recovery/revalidation. Returning
     /// bytes does not recreate a VerifiedBundle or authorize any ref mutation.
     pub fn audit_bundle(&self, audit_id: i64) -> Result<Vec<u8>> {
@@ -261,7 +378,7 @@ impl AcceptedRefStore {
         context: &Acceptance<'_>,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Receipt> {
-        self.accept_inner(bundle, context, None, trusted_clock)
+        self.accept_inner(bundle, context, None, trusted_clock, || Ok(()))
             .map(|r| r.0)
     }
 
@@ -274,8 +391,21 @@ impl AcceptedRefStore {
         operation: &PushOperation,
         trusted_clock: impl Fn() -> Option<u64>,
     ) -> Result<Value> {
+        self.accept_push_guarded(bundle, context, operation, trusted_clock, || Ok(()))
+    }
+
+    /// Device-owned cross-ledger ID fence. Runs under the admission SQL write
+    /// guard; it may inspect local WAL custody but must never reenter Authority.
+    pub fn accept_push_guarded(
+        &self,
+        bundle: VerifiedBundle,
+        context: &Acceptance<'_>,
+        operation: &PushOperation,
+        trusted_clock: impl Fn() -> Option<u64>,
+        guard: impl FnOnce() -> Result<()>,
+    ) -> Result<Value> {
         operation.check(bundle.metadata(), context)?;
-        self.accept_inner(bundle, context, Some(operation), trusted_clock)?
+        self.accept_inner(bundle, context, Some(operation), trusted_clock, guard)?
             .1
             .ok_or(StoreError::Storage)
     }
@@ -286,6 +416,7 @@ impl AcceptedRefStore {
         context: &Acceptance<'_>,
         operation: Option<&PushOperation>,
         trusted_clock: impl Fn() -> Option<u64>,
+        guard: impl FnOnce() -> Result<()>,
     ) -> Result<(Receipt, Option<Value>)> {
         let metadata = bundle.metadata();
         let statement = &metadata.signed()["statement"];
@@ -305,6 +436,7 @@ impl AcceptedRefStore {
             .db
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let now = authorize(&tx, metadata, kind, context, &trusted_clock)?;
+        guard()?;
         if let Some((audit_id, receipt)) = operation
             .map(|op| lookup_operation(&tx, op))
             .transpose()?
@@ -341,6 +473,7 @@ impl AcceptedRefStore {
         let receipt = operation.map(PushOperation::queued);
         if let Some(op) = operation {
             tx.execute("INSERT INTO proto_git_operations(peer,operation_id,target,digest,receipt,audit_id) VALUES(?1,?2,?3,?4,?5,?6)", params![op.peer.to_string(),op.id,op.target,op.digest,serde_json::to_string(receipt.as_ref().ok_or(StoreError::Storage)?).map_err(|_| StoreError::Storage)?,audit_id])?;
+            tx.execute("INSERT INTO proto_git_intents(peer,operation_id,target,request) VALUES(?1,?2,?3,?4)", params![op.peer.to_string(),op.id,op.target,serde_json::to_string(&op.request).map_err(|_| StoreError::Storage)?])?;
         }
         authorize(&tx, metadata, kind, context, &trusted_clock)?;
         tx.commit()?;
@@ -365,9 +498,7 @@ fn lookup_operation(db: &Connection, op: &PushOperation) -> Result<Option<(i64, 
             return Err(StoreError::Conflict);
         }
         let receipt: Value = serde_json::from_str(&receipt).map_err(|_| StoreError::Storage)?;
-        // This component owns only queued admission. Activation/boundary receipt
-        // updates belong to the router/runtime, not this ref-storage primitive.
-        if receipt != op.queued() {
+        if !valid("hub-mutation-receipt", &receipt) || receipt["operation_id"] != op.id {
             return Err(StoreError::Storage);
         }
         Ok((audit_id, receipt))

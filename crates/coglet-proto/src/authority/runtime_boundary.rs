@@ -28,6 +28,39 @@ impl Authority {
             &dyn Fn() -> std::result::Result<u64, String>,
         ) -> std::result::Result<T, String>,
     ) -> std::result::Result<T, String> {
+        self.runtime_boundary_operation(
+            hub,
+            device,
+            coglet,
+            scope,
+            grant,
+            delegation_generation,
+            expected_ref,
+            None,
+            clock,
+            apply,
+        )
+    }
+
+    /// As runtime_boundary, additionally fences lifecycle IDs against the Git
+    /// ledger under the same SQL write guard as the caller's WAL effect.
+    #[allow(clippy::too_many_arguments)]
+    pub fn runtime_boundary_operation<T>(
+        &self,
+        hub: EndpointId,
+        device: EndpointId,
+        coglet: &str,
+        scope: &Scope,
+        grant: &Grant,
+        delegation_generation: u64,
+        expected_ref: Option<&Value>,
+        operation_id: Option<&str>,
+        clock: impl Fn() -> Option<u64>,
+        apply: impl FnOnce(
+            &Value,
+            &dyn Fn() -> std::result::Result<u64, String>,
+        ) -> std::result::Result<T, String>,
+    ) -> std::result::Result<T, String> {
         let denied = || "permission_denied".to_owned();
         if grant.target.as_deref() != Some(coglet)
             || !scope.valid()
@@ -82,6 +115,15 @@ impl Authority {
                 .map_err(|_| "authority storage unavailable")?;
             if &current != expected {
                 return Err(denied());
+            }
+        }
+        if let Some(id) = operation_id {
+            let collision: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM proto_git_operations WHERE peer=?1 AND operation_id=?2 AND target=?3)",
+                params![hub.to_string(), id, coglet], |r| r.get(0),
+            ).map_err(|_| "authority storage unavailable")?;
+            if collision {
+                return Err("conflict".into());
             }
         }
         let delegation_expiry = signed["statement"]["expires"].as_u64();
