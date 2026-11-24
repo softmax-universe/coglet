@@ -17,9 +17,11 @@ Native run45341075790 and run45342465981 compiled production Swift and passed fo
 
 Rust real MockHub enrollment/drop/offline/recovery/revocation and private-stdio/EOF tests passed locally; strict all-target Clippy/fmt passed on6071ef2. Forward main integration e9e5817 and regenerated standalone helper lock repaired actual transitive reqwest lock conflict.
 
-## Current native blocker
+## Native dependency repair integrated; acceptance pending
 
-https://github.com/softmax-universe/coglet/actions/runs/45342465981 fails building helper/mock: existing `crates/coglet-proto/src/validator.rs:182` imports nix waitid/Id under cfg(unix), but these nix0.31 APIs do not exist on Darwin. This is not Swift RED or a missing snapshot diagnosis. Separate owner `t_01a20c519d9fa91e` owns portable compilation without weakening process custody/validator enforcement. Do not replace unreaped-leader custody with reap-then-kill. First incorrectly pinned owner `t_01a20c51098e61de` was archived.
+The Darwin compilation failure in run45342465981 is repaired by merged PR101 (parent `t_01a20c2f56d0d2ad`, DONE). Its reviewed repair fcc0490 was integrated as53e2e68. A fresh GitHub DIRTY result and merge-tree reproduced real workflow conflicts; forward merge82ff3ca integrates main6efc352, preserving both app acceptance and Darwin refusal checks plus the newer iOS workflow. No validator enforcement was weakened: non-Linux subprocess validation explicitly refuses before spawn; Linux retains unreaped-leader custody.
+
+PR98 and backup branch are readback-verified at82ff3cae935a8928b88008f4cecb3595ba8d2c67. Both real-iroh helper integration tests and strict all-target Clippy/fmt pass on that integrated tree; five portable packaging/signing cases also pass this run. Actual native run45363249974 is in progress, not acceptance. Read its required real-helper/mock step and native packaging output before claiming success. Settings/onboarding/menu code remains untouched.
 
 ## Packaging slice (portable orchestration verified only)
 
