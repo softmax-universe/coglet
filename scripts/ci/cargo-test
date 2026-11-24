@@ -2,6 +2,13 @@
 # `cargo test <args>` with the Rust tests in ci/quarantine.toml skipped (--exact --skip).
 # Fails if the quarantine file is invalid, rather than silently skipping nothing.
 set -euo pipefail
+for arg in "$@"; do
+  if [ "$arg" = -- ]; then
+    # A second `--` would make libtest read the skip arguments as name filters.
+    echo "scripts/ci/cargo-test: pass cargo arguments only; libtest arguments are not supported" >&2
+    exit 2
+  fi
+done
 here=$(cd "$(dirname "$0")" && pwd)
 args=$(python3 "$here/quarantine.py" rust-args)
 extra=()

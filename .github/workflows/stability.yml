@@ -40,6 +40,10 @@ jobs:
         run: rustup show active-toolchain
       - name: Every quarantined Rust id names a real test
         run: |
+          if [ -z "$(python3 scripts/ci/quarantine.py rust-args)" ]; then
+            echo "No quarantined Rust tests."
+            exit 0
+          fi
           cargo test --workspace --locked -- --list --format terse > "$RUNNER_TEMP/rust-tests.txt"
           python3 scripts/ci/quarantine.py rust-unmatched --listing "$RUNNER_TEMP/rust-tests.txt"
       - name: Quarantined Rust tests, repeated
