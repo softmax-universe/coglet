@@ -22,6 +22,7 @@ use std::{
 };
 
 include!("support/database_backup.rs");
+include!("support/database_properties.rs");
 
 const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 type Plan = Vec<Vec<(&'static str, Vec<u8>)>>;
@@ -66,6 +67,31 @@ fn catalog() -> Catalog {
             columns: vec![col("id"), col("value")],
             tables: vec!["objects".into()],
             order: vec!["id".into()],
+        },
+        TypedStatement {
+            statement: Statement::new(
+                "stale",
+                "UPDATE objects SET value=?1 WHERE id=?2 AND value=?3",
+                Mode::Write,
+                3,
+            )
+            .expect_affected(1),
+            parameters: vec![CellType::Text, CellType::Text, CellType::Text],
+            columns: vec![],
+            tables: vec!["objects".into()],
+            order: vec![],
+        },
+        TypedStatement {
+            statement: Statement::new(
+                "link",
+                "INSERT INTO relations(id,parent) VALUES (?1,?2)",
+                Mode::Write,
+                2,
+            ),
+            parameters: vec![CellType::Text, CellType::Text],
+            columns: vec![],
+            tables: vec!["relations".into(), "objects".into()],
+            order: vec![],
         },
     ])
     .unwrap()
@@ -192,6 +218,7 @@ impl Fx {
         observer
             .execute_batch(
                 "CREATE TABLE objects(id TEXT PRIMARY KEY NOT NULL,value TEXT NOT NULL);
+                 CREATE TABLE relations(id TEXT PRIMARY KEY NOT NULL,parent TEXT NOT NULL REFERENCES objects(id));
                  CREATE TABLE outbox (intent_id TEXT PRIMARY KEY NOT NULL, idempotency_key TEXT NOT NULL UNIQUE,
                    kind TEXT NOT NULL, payload_cbor_hex TEXT NOT NULL, correlation_id TEXT NOT NULL,
                    state TEXT NOT NULL CHECK (state IN ('pending','dispatching','uncertain','succeeded','failed','cancelled')),

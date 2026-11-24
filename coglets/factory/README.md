@@ -4,7 +4,7 @@ ABI 0.2 is explicitly opted in. Frozen ABI 0.1 loaders still reject
 `coglet_v0.db`. The borrowed runtime service path now executes DB steps, publishes
 full-state decisions through the WAL, and replays recorded DB results offline.
 **Milestone D is not yet qualified or landed:** hosted exact-head required CI,
-remaining archive/admission boundaries and final independent review remain gates. No live deployment,
+and final independent review remain gates. No live deployment,
 production operator-approval adapter or external dispatcher is certified here.
 
 ## Repository and schema
@@ -79,9 +79,6 @@ workflow step label still says supplemental; no workflow file was edited here.
 
 ## Remaining milestone D gates
 
-- Verify the original seven named phase-1 properties have actual real/mock coverage,
-  separately from the eight frozen wire timeline cases.
 - Run the wired qualification checks on the eventual PR's exact head in hosted CI.
-- Finish the explicit ABI 0.2 archive/admission boundaries without weakening 0.1.
 - Obtain independent exact-head approval, green required CI and merge the one D
   PR. No ADR-0013 gate is waived. External dispatch remains Factory Phase 2.

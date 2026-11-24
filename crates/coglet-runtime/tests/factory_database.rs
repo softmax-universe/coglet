@@ -531,6 +531,32 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     let archive = service.export_trace(&trace_id, 23).unwrap();
     let imported = coglet_runtime::Runtime::import_trace(&archive).unwrap();
     assert_eq!(imported.export_trace(&trace_id).unwrap(), archive);
+    // No guest step at this cutoff: the versioned seal and nonzero observed
+    // DB revision must survive WAL reopen and an empty successor segment.
+    let change = json!({"actor":format!("hub:{}","3".repeat(64)),"target":C,
+        "audit_id":"d".repeat(32),"ticket":null,"method":"debug.write",
+        "path":"/data/archive-cutoff","before":null,"after":"31"});
+    service.seal_boundary(&trace_id, 23, &[change]).unwrap();
+    drop(service);
+    let mut service = RuntimeService::open(&fx.wal, &fx.setup, 8).unwrap();
+    let sealed = service.export_trace(&trace_id, 23).unwrap();
+    assert_eq!(sealed["trailing_boundary"]["version"], "0.2");
+    assert_eq!(
+        coglet_runtime::Runtime::import_trace(&sealed)
+            .unwrap()
+            .export_trace(&trace_id)
+            .unwrap(),
+        sealed
+    );
+    let next_id = json!("e".repeat(32));
+    service.start_segment(&next_id).unwrap();
+    drop(service);
+    let mut service = RuntimeService::open(&fx.wal, &fx.setup, 8).unwrap();
+    let empty = service.export_trace(&next_id, 23).unwrap();
+    assert_eq!(empty["initial_db_revision"], third["journal"]["db_after"]);
+    assert_eq!(empty["final_db_revision"], third["journal"]["db_after"]);
+    assert!(empty["records"].as_array().unwrap().is_empty());
+    assert_eq!(service.export_segment(&trace_id).unwrap(), sealed);
     drop((service, db));
 
     // Offline replay from recorded results alone: no database file exists.

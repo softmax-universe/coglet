@@ -307,6 +307,8 @@ fn validate_record(record: &Value) -> Result<()> {
     validate(
         if record.get("step").is_some() {
             "step-record"
+        } else if record["version"] == "0.2" {
+            "database::db-boundary-record"
         } else {
             "boundary-record"
         },

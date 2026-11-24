@@ -607,6 +607,9 @@ impl Engine for MockEngine {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
     initial_setup: Value,
+    // Archive observation only; never authority to admit a live database.
+    #[serde(default)]
+    db_revision: Option<u64>,
     #[serde(default)]
     unresolved_attempt: Option<Value>,
     #[serde(default)]
@@ -736,7 +739,12 @@ impl Runtime {
                 return Err("invalid initial pending action ledger".into());
             }
         }
-        Ok(Self {
+        let db_revision = setup
+            .get("initial_db_revision")
+            .map(|value| value.as_u64().ok_or("invalid initial database revision"))
+            .transpose()?;
+        let mut runtime = Self {
+            db_revision,
             initial_setup: json!({"manifest":setup["manifest"],"initial_files":setup["initial_files"],
                 "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
                 "initial_inbox_wakes":setup["initial_inbox_wakes"],"initial_timers":setup["initial_timers"],
@@ -757,7 +765,11 @@ impl Runtime {
             next_source_seq: 0,
             sealed: false,
             trace_id: None,
-        })
+        };
+        if let Some(revision) = db_revision {
+            runtime.initial_setup["initial_db_revision"] = json!(revision);
+        }
+        Ok(runtime)
     }
 
     /// Compute an attempted step. No dispatch occurs here. Integration with the
@@ -1029,6 +1041,9 @@ impl Runtime {
         self.next_source_seq = next_source_seq;
         self.pending_llm = pending_llm;
         self.time = time;
+        if record["version"] == "0.2" {
+            self.db_revision = Some(record["db_after"].as_u64().ok_or("missing DB revision")?);
+        }
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
         self.records.push(record);
         self.unresolved_attempt = None;
@@ -1045,6 +1060,9 @@ impl Runtime {
         }
         let derived = Self::reconstruct(&self.initial_setup, records)?;
         if self.files != derived.files
+            || self
+                .db_revision
+                .is_some_and(|revision| Some(revision) != derived.db_revision)
             || self.manifest != derived.manifest
             || self.ledger != derived.ledger
             || self.inbox_wakes != derived.inbox_wakes
@@ -1181,11 +1199,19 @@ impl Runtime {
         }
         let mut next = self.clone();
         next.apply_boundary_changes(changes)?;
-        let mut record = json!({"version":"0.1","trace_id":trace_id,"coglet":self.manifest["id"],
+        let database = self.manifest["version"] == "0.2";
+        let mut record = json!({"version":if database { "0.2" } else { "0.1" },"trace_id":trace_id,"coglet":self.manifest["id"],
             "previous":self.previous,"logical_time":logical_time,"boundary":changes,
             "before_hash":self.files.tree_hash()?,"output_hash":next.files.tree_hash()?,"output_files":next.files.files()});
         record["record_hash"] = json!(digest(&cbor(&record)?));
-        validate("boundary-record", &record)?;
+        validate(
+            if database {
+                "database::db-boundary-record"
+            } else {
+                "boundary-record"
+            },
+            &record,
+        )?;
         next.sealed = true;
         next.trace_id = Some(trace_id.clone());
         next.time = logical_time;

@@ -17,6 +17,8 @@ fn database_setup() -> Value {
     manifest["version"] = json!("0.2");
     manifest["database"] = json!({"schema_min":1,"schema_max":1,"catalog_hash":CATALOG});
     setup["manifest"] = manifest;
+    // Trusted fixture observation, not an inferred fresh-database revision.
+    setup["initial_db_revision"] = json!(3);
     setup
 }
 
@@ -55,8 +57,8 @@ fn empty_database_archive_roundtrips_without_guest_execution() {
     let trace = runtime.export_trace(id).unwrap();
     assert_eq!(trace["version"], "0.2");
     assert!(trace["records"].as_array().unwrap().is_empty());
-    assert_eq!(trace["initial_db_revision"], 0);
-    assert_eq!(trace["final_db_revision"], 0);
+    assert_eq!(trace["initial_db_revision"], 3);
+    assert_eq!(trace["final_db_revision"], 3);
     let imported = Runtime::import_trace(&trace).unwrap();
     assert_eq!(imported.export_trace(id).unwrap(), trace);
     assert_eq!(
@@ -164,6 +166,59 @@ fn frozen_zero_one_archive_import_export_is_unchanged() {
             .unwrap(),
         trace
     );
+}
+
+#[test]
+fn unknown_database_revision_never_exports_a_fabricated_zero() {
+    let mut setup = database_setup();
+    setup.as_object_mut().unwrap().remove("initial_db_revision");
+    let runtime = Runtime::from_fixture(&setup).unwrap();
+    assert!(
+        runtime
+            .export_trace(&setup["inputs"]["trace_id"])
+            .unwrap_err()
+            .contains("revision")
+    );
+}
+
+#[test]
+fn database_boundary_seal_and_empty_successor_keep_observed_revision_across_wal_reopen() {
+    let setup = database_setup();
+    let path = std::env::temp_dir().join(format!("coglet-db-boundary-{}", std::process::id()));
+    let _ = std::fs::remove_file(&path);
+    let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 64).unwrap();
+    let id = &setup["inputs"]["trace_id"];
+    let change = json!({"actor":format!("hub:{}","3".repeat(64)),"target":setup["manifest"]["id"],
+        "audit_id":"d".repeat(32),"ticket":null,"method":"debug.write","path":"/data/count","before":"30","after":"31"});
+    let record = service.seal_boundary(id, 20, &[change]).unwrap();
+    assert_eq!(record["version"], "0.2");
+    drop(service);
+    let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 64).unwrap();
+    let trace = service.export_trace(id, 20).unwrap();
+    assert_eq!(trace["trailing_boundary"], record);
+    let imported = Runtime::import_trace(&trace).unwrap();
+    assert_eq!(imported.export_trace(id).unwrap(), trace);
+    let mut corrupt = trace.clone();
+    corrupt["trailing_boundary"]["logical_time"] = json!(21);
+    assert!(Runtime::import_trace(&corrupt).is_err());
+    let next_id = json!("e".repeat(32));
+    service.start_segment(&next_id).unwrap();
+    drop(service);
+    let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 64).unwrap();
+    assert_eq!(service.export_segment(id).unwrap(), trace);
+    let empty = service.export_trace(&next_id, 20).unwrap();
+    assert_eq!(empty["initial_db_revision"], 3);
+    assert_eq!(empty["final_db_revision"], 3);
+    assert!(empty["records"].as_array().unwrap().is_empty());
+    assert_eq!(
+        Runtime::import_trace(&empty)
+            .unwrap()
+            .export_trace(&next_id)
+            .unwrap(),
+        empty
+    );
+    drop(service);
+    std::fs::remove_file(path).unwrap();
 }
 
 #[test]

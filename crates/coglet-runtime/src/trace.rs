@@ -334,15 +334,7 @@ impl Runtime {
 
     fn import_database_trace(trace: &Value) -> Result<Self> {
         validate("database::db-trace", trace)?;
-        if !trace["trailing_boundary"].is_null() {
-            // seal_boundary still publishes ABI 0.1 boundary records. A 0.2
-            // trailing seal is not a deployable adapter until that router
-            // message uses db-boundary-record bytes.
-            return Err(
-                "ABI 0.2 archive import refuses a trailing boundary until db-boundary seals exist"
-                    .into(),
-            );
-        }
+
         let blobs = trace["blobs"].as_object().ok_or("missing blobs")?;
         let records = trace["records"].as_array().ok_or("missing records")?;
         let initial = trace["initial_db_revision"]
@@ -400,6 +392,9 @@ impl Runtime {
             return Err("trace manifest identity mismatch".into());
         }
         let mut setup = json!({"manifest":manifest});
+        if manifest_rule == "database::db-manifest" {
+            setup["initial_db_revision"] = trace["initial_db_revision"].clone();
+        }
         for key in [
             "initial_files",
             "initial_effect_ids",
@@ -513,7 +508,12 @@ impl Runtime {
             validate("database::db-boundary-record", record)?;
         }
         let (initial_db_revision, final_db_revision) = match records.as_slice() {
-            [] => (json!(0), json!(0)),
+            [] => {
+                let revision = self
+                    .db_revision
+                    .ok_or("empty ABI 0.2 archive requires an observed database revision")?;
+                (json!(revision), json!(revision))
+            }
             [first, ..] => (
                 first["db_before"].clone(),
                 records.last().unwrap()["db_after"].clone(),
@@ -590,10 +590,13 @@ impl Runtime {
         if !self.sealed || self.trace_id.as_ref() == Some(trace_id) {
             return Err("new segment requires sealed predecessor and fresh trace identity".into());
         }
-        let setup = json!({"manifest":self.manifest,"initial_files":self.files.files(),
+        let mut setup = json!({"manifest":self.manifest,"initial_files":self.files.files(),
             "initial_effect_ids":self.ledger,"initial_actions":self.pending_actions.values().collect::<Vec<_>>(),
             "initial_inbox_wakes":self.inbox_wakes,"initial_timers":self.pending_timers.values().collect::<Vec<_>>(),
             "initial_llm_requests":self.pending_llm.values().collect::<Vec<_>>()});
+        if let Some(revision) = self.db_revision {
+            setup["initial_db_revision"] = json!(revision);
+        }
         let mut next = Self::from_fixture(&setup)?;
         next.trace_id = Some(trace_id.clone());
         next.retained_blobs = self.retained_blobs.clone();
