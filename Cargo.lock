@@ -494,6 +494,7 @@ dependencies = [
 name = "coglet-db"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
  "coglet-types",
  "fs2",
  "hex",
