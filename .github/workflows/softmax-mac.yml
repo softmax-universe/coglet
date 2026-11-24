@@ -1,10 +1,10 @@
 name: Softmax Mac
 on:
   push:
-    branches: [main, feat/softmax-mac-shell]
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', '.github/workflows/softmax-mac.yml']
+    branches: [main, feat/softmax-mac-shell, feat/softmax-embedded-runtime]
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
   pull_request:
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', '.github/workflows/softmax-mac.yml']
+    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,9 +14,37 @@ concurrency:
 jobs:
   macos:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pinned header generator
+        run: cargo install cbindgen --version 0.29.2 --locked
+      - name: Build test runtime xcframework (real WAMR, both Apple architectures)
+        env:
+          COGLET_RUNTIME_TEST_HOOKS: '1'
+        run: bash scripts/build-runtime-xcframework.sh
+      - name: Install real compiled speech and trap guests
+        run: |
+          python3 apps/softmax-mac/tools/install_speech_echo.py --output-dir "$RUNNER_TEMP/speech-echo" --wal "$RUNNER_TEMP/speech-echo/state.wal"
+          python3 apps/softmax-mac/tools/install_speech_echo.py --output-dir "$RUNNER_TEMP/speech-trap" --wal "$RUNNER_TEMP/speech-trap/state.wal" --trap-injection
+      - name: RuntimeHostTests (native C ABI, speech echo, guest trap and caught panic)
+        env:
+          SOFTMAX_ECHO_INSTALL: ${{ runner.temp }}/speech-echo
+          SOFTMAX_TRAP_INSTALL: ${{ runner.temp }}/speech-trap
+        run: swift test --package-path apps/softmax-mac/Runtime -Xswiftc -DCOGLET_RUNTIME_TEST_HOOKS -Xcc -DCOGLET_RUNTIME_TEST_HOOKS
+      - name: Rebuild distributable runtime without fault-injection hooks
+        run: |
+          bash scripts/build-runtime-xcframework.sh
+          if nm -g apps/softmax-mac/Runtime/Artifacts/universal/libCogletRuntime.a | grep -q ' _coglet_runtime_test_panic$'; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CogletRuntime-xcframework
+          path: apps/softmax-mac/Runtime/Artifacts/CogletRuntime.xcframework
+          if-no-files-found: error
       - name: Test portable core
         env:
           FACE_SNAPSHOT_OUTPUT: ${{ github.workspace }}/apps/softmax-mac/build

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trusted installed coglet_runtime_start buffer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["wal", "setup", "native_schedule"],
+  "properties": {
+    "wal": {"type": "string", "pattern": "^/", "description": "Absolute private writable WAL path; parent must exist"},
+    "setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "initial_files", "initial_effect_ids", "initial_actions", "initial_timers", "initial_llm_requests", "initial_inbox_wakes"],
+      "properties": {
+        "manifest": {"$ref": "../../../spec/manifest.schema.json"},
+        "initial_files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["/code/bin/step.wasm", "/code/build/provenance.cbor"],
+          "properties": {
+            "/code/bin/step.wasm": {"type": "string", "pattern": "^0061736d01000000([0-9a-f]{2})*$"},
+            "/code/build/provenance.cbor": {"type": "string", "pattern": "^([0-9a-f]{2})+$"}
+          }
+        },
+        "initial_effect_ids": {
+          "type": "object", "additionalProperties": false,
+          "required": ["actions", "timers", "llm_requests"],
+          "properties": {"actions": {"const": []}, "timers": {"const": []}, "llm_requests": {"const": []}}
+        },
+        "initial_actions": {"const": []},
+        "initial_timers": {"const": []},
+        "initial_llm_requests": {"const": []},
+        "initial_inbox_wakes": {"const": []}
+      }
+    },
+    "native_schedule": {
+      "type": "object", "additionalProperties": false,
+      "required": ["trace_id", "seed", "runtime_bytes", "stack_bytes"],
+      "properties": {
+        "trace_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "seed": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+        "runtime_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "stack_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967295}
+      }
+    }
+  }
+}

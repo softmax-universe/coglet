@@ -1,0 +1,19 @@
+[package]
+name = "coglet-speech-echo"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Deliberate guest Wasm trap, NOT a host process panic. Test artifacts only.
+trap-injection = []
+
+[dependencies]
+coglet-guest-rust = { path = "../../sdk/guest-rust" }
+serde_json = "1"
+coglet-types = { path = "../../crates/coglet-types" }
+
+[workspace]

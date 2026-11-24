@@ -258,6 +258,15 @@ impl RuntimeService {
         })
     }
 
+    /// Number of durably failed guest attempts. Supervisor status, not a wire message.
+    pub fn failed_attempts(&self) -> usize {
+        self.store
+            .records()
+            .iter()
+            .filter(|r| r["status"] == "aborted")
+            .count()
+    }
+
     /// The authenticated surface/router must have authorized external events
     /// before calling this internal coordinator seam.
     pub fn enqueue(&mut self, event: Value) -> Result<u64> {
