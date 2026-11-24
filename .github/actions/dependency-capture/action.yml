@@ -11,15 +11,13 @@ runs:
       env:
         BUNDLE_JOB: ${{ inputs.job }}
       run: |
-        if [[ "$BUNDLE_JOB" != java ]]; then
-          # Explicit fetch also covers targets/standalone locks not selected by a
-          # host-only build. Codegen temp crates were exercised by the same tests.
-          for manifest in Cargo.toml conformance/iroh-driver/Cargo.toml coglets/echo/Cargo.toml coglets/counter/Cargo.toml; do
-            cargo fetch --locked --manifest-path "$manifest"
-          done
-          mkdir -p "$HOME/.cache/coglet-wheels"
-          python3 -m pip download -r sdk/guest-rust/tests/requirements.txt -d "$HOME/.cache/coglet-wheels"
-        fi
+        # Explicit fetch also covers targets/standalone locks not selected by a
+        # host-only build. Codegen temp crates were exercised by the same tests.
+        for manifest in Cargo.toml conformance/iroh-driver/Cargo.toml coglets/echo/Cargo.toml coglets/counter/Cargo.toml; do
+          cargo fetch --locked --manifest-path "$manifest"
+        done
+        mkdir -p "$HOME/.cache/coglet-wheels"
+        python3 -m pip download -r sdk/guest-rust/tests/requirements.txt -d "$HOME/.cache/coglet-wheels"
         if [[ "$BUNDLE_JOB" == conformance ]]; then
           python3 -m pip download -r spec/tests/requirements.txt -d "$HOME/.cache/coglet-wheels"
           (cd spec/tests && bundle cache --all-platforms)

@@ -229,6 +229,13 @@ impl RuntimeService {
         Ok(state)
     }
 
+    /// ADR-0014 trusted in-process harness only. Recovery requires explicit
+    /// fixture authority again; no daemon, C ABI or artifact enables it.
+    pub fn open_echo_fixture(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
+        let catalog = crate::TrustedExtensionCatalog::echo_fixture();
+        Self::open_with_catalog(path, setup, queue_capacity, catalog)
+    }
+
     pub fn open(path: &Path, setup: &Value, queue_capacity: usize) -> Result<Self> {
         Self::open_with_catalog(
             path,

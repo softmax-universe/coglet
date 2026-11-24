@@ -57,6 +57,33 @@ Never copy credentials or private production recordings into hosted tests.
    durable suspend/resume and rollback. This does not establish physical-phone
    sandbox, audio or background-runtime qualification.
 
+## Immutable framework distribution
+
+`.github/workflows/ios-runtime-release.yml` uses dedicated `ios-runtime-v*` tags,
+not product `v*` tags. PR/manual runs build and seal the same archive without
+publication. After independent exact-head review, green required/Apple CI, queue
+landing and main verification, create a **new** tag such as
+`ios-runtime-v0.0.0-rc1` on that landed source. Never move it or reuse a published
+release. The tag run rebuilds both slices, then publishes three assets:
+`CogletRuntime-<tag>.xcframework.zip`, `ios-runtime.json` and `SHA256SUMS`.
+Publication checks main ancestry and the remote tag, downloads the draft, compares
+its manifest/checksums to the originals and verifies every ZIP member before
+making the prerelease visible. A failed draft is retained for diagnosis, not
+silently replaced.
+
+`release/ios_framework.py` records the exact checkout SHA, rustc/Xcode versions,
+both platform entries, per-file hashes and ZIP digest/size. Its packaging tests
+use explicitly synthetic archives and do not establish compilation. The existing
+builder supplies architecture, symbol and SDK-link checks. This distribution is
+still not simulator execution or physical-phone qualification.
+
+The Baby Bear pin must record the immutable release URL, source SHA and ZIP
+SHA256; verify all three before extracting to its dependency directory. The
+manifest's own digest is not a signature: trust comes from the reviewed release
+workflow and the product's independently pinned ZIP digest. The consumer must
+fail closed on a mismatched pin, missing slice or checksum; do not fall back to
+unversioned Actions artifacts. Existing `v0.0.0-rc1` stays untouched.
+
 ## Landing gates still open
 
 - Actual iOS framework build/SDK link CI and independent exact-head review.

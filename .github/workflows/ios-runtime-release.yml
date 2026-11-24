@@ -1,0 +1,89 @@
+name: iOS runtime release
+on:
+  push:
+    tags: ['ios-runtime-v*']
+  pull_request:
+    paths: ['release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', 'docs/integrations/babybear-ios.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-runtime-release-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  IOS_RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'ios-runtime-v0.0.0-rc1' }}
+jobs:
+  framework:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Distribution and builder regression tests
+        run: |
+          python3 -m unittest discover -s release -p test_ios_framework.py -v
+          python3 scripts/tests/test_ios_runtime.py
+      - name: Install pinned header generator
+        run: cargo install cbindgen --version 0.29.2 --locked
+      - name: Build interpreter-only device and simulator archives and SDK links
+        env:
+          COGLET_IOS_XCFRAMEWORK_OUTPUT: ${{ runner.temp }}/ios-runtime
+        run: bash scripts/build-ios-runtime-xcframework.sh
+      - name: Seal framework with source and toolchain provenance
+        run: |
+          python3 release/ios_framework.py seal \
+            --framework "$RUNNER_TEMP/ios-runtime/CogletRuntime.xcframework" \
+            --out dist-ios --tag "$IOS_RELEASE_TAG" --sha "$(git rev-parse HEAD)" \
+            --rust "$(rustc -Vv)" --xcode "$(xcodebuild -version)"
+          python3 release/ios_framework.py verify --out dist-ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sealed-ios-runtime
+          path: dist-ios/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-runtime-link-diagnostics
+          path: |
+            ${{ runner.temp }}/ios-runtime/aarch64-apple-ios/*.txt
+            ${{ runner.temp }}/ios-runtime/aarch64-apple-ios-sim/*.txt
+          if-no-files-found: error
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: framework
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: sealed-ios-runtime
+          path: dist-ios
+      - name: Verify source, immutable tag and main ancestry
+        run: |
+          python3 release/ios_framework.py verify --out dist-ios
+          SOURCE_SHA=$(git rev-parse HEAD)
+          test "$(jq -r .source_sha dist-ios/ios-runtime.json)" = "$SOURCE_SHA"
+          test "$(jq -r .tag dist-ios/ios-runtime.json)" = "$IOS_RELEASE_TAG"
+          git fetch origin +refs/heads/main:refs/remotes/origin/main "refs/tags/$IOS_RELEASE_TAG:refs/tags/ios-publish-candidate"
+          test "$(git rev-parse 'refs/tags/ios-publish-candidate^{commit}')" = "$SOURCE_SHA"
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/main
+      - name: Publish only after original downloaded bytes verify
+        run: |
+          gh release create "$IOS_RELEASE_TAG" dist-ios/* --verify-tag --target "$(git rev-parse HEAD)" --draft --latest=false \
+            --title "Coglet iOS runtime $IOS_RELEASE_TAG" \
+            --notes "Source: $(git rev-parse HEAD). Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. WAMR interpreter-only arm64 iOS15 device/simulator archive and SDK-link qualification; not simulator execution. Pin ios-runtime.json source_sha and ZIP SHA256. Existing product releases are unchanged."
+          gh release download "$IOS_RELEASE_TAG" --dir downloaded-ios
+          cmp dist-ios/ios-runtime.json downloaded-ios/ios-runtime.json
+          cmp dist-ios/SHA256SUMS downloaded-ios/SHA256SUMS
+          python3 release/ios_framework.py verify --out downloaded-ios
+          # Dedicated releases remain prereleases until product execution is qualified.
+          gh release edit "$IOS_RELEASE_TAG" --draft=false --prerelease=true --latest=false

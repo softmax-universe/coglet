@@ -9,6 +9,9 @@ crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]
 default = []
+# Explicit release-only M1 qualification target; does not enable fixture
+# constructors in production binaries (they are never called there).
+m1-tests = ["native-engine"]
 # Explicit opt-in for fault-injection C symbols; never enable in product builds.
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
@@ -29,9 +32,15 @@ sha2 = "0.10"
 hex = "0.4"
 
 [dev-dependencies]
-coglet-mock = { path = "../coglet-mock" }
-tempfile = "3"
 rusqlite = { version = "0.38", features = ["bundled"] }
+coglet-hub = { path = "../coglet-hub" }
+coglet-proto = { path = "../coglet-proto" }
+coglet-mock = { path = "../coglet-mock" }
+coglet-surface-rust = { path = "../../sdk/surface-rust" }
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+tempfile = "3"
+
 wat = "1.245.1"
 anyhow = "1"
 wasm-encoder = { version = "0.245", features = ["wasmparser"] }
@@ -56,3 +65,8 @@ required-features = ["native-engine"]
 [[bin]]
 name = "cogletd"
 path = "src/main.rs"
+
+[[test]]
+name = "m1"
+path = "../../tests/m1/hello_coglet.rs"
+required-features = ["m1-tests"]

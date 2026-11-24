@@ -97,6 +97,9 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<(), String> {
+        self.validate_catalog(catalog()?)
+    }
+    pub(crate) fn validate_catalog(&self, cat: &crate::catalog::Catalog) -> Result<(), String> {
         if !is_surface_id(&self.surface) {
             return Err("surface id violates grammar".into());
         }
@@ -121,7 +124,8 @@ impl Config {
         }
         // Operator grants must be well formed and bound. Operations the backend lacks are
         // dropped (and reported) later; unknown or malformed names are config errors.
-        check_grants(&self.grants, None, &self.bound_coglets).map_err(|e| e.message)?;
+        check_grants_catalog(&self.grants, None, &self.bound_coglets, cat)
+            .map_err(|e| e.message)?;
         Ok(())
     }
 }
@@ -133,7 +137,14 @@ pub fn check_grants(
     now: Option<u64>,
     bound: &[String],
 ) -> Result<(), ApiError> {
-    let cat = catalog().map_err(ApiError::internal)?;
+    check_grants_catalog(entries, now, bound, catalog().map_err(ApiError::internal)?)
+}
+pub(crate) fn check_grants_catalog(
+    entries: &[GrantSpec],
+    now: Option<u64>,
+    bound: &[String],
+    cat: &crate::catalog::Catalog,
+) -> Result<(), ApiError> {
     let mut seen_coglets = BTreeSet::new();
     let mut owners: BTreeMap<&str, &str> = BTreeMap::new();
     for e in entries {

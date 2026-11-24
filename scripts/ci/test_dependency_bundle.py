@@ -63,16 +63,25 @@ class BundleTests(unittest.TestCase):
             from unittest.mock import patch
             with patch.dict(bundle.os.environ, {'ImageVersion': 'new-runner-image'}):
                 self.assertEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
-            with patch.object(bundle.subprocess, 'check_output', return_value='Apache Maven 3.9.11\nMaven home: /opt/a\n'):
-                maven = bundle.input_key(root, 'java', 'maven')
-            with patch.object(bundle.subprocess, 'check_output', return_value='\x1b[1mApache Maven 3.9.11\x1b[0m\nMaven home: /opt/b\n'):
-                self.assertEqual(maven, bundle.input_key(root, 'java', 'maven'))
-            with patch.object(bundle.subprocess, 'check_output', return_value='Apache Maven 3.9.12\nMaven home: /opt/a\n'):
-                self.assertNotEqual(maven, bundle.input_key(root, 'java', 'maven'))
+            (root / 'pyproject.toml').write_text('[project]\nname = "x"\n')
+            python = bundle.input_key(root, 'rust', 'python')
+            self.assertEqual(python, bundle.input_key(root, 'rust', 'python'))
+            gems = bundle.input_key(root, 'conformance', 'gems')
+            rustup = bundle.input_key(root, 'rust', 'rustup')
             (root / 'unrelated.rs').write_text('changed')
             self.assertEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
+            self.assertEqual(python, bundle.input_key(root, 'rust', 'python'))
+            self.assertEqual(gems, bundle.input_key(root, 'conformance', 'gems'))
+            self.assertEqual(rustup, bundle.input_key(root, 'rust', 'rustup'))
             (root / 'Cargo.lock').write_text('new lock')
             self.assertNotEqual(initial, bundle.input_key(root, 'rust', 'cargo'))
+            self.assertEqual(python, bundle.input_key(root, 'rust', 'python'))
+            (root / 'pyproject.toml').write_text('[project]\nname = "y"\n')
+            self.assertNotEqual(python, bundle.input_key(root, 'rust', 'python'))
+            (root / 'Gemfile.lock').write_text('GEM\n')
+            self.assertNotEqual(gems, bundle.input_key(root, 'conformance', 'gems'))
+            (root / 'rust-toolchain.toml').write_text('[toolchain]\nchannel = "1.100.0"\n')
+            self.assertNotEqual(rustup, bundle.input_key(root, 'rust', 'rustup'))
 
     def test_restore_miss_falls_back_normally_but_fails_proof(self):
         spec = importlib.util.spec_from_file_location('bundle', Path(__file__).with_name('dependency_bundle.py'))

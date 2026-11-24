@@ -8,7 +8,6 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
-      - '**/pom.xml'
       - '**/requirements*.txt'
       - '**/Gemfile*'
       - rust-toolchain.toml
@@ -50,10 +49,6 @@ jobs:
             echo "No dependency-candidate-$HEAD_SHA release yet: proof jobs skip. Publish it, then rerun."
             echo exists=false >> "$GITHUB_OUTPUT"
           fi
-  prepare-java:
-    uses: ./.github/workflows/java.yml
-    with:
-      bundle-mode: prepare
   prepare-rust:
     uses: ./.github/workflows/rust.yml
     with:
@@ -63,7 +58,7 @@ jobs:
     with:
       bundle-mode: prepare
   publish:
-    needs: [prepare-java, prepare-rust, prepare-conformance]
+    needs: [prepare-rust, prepare-conformance]
     # PR code NEVER receives publication credentials. For candidate proof before
     # merge, an operator validates/downloads this run's artifacts and publishes a
     # candidate-only release. Rerun failed proof jobs, without changing the head.
@@ -95,7 +90,7 @@ jobs:
           count=0
           for file in bundles/*; do
             name=$(basename "$file")
-            [[ "$name" =~ ^(java|rust|conformance)-(maven|cargo|rustup|python|gems)-[a-f0-9]{64}\.(json|tar\.gz)$ ]] || exit 1
+            [[ "$name" =~ ^(rust|conformance)-(cargo|rustup|python|gems)-[a-f0-9]{64}\.(json|tar\.gz)$ ]] || exit 1
             [[ -f "$file" && ! -L "$file" ]] || exit 1
             # No --clobber: a failed refresh can never overwrite a known-good set.
             if ! grep -Fxq "$name" existing.txt; then
@@ -104,23 +99,16 @@ jobs:
             count=$((count+1))
           done
           test "$count" -gt 0
-  proof-java:
-    needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
-    uses: ./.github/workflows/java.yml
-    with:
-      bundle-mode: proof
-      bundle-release: ${{ github.event_name == 'pull_request' && format('dependency-candidate-{0}', github.event.pull_request.head.sha) || 'dependency-mirror-v1' }}
   proof-rust:
-    needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
+    needs: [candidate, prepare-rust, prepare-conformance, publish]
+    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
     uses: ./.github/workflows/rust.yml
     with:
       bundle-mode: proof
       bundle-release: ${{ github.event_name == 'pull_request' && format('dependency-candidate-{0}', github.event.pull_request.head.sha) || 'dependency-mirror-v1' }}
   proof-conformance:
-    needs: [candidate, prepare-java, prepare-rust, prepare-conformance, publish]
-    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-java.result == 'success' && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
+    needs: [candidate, prepare-rust, prepare-conformance, publish]
+    if: always() && (github.event_name != 'pull_request' || needs.candidate.outputs.exists == 'true') && needs.prepare-rust.result == 'success' && needs.prepare-conformance.result == 'success' && (needs.publish.result == 'success' || github.event_name == 'pull_request')
     uses: ./.github/workflows/conformance.yml
     with:
       bundle-mode: proof

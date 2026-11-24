@@ -314,6 +314,31 @@ pub struct MockSurface {
     pub discarded_native: u64,
 }
 impl MockSurface {
+    /// Explicit ADR-0014 harness constructor; from_fixture/open remain production.
+    pub fn open_echo_fixture(
+        config: Config,
+        state_dir: &Path,
+        backend: Arc<dyn Backend>,
+    ) -> Result<Self, String> {
+        let now = config.start_clock;
+        Ok(Self {
+            core: Surface::open_echo_fixture(config, state_dir, backend)?,
+            scripted: None,
+            timeline: VecDeque::new(),
+            now,
+            discarded_native: 0,
+        })
+    }
+    pub fn emit_echo_fixture(
+        &mut self,
+        now: u64,
+        payload: Value,
+        owner: &str,
+    ) -> Result<Vec<Vec<u8>>, String> {
+        let mut out = self.tick_at(now)?;
+        out.extend(self.core.emit_echo_fixture(now, payload, owner)?);
+        Ok(out)
+    }
     pub fn open(
         config: Config,
         state_dir: &Path,

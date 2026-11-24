@@ -16,6 +16,8 @@ pub enum Direction {
     Read,
     Action,
     Gateway,
+    /// ADR-0014 trusted harness catalog only; never parsed from production data.
+    FixtureEventAction,
 }
 
 #[derive(Clone, Debug)]
@@ -57,6 +59,27 @@ pub fn catalog() -> Result<&'static Catalog, String> {
 }
 
 impl Catalog {
+    /// A separate immutable catalog, selected only by the trusted M1 constructor.
+    /// No production catalog mutation and no wildcard test operation.
+    pub(crate) fn echo_fixture() -> Result<&'static Self, String> {
+        static C: OnceLock<Result<Catalog, String>> = OnceLock::new();
+        C.get_or_init(|| {
+            let mut c = Self::parse(CATALOG_JSON)?;
+            c.ops.insert(
+                "test.echo".into(),
+                Op {
+                    name: "test.echo".into(),
+                    entry: Some("test.echo".into()),
+                    direction: Direction::FixtureEventAction,
+                    input: "common:profile-map".into(),
+                    output: Some("surface:empty-map".into()),
+                },
+            );
+            Ok(c)
+        })
+        .as_ref()
+        .map_err(Clone::clone)
+    }
     fn parse(src: &str) -> Result<Self, String> {
         let j: Json = serde_json::from_str(src).map_err(|e| format!("catalog: {e}"))?;
         if j["version"] != "0.1" {
