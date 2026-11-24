@@ -74,7 +74,9 @@ observations or guest code. The M2 pilot is stateless and ignores receipt result
 its native policy still executes. Divergence is the genuine runtime inbox/tree
 state difference, not a claim that its controller chooses a different action or
 that a world simulation was rerun. The existing world-model panel covers action
-edits separately. WASI remains unqualified and refused by `NativeEngine`.
+edits separately. The recorded M2 guest imports only `coglet_v0`; this viewer
+neither adds nor relaxes WASI handling and uses whatever restricted preview1 file
+host `NativeEngine` itself qualifies (see `crates/coglet-runtime/native-engine.md`).
 
 Input files are regular/no-follow on Unix and bounded to 128 MiB before reading;
 requests are 64 KiB, recursively duplicate-free, integer-only JSON. These are
@@ -87,7 +89,7 @@ and executes the pinned helper without Cargo or browser-selected paths.
 deadline bound work. Shutdown kills/reaps the active process group. A browser
 disconnect does not start replacement work: the slot remains held until worker
 completion or deadline; Follow live suppresses stale results by generation.
-These limits do not qualify the native WASI host or isolate a hostile executable.
+These limits are resource bounds, not a sandbox for a hostile executable.
 
 ```sh
 # Keep TRACE_JSON and its parent private; archive must be uncompressed.
