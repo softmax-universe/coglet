@@ -108,6 +108,33 @@ class UnixSurfaceListenerTest {
         assertThrows(SecurityException.class,
                 () -> new UnixSurfaceListener(dir.resolve("link/s2"), Files.getOwner(dir), () -> {}));
     }
+    @Test void stopDoesNotWaitForBlockedControlCallback() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var stopped = new AtomicInteger();
+        try (var listener = new UnixSurfaceListener(dir.resolve("s"), Files.getOwner(dir), stopped::incrementAndGet);
+             var client = SocketChannel.open(UnixDomainSocketAddress.of(dir.resolve("s")));
+             var connection = listener.accept();
+             var executor = java.util.concurrent.Executors.newSingleThreadExecutor()) {
+            client.write(ByteBuffer.wrap(FrameCodec.frame(FrameCodecTest.health())));
+            var worker = executor.submit(() -> {
+                try {
+                    connection.poll(Duration.ofSeconds(1), x -> {
+                        entered.countDown();
+                        try { release.await(); }
+                        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
+                    });
+                } catch (java.io.IOException e) { throw new RuntimeException(e); }
+            });
+            try {
+                assertTrue(entered.await(3, java.util.concurrent.TimeUnit.SECONDS));
+                connection.close();
+                assertEquals(1, stopped.get());
+                assertFalse(worker.isDone());
+            } finally { release.countDown(); }
+            worker.get(3, java.util.concurrent.TimeUnit.SECONDS);
+        }
+    }
     @Test void closeOnFirstCoalescedFrameStopsFurtherDelivery() throws Exception {
         var stopped = new AtomicInteger();
         try (var listener = new UnixSurfaceListener(dir.resolve("s"), Files.getOwner(dir), stopped::incrementAndGet);
