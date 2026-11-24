@@ -12,6 +12,10 @@ test-controls = ["coglet-hub/test-controls"]
 name = "mock_hub_peer"
 required-features = ["test-controls"]
 
+[[example]]
+name = "router_conformance_peer"
+required-features = ["test-controls"]
+
 [dependencies]
 coglet-hub = { path = "../coglet-hub" }
 coglet-proto = { path = "../coglet-proto" }
