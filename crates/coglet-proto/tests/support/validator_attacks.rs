@@ -188,7 +188,7 @@ async fn validator_rejects_symlinks_gitlinks_and_traversal_without_checkout() {
 }
 
 #[tokio::test]
-async fn validator_compression_bomb_hits_kernel_cpu_fence() {
+async fn validator_compression_bomb_is_bounded_independent_of_build_speed() {
     let mut pack = Pack::new();
     let blob = pack.object("blob", &vec![b'x'; 200 * 1024 * 1024]);
     let logs = pack.object("tree", &tree_entry("100644", "large.jsonl", blob));
@@ -198,22 +198,73 @@ async fn validator_compression_bomb_hits_kernel_cpu_fence() {
         "actual compression amplification required"
     );
     let start = Instant::now();
-    refuse(
+    let error = validate_bytes(
         &bytes,
         &metadata,
         Limits {
             cpu_seconds: 3,
             ..Limits::default()
         },
-        "helper CPU/memory/process limit",
     )
-    .await;
+    .await
+    .unwrap_err();
+    // Debug builds often exhaust the CPU share; optimized builds may safely
+    // finish parsing and reject the intentionally false signed archive digest.
+    // Neither performance outcome proves the other's missing fence.
+    assert!(
+        match &error {
+            coglet_proto::validator::ValidationError::Resource(message) =>
+                message == "helper CPU/memory/process limit",
+            coglet_proto::validator::ValidationError::Invalid(message) =>
+                message.ends_with("archive digest"),
+            _ => false,
+        },
+        "{error}"
+    );
     assert!(start.elapsed() < Duration::from_secs(15));
 }
 
 #[tokio::test]
-async fn validator_wall_deadline_cleans_real_bundle_without_accepting() {
+async fn validator_kernel_cpu_fence_terminates_deterministic_busy_helper() {
+    use std::os::unix::fs::PermissionsExt;
+    let root = Root::new();
+    let path = root.0.join("cpu-probe");
+    // Trusted test executable, never a remote-selectable helper. Unlike a fixed
+    // pack workload, this cannot finish before its limit on a faster build/CPU.
+    fs::write(&path, b"#!/bin/sh\nwhile :; do :; done\n").unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
     let (bytes, metadata) = fixture();
+    let start = Instant::now();
+    let error = validate_using(
+        &bytes,
+        &metadata,
+        Limits {
+            cpu_seconds: 3,
+            ..Limits::default()
+        },
+        &Validator::new(path),
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        matches!(error, coglet_proto::validator::ValidationError::Resource(_)),
+        "{error}"
+    );
+    assert!(
+        error
+            .to_string()
+            .ends_with("helper CPU/memory/process limit"),
+        "{error}"
+    );
+    assert!(start.elapsed() < Duration::from_secs(10));
+}
+
+#[tokio::test]
+async fn validator_wall_deadline_cleans_real_bundle_without_accepting() {
+    let mut pack = Pack::new();
+    let blob = pack.object("blob", &vec![b'x'; 16 * 1024 * 1024]);
+    let logs = pack.object("tree", &tree_entry("100644", "large.jsonl", blob));
+    let (bytes, metadata) = finish_logs(pack, logs, "Test <test@example.invalid> 1 +0000");
     refuse(
         &bytes,
         &metadata,

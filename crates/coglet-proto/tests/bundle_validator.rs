@@ -182,6 +182,7 @@ async fn validator_cancellation_keeps_cleanup_with_worker_until_helper_stops() {
         ));
     }
     for _ in 0..100 {
+        BundleSink::sweep_orphans(&root.0).await.unwrap();
         if fs::read_dir(&root.0).unwrap().count() == 0 {
             break;
         }
@@ -195,6 +196,21 @@ async fn validate_bytes(
     metadata: &VerifiedRef,
     limits: Limits,
 ) -> Result<(), coglet_proto::validator::ValidationError> {
+    validate_using(
+        bytes,
+        metadata,
+        limits,
+        &Validator::new(env!("CARGO_BIN_EXE_coglet-git-validator")),
+    )
+    .await
+}
+
+async fn validate_using(
+    bytes: &[u8],
+    metadata: &VerifiedRef,
+    limits: Limits,
+    validator: &Validator,
+) -> Result<(), coglet_proto::validator::ValidationError> {
     let root = Root::new();
     let mut sink = BundleSink::create(&root.0, bytes.len() as u64)
         .await
@@ -206,13 +222,17 @@ async fn validate_bytes(
         .check_envelope(metadata, &hex::encode(Sha256::digest(bytes)), 100000)
         .await
         .unwrap();
-    let result = envelope
-        .validate(
-            &Validator::new(env!("CARGO_BIN_EXE_coglet-git-validator")),
-            limits,
-        )
-        .await;
+    let result = envelope.validate(validator, limits).await;
     let result = result.map(drop);
+    // Killed descendants can retain the inherited lease until kernel teardown.
+    // Exercise real orphan recovery, never bypass the lease or unlink directly.
+    for _ in 0..100 {
+        BundleSink::sweep_orphans(&root.0).await.unwrap();
+        if fs::read_dir(&root.0).unwrap().count() == 0 {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
     assert_eq!(
         fs::read_dir(&root.0).unwrap().count(),
         0,

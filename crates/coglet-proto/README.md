@@ -139,7 +139,11 @@ server, mock hub and registry claims are not yet implemented.
   Named tests in `bundle_validator` cover real logs/code/delta bundles, all six
   resource fences, malicious delta/expanded-result/tree-DAG bombs, strict fsck,
   archive mismatch, forbidden paths/modes, Wasm/component/provenance rejection,
-  cancellation and private cleanup. `quarantine_cancel`, `quarantine_sweep` and
+  cancellation and private cleanup. The CPU-limit oracle uses an intentionally
+  nonterminating trusted test helper, not assumptions about pack-decoding speed;
+  the real compression bomb separately requires bounded rejection in debug and
+  release builds. Cleanup tests exercise the actual lease-aware orphan sweep
+  when kernel descendant teardown defers unlinking. `quarantine_cancel`, `quarantine_sweep` and
   the inherited-lease unit regression cover the sink/recovery boundaries.
 - `git_metadata::{RefKind, VerifiedRef}` pins signed metadata to the requested
   purpose/ref and trusted hub/coglet. Hub refs use the hub key; published/logs

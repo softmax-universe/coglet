@@ -129,78 +129,92 @@ pub(crate) async fn validate(
     let cancelled = Arc::new(AtomicBool::new(false));
     let guard = Cancel(cancelled.clone());
     let result = tokio::task::spawn_blocking(move || {
-        if envelope.object_count() > limits.objects {
-            return Err(resource("object count"));
-        }
-        let directory = envelope.directory()?.to_owned();
-        // Reserve existing bundle and lease blocks before starting ANY writes.
-        // The helper maintains the same ledger for every file/directory it adds.
-        let job = Job {
-            tip: envelope.metadata().new_tip().into(),
-            archive: envelope.metadata().archive_sha256().into(),
-            reference: envelope.metadata().signed()["statement"]["ref"]
-                .as_str()
-                .expect("verified ref")
-                .into(),
-            limits,
-        };
-        let mut command = limited_command(&helper, limits.cpu_seconds / 3);
-        command
-            .arg(&directory)
-            .arg(serde_json::to_string(&job).map_err(|_| invalid("job encoding"))?)
-            .stdin(Stdio::from(envelope.lease()?))
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null());
-        #[cfg(unix)]
-        {
-            use std::os::unix::process::CommandExt;
-            command.process_group(0);
-        }
-        let start = Instant::now();
-        let mut child = command
-            .spawn()
-            .map_err(|e| ValidationError::Unavailable(e.to_string()))?;
-        loop {
-            if cancelled.load(Ordering::Acquire)
-                || start.elapsed() >= Duration::from_millis(limits.wall_millis)
-            {
-                kill_group(child.id());
-                let _ = child.wait();
-                return Err(resource("validation wall time/cancelled"));
+        let outcome = (|| {
+            if envelope.object_count() > limits.objects {
+                return Err(resource("object count"));
             }
-            // Keep the leader unreaped until group termination: its PID/PGID
-            // cannot be recycled and redirect our kill at an unrelated job.
-            use nix::{
-                sys::wait::{Id, WaitPidFlag, WaitStatus, waitid},
-                unistd::Pid,
+            let directory = envelope.directory()?.to_owned();
+            // Reserve existing bundle and lease blocks before starting ANY writes.
+            // The helper maintains the same ledger for every file/directory it adds.
+            let job = Job {
+                tip: envelope.metadata().new_tip().into(),
+                archive: envelope.metadata().archive_sha256().into(),
+                reference: envelope.metadata().signed()["statement"]["ref"]
+                    .as_str()
+                    .expect("verified ref")
+                    .into(),
+                limits,
             };
-            match waitid(
-                Id::Pid(Pid::from_raw(child.id() as i32)),
-                WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
-            ) {
-                Ok(WaitStatus::StillAlive) => std::thread::sleep(Duration::from_millis(2)),
-                Ok(_) => break,
-                Err(error) => {
+            let mut command = limited_command(&helper, limits.cpu_seconds / 3);
+            command
+                .arg(&directory)
+                .arg(serde_json::to_string(&job).map_err(|_| invalid("job encoding"))?)
+                .stdin(Stdio::from(envelope.lease()?))
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null());
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                command.process_group(0);
+            }
+            let start = Instant::now();
+            let mut child = command
+                .spawn()
+                .map_err(|e| ValidationError::Unavailable(e.to_string()))?;
+            // Command retains its configured Stdio after spawn. Close that extra
+            // lease now, not after the result has been delivered to the async caller.
+            drop(command);
+            loop {
+                if cancelled.load(Ordering::Acquire)
+                    || start.elapsed() >= Duration::from_millis(limits.wall_millis)
+                {
                     kill_group(child.id());
                     let _ = child.wait();
-                    return Err(io::Error::other(error).into());
+                    return Err(resource("validation wall time/cancelled"));
+                }
+                // Keep the leader unreaped until group termination: its PID/PGID
+                // cannot be recycled and redirect our kill at an unrelated job.
+                use nix::{
+                    sys::wait::{Id, WaitPidFlag, WaitStatus, waitid},
+                    unistd::Pid,
+                };
+                match waitid(
+                    Id::Pid(Pid::from_raw(child.id() as i32)),
+                    WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
+                ) {
+                    Ok(WaitStatus::StillAlive) => std::thread::sleep(Duration::from_millis(2)),
+                    Ok(_) => break,
+                    Err(error) => {
+                        kill_group(child.id());
+                        let _ = child.wait();
+                        return Err(io::Error::other(error).into());
+                    }
                 }
             }
-        }
-        // Lease inheritance protects deferred cleanup even if a descendant is
-        // still in uninterruptible I/O after SIGKILL.
-        kill_group(child.id());
-        let status = child.wait()?;
-        let mut message = String::new();
-        if let Some(stdout) = child.stdout.take() {
-            stdout.take(1024).read_to_string(&mut message)?;
-        }
-        match status.code() {
-            Some(0) if message == "verified\n" => Ok(VerifiedBundle { envelope }),
-            Some(20) => Err(invalid(message.trim())),
-            Some(21) => Err(resource(message.trim())),
-            Some(22) => Err(ValidationError::Unavailable(message.trim().into())),
-            _ => Err(resource("helper CPU/memory/process limit")),
+            // Lease inheritance protects deferred cleanup even if a descendant is
+            // still in uninterruptible I/O after SIGKILL.
+            kill_group(child.id());
+            let status = child.wait()?;
+            let mut message = String::new();
+            if let Some(stdout) = child.stdout.take() {
+                stdout.take(1024).read_to_string(&mut message)?;
+            }
+            match status.code() {
+                Some(0) if message == "verified\n" => Ok(()),
+                Some(20) => Err(invalid(message.trim())),
+                Some(21) => Err(resource(message.trim())),
+                Some(22) => Err(ValidationError::Unavailable(message.trim().into())),
+                _ => Err(resource("helper CPU/memory/process limit")),
+            }
+        })();
+        match outcome {
+            Ok(()) => Ok(VerifiedBundle { envelope }),
+            Err(error) => {
+                // Drop captured custody before publishing the failed worker
+                // result; don't depend on closure-environment drop ordering.
+                drop(envelope);
+                Err(error)
+            }
         }
     })
     .await
