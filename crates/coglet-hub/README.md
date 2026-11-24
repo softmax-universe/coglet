@@ -325,3 +325,9 @@ review, green CI, merge and this card's final review handoff remain landing gate
 Full scheduler/Git/reference+mock integration stays with the producer-split owners
 listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
 
+## Local initial-deploy coordinator
+
+See [operator-saga.md](operator-saga.md) for protected recipe configuration,
+original-child receipt recovery, real-iroh lifecycle qualification and its named
+test matrix. Installed-target activation remains outside this initial-deploy slice.
+

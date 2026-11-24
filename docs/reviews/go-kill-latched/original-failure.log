@@ -1,0 +1,66 @@
+go	Go emitter keyword and collision regressions	﻿2026-11-24T13:07:48.3573983Z ##[group]Run python3 -m unittest discover -s codegen -p test_go.py -v
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3574552Z ^[[36;1mpython3 -m unittest discover -s codegen -p test_go.py -v^[[0m
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3604317Z shell: /usr/bin/bash -e {0}
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3604535Z env:
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3604752Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3605117Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3605467Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3605781Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3606092Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3606397Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.3606660Z ##[endgroup]
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.6529794Z test_ambiguity_fails_closed (test_go.GoEmitterTests.test_ambiguity_fails_closed) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.7571605Z test_deterministic_single_file_and_committed_output_current (test_go.GoEmitterTests.test_deterministic_single_file_and_committed_output_current) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:48.8937015Z test_generated_code_compiles_and_is_gofmt_clean (test_go.GoEmitterTests.test_generated_code_compiles_and_is_gofmt_clean) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:53.7996712Z test_go_module_tests (test_go.GoEmitterTests.test_go_module_tests) ... FAIL
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:53.7997403Z test_go_string_quoting (test_go.GoEmitterTests.test_go_string_quoting) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:53.7999813Z test_keywords_and_sanitized_names (test_go.GoEmitterTests.test_keywords_and_sanitized_names) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.1243460Z test_qualified_spec_native_conversions (test_go.GoEmitterTests.test_qualified_spec_native_conversions) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.1246528Z test_qualified_unique_aliases_preserve_native_identity (test_go.GoEmitterTests.test_qualified_unique_aliases_preserve_native_identity) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.1970657Z test_spec_shapes (test_go.GoEmitterTests.test_spec_shapes) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4246959Z test_v2_generated_native_conversions (test_go.GoEmitterTests.test_v2_generated_native_conversions) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4249058Z test_v2_node_mapping (test_go.GoEmitterTests.test_v2_node_mapping) ... ok
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4249473Z 
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4249778Z ======================================================================
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4250317Z FAIL: test_go_module_tests (test_go.GoEmitterTests.test_go_module_tests)
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4250823Z ----------------------------------------------------------------------
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4251266Z Traceback (most recent call last):
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4255880Z   File "/home/runner/work/coglet/coglet/codegen/test_go.py", line 191, in test_go_module_tests
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4256750Z     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4257476Z AssertionError: 1 != 0 : ?   	github.com/softmax-universe/coglet/sdk/surface-go/cmd/conformance	[no test files]
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4258292Z --- FAIL: TestSurfaceConformance (0.90s)
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4259052Z     transport_linux_test.go:165: shared surface cases: AssertionError: step 7: TimeoutError: 
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4259641Z         stderr: COGLET_CONFORMANCE_READY
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4260000Z         
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4260513Z         PASS surface-go-reference.surface/action-accept-outcome
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4261091Z         PASS surface-go-reference.surface/conflicting-id
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4261672Z         PASS surface-go-reference.surface/deadline-exclusive
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4262220Z         PASS surface-go-reference.surface/dedup-terminal
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4262778Z         PASS surface-go-reference.surface/grant-epoch-fence
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4263326Z         FAIL surface-go-reference.surface/kill-latched
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4264170Z         PASS surface-go-reference.surface/per-coglet-denial
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4264658Z         PASS surface-go-reference.surface/read-config
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4265473Z         SKIP surface-go-reference.surface/runtime-no-common-version: peer_role unsupported: surface
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4266593Z         SKIP surface-go-reference.surface/runtime-version-selection: peer_role unsupported: surface
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4267094Z         PASS surface-go-reference.surface/unknown-stream
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4267429Z         Traceback (most recent call last):
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4268067Z           File "/home/runner/work/coglet/coglet/sdk/surface-go/check_conformance.py", line 64, in <module>
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4268505Z             main()
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4269041Z           File "/home/runner/work/coglet/coglet/sdk/surface-go/check_conformance.py", line 35, in main
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4269785Z             subprocess.run([sys.executable, str(ROOT / 'conformance/run'), '--registry', str(registry),
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4270489Z           File "/opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/subprocess.py", line 571, in run
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4271035Z             raise CalledProcessError(retcode, process.args,
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4272498Z         subprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.12.16/x64/bin/python3', '/home/runner/work/coglet/coglet/conformance/run', '--registry', '/tmp/coglet-go-registry-wenjn79v/impls.toml', '--junit', '/tmp/TestSurfaceConformance3351613402/001/surface.xml']' returned non-zero exit status 1.
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4273498Z          exit status 1
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4274006Z FAIL
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4274259Z FAIL	github.com/softmax-universe/coglet/sdk/surface-go	2.857s
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4274639Z ok  	github.com/softmax-universe/coglet/sdk/surface-go/codec	0.005s
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275002Z ok  	github.com/softmax-universe/coglet/sdk/surface-go/types	0.084s
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275268Z FAIL
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275356Z 
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275361Z 
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275505Z ----------------------------------------------------------------------
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275788Z Ran 11 tests in 6.773s
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275913Z 
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4275999Z FAILED (failures=1)
+go	Go emitter keyword and collision regressions	2026-11-24T13:07:55.4409308Z ##[error]Process completed with exit code 1.

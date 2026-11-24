@@ -13,6 +13,10 @@ path quickly, and must also stay owned until it is fixed.
   matched with `--exact`. libtest has no crate filter, so the id skips that exact name in
   every test binary: use a module path that is unique in the workspace. `stability`
   fails if an id names no test.
+- For Python codegen wrappers, `[[python]]` uses the exact unittest discovery id
+  (`test_go.GoEmitterTests.test_go_module_tests`). `scripts/ci/python-tests.py`
+  fails on unmatched ids and skips only those exact tests; direct unittest/Go
+  commands remain unfiltered. Stability repeats held Python tests explicitly.
 - `card`: the board card that owns the fix.
 - `since`: a TOML date.
 - `reason`: what failed and the run where it was seen.
@@ -23,7 +27,7 @@ path quickly, and must also stay owned until it is fixed.
 
 | Check | Quarantined tests |
 |---|---|
-| `rust` and `conformance` (required) | skipped in every `cargo test` step (via `scripts/ci/cargo-test`) and every registry or ABI `conformance/run` (`--quarantine`). Python unit tests are not covered. |
+| `rust` and `conformance` (required) | skipped in every `cargo test` step (via `scripts/ci/cargo-test`), every registry or ABI `conformance/run` (`--quarantine`), and codegen discovery (`scripts/ci/python-tests.py`). Other Python unit tests are not covered. |
 | `stability` (not required; every 6 h, on demand, and when the list changes) | run 20 times, with the full registry also repeated 20 times |
 
 `stability` fails when any entry is older than 14 days, so a quarantine cannot be

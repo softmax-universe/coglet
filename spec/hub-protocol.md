@@ -92,7 +92,7 @@ revokes its grants and cancels its unapplied writes; provenance records carry it
 | `hub.git.push` | router → device | coglet; only `refs/heads/hub` |
 | `hub.git.fetch` | router → device | coglet; only published/main or logs |
 | `hub.events` | device → router | coglet; enrolled source + relay binding |
-| `hub.actions` | router → device | coglet; action/capability/surface grants too |
+| `hub.actions` | router → device | coglet; action/capability/adapter grants too |
 | `debug.read` | router → device | coglet; read paths/step/log range |
 | `debug.write` | router → device | coglet; bounded `/data` paths only |
 | `debug.pause`, `debug.step` | router → device | coglet; independent control grants |
@@ -149,6 +149,36 @@ it cannot retract physical effects. A hung step is interrupted by runtime
 budgets. Paused is distinct from stopped. Start resumes paused operation.
 Status returns state (`stopped`, `running`, `paused`, `faulted`), live commit,
 last committed step, pending mutation count and last shared error or null.
+
+After daemon restart, before exposing device readiness, recover locally configured
+installed coglets. Durable `running` intent resumes native scheduling only after
+revalidating the installed signed artifact and recovered executable bytes,
+installed identity, current delegation/capability grants, and local kill switch.
+Automatic resume uses the original start's actor/ticket scope and pinned authority
+generations, committed atomically with the running transition and bound to its
+operation ID and intent digest; never infer authority from a receipt or reader.
+Retained, locally configured and currently authorized generations must match
+exactly. Rotation, revocation, rollback or missing/mismatched recovery context
+requires a fresh authorized start, not adoption of newer authority on boot.
+Resolve durably admitted boundary mutations in receipt order before resume;
+pending stop/pause or an uncertain mutation outcome fences guest entry. Requests
+not durably admitted create no recovery intent. Recheck authority expiry using
+the device's trusted authority clock (not recovered logical time) and kill state
+immediately before execution admission after validation. Failed/uncertain
+admission never exposes `running`: with an intact readable/writable WAL and
+established identity, durably report `faulted` with an error, including for
+missing recovery context or latched kill. Only a fresh distinct start passing all
+normal checks and atomically replacing recovery context may clear this recovery
+fault; historical retries cannot. If WAL/identity integrity or durable fault
+persistence cannot be established, fail startup without device readiness.
+Stopped, paused and faulted coglets do not automatically resume. Recover committed
+data, logical time and queued work under the ABI's
+existing recovery/uncertain-attempt fences, without replaying an uncertain guest
+attempt or duplicating committed effects. Recovery creates no new start receipt
+and preserves historical receipt ordering; retrying an old start cannot reverse
+a later stop. Here `running` means scheduler-enabled and eligible to execute when
+input is ready, not continuous CPU use. See
+[ADR-0027](../docs/adr/0027-daemon-restart-resume.md).
 
 Boundary processing is serialized per coglet and durable: (1) finish or abort the
 current step; (2) append audit and apply queued debug/inbox mutations in receipt
@@ -386,7 +416,7 @@ the exact file JSON bytes,
 appends UTF-8 JSON plus one LF at a boundary, and emits the ABI `runtime.inbox`
 wake `{index,id}`. Index exhaustion fails closed. Newlines inside strings are
 escaped; integers retain full precision. `sender` is authenticated router identity
-(or the hub-validated original source on relay); never trust an arbitrary sender
+(or the router-validated original source on relay); never trust an arbitrary sender
 string. The router checks sender authority and the runtime trusts only the pinned
 router's explicit provenance. LLM results/steering/factory notes use this primitive.
 Runtime owns append; coglet owns its separate read cursor. Neither debug.write

@@ -164,6 +164,15 @@ impl Database {
     }
 }
 impl Unit<'_> {
+    /// Abort all provisional writes immediately, even if the host keeps this
+    /// unit alive while recording the failed attempt.
+    pub fn abort(&mut self) {
+        self.poisoned = true;
+        self.rollback_failed_unit();
+    }
+    pub fn is_poisoned(&self) -> bool {
+        self.poisoned
+    }
     pub(super) fn rollback_failed_unit(&mut self) {
         let _ = self.db.connection.progress_handler(0, None::<fn() -> bool>);
         let _ = self.db.connection.authorizer(

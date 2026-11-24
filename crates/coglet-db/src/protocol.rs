@@ -1,7 +1,56 @@
 //! Buffer checks, reservations and typed replies for the future ABI 0.2 host.
 //! Runtime/engine admission remains closed; callers supply the aggregate budget.
 use super::*;
+use coglet_engine::{GuestMemory, StepBudget};
 use coglet_types::Value as V;
+
+// A copy-only view. Engine faults are retained verbatim; no native guest pointer
+// or entire linear-memory image escapes the import.
+struct Memory<'a> {
+    guest: &'a mut dyn GuestMemory,
+    copied: u64,
+    fault: Option<coglet_engine::Error>,
+}
+impl Memory<'_> {
+    fn read(&mut self, ptr: u32, len: u32) -> Option<Vec<u8>> {
+        match self.guest.read(ptr, len) {
+            Ok(bytes) => {
+                self.copied += bytes.len() as u64;
+                Some(bytes)
+            }
+            Err(error) => {
+                self.fault = Some(error);
+                None
+            }
+        }
+    }
+    fn write(&mut self, ptr: u32, bytes: &[u8]) -> bool {
+        match self.guest.write(ptr, bytes) {
+            Ok(()) => {
+                self.copied += bytes.len() as u64;
+                true
+            }
+            Err(error) => {
+                self.fault = Some(error);
+                false
+            }
+        }
+    }
+}
+struct SliceMemory<'a>(&'a mut [u8]);
+impl GuestMemory for SliceMemory<'_> {
+    fn memory_len(&self) -> u64 {
+        self.0.len() as u64
+    }
+    fn read(&self, ptr: u32, len: u32) -> coglet_engine::Result<Vec<u8>> {
+        Ok(self.0[coglet_engine::guest_range(ptr, len, self.memory_len())?].to_vec())
+    }
+    fn write(&mut self, ptr: u32, bytes: &[u8]) -> coglet_engine::Result<()> {
+        let range = coglet_engine::guest_range(ptr, bytes.len() as u32, self.memory_len())?;
+        self.0[range].copy_from_slice(bytes);
+        Ok(())
+    }
+}
 // Result production plus copy into guest memory, including the length prefix.
 const OUTPUT_RESERVATION: u64 = 2 * 65536 + 4;
 
@@ -98,27 +147,92 @@ impl Unit<'_> {
         out_cap: i32,
         budget: &mut HostBudget,
     ) -> CallResult {
+        self.call_memory(
+            &mut Memory {
+                guest: &mut SliceMemory(memory),
+                copied: 0,
+                fault: None,
+            },
+            [ptr, len, out_ptr, out_cap],
+            budget,
+        )
+    }
+    /// Copy-only engine bridge. Reserve the maximum reply against the shared
+    /// aggregate allowance before SQL; engines settle memory copies after the
+    /// callback, so charge only additional result production here. Returning a
+    /// reply never commits: admission and durable completion remain explicit.
+    pub fn call_engine(
+        &mut self,
+        guest: &mut dyn GuestMemory,
+        args: [i32; 4],
+        budget: &mut StepBudget,
+    ) -> coglet_engine::Result<CallResult> {
+        if let Err(error) = budget.check_deadline() {
+            self.reject(3);
+            return Err(error);
+        }
+        let remaining = budget.host_bytes_remaining();
+        let mut allowance = HostBudget { remaining };
+        let mut memory = Memory {
+            guest,
+            copied: 0,
+            fault: None,
+        };
+        let result = self.call_memory(&mut memory, args, &mut allowance);
+        let production = remaining - allowance.remaining - memory.copied;
+        if let Err(error) = budget.charge_host_bytes(production) {
+            self.poisoned = true;
+            self.rollback_failed_unit();
+            return Err(error);
+        }
+        if let Some(error) = memory.fault {
+            return Err(error);
+        }
+        Ok(result)
+    }
+    fn call_memory(
+        &mut self,
+        memory: &mut Memory<'_>,
+        args: [i32; 4],
+        budget: &mut HostBudget,
+    ) -> CallResult {
+        let [ptr, len, out_ptr, out_cap] = args;
         let (p, n, o, c) = (
             ptr as u32 as u64,
             len as u32 as u64,
             out_ptr as u32 as u64,
             out_cap as u32 as u64,
         );
-        if p + n > memory.len() as u64 || o + c > memory.len() as u64 || (p < o + c && o < p + n) {
+        if coglet_engine::disjoint_guest_ranges(
+            p as u32,
+            n as u32,
+            o as u32,
+            c as u32,
+            memory.guest.memory_len(),
+        )
+        .is_err()
+        {
             self.calls = self.calls.saturating_add(1);
             self.poisoned = true;
             self.rollback_failed_unit();
             return CallResult::InvalidPointer;
         }
-        if n > 65536 || c < 65540 {
+        if n > 65536 {
             return self.reject(1);
         }
         // Charge the input copy even if profile/shape/grant validation rejects it.
         if budget.remaining < n {
             return self.reject(3);
         }
+        let Some(input) = memory.read(p as u32, n as u32) else {
+            return self.reject(3);
+        };
         budget.remaining -= n;
-        let input = memory[p as usize..(p + n) as usize].to_vec();
+        // Preserve the bounded copied argument for rejected-call journaling.
+        // Capacity still rejects before any SQL or output reservation.
+        if c < 65540 {
+            return self.reject(1);
+        }
         let value = match coglet_types::decode_profile(&input).and_then(|v| {
             coglet_types::validate("database::db-request", &v)?;
             Ok(v)
@@ -199,10 +313,25 @@ impl Unit<'_> {
             budget.remaining += OUTPUT_RESERVATION;
             return self.reject(3);
         }
-        budget.remaining += OUTPUT_RESERVATION - (discarded_bytes + 2 * response.len() as u64 + 4);
-        let start = o as usize;
-        memory[start..start + 4].copy_from_slice(&(response.len() as u32).to_be_bytes());
-        memory[start + 4..start + 4 + response.len()].copy_from_slice(&response);
+        budget.remaining += OUTPUT_RESERVATION - (discarded_bytes + response.len() as u64);
+        if !memory.write(o as u32, &(response.len() as u32).to_be_bytes()) {
+            self.poisoned = true;
+            self.rollback_failed_unit();
+            return CallResult::Return {
+                result: 3,
+                response: None,
+            };
+        }
+        budget.remaining -= 4;
+        if !memory.write((o + 4) as u32, &response) {
+            self.poisoned = true;
+            self.rollback_failed_unit();
+            return CallResult::Return {
+                result: 3,
+                response: None,
+            };
+        }
+        budget.remaining -= response.len() as u64;
         CallResult::Return {
             result: 0,
             response: Some(response),

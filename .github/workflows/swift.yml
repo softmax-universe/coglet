@@ -1,6 +1,6 @@
 name: swift
-# macOS runners are scarce (5 concurrent), so this runs only when something it
-# tests changes. The Linux swift-codegen job in conformance.yml covers every PR.
+# Runs on the coglet Mac minis (self-hosted, label coglet-mac) only when something
+# it tests changes. The Linux swift-codegen and apple-check jobs cover every PR.
 on:
   push:
     branches: [main]
@@ -9,9 +9,14 @@ on:
     paths: *swift_paths
 permissions:
   contents: read
+concurrency:
+  # macOS runners are the scarcest CI resource (org-wide concurrency cap). A new
+  # head on a PR cancels that PR's older run; pushes and dispatches never cancel.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   swift:
-    runs-on: macos-latest
+    runs-on: [self-hosted, macOS, coglet-mac]
     steps:
       - uses: actions/checkout@v4
       - run: swift build --package-path sdk/surface-swift

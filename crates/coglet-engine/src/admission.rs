@@ -3,13 +3,36 @@ use crate::{Error, Limits, Result, nan};
 use wasmparser::{
     ExternalKind, FuncType, Parser, Payload, TypeRef, ValType, Validator, WasmFeatures,
 };
+
+/// Frozen ABI 0.1 is the default. ABI 0.2 `coglet_v0.db` is never implied.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Admission {
+    /// When true, admit exactly `coglet_v0.db: (i32,i32,i32,i32)->i32`.
+    pub allow_db: bool,
+}
+
+impl Admission {
+    pub const ABI_0_1: Self = Self { allow_db: false };
+    pub const ABI_0_2_DB: Self = Self { allow_db: true };
+}
+
+/// 4-byte unsigned big-endian length prefix plus at most 65,536 reply bytes.
+pub const DB_OUTPUT_CAPACITY: u32 = 65_540;
+/// Maximum `coglet_v0.db` request bytes.
+pub const DB_INPUT_MAX: u32 = 65_536;
+
 fn invalid<T>(_: T) -> Error {
     Error::UnqualifiedModule
 }
 fn signature(params: &[ValType], results: &[ValType], ty: &FuncType) -> bool {
     ty.params() == params && ty.results() == results
 }
+/// ABI 0.1 admission: `coglet_v0.db` is always unqualified.
 pub fn admit(bytes: &[u8], limits: &Limits) -> Result<()> {
+    admit_with(bytes, limits, Admission::ABI_0_1)
+}
+/// Explicit ABI 0.2 DB opt-in. Callers that pass [`Admission::ABI_0_1`] match [`admit`].
+pub fn admit_with(bytes: &[u8], limits: &Limits, admission: Admission) -> Result<()> {
     if bytes.len() > limits.runtime_bytes as usize / 4 {
         return Err(Error::MemoryExhausted);
     }
@@ -43,7 +66,7 @@ pub fn admit(bytes: &[u8], limits: &Limits) -> Result<()> {
                         return Err(Error::UnqualifiedModule);
                     };
                     let ty = types.get(index as usize).ok_or(Error::UnqualifiedModule)?;
-                    if !allowed_import(import.module, import.name, ty) {
+                    if !allowed_import(import.module, import.name, ty, admission) {
                         return Err(Error::UnqualifiedModule);
                     }
                     functions.push(index);
@@ -123,9 +146,12 @@ pub fn admit(bytes: &[u8], limits: &Limits) -> Result<()> {
     }
     Ok(())
 }
-fn allowed_import(module: &str, name: &str, ty: &FuncType) -> bool {
+fn allowed_import(module: &str, name: &str, ty: &FuncType, admission: Admission) -> bool {
     use ValType::{I32, I64};
     if module == "coglet_v0" {
+        if name == "db" {
+            return admission.allow_db && signature(&[I32, I32, I32, I32], &[I32], ty);
+        }
         return ["timer", "emit", "llm", "log"].contains(&name)
             && signature(&[I32, I32], &[I32], ty);
     }

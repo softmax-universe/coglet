@@ -67,12 +67,29 @@ impl RuntimeService {
     /// No missing usage is synthesized and no guest is invoked. Without such
     /// evidence the attempt remains fenced indefinitely.
     pub fn recover_attempt(&mut self, record: &Value) -> Result<()> {
-        Self::attempted_ordinals(&self.state)?;
         if !self.store.is_healthy() {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }
-        let inputs = self
-            .state
+        let next = Self::reconcile_attempt(&self.state, self.store.records(), record)?;
+        self.store.commit(
+            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+            Some(record),
+        )?;
+        self.state = next;
+        Ok(())
+    }
+
+    /// Pure host-state transition for an authenticated attempt observation:
+    /// `journal` is the complete WAL record list. Shared by ABI 0.1 recovery and
+    /// by the ABI 0.2 journal collaborator so both derive state identically. The
+    /// record may be a 0.2 projection, never an unvalidated external value.
+    pub(super) fn reconcile_attempt(
+        state: &ServiceState,
+        journal: &[Value],
+        record: &Value,
+    ) -> Result<ServiceState> {
+        Self::attempted_ordinals(state)?;
+        let inputs = state
             .runtime
             .unresolved_attempt
             .as_ref()
@@ -98,20 +115,20 @@ impl RuntimeService {
             .as_array()
             .ok_or("missing attempted events")?
             .len();
-        if self.state.router.batch(count)? != *inputs["events"].as_array().unwrap() {
+        if state.router.batch(count)? != *inputs["events"].as_array().unwrap() {
             return Err("recovered attempt no longer matches retained router prefix".into());
         }
-        let mut records = self.store.records()[self.segment_offset()..].to_vec();
+        let offset = state.completed_segments.last().map_or(0, |s| s.end);
+        let mut records = journal[offset..].to_vec();
         records.push(record.clone());
-        let mut recovered = Runtime::reconstruct(&self.state.runtime.initial_setup, &records)?;
-        recovered.next_source_seq = recovered
-            .next_source_seq
-            .max(self.state.runtime.next_source_seq);
-        recovered.time = recovered.time.max(self.state.runtime.time);
-        recovered.retained_blobs = self.state.runtime.retained_blobs.clone();
-        let mut next = self.state.clone();
+        let mut recovered = Runtime::reconstruct(&state.runtime.initial_setup, &records)?;
+        recovered.next_source_seq = recovered.next_source_seq.max(state.runtime.next_source_seq);
+        recovered.time = recovered.time.max(state.runtime.time);
+        recovered.retained_blobs = state.runtime.retained_blobs.clone();
+        let mut next = state.clone();
         next.runtime = recovered;
         next.staged_boundary = None;
+        next.fenced_staged_prefix = None;
         next.router.consume(count)?;
         next.private_events
             .retain(|_, lease| !inputs["events"].as_array().unwrap().contains(&lease.event));
@@ -122,12 +139,7 @@ impl RuntimeService {
             next.dispatch_order
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
-        self.store.commit(
-            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
-            Some(record),
-        )?;
-        self.state = next;
-        Ok(())
+        Ok(next)
     }
 
     /// Every own-source reservation is retained either in a consumed batch,

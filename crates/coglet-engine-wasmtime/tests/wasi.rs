@@ -44,7 +44,7 @@ fn guest(name: &str, signature: &str, body: &str) -> Vec<u8> {
     .unwrap()
 }
 fn run(bytes: &[u8], host: &mut dyn Host) -> coglet_engine::StepOutcome {
-    let e = Wasmtime;
+    let e = Wasmtime::default();
     let l = limits();
     let m = e.load(bytes, &l).unwrap();
     e.instantiate(&m, l).unwrap().handle(

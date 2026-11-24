@@ -115,5 +115,22 @@ snapshot. Optional media routes fail unavailable; unknown streams fail not_found
 It does not claim hardware/provider speech success. Its fixture-only binding must
 never be used in a product. The two runtime-under-test scripts are reported as
 role skips; all nine surface-under-test scripts execute. `swift.yml` runs this
-harness and Swift unit/native buffer/real socket tests on `macos-latest`, uploading
-JUnit. The existing generated-code fixture tests remain in conformance CI.
+harness and Swift unit/native buffer/real socket tests on the self-hosted
+`coglet-mac` minis, uploading JUnit. The existing generated-code fixture tests
+remain in conformance CI.
+
+The reference emits the harness-only stderr line `COGLET_CONFORMANCE_READY`
+AFTER durable ledger/session initialization and flushing the initial wire frames.
+The registry waits for this exact line with a separate bounded 5000ms connection
+budget. No surface-protocol frame or step deadline changes; step zero still has
+its 200ms response budget, and the whole-case watchdog still includes startup.
+The loader, fixture decoding and initial file/directory fsyncs no longer spend
+that response budget. A missing signal or failed initialization fails closed.
+
+`python3 sdk/surface-swift/test_readiness.py -v` delays launch of the real binary
+400ms: the registry handshake must pass, and disabling only readiness must
+reproduce the step-zero timeout. `python3 sdk/surface-swift/repeat_registry.py`
+runs 20 consecutive full registries under two owned CPU burners, recording every
+JUnit result, runner/head identity and measured child CPU time in
+`target/swift-readiness/`. Both run in the nonrequired `surface-readiness` workflow;
+repetition is deliberately absent from required checks.

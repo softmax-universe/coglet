@@ -1,4 +1,4 @@
-# Surface/speech fixture validation
+# Adapter/speech fixture validation
 
 Install the existing Python requirements using Python 3.12 (pycddl 0.6.4 does
 not build on Python 3.14). Also install Ruby 3.2 and Bundler 2.5.23, then:

@@ -37,9 +37,9 @@ fn failed_growth_does_not_charge_a_later_valid_growth() {
     ] {
         let b=wat::parse_str(format!(r#"(module {extra} (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) {body}))"#)).unwrap();
         let l = limits();
-        let m = Wasmtime.load(&b, &l).unwrap();
+        let m = Wasmtime::default().load(&b, &l).unwrap();
         assert_eq!(
-            Wasmtime
+            Wasmtime::default()
                 .instantiate(&m, l)
                 .unwrap()
                 .handle(input(), &mut Empty)
@@ -68,8 +68,8 @@ fn runtime_memory_and_table_allocations_are_bounded() {
     ] {
         let b=wat::parse_str(format!(r#"(module {extra} (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))"#)).unwrap();
         let l = limits();
-        let m = Wasmtime.load(&b, &l).unwrap();
-        let i = Wasmtime.instantiate(&m, l).unwrap();
+        let m = Wasmtime::default().load(&b, &l).unwrap();
+        let i = Wasmtime::default().instantiate(&m, l).unwrap();
         assert_eq!(
             i.handle(input(), &mut Empty).result,
             Err(Error::MemoryExhausted)
@@ -94,9 +94,9 @@ fn host_compute_charges_share_remaining_store_fuel() {
     }
     let b=wat::parse_str(r#"(module (import "coglet_v0" "log" (func $h (param i32 i32) (result i32))) (memory (export "memory") 1 32) (func (export "abi_alloc") (param i32) (result i32) i32.const 0 i32.const 0 call $h drop unreachable) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) unreachable))"#).unwrap();
     let l = limits();
-    let m = Wasmtime.load(&b, &l).unwrap();
+    let m = Wasmtime::default().load(&b, &l).unwrap();
     assert_eq!(
-        Wasmtime
+        Wasmtime::default()
             .instantiate(&m, l)
             .unwrap()
             .handle(input(), &mut Charged)
@@ -125,8 +125,8 @@ fn concurrent_instances_do_not_share_epoch_deadlines() {
     }
     let b=wat::parse_str(r#"(module (import "coglet_v0" "log" (func $h (param i32 i32) (result i32))) (memory (export "memory") 1 32) (func (export "abi_alloc") (param i32) (result i32) i32.const 0) (func (export "handle") (param i32 i32 i64 i64 i64) (result i32) i32.const 0 i32.const 0 call $h))"#).unwrap();
     let l = limits();
-    let m = Wasmtime.load(&b, &l).unwrap();
-    let long = Wasmtime.instantiate(&m, l).unwrap();
+    let m = Wasmtime::default().load(&b, &l).unwrap();
+    let long = Wasmtime::default().instantiate(&m, l).unwrap();
     let barrier = Arc::new(Barrier::new(2));
     let other = barrier.clone();
     let handle = std::thread::spawn(move || long.handle(input(), &mut Wait(other)));
@@ -135,8 +135,8 @@ fn concurrent_instances_do_not_share_epoch_deadlines() {
     let mut l = limits();
     l.compute = i32::MAX as u64;
     l.deadline = Instant::now() + Duration::from_millis(100);
-    let m = Wasmtime.load(&b, &l).unwrap();
-    let i = Wasmtime.instantiate(&m, l).unwrap();
+    let m = Wasmtime::default().load(&b, &l).unwrap();
+    let i = Wasmtime::default().instantiate(&m, l).unwrap();
     assert_eq!(
         i.handle(input(), &mut Empty).result,
         Err(Error::DeadlineExceeded)

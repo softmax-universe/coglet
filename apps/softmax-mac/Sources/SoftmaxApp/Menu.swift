@@ -60,7 +60,8 @@ struct SoftmaxMenuView: View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
             HStack { MenuTemplate(state: presentation ?? model.menuPresentation); Text((presentation ?? model.menuPresentation).label).fontWeight(.semibold) }
             Text("Push-to-talk: \(model.hotkeyName)")
-            Text("Hub disconnected · no hub configured")
+            Text(model.hubStatus)
+            if let name = model.hubConnection?.pairing?.name { Text(name) }
             Text(model.testing ? "Local runtime: not connected" : "Local runtime: \(model.runtime.state.rawValue)")
             if model.updates.updateAvailable || presentation == .update { Text("Update available · install from Updates") }
             Divider()
@@ -81,6 +82,6 @@ struct SoftmaxMenuView: View {
 
 extension ShellModel {
     var menuPresentation: MenuPresentation {
-        MenuPresentation.resolve(activity: state, hasError: message != nil || runtime.state == .error, hubConnected: false, updateAvailable: updates.updateAvailable)
+        MenuPresentation.resolve(activity: state, hasError: message != nil || runtime.state == .error, hubConnected: hubConnection?.state == .connected, updateAvailable: updates.updateAvailable)
     }
 }

@@ -6,7 +6,14 @@ use std::{
     time::Instant,
 };
 unsafe extern "C" {
-    fn ce_create(bytes: *mut u8, len: u32, pool: u32, stack: u32, pages: u32) -> *mut c_void;
+    fn ce_create(
+        bytes: *mut u8,
+        len: u32,
+        pool: u32,
+        stack: u32,
+        pages: u32,
+        allow_db: i32,
+    ) -> *mut c_void;
     fn ce_call(ctx: *mut c_void, name: *const c_char, argc: u32, argv: *mut u32) -> i32;
     fn ce_has(ctx: *mut c_void, name: *const c_char) -> i32;
     fn ce_set_budget(ctx: *mut c_void, budget: i32);
@@ -17,6 +24,7 @@ unsafe extern "C" {
     fn ce_destroy(ctx: *mut c_void);
     fn ce_read(ctx: *mut c_void, ptr: u32, bytes: *mut u8, len: u32) -> i32;
     fn ce_valid(ctx: *mut c_void, ptr: u32, len: u32) -> i32;
+    fn ce_memory_size(ctx: *mut c_void) -> u64;
     fn ce_set_host(ctx: *mut c_void, state: *mut c_void);
     fn ce_host_abort(ctx: *mut c_void);
 }
@@ -87,6 +95,9 @@ impl GuestMemory for Memory {
         }
         Ok(())
     }
+    fn memory_len(&self) -> u64 {
+        unsafe { ce_memory_size(self.ctx) }
+    }
 }
 // Called synchronously by our registered C bridge only. No unwind crosses C.
 #[unsafe(no_mangle)]
@@ -116,6 +127,12 @@ unsafe extern "C" fn ce_host_call(
             .to_str()
             .map_err(|_| Error::InvalidArgument)?;
         let args = unsafe { std::slice::from_raw_parts(args, argc as usize) };
+        let owned: Vec<u64> = if module == "coglet_v0" {
+            args.iter().map(|a| *a as u32 as u64).collect()
+        } else {
+            args.to_vec()
+        };
+        let args = owned.as_slice();
         let mut memory = Memory {
             ctx: state.ctx,
             remaining: state.budget.host_bytes_remaining(),
@@ -262,6 +279,7 @@ pub(super) fn execute(
     limits: Limits,
     input: StepInput,
     host: &mut dyn Host,
+    allow_db: bool,
 ) -> StepOutcome {
     let failure = |error| StepOutcome {
         result: Err(error),
@@ -289,6 +307,7 @@ pub(super) fn execute(
             limits.runtime_bytes,
             limits.stack_bytes,
             limits.memory_pages,
+            i32::from(allow_db),
         )
     };
     if ctx.is_null() {

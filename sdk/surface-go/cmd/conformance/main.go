@@ -7,10 +7,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	surface "github.com/softmax-universe/coglet/sdk/surface-go"
@@ -52,11 +54,24 @@ func run() error {
 	defer os.RemoveAll(dir)
 	started := time.Now()
 	negotiated := false
+	// Test-only logical clock (ADR-0021): when the harness provides a control socket the
+	// surface time is exactly the advances it sends, never the wall clock.
+	var logical, base atomic.Uint64
+	control, err := fixtureControl()
+	if err != nil {
+		return err
+	}
+	elapsed := func() uint64 {
+		if control > 0 {
+			return logical.Load() - base.Load()
+		}
+		return uint64(time.Since(started).Microseconds())
+	}
 	clock := func() uint64 {
 		if !negotiated {
 			return f.Clock
 		}
-		return f.Clock + uint64(time.Since(started).Microseconds())
+		return f.Clock + elapsed()
 	}
 	expression := "neutral"
 	intensity := uint64(0)
@@ -151,14 +166,24 @@ func run() error {
 				return err
 			}
 			started = time.Now()
+			base.Store(logical.Load())
 			negotiated = true
 			return nil
 		},
+		Control: control,
+		Advance: func(micros uint64) error {
+			if micros < logical.Load() {
+				return errors.New("invalid fixture clock advance")
+			}
+			logical.Store(micros)
+			return nil
+		},
+		Now: logical.Load,
 		Poll: func() error {
 			if clock() >= until {
 				stop()
 			}
-			if negotiated && killAfter > 0 && !killed && time.Since(started) >= killAfter {
+			if negotiated && killAfter > 0 && !killed && time.Duration(elapsed())*time.Microsecond >= killAfter {
 				killed = true
 				return s.Kill("local operator off-switch")
 			}

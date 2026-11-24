@@ -39,6 +39,12 @@ targets:
       - package: FaceMac
       - package: Sparkle
       - package: SoftmaxRuntime
+    postBuildScripts:
+      - name: Bundle universal hub transport
+        script: bash "$SRCROOT/scripts/build-hub-helper.sh" "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/softmax-hub-link"
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/softmax-hub-link
     settings:
       base:
         PRODUCT_NAME: Softmax

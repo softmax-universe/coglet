@@ -28,4 +28,6 @@ iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
 tokio = { version = "1", features = ["net", "io-util", "io-std", "macros", "rt-multi-thread", "time", "sync", "signal"] }
 
 [dev-dependencies]
+coglet-mock = { path = "../coglet-mock" }
+coglet-runtime = { path = "../coglet-runtime", features = ["native-engine"] }
 tempfile = "3"

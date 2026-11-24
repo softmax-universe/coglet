@@ -12,7 +12,7 @@ rustup target add aarch64-apple-darwin x86_64-apple-darwin
 mkdir -p "$OUT/headers" "$OUT/universal"
 cbindgen --config crates/coglet-runtime/cbindgen.toml --crate coglet-runtime --output "$OUT/headers/coglet_runtime.h"
 for target in aarch64-apple-darwin x86_64-apple-darwin; do
-  cargo build --locked --release -p coglet-runtime --features "$FEATURES" --target "$target"
+  cargo build --locked --release -p coglet-runtime --no-default-features --features "$FEATURES" --target "$target"
 done
 lipo -create target/aarch64-apple-darwin/release/libcoglet_runtime.a target/x86_64-apple-darwin/release/libcoglet_runtime.a -output "$OUT/universal/libCogletRuntime.a"
 printf 'module CogletRuntime { header "coglet_runtime.h" export * }\n' > "$OUT/headers/module.modulemap"

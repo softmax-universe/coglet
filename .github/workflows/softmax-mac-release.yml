@@ -70,6 +70,7 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.SOFTMAX_MAC_ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_ASC_PRIVATE_KEY }}
           TEAM_ID: ${{ secrets.SOFTMAX_MAC_TEAM_ID }}
+          PROVISIONING_PROFILE: ${{ secrets.SOFTMAX_MAC_PROVISIONING_PROFILE }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SOFTMAX_MAC_SPARKLE_PRIVATE_KEY }}
           SPARKLE_BIN: ${{ runner.temp }}/sparkle/bin
           RELEASE_TAG: ${{ github.ref_name }}

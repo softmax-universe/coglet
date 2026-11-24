@@ -8,19 +8,28 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  # macOS runners are the scarcest CI resource (org-wide concurrency cap). A new
+  # head on a PR cancels that PR's older run; pushes and dispatches never cancel.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   apple:
-    runs-on: macos-latest
+    # coglet Mac minis (self-hosted). The iroh fault test binds loopback only, so the
+    # minis' macOS application firewall no longer affects it.
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 25
     env:
       IPHONEOS_DEPLOYMENT_TARGET: '15.0'
+      # Pin it: on the minis cc-rs would otherwise target the host's own macOS.
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
     steps:
       - uses: actions/checkout@v4
       - name: Assert native arm64 host and install targets
         run: |
           test "$(uname -m)" = arm64
           rustup show active-toolchain
-          rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1
+          rustup target add aarch64-apple-ios x86_64-apple-darwin wasm32-wasip1 wasm32-unknown-unknown
       - name: Check Darwin proto and prove validator refuses unsupported execution
         run: |
           cargo check --locked -p coglet-proto --target aarch64-apple-darwin
@@ -43,17 +52,34 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
+  # Own 25-minute budget. On a slow runner the debug suites above already use
+  # about 21 of the apple job's 25 minutes, and this release rebuild was
+  # cancelled mid-smoke (job cap, not a test failure). Splitting does not raise
+  # either cap and does not take a second runner until apple has finished.
+  apple-release-smoke:
+    needs: apple
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Compile production echo without ambient WASI imports
+        run: |
+          CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_OPT_LEVEL=z cargo rustc --locked --manifest-path coglets/echo/Cargo.toml --lib --release --target wasm32-unknown-unknown -- -C strip=symbols -C link-arg=--max-memory=16777216
+          cargo run --quiet --locked -p coglet-runtime --features native-engine --example qualify_apple_guest -- coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm
       - name: Release C ABI and socket production echo timer-wake smoke (no surface echo roundtrip)
         # The socket control barrier qualifies release latency, as in tests/m1/run.sh.
-        # Default/native debug suites above still execute unchanged.
         run: COGLET_ECHO_SMOKE_WASM="$PWD/coglets/echo/target/wasm32-unknown-unknown/release/coglet_echo.wasm" cargo test --release --locked -p coglet-runtime --features echo-smoke --test native_operational -- --test-threads=1
   ios-runtime:
-    runs-on: macos-15
+    runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      # No Swatinem/rust-cache: this job runs on persistent self-hosted minis, where
+      # the target dir already persists, and rust-cache's post-job cleanup of
+      # CARGO_HOME/bin deleted the runner's rustup (2026-11-24).
       - name: Test iOS build admission (not native execution)
         run: python3 scripts/tests/test_ios_runtime.py
       - name: Install pinned header generator

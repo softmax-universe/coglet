@@ -168,7 +168,7 @@ notification of an already-applied reflex, not a request needing an ack. Kill
 itself announces full grant revocation; a separate empty grants snapshot is not
 required. If emitted, that snapshot follows kill and stopped health, uses a
 higher epoch and MUST NOT restore authority. No
-message/coglet/hub operation clears it. A still-open link rejects new action IDs
+message/coglet/router operation clears it. A still-open link rejects new action IDs
 and reads with permission_denied; previously accepted work is cancelled. The
 adapter MAY close after best-effort notification, so clients must also handle
 disconnect rather than wait for rejection. Only explicit local operator reset and
@@ -190,7 +190,7 @@ Socket write success is not accept. Audio frames never use this control channel.
 
 ### Embedded runtime C ABI (iOS)
 
-The following names/signatures define the surface-message boundary of runtime
+The following names/signatures define the adapter-message boundary of runtime
 library ABI v1, not the guest Wasm ABI:
 
 ```c

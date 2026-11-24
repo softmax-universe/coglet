@@ -5,12 +5,16 @@ package surface
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -160,10 +164,101 @@ func TestSurfaceConformance(t *testing.T) {
 	if out, e := cmd.CombinedOutput(); e != nil {
 		t.Fatalf("build adapter: %s %v", out, e)
 	}
+	// Keep non-opted-in real-time qualification separate from fixture-clock cases.
+	live := exec.Command("python3", "check_live_clock.py", binary)
+	if out, e := live.CombinedOutput(); e != nil {
+		t.Fatalf("real-clock adapter: %s %v", out, e)
+	} else {
+		t.Log(string(out))
+	}
+	stalled := exec.Command("python3", "check_fixture_clock.py", binary)
+	if out, e := stalled.CombinedOutput(); e != nil {
+		t.Fatalf("fixture scheduler-stall regression: %s %v", out, e)
+	} else {
+		t.Log(string(out))
+	}
 	cmd = exec.Command("python3", "check_conformance.py", "--binary", binary, "--junit", filepath.Join(dir, "surface.xml"))
 	if out, e := cmd.CombinedOutput(); e != nil {
 		t.Fatalf("shared surface cases: %s %v", out, e)
 	} else {
 		t.Log(string(out))
+	}
+}
+
+func socketPair(t *testing.T) (int, net.Conn) {
+	t.Helper()
+	fds, e := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM|syscall.SOCK_CLOEXEC, 0)
+	must(t, e)
+	f := os.NewFile(uintptr(fds[1]), "peer")
+	c, e := net.FileConn(f)
+	must(t, e)
+	must(t, f.Close())
+	t.Cleanup(func() { _ = c.Close(); _ = syscall.Close(fds[0]) })
+	return fds[0], c
+}
+func readAck(t *testing.T, c net.Conn) uint64 {
+	t.Helper()
+	must(t, c.SetReadDeadline(time.Now().Add(3*time.Second)))
+	var raw [8]byte
+	_, e := io.ReadFull(c, raw[:])
+	must(t, e)
+	return binary.BigEndian.Uint64(raw[:])
+}
+
+// The ADR-0021 fixture clock: time moves only by explicit advances, and every advance
+// and frame is acknowledged with the logical time only after its output is written.
+func TestFixtureClockAcknowledgesAfterOutputAndRejectsRetrograde(t *testing.T) {
+	h := newHost(t, false)
+	must(t, h.s.Disconnect())
+	data, peer := socketPair(t)
+	ctl, clockPeer := socketPair(t)
+	var logical atomic.Uint64
+	done := make(chan error, 1)
+	go func() {
+		done <- ServeFD(context.Background(), h.s, data, data, ServeOptions{HelloID: testID,
+			Configured: func() error { return h.s.Grant(h.grants()) },
+			Control:    ctl,
+			Advance: func(m uint64) error {
+				if m < logical.Load() {
+					return errors.New("retrograde")
+				}
+				logical.Store(m)
+				return nil
+			},
+			Now: logical.Load})
+	}()
+	if readFrame(t, peer)["type"] != "hello" {
+		t.Fatal("no hello")
+	}
+	reply, e := message("hello_reply", map[string]any{"selection": map[string]any{"version": "0.1"}, "correlation_id": testID})
+	must(t, e)
+	sendFragments(t, peer, reply)
+	if got := readAck(t, clockPeer); got != 0 {
+		t.Fatalf("frame ack %d, want logical 0", got)
+	}
+	// The ack means the replies are already written: they must not need further time.
+	if readFrame(t, peer)["type"] != "capabilities" || readFrame(t, peer)["type"] != "grants" {
+		t.Fatal("bad handshake")
+	}
+	for _, micros := range []uint64{100_000, 100_000, 110_000} {
+		var raw [8]byte
+		binary.BigEndian.PutUint64(raw[:], micros)
+		_, e = clockPeer.Write(raw[:])
+		must(t, e)
+		if got := readAck(t, clockPeer); got != micros {
+			t.Fatalf("advance ack %d, want %d", got, micros)
+		}
+	}
+	var raw [8]byte
+	binary.BigEndian.PutUint64(raw[:], 109_999)
+	_, e = clockPeer.Write(raw[:])
+	must(t, e)
+	select {
+	case e = <-done:
+		if e == nil || !strings.Contains(e.Error(), "retrograde") {
+			t.Fatalf("retrograde advance accepted: %v", e)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("retrograde advance did not stop the server")
 	}
 }

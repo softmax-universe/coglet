@@ -363,3 +363,55 @@ fn nonzero_exit_trap_and_panic_abort_and_next_step_recovers() {
     let e = engine(|| closure(|_, _, _| Ok(0)));
     assert_eq!(run(&e, limits(), &mut TestHost::default()).result, Ok(()));
 }
+
+#[test]
+fn db_import_requires_opt_in_and_forwards_four_args() {
+    let e = engine(|| closure(|_, _, cx| cx.call("coglet_v0", "db", &[0, 2, 8, 16])));
+    assert_eq!(
+        run(&e, limits(), &mut TestHost::default()).result,
+        Err(Error::UnqualifiedModule)
+    );
+    let mut e = engine(|| closure(|_, _, cx| cx.call("coglet_v0", "db", &[0, 2, 8, 16])));
+    e.allow_db();
+    struct DbHost {
+        args: Option<Vec<u64>>,
+        memory_len: u64,
+    }
+    impl Host for DbHost {
+        fn call(
+            &mut self,
+            module: &str,
+            name: &str,
+            args: &[u64],
+            memory: &mut dyn GuestMemory,
+            budget: &mut StepBudget,
+        ) -> Result<u32> {
+            assert_eq!((module, name), ("coglet_v0", "db"));
+            memory.contains(args[0] as u32, args[1] as u32)?;
+            memory.contains(args[2] as u32, args[3] as u32)?;
+            let _ = budget.host_bytes_remaining();
+            self.args = Some(args.to_vec());
+            self.memory_len = memory.memory_len();
+            Ok(0)
+        }
+    }
+    let mut host = DbHost {
+        args: None,
+        memory_len: 0,
+    };
+    let mut l = limits();
+    l.host_bytes = 32;
+    let o = run(&e, l, &mut host);
+    assert_eq!(o.result, Ok(()));
+    assert_eq!(host.args.as_deref(), Some(&[0, 2, 8, 16][..]));
+    assert_eq!(host.memory_len, 65536);
+    let mut bad =
+        engine(|| closure(|_, _, cx| cx.call("coglet_v0", "db", &[u32::MAX as u64, 3, 8, 16])));
+    bad.allow_db();
+    let mut host = TestHost::default();
+    assert_eq!(
+        run(&bad, limits(), &mut host).result,
+        Err(Error::InvalidPointer)
+    );
+    assert!(host.calls.is_empty());
+}

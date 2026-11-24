@@ -36,7 +36,7 @@ checked by the fixture tests; a future native transport adapter must reject them
 
 ## Fixture clock and runner watchdog (ADR-0021)
 
-The four Rust reference/mock registrations opt into `fixture_clock=true`.
+The four Rust reference/mock registrations and the Go reference (`surface-go-reference`, via `sdk/surface-go/cmd/conformance` and `ServeOptions.Control`) opt into `fixture_clock=true`.
 The harness provides a private Unix socket in a mode-0700 temporary directory
 through `COGLET_FIXTURE_CLOCK_SOCKET`; fixture hooks may not supply that variable.
 The socket is a test-control binding, not a surface wire message. Each control

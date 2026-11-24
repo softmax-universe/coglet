@@ -22,6 +22,8 @@ struct Config {
     #[serde(default)]
     operator: Option<coglet_hub::operator::service::Provisioning>,
     #[serde(default)]
+    recipes: Vec<coglet_hub::kernel::saga::Recipe>,
+    #[serde(default)]
     peers: Vec<Peer>,
     #[serde(default)]
     coglets: Vec<Registration>,
@@ -99,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         provisioning.validate(service_uid)?;
     }
     let endpoint = Endpoint::builder(presets::Minimal)
-        .secret_key(key)
+        .secret_key(key.clone())
         .alpns(vec![ALPN.to_vec()])
         .bind()
         .await?;
@@ -128,14 +130,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         kernel.register(coglet).await?;
     }
     let service = Arc::new(match config.operator {
-        Some(p) => coglet_hub::operator::service::Service::new(kernel.clone(), service_uid, p)?,
+        Some(p) => coglet_hub::operator::service::Service::new(kernel.clone(), service_uid, p)?
+            .with_executor(coglet_hub::kernel::saga::Executor {
+                key,
+                recipes: config.recipes,
+            }),
         None => coglet_hub::operator::service::Service::unprovisioned(kernel.clone()),
     });
     let socket = coglet_hub::operator::socket::OperatorSocket::bind_locked(&state_lock).await?;
     let (operator_stop, stopped) = tokio::sync::oneshot::channel();
+    let saga_task = tokio::spawn(service.clone().run());
     let mut operator_task = tokio::spawn(coglet_hub::operator::server::serve(
         socket,
-        service,
+        service.clone(),
         128,
         async {
             let _ = stopped.await;
@@ -158,14 +165,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             incoming=endpoint.accept()=> {
                 let Some(incoming)=incoming else {break};
                 let Ok(permit)=limit.clone().try_acquire_owned() else {drop(incoming);continue};
-                let kernel=kernel.clone(); let local=endpoint.id();
+                let kernel=kernel.clone(); let local=endpoint.id(); let service=service.clone();
                 tasks.spawn(async move {
                     let _permit=permit;
                     if let Ok(Ok(connection))=tokio::time::timeout(Duration::from_secs(10),incoming).await
                         && let Ok(session)=Session::new(connection,local,Role::Hub) {
                             let peer=session.peer();
                             if let Ok(token)=kernel.transport_connected(peer).await {
-                                let _=session.serve(Arc::new(kernel.clone())).await;
+                                let _=session.clone().serve(service.connection(session,token)).await;
+                                service.detach(peer,token);
                                 let _=kernel.transport_disconnected(peer,token).await;
                             }
                         }
@@ -173,6 +181,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+    saga_task.abort();
+    let _ = saga_task.await;
     endpoint.close().await;
     let _ = operator_stop.send(());
     operator_task.await??;

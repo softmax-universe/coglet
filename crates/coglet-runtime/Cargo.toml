@@ -8,7 +8,9 @@ publish.workspace = true
 crate-type = ["rlib", "cdylib", "staticlib"]
 
 [features]
-default = []
+# Embedded C ABI consumers disable defaults; iroh DNS is not iOS-qualified.
+default = ["device"]
+device = ["dep:coglet-proto", "dep:iroh"]
 # Explicit release-only M1 qualification target; does not enable fixture
 # constructors in production binaries (they are never called there).
 m1-tests = ["native-engine"]
@@ -16,21 +18,26 @@ m1-tests = ["native-engine"]
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
 echo-smoke = ["native-engine"]
-native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:coglet-fs", "dep:wasmparser"]
+native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:coglet-fs", "dep:wasmparser", "dep:coglet-db"]
 
 [dependencies]
+coglet-db = { path = "../coglet-db", optional = true }
 coglet-engine = { path = "../coglet-engine", optional = true }
 coglet-engine-wamr = { path = "../coglet-engine-wamr", optional = true }
 coglet-fs = { path = "../coglet-fs", optional = true }
 wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 coglet-types = { path = "../coglet-types" }
+coglet-proto = { path = "../coglet-proto", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
+iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"], optional = true }
+tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
+rusqlite = { version = "0.38", features = ["bundled"] }
 coglet-hub = { path = "../coglet-hub" }
 coglet-proto = { path = "../coglet-proto" }
 coglet-mock = { path = "../coglet-mock" }
@@ -38,9 +45,15 @@ coglet-surface-rust = { path = "../../sdk/surface-rust" }
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tempfile = "3"
+
 wat = "1.245.1"
 anyhow = "1"
 wasm-encoder = { version = "0.245", features = ["wasmparser"] }
+coglet-guest-rust = { path = "../../sdk/guest-rust", features = ["database"] }
+
+[[example]]
+name = "database_adapter"
+required-features = ["native-engine"]
 
 [[example]]
 name = "qualify_apple_guest"
@@ -57,6 +70,16 @@ required-features = ["native-engine"]
 [[bin]]
 name = "cogletd"
 path = "src/main.rs"
+required-features = ["device"]
+
+[[bin]]
+name = "coglet-runtime-git-validator"
+path = "src/git_validator.rs"
+required-features = ["device"]
+
+[[test]]
+name = "device_lifecycle"
+required-features = ["device"]
 
 [[test]]
 name = "m1"

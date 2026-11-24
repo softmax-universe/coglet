@@ -45,7 +45,7 @@ whole ABI `llm-request` (including capability, request ID, model route and input
 not common `action.args`; its `output` is `llm-reply`. Unknown LLM capability names
 are unsupported unless a later ADR defines them. The runtime commits request
 and outbox before handing to the configured authenticated gateway adapter. This
-is NOT an adapter `act`, and NOT a new hub-protocol wire method. Phase 2 gateway
+is NOT an adapter `act`, and NOT a new router-protocol wire method. Phase 2 gateway
 adapters must implement the existing ABI boundary; any new inter-host gateway
 wire protocol needs an ADR before use. Never tunnel it through an unrelated router
 method. Adapter setup binds requester identity, grant and route outside provider

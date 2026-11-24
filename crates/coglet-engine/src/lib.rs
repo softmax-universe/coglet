@@ -1,7 +1,9 @@
 //! Product-neutral fresh-step execution boundary. No ambient WASI implementation.
+use std::ops::Range;
 use std::time::Instant;
 pub mod admission;
 mod nan;
+pub use admission::{Admission, DB_INPUT_MAX, DB_OUTPUT_CAPACITY, admit, admit_with};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -144,6 +146,37 @@ pub struct StepOutcome {
 pub trait GuestMemory {
     fn read(&self, ptr: u32, len: u32) -> Result<Vec<u8>>;
     fn write(&mut self, ptr: u32, bytes: &[u8]) -> Result<()>;
+    /// Current linear-memory size in bytes (wasm32, at most 2^32).
+    fn memory_len(&self) -> u64;
+    /// Widened unsigned wasm32 range check against [`Self::memory_len`].
+    fn contains(&self, ptr: u32, len: u32) -> Result<()> {
+        guest_range(ptr, len, self.memory_len()).map(|_| ())
+    }
+}
+/// `ptr`/`len` are unsigned wasm32 bit patterns. `end == 2^32` is valid.
+pub fn guest_range(ptr: u32, len: u32, memory_len: u64) -> Result<Range<usize>> {
+    let end = u64::from(ptr)
+        .checked_add(u64::from(len))
+        .ok_or(Error::InvalidPointer)?;
+    if end > memory_len || end > u64::from(u32::MAX) + 1 {
+        return Err(Error::InvalidPointer);
+    }
+    Ok(ptr as usize..end as usize)
+}
+/// Both ranges must fit in memory and must not overlap. Empty ranges do not overlap.
+pub fn disjoint_guest_ranges(
+    a_ptr: u32,
+    a_len: u32,
+    b_ptr: u32,
+    b_len: u32,
+    memory_len: u64,
+) -> Result<(Range<usize>, Range<usize>)> {
+    let a = guest_range(a_ptr, a_len, memory_len)?;
+    let b = guest_range(b_ptr, b_len, memory_len)?;
+    if a_len != 0 && b_len != 0 && a.start < b.end && b.start < a.end {
+        return Err(Error::InvalidPointer);
+    }
+    Ok((a, b))
 }
 /// Implement against pinned admission state and a transactional filesystem/effect
 /// overlay. Recompute during replay; never inject recorded returns. The caller
