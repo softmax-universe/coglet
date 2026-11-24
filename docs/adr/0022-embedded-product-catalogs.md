@@ -1,6 +1,6 @@
 # ADR-0022: Embedded product catalogs and recorded pod command admission
 
-- Status: Proposed
+- Status: Accepted (design only; implementation and product qualification remain gated)
 - Date: 2026-11-24
 - Authors: Coglet contributors
 - Related task: `t_01a2084e0e33453d`
@@ -235,6 +235,10 @@ Linux C-pointer tests, source assertions or SDK links as iOS execution evidence.
 
 ## Approval
 
-Proposed only. Link independent exact-head review and the accepting merge before
-implementation. Approval of this design alone authorizes neither product cutover
-nor claiming simulator/device qualification. No implementation is included here.
+Accepted through [PR116](https://github.com/softmax-universe/coglet/pull/116),
+merged as `5e70b47f1a7a36723eac613df69391ffc060b0b1` on 2026-11-24.
+[Independent exact-head design approval](https://github.com/softmax-universe/coglet/pull/116#issuecomment-7128375754)
+is bound to `daa29cd804283d1bcb30e30cef66a1b1f0c89cbf`. This records design
+acceptance only, not implementation or native execution. Approval authorizes
+neither product cutover nor claiming simulator/device qualification. The original
+product and release gates above remain unchanged.

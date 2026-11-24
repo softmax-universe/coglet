@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import importlib.util
 import stat
 from urllib.parse import urlsplit
 
@@ -107,12 +108,25 @@ class LocalServer(ThreadingHTTPServer):
     # The TCP backlog bounds pending requests; private data still requires token.
     request_queue_size = 8
 
+    def server_close(self):
+        if getattr(self, 'native', None) is not None:
+            self.native.close()
+        super().server_close()
 
-def make_server(path, *, port=0, world_path=None, source_format="jsonl"):
+
+def make_server(path, *, port=0, world_path=None, source_format="jsonl", native_trace=None, native_helper=None):
     if world_path is not None and not world_path.startswith("/data/"):
         raise ValueError("World path must name an exported /data file")
     stream = RecordStream(path, source_format=source_format)
     token = secrets.token_urlsafe(32)
+    native = None
+    if (native_trace is None) != (native_helper is None):
+        raise ValueError('Select both native trace and prebuilt helper')
+    if native_trace is not None:
+        spec = importlib.util.spec_from_file_location('visualizer_native', Path(__file__).with_name('native_replay.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        native = module.NativeReplay(native_trace, native_helper)
 
     class Handler(BaseHTTPRequestHandler):
         def setup(self):
@@ -128,6 +142,63 @@ def make_server(path, *, port=0, world_path=None, source_format="jsonl"):
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
             super().end_headers()
+
+        def do_POST(self):
+            origin = f"http://127.0.0.1:{self.server.server_port}"
+            if (self.headers.get("Host") != origin.removeprefix('http://') or
+                    self.headers.get("Origin", origin) != origin or
+                    not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token)):
+                self.send_error(403)
+                return
+            route = urlsplit(self.path).path
+            if route not in {'/api/simulate', '/api/native'}:
+                self.send_error(404)
+                return
+            try:
+                length = int(self.headers.get('Content-Length', '-1'))
+                if self.headers.get('Transfer-Encoding') or not 0 < length <= (65536 if route == '/api/native' else MAX_BYTES):
+                    raise ValueError('Upload size limit')
+                raw = self.rfile.read(length)
+                if len(raw) != length:
+                    raise ValueError('Incomplete upload')
+                def pairs(items):
+                    result = {}
+                    for key, value in items:
+                        if key in result:
+                            raise ValueError('Duplicate JSON key')
+                        result[key] = value
+                    return result
+                def nonfinite(value):
+                    raise ValueError('Nonfinite JSON')
+                payload = json.loads(raw, object_pairs_hook=pairs, parse_constant=nonfinite)
+                if route == '/api/native':
+                    if native is None:
+                        raise ValueError('No native source selected at startup')
+                    result = native.replay(payload)
+                    records = [project(r) for r in result.pop('records')]
+                    body = json.dumps(browser_values(dict(state='native', records=records,
+                                      native=result, world_path=None))).encode()
+                else:
+                    if not isinstance(payload, dict) or set(payload) - {'archive', 'actions'}:
+                        raise ValueError('Invalid simulation request')
+                    spec = importlib.util.spec_from_file_location('visualizer_simulation', Path(__file__).with_name('simulation.py'))
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    result = module.replay(payload.get('archive'), payload.get('actions'))
+                    records = [project(r) for r in payload['archive']['records']]
+                    body = json.dumps(browser_values(dict(state='simulated', records=records,
+                                      simulation=result, world_path=None))).encode()
+            except (ValueError, TypeError, KeyError, RecursionError, OSError):
+                self.send_error(400, 'Invalid or incomplete simulation archive; previous result is not current')
+                return
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         def do_GET(self):
             origin = f"http://127.0.0.1:{self.server.server_port}"
@@ -166,6 +237,7 @@ def make_server(path, *, port=0, world_path=None, source_format="jsonl"):
                 pass
 
     server = LocalServer(("127.0.0.1", port), Handler)
+    server.native = native
     server.url = f"http://127.0.0.1:{server.server_port}/#{token}"
     return server
 
@@ -177,9 +249,12 @@ def main():
     sources.add_argument("--trace", type=Path, help="Atomically published ABI trace JSON export")
     parser.add_argument("--port", type=int, default=8088)
     parser.add_argument("--world-path", help="Explicit /data path containing a world observation")
+    parser.add_argument("--native-trace", type=Path, help="Complete local canonical archive for offline native replay")
+    parser.add_argument("--native-helper", type=Path, help="Fixed prebuilt native replay executable (Linux)")
     args = parser.parse_args()
     server = make_server(args.records or args.trace, port=args.port, world_path=args.world_path,
-                         source_format="trace" if args.trace else "jsonl")
+                         source_format="trace" if args.trace else "jsonl",
+                         native_trace=args.native_trace, native_helper=args.native_helper)
     print(server.url, flush=True)
     try:
         server.serve_forever()

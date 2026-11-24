@@ -46,8 +46,13 @@ targets without filters or ignores.
   `native_wasi_crash_between_journal_and_commit_recovers_one_state`,
   `native_wasi_replay_yields_identical_hashes`,
   `native_forbidden_ops_denied_with_permission_errno`,
-  `native_forbidden_imports_fail_admission_without_instantiation`, and
-  `native_wasi_append_flag_does_not_grant_write_or_renumber_clobber`.
+  `native_forbidden_imports_fail_admission_without_instantiation`,
+  `native_wasi_append_flag_does_not_grant_write_or_renumber_clobber`, and
+  `native_wasi_file_growth_reserves_host_bytes_before_allocation`.
+  File growth that is not copied from guest memory (`fd_filestat_set_size`
+  extension and positional/seeked writes past EOF) is charged to the step's
+  `host_bytes` allowance before coglet-fs allocates it; over budget the step
+  aborts with no state change.
   The SDK persistence test runs the compiled counter through NativeEngine in
   two fresh runtime subprocesses: the second reads and increments the first's
   committed `/data/count`. The crash test truncates the actual atomic WAL frame

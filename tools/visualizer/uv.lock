@@ -33,11 +33,50 @@ wheels = [
 ]
 
 [[package]]
+name = "coglet-gate"
+version = "0.1.0"
+source = { editable = "../../crates/coglet-gate" }
+
+[[package]]
+name = "coglet-sim"
+version = "0.1.0"
+source = { editable = "../../sim" }
+dependencies = [
+    { name = "coglet-gate" },
+    { name = "coglet-surface" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "coglet-gate", editable = "../../crates/coglet-gate" },
+    { name = "coglet-surface", editable = "../../sdk/surface-python" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8,<10" }]
+
+[[package]]
+name = "coglet-surface"
+version = "0.1.0"
+source = { editable = "../../sdk/surface-python" }
+dependencies = [
+    { name = "cbor2" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cbor2", specifier = ">=5.6,<6" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8,<10" }]
+
+[[package]]
 name = "coglet-visualizer"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "cbor2" },
+    { name = "coglet-sim" },
+    { name = "coglet-surface" },
 ]
 
 [package.dev-dependencies]
@@ -48,7 +87,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cbor2", specifier = ">=5.6,<6" }]
+requires-dist = [
+    { name = "cbor2", specifier = ">=5.6,<6" },
+    { name = "coglet-sim", editable = "../../sim" },
+    { name = "coglet-surface", editable = "../../sdk/surface-python" },
+]
 
 [package.metadata.requires-dev]
 dev = [
