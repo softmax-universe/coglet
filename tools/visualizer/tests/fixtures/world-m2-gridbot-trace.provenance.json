@@ -1,0 +1,26 @@
+{
+  "purpose": "World-model replay fixture for simulated mode. Recorded after the production gridbot-v1 snapshot gained max_steps (commit e8425ca, PR #108); the older PR83 display trace keeps its own provenance and is intentionally refused by world replay because its state hashes predate that snapshot field.",
+  "producer_main_sha": "2b623e7164e3ce1be92b09c635757bde2c14e639",
+  "producer_tree_note": "sim/, crates/, coglets/ and Cargo.lock identical to that main commit (git diff empty); producer files unmodified.",
+  "episode": "Gridbot(42, max_steps=16) via sim/tests/test_native.py::test_gridbot_pilot_reaches_goal_live_and_replayed; actions east, east, south, south; goal reached",
+  "command": [
+    "sim/check-native.sh build steps (pilot wasm, qualify_apple_guest, release cogletd, sim/native)",
+    "uv run --project sim --locked pytest sim/tests/test_native.py (2 passed) with COGLET_SANDBOX_PROOF pointing at a capture wrapper that copied the test SETUP and stopped WAL, then invoked the real coglet-sandbox-proof unchanged and copied its OUTPUT"
+  ],
+  "independent_guest_reexecution": true,
+  "changed_seed_rejected": true,
+  "changed_guest_rejected": true,
+  "world": "gridbot-v1",
+  "seed": 42,
+  "config": {"width": 8, "height": 8, "max_steps": 16},
+  "actions": ["east", "east", "south", "south"],
+  "wasm_sha256": "045da88ec75f615600f71ef342cc508322d993b9be412cd6cc4e686e06f8b394",
+  "proof_output_sha256": "a6138e730c81403047e51c1251361ede9b55b5cb3672fba88dc6f2e2d7dae281",
+  "proof_output_bytes": 44281721,
+  "full_records_sha256": "0cfe2295f479eb6c4d00fa4ede45fd8a69854237f0c539302b8a99583ed9be87",
+  "full_records_hash_note": "sha256 of json.dumps(proof['records']) with Python default separators",
+  "display_keys": ["coglet", "engine", "events", "logical_time", "output_files", "output_hash", "record_hash", "status", "step", "trace_id", "version"],
+  "display_omits": ["input_files", "/code", "logs", "calls", "actions", "usage", "budgets", "grants", "blobs", "initial_files"],
+  "display_omission_reason": "Each step repeats the guest under /code; the full proof output is 44281721 bytes, above the viewer's 16 MiB cap. Display keys and /data output files are copied verbatim; hashes and bytes are not rewritten.",
+  "verification": "world-model-only: the viewer re-executes coglet_sim.worlds.Gridbot from seed/config/actions and compares every sim.gridbot_state hash. Guest output hashes in this display trace remain recorded observations."
+}

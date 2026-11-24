@@ -18,7 +18,8 @@ def replay(archive, actions=None):
     if constructor is None:
         raise ValueError('Unsupported world')
     config = archive.get('config')
-    allowed = {'width', 'height'} if world_name == 'gridbot-v1' else {'max_steps'}
+    # Mirrors the production constructors: Gridbot's max_steps is part of its snapshot hash.
+    allowed = {'width', 'height', 'max_steps'} if world_name == 'gridbot-v1' else {'max_steps'}
     if not isinstance(config, dict) or set(config) != allowed:
         raise ValueError('Explicit world configuration required')
     recorded = archive.get('actions')

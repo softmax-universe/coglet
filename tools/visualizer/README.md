@@ -89,18 +89,25 @@ same baseline and reports the first divergent **world** step and the computed
 versus recorded world hash. The world-step slider supports Home/End and arrow
 keys; previous/next buttons also work. Replay recorded inputs resets the fork.
 
-For the committed actual M2 Gridbot run (producer/input provenance remains in
-`tests/fixtures/native-m2-gridbot-trace.provenance.json`):
+For the committed actual M2 Gridbot run recorded against the current production
+world model (producer/input provenance in
+`tests/fixtures/world-m2-gridbot-trace.provenance.json`):
 
 ```sh
 cd tools/visualizer
 uv run --locked prepare_simulation.py \
-  --trace tests/fixtures/native-m2-gridbot-trace.json \
-  --world gridbot-v1 --seed 42 --config '{"width":8,"height":8}' \
+  --trace tests/fixtures/world-m2-gridbot-trace.json \
+  --world gridbot-v1 --seed 42 --config '{"width":8,"height":8,"max_steps":16}' \
   --actions '["east","east","south","south"]' \
   --output /private/run/world-replay.json
-uv run --locked server.py --trace tests/fixtures/native-m2-gridbot-trace.json
+uv run --locked server.py --trace tests/fixtures/world-m2-gridbot-trace.json
 ```
+
+Gridbot's `max_steps` is part of its production snapshot hash (added in PR #108),
+so it is a required configuration pin. The older PR83 display trace
+(`native-m2-gridbot-trace.json`) predates that snapshot field: world replay
+refuses it with a mismatch instead of rewriting its recorded hashes. It remains
+the live-viewer `/data` fixture.
 
 Open the private launch URL and choose `world-replay.json` under **Load simulation
 archive**. No upload is made until that explicit selection; the archive stays
@@ -114,7 +121,7 @@ The viewer-local envelope (not a new ABI schema) is:
 
 ```json
 {"format":"coglet-world-replay-v1","world":"gridbot-v1","seed":42,
- "config":{"width":8,"height":8},"actions":["east","east","south","south"],
+ "config":{"width":8,"height":8,"max_steps":16},"actions":["east","east","south","south"],
  "records":["actual ABI display records with matching world observations"]}
 ```
 

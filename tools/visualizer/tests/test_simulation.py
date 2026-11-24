@@ -50,18 +50,29 @@ def test_fork_only_accepts_bounded_world_actions(actions):
 
 
 def archive():
-    trace = json.loads((FIXTURES / 'native-m2-gridbot-trace.json').read_text())
-    provenance = json.loads((FIXTURES / 'native-m2-gridbot-trace.provenance.json').read_text())
-    return dict(format='coglet-world-replay-v1', world='gridbot-v1', seed=42,
-                config=dict(width=8, height=8), actions=provenance['actions'],
+    trace = json.loads((FIXTURES / 'world-m2-gridbot-trace.json').read_text())
+    provenance = json.loads((FIXTURES / 'world-m2-gridbot-trace.provenance.json').read_text())
+    return dict(format='coglet-world-replay-v1', world=provenance['world'], seed=provenance['seed'],
+                config=provenance['config'], actions=provenance['actions'],
                 records=trace['records'])
+
+
+def test_recording_from_older_world_snapshot_schema_is_refused_not_rewritten():
+    # PR83's episode predates max_steps in the gridbot-v1 snapshot, so the current
+    # production model cannot reproduce its hashes. Refuse; never adapt the hashes.
+    trace = json.loads((FIXTURES / 'native-m2-gridbot-trace.json').read_text())
+    legacy = dict(archive(), records=trace['records'], config=dict(width=8, height=8, max_steps=10000))
+    with pytest.raises(ValueError, match='replay mismatch'):
+        load_sim().replay(legacy)
+    with pytest.raises(ValueError, match='configuration'):
+        load_sim().replay(dict(legacy, config=dict(width=8, height=8)))
 
 
 def test_prepare_archive_cli_preserves_actual_records_and_refuses_overwrite(tmp_path):
     target = tmp_path / 'prepared.json'
     command = [sys.executable, str(ROOT / 'prepare_simulation.py'),
-               '--trace', str(FIXTURES / 'native-m2-gridbot-trace.json'),
-               '--world', 'gridbot-v1', '--seed', '42', '--config', '{"width":8,"height":8}',
+               '--trace', str(FIXTURES / 'world-m2-gridbot-trace.json'),
+               '--world', 'gridbot-v1', '--seed', '42', '--config', '{"width":8,"height":8,"max_steps":16}',
                '--actions', '["east","east","south","south"]', '--output', str(target)]
     completed = subprocess.run(command, capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
