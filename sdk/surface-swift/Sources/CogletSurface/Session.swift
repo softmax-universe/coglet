@@ -149,7 +149,7 @@ public final class SurfaceSession {
         }
         try ledger.save()
     }
-    deinit { backend.stop(owner: nil) }
+    deinit { if !retired { backend.stop(owner: nil) } }
 
     public func start() throws {
         try guarded {

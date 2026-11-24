@@ -6,8 +6,12 @@ import CRuntime
 // These wrappers call the actual linked symbols; they neither emulate the peer
 // nor replace scheduled guest execution. Every boundary asserts off-main entry.
 private func offMain() { precondition(!Thread.isMainThread, "ABI on main thread") }
-private func configure(_ p: UnsafePointer<UInt8>?, _ n: Int) -> Int32 { offMain(); return coglet_runtime_configure(p,n) }
-private func start(_ p: UnsafePointer<UInt8>?, _ n: Int) -> Int32 { offMain(); return coglet_runtime_start(p,n) }
+private func lifecycleStatus(_ operation: String, _ status: Int32) -> Int32 {
+    if status != 0 { FileHandle.standardError.write(Data("actual runtime \(operation) refused: \(status)\n".utf8)) }
+    return status
+}
+private func configure(_ p: UnsafePointer<UInt8>?, _ n: Int) -> Int32 { offMain(); return lifecycleStatus("configure", coglet_runtime_configure(p,n)) }
+private func start(_ p: UnsafePointer<UInt8>?, _ n: Int) -> Int32 { offMain(); return lifecycleStatus("start", coglet_runtime_start(p,n)) }
 private func stop() -> Int32 { offMain(); return coglet_runtime_stop() }
 private func status() -> Int32 { offMain(); return coglet_runtime_status() }
 private func open(_ v: UInt32, _ p: UnsafeMutablePointer<OpaquePointer?>?) -> Int32 { offMain(); return coglet_surface_open(v,p) }

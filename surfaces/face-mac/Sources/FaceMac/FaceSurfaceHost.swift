@@ -2,6 +2,24 @@ import Foundation
 import CogletSurface
 import CogletTypes
 
+/// Session/backend/timer/link must outlive a nonisolated @MainActor deinit so
+/// stop and destruction run on MainActor, including forgotten close.
+private final class FaceHostLifetime: @unchecked Sendable {
+    var backend: FaceSurfaceBackend?
+    var session: SurfaceSession?
+    var timer: Task<Void, Never>?
+    var link: (any FaceControlLink)?
+    @MainActor func release() {
+        // Retired sessions already stopped under explicit close/reset. Never
+        // repeat their native stop after a successor has acquired the device.
+        if let session { session.disconnect() } else { backend?.stop(owner: nil) }
+        timer?.cancel(); timer = nil
+        link?.close(); link = nil
+        session = nil
+        backend = nil
+    }
+}
+
 /// Embeddable serialized Face host. The embedding app supplies authenticated
 /// transport bytes, durable ledger, monotonic microsecond clock and local policy.
 /// It must never dispatch guest execution on MainActor. No network route or
@@ -10,14 +28,21 @@ import CogletTypes
     public static let operations = SurfaceOperation.builtins.filter {
         $0.entry == "speech.control" || $0.entry == "expression.control"
     }
-    private let backend: FaceSurfaceBackend
-    private let session: SurfaceSession
+    private let lifetime = FaceHostLifetime()
+    private var backend: FaceSurfaceBackend { lifetime.backend! }
+    private var session: SurfaceSession { lifetime.session! }
+    private var timer: Task<Void, Never>? {
+        get { lifetime.timer }
+        set { lifetime.timer = newValue }
+    }
+    private var link: (any FaceControlLink)? {
+        get { lifetime.link }
+        set { lifetime.link = newValue }
+    }
     private let owner: String
     private let clock: () -> UInt64
     private var grants: [EffectiveSurfaceGrant]
     private var token: NativeObservationToken?
-    private var timer: Task<Void, Never>?
-    private var link: (any FaceControlLink)?
     private var pendingWire: [[UInt8]] = []
     private var transportEpoch: UInt64 = 0
     private var writePending = false
@@ -27,16 +52,21 @@ import CogletTypes
     public init(identity: String, owner: String, store: any SurfaceLedgerStore, backend: FaceSurfaceBackend,
                 grants: [EffectiveSurfaceGrant], clock: @escaping () -> UInt64,
                 historyStore: (any SurfaceLedgerStore)? = nil) throws {
-        self.owner = owner; self.backend = backend; self.grants = grants; self.clock = clock
+        self.owner = owner; self.grants = grants; self.clock = clock
         if let historyStore, ObjectIdentifier(historyStore) == ObjectIdentifier(store) {
             throw NativeSurfaceError("invalid_argument")
         }
         let operations = Self.operations + (historyStore == nil ? [] : SurfaceOperation.builtins.filter { $0.entry == "speech.history" })
-        session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: operations,
+        lifetime.backend = backend
+        lifetime.session = try SurfaceSession(identity: identity, boundCoglets: [owner], operations: operations,
             store: store, backend: backend, initialGrants: grants, clock: clock)
         try backend.configureHistory(store: historyStore)
         backend.retainClosedStreams(from: try session.retainedAdmittedActions())
         backend.installCaptureClock(clock)
+    }
+    deinit {
+        let lifetime = lifetime
+        Task { @MainActor in lifetime.release() }
     }
     public var grantEpoch: UInt64 { session.grantEpoch }
     /// Canonical capture-frame timeline for configured native recognition routes.
@@ -77,6 +107,7 @@ import CogletTypes
             guard pendingWire.isEmpty, !writePending else { throw SurfaceFailure.closed }
             let captured = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch)
             token = captured
+            let session = self.session
             backend.activate(owner: owner, epoch: session.grantEpoch, remoteAudioConsent: remoteAudioConsent) { [weak session] kind, payload in
                 _ = try session?.publishObservation(captured, kind: kind, payload: payload)
             }

@@ -2,7 +2,7 @@
   "version": "0.1",
   "id": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "subscriptions": ["speech.start", "speech.partial", "speech.end", "speech.barge_in"],
-  "required_capabilities": ["speech.control", "expression.control"],
+  "required_capabilities": ["speech.speak_chunk"],
   "exclusive_outputs": ["audio.mic", "audio.speaker"],
   "budgets": {
     "compute": 10000000,

@@ -136,9 +136,9 @@ Face guest through FaceSurfaceHost with injected media. The
 `face_embedded_fixture prepare/verify` example provisions only installation JSON,
 then reopens the resulting WAL, checks 3 actual guest steps, the emitted Hello world
 proposal, journaled barge and exact stopped 1200 ms heard prefix, and independently
-reexecutes every guest output hash. Its installed manifest selects the operation
-`speech.speak_chunk` because automatic scheduling requires operation-name grants;
-this does not prove unmodified catalog-entry requirements work with that scheduler.
+reexecutes every guest output hash. The installed production Face manifest is
+unchanged and requires the actual emitted `speech.speak_chunk` operation per
+`spec/abi.md`; it does not substitute capability-entry names or test-only grants.
 The Swift workflow runs the probe after the existing actual-Wasm tests. Local
 Linux execution passes; native macOS results and universal-XCFramework packaging
 are separate gates. No hardware, acoustics or second speaker graph is involved.

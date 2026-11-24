@@ -107,10 +107,11 @@ mod actual {
         if setup["manifest"]["budgets"]["wall_time_us"] != 1_000_000 {
             return Err("refusing to enlarge production Face wall_time_us".into());
         }
-        // Production Face lists catalog entries (speech.control / expression.control).
-        // C ABI run_native execution_grants matches granted operation names, so the
-        // installed grant must name speech.speak_chunk (the emit the guest uses).
-        setup["manifest"]["required_capabilities"] = json!(["speech.speak_chunk"]);
+        // Install the production manifest unchanged: spec/abi.md requires
+        // individual operation names, not capability entry/group names.
+        if setup["manifest"]["required_capabilities"] != json!(["speech.speak_chunk"]) {
+            return Err("Face manifest must require its actual emitted speech operation".into());
+        }
         setup["initial_actions"] = json!([]);
         setup["initial_effect_ids"]["actions"] = json!([]);
         setup["initial_timers"] = json!([]);
@@ -215,6 +216,7 @@ mod actual {
             return Err("missing WAL; run the C ABI FaceHost probe before verify".into());
         }
         let service = RuntimeService::open(wal, setup, 128)?;
+        let failed_attempts = service.failed_attempts();
         let records = service.records().to_vec();
         drop(service);
 
@@ -228,8 +230,17 @@ mod actual {
             .collect();
         if real.len() < 3 {
             return Err(format!(
-                "need at least 3 real guest steps with positive compute, found {}",
-                real.len()
+                "need at least 3 real guest steps with positive compute, found {}; failed attempts: {}; step summaries: {:?}",
+                real.len(),
+                failed_attempts,
+                steps
+                    .iter()
+                    .map(|step| (
+                        step["status"].clone(),
+                        step["error"].clone(),
+                        step["usage"].clone()
+                    ))
+                    .collect::<Vec<_>>()
             ));
         }
 

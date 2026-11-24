@@ -50,7 +50,7 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
     // Queue-confined fields below.
     private var transport: EmbeddedSurfaceTransport?
     private var timer: DispatchSourceTimer?
-    private var started = false
+    private var needsStop = false
     private var leased = false
     private var cleaned = false
     private static let byteLimit = 8 * 1024 * 1024
@@ -62,9 +62,13 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
                     try FaceRuntimeLease.shared.acquire(id); leased = true
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
+                    // Even configure can catch a native panic and fence global
+                    // state. Any lifecycle attempt needs stop/status attestation.
+                    needsStop = true
                     guard binding.withUnsafeBufferPointer({ abi.configure($0.baseAddress, $0.count) }) == 0 else { throw FaceRuntimeFailure.runtime }
+                    guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
                     guard configuration.withUnsafeBufferPointer({ abi.start($0.baseAddress, $0.count) }) == 0 else { throw FaceRuntimeFailure.runtime }
-                    started = true
+                    guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
                     transport = try EmbeddedSurfaceTransport(abi: abi.surface)
                     guard !lock.withLock({ closed }) else { throw FaceRuntimeFailure.closed }
                     let source = DispatchSource.makeTimerSource(queue: queue)
@@ -151,8 +155,8 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         guard !cleaned else { return }; cleaned = true
         timer?.cancel(); timer = nil
         transport?.close(); transport = nil
-        let stopped = !started || (abi.stop() == 0 && abi.status() == 1)
-        started = false
+        let stopped = !needsStop || (abi.stop() == 0 && abi.status() == 1)
+        needsStop = false
         lock.withLock { stoppedOK = stopped }
         if leased && stopped { FaceRuntimeLease.shared.release(id); leased = false }
     }
