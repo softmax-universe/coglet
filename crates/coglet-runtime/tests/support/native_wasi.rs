@@ -400,6 +400,98 @@ fn native_wasi_append_flag_does_not_grant_write_or_renumber_clobber() {
     );
 }
 
+/// Guest that opens /data/large for write and grows it without copying the new
+/// bytes from guest memory: by resize, positional write, or seek then write.
+fn growth_guest(kind: &str, size: u64) -> Vec<u8> {
+    let grow = match kind {
+        "resize" => format!("i32.const 80 i32.load i64.const {size} call $set_size"),
+        "pwrite" => format!(
+            "i32.const 80 i32.load i32.const 64 i32.const 1 i64.const {size} i32.const 88 call $pwrite"
+        ),
+        "seek_write" => format!(
+            "i32.const 80 i32.load i64.const {size} i32.const 0 i32.const 96 call $seek
+ if unreachable end
+ i32.const 80 i32.load i32.const 64 i32.const 1 i32.const 88 call $write"
+        ),
+        _ => unreachable!(),
+    };
+    wat::parse_str(format!(
+        r#"(module
+(import "wasi_snapshot_preview1" "path_open" (func $open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+(import "wasi_snapshot_preview1" "fd_filestat_set_size" (func $set_size (param i32 i64) (result i32)))
+(import "wasi_snapshot_preview1" "fd_pwrite" (func $pwrite (param i32 i32 i32 i64 i32) (result i32)))
+(import "wasi_snapshot_preview1" "fd_seek" (func $seek (param i32 i64 i32 i32) (result i32)))
+(import "wasi_snapshot_preview1" "fd_write" (func $write (param i32 i32 i32 i32) (result i32)))
+(memory (export "memory") 1 2)
+(data (i32.const 0) "large") (data (i32.const 32) "x")
+(func (export "abi_alloc") (param i32) (result i32) i32.const 1024)
+(func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+ i32.const 64 i32.const 32 i32.store
+ i32.const 68 i32.const 1 i32.store
+ i32.const 4 i32.const 0 i32.const 0 i32.const 5 i32.const 1
+ i64.const 64 i64.const 0 i32.const 0 i32.const 80 call $open
+ if unreachable end
+ {grow}
+ if unreachable end
+ i32.const 0))"#
+    ))
+    .unwrap()
+}
+
+#[test]
+fn native_wasi_file_growth_reserves_host_bytes_before_allocation() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    const BUDGET: u64 = 16_384;
+    const OVER: u64 = 2_097_152;
+    const UNDER: u64 = 8_192;
+    for kind in ["resize", "pwrite", "seek_write"] {
+        // Over budget: the zero-filled growth is refused before coglet-fs
+        // allocates it, the step aborts and every guest write is discarded.
+        let code = growth_guest(kind, OVER);
+        let mut case = with_wasm(setup(), &code);
+        case["manifest"]["budgets"]["host_bytes"] = json!(BUDGET);
+        let result = step_native(&case, &code);
+        let journal = &result["journal"];
+        assert_eq!(
+            journal["status"], "aborted",
+            "{kind}: usage {}",
+            journal["usage"]
+        );
+        assert_eq!(journal["input_hash"], journal["output_hash"], "{kind}");
+        assert!(
+            hex_file(&journal["output_files"], "/data/large").is_none(),
+            "{kind}: aborted growth must not persist"
+        );
+        assert!(
+            journal["usage"]["host_bytes"].as_u64().unwrap() <= BUDGET,
+            "{kind}: usage {}",
+            journal["usage"]
+        );
+
+        // Under budget control: the same operation commits and its growth is
+        // charged to the step's host-byte usage.
+        let code = growth_guest(kind, UNDER);
+        let mut case = with_wasm(setup(), &code);
+        case["manifest"]["budgets"]["host_bytes"] = json!(BUDGET);
+        let result = step_native(&case, &code);
+        let journal = &result["journal"];
+        assert_eq!(
+            journal["status"], "committed",
+            "{kind}: usage {}",
+            journal["usage"]
+        );
+        let file = hex_file(&journal["output_files"], "/data/large").unwrap();
+        let expected = if kind == "resize" { UNDER } else { UNDER + 1 };
+        assert_eq!(file.len() as u64, expected, "{kind}");
+        assert!(file[..UNDER as usize].iter().all(|b| *b == 0), "{kind}");
+        if kind != "resize" {
+            assert_eq!(file[UNDER as usize], b'x', "{kind}");
+        }
+        let used = journal["usage"]["host_bytes"].as_u64().unwrap();
+        assert!((UNDER..=BUDGET).contains(&used), "{kind}: used {used}");
+    }
+}
+
 #[test]
 fn native_forbidden_imports_fail_admission_without_instantiation() {
     let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());

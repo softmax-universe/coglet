@@ -112,10 +112,10 @@ impl Wasi {
             "fd_prestat_dir_name" => self.fd_prestat_dir_name(args, memory),
             "path_open" => self.path_open(args, memory),
             "fd_close" => self.fd_close(args),
-            "fd_read" => self.fd_read_write(args, memory, false),
-            "fd_write" => self.fd_read_write(args, memory, true),
-            "fd_pread" => self.fd_pread_pwrite(args, memory, false),
-            "fd_pwrite" => self.fd_pread_pwrite(args, memory, true),
+            "fd_read" => self.fd_read_write(args, memory, budget, false),
+            "fd_write" => self.fd_read_write(args, memory, budget, true),
+            "fd_pread" => self.fd_pread_pwrite(args, memory, budget, false),
+            "fd_pwrite" => self.fd_pread_pwrite(args, memory, budget, true),
             "fd_seek" => self.fd_seek(args, memory),
             "fd_tell" => self.fd_tell(args, memory),
             "fd_fdstat_get" => self.fd_fdstat_get(args, memory),
@@ -130,7 +130,7 @@ impl Wasi {
             | "path_filestat_set_times"
             | "path_create_directory"
             | "path_remove_directory" => Ok(NOTCAPABLE),
-            "fd_filestat_set_size" => self.fd_set_size(args),
+            "fd_filestat_set_size" => self.fd_set_size(args, budget),
             "path_unlink_file" => self.path_unlink(args, memory),
             "path_rename" => self.path_rename(args, memory),
             "path_readlink" => {
@@ -242,6 +242,7 @@ impl Wasi {
         &mut self,
         args: &[u64],
         memory: &mut dyn GuestMemory,
+        budget: &mut StepBudget,
         writing: bool,
     ) -> Result<u32> {
         let fd = u32arg(args, 0)?;
@@ -252,8 +253,8 @@ impl Wasi {
         let (total, pos) = match self.transfer(
             &mut desc,
             memory,
-            u32arg(args, 1)?,
-            u32arg(args, 2)?,
+            budget,
+            (u32arg(args, 1)?, u32arg(args, 2)?),
             writing,
             None,
         )? {
@@ -274,6 +275,7 @@ impl Wasi {
         &mut self,
         args: &[u64],
         memory: &mut dyn GuestMemory,
+        budget: &mut StepBudget,
         writing: bool,
     ) -> Result<u32> {
         let fd = u32arg(args, 0)?;
@@ -288,8 +290,8 @@ impl Wasi {
         let (total, _) = match self.transfer(
             &mut desc,
             memory,
-            u32arg(args, 1)?,
-            u32arg(args, 2)?,
+            budget,
+            (u32arg(args, 1)?, u32arg(args, 2)?),
             writing,
             Some(offset as usize),
         )? {
@@ -304,8 +306,8 @@ impl Wasi {
         &mut self,
         desc: &mut Fd,
         memory: &mut dyn GuestMemory,
-        iovs: u32,
-        n: u32,
+        budget: &mut StepBudget,
+        (iovs, n): (u32, u32),
         writing: bool,
         at: Option<usize>,
     ) -> Result<std::result::Result<(u32, usize), u32>> {
@@ -330,22 +332,39 @@ impl Wasi {
         }
         let mut total = 0u32;
         let mut cursor = at.unwrap_or(pos);
+        // The engine bridge charges guest bytes copied in this call only after
+        // the host call returns; count them here so a hole reservation cannot
+        // exceed the remaining allowance before allocation.
+        let mut copied = 0u64;
         for i in 0..n {
             let vec = plus(iovs, i.checked_mul(8).ok_or(Error::InvalidPointer)?)?;
             let ptr = get32(memory, vec)?;
             let len = get32(memory, plus(vec, 4)?)?;
             if writing {
-                let bytes = memory.read(ptr, len)?;
-                let result = if append && at.is_none() {
-                    cursor = self
-                        .overlay
-                        .snapshot()
-                        .read(&path)
-                        .map(|b| b.len())
-                        .unwrap_or(0);
-                    self.overlay.append(&path, &bytes)
+                let current = self.file_len(&path);
+                let positional = !(append && at.is_none());
+                // A positional write past EOF zero-fills a host-side hole that is
+                // never copied from guest memory: reserve it before allocating.
+                let hole = if positional {
+                    cursor.saturating_sub(current) as u64
                 } else {
+                    0
+                };
+                let pending = copied
+                    .checked_add(u64::from(len))
+                    .and_then(|v| v.checked_add(hole))
+                    .ok_or(Error::HostBytesExhausted)?;
+                if pending > budget.host_bytes_remaining() {
+                    return Err(Error::HostBytesExhausted);
+                }
+                budget.charge_host_bytes(hole)?;
+                let bytes = memory.read(ptr, len)?;
+                copied += u64::from(len);
+                let result = if positional {
                     self.overlay.write_at(&path, cursor, &bytes)
+                } else {
+                    cursor = current;
+                    self.overlay.append(&path, &bytes)
                 };
                 if let Err(errno) = fs_errno(result) {
                     return Ok(Err(errno));
@@ -528,7 +547,15 @@ impl Wasi {
         Ok(0)
     }
 
-    fn fd_set_size(&mut self, args: &[u64]) -> Result<u32> {
+    fn file_len(&self, path: &str) -> usize {
+        self.overlay
+            .snapshot()
+            .read(path)
+            .map(<[u8]>::len)
+            .unwrap_or(0)
+    }
+
+    fn fd_set_size(&mut self, args: &[u64], budget: &mut StepBudget) -> Result<u32> {
         let Some(Fd::File { path, write, .. }) = self.fds.get(&u32arg(args, 0)?) else {
             return Ok(BADF);
         };
@@ -539,7 +566,12 @@ impl Wasi {
         if size > usize::MAX as u64 {
             return Ok(INVAL);
         }
-        Ok(fs_errno(self.overlay.truncate(path, size as usize))
+        let path = path.clone();
+        // Growth zero-fills host memory without any guest copy; reserve it from
+        // the step's host-byte allowance before coglet-fs allocates.
+        let growth = size.saturating_sub(self.file_len(&path) as u64);
+        budget.charge_host_bytes(growth)?;
+        Ok(fs_errno(self.overlay.truncate(&path, size as usize))
             .err()
             .unwrap_or(0))
     }
