@@ -1,5 +1,8 @@
 //! Guest ABI 0.1. Successful imports stage effects, not external completion.
 //! No ambient time or randomness is used; contexts receive recorded runtime inputs.
+#[cfg(feature = "database")]
+pub mod database;
+
 pub use coglet_types::{Action, Event, LlmRequest, LogEntry, TimerRequest};
 use serde::Serialize;
 use sha2::{Digest, Sha256};

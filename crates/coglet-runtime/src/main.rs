@@ -63,7 +63,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
         [flag, path, binding, uid, wal, setup] if flag == "--surface-service-socket" => {
             let result = (|| {
                 let binding = coglet_runtime::SurfaceBinding::from_config(
@@ -106,7 +106,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
         [flag, path, binding, uid] if flag == "--surface-probe-socket" => {
             let result = (|| {
                 let binding = coglet_runtime::SurfaceBinding::from_config(

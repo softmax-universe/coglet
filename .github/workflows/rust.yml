@@ -39,6 +39,8 @@ jobs:
           enable-cache: ${{ inputs.bundle-mode != 'proof' }}
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
+      - name: Factory opt-in DB guest slice (not runtime DB conformance)
+        run: bash coglets/factory/check.sh
       - name: Execute reference ABI cases on mock and WAMR
         run: |
           python3 sdk/guest-rust/tests/build_reference_cases.py --check

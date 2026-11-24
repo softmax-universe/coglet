@@ -1,0 +1,148 @@
+# coglet-hub — kernel part 1 (in progress)
+
+Hand-edited kernel built from frozen `spec-v0` and current `coglet-proto` APIs.
+No product, mindister or legacy/v0 implementation was copied.
+
+## Implemented and exercised
+
+- Persistent hub iroh identity; `coglet-hub identity STATE_DIR` prints its public
+  node ID. `coglet-hub serve STATE_DIR CONFIG.json` serves `coglet/hub/0`.
+- `Kernel` delegates one-use invite/enrollment, exact grants and signed hosting
+  delegation to one shared `coglet-proto::Authority`. Synchronous SQLite work
+  is dispatched through a bounded blocking budget, not the async reactor.
+- Local operator registry with exact surface source/event and actor/ticket/action
+  policy. No provisioning RPCs are added to the frozen protocol.
+- Durable relay cursor/batch receipts and source watermarks. Nonempty duplicate
+  batches are checked before watermarks. Queue acknowledgements preserve permanent
+  batch receipts; pending payload delivery tokens do not get reused.
+- SQLite WAL/FULL append-only audit, transactional with relay/action retention.
+  Invites and event payloads do not enter audit records.
+- Full once-mapped action requests retained before reverse-stream dispatch;
+  repeated IDs cannot acquire a new deadline or different intent. The trusted
+  local adapter must explicitly establish the receiving runtime's epoch offset;
+  there is deliberately no guessed mapping or new clock-sync wire method.
+- Real two-device iroh test: separate invitations/enrollment, one admitted event,
+  local test-coglet decision, reverse action delivery to the other mock surface,
+  no duplicate dispatch, matching action-outcome relay and audit observations.
+- Local `Kernel::status` is an explicit operator-only metadata snapshot, not a
+  remotely authorized debug endpoint. It contains no event contents or prompts.
+
+## Build and tests
+
+```sh
+cargo fmt -p coglet-hub --check
+cargo test --locked -j 2 -p coglet-hub
+cargo clippy --locked -j 2 -p coglet-hub --all-targets -- -D warnings
+python3 crates/coglet-hub/run_conformance.py
+```
+
+The last command drives **10 unchanged `conformance/hub/event-*.json` cases**
+through the shared language-neutral harness and a test-only stdio/iroh adapter.
+Every request crosses an actual encrypted Session into this Kernel. The adapter
+also reopens the durable store and checks admitted event/audit counts before the
+last reply. The runner refuses skipped/missing/failed cases. Neither fixture
+bytes nor ALPN requests are rewritten. This is the **event-kernel subset only**,
+not full hub, scheduler, Git, device-runtime or mock conformance. All fixture
+seeds/provisioning are confined to the example, never the production binary.
+
+Startup config is a closed JSON object with `peers` (device, grants) and `coglets`
+(Registration) arrays. State is private to the operator. On serve, stdout is an
+explicit local bootstrap descriptor containing public connection info and
+fresh invitations; **redirect it into a private file, not logs**. Windows default
+closed when no peers are configured, otherwise bootstrap enrollment lasts 60s.
+Revocation/provisioning are local Kernel APIs. Restart closes old invite windows.
+
+## Recovery and local adapters exercised
+
+- Action attempts reconcile `hub.receipt` in the exact original actor/ticket/target
+  scope, never replaying an ambiguous action. Unknown effects have a durable
+  `unavailable` result with explicit details; applied/queued receiver receipts are
+  returned as receipts, not invented action-accepts. Concurrent live duplicates
+  are backpressured rather than racing receipt lookup before remote admission.
+- A short synchronous fence covers each transport-future poll. Revocation and
+  ticket termination share that fence, wake/cancel pending dispatch, and never
+  wait for a peer's network reply. A real-wire test stalls A while dispatching B,
+  admits an outcome which overtakes accept, and revokes A within bounded time.
+- Permanent exact actor/ticket tombstones cancel retained unapplied deliveries
+  transactionally with audit. Already attempted effects cannot be undone.
+- Registry provisioning first commits an audited exact intent. Registry/audit
+  failure is fail-closed and repaired by an identical retry after restart; malformed
+  initial proofs cannot poison an identity. `recover_registration` is an explicit
+  local operator API for a strictly higher signed delegation generation when the
+  pending proof expires. It cannot change device/policy, audits approval before
+  Authority changes, and survives repeated crash/expiry gaps. It is never automatic.
+  Authority remains the binding owner.
+- Shared Authority and exact actor/ticket policy are rechecked before every
+  transport poll on a separate bounded blocking executor (no SQLite on the reactor).
+  Expiry/clock loss also wakes stalled dispatch through a bounded 25ms check;
+  revocation/control retain independent executor capacity. Buffered cancellation
+  consumes the landed shared Session reset guard and is tested below.
+- A late matching authenticated outcome remains admissible after a locally
+  persisted unknown-effect observation; uncertainty never becomes a fake runtime
+  rejection. Original observation bytes remain stable and outcomes dedupe normally.
+- Initial private speech sources are exclusive to one registered/pending coglet;
+  another registration/subscription cannot widen owner-only visibility.
+- Accepted health uses a hub-local monotonic timestamp, not peer uptime. Status
+  degrades after 30 seconds, disconnects on final transport loss, and boots
+  disconnected. Tokens distinguish concurrent/replacement connections. Cleanup
+  has reserved bounded capacity, so bulk request saturation cannot drop it.
+- Trusted local `event_deliveries`/`ack_events` expose stable target-scoped tokens;
+  ack is permitted only after the consumer's durable commit. Action outcomes are
+  retained/deduped for the identity lifetime, independently of queue consumption.
+- The binary now holds an exclusive state lock and publishes a fully fsynced key
+  through atomic rename. A subprocess smoke checks serve startup, concurrent-owner
+  refusal, SIGINT shutdown, and stable-identity reopening.
+
+## Hardening and trusted runtime adapter
+
+PR57's shared reset-on-drop guard is now consumed without proto changes. Real
+QUIC tests exhaust all 16 incoming bidi credits (blocked open), and constrain
+send/stream receive windows to 1 KiB while sending a 200 KiB action (blocked first
+write). Tests observe code-1 STOP/reset, not merely cancellation of a Rust task:
+
+- `blocked_open_cannot_send_after_ticket_end_or_caller_abort`
+- `blocked_first_write_resets_on_abort_ticket_revoke_deadline_and_clock_loss`
+- `ticket_end_during_live_reply_wait_resets_and_survives_restart`
+
+New sends must use `dispatch_action_with_clock`: a **trusted local adapter**
+supplies a bounded, nonblocking callback returning fresh logical time in the
+receiving runtime epoch of the retained envelope. Return `None` when that epoch
+or mapping is no longer verifiable (including receiver restart). No wire clock
+sync is invented, no Unix expiry is translated, and no sampled time is persisted
+as a lease. The callback must not reenter the Kernel. Missing/lost time and
+`now >= mapped_deadline` fail closed, both before attempt marking and immediately
+after blocking Authority checks before each transport poll. A pre-I/O refusal
+leaves the retained action unattempted. After an ambiguous attempt, only original
+scope receipt reconciliation is allowed; this may proceed after the action
+expires. `dispatch_action` without a clock is therefore recovery-only, not a
+way to send new actions. The receiving runtime still owns final admission;
+reset cannot undo bytes/effects already delivered. This is local policy enforcing
+`spec/hub-protocol.md` lines 356–372, not an alternative remote authority.
+
+Named deadline/mapping regressions:
+
+- `new_dispatch_requires_live_runtime_clock_before_attempt_marking`
+- `deadline_admission_is_exclusive_and_lost_clock_never_marks_attempt`
+- `mapping_absence_overflow_and_restart_never_create_or_remap_intent`
+- `grant_expiring_during_delegation_check_is_denied`: re-intersect the shared
+  Authority grant at the later clock sample owned by delegation verification.
+  The two Authority APIs are not an atomic lease; the kernel's poll/control fence
+  and receiving-side authorization remain necessary.
+
+The restart/negative matrix includes
+`cancellation_audit_failure_rolls_back_ticket_reply_and_live_fence` and
+`queued_failed_cancelled_receipt_finalization_survives_restart`. Queued receipt
+observations remain nonterminal/reconcilable after reopening; failed/cancelled
+receipts are durable and cannot be replaced by a stale queued observation.
+`queued_receipt_cannot_mask_committed_ticket_end` retains the deterministic
+commit-before-finalization race. Real-network fixtures in the two-device test
+binary serialize against one another to avoid unrelated fixture fsync/crypto
+contention; each existing 500 ms control assertion is unchanged.
+
+This is still the event-kernel subset and local action-adapter hardening, **not
+full action/scheduler/Git/runtime/mock conformance**. Final independent exact-head
+review, green CI, merge and this card's final review handoff remain landing gates.
+
+Full scheduler/Git/reference+mock integration stays with the producer-split owners
+listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
+
