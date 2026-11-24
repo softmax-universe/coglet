@@ -46,7 +46,13 @@ targets without filters or ignores.
   `native_wasi_crash_between_journal_and_commit_recovers_one_state`,
   `native_wasi_replay_yields_identical_hashes`,
   `native_forbidden_ops_denied_with_permission_errno`,
-  `native_forbidden_imports_fail_admission_without_instantiation`.
+  `native_forbidden_imports_fail_admission_without_instantiation`, and
+  `native_wasi_append_flag_does_not_grant_write_or_renumber_clobber`.
+  The SDK persistence test runs the compiled counter through NativeEngine in
+  two fresh runtime subprocesses: the second reads and increments the first's
+  committed `/data/count`. The crash test truncates the actual atomic WAL frame
+  at header/body/end boundaries; incomplete commits retain the original queue
+  and attempt fence, while the complete frame publishes files and consumes it.
   Full ABI/native replay, trace import/export and broader recovery reconstruction
   belong to serial owner `t_01a2085cca051179`. The primary ABI launcher remains a
   21-case subset.

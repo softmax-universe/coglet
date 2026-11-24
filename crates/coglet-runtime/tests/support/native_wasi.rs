@@ -13,6 +13,7 @@ fn wat_guest(data: &str, body: &str) -> Vec<u8> {
 (import "wasi_snapshot_preview1" "path_open" (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
 (import "wasi_snapshot_preview1" "fd_write" (func $fd_write (param i32 i32 i32 i32) (result i32)))
 (import "wasi_snapshot_preview1" "fd_close" (func $fd_close (param i32) (result i32)))
+(import "wasi_snapshot_preview1" "fd_renumber" (func $renumber (param i32 i32) (result i32)))
 (import "wasi_snapshot_preview1" "path_unlink_file" (func $unlink (param i32 i32 i32) (result i32)))
 (import "wasi_snapshot_preview1" "fd_filestat_set_size" (func $set_size (param i32 i64) (result i32)))
 (import "wasi_snapshot_preview1" "path_readlink" (func $readlink (param i32 i32 i32 i32 i32 i32) (result i32)))
@@ -95,9 +96,11 @@ fn counter_wasm() -> &'static [u8] {
                 "--manifest-path",
                 root.join("Cargo.toml").to_str().unwrap(),
                 "-p",
-                "coglet-guest-rust",
+                "coglet-runtime",
+                "--features",
+                "native-engine",
                 "--example",
-                "qualify_guest",
+                "qualify_apple_guest",
                 "--",
             ])
             .arg(&dest)
@@ -109,57 +112,76 @@ fn counter_wasm() -> &'static [u8] {
     })
 }
 
-fn run_service(setup: &Value, code: &[u8], runtime_bytes: u32, stack: u32) -> (PathBuf, Value) {
-    let directory = std::env::temp_dir().join(format!(
-        "wasi-{}-{}",
-        std::process::id(),
-        &coglet_runtime::digest(code)[..8]
-    ));
-    fs::create_dir_all(&directory).unwrap();
-    let wal = directory.join("state.wal");
-    let mut service = RuntimeService::open(&wal, setup, 128).unwrap();
-    service
-        .enqueue(setup["inputs"]["events"][0].clone())
-        .unwrap();
-    let mut native = NativeEngine::new(
-        code.to_vec(),
-        &setup["manifest"]["budgets"],
-        runtime_bytes,
-        stack,
-    )
-    .unwrap();
-    let mut context = setup["inputs"].clone();
-    context["budgets"] = setup["manifest"]["budgets"].clone();
-    context["grants"] = json!(["expression.set_expression"]);
-    context["logical_time"] = json!(1);
-    let result = service.run_next(&context, &mut native).unwrap().unwrap();
-    drop(service);
-    (directory, result)
-}
-
 #[test]
 fn native_sdk_guest_writes_data_commits_and_reopens() {
+    // Re-execute this integration test in two independent runtime processes.
+    // The second guest must read the first process's committed /data/count.
+    if let Some(directory) = std::env::var_os("COGLET_WASI_REOPEN_CHILD") {
+        let directory = PathBuf::from(directory);
+        let wasm = fs::read(directory.join("guest.wasm")).unwrap();
+        let setup: Value =
+            serde_json::from_slice(&fs::read(directory.join("setup.json")).unwrap()).unwrap();
+        let mut service = RuntimeService::open(&directory.join("state.wal"), &setup, 128).unwrap();
+        let prior = service.records().len();
+        let mut event = setup["inputs"]["events"][0].clone();
+        event["seq"] = json!(prior + 1);
+        service.enqueue(event).unwrap();
+        let mut context = setup["inputs"].clone();
+        context["budgets"] = setup["manifest"]["budgets"].clone();
+        context["grants"] = json!(["expression.set_expression"]);
+        context["logical_time"] = json!(prior + 1);
+        let mut native = NativeEngine::new(wasm, &context["budgets"], 32_000_000, 262_144).unwrap();
+        let result = service.run_next(&context, &mut native).unwrap().unwrap();
+        assert_eq!(result["journal"]["status"], "committed", "{result}");
+        let count = hex_file(&result["journal"]["output_files"], "/data/count").unwrap();
+        assert_eq!(
+            std::str::from_utf8(&count)
+                .unwrap()
+                .parse::<usize>()
+                .unwrap(),
+            prior + 1
+        );
+        return;
+    }
     let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let wasm = counter_wasm();
     let mut setup = with_wasm(setup(), wasm);
+    setup["initial_files"]["/data/count"] = json!(hex::encode(b"0"));
+    setup["initial_timers"] = json!([]);
+    setup["initial_effect_ids"]["timers"] = json!([]);
     setup["manifest"]["budgets"]["memory_pages"] = json!(256);
     setup["manifest"]["budgets"]["compute"] = json!(100_000_000);
     setup["manifest"]["budgets"]["wall_time_us"] = json!(5_000_000);
     setup["manifest"]["budgets"]["host_bytes"] = json!(4_000_000);
-    let (directory, result) = run_service(&setup, wasm, 32_000_000, 262_144);
-    assert_eq!(result["journal"]["status"], "committed");
-    assert_ne!(
-        result["journal"]["input_hash"],
-        result["journal"]["output_hash"]
-    );
-    let first = hex_file(&result["journal"]["output_files"], "/data/count");
-    assert_ne!(first.as_deref(), Some(b"0".as_slice()));
-    assert!(first.is_some());
+    let directory = std::env::temp_dir().join(format!("wasi-reopen-{}", std::process::id()));
+    fs::create_dir_all(&directory).unwrap();
+    fs::write(directory.join("guest.wasm"), wasm).unwrap();
+    fs::write(
+        directory.join("setup.json"),
+        serde_json::to_vec(&setup).unwrap(),
+    )
+    .unwrap();
+    for _ in 0..2 {
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "native_wasi::native_sdk_guest_writes_data_commits_and_reopens",
+                "--nocapture",
+            ])
+            .env("COGLET_WASI_REOPEN_CHILD", &directory)
+            .status()
+            .unwrap();
+        assert!(status.success(), "fresh runtime process failed");
+    }
     let recovered = RuntimeService::open(&directory.join("state.wal"), &setup, 128).unwrap();
-    assert_eq!(recovered.records().len(), 1);
+    assert_eq!(recovered.records().len(), 2);
     assert_eq!(
-        hex_file(&recovered.records()[0]["output_files"], "/data/count"),
-        first
+        hex_file(&recovered.records()[0]["output_files"], "/data/count").unwrap(),
+        b"1"
+    );
+    assert_eq!(
+        hex_file(&recovered.records()[1]["output_files"], "/data/count").unwrap(),
+        b"2"
     );
     drop(recovered);
     fs::remove_dir_all(directory).unwrap();
@@ -229,6 +251,37 @@ fn native_wasi_crash_between_journal_and_commit_recovers_one_state() {
             .is_none()
     );
     drop(previous);
+    // Journal, overlay files, queue consumption and outbox share one WAL frame;
+    // there is no separately visible journal-before-files commit. Simulate a
+    // crash at each structural boundary inside that actual attempt frame.
+    let mut cursor = 0;
+    let mut last_frame = 0;
+    while cursor < complete.len() {
+        last_frame = cursor;
+        let len = u32::from_be_bytes(complete[cursor..cursor + 4].try_into().unwrap()) as usize;
+        cursor += 4 + len;
+    }
+    assert_eq!(cursor, complete.len());
+    for cut in [
+        last_frame,
+        last_frame + 1,
+        last_frame + 3,
+        last_frame + 4,
+        last_frame + (complete.len() - last_frame) / 2,
+        complete.len() - 1,
+        complete.len(),
+    ] {
+        fs::write(&wal, &complete[..cut]).unwrap();
+        let recovered = RuntimeService::open(&wal, &setup, 128).unwrap();
+        if cut == complete.len() {
+            assert_eq!(recovered.records().len(), 1);
+            assert_eq!(recovered.records()[0]["output_files"], after_files);
+            assert_eq!(recovered.queued(), 0);
+        } else {
+            assert!(recovered.records().is_empty());
+            assert_eq!(recovered.queued(), 2); // original event plus the durable due timer
+        }
+    }
     fs::write(&wal, &complete).unwrap();
     let restored = RuntimeService::open(&wal, &setup, 128).unwrap();
     assert_eq!(restored.records()[0]["output_files"], after_files);
@@ -290,7 +343,7 @@ i64.const 2 i64.const 0 i32.const 0 i32.const 416
 call $path_open
 i32.store8
 i32.const 364
-i32.const 4 i32.const 56 i32.const 4 i32.const 420 i32.const 8 i32.const 424
+i32.const 4 i32.const 56 i32.const 4 i32.const 65530 i32.const 8 i32.const 424
 call $readlink
 i32.store8
 i32.const 4 i32.const 0 i32.const 48 i32.const 3 i32.const 9
@@ -315,12 +368,47 @@ i32.const 0"#,
 }
 
 #[test]
+fn native_wasi_append_flag_does_not_grant_write_or_renumber_clobber() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let code = wat_guest(
+        r#"(data (i32.const 0) "count") (data (i32.const 16) "out")
+(data (i32.const 32) "x")"#,
+        r#"i32.const 4 i32.const 0 i32.const 0 i32.const 5 i32.const 0
+ i64.const 2 i64.const 0 i32.const 1 i32.const 80 call $path_open
+ if unreachable end
+ i32.const 80 i32.load i32.const 7 call $renumber if unreachable end
+ i32.const 4 i32.const 0 i32.const 16 i32.const 3 i32.const 9
+ i64.const 64 i64.const 0 i32.const 0 i32.const 84 call $path_open
+ if unreachable end
+ i32.const 84 i32.load i32.const 7 i32.eq if unreachable end
+ i32.const 64 i32.const 32 i32.store
+ i32.const 68 i32.const 1 i32.store
+ i32.const 7 i32.const 64 i32.const 1 i32.const 88 call $fd_write
+ i32.const 76 i32.ne if unreachable end
+ i32.const 0"#,
+    );
+    let setup = with_wasm(setup(), &code);
+    let result = step_native(&setup, &code);
+    assert_eq!(result["journal"]["status"], "committed", "{result}");
+    assert_eq!(
+        result["journal"]["output_files"]["/data/count"],
+        setup["initial_files"]["/data/count"]
+    );
+    assert_eq!(
+        hex_file(&result["journal"]["output_files"], "/data/out").unwrap(),
+        b""
+    );
+}
+
+#[test]
 fn native_forbidden_imports_fail_admission_without_instantiation() {
     let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let setup = with_wasm(setup(), &write_data_guest(false));
     let budgets = &setup["manifest"]["budgets"];
     for (name, sig) in [
         ("clock_time_get", "(param i32 i64 i32) (result i32)"),
+        ("clock_res_get", "(param i32 i32) (result i32)"),
+        ("sched_yield", "(result i32)"),
         ("random_get", "(param i32 i32) (result i32)"),
         ("poll_oneoff", "(param i32 i32 i32 i32) (result i32)"),
         ("path_symlink", "(param i32 i32 i32 i32 i32) (result i32)"),

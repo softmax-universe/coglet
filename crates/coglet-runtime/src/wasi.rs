@@ -135,7 +135,7 @@ impl Wasi {
             "path_rename" => self.path_rename(args, memory),
             "path_readlink" => {
                 let _ =
-                    self.resolve(u32arg(args, 0)?, memory, u32arg(args, 2)?, u32arg(args, 3)?)?;
+                    self.resolve(u32arg(args, 0)?, memory, u32arg(args, 1)?, u32arg(args, 2)?)?;
                 Ok(NOTCAPABLE)
             }
             "fd_renumber" => self.fd_renumber(args),
@@ -210,6 +210,9 @@ impl Wasi {
                 return Ok(errno);
             }
         }
+        while self.fds.contains_key(&self.next_fd) {
+            self.next_fd = self.next_fd.checked_add(1).ok_or(Error::MemoryExhausted)?;
+        }
         let fd = self.next_fd;
         self.next_fd = fd.checked_add(1).ok_or(Error::MemoryExhausted)?;
         self.fds.insert(
@@ -218,7 +221,7 @@ impl Wasi {
                 path,
                 pos: 0,
                 read,
-                write: write || append,
+                write,
                 append,
             },
         );
@@ -419,7 +422,14 @@ impl Wasi {
             }
             Some(Fd::Preopen(root)) => {
                 stat[0] = 3;
-                stat[8..16].copy_from_slice(&(1u64 << 13).to_le_bytes());
+                let mut base = (1u64 << 13) | (1 << 14) | (1 << 18) | (1 << 21);
+                if *root != "/code" {
+                    base |= 1 << 10; // PATH_CREATE_FILE
+                }
+                if *root == "/data" {
+                    base |= (1 << 16) | (1 << 17) | (1 << 26);
+                }
+                stat[8..16].copy_from_slice(&base.to_le_bytes());
                 let read_rights = FD_READ | 4 | 32 | 128 | (1 << 21);
                 let rights = read_rights
                     | if *root == "/code" {
