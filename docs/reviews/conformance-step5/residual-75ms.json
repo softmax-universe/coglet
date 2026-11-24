@@ -1,0 +1,12 @@
+{
+  "iterations": 50,
+  "cpu": 0,
+  "cpu_workers": 2,
+  "delay_ms": 75,
+  "results": 400,
+  "failures": 1,
+  "step5_timeouts": 1,
+  "skipped": 0,
+  "elapsed_s": 100.57918094698107,
+  "child_cpu_s": 99.345044
+}
