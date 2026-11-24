@@ -23,13 +23,27 @@ Hosted exact-head results remain a landing gate, not a claim from local executio
 | Recorded-result offline guest replay | paired `*_replay_uses_recorded_results`, `*_replay_enforces_mixed_call_order_without_database` and recovery-abort negative controls in `database_service` |
 | WAL-safe backup/isolated restore with real guest replay, missing-reference refusal | `real_wamr_backup_restore_replays_and_remains_isolated`, `mock_backup_restore_replays_and_remains_isolated` |
 | Actual Factory guest/catalog/approved migration, reads/update/event/enqueue/log, duplicate rollback/reopen/offline replay | `real_wamr_runs_actual_factory_guest_end_to_end`, `mock_runs_factory_repository_against_real_database_host` |
-| Exact-lossless archive roundtrip (including actual Factory records) | Factory tests above plus six `database_archive` tests; frozen `trace` tests remain required |
+| Exact-lossless archive roundtrip, versioned trailing seals, empty successor revision across WAL reopen | Factory tests above plus eight `database_archive` tests; frozen `trace` tests remain required |
 
-The original phase-1 seven named acceptance properties (private owner isolation,
-rollback, optimistic conflict, FK, immutable-key outbox, bounds, replay) are not
-synonyms for the eight newer frozen wire timeline names. Native controls remain
-required. A final review must confirm the real/mock property coverage and cannot
-infer it merely from eight green timelines.
+The original phase-1 seven properties are distinct from the eight frozen wire
+timelines. The shared `tests/support/database_properties.rs` driver now runs each
+through both actual adapters, RuntimeService, WAL reopen and SQLite. Named tests
+use both `real_wamr_` and `mock_` prefixes:
+
+- `db_isolation_between_coglets`: private paths, wrong-owner refusal before guest
+  entry, and own-only query result with a different owner's secret present.
+- `rollback_on_failed_transaction`: ignored duplicate failure rolls back a prior
+  write, poisons later calls, and releases the write lock.
+- `optimistic_version_conflict`: approved conditional update actually affects zero
+  rows; prior write cannot commit despite handle=0.
+- `fk_integrity_enforced`: real missing-parent insert fails and rolls back all writes.
+- `outbox_duplicate_idempotency_key`: actual immutable-key duplicate returns the
+  original ID with one durable row; changed-key/content controls are in wire tests.
+- `query_results_bounded`: 65 actual rows yield 64 ordered rows and a real cursor,
+  with bounded whole reply bytes and no lost row.
+- `db_property_replay_uses_recorded_results`: own provisional write is read and
+  replayed offline. Every property also reexecutes with the DB physically deleted;
+  the separate reply-dependent replay tests exclude canned-success execution.
 
 ## Test-only engine-seam translations
 
@@ -73,8 +87,10 @@ product database deployment API.
 
 0.2 archive step records are retained as exact CBOR content-addressed blobs, not
 reencoded from JSON. Archive import validates host transitions, **not** independent
-guest execution; `replay_database` is the separate guest proof. Trailing 0.2
-boundary seals and empty-archive live-revision observation still require explicit
-qualification before an unrestricted archive-support claim. No frozen spec or
+guest execution; `replay_database` is the separate guest proof. Trailing seals use
+the manifest-pinned boundary version. Empty archives retain an observed revision
+from trusted setup, imported header, or the last step across segment transfer;
+an unknown revision is refused rather than fabricated as zero. These are archive
+observations, not a fresh live DB query or authority. No frozen spec or
 fixture changes, ADR gate waivers, PostgreSQL emulation, external dispatch or
 physical worker-success claim are part of these tests.
