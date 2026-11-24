@@ -1,5 +1,5 @@
 use coglet_mock::hub::MockHub;
-use iroh::{EndpointAddr, SecretKey};
+use iroh::SecretKey;
 use softmax_hub_link::{connect, endpoint};
 use std::time::Duration;
 
@@ -16,9 +16,7 @@ async fn enroll_drop_offline_recover_same_identity() {
     c.close(0u32.into(), b"test drop");
     c.closed().await;
     assert!(c.close_reason().is_some());
-    let recovered = connect(&device, EndpointAddr::from(hub.addr()), None)
-        .await
-        .unwrap();
+    let recovered = connect(&device, hub.addr(), None).await.unwrap();
     assert!(recovered.close_reason().is_none());
     hub.kernel().revoke_peer(device.id()).await.unwrap();
     assert!(connect(&device, hub.addr(), None).await.is_err());
