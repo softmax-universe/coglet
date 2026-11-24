@@ -102,6 +102,33 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertNil(try store.loadHub()?.invite)
     }
 
+    func testOfflinePendingInvitationCanBeReplacedWithoutAcceptingOldCallbacks() throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        let key = Data(repeating: 3, count: 32)
+        let hub = HubConnection(account: HubAccount(store: store, generate: { key }), link: link)
+        hub.start()
+        defer { hub.stop() }
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let original = try HubPairing.parse(#"{"name":"Original router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"],"invite":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}"#)
+        let replacement = try HubPairing.parse(#"{"name":"Replacement router","hub":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","addresses":["127.0.0.1:4321"],"invite":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}"#)
+        try hub.enroll(original)
+        XCTAssertThrowsError(try hub.enroll(replacement), "An active enrollment cannot be replaced implicitly")
+        link.emit(.offline)
+        let stale = link.callback
+        try hub.enroll(replacement)
+        XCTAssertEqual(link.starts, 2, "Replacement must fence the original channel")
+        stale?(.connected)
+        XCTAssertNil(try store.loadHub(), "A late original response must not enroll the replacement")
+        XCTAssertEqual(try store.loadKey(), key)
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(link.lastPairing?.hub, replacement.hub)
+        link.emit(.connected)
+        XCTAssertEqual(hub.pairing?.name, replacement.name)
+        XCTAssertEqual(hub.state, .connected)
+        XCTAssertNil(try store.loadHub()?.invite)
+        XCTAssertThrowsError(try hub.enroll(original), "An enrolled router still requires explicit sign out")
+    }
+
     func testPairingRejectsMalformedAndMismatchedDevice() throws {
         XCTAssertThrowsError(try HubPairing.parse("123456"))
         XCTAssertThrowsError(try HubPairing.parse(#"{"name":"Hub","hub":"invalid","addresses":[]}"#))
