@@ -1,7 +1,9 @@
 //! Native private database substrate for ADR-0013.
 //!
-//! This crate is not yet wired into runtime ABI 0.2. In particular, no public
-//! successful commit API exists until prepared-decision recovery is integrated.
+//! This crate is not yet wired into runtime ABI 0.2. The only production commit
+//! path is the milestone B coordinator (`Unit::complete`), which prepares a
+//! decision, commits the host marker and publishes the exact journal; recovery is
+//! `Database::recover`. Runtime/engine admission remains closed.
 use fs2::FileExt;
 use rusqlite::{Connection, OpenFlags, params_from_iter, types::ValueRef};
 use sha2::{Digest, Sha256};

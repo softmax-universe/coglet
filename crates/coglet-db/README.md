@@ -2,8 +2,9 @@
 
 This is the native admitted-unit slice of ADR-0013, **not runtime ABI 0.2
 support**. Existing runtime and engine admission reject DB guests. The public
-native API deliberately has no schema provisioning method and exposes commit only through the milestone B coordinator;
-all application work rolls back. Successful commits in tests use `cfg(test)`
+native API deliberately has no schema provisioning method and exposes commit only
+through the milestone B coordinator (below); an unadmitted or failed unit rolls
+back all application work. Test-only commits use `cfg(test)`
 helpers, absent from production builds.
 
 Implemented and exercised against bundled SQLite:

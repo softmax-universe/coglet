@@ -641,3 +641,30 @@ fn admit_err(result: Result<Unit<'_>>) -> String {
         Ok(_) => panic!("admission unexpectedly succeeded"),
     }
 }
+
+#[test]
+fn recovery_journal_failure_is_held_and_preserves_the_decision() {
+    for (point, committed) in [("after_db_commit", true), ("after_prepare", false)] {
+        let root = tempfile::tempdir().unwrap();
+        drop(provision(root.path()));
+        assert_eq!(spawn_child(root.path(), point, "step"), Some(137));
+        let mut db = Database::open(root.path(), OWNER).unwrap();
+        let mut journal = FileJournal::new(&root.path().join("journal"));
+        journal.fail_commit_once = true;
+        // Make the abort publication fail too: pre-publish a conflicting record.
+        if !committed {
+            journal.write("1.committed", "conflict".into()).unwrap();
+        }
+        let error = db.recover(&mut journal).unwrap_err();
+        assert!(error.starts_with(HELD), "{point}: {error}");
+        assert!(!db.halted());
+        assert_eq!(db.pending_files().unwrap().len(), 1, "preparation kept");
+        assert!(journal.aborted(1).is_none());
+        if committed {
+            assert!(matches!(
+                db.recover(&mut journal).unwrap(),
+                Recovered::RolledForward(_)
+            ));
+        }
+    }
+}

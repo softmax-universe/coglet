@@ -83,6 +83,14 @@ fn sha_hex(bytes: &[u8]) -> String {
 fn held(error: impl std::fmt::Display) -> String {
     format!("{HELD} {error}")
 }
+fn held_once(error: impl std::fmt::Display) -> String {
+    let text = error.to_string();
+    if text.starts_with(HELD) {
+        text
+    } else {
+        held(text)
+    }
+}
 fn io(error: std::io::Error) -> String {
     held(error)
 }
@@ -446,7 +454,9 @@ impl Database {
                 {
                     return Err(self.halt("marker does not match the prepared decision".into()));
                 }
-                journal.publish_committed(&prepared.id, &prepared.record, &prepared.artifacts)?;
+                journal
+                    .publish_committed(&prepared.id, &prepared.record, &prepared.artifacts)
+                    .map_err(held_once)?;
                 crash_point("recover_after_publish");
                 self.mark_published(&prepared.id)?;
                 self.discard_prepared(&path)?;
@@ -470,7 +480,9 @@ impl Database {
                     return Err(self.halt("later marker exists without this decision".into()));
                 }
                 let abort = recovery_abort_record(&prepared.record)?;
-                journal.publish_abort(&prepared.id, &abort)?;
+                journal
+                    .publish_abort(&prepared.id, &abort)
+                    .map_err(held_once)?;
                 crash_point("recover_after_abort_publish");
                 self.discard_prepared(&path)?;
                 Ok(Recovered::Aborted(prepared.id))
@@ -557,7 +569,7 @@ impl Unit<'_> {
         let _ = self.db.connection.progress_handler(0, None::<fn() -> bool>);
         journal
             .publish_committed(&prepared.id, &prepared.record, &prepared.artifacts)
-            .map_err(|e| format!("{HELD} committed but unpublished: {e}"))?;
+            .map_err(|e| held_once(format!("committed but unpublished: {e}")))?;
         crash_point("after_journal_publish");
         self.db.mark_published(&prepared.id)?;
         crash_point("after_published_mark");
