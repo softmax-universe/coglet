@@ -287,8 +287,11 @@ impl RuntimeService {
             return Ok(());
         };
         let step = Self::last_step(next);
+        // A failed receipt carries no step (`hub-receipt-failed`). With a step
+        // it would not validate, and the `?` below would return before the
+        // stopped fence and this receipt were committed.
         let receipt = json!({"operation_id":id,"state":if error.is_some() {"failed"} else {"applied"},
-            "step":step,"error":error.map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false}))});
+            "step":if error.is_some() { Value::Null } else { json!(step) },"error":error.map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false}))});
         validate("hub-mutation-receipt", &receipt)?;
         next.managed
             .as_mut()
@@ -380,13 +383,17 @@ mod tests {
     use super::*;
 
     fn setup() -> Value {
+        fixture("no-effects")
+    }
+
+    fn fixture(name: &str) -> Value {
         let cases: Value =
             serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
         let mut setup = cases
             .as_array()
             .unwrap()
             .iter()
-            .find(|c| c["name"] == "no-effects")
+            .find(|c| c["name"] == name)
             .unwrap()["steps"][0]["send"]
             .clone();
         setup["initial_files"]
@@ -509,5 +516,60 @@ mod tests {
             service.state.managed.as_ref().unwrap().operations.len(),
             OPERATION_LEDGER - 1
         );
+    }
+
+    #[test]
+    fn failed_stop_is_fenced_recorded_and_replayed_as_the_original_receipt() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let setup = fixture("action");
+        // A one-entry queue makes the stop's cancellation fail under pressure.
+        let mut service = RuntimeService::open(&path, &setup, 1).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
+        service
+            .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0)
+            .unwrap();
+        let event = setup["inputs"]["events"][0].clone();
+        service.enqueue(event.clone()).unwrap();
+        service
+            .run_next(
+                &setup["inputs"],
+                &mut MockEngine::new(setup["guest_script"].clone()),
+            )
+            .unwrap()
+            .unwrap();
+        let mut later = event;
+        later["seq"] = json!(later["seq"].as_u64().unwrap() + 1);
+        service.enqueue(later).unwrap();
+
+        let stop_id = "4".repeat(32);
+        let failed = service
+            .managed_operation(&stop_id, &"d".repeat(64), false, 100)
+            .unwrap();
+        validate("hub-mutation-receipt", &failed).unwrap();
+        assert_eq!(failed["operation_id"], stop_id);
+        assert_eq!(failed["state"], "failed");
+        assert_eq!(failed["step"], Value::Null);
+        assert_eq!(failed["error"]["code"], "unavailable");
+        assert!(!service.managed_running());
+
+        // The fence and the failed receipt are in the WAL: after a reopen the
+        // retry is a replay of the original receipt, and changed intent on
+        // the same ID conflicts.
+        drop(service);
+        let mut service = RuntimeService::open(&path, &setup, 1).unwrap();
+        assert_eq!(service.managed_status()["state"], "stopped");
+        assert_eq!(
+            service
+                .managed_operation(&stop_id, &"d".repeat(64), false, 200)
+                .unwrap(),
+            failed
+        );
+        let conflict = service
+            .managed_operation(&stop_id, &"e".repeat(64), false, 200)
+            .unwrap_err();
+        assert!(conflict.starts_with("conflict:"), "{conflict}");
+        assert!(!service.managed_running());
     }
 }
