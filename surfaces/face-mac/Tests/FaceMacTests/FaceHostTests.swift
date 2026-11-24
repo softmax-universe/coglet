@@ -10,7 +10,105 @@ private final class HostLedger: SurfaceLedgerStore {
 }
 @MainActor private final class HostClock { var now: UInt64 = 0 }
 
+@MainActor private final class TestControlLink: FaceControlLink {
+    var sent: [[UInt8]] = []
+    var incoming: [[UInt8]] = []
+    var blocked = true
+    var closed = false
+    var failReceive = false
+    func send(_ bytes: [UInt8]) throws -> Bool {
+        if blocked { return false }; sent.append(bytes); return true
+    }
+    func receive() throws -> [UInt8]? {
+        if failReceive { throw SurfaceFailure.closed }
+        return incoming.isEmpty ? nil : incoming.removeFirst()
+    }
+    func flush() throws -> Bool { !blocked }
+    func close() { closed = true }
+}
+
 final class FaceHostTests: XCTestCase {
+    func testAttachedControlLinkRetriesIdenticalHelloAndDisconnectsNativeOnTransportFailure() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), recognition = TestRecognition(), link = TestControlLink()
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try host.attach(link: link)
+            try host.start(); try host.pump()
+            XCTAssertTrue(link.sent.isEmpty)
+            XCTAssertTrue(host.drain().isEmpty, "attached transport has one output consumer")
+            link.blocked = false; try host.pump()
+            XCTAssertEqual(link.sent.count, 1)
+            let hello = try SurfaceWire.decode(link.sent[0], from: .surface)
+            link.incoming.append(try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])), ("correlation_id", hello["body"]!["correlation_id"]!)])), from: .runtime))
+            try host.pump(); link.sent = []
+            try host.activateDuplex(localConsent: true)
+            _ = try host.beginCapture(recognition: recognition, positionMS: 0)
+            try host.pump()
+            let events = try link.sent.map { try SurfaceWire.decode($0, from: .surface) }
+            XCTAssertEqual(events.first?["body"]?["kind"], .text("speech.start"))
+            link.failReceive = true
+            XCTAssertThrowsError(try host.pump())
+            XCTAssertTrue(link.closed)
+            XCTAssertFalse(io.isRunning)
+            XCTAssertTrue(recognition.inputs[0].cancelled)
+            try host.close()
+        }
+    }
+    func testGrantFenceDropsBlockedPrivateTransportBacklogAndStopsNative() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), recognition = TestRecognition(), link = TestControlLink()
+            link.blocked = false
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try host.attach(link: link); try host.start()
+            let hello = try SurfaceWire.decode(link.sent[0], from: .surface)
+            link.incoming.append(try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])), ("correlation_id", hello["body"]!["correlation_id"]!)])), from: .runtime))
+            try host.pump(); link.sent = []
+            try host.activateDuplex(localConsent: true)
+            link.blocked = true
+            _ = try host.beginCapture(recognition: recognition, positionMS: 0)
+            try recognition.callbacks[0](.init(revision: 1, text: "private backlog", final: false, positionMS: 10))
+            try host.pump()
+            XCTAssertTrue(link.sent.isEmpty)
+            try host.installGrants([])
+            link.blocked = false
+            XCTAssertThrowsError(try host.pump())
+            XCTAssertTrue(link.closed)
+            XCTAssertTrue(link.sent.isEmpty)
+            XCTAssertFalse(io.isRunning)
+            try host.close()
+        }
+    }
+    func testSameEpochReactivationCannotReleaseBlockedObservationBacklog() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), recognition = TestRecognition(), link = TestControlLink()
+            link.blocked = false
+            let host = try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: HostLedger(),
+                backend: FaceSurfaceBackend(audio: io, synthesis: TestSynthesis(), renderer: .init { _ in }),
+                grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { 0 })
+            try host.attach(link: link); try host.start()
+            let hello = try SurfaceWire.decode(link.sent[0], from: .surface)
+            link.incoming.append(try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])), ("correlation_id", hello["body"]!["correlation_id"]!)])), from: .runtime))
+            try host.pump(); link.sent = []
+            try host.activateDuplex(localConsent: true)
+            link.blocked = true
+            _ = try host.beginCapture(recognition: recognition, positionMS: 0)
+            try recognition.callbacks[0](.init(revision: 1, text: "private backlog", final: false, positionMS: 10))
+            try host.pump()
+            XCTAssertTrue(link.sent.isEmpty)
+            XCTAssertThrowsError(try host.activateDuplex(localConsent: true))
+            XCTAssertTrue(link.closed)
+            XCTAssertTrue(link.sent.isEmpty)
+            XCTAssertFalse(io.isRunning)
+            try host.close()
+        }
+    }
     private static let owner = "coglet:" + String(repeating: "a", count: 64)
     private static let identity = "surface:" + String(repeating: "b", count: 64)
     func testVoiceActivityUsesCapturedMediaPositionNotHostElapsedTime() async throws {
@@ -101,6 +199,27 @@ final class FaceHostTests: XCTestCase {
             XCTAssertEqual(reply["body"]?["error"]?["code"], .text("conflict"))
             XCTAssertEqual(tts.callbacks.count, 1)
             XCTAssertTrue(io.enqueued.isEmpty)
+            try reopened.close()
+        }
+    }
+    func testRestartDoesNotTurnRejectedSpeechIntoAStreamTombstone() async throws {
+        try await MainActor.run {
+            let clock = HostClock(), store = HostLedger(), io = TestDuplex(), tts = TestSynthesis()
+            @MainActor func make() throws -> FaceSurfaceHost {
+                try FaceSurfaceHost(identity: Self.identity, owner: Self.owner, store: store,
+                    backend: FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in }),
+                    grants: [.init(coglet: Self.owner, operations: Set(FaceSurfaceHost.operations.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"], expires: 10_000_000)], clock: { clock.now })
+            }
+            let rejected = try make(); try Self.negotiate(rejected)
+            try rejected.receive(Self.speak(host: rejected, suffix: "1", chunk: 0, deadline: 1000))
+            let first = try SurfaceWire.decode(rejected.drain()[0], from: .surface)
+            XCTAssertEqual(first["body"]?["accepted"], .boolean(false))
+            try rejected.close()
+            let reopened = try make(); try Self.negotiate(reopened); try reopened.activateDuplex(localConsent: true)
+            try reopened.receive(Self.speak(host: reopened, suffix: "2", chunk: 0, deadline: 1000))
+            let second = try SurfaceWire.decode(reopened.drain()[0], from: .surface)
+            XCTAssertEqual(second["body"]?["accepted"], .boolean(true))
+            XCTAssertEqual(tts.callbacks.count, 1)
             try reopened.close()
         }
     }

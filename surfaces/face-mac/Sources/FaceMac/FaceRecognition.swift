@@ -17,5 +17,8 @@ public struct FaceRecognitionUpdate: Sendable {
     func cancel()
 }
 @MainActor public protocol FaceRecognition: AnyObject {
-    func start(utterance: String, receive: @escaping @MainActor (FaceRecognitionUpdate) throws -> Void) throws -> any FaceRecognitionInput
+    var route: String { get }
+    var usesRemoteAudio: Bool { get }
+    func start(utterance: String, receive: @escaping @MainActor (FaceRecognitionUpdate) throws -> Void,
+               failed: @escaping @MainActor () throws -> Void) throws -> any FaceRecognitionInput
 }

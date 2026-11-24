@@ -14,10 +14,30 @@ these trusted configuration APIs.
   actual shared graph. Do **not** also run `EngineFacePlayback`: that legacy helper
   owns another output engine. `renderedPlaybackFrames` is an integer render count;
   it is not an acoustic timestamp.
-- Inject the configured local `FaceSynthesis` and `FaceRecognition` routes. Use
-  `beginCapture`/`finishCapture` for hold-to-talk or `enableVoiceDetection` for the
-  audio kit's RMS gate. Recognition callbacks retain their original utterance and
-  session custody. Raw PCM is passed to recognition only, never on the wire.
+- Inject the configured `FaceSynthesis` and `FaceRecognition` routes. Each exposes
+  its exact route label and whether it sends audio remotely. Route mismatches are
+  `unavailable`, not fallbacks; remote routes need separate explicit
+  `activateDuplex(localConsent: true, remoteAudioConsent: true)`. Labels in
+  `speech.config` describe the injected implementations, not built-in Apple STT/TTS.
+  Routes must remain immutable for an authority epoch; configuration changes require
+  revoking the old epoch before reactivation. Authenticated remote media transport
+  and provider credentials remain the embedding product's responsibility.
+- Use `beginCapture`/`finishCapture` for hold-to-talk or `enableVoiceDetection` for
+  the audio kit's RMS gate. Recognition callbacks retain their original utterance
+  and session custody. Capture is bounded to 60 s, then at most 5 s finalization
+  after release (repeated release does not extend it). Failure, timeout or replacement
+  closes with an empty final at the next revision, never a guessed partial-as-final.
+  A new start follows the previous end. Revocation instead suppresses private
+  delivery. Synchronous final/failure and late callbacks cannot reinstall a retired
+  native handle. Saturating diagnostics count failures/discards without private text.
+  Raw PCM is passed to recognition only, never on the wire.
+- Before `start`, optionally `attach(link:)` using `FaceSocketLink` over an SDK
+  authenticated socket or `FaceEmbeddedLink(abi:)` over installed runtime symbols.
+  The native timer drives both links; the latter preserves would-block byte identity.
+  The host bounds queued messages and services at most 64 incoming messages per tick.
+  Attached links own output consumption (`drain` returns empty). Fatal transport
+  errors stop native media. A grant-epoch change with blocked/partially written
+  old-epoch bytes disconnects rather than releasing private backlog.
 - A native 20 ms task pumps health/deadlines before playback/capture and drains
   cancellations. Guest execution must stay off MainActor. `localOffSwitch` stops
   audio before writing the durable kill latch; the wire cannot clear it.
@@ -29,12 +49,16 @@ these trusted configuration APIs.
   Provider, work and history extension qualification are **not** claimed. The
   backend's aligned heard projection is tested locally but is not advertised.
 
-Remaining acceptance work: qualify the complete host over real SDK socket and
-embedded transports with named simulator speech timelines and replay equality;
-finish bounded recognition failure/finalization and route/privacy configuration
-coverage; audit every action/kill/grant path; pass final native macOS CI and
-independent exact-head review. Face guest/simulator integration is gated on speech
-PR #79 approval and merge. This draft is not full M2b delivery or acoustic proof.
+Remaining acceptance work: drive the executable Face host through named simulator
+speech timelines and prove runtime journal/offline replay equality. Existing
+`FaceSocketTests` exercise actual SDK peer credentials/framing, speech admission,
+render-position barge-in/cancellation and fatal disconnect on an AF_UNIX socket;
+`FaceEmbeddedTests` exercise the real Face host over an ABI **fixture**, not the
+production runtime. Built-in native recognition/synthesis, a runnable host and
+product embedding example, history retention/advertisement, full op-by-op audit,
+final macOS CI and independent exact-head review remain. Face guest/simulator
+integration is gated on speech PR #79 approval and merge. This draft is not full
+M2b delivery or acoustic proof.
 
 # FaceAudioKit
 

@@ -19,6 +19,8 @@ import CogletSurface
     func readCapture() -> [Int16] { let value = captured; captured = []; return value }
 }
 @MainActor final class TestSynthesis: FaceSynthesis {
+    var route = "local"
+    var usesRemoteAudio = false
     var callbacks: [(Result<FaceSynthesizedAudio, Swift.Error>) -> Void] = []
     var cancelled = 0
     var immediateFailure = false

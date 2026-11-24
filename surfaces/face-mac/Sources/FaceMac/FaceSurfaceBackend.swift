@@ -25,6 +25,8 @@ public struct FaceSynthesizedAudio: Sendable {
 /// Completion carries the captured request custody; cancellation must stop the
 /// provider too. The backend independently fences a provider that ignores it.
 @MainActor public protocol FaceSynthesis: AnyObject {
+    var route: String { get }
+    var usesRemoteAudio: Bool { get }
     func synthesize(text: String, completion: @escaping @MainActor (Result<FaceSynthesizedAudio, Swift.Error>) -> Void) -> @MainActor () -> Void
 }
 public struct FaceCompletion {
@@ -51,6 +53,7 @@ public struct FaceCompletion {
     public let renderer: FaceExpressionRenderer
     private var owner: String?
     private var epoch: UInt64 = 0
+    private var remoteAudioConsent = false
     private var emit: ((String, CBORValue) throws -> Void)?
     private var history = SpeechObservations()
     private var items: [Item] = []
@@ -70,6 +73,14 @@ public struct FaceCompletion {
     private var capturedFrames: UInt64 = 0
     var capturePositionMS: UInt64 { capturedFrames / 24 }
     private var captureNormalizer = SpeechObservations()
+    private var utterance: String?
+    private var captureRevision: UInt64 = 0
+    private var captureStartMS: UInt64 = 0
+    private var captureDeadline: UInt64?
+    private var lastTick: UInt64 = 0
+    /// Bounded, non-text diagnostics; late callbacks never log transcripts.
+    public private(set) var discardedRecognitionUpdates: UInt64 = 0
+    public private(set) var recognitionFailures: UInt64 = 0
     public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer,
                 sttRoute: String = "local", ttsRoute: String = "local") {
         self.audio = audio; self.synthesis = synthesis; self.renderer = renderer
@@ -77,8 +88,9 @@ public struct FaceCompletion {
     }
     /// Trusted host calls after opening an SDK native observation session. The
     /// emitter closes over that immutable token, never the newest session token.
-    public func activate(owner: String, epoch: UInt64, emit: @escaping (String, CBORValue) throws -> Void) {
+    public func activate(owner: String, epoch: UInt64, remoteAudioConsent: Bool = false, emit: @escaping (String, CBORValue) throws -> Void) {
         stop(owner: nil); self.owner = owner; self.epoch = epoch; self.emit = emit
+        self.remoteAudioConsent = remoteAudioConsent
     }
     func retainClosedStreams(from actions: [CBORValue]) {
         for action in actions where action["capability"] == .text("speech.speak_chunk") || action["capability"] == .text("speech.backchannel") {
@@ -87,35 +99,93 @@ public struct FaceCompletion {
     }
     func startDuplex() throws {
         guard owner != nil else { throw NativeSurfaceError("permission_denied") }
+        guard !sttRoute.isEmpty, !ttsRoute.isEmpty, synthesis.route == ttsRoute else { throw NativeSurfaceError("unavailable") }
+        guard !synthesis.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
+        _ = try read(operation: "speech.config", args: .map([]), owner: owner!, now: 0)
         try audio.start(); graph = audio.generation
     }
-    public func beginCapture(recognition: any FaceRecognition, utterance: String, positionMS: UInt64) throws {
+    public func beginCapture(recognition: any FaceRecognition, utterance: String, positionMS: UInt64, now: UInt64? = nil) throws {
         guard owner != nil else { throw NativeSurfaceError("permission_denied") }
+        guard recognition.route == sttRoute else { throw NativeSurfaceError("unavailable") }
+        guard !recognition.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
+        try CBORCodec.validate("common::correlation-id", .text(utterance))
+        try closeCapture()
         captureGeneration = UUID(); let custody = captureGeneration
-        let old = recognitionInput; recognitionInput = nil; captureOpen = false; old?.cancel()
         captureNormalizer = SpeechObservations()
         try captureNormalizer.start(utterance: utterance)
         try speechStart(utterance: utterance, positionMS: positionMS)
+        self.utterance = utterance; captureRevision = 0; captureStartMS = positionMS
+        let started = now ?? lastTick
+        guard started <= UInt64.max - 60_000_000 else { throw NativeSurfaceError("resource_exhausted") }
+        captureDeadline = started + 60_000_000
         let emitter = emit // immutable owner/session closure, not a future binding
         captureOpen = true
-        let input = try recognition.start(utterance: utterance) { [weak self] update in
-            guard let self, self.captureGeneration == custody, self.owner != nil else { return }
-            guard try self.captureNormalizer.transcript(utterance: utterance, revision: update.revision,
-                text: update.text, final: update.final) else { return }
-            var fields: [(String, CBORValue)] = [("utterance", .text(utterance)),
-                ("revision", .unsigned(update.revision)), ("text", .text(update.text))]
-            if update.final { fields.append(("position_ms", .unsigned(update.positionMS))); self.captureOpen = false }
-            try emitter?(update.final ? "speech.end" : "speech.partial", .record(fields))
+        do {
+            let input = try recognition.start(utterance: utterance, receive: { [weak self] update in
+                guard let self else { return }
+                guard self.captureGeneration == custody, self.owner != nil, self.utterance == utterance else {
+                    self.discardedRecognitionUpdates = self.discardedRecognitionUpdates == .max ? .max : self.discardedRecognitionUpdates + 1
+                    return
+                }
+                // Reserve one revision for an empty final on local failure.
+                guard update.revision < UInt64.max, !update.final || update.positionMS >= self.captureStartMS else {
+                    try self.closeCapture(); return
+                }
+                guard try self.captureNormalizer.transcript(utterance: utterance, revision: update.revision,
+                    text: update.text, final: update.final) else {
+                    self.discardedRecognitionUpdates = self.discardedRecognitionUpdates == .max ? .max : self.discardedRecognitionUpdates + 1
+                    return
+                }
+                self.captureRevision = update.revision
+                var fields: [(String, CBORValue)] = [("utterance", .text(utterance)),
+                    ("revision", .unsigned(update.revision)), ("text", .text(update.text))]
+                if update.final {
+                    fields.append(("position_ms", .unsigned(update.positionMS)))
+                    self.retireCapture()
+                }
+                try emitter?(update.final ? "speech.end" : "speech.partial", .record(fields))
+            }, failed: { [weak self] in
+                guard let self, self.captureGeneration == custody, self.utterance == utterance else { return }
+                try self.closeCapture()
+            })
+            // Synchronous final/failure may retire before start returns its handle.
+            if captureGeneration == custody, self.utterance == utterance { recognitionInput = input }
+            else { input.cancel() }
+        } catch {
+            try closeCapture()
+            throw error
         }
-        if captureGeneration == custody { recognitionInput = input } else { input.cancel() }
+    }
+    private func retireCapture() {
+        captureGeneration = UUID(); captureOpen = false; utterance = nil; captureDeadline = nil
+        let old = recognitionInput; recognitionInput = nil; old?.cancel()
+    }
+    /// Failure/replacement closes with an empty transcript, never a guessed final
+    /// from the last partial. Fence before invoking potentially synchronous cancel.
+    private func closeCapture() throws {
+        guard let utterance else { return }
+        let revision = captureRevision + 1, position = max(captureStartMS, capturePositionMS), emitter = emit
+        recognitionFailures = recognitionFailures == .max ? .max : recognitionFailures + 1
+        retireCapture()
+        try emitter?("speech.end", .record([("utterance", .text(utterance)), ("revision", .unsigned(revision)),
+            ("text", .text("")), ("position_ms", .unsigned(position))]))
     }
     func setVoiceActivityHook(_ hook: ((Bool) -> Void)?) { audio.onVoiceActivity = hook }
-    public func finishCapture() { captureOpen = false; recognitionInput?.finish() }
+    public func finishCapture(now: UInt64? = nil) {
+        guard captureOpen else { return }
+        captureOpen = false
+        let time = now ?? lastTick
+        captureDeadline = min(captureDeadline ?? .max, time > UInt64.max - 5_000_000 ? .max : time + 5_000_000)
+        recognitionInput?.finish()
+    }
     public func pollCapture() throws {
         let samples = audio.readCapture()
         guard capturedFrames <= UInt64.max - UInt64(samples.count) else { throw NativeSurfaceError("resource_exhausted") }
         capturedFrames += UInt64(samples.count)
-        if captureOpen, !samples.isEmpty { try recognitionInput?.append(samples) }
+        if captureOpen, !samples.isEmpty {
+            do { try recognitionInput?.append(samples) }
+            catch { try closeCapture(); throw error }
+        }
     }
     public func takeCompletions() -> [FaceCompletion] {
         let result = completions; completions = []; return result
@@ -130,6 +200,7 @@ public struct FaceCompletion {
                 throw NativeSurfaceError("invalid_argument")
             }
         case "speech.speak_chunk":
+            try validateSynthesisRoute()
             try CBORCodec.validate("speech::speak-chunk", args)
             guard let text = args["text"]?.faceText, text.utf8.count <= 4096 else { throw NativeSurfaceError("invalid_argument") }
             let id = args["stream"]!.faceText!, chunk = args["chunk"]!.faceUInt!
@@ -137,6 +208,7 @@ public struct FaceCompletion {
                   chunk < 64 else { throw NativeSurfaceError("conflict") }
             guard closedStreams.count < 1024 else { throw NativeSurfaceError("resource_exhausted") }
         case "speech.backchannel":
+            try validateSynthesisRoute()
             try CBORCodec.validate("speech::backchannel", args)
             guard stream == nil, !closedStreams.contains(args["stream"]!.faceText!) else { throw NativeSurfaceError("conflict") }
             guard closedStreams.count < 1024 else { throw NativeSurfaceError("resource_exhausted") }
@@ -183,6 +255,7 @@ public struct FaceCompletion {
     }
     private func startSynthesis() {
         guard let item = items.first else { return }
+        do { try validateSynthesisRoute() } catch { failStream(code: "unavailable"); return }
         let token = generation, id = item.id
         let cancel = synthesis.synthesize(text: item.text) { [weak self] result in
             guard let self, self.generation == token, self.items.first?.id == id,
@@ -198,7 +271,9 @@ public struct FaceCompletion {
         else { cancel() }
     }
     public func tick(now: UInt64) throws {
+        lastTick = now
         renderer.tick(now: now)
+        if let captureDeadline, now >= captureDeadline { try closeCapture() }
         if stream != nil, !inputClosed, now >= idleSince, now - idleSince >= 60_000_000 {
             failStream(code: "cancelled")
         }
@@ -239,6 +314,10 @@ public struct FaceCompletion {
         try emit?("speech.position", .record([("stream", .text(item.stream)), ("chunk", .unsigned(item.chunk)),
             ("item", .text(item.id)), ("played_ms", .unsigned(item.playedMS)),
             ("position_ms", .unsigned(streamPosition + item.playedMS)), ("state", .text(state))]))
+    }
+    private func validateSynthesisRoute() throws {
+        guard !ttsRoute.isEmpty, synthesis.route == ttsRoute else { throw NativeSurfaceError("unavailable") }
+        guard !synthesis.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
     }
     private func failStream(code: String) {
         // Snapshot before flush and before a provider's synchronous cancel hook.
@@ -314,10 +393,9 @@ public struct FaceCompletion {
     public func stop(owner: String?) {
         guard owner == nil || owner == self.owner else { return }
         failStream(code: "cancelled")
-        captureGeneration = UUID(); captureOpen = false
-        let input = recognitionInput; recognitionInput = nil
         self.owner = nil; emit = nil
-        input?.cancel()
+        remoteAudioConsent = false
+        retireCapture() // privacy revocation suppresses terminal transcript delivery
         nextChunk = 0; inputClosed = false; history = SpeechObservations(); graph = nil
         audio.stop(); renderer.reset()
     }
