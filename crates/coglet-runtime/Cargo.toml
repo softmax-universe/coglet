@@ -35,6 +35,7 @@ rusqlite = { version = "0.38", features = ["bundled"] }
 wat = "1.245.1"
 anyhow = "1"
 wasm-encoder = { version = "0.245", features = ["wasmparser"] }
+coglet-guest-rust = { path = "../../sdk/guest-rust", features = ["database"] }
 
 [[example]]
 name = "qualify_apple_guest"
