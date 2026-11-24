@@ -76,9 +76,10 @@ def main():
     assert set(bins) == set(EXPECTED), bins
     for name, binary in bins.items():
         shutil.copy2(binary, OUT / name)
-        result = run([str(binary), "--test-threads=1"], env=env, capture_output=True)
+        result = subprocess.run([str(binary), "--test-threads=1"], cwd=ROOT, env=env, capture_output=True, text=True)
         (OUT / f"{name}.log").write_text(result.stdout + result.stderr)
-        print(result.stdout, flush=True)
+        print(result.stdout + result.stderr, flush=True)
+        result.check_returncode()
         validate_report(result.stdout, EXPECTED[name])
     for kind in ("fuzz", "cross-arch"):
         assert (OUT / f"{kind}.corpus").stat().st_size > 0
