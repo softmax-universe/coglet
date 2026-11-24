@@ -885,8 +885,15 @@ fn wire(error: impl std::fmt::Display) -> &'static str {
         "conflict" => "conflict",
         "resource_exhausted" => "resource_exhausted",
         "unavailable" | "authority storage unavailable" => "unavailable",
-        other if other.starts_with("conflict:") => "conflict",
-        _ => "unavailable",
+        // Internal errors carry a `code: detail` text; only the code is sent.
+        other => match other.split_once(": ").map(|(code, _)| code) {
+            Some("conflict") => "conflict",
+            Some("permission_denied") => "permission_denied",
+            Some("resource_exhausted") => "resource_exhausted",
+            Some("invalid_argument") => "invalid_argument",
+            Some("unauthenticated") => "unauthenticated",
+            _ => "unavailable",
+        },
     }
 }
 
@@ -1000,5 +1007,36 @@ impl OperationHandler for DeviceHandler {
             .map_err(transport)?;
             Ok(reply(&request, receipt))
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::wire;
+
+    #[test]
+    fn wire_maps_detailed_internal_errors_to_their_code() {
+        for (text, code) in [
+            (
+                "permission_denied: existing unmanaged WAL cannot be rebound",
+                "permission_denied",
+            ),
+            (
+                "resource_exhausted: lifecycle receipt ledger full",
+                "resource_exhausted",
+            ),
+            ("conflict: operation intent differs", "conflict"),
+            ("invalid_argument: detail", "invalid_argument"),
+            ("unauthenticated: detail", "unauthenticated"),
+            ("unavailable: lifecycle receipt missing", "unavailable"),
+            ("permission_denied", "permission_denied"),
+            // Unknown text and codes that are not followed by `: ` fail closed
+            // to the retryable catch-all, never to a guessed code.
+            ("WAL already owned: would block", "unavailable"),
+            ("permission_denied_extra: detail", "unavailable"),
+            ("conflicting journal publication", "unavailable"),
+        ] {
+            assert_eq!(wire(text), code, "{text}");
+        }
     }
 }

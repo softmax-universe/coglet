@@ -444,6 +444,32 @@ impl Env {
         self.serve.abort();
         let _ = (&mut self.serve).await;
         drop(self.handler.take());
+        // The retired handler's coordinator may outlive this point if the
+        // Session's aborted per-request tasks still own a handler clone, and
+        // it holds the WAL's exclusive lock until it is dropped. Observe the
+        // OS lock itself before the new handler can receive a request. Only
+        // exact lock contention is waited out; any other recovery error fails
+        // immediately.
+        let wal = self
+            .config
+            .wal_root
+            .join(coglet_runtime::digest(self.coglet.as_bytes()))
+            .join("state.wal");
+        if wal.is_file() {
+            tokio::time::timeout(Duration::from_secs(5), async {
+                loop {
+                    match coglet_runtime::DurableStore::open(&wal) {
+                        Ok(probe) => break drop(probe),
+                        Err(e) if e.starts_with("WAL already owned:") => {
+                            tokio::task::yield_now().await
+                        }
+                        Err(e) => panic!("WAL recovery failed: {e}"),
+                    }
+                }
+            })
+            .await
+            .expect("retired handler releases the WAL lock");
+        }
         let handler = DeviceHandler::new(
             self.config.clone(),
             Authority::open(self.root.join("authority.sqlite")).unwrap(),

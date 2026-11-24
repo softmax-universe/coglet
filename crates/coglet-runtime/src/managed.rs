@@ -2,6 +2,9 @@
 //! local grants; this module owns the serialized runtime/WAL boundary only.
 use super::*;
 
+/// Retained start/stop receipts. Entries are never evicted.
+const OPERATION_LEDGER: usize = 4096;
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ManagedState {
@@ -59,7 +62,7 @@ impl ManagedState {
                 return Err("invalid recovered lifecycle operation receipt".into());
             }
         }
-        if self.operations.len() > 4096 {
+        if self.operations.len() > OPERATION_LEDGER {
             return Err("invalid recovered lifecycle receipt bound".into());
         }
         Ok(())
@@ -151,6 +154,13 @@ impl RuntimeService {
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
             );
         }
+        // The last ledger slot is reserved for a stop, so the fence stays
+        // reachable and recorded when the ledger fills. No start of any kind
+        // is admitted past that point: entries are never evicted, and a start
+        // without a ledger entry could be reversed by a replayed stop.
+        if self.state.managed.as_ref().unwrap().operations.len() >= OPERATION_LEDGER - 1 {
+            return Err("resource_exhausted: lifecycle receipt ledger full".into());
+        }
         let mut next = self.state.clone();
         if next.managed.as_ref().unwrap().cancellation_pending {
             let now = next
@@ -228,7 +238,7 @@ impl RuntimeService {
                 Err("conflict: operation intent differs".into())
             };
         }
-        if managed.operations.len() >= 4096 {
+        if managed.operations.len() >= OPERATION_LEDGER {
             return Err("resource_exhausted: lifecycle receipt ledger full".into());
         }
         Ok(None)
@@ -259,6 +269,15 @@ impl RuntimeService {
         Err("unavailable: lifecycle receipt missing".into())
     }
 
+    fn last_step(state: &ServiceState) -> u64 {
+        state
+            .runtime
+            .records
+            .last()
+            .and_then(|r| r["step"].as_u64())
+            .unwrap_or(0)
+    }
+
     fn record_operation(
         next: &mut ServiceState,
         operation: Option<(&str, &str)>,
@@ -267,14 +286,12 @@ impl RuntimeService {
         let Some((id, intent)) = operation else {
             return Ok(());
         };
-        let step = next
-            .runtime
-            .records
-            .last()
-            .and_then(|r| r["step"].as_u64())
-            .unwrap_or(0);
+        let step = Self::last_step(next);
+        // A failed receipt carries no step (`hub-receipt-failed`). With a step
+        // it would not validate, and the `?` below would return before the
+        // stopped fence and this receipt were committed.
         let receipt = json!({"operation_id":id,"state":if error.is_some() {"failed"} else {"applied"},
-            "step":step,"error":error.map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false}))});
+            "step":if error.is_some() { Value::Null } else { json!(step) },"error":error.map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false}))});
         validate("hub-mutation-receipt", &receipt)?;
         next.managed
             .as_mut()
@@ -358,5 +375,201 @@ impl RuntimeService {
         }
         next.managed.as_mut().unwrap().cancellation_pending = false;
         Ok(())
+    }
+}
+
+#[cfg(all(test, feature = "device"))]
+mod tests {
+    use super::*;
+
+    fn setup() -> Value {
+        fixture("no-effects")
+    }
+
+    fn fixture(name: &str) -> Value {
+        let cases: Value =
+            serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+        let mut setup = cases
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["name"] == name)
+            .unwrap()["steps"][0]["send"]
+            .clone();
+        setup["initial_files"]
+            .as_object_mut()
+            .unwrap()
+            .retain(|p, _| !p.starts_with("/data/"));
+        setup
+    }
+
+    fn fill_ledger_to(service: &mut RuntimeService, len: usize) {
+        let operations = &mut service.state.managed.as_mut().unwrap().operations;
+        for n in 0.. {
+            if operations.len() >= len {
+                break;
+            }
+            let id = format!("{n:032x}");
+            let receipt = json!({"operation_id":id,"state":"applied","step":0,"error":null});
+            operations.insert(
+                id,
+                OperationReceipt {
+                    intent: "b".repeat(64),
+                    receipt,
+                },
+            );
+        }
+        assert_eq!(operations.len(), len);
+    }
+
+    #[test]
+    fn last_operation_ledger_slot_is_reserved_for_a_recorded_stop() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let setup = setup();
+        let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
+
+        // The last start that fits leaves exactly the reserved slot.
+        fill_ledger_to(&mut service, OPERATION_LEDGER - 2);
+        let start_id = "2".repeat(32);
+        let start = service
+            .managed_operation(&start_id, &"a".repeat(64), true, 0)
+            .unwrap();
+        assert_eq!(start["state"], "applied");
+        assert!(service.managed_running());
+        let len = |s: &RuntimeService| s.state.managed.as_ref().unwrap().operations.len();
+        assert_eq!(len(&service), OPERATION_LEDGER - 1);
+
+        // The stop takes the reserved slot and is recorded like any other.
+        let stop_id = "4".repeat(32);
+        let stopped = service
+            .managed_operation(&stop_id, &"d".repeat(64), false, 7)
+            .unwrap();
+        assert_eq!(
+            stopped,
+            json!({"operation_id":stop_id,"state":"applied","step":0,"error":null})
+        );
+        assert!(!service.managed_running());
+        assert_eq!(len(&service), OPERATION_LEDGER);
+
+        // No start of any kind is admitted any more, so nothing can run again
+        // for a replayed stop to reverse. Nothing is evicted.
+        let refused = service
+            .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
+            .unwrap_err();
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        let refused = service.managed_start().unwrap_err();
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        let refused = service
+            .managed_operation(&"6".repeat(32), &"d".repeat(64), false, 8)
+            .unwrap_err();
+        assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        assert!(!service.managed_running());
+        assert_eq!(len(&service), OPERATION_LEDGER);
+
+        // Recorded IDs keep original-receipt and conflict semantics when full,
+        // across a real WAL reopen.
+        drop(service);
+        let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+        assert_eq!(service.managed_status()["state"], "stopped");
+        assert_eq!(
+            service
+                .managed_operation(&stop_id, &"d".repeat(64), false, 9)
+                .unwrap(),
+            stopped
+        );
+        assert_eq!(
+            service
+                .managed_operation(&start_id, &"a".repeat(64), true, 0)
+                .unwrap(),
+            start
+        );
+        for (id, intent) in [(&stop_id, "e"), (&start_id, "e"), (&"1".repeat(32), "e")] {
+            let conflict = service
+                .managed_operation(id, &intent.repeat(64), false, 0)
+                .unwrap_err();
+            assert!(conflict.starts_with("conflict:"), "{conflict}");
+        }
+        assert!(!service.managed_running());
+    }
+
+    #[test]
+    fn start_is_refused_once_only_the_reserved_stop_slot_is_left() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let mut service = RuntimeService::open(&path, &setup(), 8).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
+        fill_ledger_to(&mut service, OPERATION_LEDGER - 1);
+        for refused in [
+            service
+                .managed_operation(&"3".repeat(32), &"c".repeat(64), true, 0)
+                .unwrap_err(),
+            service.managed_start().unwrap_err(),
+        ] {
+            assert!(refused.starts_with("resource_exhausted:"), "{refused}");
+        }
+        assert!(!service.managed_running());
+        assert_eq!(
+            service.state.managed.as_ref().unwrap().operations.len(),
+            OPERATION_LEDGER - 1
+        );
+    }
+
+    #[test]
+    fn failed_stop_is_fenced_recorded_and_replayed_as_the_original_receipt() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let setup = fixture("action");
+        // A one-entry queue makes the stop's cancellation fail under pressure.
+        let mut service = RuntimeService::open(&path, &setup, 1).unwrap();
+        let identity = json!({"initial":{"statement":{"new":"a".repeat(40)}}});
+        service.managed_install(&identity, &"1".repeat(32)).unwrap();
+        service
+            .managed_operation(&"2".repeat(32), &"a".repeat(64), true, 0)
+            .unwrap();
+        let event = setup["inputs"]["events"][0].clone();
+        service.enqueue(event.clone()).unwrap();
+        service
+            .run_next(
+                &setup["inputs"],
+                &mut MockEngine::new(setup["guest_script"].clone()),
+            )
+            .unwrap()
+            .unwrap();
+        let mut later = event;
+        later["seq"] = json!(later["seq"].as_u64().unwrap() + 1);
+        service.enqueue(later).unwrap();
+
+        let stop_id = "4".repeat(32);
+        let failed = service
+            .managed_operation(&stop_id, &"d".repeat(64), false, 100)
+            .unwrap();
+        validate("hub-mutation-receipt", &failed).unwrap();
+        assert_eq!(failed["operation_id"], stop_id);
+        assert_eq!(failed["state"], "failed");
+        assert_eq!(failed["step"], Value::Null);
+        assert_eq!(failed["error"]["code"], "unavailable");
+        assert!(!service.managed_running());
+
+        // The fence and the failed receipt are in the WAL: after a reopen the
+        // retry is a replay of the original receipt, and changed intent on
+        // the same ID conflicts.
+        drop(service);
+        let mut service = RuntimeService::open(&path, &setup, 1).unwrap();
+        assert_eq!(service.managed_status()["state"], "stopped");
+        assert_eq!(
+            service
+                .managed_operation(&stop_id, &"d".repeat(64), false, 200)
+                .unwrap(),
+            failed
+        );
+        let conflict = service
+            .managed_operation(&stop_id, &"e".repeat(64), false, 200)
+            .unwrap_err();
+        assert!(conflict.starts_with("conflict:"), "{conflict}");
+        assert!(!service.managed_running());
     }
 }
