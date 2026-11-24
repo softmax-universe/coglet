@@ -3,6 +3,53 @@ import Security
 
 public enum HubError: Error { case storage, identity, pairing, unavailable }
 
+public enum HubKeyAccessibility: Equatable, Sendable {
+    case afterFirstUnlockThisDeviceOnly
+    public var secAttr: CFString {
+        switch self {
+        case .afterFirstUnlockThisDeviceOnly: return kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        }
+    }
+}
+
+@MainActor
+public protocol HubKeychain: AnyObject {
+    func read(service: String) throws -> Data?
+    func add(_ data: Data, service: String, accessibility: HubKeyAccessibility) throws
+    func delete(service: String) throws
+}
+
+@MainActor
+public final class SecurityHubKeychain: HubKeychain {
+    public init() {}
+    private func query(_ service: String) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: service, kSecAttrAccount as String: "iroh-device",
+         kSecAttrSynchronizable as String: false]
+    }
+    public func read(service: String) throws -> Data? {
+        var q = query(service)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(q as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data else { throw HubError.storage }
+        return data
+    }
+    public func add(_ data: Data, service: String, accessibility: HubKeyAccessibility) throws {
+        var q = query(service)
+        q[kSecValueData as String] = data
+        q[kSecAttrAccessible as String] = accessibility.secAttr
+        // Add-only: a race cannot overwrite another identity.
+        guard SecItemAdd(q as CFDictionary, nil) == errSecSuccess else { throw HubError.storage }
+    }
+    public func delete(service: String) throws {
+        let status = SecItemDelete(query(service) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw HubError.storage }
+    }
+}
+
 @MainActor
 public protocol HubStore {
     func loadKey() throws -> Data?
@@ -48,36 +95,17 @@ public final class HubAccount {
 public final class KeychainHubStore: HubStore {
     private let service: String
     private let defaults: UserDefaults
+    private let keychain: any HubKeychain
     private let configKey: String
-    public init(service: String = "com.softmax.mac.hub", defaults: UserDefaults = .standard) {
-        self.service = service; self.defaults = defaults; self.configKey = service + ".configuration"
+    public init(service: String = "com.softmax.mac.hub", defaults: UserDefaults = .standard, keychain: any HubKeychain = SecurityHubKeychain()) {
+        self.service = service; self.defaults = defaults; self.keychain = keychain
+        self.configKey = service + ".configuration"
     }
-    private var query: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service, kSecAttrAccount as String: "iroh-device",
-         kSecAttrSynchronizable as String: false]
-    }
-    public func loadKey() throws -> Data? {
-        var q = query
-        q[kSecReturnData as String] = true
-        q[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(q as CFDictionary, &result)
-        if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data else { throw HubError.storage }
-        return data
-    }
+    public func loadKey() throws -> Data? { try keychain.read(service: service) }
     public func saveKey(_ value: Data) throws {
-        var q = query
-        q[kSecValueData as String] = value
-        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        // Add-only: a race cannot overwrite another identity.
-        guard SecItemAdd(q as CFDictionary, nil) == errSecSuccess else { throw HubError.storage }
+        try keychain.add(value, service: service, accessibility: .afterFirstUnlockThisDeviceOnly)
     }
-    public func deleteKey() throws {
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw HubError.storage }
-    }
+    public func deleteKey() throws { try keychain.delete(service: service) }
     public func loadHub() throws -> HubPairing? {
         guard let data = defaults.data(forKey: configKey) else { return nil }
         do { return try HubPairing.parse(String(decoding: data, as: UTF8.self)).withoutInvite }

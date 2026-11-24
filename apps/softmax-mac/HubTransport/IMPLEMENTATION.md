@@ -21,6 +21,13 @@ App transport is `HubTransport/`, an isolated Cargo package to avoid root worksp
 5. Add real native `HubConnectionTests` using production helper plus `coglet-mock --example hub DEVICE_NODE_ID` launcher. Assert connected, force drop, observe offline, then auto-recover same identity with null invite. Existing initial tests cover fake keychain/restart/failure, controller reconnect and late callbacks.
 6. Build universal helper, copy it into app bundle on project build, sign inside-out in dev path (release script already recursively signs Mach-O). Minimal workflow steps build helper/mock launcher and set test executable paths. Require native test execution, not skip-only success.
 
+## Continuation 3 (partial, not acceptance)
+
+- Native run45339491432@95819e4 confirmed intended missing HubKeychain/HubKeyAccessibility and extra `keychain:` argument RED. Unrelated snapshot "missing actual" ran after the compile failure (`if: !cancelled`) and is not RED.
+- Implemented HubKeychain protocol, HubKeyAccessibility.afterFirstUnlockThisDeviceOnly, SecurityHubKeychain (generic password, device-only accessibility, add-only), and KeychainHubStore(keychain:).
+- Capped reconnect delay including jitter at 30s. Early workflow filter now includes HubKeychainTests.
+- ProcessHubLink remains from 3e7466b. No UI/signing/universal packaging yet. No native GREEN claimed until hosted Swift runs.
+
 ## Continuation 2 (partial, not acceptance)
 
 - Actual macOS run45337370014 confirmed intended missing HubStore/HubPairing/HubLink RED before Swift implementation.
