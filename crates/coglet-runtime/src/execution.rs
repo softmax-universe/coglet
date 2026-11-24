@@ -16,10 +16,14 @@ mod live_heard;
 pub mod native_engine;
 #[path = "playback.rs"]
 mod playback;
+#[path = "recovery.rs"]
+mod recovery;
 #[path = "speech_temporal.rs"]
 mod speech_temporal;
 #[path = "surface_events.rs"]
 mod surface_events;
+#[path = "trace.rs"]
+mod trace;
 
 /// Engine implementations must start a fresh instance for every attempt. This
 /// fixture seam also adapts the shared Engine API through opt-in NativeEngine.
@@ -27,7 +31,42 @@ pub trait Engine {
     fn metadata(&self) -> Option<Value> {
         None
     }
+    /// Refuse an input before guest entry. Must not execute guest code or
+    /// mutate host state. Returning Err here leaves the batch safely retryable.
+    fn admit(&mut self, _inputs: &Value, _host: &StepHost) -> Result<()> {
+        Ok(())
+    }
+    /// Once entered, Err means unknown outcome/usage, NOT admission refusal.
+    /// Known guest failures must return an observed EngineReport instead.
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport>;
+}
+
+/// Persist entry intent before invoking an engine. A crash or unreportable
+/// engine error retains this fence; only the complete atomic attempt commit
+/// clears it. No automatic replay or invented zero-usage failure is safe.
+struct DurableAttempt<'a, E> {
+    engine: &'a mut E,
+    store: &'a mut DurableStore,
+    before: &'a ServiceState,
+    entered: Option<Value>,
+}
+impl<E: Engine> Engine for DurableAttempt<'_, E> {
+    fn metadata(&self) -> Option<Value> {
+        self.engine.metadata()
+    }
+    fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
+        self.engine.admit(inputs, host)
+    }
+    fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
+        let mut intent = self.before.clone();
+        intent.runtime.unresolved_attempt = Some(inputs.clone());
+        self.store.commit(
+            &serde_json::to_value(intent).map_err(|e| e.to_string())?,
+            None,
+        )?;
+        self.entered = Some(inputs.clone());
+        self.engine.execute(inputs, host)
+    }
 }
 
 pub struct EngineReport {
@@ -39,6 +78,8 @@ pub struct EngineReport {
 struct ServiceState {
     runtime: Runtime,
     router: Router,
+    #[serde(default)]
+    completed_segments: Vec<trace::CompletedSegment>,
     #[serde(default)]
     clock_anchor: Option<clock::ClockAnchor>,
     #[serde(default)]
@@ -78,8 +119,12 @@ impl RuntimeService {
         let mut store = DurableStore::open(path)?;
         let configured = Runtime::from_fixture(setup)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
-            let state: ServiceState =
+            let mut state: ServiceState =
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            state.router.validate_recovered()?;
+            let offset =
+                Self::validate_segments(&state, &configured.initial_setup, store.records())?;
+            state.runtime.records = store.records()[offset..].to_vec();
             let code_files = |runtime: &Runtime| {
                 runtime
                     .files
@@ -94,7 +139,9 @@ impl RuntimeService {
             {
                 return Err("recovery code/manifest pins differ from configuration".into());
             }
-            state.runtime.validate_recovered(store.records())?;
+            state
+                .runtime
+                .validate_recovered(&store.records()[offset..])?;
             Self::validate_dispatches(&state)?;
             state
                 .speech_temporal
@@ -104,17 +151,25 @@ impl RuntimeService {
                 derived.apply_boundary_changes(&staged.changes)?;
                 // Router sequences may already have been reserved after apply.
                 derived.next_source_seq = staged.runtime.next_source_seq;
+                // Attempt intent belongs to the coordinator, not the applied
+                // boundary snapshot. It cannot change any boundary bytes.
+                derived.unresolved_attempt = staged.runtime.unresolved_attempt.clone();
                 if serde_json::to_value(&derived).map_err(|e| e.to_string())?
                     != serde_json::to_value(&staged.runtime).map_err(|e| e.to_string())?
                 {
                     return Err("recovered staged boundary state mismatch".into());
                 }
             }
+            Self::validate_source_reservations(&state, &configured, store.records())?;
+            Self::validate_queued_wakes(&state)?;
+            Self::validate_private_events(&state)?;
+            Self::attempted_ordinals(&state)?;
             state
         } else {
-            let state = ServiceState {
+            let mut state = ServiceState {
                 runtime: configured,
                 router: Router::new(queue_capacity)?,
+                completed_segments: Vec::new(),
                 clock_anchor: None,
                 dispatch_order: Vec::new(),
                 dispatches: BTreeMap::new(),
@@ -125,6 +180,16 @@ impl RuntimeService {
                 speech_temporal: speech_temporal::SpeechTemporal::default(),
                 heard_pending: BTreeMap::new(),
             };
+            let messages = crate::boundary::inbox(&state.runtime.files)?;
+            for index in &state.runtime.inbox_wakes {
+                let message = &messages[*index as usize];
+                let seq = state.runtime.next_source_seq;
+                state.runtime.next_source_seq =
+                    seq.checked_add(1).ok_or("source sequence exhausted")?;
+                state.router.enqueue(json!({"source":state.runtime.manifest["id"],"kind":"runtime.inbox",
+                    "seq":seq,"logical_time":state.runtime.time,"payload":{"index":index,"id":message["id"]},
+                    "correlation_id":message["event"]["correlation_id"]}))?;
+            }
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
                 None,
@@ -176,9 +241,10 @@ impl RuntimeService {
         if !state.private_events.is_empty() || !state.heard_pending.is_empty() {
             state.heard_pending.clear();
             let revoked = std::mem::take(&mut state.private_events);
-            state
-                .router
-                .retain_ordinals(|ordinal| !revoked.contains_key(&ordinal));
+            let attempted = Self::attempted_ordinals(&state)?;
+            state.router.retain_ordinals(|ordinal| {
+                !revoked.contains_key(&ordinal) || attempted.contains(&ordinal)
+            });
             store.commit(
                 &serde_json::to_value(&state).map_err(|e| e.to_string())?,
                 None,
@@ -220,6 +286,11 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err(
+                "unresolved engine attempt; authoritative outcome recovery required".into(),
+            );
+        }
         if !self.store.is_healthy() {
             return Err("runtime requires recovery before guest delivery".into());
         }
@@ -263,7 +334,19 @@ impl RuntimeService {
         inputs["step"] = json!(next.runtime.step);
         inputs["previous"] = next.runtime.previous.clone();
         inputs["events"] = json!(events);
-        let result = next.runtime.step(&inputs, engine)?;
+        let mut attempt = DurableAttempt {
+            engine,
+            store: &mut self.store,
+            before: &self.state,
+            entered: None,
+        };
+        let result = next.runtime.step(&inputs, &mut attempt);
+        let entered = attempt.entered;
+        if let Some(inputs) = entered {
+            // Also retain the fence on post-engine validation/commit failures.
+            self.state.runtime.unresolved_attempt = Some(inputs);
+        }
+        let result = result?;
         for action in result["journal"]["actions"]
             .as_array()
             .ok_or("missing committed actions")?
@@ -285,6 +368,9 @@ impl RuntimeService {
     /// Atomically retain timer wake and shared source sequence before execution.
     /// A full router defers firing without discarding or reordering admitted input.
     pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err("timers deferred until attempt reconciliation".into());
+        }
         if now < self.state.runtime.time {
             return Err("runtime clock rollback".into());
         }
@@ -344,6 +430,9 @@ impl RuntimeService {
         logical_time: u64,
         changes: &[Value],
     ) -> Result<Value> {
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err("unresolved attempt prevents sealing".into());
+        }
         let old_count = crate::boundary::inbox(&self.state.runtime.files)?.len();
         let mut next = self.state.clone();
         let staged_count = next
@@ -440,6 +529,11 @@ impl Engine for MockEngine {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
+    initial_setup: Value,
+    #[serde(default)]
+    unresolved_attempt: Option<Value>,
+    #[serde(default)]
+    retained_blobs: serde_json::Map<String, Value>,
     files: Snapshot,
     manifest: Value,
     step: u64,
@@ -561,6 +655,11 @@ impl Runtime {
             }
         }
         Ok(Self {
+            initial_setup: json!({"manifest":setup["manifest"],"initial_files":setup["initial_files"],
+                "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
+                "initial_inbox_wakes":setup["initial_inbox_wakes"],"initial_timers":setup["initial_timers"],
+                "initial_llm_requests":setup["initial_llm_requests"]}),
+            retained_blobs: serde_json::Map::new(),
             files,
             manifest: setup["manifest"].clone(),
             step: 0,
@@ -572,6 +671,7 @@ impl Runtime {
             pending_llm,
             pending_timers,
             pending_actions,
+            unresolved_attempt: None,
             next_source_seq: 0,
             sealed: false,
             trace_id: None,
@@ -581,6 +681,11 @@ impl Runtime {
     /// Compute an attempted step. No dispatch occurs here. Integration with the
     /// durable store must commit returned state + record before external effects.
     pub fn step(&mut self, inputs: &Value, engine: &mut impl Engine) -> Result<Value> {
+        if self.unresolved_attempt.is_some() {
+            return Err(
+                "unresolved engine attempt; authoritative outcome recovery required".into(),
+            );
+        }
         let mut pinned_inputs = inputs.clone();
         if let Some(metadata) = engine.metadata() {
             pinned_inputs["engine"] = metadata;
@@ -684,6 +789,8 @@ impl Runtime {
             }
         }
         let mut host = StepHost::new(input.clone(), self.ledger.clone(), inputs);
+        engine.admit(inputs, &host)?;
+        self.unresolved_attempt = Some(inputs.clone());
         let mut report = engine.execute(inputs, &mut host)?;
         validate("usage", &report.usage)?;
         if report.failure.is_none() {
@@ -750,10 +857,30 @@ impl Runtime {
         self.time = time;
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
         self.records.push(record);
+        self.unresolved_attempt = None;
         Ok(result)
     }
 
     fn validate_recovered(&self, records: &[Value]) -> Result<()> {
+        for (hash, bytes) in &self.retained_blobs {
+            let raw = hex::decode(bytes.as_str().ok_or("invalid retained blob")?)
+                .map_err(|e| e.to_string())?;
+            if &digest(&raw) != hash {
+                return Err("retained blob digest mismatch".into());
+            }
+        }
+        let derived = Self::reconstruct(&self.initial_setup, records)?;
+        if self.files != derived.files
+            || self.manifest != derived.manifest
+            || self.ledger != derived.ledger
+            || self.inbox_wakes != derived.inbox_wakes
+            || self.pending_actions != derived.pending_actions
+            || self.pending_llm != derived.pending_llm
+            || self.pending_timers != derived.pending_timers
+            || self.next_source_seq < derived.next_source_seq
+        {
+            return Err("recovered host state differs from journal reconstruction".into());
+        }
         // Revalidate semantic host-state constraints; a valid WAL checksum does
         // not establish that decoded pending work or pins are self-consistent.
         Self::from_fixture(
@@ -869,6 +996,9 @@ impl Runtime {
         changes: &[Value],
     ) -> Result<Value> {
         validate("correlation-id", trace_id)?;
+        if self.unresolved_attempt.is_some() {
+            return Err("unresolved attempt prevents sealing".into());
+        }
         if self.trace_id.as_ref().is_some_and(|id| id != trace_id) {
             return Err("trace identity changed".into());
         }
@@ -915,6 +1045,13 @@ impl Runtime {
             if record["record_hash"] != digest(&cbor(&unhashed)?) {
                 return Err("replay record checksum mismatch".into());
             }
+            if is_step && record["status"] == "committed" {
+                for field in ["compute", "memory_pages", "host_bytes", "wall_time_us"] {
+                    if record["usage"][field].as_u64() > record["budgets"][field].as_u64() {
+                        return Err("replay committed record exceeds observed budget".into());
+                    }
+                }
+            }
             if !is_step {
                 let actual = candidate.seal_boundary(
                     &record["trace_id"],
@@ -944,9 +1081,24 @@ impl Runtime {
                 inputs.insert(key.into(), record[key].clone());
             }
             let result = candidate.step(&Value::Object(inputs), engine)?;
-            if result["journal"] != *record {
+            // Wall duration is a host observation, not deterministic guest
+            // state. Both executions independently enforced their wall limits.
+            // Compare every other field, including deterministic usage counters,
+            // effects, failure and snapshots; validate the ORIGINAL checksum
+            // above and retain its identity for the next recorded chain link.
+            let mut actual = result["journal"].clone();
+            let mut expected = record.clone();
+            for value in [&mut actual, &mut expected] {
+                value.as_object_mut().unwrap().remove("record_hash");
+                value["usage"]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("wall_time_us");
+            }
+            if actual != expected {
                 return Err(format!("replay mismatch at step {}", record["step"]));
             }
+            candidate.previous = record["record_hash"].clone();
             hashes.push(result["state_hash"].as_str().unwrap().into());
         }
         Ok(hashes)

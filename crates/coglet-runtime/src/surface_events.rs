@@ -11,6 +11,33 @@ pub(super) struct EventLease {
     pub(super) event: Value,
 }
 impl RuntimeService {
+    pub(super) fn validate_private_events(state: &ServiceState) -> Result<()> {
+        for (ordinal, lease) in &state.private_events {
+            let source = lease.event["source"]
+                .as_str()
+                .ok_or("private source missing")?;
+            let seq = lease.event["seq"].as_u64().ok_or("private seq missing")?;
+            let time = lease.event["logical_time"]
+                .as_u64()
+                .ok_or("private clock missing")?;
+            if source != lease.surface
+                || lease.epoch == 0
+                || lease.expires == 0
+                || state.surface_epochs.get(source) != Some(&lease.epoch)
+                || !state
+                    .router
+                    .entries()
+                    .any(|(n, e)| n == ordinal && e == &lease.event)
+                || state
+                    .surface_sequences
+                    .get(source)
+                    .is_none_or(|(s, t)| *s < seq || *t < time)
+            {
+                return Err("invalid recovered private lease/ordinal/event/epoch/highwater".into());
+            }
+        }
+        Ok(())
+    }
     pub(super) fn advance_surface_sequence(next: &mut ServiceState, event: &Value) -> Result<()> {
         let source = event["source"].as_str().ok_or("missing source")?;
         let seq = event["seq"].as_u64().ok_or("missing seq")?;
@@ -34,6 +61,9 @@ impl RuntimeService {
         event: &Value,
         now: u64,
     ) -> Result<Option<String>> {
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err("observations deferred until attempt reconciliation".into());
+        }
         validate("event", event)?;
         let kind = event["kind"].as_str().ok_or("missing event kind")?;
         if event["source"] != session.surface()
@@ -118,8 +148,9 @@ impl RuntimeService {
         for id in &revoked {
             next.private_events.remove(id);
         }
+        let attempted = Self::attempted_ordinals(&next)?;
         next.router
-            .retain_ordinals(|ordinal| !revoked.contains(&ordinal));
+            .retain_ordinals(|ordinal| !revoked.contains(&ordinal) || attempted.contains(&ordinal));
         self.commit_surface_state(next)
     }
     pub(super) fn expire_private_events(&mut self, now: u64) -> Result<()> {
@@ -141,8 +172,9 @@ impl RuntimeService {
         for id in &revoked {
             next.private_events.remove(id);
         }
+        let attempted = Self::attempted_ordinals(&next)?;
         next.router
-            .retain_ordinals(|ordinal| !revoked.contains(&ordinal));
+            .retain_ordinals(|ordinal| !revoked.contains(&ordinal) || attempted.contains(&ordinal));
         self.commit_surface_state(next)
     }
     fn commit_surface_state(&mut self, next: ServiceState) -> Result<()> {

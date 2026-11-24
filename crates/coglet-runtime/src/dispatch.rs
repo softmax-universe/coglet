@@ -118,6 +118,11 @@ impl RuntimeService {
                     continue;
                 }
             } else {
+                // Keep already prepared IDs reconcilable, but do not admit a
+                // new effect or materialize a terminal over an unknown attempt.
+                if self.state.runtime.unresolved_attempt.is_some() {
+                    continue;
+                }
                 let pending = self
                     .state
                     .staged_boundary
@@ -165,6 +170,9 @@ impl RuntimeService {
         self.commit_dispatch(next)
     }
     fn stage_terminal(next: &mut ServiceState, event: Value, now: u64) -> Result<()> {
+        if next.runtime.unresolved_attempt.is_some() {
+            return Err("terminal receipt deferred until attempt reconciliation".into());
+        }
         if next.runtime.sealed || now < next.runtime.time {
             return Err("cannot materialize terminal in sealed/past segment".into());
         }
@@ -245,6 +253,9 @@ impl RuntimeService {
                 return Err("dispatch requires explicit retention reconciliation".into());
             }
             return hex::decode(&saved.envelope_hex).map_err(|e| e.to_string());
+        }
+        if self.state.runtime.unresolved_attempt.is_some() {
+            return Err("new dispatch deferred until attempt reconciliation".into());
         }
         let intent = self
             .state
