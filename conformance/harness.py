@@ -111,7 +111,7 @@ def cases_for(root, suite):
 
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
-               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file'}
+               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line'}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -136,6 +136,11 @@ def validate_impl(impl):
         if not re.fullmatch('[0-9a-f]{64}', impl.get('endpoint', '')) or not impl.get('alpn'):
             raise ValueError('iroh requires endpoint hex and alpn')
     millis(impl.get('connect_timeout_ms', 5000))
+    if 'ready_line' in impl:
+        line = impl['ready_line']
+        if (transport != 'stdio' or not isinstance(line, str)
+                or not re.fullmatch(r'[\x20-\x7e]{1,128}', line)):
+            raise ValueError('ready_line requires stdio and 1..128 printable ASCII characters')
     roles = impl.get('peer_roles', ['runtime'])
     if not isinstance(roles, list) or not roles or any(not isinstance(s, str) or not NAME.fullmatch(s) for s in roles):
         raise ValueError('peer_roles must be a nonempty role array')
@@ -175,6 +180,7 @@ class Peer:
         self.writer = None
         self.stderr = bytearray()
         self.stderr_task = None
+        self.ready = None
 
     async def start(self):
         impl = self.impl
@@ -194,13 +200,30 @@ class Peer:
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             start_new_session=True, env=self.env)
         self.reader, self.writer = self.process.stdout, self.process.stdin
+        if 'ready_line' in impl:
+            self.ready = asyncio.get_running_loop().create_future()
         self.stderr_task = asyncio.create_task(self.drain_stderr())
+        if self.ready is not None:
+            await self.ready
 
     async def drain_stderr(self):
         assert self.process is not None and self.process.stderr is not None
+        pending = b''
+        marker = self.impl.get('ready_line', '').encode()
         while chunk := await self.process.stderr.read(4096):
             self.stderr.extend(chunk)
             del self.stderr[:-8192]
+            if self.ready is not None and not self.ready.done():
+                lines = (pending + chunk).split(b'\n')
+                if marker in lines[:-1]:
+                    self.ready.set_result(None)
+                # Bound memory, retaining an overflow sentinel so a long line's
+                # suffix cannot be mistaken for an exact readiness marker.
+                pending = lines[-1]
+                if len(pending) > 128:
+                    pending = b'\x00' + pending[-128:]
+        if self.ready is not None and not self.ready.done():
+            self.ready.set_exception(RuntimeError('adapter exited before readiness signal'))
 
     async def close(self):
         if self.writer:

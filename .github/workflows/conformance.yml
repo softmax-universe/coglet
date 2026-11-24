@@ -101,6 +101,12 @@ jobs:
       - name: Every registered implementation and claimed suite
         if: ${{ !cancelled() }}
         run: conformance/run --junit target/conformance-registered.xml
+      - name: Twenty consecutive full registered conformance runs
+        timeout-minutes: 15
+        run: |
+          for iteration in $(seq 1 20); do
+            conformance/run --junit "target/conformance-repeat-${iteration}.xml"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
