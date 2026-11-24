@@ -50,3 +50,9 @@ All eight settings-hub baseline PNGs were opened and inspected this run: light/d
 ## TDD provenance
 
 Rust initial library RED then real-iroh GREEN. Swift initial missing core API RED run45337370014; missing process bridge RED run45339321655; missing Keychain injection RED run45339491432. Production Swift six-test GREEN above. Linux worker has no Swift toolchain: native results are hosted evidence, never local execution.
+
+## Persistent-pipe readiness regression (continuation3)
+
+Actual native run45382448795 at f441b29 failed both the isolated helper-ready test and original integration at its initial deviceID wait (line20). Real helper/mock compilation succeeded. Replaced Foundation read(upToCount:4096) with a bounded4096-byte POSIX read, retrying EINTR; parser16KiB bound and generation fences are retained. Production commit e0c953981e5a19dc367fb67c20b7180808ca0f0d is published on PR98 and backup. Native GREEN candidate run45386256577 is in progress; fix effectiveness is not yet proven.
+
+Baseline gate now PASS: Design/hub-enrollment-baseline.md cites current mount/siblings/tokens. Opened normal light/dark Settings and onboarding-final PNGs; capture times unknown, publication provenance recorded and renders marked stale against newer source. No UI has changed. Native post-change rendering is still required. This baseline is documentation-only on the backup branch so the active native run is not canceled. Historical pending prerequisite notes above are superseded: all six prerequisite receipts reread DONE (PR12/48/58/74/101/114).
