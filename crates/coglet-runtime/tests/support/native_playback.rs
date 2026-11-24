@@ -64,7 +64,7 @@ fn exercise_playback(ffi: bool, name: &str, provider: bool) {
         operations.push("speech.heard");
     }
     l.send("grants",json!({"epoch":1,"entries":[{"coglet":C,"operations":operations,"resources":["audio.mic","audio.speaker"],"expires":100_000_000}],"correlation_id":"3".repeat(32)}));
-    assert_eq!(decode(&l.recv())["type"], "act");
+    assert_eq!(l.recv_until("act")["type"], "act");
     l.send(
         "accept",
         json!({"id":item,"correlation_id":"5".repeat(32),"accepted":true}),
@@ -115,8 +115,7 @@ fn exercise_playback(ffi: bool, name: &str, provider: bool) {
         seq += 1;
         l.send("event",json!({"source":S,"seq":seq,"logical_time":1200+seq,"kind":kind,"payload":payload,"correlation_id":"6".repeat(32)}));
         if provider && matches!(kind, "speech.position" | "speech.barge_in") && index != 6 {
-            let read = decode(&l.recv());
-            assert_eq!(read["type"], "read");
+            let read = l.recv_until("read");
             assert_eq!(read["body"]["args"]["item"], item);
             l.send("read_reply",json!({"correlation_id":read["body"]["correlation_id"],"ok":true,"snapshot":seq,"value":{"item":item,"played_ms":payload["played_ms"],"text":"heard"}}));
         }
@@ -125,7 +124,7 @@ fn exercise_playback(ffi: bool, name: &str, provider: bool) {
         "health",
         json!({"state":"ready","clock":1500,"pending":0,"correlation_id":"9".repeat(32)}),
     );
-    assert_eq!(decode(&l.recv())["type"], "health");
+    assert_eq!(l.recv_until("health")["type"], "health");
     if !ffi {
         host.stop();
     }

@@ -1,4 +1,6 @@
 //! Product-neutral runtime. Guest code never receives native surface handles.
+mod admission;
+pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
 mod execution;
