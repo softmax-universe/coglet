@@ -17,6 +17,7 @@ use std::{
 mod admission;
 mod catalog;
 mod coordinator;
+mod dispatch;
 mod maintenance;
 mod outbox;
 mod protocol;
@@ -29,7 +30,7 @@ pub use maintenance::{
     ArchivedDecision, CodeRange, CompatibilityFloor, Migration, OperatorApproval, RecoveryBundle,
     RestoreReport, RestoreVerifier, Snapshot,
 };
-pub use outbox::{Enqueued, Intent};
+pub use outbox::{Enqueued, Intent, OutboxRecord, OutboxState, WorkQueueRow};
 pub use protocol::{CallResult, HostBudget};
 
 pub type Result<T> = std::result::Result<T, String>;

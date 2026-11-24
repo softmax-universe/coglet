@@ -30,6 +30,12 @@ This branch is **not Phase 2 acceptance** and is not a deployment. Phase 1's
   format. Replies accept the existing provider `output.text` JSON or a scripted
   `output.decisions_json`. The gateway test uses `crates/coglet-llm` and the real
   `coglet-mock::llm::MockLlm`, without provider network access or paid calls.
+- Host-fenced outbox API on `coglet-db` (`claim_pending_outbox`,
+  `reconcile_inflight_outbox`, `record_outbox_state`, work_queue put/expire).
+  No arbitrary SQL closure is public. `coglets/factory/host` is a replaceable
+  Hermes Kanban adapter plus dispatcher: claim/lease/retry/cancel/progress go
+  through the adapter trait; CI uses `MockAdapter`. Idempotency keys are stable
+  across uncertain retry. Worker results become later Factory events.
 
 ## Invocation and policy
 
@@ -49,8 +55,8 @@ introduced. No schema migration is added.
 ## Verification so far
 
 ```sh
-CARGO_TARGET_DIR=target cargo test --manifest-path coglets/factory/Cargo.toml --locked -j2
-CARGO_TARGET_DIR=target cargo clippy --manifest-path coglets/factory/Cargo.toml --locked --all-targets -j2 -- -D warnings
+CARGO_TARGET_DIR=target cargo test --workspace --manifest-path coglets/factory/Cargo.toml --locked -j2
+CARGO_TARGET_DIR=target cargo clippy --workspace --manifest-path coglets/factory/Cargo.toml --locked --all-targets -j2 -- -D warnings
 CARGO_TARGET_DIR=target/factory RUSTFLAGS='-C link-arg=--max-memory=16777216' \
   cargo build --manifest-path coglets/factory/Cargo.toml --locked \
   --target wasm32-unknown-unknown --release -j2
@@ -64,18 +70,11 @@ also be exercised with executive events before final acceptance.
 
 ## Still required before merge
 
-1. Fenced host outbox dispatch API and host dispatcher: durable claim, stable
-   retries, uncertain result reconciliation and immutable later result events.
-2. Replaceable Hermes Kanban API adapter plus mock: create/claim/lease/retry,
-   cancellation, progress and attempt fencing. No Hermes internal table access.
-3. Use the existing dedicated work_queue for operational scheduling; currently
-   this WIP keeps task operational markers in object data. This is not the final
-   scheduling representation.
-4. Complete runtime/Wasm end-to-end failed-experiment proof through dispatch and
-   a later result event, all named acceptance tests (including
-   `dispatch_retry_same_idempotency_key` and `backlog_completes_after_restart`),
-   large-backlog/call-boundary and cancellation/stale-attempt negative controls.
-5. Full owned qualification script, green exact-head required hosted CI,
+1. Actual runtime/Wasm executive events and journal/crash proof (not only
+   transaction/reopen unit tests and host-dispatcher SQLite tests). Diagnose
+   `real_wamr_runs_actual_factory_guest_end_to_end` compile/run cost; never waive.
+2. Guest writes onto `work_queue` (host dispatcher maintains it today).
+3. Full owned qualification script, green exact-head required hosted CI,
    independent final review, and merge queue landing. No waiver is claimed.
 
 The short reasoning review performed during implementation is not ship approval.
