@@ -42,6 +42,8 @@ with nonnegative integral microseconds. Acknowledgements contain `time` and
 its actual dispatch and output flush. The harness drains wire output concurrently
 and waits for the ack's byte watermark before deciding silence or advancing time;
 a control ack alone does not prove wire delivery across separate channels.
+Silence also retains the original bounded wire-read probe, with logical time
+frozen: an already-satisfied byte count cannot certify that stdout is still open.
 Malformed, retrograde, oversized or inconsistent controls fail closed.
 
 Runner operations retain ADR-0021's 3-second I/O watchdog and the existing

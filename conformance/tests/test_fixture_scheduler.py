@@ -6,7 +6,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from harness import BufferedOutput, Peer, validate_impl
+from harness import BufferedOutput, Peer, run_case, validate_impl
 
 
 class SchedulerTests(unittest.IsolatedAsyncioTestCase):
@@ -81,6 +81,23 @@ class SchedulerTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(options=options), self.assertRaises(ValueError):
                 validate_impl(dict(base, **options))
         validate_impl(dict(base, fixture_clock=True, fixture_scheduler=True))
+
+    async def test_real_child_stdout_eof_before_silence_ack_is_failure(self):
+        child = '''
+import json, os, socket
+s = socket.socket(socket.AF_UNIX)
+s.connect(os.environ['COGLET_FIXTURE_CLOCK_SOCKET'])
+for line in s.makefile('rb'):
+    target = next(iter(json.loads(line).values()))
+    if target > 0:
+        os.close(1)  # EOF precedes control ACK; the clock channel stays live.
+    s.sendall(json.dumps({'time': target, 'bytes': 0}).encode() + b'\\n')
+'''
+        impl = dict(name='closed-wire', suites=['test'], transport='stdio',
+                    command=[sys.executable, '-c', child], fixture_clock=True, fixture_scheduler=True)
+        result = await run_case(impl, 'test', dict(name='silence-eof', steps=[{'silence_ms': 25}]))
+        self.assertIsNotNone(result[3], result)
+        self.assertRegex(result[3], 'EOFError|IncompleteReadError')
 
 
 if __name__ == '__main__':

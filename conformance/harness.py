@@ -506,7 +506,9 @@ async def timeline(peer, case):
                         raise EOFError('fixture output ended during silence')
                     if peer.reader.buffer:
                         raise AssertionError('unexpected bytes during silence')
-                    continue
+                    # A satisfied byte watermark does not synchronize EOF on
+                    # the other channel. Retain the ordinary bounded wire probe
+                    # as well; logical time stays frozen during this wait.
                 try:
                     await asyncio.wait_for(peer.reader.readexactly(1), millis(step['silence_ms']))
                 except asyncio.TimeoutError:
