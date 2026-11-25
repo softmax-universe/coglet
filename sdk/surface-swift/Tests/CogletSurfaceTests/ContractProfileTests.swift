@@ -6,8 +6,9 @@ import CogletTypes
 final class ContractProfileTests: XCTestCase {
     final class Store: SurfaceLedgerStore {
         var bytes = try! CBORCodec.encodeProfile(.map([]))
+        var onSave: (() -> Void)?
         func load() throws -> [UInt8] { bytes }
-        func save(_ bytes: [UInt8]) throws { self.bytes = bytes }
+        func save(_ bytes: [UInt8]) throws { self.bytes = bytes; onSave?() }
     }
     final class Backend: SurfaceNativeBackend {
         var calls = 0
@@ -127,6 +128,24 @@ final class ContractProfileTests: XCTestCase {
         XCTAssertThrowsError(try selected.receive(SurfaceWire.encode(read, from: .runtime)))
         XCTAssertEqual(try CBORCodec.decodeProfile(store.bytes)["contract_profile"], .text("surface-0.2"))
         XCTAssertEqual(try CBORCodec.decodeProfile(store.bytes)["catalog_pin"], .text(cat.pin))
+    }
+
+    func testEventGrantExpiryDuringDurableSequenceCommitCannotPublish() throws {
+        final class Clock { var now: UInt64 = 10 }
+        let clock = Clock(), cat = try catalog(), store = Store(), backend = Backend()
+        let selected = try SurfaceSession(identity: "surface:" + String(repeating: "a", count: 64), boundCoglets: [owner],
+            operations: cat.operations, store: store, backend: backend, contractProfile: .surface02, trustedCatalog: cat,
+            initialGrants: [.init(coglet: owner, operations: Set(cat.operations.map(\.name)), resources: ["softmax.app_control"], expires: 100)],
+            clock: { clock.now }, correlation: { self.id })
+        _ = try negotiate(selected, version: "0.2")
+        let token = try selected.openExtensionObservationSession(owner: owner, operation: "softmax.app.view_changed", epoch: selected.grantEpoch)
+        store.onSave = { clock.now = 100 }
+        XCTAssertThrowsError(try selected.publishExtensionObservation(token, payload: .map([])))
+        XCTAssertTrue(selected.drain().isEmpty)
+        XCTAssertFalse(selected.extensionObservationIsCurrent(token))
+        XCTAssertEqual(try CBORCodec.decodeProfile(store.bytes)["sequence"], .unsigned(1)) // consumed gap, not rolled back
+        store.onSave = nil
+        try selected.close()
     }
 
     func testOperationChannelsCoexistWithSpeechAndShareDurableSequence() throws {

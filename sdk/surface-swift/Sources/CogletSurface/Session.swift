@@ -232,13 +232,24 @@ public final class SurfaceSession {
             let now = try sample()
             let binding = sessionOperations[token.operation]!
             try authorize(owner: token.owner, operation: binding, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+            guard try CBORCodec.encodeProfile(payload).count <= 262_144 else { throw SurfaceFailure.exhausted }
             try check(binding, output: false, value: payload)
             if let read = try trustedCatalog?.selectedRead(operation: token.operation, value: payload) {
                 guard let selected = sessionOperations[read], selected.direction == .read else { throw NativeSurfaceError("permission_denied") }
                 try authorize(owner: token.owner, operation: selected, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
             }
             try emitEvent(kind: token.operation, payload: payload, correlationID: correlation(), now: now,
-                observationOwner: token.owner, extensionOperation: token.operation)
+                observationOwner: token.owner, extensionOperation: token.operation, beforeEmit: {
+                    let publicationTime = try self.sample()
+                    guard self.extensionObservationIsCurrent(token) else { throw NativeSurfaceError("permission_denied") }
+                    try self.authorize(owner: token.owner, operation: binding, epoch: token.epoch,
+                        deadline: publicationTime == UInt64.max ? publicationTime : publicationTime + 1, now: publicationTime)
+                    if let read = try self.trustedCatalog?.selectedRead(operation: token.operation, value: payload) {
+                        guard let selected = self.sessionOperations[read] else { throw NativeSurfaceError("permission_denied") }
+                        try self.authorize(owner: token.owner, operation: selected, epoch: token.epoch,
+                            deadline: publicationTime == UInt64.max ? publicationTime : publicationTime + 1, now: publicationTime)
+                    }
+                })
         }
         return true
     }
@@ -508,6 +519,7 @@ public final class SurfaceSession {
             catch { throw NativeSurfaceError("invalid_argument") }
             let value = try backend.read(operation: name, args: body["args"]!, owner: owner, now: now)
             try check(operation, output: true, value: value)
+            try authorize(owner: owner, operation: operation, epoch: body["grant_epoch"]!.uintValue!, deadline: body["deadline"]!.uintValue!, now: sample())
             if name == "speech.heard", value["item"] != body["args"]?["item"] {
                 throw SurfaceFailure.protocolViolation("heard result item does not match retained query")
             }
@@ -598,10 +610,11 @@ public final class SurfaceSession {
     private func emitOutcome(_ outcome: CBORValue, now: UInt64) throws {
         try emitEvent(kind: "action.outcome", payload: outcome, correlationID: outcome["correlation_id"]!.textValue!, now: now)
     }
-    private func emitEvent(kind: String, payload: CBORValue, correlationID: String, now: UInt64, observationOwner: String? = nil, extensionOperation: String? = nil) throws {
+    private func emitEvent(kind: String, payload: CBORValue, correlationID: String, now: UInt64, observationOwner: String? = nil, extensionOperation: String? = nil, beforeEmit: (() throws -> Void)? = nil) throws {
         guard ledger.sequence < UInt64.max else { throw SurfaceFailure.exhausted }
         let seq = ledger.sequence; ledger.sequence += 1
         try ledger.save()
+        try beforeEmit?()
         try emit(.message("event", .record([("source", .text(ledger.identity)), ("kind", .text(kind)),
             ("seq", .unsigned(seq)), ("logical_time", .unsigned(now)), ("payload", payload),
             ("correlation_id", .text(correlationID))])), observationOwner: observationOwner, extensionOperation: extensionOperation)
