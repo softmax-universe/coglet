@@ -13,6 +13,7 @@ use serde_json::json;
 
 const TASK: &str = "11111111111111111111111111111111";
 mod goals;
+mod research;
 struct TestHost {
     db: Connection,
     staged: Vec<LlmRequest>,
