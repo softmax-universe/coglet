@@ -72,6 +72,18 @@ pub trait HermesAdapter {
         until: u64,
         attempt: u64,
     ) -> Result<Lease, AdapterError>;
+    /// Recover an uncertain grant from authoritative evidence before repeating it.
+    /// None means proven absent (or an adapter with idempotent claim replay).
+    /// An expired recovered lease retains only result correlation, not authority.
+    fn recover_claim(
+        &mut self,
+        _remote_id: &str,
+        _owner: &str,
+        _until: u64,
+        _attempt: u64,
+    ) -> Result<Option<Lease>, AdapterError> {
+        Ok(None)
+    }
     /// Revalidate/renew a durably saved token after a crash, without obtaining a new claim.
     fn restore_lease(
         &mut self,

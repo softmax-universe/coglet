@@ -567,6 +567,171 @@ fn factory_dispatch_crash_reconciles_exactly_once() {
 }
 
 #[test]
+fn lost_grant_reply_then_remote_completion_recovers() {
+    for terminal in [false, true] {
+        for expired in [false, true] {
+            let (root, mut db) = seed();
+            let server = ContractKanbanServer::spawn();
+            server.lose_next_grant_reply();
+            let mut host = FactoryHost::from_adapter(server.adapter());
+            host.run(&mut db, 10).unwrap();
+            let remote = db.get_binding(KEY).unwrap().unwrap();
+            assert_eq!(
+                db.get_binding_record(KEY).unwrap().unwrap().phase,
+                "claiming"
+            );
+            assert!(db.get_work_queue(TASK).unwrap().is_none());
+            if expired {
+                server.expire_lease(&remote);
+            }
+            if terminal {
+                server.post_result(&remote, true, "lost grant reply result");
+            }
+            drop((host, db));
+            let mut db = Database::open(root.path(), OWNER).unwrap();
+            let mut host = FactoryHost::from_adapter(server.adapter());
+            let before = server.requests().len();
+            let batch = host.run(&mut db, 20).unwrap();
+            assert_eq!(batch.follow_ups.len(), usize::from(terminal));
+            let queue = db.get_work_queue(TASK).unwrap().unwrap();
+            assert_eq!(queue.attempt, 1);
+            if expired && !terminal {
+                assert_eq!(queue.lease_until, Some(0));
+                let token = queue.lease_owner.as_deref().unwrap();
+                let requests = server.requests().len();
+                assert!(
+                    host.dispatcher()
+                        .heartbeat(&mut db, KEY, 1, token, 21)
+                        .is_err()
+                );
+                assert!(
+                    host.dispatcher()
+                        .progress(&mut db, KEY, 1, token, "not authorized")
+                        .is_err()
+                );
+                assert!(
+                    host.dispatcher()
+                        .cancel_intent(&mut db, KEY, 1, token, 21)
+                        .is_err()
+                );
+                assert_eq!(server.requests().len(), requests);
+            }
+            assert!(
+                server.requests()[before..]
+                    .iter()
+                    .all(|r| r["method"] == "GET")
+            );
+            if !terminal {
+                server.post_result(&remote, true, "lost grant reply result");
+            }
+            let done = host.run(&mut db, 90_000).unwrap();
+            assert_eq!(done.follow_ups.len(), 1);
+            assert_eq!(event_count(&db), 1);
+            drop((host, db));
+            let mut db = Database::open(root.path(), OWNER).unwrap();
+            let mut host = FactoryHost::from_adapter(server.adapter());
+            assert_eq!(
+                host.run(&mut db, 90_001).unwrap().follow_ups,
+                done.follow_ups
+            );
+            assert_eq!(event_count(&db), 1);
+            host.dispatcher()
+                .acknowledge(&mut db, &done.follow_ups[0].event_id)
+                .unwrap();
+            assert!(host.run(&mut db, 90_002).unwrap().follow_ups.is_empty());
+            assert_eq!(
+                server
+                    .requests()
+                    .iter()
+                    .filter(|r| r["body"]["action"] == "grant")
+                    .count(),
+                1
+            );
+        }
+    }
+}
+
+#[test]
+fn uncertain_grant_unknown_evidence_is_not_absence() {
+    let (_root, mut db) = seed();
+    let server = ContractKanbanServer::spawn();
+    server.lose_next_grant_reply();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    host.run(&mut db, 10).unwrap();
+    server.unknown_run_evidence(true);
+    let before = server.requests().len();
+    for now in [20, 90_000] {
+        assert!(host.run(&mut db, now).unwrap().follow_ups.is_empty());
+        assert!(db.get_work_queue(TASK).unwrap().is_none());
+    }
+    assert!(
+        server.requests()[before..]
+            .iter()
+            .all(|r| r["method"] == "GET")
+    );
+    server.unknown_run_evidence(false);
+    let remote = db.get_binding(KEY).unwrap().unwrap();
+    server.change_run_holder(&remote);
+    assert!(host.run(&mut db, 90_001).is_err());
+    assert!(db.get_work_queue(TASK).unwrap().is_none());
+    assert_eq!(event_count(&db), 0);
+}
+
+#[test]
+fn uncertain_grant_proven_absent_can_claim() {
+    let (_root, mut db) = seed();
+    db.claim_pending_outbox(1).unwrap();
+    let server = ContractKanbanServer::spawn();
+    let remote = server.adapter().create(&spec()).unwrap();
+    db.put_binding(KEY, &remote.remote_id, TASK).unwrap();
+    db.set_binding_phase(KEY, "claiming", "").unwrap();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    host.run(&mut db, 20).unwrap();
+    assert_eq!(db.get_work_queue(TASK).unwrap().unwrap().attempt, 1);
+    assert_eq!(
+        server
+            .requests()
+            .iter()
+            .filter(|r| r["body"]["action"] == "grant")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn contract_cached_grant_returns_current_lease() {
+    let server = ContractKanbanServer::spawn();
+    let mut adapter = server.adapter();
+    let task = adapter.create(&spec()).unwrap();
+    let original = adapter
+        .claim(&task.remote_id, "factory-host", 60_010, 1)
+        .unwrap();
+    assert_eq!(
+        adapter
+            .claim(&task.remote_id, "factory-host", 60_010, 1)
+            .unwrap()
+            .token,
+        original.token
+    );
+    server.expire_lease(&task.remote_id);
+    assert_eq!(
+        adapter.claim(&task.remote_id, "factory-host", 60_010, 1),
+        Err(coglet_factory_host::AdapterError::Uncertain)
+    );
+    server.post_result(&task.remote_id, true, "done");
+    assert_eq!(
+        adapter.claim(&task.remote_id, "factory-host", 60_010, 1),
+        Err(coglet_factory_host::AdapterError::Uncertain)
+    );
+    assert!(
+        adapter
+            .poll(&task.remote_id, 1, &original.token)
+            .unwrap()
+            .is_some()
+    );
+}
+
+#[test]
 fn remote_completion_before_local_lease_recovers_without_reclaim() {
     let (root, mut db) = seed();
     let server = ContractKanbanServer::spawn();
