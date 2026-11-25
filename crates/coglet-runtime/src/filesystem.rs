@@ -144,7 +144,7 @@ impl Snapshot {
         ))
     }
 
-    #[cfg(feature = "native-engine")]
+    #[cfg(all(test, feature = "native-engine"))]
     pub(crate) fn from_fs(decoded: coglet_fs::Snapshot) -> Result<Self> {
         let snapshot = Self::new(decoded.export())?;
         let _ = snapshot.2.set(decoded);
