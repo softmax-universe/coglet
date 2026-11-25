@@ -67,6 +67,12 @@ impl RuntimeService {
     /// No missing usage is synthesized and no guest is invoked. Without such
     /// evidence the attempt remains fenced indefinitely.
     pub fn recover_attempt(&mut self, record: &Value) -> Result<()> {
+        let historical = legacy_version(&self.state.runtime.manifest["version"]);
+        historical_scope(historical, || self.recover_attempt_inner(record))?;
+        self.upgrade_hash_if_ready()
+    }
+
+    fn recover_attempt_inner(&mut self, record: &Value) -> Result<()> {
         if !self.store.is_healthy() {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }

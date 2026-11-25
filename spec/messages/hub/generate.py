@@ -73,15 +73,15 @@ def bounded(name, low, high):
 EX.update({'node-id': N, 'coglet-id': COG, 'hub-id': 'hub:' + H,
            'source-id': 'hub:' + H, 'correlation-id': ID, 'action-id': ID,
            'uint64': 0, 'profile-map': {}, 'method-name': 'manage.read',
-           'capability-name': 'hub.note', 'version-offer': {'versions': ['1.0']},
-           'version-selection': {'version': '1.0'}, 'error': {'code': 'conflict', 'message': 'Conflict', 'retryable': False},
+           'capability-name': 'hub.note', 'version-offer': {'versions': ['2.0']},
+           'version-selection': {'version': '2.0'}, 'error': {'code': 'conflict', 'message': 'Conflict', 'retryable': False},
            'event': {'source': COG, 'kind': 'hub.note', 'seq': 0, 'logical_time': 0, 'payload': {}, 'correlation_id': ID},
            'action': {'id': ID, 'coglet': COG, 'capability': 'test.move', 'args': {}, 'deadline': 100, 'correlation_id': ID},
            'action-accept': {'id': ID, 'correlation_id': ID, 'accepted': True}})
 add('hub-null', 'null', {'type': 'null'}, None)
 add('hub-bool', 'bool', {'type': 'boolean'}, True)
 text('hub-hash', '^[0-9a-f]{64}$', HASH)
-enum('hub-build-version', ['1.0'])
+enum('hub-build-version', ['2.0'])
 obj('hub-build-record', {'version': 'hub-build-version', 'source_tree': 'hub-hash',
     'recipe_sha256': 'hub-hash', 'policy_sha256': 'hub-hash', 'transform_sha256': 'hub-hash',
     'original_sha256': 'hub-hash', 'rewritten_sha256': 'hub-hash'})

@@ -1,4 +1,4 @@
-# Coglet ABI — 0.1 (proposed)
+# Coglet ABI — 1.0
 
 > **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
@@ -48,7 +48,7 @@ op/ptr/len instead of fabricating an argument. Calls are recorded with argument
 and return in invocation
 order, including rejected calls. IDs must be unique per effect kind (action, timer, LLM request) across committed steps;
 guests SHOULD derive IDs from seed, step and call index. Duplicate IDs return 4.
-Timers cannot replace/cancel in 0.1; past-due timers wake only after commit, in a
+Timers cannot replace/cancel in 1.0; past-due timers wake only after commit, in a
 later step. Timer events use `runtime.timer`, payload `{id, at}`, correlation_id=id.
 
 LLM requires the granted built-in capability `llm.complete`, routing model name,
@@ -64,7 +64,7 @@ fds 3,4,5 respectively. args/environ are empty; proc_exit aborts. stdin is empty
 stdout/stderr append bytes to /logs/stdout and /logs/stderr. No sockets, clocks,
 random_get, poll_oneoff, arbitrary host files or environment. Directory entries
 sort by UTF-8 bytes, timestamps are zero and host device/inode metadata is hidden.
-Adapter state comes through recorded events, never live device imports in 0.1.
+Adapter state comes through recorded events, never live device imports in 1.0.
 
 ## Batching and filesystem
 
@@ -123,8 +123,8 @@ open/rename operations; no chmod escalation. Denial returns WASI permission errn
 without change. Reads see this step's copy-on-write overlay.
 
 Filesystem state hashes use the Git SHA-256 tree object id defined below
-(ADR-0035), not the CBOR encoding of the snapshot map. `.git` components remain
-ordinary ABI names; Git checkout/index/fsck restrictions do not alter ABI paths.
+(ADR-0035), not the CBOR encoding of the snapshot map. no component may equal `.git` (ASCII case-insensitive), and no snapshot path may
+be both a file and a directory. Refuse either before hashing.
 
 Success atomically commits files, input consumption and durable journal/outbox
 BEFORE any dispatch. Abort discards all guest writes/actions/timers/LLM requests;
@@ -136,7 +136,7 @@ Local commit is crash-durable, e.g. fsynced WAL plus content-addressed blobs.
 Periodic flush checkpoints committed trees; reclaim WAL only after snapshot and
 metadata fsync. fd_sync neither commits a step nor dispatches effects. Recovery
 selects the last complete durable commit, never partial files/JSONL lines. Journal
-storage is outside guest mounts. Logs feed the durable ordered manage.tail_log stream (hub protocol 1.0),
+storage is outside guest mounts. Logs feed the durable ordered manage.tail_log stream (hub protocol 2.0),
 not per step; this is separate from local durability. Persistence failure means
 no dispatch; recover the commit identity (trace_id,step), do not blindly rerun.
 Dispatch committed outbox in call order with stable identities. Receipt/outcome
@@ -166,7 +166,7 @@ Every append produces one runtime.inbox event, payload `{index,id}`, retaining
 the enclosed event's correlation_id. Batch contains that wake, not a second copy
 of the enclosed event. Steering, factory and LLM replies all use this mechanism;
 enclosed event.kind distinguishes them. The coglet maintains its own cursor file
-in /data; aborted cursor writes roll back. No truncation/rotation in 0.1; storage
+in /data; aborted cursor writes roll back. No truncation/rotation in 1.0; storage
 exhaustion backpressures instead. Failed guest steps do not remove inbox lines.
 
 ## Guest terminal action delivery
@@ -447,7 +447,7 @@ compute/memory/host_bytes use resource_exhausted.
 
 ## Manifest and conformance
 
-[manifest.schema.json](manifest.schema.json) requires version=0.1, id, exact
+[manifest.schema.json](manifest.schema.json) requires version=1.0, id, exact
 subscriptions, required_capabilities, exclusive_outputs and budgets. No duplicates
 or wildcards. `required_capabilities` names individual operations (events, reads
 or actions), NOT capability entry/group names. `subscriptions` names advertised
@@ -459,7 +459,7 @@ Before start resolve every requested operation/event/resource through the truste
 capability catalog and require the matching current operation grants and resource
 leases. Unknown names fail closed; resource ownership does not imply operation
 permission, or vice versa. Manifest id must match runtime identity. Recheck before
-dispatch; lost grants deny effects. Guest ABI 0.1 has no synchronous adapter read
+dispatch; lost grants deny effects. Guest ABI 1.0 has no synchronous adapter read
 import: a requested read operation does not add one; native runtime reads remain
 adapter-protocol operations and guest observations arrive as recorded events.
 

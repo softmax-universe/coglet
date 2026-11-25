@@ -178,14 +178,8 @@ fn alignment(db: &Database, bundle: &RecoveryBundle) -> Result<()> {
     }
     let mut records = BTreeMap::new();
     for decision in &bundle.decisions {
-        let r = coglet_types::DatabaseDbStepRecord1::from_cbor(&decision.record)?;
-        if r.coglet != db.owner
-            || r.status != "committed"
-            || r.version != "0.2"
-            || super::coordinator::record_hash_of(&decision.record)? != r.record_hash
-            || coglet_types::encode_profile(&coglet_types::decode_profile(&decision.record)?)?
-                != decision.record
-        {
+        let r = super::coordinator::validate_stored_committed(&decision.record)?;
+        if r.coglet != db.owner {
             return Err("invalid archived decision".into());
         }
         if records

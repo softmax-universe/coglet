@@ -71,7 +71,7 @@ pub fn validate_path(path: &str) -> Result<()> {
         || !matches!(parts[1], "code" | "data" | "logs")
         || parts[2..]
             .iter()
-            .any(|p| p.is_empty() || *p == "." || *p == "..")
+            .any(|p| p.is_empty() || *p == "." || *p == ".." || p.eq_ignore_ascii_case(".git"))
     {
         return Err(Error::PermissionDenied);
     }

@@ -175,7 +175,8 @@ impl DurableStore {
                 if !record.is_null() {
                     return Err("WAL database frame also carries a JSON record".into());
                 }
-                let projection = database_projection(&bytes)?;
+                let projection =
+                    crate::hash_upgrade::historical_scope(true, || database_projection(&bytes))?;
                 if db_artifacts_hash.is_some() && projection["status"] != "committed" {
                     return Err("WAL artifacts receipt on non-committed record".into());
                 }
@@ -183,7 +184,7 @@ impl DurableStore {
                 raw_records.push(Some(bytes));
                 db_artifacts_hashes.push(db_artifacts_hash);
             } else if !record.is_null() {
-                validate_record(record)?;
+                crate::hash_upgrade::historical_scope(true, || validate_record(record))?;
                 journal.push(record.clone());
                 raw_records.push(None);
                 db_artifacts_hashes.push(None);
@@ -343,7 +344,7 @@ fn validate_record(record: &Value) -> Result<()> {
     validate(
         if record.get("step").is_some() {
             "step-record"
-        } else if record["version"] == "0.2" {
+        } else if crate::hash_upgrade::database_version(&record["version"]) {
             "database::db-boundary-record"
         } else {
             "boundary-record"
@@ -365,7 +366,14 @@ fn validate_record(record: &Value) -> Result<()> {
 /// Strictly validate exact ABI 0.2 record bytes (profile, closed schema,
 /// canonical encoding, correct hash) and derive their JSON projection.
 pub(crate) fn database_projection(raw: &[u8]) -> Result<Value> {
-    let record = coglet_types::decode("database::db-step-record", raw)?;
+    let profile = coglet_types::decode_profile(raw)?;
+    let version = project(&profile, 0)?["version"].clone();
+    let record =
+        if crate::hash_upgrade::historical() && crate::hash_upgrade::legacy_version(&version) {
+            coglet_types::decode("database::db-step-record", raw)?
+        } else {
+            crate::hash_upgrade::decode_current("database::db-step-record", raw)?
+        };
     let V::Map(entries) = &record else {
         return Err("database record is not a map".into());
     };

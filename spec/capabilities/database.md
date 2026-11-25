@@ -1,20 +1,20 @@
-# Private database capability — ABI 0.2 extension (proposed)
+# Private database capability — ABI 1.1 extension (proposed)
 
 > **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
 Decision: [ADR-0013](../../docs/adr/0013-factory-db-capability.md),
 [PR #41](https://github.com/softmax-universe/coglet/pull/41).
-Imports [common conventions](../conventions.md) and [ABI 0.1](../abi.md) unchanged
+Imports [common conventions](../conventions.md) and [ABI 1.0](../abi.md) unchanged
 except for the explicitly versioned additions here. MUST/SHOULD are normative.
 This extension is not part of tag `spec-v0`. No implementation is supplied.
 
 ## Admission and operation binding
 
-A DB guest pins `db-manifest` (version `0.2`), whose `database` field contains
+A DB guest pins `db-manifest` (version `1.1`), whose `database` field contains
 `schema_min`, `schema_max` (inclusive, min <= max) and `catalog_hash` (ABI hash).
 The runtime rejects before instantiation unless it supports the extension, the
 live schema is in that range and the approved immutable catalog digest matches.
-The module may import `coglet_v0.db` only under that manifest; 0.1 admission rejects
+The module may import `coglet_v0.db` only under that manifest; 1.0 admission rejects
 that import. Existing handle/allocator, mounts, counters and all other imports
 are unchanged. Pin code, grants, schema and catalog for the entire step. Host
 revocation affects the next admitted step and dispatch admission, not past replay.
@@ -116,7 +116,7 @@ resource_exhausted, permission_denied, unavailable or invalid_argument as approp
 
 `db-host-call` extends the invocation-ordered `calls` array of `db-step-record`;
 ordinary ABI calls are unchanged. `db-step-record` is the same closed record as
-ABI step-record except version=0.2, the extended call/failure unions and required fields
+ABI step-record except version=1.1, the extended call/failure unions and required fields
 `db_before`, `db_after` (revision), `db_schema_version` and `db_catalog_hash`.
 For abort db_after=db_before; for committed read-only steps they are equal; for a
 committed unit with writes/enqueues db_after=db_before+1, rejecting uint64 overflow.
@@ -124,9 +124,9 @@ Duplicate enqueue alone is not a write. Revision allocation is serialized, so it
 is known when preparing the step. Dispatcher mutations also advance revision.
 A record's db_before need not equal the previous step's db_after when dispatcher
 work intervened: those observations are recorded, not inferred by offline replay.
-`db-trace` extends ABI trace with version=0.2, `records` of db-step-record,
+`db-trace` extends ABI trace with version=1.1, `records` of db-step-record,
 `initial_db_revision` and `final_db_revision`. `db-boundary-record` is the unchanged
-ABI boundary-record shape with version=0.2; a 0.2 trace's trailing_boundary uses
+ABI boundary-record shape with version=1.1; a 1.1 trace's trailing_boundary uses
 that rule, preserving header/record version equality. These are archive observation bounds,
 not permission to access a live DB. Record hashes use the existing ABI hash rule
 on the complete extended record; ordinary filesystem tree hashing is unchanged.
@@ -140,7 +140,7 @@ history, never a second copy of journal calls or a journal replay input.
 
 ### Host-decided recovery abort
 
-Only ABI 0.2 extends the aborted record's failure to `db-failure`: an unchanged
+Only ABI 1.1 extends the aborted record's failure to `db-failure`: an unchanged
 ABI `failure`, or the closed `{kind: "db_recovery_abort", prepared_record_hash:
 hash}`. The latter means handle returned 0, no DB call poisoned the unit and the complete
 successful decision was durably prepared, but authoritative recovery proved its

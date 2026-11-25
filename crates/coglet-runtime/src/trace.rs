@@ -12,7 +12,7 @@ impl Engine for ObservedTransition<'_> {
         // ABI 0.2 projections keep `db-host-call`s only as audit entries: the
         // database is never consulted when host state is re-derived. Ordinary
         // calls (including their JSON arguments) are re-executed exactly.
-        let database = record["version"] == "0.2";
+        let database = database_version(&record["version"]);
         for call in record["calls"].as_array().ok_or("missing calls")? {
             if database && call["op"] == "db" {
                 continue;
@@ -108,6 +108,8 @@ pub(super) struct CompletedSegment {
     pub(super) successor_trace: Option<Value>,
     #[serde(default)]
     pub(super) code_revision: Option<CodeRevision>,
+    #[serde(default)]
+    pub(super) hash_upgrade: bool,
 }
 
 impl RuntimeService {
@@ -135,7 +137,10 @@ impl RuntimeService {
             if !seen.insert(segment.trace_id.as_str().unwrap())
                 || segment.initial_setup != expected
                 || segment.end < offset
-                || (segment.end == offset && segment.code_revision.is_none())
+                || (segment.end == offset
+                    && segment.code_revision.is_none()
+                    && !segment.hash_upgrade)
+                || (segment.hash_upgrade && segment.code_revision.is_some())
                 || segment.end > records.len()
             {
                 return Err("invalid recovered segment header/cutoff/identity".into());
@@ -150,7 +155,7 @@ impl RuntimeService {
             }
             time_floor = time_floor.max(old.time);
             source_floor = source_floor.max(old.next_source_seq);
-            if (segment.code_revision.is_none() && !old.sealed)
+            if (segment.code_revision.is_none() && !segment.hash_upgrade && !old.sealed)
                 || old
                     .trace_id
                     .as_ref()
@@ -170,10 +175,16 @@ impl RuntimeService {
                         .or(state.runtime.trace_id.as_ref())
                 })
                 .ok_or("missing successor trace identity")?;
-            expected = if let Some(revision) = &segment.code_revision {
-                revision.successor(&old, next_id)?.initial_setup
+            expected = if segment.hash_upgrade {
+                old.hash_successor(next_id)?.initial_setup
             } else {
-                old.start_segment(next_id)?.initial_setup
+                historical_scope(legacy_version(&old.manifest["version"]), || {
+                    if let Some(revision) = &segment.code_revision {
+                        revision.successor(&old, next_id).map(|r| r.initial_setup)
+                    } else {
+                        old.start_segment(next_id).map(|r| r.initial_setup)
+                    }
+                })?
             };
             offset = segment.end;
         }
@@ -223,6 +234,7 @@ impl RuntimeService {
             end: self.store.records().len(),
             successor_trace: Some(trace_id.clone()),
             code_revision: None,
+            hash_upgrade: false,
         });
         next.runtime = runtime;
         self.store.commit(
@@ -285,7 +297,9 @@ impl RuntimeService {
                 )?;
                 runtime.retained_blobs = self.state.runtime.retained_blobs.clone();
                 Self::bind_exact_database_records(&mut runtime, &self.store, offset, segment.end)?;
-                return runtime.export_trace(trace_id);
+                return historical_scope(legacy_version(&runtime.manifest["version"]), || {
+                    runtime.export_trace(trace_id)
+                });
             }
             offset = segment.end;
         }
@@ -328,6 +342,12 @@ impl RuntimeService {
 
 impl Runtime {
     pub(super) fn reconstruct(initial: &Value, records: &[Value]) -> Result<Self> {
+        historical_scope(legacy_version(&initial["manifest"]["version"]), || {
+            Self::reconstruct_inner(initial, records)
+        })
+    }
+
+    fn reconstruct_inner(initial: &Value, records: &[Value]) -> Result<Self> {
         let mut runtime = Self::from_fixture(initial)?;
         for record in records {
             if record.get("step").is_some() {
@@ -355,7 +375,7 @@ impl Runtime {
     /// ABI 0.2 archives (`database::db-trace`) additionally require content-addressed
     /// exact `db-step-record` bytes; the JSON projection is not the authority.
     pub fn import_trace(trace: &Value) -> Result<Self> {
-        if trace.get("version") == Some(&json!("0.2")) {
+        if trace.get("version") == Some(&json!("1.1")) {
             return Self::import_database_trace(trace);
         }
         validate("trace", trace)?;
@@ -415,7 +435,7 @@ impl Runtime {
                 .ok_or("missing manifest blob")?,
         )
         .map_err(|e| e.to_string())?;
-        let manifest: Value = coglet_types::decode(manifest_rule, &manifest_raw)?
+        let manifest: Value = hash_upgrade::decode_current(manifest_rule, &manifest_raw)?
             .deserialized()
             .map_err(|e| e.to_string())?;
         if manifest["id"] != trace["coglet"] {
@@ -486,20 +506,30 @@ impl Runtime {
         if self.unresolved_attempt.is_some() {
             return Err("unresolved attempt prevents complete export".into());
         }
-        if self.manifest["version"] == "0.2" || self.records.iter().any(|r| r["version"] == "0.2") {
+        if database_version(&self.manifest["version"])
+            || self.records.iter().any(|r| database_version(&r["version"]))
+        {
             return self.export_database_trace(trace_id);
         }
-        if self.records.iter().any(|r| r["version"] != "0.1") {
+        if self
+            .records
+            .iter()
+            .any(|r| r["version"] != self.manifest["version"])
+        {
             return Err("ABI 0.2 database trace export is not implemented".into());
         }
         self.export_frozen_trace(trace_id)
     }
 
     fn export_database_trace(&self, trace_id: &Value) -> Result<Value> {
-        if self.manifest["version"] != "0.2" {
+        if !database_version(&self.manifest["version"]) {
             return Err("ABI 0.2 archive export requires a db-manifest".into());
         }
-        if self.records.iter().any(|r| r["version"] != "0.2") {
+        if self
+            .records
+            .iter()
+            .any(|r| r["version"] != self.manifest["version"])
+        {
             return Err("ABI 0.2 archive export refuses mixed ABI record versions".into());
         }
         validate("correlation-id", trace_id)?;
@@ -531,7 +561,10 @@ impl Runtime {
             .last()
             .filter(|r| r.get("step").is_none())
             .cloned();
-        if trailing.as_ref().is_some_and(|r| r["version"] != "0.2") {
+        if trailing
+            .as_ref()
+            .is_some_and(|r| r["version"] != self.manifest["version"])
+        {
             return Err("ABI 0.2 archive export refuses a 0.1 trailing boundary".into());
         }
         if let Some(record) = &trailing {
@@ -549,7 +582,7 @@ impl Runtime {
                 records.last().unwrap()["db_after"].clone(),
             ),
         };
-        let mut trace = json!({"version":"0.2","trace_id":trace_id,"coglet":self.manifest["id"],
+        let mut trace = json!({"version":self.manifest["version"],"trace_id":trace_id,"coglet":self.manifest["id"],
             "initial_hash":initial.files.tree_hash()?,"code_hash":code_hash,"manifest_hash":manifest_hash,
             "final_hash":self.files.tree_hash()?,"records":records,"trailing_boundary":trailing,"blobs":blobs,
             "initial_db_revision":initial_db_revision,"final_db_revision":final_db_revision});
@@ -591,7 +624,7 @@ impl Runtime {
             .last()
             .filter(|r| r.get("step").is_none())
             .cloned();
-        let mut trace = json!({"version":"0.1","trace_id":trace_id,"coglet":self.manifest["id"],
+        let mut trace = json!({"version":self.manifest["version"],"trace_id":trace_id,"coglet":self.manifest["id"],
             "initial_hash":initial.files.tree_hash()?,"code_hash":code_hash,"manifest_hash":manifest_hash,
             "final_hash":self.files.tree_hash()?,"records":records,"trailing_boundary":trailing,"blobs":blobs});
         for key in [

@@ -347,8 +347,8 @@ impl Runtime {
         for raw in records {
             // Checks the schema and the record hash over the exact bytes.
             let record = database_projection(raw)?;
-            let native = coglet_types::decode(RECORD_RULE, raw)?;
-            if coglet_types::encode(RECORD_RULE, &native)? != *raw {
+            let native = hash_upgrade::decode_current(RECORD_RULE, raw)?;
+            if coglet_types::encode_profile(&native)? != *raw {
                 return Err("replay record bytes are not canonical".into());
             }
             let calls = get(&native, "calls")

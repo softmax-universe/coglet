@@ -201,6 +201,7 @@ impl RuntimeService {
         let receipt = json!({"operation_id":revision.operation_id,"state":"applied","step":step,"error":null});
         validate("hub-mutation-receipt", &receipt)?;
         next.completed_segments.push(trace::CompletedSegment {
+            hash_upgrade: false,
             initial_setup: next.runtime.initial_setup.clone(),
             trace_id: old_trace,
             end: self.store.records().len() + usize::from(boundary.is_some()),

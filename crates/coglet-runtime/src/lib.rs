@@ -12,6 +12,7 @@ pub use device::{AdapterConfig, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, Tar
 #[cfg(feature = "native-engine")]
 pub mod database;
 mod execution;
+use execution::hash_upgrade;
 pub mod ffi;
 mod filesystem;
 mod heard;
@@ -161,7 +162,15 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
 }
 
 pub fn validate(rule: &str, value: &Value) -> Result<()> {
-    coglet_types::validate(rule, &profile_value(value, 0)?)
+    let abi = matches!(
+        rule,
+        "manifest" | "trace" | "step-record" | "boundary-record"
+    ) || rule.starts_with("database::");
+    if abi && !(hash_upgrade::historical() && hash_upgrade::legacy_version(&value["version"])) {
+        coglet_types_current::decode(rule, &cbor(value)?).map(|_| ())
+    } else {
+        coglet_types::validate(rule, &profile_value(value, 0)?)
+    }
 }
 
 #[cfg(test)]

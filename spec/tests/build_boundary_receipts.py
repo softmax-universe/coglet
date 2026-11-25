@@ -47,7 +47,7 @@ def generate(write_files=True):
                 output.pop(change['path'], None)
             else:
                 output[change['path']] = change['after']
-        record = dict(version='0.1', trace_id=sample['trace_id'], coglet=coglet,
+        record = dict(version='1.0', trace_id=sample['trace_id'], coglet=coglet,
                       logical_time=20, previous=sample['records'][-1]['record_hash'] if sample['records'] else None,
                       before_hash=digest(before), output_hash=digest(output), output_files=output, boundary=changes)
         sample['trailing_boundary'] = seal(record)

@@ -182,7 +182,7 @@ struct WalJournal<'s, 'g> {
 impl WalJournal<'_, '_> {
     fn check(&mut self, kind: Publication, id: &StepId) -> Result<()> {
         match &mut self.gate {
-            Some(gate) => gate(kind, id),
+            Some(gate) => historical_scope(false, || gate(kind, id)),
             None => Ok(()),
         }
     }
@@ -477,7 +477,10 @@ impl RuntimeService {
                 store: &mut self.store,
                 gate,
             };
-            db.recover(&mut journal)
+            historical_scope(
+                legacy_version(&self.state.runtime.manifest["version"]),
+                || db.recover(&mut journal),
+            )
         };
         if self.store.is_healthy() {
             let saved = self.store.state().ok_or("missing WAL state")?.clone();
@@ -488,6 +491,9 @@ impl RuntimeService {
                 &self.catalog,
                 &self.state.supervisor_reads,
             )?;
+        }
+        if result.is_ok() {
+            self.upgrade_hash_if_ready()?;
         }
         result
     }

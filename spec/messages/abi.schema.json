@@ -556,7 +556,7 @@
           "type": "object",
           "properties": {
             "version": {
-              "const": "0.1"
+              "const": "1.0"
             },
             "trace_id": {
               "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
@@ -711,7 +711,7 @@
           "type": "object",
           "properties": {
             "version": {
-              "const": "0.1"
+              "const": "1.0"
             },
             "trace_id": {
               "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
@@ -904,7 +904,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "const": "0.1"
+          "const": "1.0"
         },
         "trace_id": {
           "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
@@ -977,7 +977,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "const": "0.1"
+          "const": "1.0"
         },
         "trace_id": {
           "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/correlation-id"
@@ -1079,7 +1079,7 @@
       "type": "object",
       "properties": {
         "version": {
-          "const": "0.1"
+          "const": "1.0"
         },
         "id": {
           "$ref": "https://coglet.dev/spec/messages/common.schema.json#/$defs/coglet-id"

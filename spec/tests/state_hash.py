@@ -10,6 +10,21 @@ def object_id(kind, body):
 
 
 def snapshot_hash(files):
+    # Validate before constructing objects: no ambiguous or uncheckoutable trees.
+    for path in files:
+        if not isinstance(path, str):
+            raise ValueError('unsafe path')
+        parts = path.split('/')
+        if (len(parts) < 3 or parts[0] != '' or parts[1] not in ('code', 'data', 'logs')
+                or any(p in ('', '.', '..') or p.lower() == '.git' for p in parts[1:])
+                or any(ord(c) < 32 or ord(c) == 127 or c == '\\' for c in path)):
+            raise ValueError('unsafe path')
+        try:
+            path.encode('utf-8')
+        except UnicodeEncodeError as error:
+            raise ValueError('unsafe path') from error
+        if any('/'.join(parts[:i]) in files for i in range(2, len(parts))):
+            raise ValueError('file_directory_collision')
     directories = {'': []}
     for path, contents in files.items():
         parent, name = path.rsplit('/', 1)

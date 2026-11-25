@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory() as td:
     module = bytes.fromhex('0061736d01000000')
     source = {'bin/step.wasm': module.hex(), 'manifest': '7b7d0a'}
     inputs = {'recipe': b'fixture recipe v1', 'policy': b'test-only no-op policy', 'transform': b'test-only identity transform'}
-    record = dict(version='1.0', source_tree=tree(source),
+    record = dict(version='2.0', source_tree=tree(source),
         **{n + '_sha256': hashlib.sha256(v).hexdigest() for n, v in inputs.items()},
         original_sha256=hashlib.sha256(module).hexdigest(), rewritten_sha256=hashlib.sha256(module).hexdigest())
     files = dict(source, **{'build/provenance.cbor': encode(record).hex()})

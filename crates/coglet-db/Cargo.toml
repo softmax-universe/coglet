@@ -9,6 +9,7 @@ rusqlite = { version = "0.38", features = ["bundled", "hooks", "limits", "backup
 sha2 = "0.10"
 hex = "0.4"
 coglet-types = { path = "../coglet-types" }
+coglet-types-hub0 = { path = "../coglet-types-hub0" }
 coglet-engine = { path = "../coglet-engine" }
 fs2 = "0.4"
 serde = { version = "1", features = ["derive"] }

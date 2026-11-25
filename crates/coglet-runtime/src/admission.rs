@@ -19,7 +19,7 @@ pub fn admit_module(_: &Value) -> Result<Value> {
 #[cfg(feature = "native-engine")]
 pub fn admit_module(request: &Value) -> Result<Value> {
     use coglet_engine::Engine;
-    if request["manifest"]["version"] == "0.2" {
+    if request["manifest"]["version"] == "1.1" {
         validate("database::db-manifest", &request["manifest"])?;
         return Err(
             "daemon database admission requires authenticated Database/Catalog context; not a deployable boundary"
@@ -119,7 +119,7 @@ pub fn admit_module(request: &Value) -> Result<Value> {
 use std::collections::BTreeSet;
 
 pub fn admit_manifest(manifest: &Value, catalog: &Value, grant: &Value) -> Result<()> {
-    if manifest.get("version") == Some(&serde_json::json!("0.2")) {
+    if manifest.get("version") == Some(&serde_json::json!("1.1")) {
         validate("database::db-manifest", manifest)?;
         return Err(
             "daemon database admission requires authenticated Database/Catalog context; not a deployable boundary"
