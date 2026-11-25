@@ -14,6 +14,20 @@ final class HubEnrollmentCommandTests: XCTestCase {
         hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
         return (hub, store, link)
     }
+    func testSignOutCommandPropagatesStorageFailureAndCanRetry() throws {
+        let (hub, store, link) = ready()
+        let stale = link.callback
+        store.fail = true
+        XCTAssertThrowsError(try hub.signOutOnce())
+        XCTAssertTrue(hub.canSignOut)
+        XCTAssertEqual(hub.state, .offline)
+        stale?(.connected)
+        store.fail = false
+        try hub.signOutOnce()
+        XCTAssertFalse(hub.canSignOut)
+        XCTAssertNil(try store.loadKey())
+        XCTAssertNil(try store.loadHub())
+    }
     func testEnrollmentWaitsForFreshConnectionAndDurableSave() async throws {
         let (hub, store, link) = ready()
         defer { hub.stop() }

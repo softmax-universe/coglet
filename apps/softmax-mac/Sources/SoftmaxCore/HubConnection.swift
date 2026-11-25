@@ -225,12 +225,21 @@ public final class HubConnection {
         }
     }
     public func signOut() {
+        try? signOutOnce()
+    }
+    /// Shared completion-bearing reset. Failure remains visible and retryable;
+    /// callers must not report successful identity deletion after a store error.
+    public func signOutOnce() throws {
         if let id = reconnectCommand?.id { finishReconnect(id: id, error: CancellationError()) }
         retry?.cancel(); retry = nil
         stopLink(); pending = nil; state = .offline
         // Keep deviceID until cleanup succeeds so the UI's Sign out stays reachable for retry.
         do { try account.signOut(); pairing = nil; deviceID = nil; errorMessage = nil }
-        catch { errorMessage = "Sign out could not remove local identity or hub data. Try again." }
+        catch {
+            errorMessage = "Sign out could not remove local identity or hub data. Try again."
+            changed?()
+            throw error
+        }
         changed?()
     }
     public func stop() {

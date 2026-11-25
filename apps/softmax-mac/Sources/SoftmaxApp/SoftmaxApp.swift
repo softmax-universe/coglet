@@ -65,6 +65,9 @@ final class ShellModel: ObservableObject {
     var hubPairingRoute: String? {
         didSet { if hubPairingRoute != oldValue { synchronizeAppSurface?() } }
     }
+    var signOutConfirmationOpen = false {
+        didSet { if signOutConfirmationOpen != oldValue { synchronizeAppSurface?() } }
+    }
     @Published var onboardingStep = 0 {
         didSet {
             guard onboardingStep != oldValue else { return }
@@ -506,6 +509,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.appSurfaceRoute = { [weak self] in self?.appRoute($0) }
         model.appInteractionAllowed = { [weak self] window in
             guard let self, !self.hasUnqualifiedAppModal else { return false }
+            if self.model.signOutConfirmationOpen { return window == "sign_out_confirmation" }
             return self.model.hubPairingRoute == nil || window == "hub_pairing"
         }
         model.synchronizeAppSurface = { [weak self] in
@@ -523,7 +527,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }, currentRoute: { [weak self] in self?.appRoute($0) },
             navigate: { [weak self] window, route in
                 guard let self else { throw AppSurfaceFailure.unavailable }
-                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings":
                     guard let tab = SettingsTab.allCases.first(where: { $0.rawValue.lowercased() == route }) else {
@@ -541,7 +546,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }, open: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
-                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings": self.showSettings()
                 case "about": self.showAbout()
@@ -555,7 +561,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }, close: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
-                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "face": self.face.hide()
                 case "orb": self.model.orbEnabled = false
@@ -591,13 +598,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Until every native confirmation/sheet has its own qualified owner,
         // refuse an incomplete snapshot rather than claim those panels closed.
         if NSApp.modalWindow != nil { return true }
-        return model.hubPairingRoute == nil && NSApp.windows.contains {
+        return model.hubPairingRoute == nil && !model.signOutConfirmationOpen && NSApp.windows.contains {
             $0.attachedSheet?.isVisible == true
         }
     }
     private func appRoute(_ window: String) -> String? {
         if window == "menu_bar" { return model.menuBarOpen ? "menu" : nil }
         if window == "hub_pairing" { return model.hubPairingRoute }
+        if window == "sign_out_confirmation" { return model.signOutConfirmationOpen ? "sign_out" : nil }
         guard let native = appWindow(window), native.isVisible, !native.isMiniaturized else { return nil }
         switch window {
         case "settings": return model.selectedTab.rawValue.lowercased()

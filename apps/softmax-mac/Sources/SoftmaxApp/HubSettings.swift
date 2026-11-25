@@ -63,15 +63,46 @@ struct HubSettings: View {
             }
         }
         .sheet(isPresented: $pairing) { HubPairingSheet(model: model, idPrefix: idPrefix) }
-        // Limit: confirmationDialog buttons are system-presented alert/sheet items;
-        // no CogletButton can be mounted in them, so "Sign out"/"Cancel" below are
-        // intentionally NOT registered (the sensitive opener above is). No fake coverage.
-        .confirmationDialog("Remove this device’s local identity and router enrollment?", isPresented: $confirmSignOut) {
-            Button("Sign out", role: .destructive) { model.hubConnection?.signOut() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("A new device identity and a new invitation will be needed to pair again. This does not revoke the old device on the router.")
+        .sheet(isPresented: $confirmSignOut) {
+            HubSignOutSheet(model: model)
         }
+    }
+}
+
+/// App-owned confirmation mounts the real visible controls; no system-dialog
+/// proxy or separate automation implementation.
+private struct HubSignOutSheet: View {
+    @ObservedObject var model: ShellModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var failed = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
+            Text("Remove this device’s local identity and router enrollment?").fontWeight(.semibold)
+            Text("A new device identity and a new invitation will be needed to pair again. This does not revoke the old device on the router.")
+            if failed { Text("Sign out could not remove local identity or hub data. Try again.").modifier(SoftmaxErrorText()) }
+            HStack {
+                CogletButton("Cancel", id: "hub.sign_out.cancel", registry: model.appControls,
+                    window: "sign_out_confirmation", route: "sign_out", failure: model.appControlFailure) { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Spacer()
+                CogletAsyncButton("Sign out", id: "hub.sign_out.confirm", registry: model.appControls,
+                    window: "sign_out_confirmation", route: "sign_out", sensitive: true,
+                    failure: model.appControlFailure, userFailure: { failed = true }) { context in
+                        let command = {
+                            guard let connection = model.hubConnection else { throw HubError.unavailable }
+                            try connection.signOutOnce()
+                            dismiss()
+                        }
+                        do { if let context { try context.perform(command) } else { try command() } }
+                        catch {
+                            if let context { try? context.perform { failed = true } } else { failed = true }
+                            throw error
+                        }
+                    }
+            }
+        }.padding(SoftmaxDesignTokens.spacing[4]).frame(width: 440).modifier(SoftmaxTheme())
+            .onAppear { model.signOutConfirmationOpen = true }
+            .onDisappear { model.signOutConfirmationOpen = false }
     }
 }
 
