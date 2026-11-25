@@ -3,7 +3,9 @@ mod admission;
 pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
+mod contract_profile;
 mod trusted_catalog;
+pub use contract_profile::ContractProfile;
 pub use trusted_catalog::TrustedExtensionCatalog;
 #[cfg(feature = "device")]
 mod device;

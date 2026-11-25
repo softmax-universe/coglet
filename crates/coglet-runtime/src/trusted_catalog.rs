@@ -1,5 +1,5 @@
 //! Explicit supervisor authority. No network resolution and no process-global registration.
-use crate::{Result, catalog, digest, profile_value, validate};
+use crate::{ContractProfile, Result, catalog, digest, profile_value};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -9,6 +9,7 @@ pub struct TrustedExtensionCatalog {
     // ADR-0014: in-process only; never parsed from an extension artifact.
     pub(crate) echo_fixture: bool,
     pin: Option<String>,
+    profile: ContractProfile,
     artifact: Option<Artifact>,
     ir: String,
 }
@@ -42,6 +43,12 @@ struct Selection {
     reads: Vec<String>,
 }
 impl TrustedExtensionCatalog {
+    pub(crate) fn without_artifact(profile: ContractProfile) -> Self {
+        Self {
+            profile,
+            ..Self::default()
+        }
+    }
     pub(crate) fn echo_fixture() -> Self {
         Self {
             echo_fixture: true,
@@ -50,6 +57,14 @@ impl TrustedExtensionCatalog {
     }
     /// Hash the exact bytes, including local schemas. A missing/invalid pin never enables extensions.
     pub fn from_pinned_bytes(raw: &[u8], sha256: &str) -> Result<Self> {
+        Self::from_pinned_bytes_with_profile(raw, sha256, ContractProfile::Surface01)
+    }
+    /// Explicit supervisor-selected profile; never inferred from artifact contents.
+    pub fn from_pinned_bytes_with_profile(
+        raw: &[u8],
+        sha256: &str,
+        profile: ContractProfile,
+    ) -> Result<Self> {
         if sha256.len() != 64
             || !sha256
                 .bytes()
@@ -62,17 +77,21 @@ impl TrustedExtensionCatalog {
             return Err("trusted extension catalog exceeds byte limit".into());
         }
         let artifact: Artifact = serde_json::from_slice(raw).map_err(|e| e.to_string())?;
-        artifact.validate()?;
+        artifact.validate(profile)?;
         let ir = serde_json::to_string(&artifact.rules).map_err(|e| e.to_string())?;
         Ok(Self {
             echo_fixture: false,
             pin: Some(sha256.to_owned()),
+            profile,
             artifact: Some(artifact),
             ir,
         })
     }
     pub(crate) fn pin(&self) -> Option<&str> {
         self.pin.as_deref()
+    }
+    pub fn contract_profile(&self) -> ContractProfile {
+        self.profile
     }
     fn extension(&self, name: &str) -> Option<&Operation> {
         self.artifact.as_ref()?.operations.get(name)
@@ -162,7 +181,7 @@ impl TrustedExtensionCatalog {
     }
 }
 impl Artifact {
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, profile: ContractProfile) -> Result<()> {
         if self.version != 1
             || self.namespace.is_empty()
             || self.namespace.contains('.')
@@ -187,7 +206,7 @@ impl Artifact {
         }
         let prefix = format!("{}.", self.namespace);
         let name = |s: &str| -> Result<()> {
-            validate("capability-name", &Value::String(s.to_owned()))?;
+            profile.validate_name(s)?;
             if !s.starts_with(&prefix) {
                 return Err("extension name outside namespace".into());
             }
