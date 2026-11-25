@@ -1050,9 +1050,20 @@ impl Runtime {
         } else {
             engine.database_observation(committed)?
         };
-        let code_hash = digest(
-            &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
-        );
+        #[cfg(feature = "native-engine")]
+        let code_hash = self
+            .files
+            .decoded_fs()?
+            .blob_hash("/code/bin/step.wasm")
+            .map_err(|e| e.to_string())?
+            .to_owned();
+        #[cfg(not(feature = "native-engine"))]
+        let code_hash = digest(&crate::filesystem::decode_hex(
+            self.files
+                .files()
+                .get("/code/bin/step.wasm")
+                .ok_or("missing /code/bin/step.wasm")?,
+        )?);
         let mut record = json!({
             "version":if observation.is_some() { "0.2" } else { "0.1" },
             "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
