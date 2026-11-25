@@ -14,6 +14,7 @@ members = [
     "crates/coglet-llm",
     "crates/coglet-gate",
     "crates/coglet-trace",
+    "crates/coglet-transform",
     "crates/coglet-mock",
     "crates/coglet-cli",
     "sdk/guest-rust",

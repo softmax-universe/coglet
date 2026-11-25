@@ -25,6 +25,7 @@ and the other ADR status decisions remain separate.
 | 0017 | [Recorded game observations and motor-only game extensions](0017-game-observations-and-research.md) | Proposed |
 | 0020 | [Vocabulary: router, adapter, runtime](0020-vocabulary.md) | Proposed; stage 1 (prose) only |
 | 0022 | [Embedded product catalogs and recorded pod command admission](0022-embedded-product-catalogs.md) | Proposed |
+| 0027 | [Revalidate and resume running coglets after daemon restart](0027-daemon-restart-resume.md) | Proposed; implementation qualification separate |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,

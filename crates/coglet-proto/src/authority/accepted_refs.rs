@@ -5,6 +5,7 @@
 //! other connections' commits. Only fully validated private artifacts enter.
 //! Retained bundles are audit/recovery data, never unchecked activation handles.
 use super::{Authority, AuthorityError, Scope, delegation, valid};
+mod installed;
 mod preinstall;
 #[cfg(test)]
 mod retention_tests;
@@ -355,6 +356,17 @@ impl AcceptedRefStore {
         }
         drop(tx);
         Ok(Some(receipt))
+    }
+
+    /// Exact installed authoritative artifact, including after a newer ref was
+    /// staged. This local read conveys no current execution authority.
+    pub fn installed_bundle(&self, metadata: &VerifiedRef) -> Result<Vec<u8>> {
+        let state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let signed = serde_json::to_string(metadata.signed()).map_err(|_| StoreError::Storage)?;
+        state.db.query_row(
+            "SELECT bundle FROM proto_ref_audit WHERE signed=?1 AND mode='authoritative' ORDER BY id DESC LIMIT 1",
+            [signed], |r| r.get(0),
+        ).optional()?.ok_or(StoreError::Authority(AuthorityError::PermissionDenied))
     }
 
     /// Retained exact raw bundle for explicit recovery/revalidation. Returning

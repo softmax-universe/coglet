@@ -56,6 +56,7 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     let (platform, arch) = match target.as_str() {
         "x86_64-unknown-linux-gnu" => ("linux", "X86_64"),
+        "aarch64-unknown-linux-gnu" => ("linux", "AARCH64"),
         "armv7-unknown-linux-gnueabihf" => ("linux", "ARMV7"),
         "x86_64-apple-darwin" => ("darwin", "X86_64"),
         "aarch64-apple-darwin" | "aarch64-apple-ios" | "aarch64-apple-ios-sim" => {

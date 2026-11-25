@@ -61,7 +61,12 @@ impl DeviceHandler {
             |_, recheck| {
                 recheck()?;
                 let mut locked = service.lock().map_err(|_| "unavailable")?;
+                // Keep admitted work queued while SQL owns a pending code cut.
+                if locked.code_pending() {
+                    return Ok(None);
+                }
                 let preflight = self.require_kill_clear().and_then(|()| {
+                    locked.managed_verify_code(setup)?;
                     admit_manifest(
                         &setup["manifest"],
                         &self.inner.config.catalog,
@@ -122,7 +127,14 @@ impl DeviceHandler {
                     },
                 )
             },
-            &|_, _| Ok(()),
+            &|locked, _| {
+                locked.managed_verify_code(setup)?;
+                admit_manifest(
+                    &setup["manifest"],
+                    &self.inner.config.catalog,
+                    &self.inner.config.grants,
+                )
+            },
         );
         service
             .lock()
@@ -280,6 +292,34 @@ impl DeviceHandler {
             .clone()
             .lock_owned()
             .await;
+        // Validate the retained active artifact, not the original install's
+        // manifest, before a receiver guest. Do not repeat artifact verification
+        // for idle retry ticks or ordinary inbox/write drains.
+        #[cfg(feature = "native-engine")]
+        let live_setup = {
+            let handler = self.clone();
+            let target = coglet.clone();
+            let needs_guest = tokio::task::spawn_blocking(move || {
+                let Some(root) = handler.original_setup(&target)? else {
+                    return Ok::<_, String>(false);
+                };
+                let service = handler.open_service(&target, &root)?;
+                let locked = service.lock().map_err(|_| "unavailable")?;
+                Ok(!locked.code_pending()
+                    && locked
+                        .receiver_pending()
+                        .is_some_and(|r| r["method"] == "debug.step"))
+            })
+            .await
+            .map_err(|_| "unavailable")??;
+            if needs_guest {
+                self.recover_setup(&coglet)
+                    .await?
+                    .map(|(_, setup, _)| setup)
+            } else {
+                None
+            }
+        };
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
             // Keep custody in the blocking worker even if its awaiting future is
@@ -307,7 +347,11 @@ impl DeviceHandler {
                     .to_owned();
                 #[cfg(feature = "native-engine")]
                 if method == "debug.step" {
-                    handler.receiver_step_unlocked(&coglet, &pin, &request, &service, &setup)?;
+                    let Some(live_setup) = live_setup.as_ref() else {
+                        return Ok(());
+                    };
+                    handler
+                        .receiver_step_unlocked(&coglet, &pin, &request, &service, live_setup)?;
                     continue;
                 }
                 let outcome = handler.inner.authority.runtime_boundary_operation(

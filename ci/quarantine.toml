@@ -18,3 +18,9 @@
 # card = "t_0123456789abcdef"
 # since = 2026-11-24
 # reason = "ComputeExhausted instead of DeadlineExceeded on a loaded runner (run 45320071426)"
+
+[[rust]]
+id = "sim_heard_history_journals_heard_prefix_and_replays_offline"
+card = "t_01a20ffa7a32ef37"
+since = 2026-11-24
+reason = "runtime closed the session at sim_duplex_heard.rs:203 in required rust run 45511158700 attempt 1; exact b368b15151bdbece1a2cf17a9dbd9048a2ffc1e5 passed locally on rerun"

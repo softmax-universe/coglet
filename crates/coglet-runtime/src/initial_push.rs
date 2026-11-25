@@ -27,6 +27,15 @@ impl DeviceHandler {
     pub(super) async fn finish_initial_pushes(&self, coglet: &str, id: Option<&str>) -> Result<()> {
         let handler = self.clone();
         let target = coglet.to_owned();
+        if tokio::task::spawn_blocking(move || handler.original_setup(&target))
+            .await
+            .map_err(|_| "unavailable".to_owned())??
+            .is_some()
+        {
+            return self.finish_installed_pushes(coglet).await;
+        }
+        let handler = self.clone();
+        let target = coglet.to_owned();
         let pending = tokio::task::spawn_blocking(move || {
             handler
                 .inner

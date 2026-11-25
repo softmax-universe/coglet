@@ -1,14 +1,15 @@
 use crate::{DurableStore, Router, TrustedExtensionCatalog};
 #[path = "supervisor_reads.rs"]
 mod supervisor_reads;
-use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, profile_value, validate};
+use crate::{cbor, digest, profile_value, validate, EffectLedger, Result, Snapshot, StepHost};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
 #[path = "clock.rs"]
 mod clock;
+
 #[cfg(feature = "native-engine")]
 #[path = "database_replay.rs"]
 mod database_replay;
@@ -24,7 +25,10 @@ mod heard_deadline_tests;
 mod live_heard;
 #[path = "managed.rs"]
 mod managed;
+pub(crate) use managed::CodeRevision;
 pub(crate) use managed::ReceiptScope;
+#[cfg(feature = "device")]
+pub(crate) use managed::StartRecovery;
 #[cfg(feature = "native-engine")]
 #[path = "detached.rs"]
 mod detached;
@@ -221,8 +225,9 @@ impl RuntimeService {
                 .map(|(p, b)| (p.clone(), b.clone()))
                 .collect::<BTreeMap<_, _>>()
         };
-        if state.runtime.manifest != configured.manifest
-            || code_files(&state.runtime) != code_files(configured)
+        let live_configured = Runtime::from_fixture(&state.runtime.initial_setup)?;
+        if state.runtime.manifest != live_configured.manifest
+            || code_files(&state.runtime) != code_files(&live_configured)
         {
             return Err("recovery code/manifest pins differ from configuration".into());
         }
@@ -479,6 +484,9 @@ impl RuntimeService {
         self.require_deliverable_inner()
     }
     fn require_deliverable_inner(&self) -> Result<()> {
+        if self.code_pending() {
+            return Err("installed code application pending".into());
+        }
         #[cfg(feature = "device")]
         let stepping = self.receiver_step_active();
         #[cfg(not(feature = "device"))]
@@ -575,6 +583,9 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if self.code_pending() {
+            return Ok(None);
+        }
         self.require_deliverable()?;
         let Some((inputs, events, mut next)) = self.begin_attempt(context)? else {
             return Ok(None);

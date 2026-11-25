@@ -1,12 +1,12 @@
 //! Opt-in, qualified interpreter route. No ambient host I/O.
 #[path = "wasi.rs"]
 mod wasi;
-use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
+use crate::{cbor, digest, validate, Engine, EngineReport, Result, StepHost};
 use coglet_engine::{
     Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,
 };
 use coglet_engine_wamr::Wamr;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
@@ -194,9 +194,24 @@ impl crate::RuntimeService {
     pub(crate) fn native_enabled(&self) -> bool {
         self.native.is_some() && self.managed_running()
     }
-    pub fn enable_native(&mut self, config: NativeSchedule) -> Result<()> {
+    pub fn enable_native(&mut self, mut config: NativeSchedule) -> Result<()> {
         if self.detached_execution {
             return Err("runtime execution already reserved".into());
+        }
+        if self
+            .state
+            .completed_segments
+            .iter()
+            .any(|s| s.code_revision.is_some())
+        {
+            config.trace_id = self
+                .state
+                .runtime
+                .trace_id
+                .as_ref()
+                .and_then(Value::as_str)
+                .ok_or("missing live code trace")?
+                .to_owned();
         }
         validate("correlation-id", &json!(config.trace_id))?;
         if self
@@ -228,6 +243,7 @@ impl crate::RuntimeService {
             let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
             if !locked.managed_running()
                 || locked.managed_paused()
+                || locked.code_pending()
                 || locked.receiver_pending_for_execution()
                 || locked.native.is_none()
                 || locked.detached_execution

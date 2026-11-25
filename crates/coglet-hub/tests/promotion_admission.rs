@@ -270,7 +270,7 @@ fn incompatible_unreleased_outbox_schema_fails_closed_on_open() {
 async fn shared_authority_storage_fault_does_not_consume_request_id() {
     let dir = tempfile::tempdir().unwrap();
     let (k, _, target) = setup(dir.path()).await;
-    let db = rusqlite::Connection::open(dir.path().join("authority.db")).unwrap();
+    let db = rusqlite::Connection::open(dir.path().join("kernel.db")).unwrap();
     db.execute_batch("ALTER TABLE proto_grants RENAME TO saved_grants")
         .unwrap();
     let input = wire::encode(&propose(&target, "1")).unwrap();

@@ -6,6 +6,8 @@ suites = ["surface"]
 peer_roles = ["runtime"]
 transport = "stdio"
 command = ["sdk/surface-swift/.build/debug/coglet-swift-reference"]
+ready_line = "COGLET_CONFORMANCE_READY"
+connect_timeout_ms = 5000
 
 [implementations.fixtures.surface-base.env]
 COGLET_FIXTURE_CONFIG = "spec/fixtures/surface/adapter-config.json"

@@ -25,6 +25,58 @@ fn prepared(service: &mut RuntimeService, setup: &Value) -> Value {
 
 #[cfg(feature = "native-engine")]
 #[test]
+fn detached_receiver_code_pending_blocks_prepare_and_live_entry_across_reopen() {
+    struct NoEntry;
+    impl Engine for NoEntry {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+            panic!("code admission must fence guest entry")
+        }
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = setup();
+    let mut original = service(&path, &setup, 8);
+    prepared(&mut original, &setup);
+    original.debug_executing = true;
+    original.fence_code(true).unwrap();
+    assert_eq!(
+        original.prepare_detached(&setup["inputs"]).err().unwrap(),
+        "installed code application pending"
+    );
+    assert!(!original.detached_execution);
+    original.fence_code(false).unwrap();
+    let run = original
+        .prepare_detached(&setup["inputs"])
+        .unwrap()
+        .unwrap();
+    // SQL push admission can arrive while native admission owns the engine but
+    // has not yet persisted the unresolved-attempt WAL fence.
+    original.fence_code(true).unwrap();
+    let shared = std::sync::Arc::new(std::sync::Mutex::new(original));
+    assert_eq!(
+        RuntimeService::execute_detached(&shared, run, &mut NoEntry, &|f| f(), &|_, _| panic!(
+            "pending code must refuse before live gate"
+        ))
+        .unwrap_err(),
+        "installed code application pending"
+    );
+    let locked = shared.lock().unwrap();
+    assert!(locked.state.runtime.unresolved_attempt.is_none());
+    assert!(locked.records().is_empty());
+    assert!(locked.detached_execution);
+    drop(locked);
+    drop(shared);
+    let mut reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert!(reopened.code_pending());
+    assert_eq!(
+        reopened.prepare_detached(&setup["inputs"]).err().unwrap(),
+        "installed code application pending"
+    );
+    assert_eq!(reopened.queued(), 1);
+}
+
+#[cfg(feature = "native-engine")]
+#[test]
 fn detached_preguest_boundary_change_refuses_without_guest_and_preserves_publication() {
     struct NoEntry;
     impl Engine for NoEntry {
