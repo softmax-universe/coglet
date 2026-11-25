@@ -38,6 +38,8 @@ public final class NativeButtonRegistration: NSObject {
             name: NSWindow.willMiniaturizeNotification, object: native)
     }
 
+    public var isActive: Bool { mount != nil }
+
     public func invalidate() throws {
         guard let mount else { return }
         try registry.unmount(mount)

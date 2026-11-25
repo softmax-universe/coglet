@@ -306,6 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    private var nativeWindowControls: [String: NativeWindowControlRegistration] = [:]
     private lazy var face = FacePanelController(shell: model)
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
@@ -379,6 +380,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showSettings(tab: SettingsTab? = nil) {
         // Preserve the unfinished chapter, but never leave it occluded behind Settings.
+        do { try nativeWindowControls["onboarding"]?.invalidate() }
+        catch { model.appControlFailure(.exhausted) }
         onboardingWindow?.orderOut(nil)
         if let tab { model.selectedTab = tab }
         if settingsWindow == nil {
@@ -405,8 +408,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowDidMiniaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
     func windowDidDeminiaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
+    private func synchronizeNativeWindowControls() throws {
+        for id in ["settings", "onboarding", "about"] {
+            let owner = nativeWindowControls[id] ?? NativeWindowControlRegistration(registry: model.appControls)
+            nativeWindowControls[id] = owner
+            try owner.synchronize(window: appWindow(id), id: id, route: appRoute(id))
+        }
+    }
+
     private func invalidateAppControlSnapshots() {
         do {
+            try synchronizeNativeWindowControls()
             try model.appControls.nativeStateChanged()
             try model.appControls.synchronizeNativeState(windows: Self.appWindows)
         }
@@ -480,7 +492,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         model.synchronizeAppSurface = { [weak self] in
             guard let self else { return }
-            do { try self.model.appControls.synchronizeNativeState(windows: Self.appWindows) }
+            do {
+                try self.synchronizeNativeWindowControls()
+                try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+            }
             catch { self.model.appControlFailure(.invalidRegistration) }
         }
         model.appSurface = AppSurfaceAdapter(registry: model.appControls,
@@ -540,6 +555,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 guard let self else { throw AppSurfaceFailure.unavailable }
                 // A fresh sampled native revision includes transient meters and
                 // hub status too, not only SwiftUI control binding mutations.
+                try self.synchronizeNativeWindowControls()
                 try self.model.appControls.nativeStateChanged()
                 try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
             }, events: { [weak self] handler in

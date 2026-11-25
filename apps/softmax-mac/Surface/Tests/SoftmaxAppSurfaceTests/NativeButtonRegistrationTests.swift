@@ -39,6 +39,36 @@ final class NativeButtonRegistrationTests: XCTestCase {
         XCTAssertThrowsError(try registry.perform(request, authorized: { true }))
         XCTAssertEqual(receiver.calls, 2)
     }
+    func testWindowChromeOwnerPreservesMountUntilRouteOrPresentationChanges() throws {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 240, height: 160),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.orderFront(nil)
+        defer { window.close() }
+        var route = "general"
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in route })
+        let owner = NativeWindowControlRegistration(registry: registry)
+        try owner.synchronize(window: window, id: "settings", route: route)
+        let old = try registry.prepare(args("settings.titlebar.close"), sensitive: false)
+        let revision = registry.revision
+        try owner.synchronize(window: window, id: "settings", route: route)
+        XCTAssertEqual(registry.revision, revision, "A passive refresh must not replace live mounts")
+        route = "audio"
+        try owner.synchronize(window: window, id: "settings", route: route)
+        XCTAssertThrowsError(try registry.perform(old, authorized: { true }))
+        let audio = try registry.prepare(args("settings.titlebar.close"), sensitive: false)
+        window.orderOut(nil)
+        try owner.synchronize(window: nil, id: "settings", route: nil)
+        window.orderFront(nil)
+        try owner.synchronize(window: window, id: "settings", route: route)
+        XCTAssertThrowsError(try registry.perform(audio, authorized: { true }))
+        XCTAssertTrue(window.isVisible)
+        try registry.perform(registry.prepare(args("settings.titlebar.close"), sensitive: false), authorized: { true })
+        XCTAssertFalse(window.isVisible)
+        try owner.invalidate()
+    }
+
     func testNativeCloseRetiresExactMountBeforeReopen() throws {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 240, height: 160),
