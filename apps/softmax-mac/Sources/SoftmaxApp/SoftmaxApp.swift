@@ -481,7 +481,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showAbout() {
         if aboutWindow == nil {
-            aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView())
+            aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView(model: model))
             aboutWindow?.identifier = NSUserInterfaceItemIdentifier("softmax.about")
         }
         NSApp.activate(ignoringOtherApps: true)
