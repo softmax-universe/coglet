@@ -8,6 +8,22 @@ import FaceMac
 import Combine
 import SoftmaxRuntime
 
+// Temporary opt-in event-boundary probe; never enabled in release builds.
+@MainActor
+func settingsArrowProbe(_ message: String) {
+#if DEBUG
+    guard ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+          let path = ProcessInfo.processInfo.environment["SOFTMAX_SETTINGS_ARROW_PROBE"] else { return }
+    let responder = (NSApp.keyWindow?.firstResponder).map { String(describing: type(of: $0)) } ?? "nil"
+    let line = "\(ProcessInfo.processInfo.systemUptime) keyWindow=\(NSApp.keyWindow?.title ?? "nil") responder=\(responder) \(message)\n"
+    if let handle = FileHandle(forWritingAtPath: path) {
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: Data(line.utf8))
+    }
+#endif
+}
+
 @main
 struct SoftmaxApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
@@ -290,6 +306,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
         commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
+            settingsArrowProbe("arrival keyCode=\(event.keyCode) eventTime=\(event.timestamp) selected=\(self.model.selectedTab.rawValue)")
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if modifiers == .command && event.charactersIgnoringModifiers == "k" {
                 self.showCommands(); return nil

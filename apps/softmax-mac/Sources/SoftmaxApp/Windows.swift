@@ -38,15 +38,20 @@ struct SettingsView: View {
                 TextField("Filter settings  /", text: $query).focused($searchFocused)
                     .modifier(SoftmaxSearchFieldFrame())
                     .accessibilityLabel("Search settings").onSubmit {
+                        settingsArrowProbe("submit query=\(query) selected=\(model.selectedTab.rawValue)")
                         if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
                     }
                     .onKeyPress(.downArrow) {
+                        settingsArrowProbe("down enter query=\(query) selected=\(model.selectedTab.rawValue) tabs=\(tabs.map(\.rawValue))")
+                        defer { settingsArrowProbe("down exit selected=\(model.selectedTab.rawValue)") }
                         guard !tabs.isEmpty else { return .handled }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
                         model.selectedTab = tabs[min(index + 1, tabs.count - 1)]
                         return .handled
                     }
                     .onKeyPress(.upArrow) {
+                        settingsArrowProbe("up enter query=\(query) selected=\(model.selectedTab.rawValue) tabs=\(tabs.map(\.rawValue))")
+                        defer { settingsArrowProbe("up exit selected=\(model.selectedTab.rawValue)") }
                         guard !tabs.isEmpty else { return .handled }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
                         model.selectedTab = tabs[max(index - 1, 0)]

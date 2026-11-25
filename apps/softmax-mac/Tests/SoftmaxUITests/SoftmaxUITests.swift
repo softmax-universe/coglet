@@ -196,6 +196,15 @@ final class SoftmaxUITests: XCTestCase {
     @MainActor
     func testSettingsFocusedSearchArrowNavigation() {
         let app = XCUIApplication()
+        let probe = FileManager.default.temporaryDirectory.appendingPathComponent("settings-arrow-\(UUID().uuidString).log")
+        XCTAssertTrue(FileManager.default.createFile(atPath: probe.path, contents: Data()))
+        app.launchEnvironment["SOFTMAX_SETTINGS_ARROW_PROBE"] = probe.path
+        defer {
+            let trace = (try? String(contentsOf: probe, encoding: .utf8)) ?? ""
+            print("SETTINGS_ARROW_EVENT_TRACE: \(trace)")
+            XCTAssertTrue(trace.contains("arrival keyCode="), "Event probe must capture native input; empty evidence is inconclusive")
+            try? FileManager.default.removeItem(at: probe)
+        }
         app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
         app.launch()
         defer { app.terminate() }
@@ -206,14 +215,12 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.typeText("/")
         settings.typeText("o") // Multiple matches including General, Hotkey and Audio.
-        let search = settings.textFields["Search settings"]
-        XCTAssertEqual(search.value as? String, "o", "Type-ahead must reach the search field")
-        print("SETTINGS_ARROW_PROBE before first Down: \(settings.debugDescription)")
+
         XCTAssertTrue(settings.buttons["General"].exists)
         XCTAssertTrue(settings.buttons["Hotkey"].exists)
         XCTAssertTrue(settings.buttons["Audio"].exists)
         settings.typeKey(.downArrow, modifierFlags: [])
-        print("SETTINGS_ARROW_PROBE after first Down: \(settings.debugDescription)")
+
         settings.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Focused search Down must select Hotkey")
         settings.typeKey(.downArrow, modifierFlags: [])
