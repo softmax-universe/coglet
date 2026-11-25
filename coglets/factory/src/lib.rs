@@ -270,6 +270,13 @@ pub struct Repository<'a, H: DbHost> {
     client: Client<'a, H>,
 }
 impl<'a, H: DbHost> Repository<'a, H> {
+    /// Admission revision without paging or writing. Used to fence guest scans
+    /// even when their previous page did not return a continuation cursor.
+    pub fn revision(&mut self) -> Result<u64> {
+        Ok(self
+            .call("objects_get", vec![text("factory-policy")])?
+            .revision)
+    }
     pub fn new(host: &'a mut H) -> Self {
         Self {
             client: Client::new(host),

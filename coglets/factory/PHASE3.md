@@ -82,11 +82,33 @@ focused tests does not substitute for it.
 - **Goal-task results**: completion completes the goal; failure/cancel returns
   it to `open` (budget left) or `exhausted`, never to the model, so retries obey
   the goal's own budget. A cancelled goal stays cancelled.
-- **Cancellation of a dispatched attempt** is intentionally not a guest command:
-  the `goal.cancelled` audit event names the active task and the host's
-  lease-fenced `cancel_intent` path produces the `task.cancelled` result, which
-  the executive already fences by attempt and lease. `HttpKanban` cancel remains
-  unsupported and fails closed.
+- **Cancellation is not yet fully wired**: `goal.cancelled` records the active
+  task, but the normal host cycle does not yet consume that intent. The existing
+  lease-fenced `cancel_intent` helper alone is not delivery. Until this is fixed,
+  an already-enqueued task may still launch after goal cancellation. This is a
+  blocking review finding, not Phase 3 acceptance. `HttpKanban` cancel remains
+  unsupported and must fail closed.
+
+## Review corrections in progress
+
+- Retain the DB admission revision across every scan page, exhausted-status
+  transition and admission. Read it with a non-paging repository call before
+  using retained candidates; any revision change restarts selection. This also
+  avoids attempting a known-stale cursor and poisoning the DB step.
+- Goal-owned model DECOMPOSE/INVESTIGATE/DISPATCH proposals are rejected. The
+  ranked goal-review path is the sole admission authority; goal creation,
+  prioritization and deferral remain model operations. This intentionally avoids
+  a second scheduler and orphan tasks without goal accounting.
+- Accepted model mutations and task terminal transitions arm review, including
+  retries reopened by goal-attempt failure. Native regressions consume emitted
+  timers rather than manually generating review events.
+- Four new native tests in `tests/goals/regressions.rs` pass. The actual-WAMR
+  `goal_scan_revision_fences_inbox_insertion_at_cursor_free_boundaries` test
+  passes nonzero: inbox creation between statuses and before admission,
+  runtime/DB reopen, and emitted timers select the new higher-priority goal.
+- Remaining blockers: normal-cycle cancellation consumption and restart fencing;
+  actual-WAMR authenticated defer/cancel/stale-reply acceptance; final owned
+  check, independent exact-head review, green required CI and merge.
 
 ## Acceptance mapping
 

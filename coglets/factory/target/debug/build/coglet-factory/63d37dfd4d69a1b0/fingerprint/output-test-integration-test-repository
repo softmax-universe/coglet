@@ -1,1 +1,0 @@
-{"$message_type":"unused_extern","lint_level":"force-warn","unused_extern_names":["coglet_db","coglet_factory_host","coglet_llm","coglet_mock","serde","serde_json","sha2","tempfile"]}

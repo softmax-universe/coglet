@@ -384,6 +384,7 @@ pub fn handle<H: Host + DbHost>(
     let mut request = None;
     let mut replans = 0;
     let mut schedule = None;
+    let mut review_goals = false;
     if kind == "runtime.timer" {
         if let Some(pending) = agenda.pending.as_ref().filter(|p| p.expires_at <= at) {
             audit(
@@ -479,6 +480,7 @@ pub fn handle<H: Host + DbHost>(
                 };
                 if accepted {
                     apply(&mut repo, &current, &proposal, &pending.request_id, at)?;
+                    review_goals = true;
                     audit(
                         &mut repo,
                         &id(&[&event_key, "applied"]),
@@ -596,6 +598,7 @@ pub fn handle<H: Host + DbHost>(
                     release_capacity(&mut repo, &mut task, at)?;
                     repo.update_object(&task).map_err(db)?;
                     let goal_task = super::goals::attempt_finished(&mut repo, &data, kind, at)?;
+                    review_goals = true;
                     audit(
                         &mut repo,
                         &id(&[&event_key, "transition"]),
@@ -705,6 +708,9 @@ pub fn handle<H: Host + DbHost>(
     if let Some(at) = schedule {
         context.timer(&id(&["timer", &event_key]), at)?;
     }
+    if review_goals {
+        super::goals::arm(context, at.checked_add(1).ok_or_else(bad)?)?;
+    }
     Ok(())
 }
 fn release_capacity<H: DbHost>(
@@ -753,7 +759,26 @@ fn validate<H: DbHost>(
     let mut created_tasks = BTreeSet::new();
     let mut dispatches = 0;
     let mut mutations = 0;
+    // Goal work is admitted only by the ranked, revision-fenced review path.
+    // Allow model goal creation/prioritization/deferral, but never a parallel
+    // decomposition/dispatch path that bypasses goal accounting and ordering.
+    let goal_owned = c.subject.object_type == "goal"
+        || c.subject
+            .data
+            .get("goal_id")
+            .and_then(|v| v.as_str())
+            .is_some();
     for op in &p.operations {
+        if goal_owned
+            && matches!(
+                op,
+                Decision::Decompose { .. }
+                    | Decision::Investigate { .. }
+                    | Decision::Dispatch { .. }
+            )
+        {
+            return Err(bad());
+        }
         let mut fresh = Vec::new();
         match op {
             Decision::CreateGoal {

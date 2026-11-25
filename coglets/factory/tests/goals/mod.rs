@@ -15,6 +15,7 @@ fn goal_event(h: &mut TestHost, seq: u64, input: serde_json::Value) -> Event {
     command_event(h, seq, "factory.goal", input)
 }
 mod acceptance;
+mod regressions;
 fn command_event(h: &mut TestHost, seq: u64, kind: &str, input: serde_json::Value) -> Event {
     let mut inner = event(kind, seq, []);
     inner.payload = serde_json::from_value(input).unwrap();

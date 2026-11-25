@@ -297,6 +297,7 @@ struct Candidate {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 struct Scan {
+    revision: Option<u64>,
     admit: bool,
     status_idx: usize,
     cursor: Option<String>,
@@ -363,6 +364,11 @@ pub(super) fn review<H: Host + DbHost>(context: &mut Context<'_, H>, event: &Eve
         let mut repo = Repository {
             client: context.database(),
         };
+        let revision = repo.revision().map_err(db)?;
+        if scan.revision.is_some_and(|previous| previous != revision) {
+            restart(&mut scan);
+        }
+        scan.revision = Some(revision);
         let policy_object = get(&mut repo, "factory-policy")?;
         let policy: Policy = parse(&policy_object.data_json)?;
         if scan.admit {
