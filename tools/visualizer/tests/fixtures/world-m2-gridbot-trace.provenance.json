@@ -1,10 +1,10 @@
 {
-  "producer_sha": "edfafbfbab7f6397911f5c02633cca09c454ac69",
+  "producer_sha": "3119a673bf310f63d232308672fa85bfbbb395be",
   "engine": "wamr",
   "state_hash_definition": "git-sha256-tree-id (ADR-0035)",
   "producer_command": "tools/visualizer/regenerate_state_hash_fixtures.py (real evaluate + stopped-WAL export)",
-  "full_trace_sha256": "40b3ecddfc665c03f66aae74b549b76dc2f580873be2c17e6e7d19f58a4a6797",
-  "proof_output_sha256": "1bd2fecc33c5fb52f52291537a51986feb0d5122909b63b26714438e66e238f1",
+  "full_trace_sha256": "c094176ba7d64fab5c36a968567696e4e665632dc025e37f340a7c239532ecd2",
+  "proof_output_sha256": "272feab5066e8d15dcd34c84574144626e8af47921730bbf0124d94a7f314ff5",
   "independent_guest_reexecution": true,
   "changed_seed_rejected": true,
   "changed_guest_rejected": true,
@@ -38,33 +38,33 @@
       "inbox_bytes": 0
     },
     {
-      "output_hash": "5d6176615ea06dbcb2dca605a5d548d95c5f1ab4f4102957b0411b92fd069add",
+      "output_hash": "e498a3d13774b9376b9f967b3e6d56eb44e412541a6933fbc0884195592f7508",
       "inbox_bytes": 479
     },
     {
-      "output_hash": "5d6176615ea06dbcb2dca605a5d548d95c5f1ab4f4102957b0411b92fd069add",
+      "output_hash": "e498a3d13774b9376b9f967b3e6d56eb44e412541a6933fbc0884195592f7508",
       "inbox_bytes": 479
     },
     {
-      "output_hash": "b6076db063e94467608c9b5fe357a6cdda65c5e1b163e2e280ef5b2f0b30978d",
+      "output_hash": "d8ec63c667b3be683c31578de0d8f60e721eba528e476ce23d2cb1ff0386bd72",
       "inbox_bytes": 958
     },
     {
-      "output_hash": "b6076db063e94467608c9b5fe357a6cdda65c5e1b163e2e280ef5b2f0b30978d",
+      "output_hash": "d8ec63c667b3be683c31578de0d8f60e721eba528e476ce23d2cb1ff0386bd72",
       "inbox_bytes": 958
     },
     {
-      "output_hash": "d666b5b9a2218fb8211b51f3c4e6cb9b496b0aa6acc1bd1d46c4cf3fb1ea826a",
+      "output_hash": "d8d97c823b1302133727940a64dc3ee128e9ee94546fa2517e3c985c5715576a",
       "inbox_bytes": 1437
     },
     {
-      "output_hash": "d666b5b9a2218fb8211b51f3c4e6cb9b496b0aa6acc1bd1d46c4cf3fb1ea826a",
+      "output_hash": "d8d97c823b1302133727940a64dc3ee128e9ee94546fa2517e3c985c5715576a",
       "inbox_bytes": 1437
     },
     {
-      "output_hash": "37ac194fee783af831bac2cd016f33288355dda2d766a75777d58adb1b26db80",
+      "output_hash": "56cdcb744bea9fd625b4a961c434da1082b387b37a60abfcb803f8b239fce9d9",
       "inbox_bytes": 1916
     }
   ],
-  "records_only_sha256": "2b339afe2f6e9b3c44a239696ff5ef71efde4d1dc38dc4e551a4e93c2c433ed9"
+  "records_only_sha256": "46bed6e2399ff40b9e6f19a68201402fb481b929db7a499649161ce9ce58dafa"
 }

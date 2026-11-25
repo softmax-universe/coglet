@@ -1,14 +1,14 @@
 {
   "records": [
     {
-      "version": "0.1",
-      "trace_id": "2fedad1d4a5146aeb5b550dba7b4a385",
+      "version": "1.0",
+      "trace_id": "f33eb439a14d22d06a2b59b08958bc83",
       "coglet": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "step": 0,
       "logical_time": 0,
       "status": "committed",
-      "output_hash": "a1dd15173348ddfd3ad60b14efa5e867818c69099025eaf3c07b19eee2c5d9a4",
-      "record_hash": "965a6d02c24e3d2eae4fdf072d228b1fb92aff1c7082581d2adf88f03b5eb34d",
+      "output_hash": "4ec2aa7c206423e1d52dd372b9a43f7b4c0ddba13fa23a6fafb491d075522c5b",
+      "record_hash": "8b4109ae435a1b9ebffa996a659e8db174bf43223cfe81d92b58d654711d554c",
       "events": [
         {
           "correlation_id": "11111111111111111111111111111111",
@@ -28,14 +28,14 @@
       }
     },
     {
-      "version": "0.1",
-      "trace_id": "2fedad1d4a5146aeb5b550dba7b4a385",
+      "version": "1.0",
+      "trace_id": "f33eb439a14d22d06a2b59b08958bc83",
       "coglet": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "step": 1,
       "logical_time": 1,
       "status": "committed",
-      "output_hash": "48111cc6204eeb25ee1ca3792f514079996f493174b8cbae1d11c7fef6734f60",
-      "record_hash": "c3f5366e6ab5f25e17b5b992cd3f271d66df43ac73b050570f82646c4c4a377d",
+      "output_hash": "41e7aeb284f5678e1692db8ecf41141d4425f093fd9837f8c60d7e1f3c5c7648",
+      "record_hash": "e5f2eb3d2184569a3f9f83c8ea4f72e32553e4baf13b88bc3dc733c3253d7dbd",
       "events": [
         {
           "correlation_id": "11111111111111111111111111111111",

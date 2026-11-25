@@ -1,11 +1,11 @@
 {
-  "producer_sha": "edfafbfbab7f6397911f5c02633cca09c454ac69",
+  "producer_sha": "3119a673bf310f63d232308672fa85bfbbb395be",
   "engine": "wamr",
   "state_hash_definition": "git-sha256-tree-id (ADR-0035)",
   "producer_command": "tools/visualizer/regenerate_state_hash_fixtures.py (real coglet build/run/replay)",
-  "full_trace_sha256": "5225e4e495db31e403d5cafaca6214c52d5a56b8a9be2cf319a05af52ac38155",
-  "records_only_sha256": "b40d5de29cd469dd7aa617cc80d9f682f914857a9ebc0919b07b268a0377d5a8",
-  "final_hash": "48111cc6204eeb25ee1ca3792f514079996f493174b8cbae1d11c7fef6734f60",
+  "full_trace_sha256": "d8d50e7acd2e81c97fb0683d269f49de4b749cd3a498b1a608ca6a5e77fc8d28",
+  "records_only_sha256": "eb1d900292143648caf5ddce3c10e8d0e107d01c7c469468349334669f2048ac",
+  "final_hash": "41e7aeb284f5678e1692db8ecf41141d4425f093fd9837f8c60d7e1f3c5c7648",
   "omitted_from_tree": [
     "initial_files",
     "blobs",
