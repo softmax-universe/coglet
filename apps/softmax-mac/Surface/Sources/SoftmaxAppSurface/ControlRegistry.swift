@@ -137,6 +137,15 @@ public final class ControlRegistry {
         try controlChanged(entry.mount, force: entry.secure || entry.sensitive)
     }
 
+    /// Capture the exact mounted focus target before queuing a UI request.
+    public func prepareFocus(_ args: CBORValue) throws -> Mount {
+        try CBORCodec.validate("app-focus-args", args)
+        let fields = try args.requireMap()
+        let id = try text(fields, "control"), window = try text(fields, "window")
+        guard let entry = entries[id], entry.window == window else { throw ControlRegistryFailure.unavailable }
+        return entry.mount
+    }
+
     public func setFocus(_ mount: Mount, authorized: () -> Bool) throws {
         guard let entry = entries[mount.id], entry.mount == mount,
               currentRoute(entry.window) == entry.route, entry.visible(), entry.enabled() else {
