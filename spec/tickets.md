@@ -15,7 +15,7 @@ payloads, not a provider API or currently legal frozen router-wire operations.
 Logical names are `ticket.submit`, `ticket.update` (subscription), `ticket.answer`,
 `ticket.amend`, `ticket.cancel`, `ticket.result` (read latest durable result).
 A later integration ADR must negotiate framing and per-method grants before
-network use, including authenticated actor and ticket context on every debug,
+network use, including authenticated actor and ticket context on every manage,
 status and export read. Transport authentication alone is not ticket authority.
 Ticket termination/revocation must close reads as well as writes; there is no
 non-ticket fallback for ticket-scoped access. Frozen router rules remain unchanged.
@@ -38,7 +38,7 @@ The submit request has `version:"0.1"`, `correlation_id`, `op:"submit"` and
 | `target` | `{coglet, repo, base}`: enrolled coglet, registry repo id and full immutable base commit |
 | `goal` | `{description, acceptance}`: nonempty plain text and nonempty array of nonempty testable criteria |
 | `context` | array of `{kind, ref}`; kind=`world_snapshot`, `transcript`, `trace` or `document`; immutable access-controlled references only |
-| `capabilities` | `{edit_paths, debug_read, debug_write}`: unique arrays of repo-relative paths and booleans; read/write independent grants |
+| `capabilities` | `{edit_paths, manage_read, manage_write}`: unique arrays of repo-relative paths and booleans; read/write independent grants |
 | `gates` | `{required, human_approval}`: nonempty unique array of `journal_replay` / `headless_game`, always includes replay; boolean |
 | `budget` | positive uint64 `time_ms`, `spend_microunits`, and `currency` (three uppercase ASCII letters) |
 
@@ -53,7 +53,7 @@ requested ticket capability is a ceiling, never authority by itself. Revocation
 closes streams immediately. Writes queue between steps and have router audit records.
 No raw `/data`, transcript, secret or credentials in progress/error fields.
 
-The factory intersects requested edit/debug scope with current operator grants,
+The factory intersects requested edit/manage scope with current operator grants,
 checks budget admission, and rejects policy-incompatible gate requests. The
 effective checks are the union with target policy (and human approval is OR),
 never a way to weaken it. Budget is a hard ceiling including planning, build,
@@ -96,7 +96,7 @@ answer, amend and cancel; possession of the id alone is not access.
   original admission (no clock/spend reset); already consumed time/spend must
   fit the replacement caps. Stale revisions fail `conflict` with no partial amend.
 - **Cancel**: request adds nonempty `reason`. Admission increments revision to
-  fence outstanding workers, revokes ticket debug streams, stops new work and
+  fence outstanding workers, revokes ticket manage streams, stops new work and
   requests cancellation of in-flight work. Receipt state is `cancelling`; a later
   `abandoned` result certifies cancellation acknowledgment/quiescence. Until then,
   keep accounting/reservations and report cancelling, not safely stopped. A late
@@ -152,4 +152,4 @@ case checks the core golden payloads only, not authorization or lifecycle.
 It does not execute a scheduler. The future factory/mock shared
 black-box suite must test durable submit retry, progress reconnect, question
 revision races, amendment fencing, cancellation quiescence, result-vs-cancel,
-budget exhaustion including in-flight spend and revoked debug grants.
+budget exhaustion including in-flight spend and revoked manage grants.

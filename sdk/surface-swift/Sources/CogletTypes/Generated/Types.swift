@@ -78,10 +78,9 @@ internal enum GeneratedSchema {
         "hub::wire": .reference("hub::hub-frame"),
         "hub::hub-null": .literal(.null),
         "hub::hub-bool": .boolean,
-        "hub::hub-oid": .intersection([.text, .regexp("^[0-9a-f]{40}$")]),
         "hub::hub-hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
-        "hub::hub-build-version": .literal(.text("0.1")),
-        "hub::hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_commit", optional: false, node: .reference("hub::hub-oid")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub::hub-build-version": .literal(.text("1.0")),
+        "hub::hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_tree", optional: false, node: .reference("hub::hub-hash")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
         "hub::hub-signature": .intersection([.text, .regexp("^[0-9a-f]{128}$")]),
         "hub::hub-secret": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
         "hub::hub-text": .intersection([.text, .size(0, 65536)]),
@@ -92,24 +91,26 @@ internal enum GeneratedSchema {
         "hub::hub-size": .range(.unsigned(1), .unsigned(67108864)),
         "hub::hub-read-size": .range(.unsigned(1), .unsigned(65536)),
         "hub::hub-queue": .range(.unsigned(0), .unsigned(256)),
-        "hub::hub-maybe-oid": .union([.reference("hub::hub-oid"), .reference("hub::hub-null")]),
+        "hub::hub-maybe-tree": .union([.reference("hub::hub-hash"), .reference("hub::hub-null")]),
+        "hub::hub-maybe-generation": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
         "hub::hub-target": .union([.reference("common::coglet-id"), .reference("hub::hub-null")]),
         "hub::hub-maybe-step": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
         "hub::hub-maybe-error": .union([.reference("common::error"), .reference("hub::hub-null")]),
         "hub::hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
         "hub::hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
         "hub::hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
-        "hub::hub-ref": .union([.literal(.text("refs/heads/hub")), .literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
-        "hub::hub-fetch-ref": .union([.literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
-        "hub::hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("hub.git.push")), .literal(.text("hub.git.fetch")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("debug.read")), .literal(.text("debug.write")), .literal(.text("debug.pause")), .literal(.text("debug.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub::hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
         "hub::hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
         "hub::hub-purpose-delegation": .literal(.text("delegation")),
         "hub::hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
-        "hub::hub-ref-purpose": .union([.literal(.text("hub-ref")), .literal(.text("published-ref")), .literal(.text("logs-ref"))]),
-        "hub::hub-ref-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-ref-purpose")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "ref", optional: false, node: .reference("hub::hub-ref")), .init(name: "old", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "new", optional: false, node: .reference("hub::hub-oid")), .init(name: "archive_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-signed-delegation": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-delegation-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
-        "hub::hub-signed-ref": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-ref-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
-        "hub::hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_commit", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
+        "hub::manage-file-bytes": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
+        "hub::manage-code-path": .intersection([.text, .regexp("^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*$")]),
+        "hub::manage-file-change": .record([.init(name: "path", optional: false, node: .reference("hub::manage-code-path")), .init(name: "bytes", optional: true, node: .reference("hub::manage-file-bytes"))]),
+        "hub::manage-files": .boundedArray(0, 4096, .reference("hub::manage-file-change")),
+        "hub::manage-patch": .record([.init(name: "base", optional: true, node: .reference("hub::hub-hash")), .init(name: "revision", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "files", optional: false, node: .reference("hub::manage-files")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "hub::manage-patch-signing": .record([.init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "base", optional: true, node: .reference("hub::hub-hash")), .init(name: "revision", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "files", optional: false, node: .reference("hub::manage-files"))]),
+        "hub::hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_tree", optional: false, node: .reference("hub::hub-maybe-tree")), .init(name: "generation", optional: false, node: .reference("hub::hub-maybe-generation")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
         "hub::hub-queued": .literal(.text("queued")),
         "hub::hub-receipt-queued": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-queued")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
         "hub::hub-applied": .literal(.text("applied")),
@@ -124,9 +125,9 @@ internal enum GeneratedSchema {
         "hub::hub-health-item": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status"))]),
         "hub::hub-health-items": .boundedArray(0, 256, .reference("hub::hub-health-item")),
         "hub::hub-enroll-params": .record([.init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "invite", optional: false, node: .reference("hub::hub-maybe-secret"))]),
-        "hub::hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
-        "hub::hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
-        "hub::hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
+        "hub::hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub::manage-patch-params": .record([.init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub::manage-tail-log-params": .record([.init(name: "from_offset", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-events-params": .record([.init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
         "hub::hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
         "hub::hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
@@ -145,22 +146,22 @@ internal enum GeneratedSchema {
         "hub::hub-stop-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-stop-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub::hub-status-request-method": .literal(.text("hub.status")),
         "hub::hub-status-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-status-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::hub-git-push-request-method": .literal(.text("hub.git.push")),
-        "hub::hub-git-push-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-push-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-push-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::hub-git-fetch-request-method": .literal(.text("hub.git.fetch")),
-        "hub::hub-git-fetch-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-fetch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-fetch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::manage-patch-request-method": .literal(.text("manage.patch")),
+        "hub::manage-patch-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-patch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::manage-patch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::manage-tail_log-request-method": .literal(.text("manage.tail_log")),
+        "hub::manage-tail_log-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-tail_log-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::manage-tail-log-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub::hub-events-request-method": .literal(.text("hub.events")),
         "hub::hub-events-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-events-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-events-params"))]),
         "hub::hub-actions-request-method": .literal(.text("hub.actions")),
         "hub::hub-actions-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-actions-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-actions-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::debug-read-request-method": .literal(.text("debug.read")),
-        "hub::debug-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::debug-write-request-method": .literal(.text("debug.write")),
-        "hub::debug-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
-        "hub::debug-pause-request-method": .literal(.text("debug.pause")),
-        "hub::debug-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::debug-step-request-method": .literal(.text("debug.step")),
-        "hub::debug-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::manage-read-request-method": .literal(.text("manage.read")),
+        "hub::manage-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::manage-write-request-method": .literal(.text("manage.write")),
+        "hub::manage-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
+        "hub::manage-pause-request-method": .literal(.text("manage.pause")),
+        "hub::manage-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::manage-step-request-method": .literal(.text("manage.step")),
+        "hub::manage-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub::hub-inbox-request-method": .literal(.text("hub.inbox")),
         "hub::hub-inbox-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-inbox-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-inbox-params"))]),
         "hub::hub-health-request-method": .literal(.text("hub.health")),
@@ -169,7 +170,7 @@ internal enum GeneratedSchema {
         "hub::hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub::hub-cancel-request-method": .literal(.text("hub.cancel")),
         "hub::hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
         "hub::hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub::hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
         "hub::hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
@@ -185,9 +186,12 @@ internal enum GeneratedSchema {
         "hub::hub-chunk": .record([.init(name: "type", optional: false, node: .reference("hub::hub-chunk-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
         "hub::hub-end-type": .literal(.text("end")),
         "hub::hub-end": .record([.init(name: "type", optional: false, node: .reference("hub::hub-end-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
-        "hub::hub-transfer-type": .literal(.text("transfer")),
-        "hub::hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
-        "hub::hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
+        "hub::manage-log-path": .intersection([.text, .regexp("^/logs/[a-zA-Z0-9_./-]{1,512}$")]),
+        "hub::manage-log-entry": .record([.init(name: "path", optional: false, node: .reference("hub::manage-log-path")), .init(name: "file_offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "hub::manage-tail-log-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
+        "hub::manage-log-type": .literal(.text("log")),
+        "hub::manage-log": .record([.init(name: "type", optional: false, node: .reference("hub::manage-log-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "hub::hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::manage-log")]),
         "sandbox::sandbox-entry": .reference("sandbox::sandbox-profile"),
         "sandbox::gridbot-state": .record([.init(name: "x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "width", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "height", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
         "sandbox::gridbot-move": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]))]),
@@ -308,10 +312,9 @@ internal enum GeneratedSchema {
         "wire": .reference("hub::hub-frame"),
         "hub-null": .literal(.null),
         "hub-bool": .boolean,
-        "hub-oid": .intersection([.text, .regexp("^[0-9a-f]{40}$")]),
         "hub-hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
-        "hub-build-version": .literal(.text("0.1")),
-        "hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_commit", optional: false, node: .reference("hub::hub-oid")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "hub-build-version": .literal(.text("1.0")),
+        "hub-build-record": .record([.init(name: "version", optional: false, node: .reference("hub::hub-build-version")), .init(name: "source_tree", optional: false, node: .reference("hub::hub-hash")), .init(name: "recipe_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "policy_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "transform_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "original_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "rewritten_sha256", optional: false, node: .reference("hub::hub-hash"))]),
         "hub-signature": .intersection([.text, .regexp("^[0-9a-f]{128}$")]),
         "hub-secret": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
         "hub-text": .intersection([.text, .size(0, 65536)]),
@@ -322,24 +325,26 @@ internal enum GeneratedSchema {
         "hub-size": .range(.unsigned(1), .unsigned(67108864)),
         "hub-read-size": .range(.unsigned(1), .unsigned(65536)),
         "hub-queue": .range(.unsigned(0), .unsigned(256)),
-        "hub-maybe-oid": .union([.reference("hub::hub-oid"), .reference("hub::hub-null")]),
+        "hub-maybe-tree": .union([.reference("hub::hub-hash"), .reference("hub::hub-null")]),
+        "hub-maybe-generation": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
         "hub-target": .union([.reference("common::coglet-id"), .reference("hub::hub-null")]),
         "hub-maybe-step": .union([.reference("common::uint64"), .reference("hub::hub-null")]),
         "hub-maybe-error": .union([.reference("common::error"), .reference("hub::hub-null")]),
         "hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
         "hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
         "hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
-        "hub-ref": .union([.literal(.text("refs/heads/hub")), .literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
-        "hub-fetch-ref": .union([.literal(.text("refs/published/main")), .literal(.text("refs/heads/logs"))]),
-        "hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("hub.git.push")), .literal(.text("hub.git.fetch")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("debug.read")), .literal(.text("debug.write")), .literal(.text("debug.pause")), .literal(.text("debug.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
         "hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
         "hub-purpose-delegation": .literal(.text("delegation")),
         "hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
-        "hub-ref-purpose": .union([.literal(.text("hub-ref")), .literal(.text("published-ref")), .literal(.text("logs-ref"))]),
-        "hub-ref-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-ref-purpose")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "ref", optional: false, node: .reference("hub::hub-ref")), .init(name: "old", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "new", optional: false, node: .reference("hub::hub-oid")), .init(name: "archive_sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64"))]),
         "hub-signed-delegation": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-delegation-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
-        "hub-signed-ref": .record([.init(name: "statement", optional: false, node: .reference("hub::hub-ref-statement")), .init(name: "signer", optional: false, node: .reference("common::node-id")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
-        "hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_commit", optional: false, node: .reference("hub::hub-maybe-oid")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
+        "manage-file-bytes": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
+        "manage-code-path": .intersection([.text, .regexp("^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*$")]),
+        "manage-file-change": .record([.init(name: "path", optional: false, node: .reference("hub::manage-code-path")), .init(name: "bytes", optional: true, node: .reference("hub::manage-file-bytes"))]),
+        "manage-files": .boundedArray(0, 4096, .reference("hub::manage-file-change")),
+        "manage-patch": .record([.init(name: "base", optional: true, node: .reference("hub::hub-hash")), .init(name: "revision", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "files", optional: false, node: .reference("hub::manage-files")), .init(name: "signature", optional: false, node: .reference("hub::hub-signature"))]),
+        "manage-patch-signing": .record([.init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "base", optional: true, node: .reference("hub::hub-hash")), .init(name: "revision", optional: false, node: .reference("hub::hub-hash")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "files", optional: false, node: .reference("hub::manage-files"))]),
+        "hub-status": .record([.init(name: "state", optional: false, node: .reference("hub::hub-state")), .init(name: "live_tree", optional: false, node: .reference("hub::hub-maybe-tree")), .init(name: "generation", optional: false, node: .reference("hub::hub-maybe-generation")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "pending", optional: false, node: .reference("hub::hub-queue")), .init(name: "error", optional: false, node: .reference("hub::hub-maybe-error"))]),
         "hub-queued": .literal(.text("queued")),
         "hub-receipt-queued": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "state", optional: false, node: .reference("hub::hub-queued")), .init(name: "step", optional: false, node: .reference("hub::hub-null")), .init(name: "error", optional: false, node: .reference("hub::hub-null"))]),
         "hub-applied": .literal(.text("applied")),
@@ -354,9 +359,9 @@ internal enum GeneratedSchema {
         "hub-health-item": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status"))]),
         "hub-health-items": .boundedArray(0, 256, .reference("hub::hub-health-item")),
         "hub-enroll-params": .record([.init(name: "offer", optional: false, node: .reference("common::version-offer")), .init(name: "invite", optional: false, node: .reference("hub::hub-maybe-secret"))]),
-        "hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-signed-ref"))]),
-        "hub-push-params": .record([.init(name: "update", optional: false, node: .reference("hub::hub-signed-ref")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
-        "hub-fetch-params": .record([.init(name: "ref", optional: false, node: .reference("hub::hub-fetch-ref"))]),
+        "hub-install-params": .record([.init(name: "delegation", optional: false, node: .reference("hub::hub-signed-delegation")), .init(name: "initial", optional: false, node: .reference("hub::hub-hash"))]),
+        "manage-patch-params": .record([.init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash"))]),
+        "manage-tail-log-params": .record([.init(name: "from_offset", optional: false, node: .reference("common::uint64"))]),
         "hub-events-params": .record([.init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "events", optional: false, node: .reference("hub::hub-event-batch"))]),
         "hub-actions-params": .record([.init(name: "action", optional: false, node: .reference("common::action"))]),
         "hub-read-params": .record([.init(name: "path", optional: false, node: .reference("hub::hub-path")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "limit", optional: false, node: .reference("hub::hub-read-size"))]),
@@ -375,22 +380,22 @@ internal enum GeneratedSchema {
         "hub-stop-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-stop-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub-status-request-method": .literal(.text("hub.status")),
         "hub-status-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-status-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub-git-push-request-method": .literal(.text("hub.git.push")),
-        "hub-git-push-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-push-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-push-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub-git-fetch-request-method": .literal(.text("hub.git.fetch")),
-        "hub-git-fetch-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-git-fetch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-fetch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "manage-patch-request-method": .literal(.text("manage.patch")),
+        "manage-patch-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-patch-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::manage-patch-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "manage-tail_log-request-method": .literal(.text("manage.tail_log")),
+        "manage-tail_log-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-tail_log-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::manage-tail-log-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub-events-request-method": .literal(.text("hub.events")),
         "hub-events-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-events-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-events-params"))]),
         "hub-actions-request-method": .literal(.text("hub.actions")),
         "hub-actions-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-actions-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-actions-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "debug-read-request-method": .literal(.text("debug.read")),
-        "debug-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "debug-write-request-method": .literal(.text("debug.write")),
-        "debug-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
-        "debug-pause-request-method": .literal(.text("debug.pause")),
-        "debug-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "debug-step-request-method": .literal(.text("debug.step")),
-        "debug-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::debug-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "manage-read-request-method": .literal(.text("manage.read")),
+        "manage-read-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-read-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-read-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "manage-write-request-method": .literal(.text("manage.write")),
+        "manage-write-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-write-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-write-params"))]),
+        "manage-pause-request-method": .literal(.text("manage.pause")),
+        "manage-pause-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-pause-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "manage-step-request-method": .literal(.text("manage.step")),
+        "manage-step-request": .record([.init(name: "method", optional: false, node: .reference("hub::manage-step-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-empty")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub-inbox-request-method": .literal(.text("hub.inbox")),
         "hub-inbox-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-inbox-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-inbox-params"))]),
         "hub-health-request-method": .literal(.text("hub.health")),
@@ -399,7 +404,7 @@ internal enum GeneratedSchema {
         "hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub-cancel-request-method": .literal(.text("hub.cancel")),
         "hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::hub-git-push-request"), .reference("hub::hub-git-fetch-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::debug-read-request"), .reference("hub::debug-write-request"), .reference("hub::debug-pause-request"), .reference("hub::debug-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
         "hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
         "hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
@@ -415,9 +420,12 @@ internal enum GeneratedSchema {
         "hub-chunk": .record([.init(name: "type", optional: false, node: .reference("hub::hub-chunk-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
         "hub-end-type": .literal(.text("end")),
         "hub-end": .record([.init(name: "type", optional: false, node: .reference("hub::hub-end-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
-        "hub-transfer-type": .literal(.text("transfer")),
-        "hub-transfer": .record([.init(name: "type", optional: false, node: .reference("hub::hub-transfer-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "size", optional: false, node: .reference("hub::hub-size")), .init(name: "sha256", optional: false, node: .reference("hub::hub-hash")), .init(name: "update", optional: false, node: .reference("hub::hub-signed-ref"))]),
-        "hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::hub-transfer")]),
+        "manage-log-path": .intersection([.text, .regexp("^/logs/[a-zA-Z0-9_./-]{1,512}$")]),
+        "manage-log-entry": .record([.init(name: "path", optional: false, node: .reference("hub::manage-log-path")), .init(name: "file_offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "manage-tail-log-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
+        "manage-log-type": .literal(.text("log")),
+        "manage-log": .record([.init(name: "type", optional: false, node: .reference("hub::manage-log-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "offset", optional: false, node: .reference("common::uint64")), .init(name: "hex", optional: false, node: .reference("hub::hub-chunk-hex"))]),
+        "hub-frame": .union([.reference("hub::hub-request"), .reference("hub::hub-success"), .reference("hub::hub-failure"), .reference("hub::hub-credit"), .reference("hub::hub-chunk"), .reference("hub::hub-end"), .reference("hub::manage-log")]),
         "sandbox-entry": .reference("sandbox::sandbox-profile"),
         "gridbot-state": .record([.init(name: "x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_x", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "goal_y", optional: false, node: .range(.unsigned(0), .unsigned(63))), .init(name: "width", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "height", optional: false, node: .range(.unsigned(2), .unsigned(64))), .init(name: "steps", optional: false, node: .range(.unsigned(0), .unsigned(10000))), .init(name: "done", optional: false, node: .boolean), .init(name: "state_hash", optional: false, node: .intersection([.text, .regexp("[0-9a-f]{64}")]))]),
         "gridbot-move": .record([.init(name: "direction", optional: false, node: .union([.literal(.text("north")), .literal(.text("south")), .literal(.text("east")), .literal(.text("west"))]))]),
@@ -681,7 +689,6 @@ internal enum GeneratedSchema {
         case "hub::wire": typed = try HubWire.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-null": typed = try HubHubNull.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-bool": typed = try HubHubBool.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-oid": typed = try HubHubOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-hash": typed = try HubHubHash.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-build-version": typed = try HubHubBuildVersion.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-build-record": typed = try HubHubBuildRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -695,23 +702,25 @@ internal enum GeneratedSchema {
         case "hub::hub-size": typed = try HubHubSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-read-size": typed = try HubHubReadSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-queue": typed = try HubHubQueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-maybe-oid": typed = try HubHubMaybeOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-tree": typed = try HubHubMaybeTree.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::hub-maybe-generation": typed = try HubHubMaybeGeneration.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-target": typed = try HubHubTarget.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-maybe-step": typed = try HubHubMaybeStep.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-maybe-error": typed = try HubHubMaybeError.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-maybe-secret": typed = try HubHubMaybeSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-empty": typed = try HubHubEmpty.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-state": typed = try HubHubState.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-ref": typed = try HubHubRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-fetch-ref": typed = try HubHubFetchRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-method": typed = try HubHubMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-methods": typed = try HubHubMethods.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-purpose-delegation": typed = try HubHubPurposeDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-delegation-statement": typed = try HubHubDelegationStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-ref-purpose": typed = try HubHubRefPurpose.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-ref-statement": typed = try HubHubRefStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-signed-delegation": typed = try HubHubSignedDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-signed-ref": typed = try HubHubSignedRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-file-bytes": typed = try HubManageFileBytes.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-code-path": typed = try HubManageCodePath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-file-change": typed = try HubManageFileChange.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-files": typed = try HubManageFiles.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-patch": typed = try HubManagePatch.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-patch-signing": typed = try HubManagePatchSigning.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-status": typed = try HubHubStatus.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-queued": typed = try HubHubQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-receipt-queued": typed = try HubHubReceiptQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -728,8 +737,8 @@ internal enum GeneratedSchema {
         case "hub::hub-health-items": typed = try HubHubHealthItems.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-enroll-params": typed = try HubHubEnrollParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-install-params": typed = try HubHubInstallParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-push-params": typed = try HubHubPushParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-fetch-params": typed = try HubHubFetchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-patch-params": typed = try HubManagePatchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-tail-log-params": typed = try HubManageTailLogParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-events-params": typed = try HubHubEventsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-actions-params": typed = try HubHubActionsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-read-params": typed = try HubHubReadParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -748,22 +757,22 @@ internal enum GeneratedSchema {
         case "hub::hub-stop-request": typed = try HubHubStopRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-status-request-method": typed = try HubHubStatusRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-status-request": typed = try HubHubStatusRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-git-push-request-method": typed = try HubHubGitPushRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-git-push-request": typed = try HubHubGitPushRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-git-fetch-request-method": typed = try HubHubGitFetchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-git-fetch-request": typed = try HubHubGitFetchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-patch-request-method": typed = try HubManagePatchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-patch-request": typed = try HubManagePatchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-tail_log-request-method": typed = try HubManageTailLogRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-tail_log-request": typed = try HubManageTailLogRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-events-request-method": typed = try HubHubEventsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-events-request": typed = try HubHubEventsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-actions-request-method": typed = try HubHubActionsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-actions-request": typed = try HubHubActionsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-read-request-method": typed = try HubDebugReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-read-request": typed = try HubDebugReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-write-request-method": typed = try HubDebugWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-write-request": typed = try HubDebugWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-pause-request-method": typed = try HubDebugPauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-pause-request": typed = try HubDebugPauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-step-request-method": typed = try HubDebugStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::debug-step-request": typed = try HubDebugStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-read-request-method": typed = try HubManageReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-read-request": typed = try HubManageReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-write-request-method": typed = try HubManageWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-write-request": typed = try HubManageWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-pause-request-method": typed = try HubManagePauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-pause-request": typed = try HubManagePauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-step-request-method": typed = try HubManageStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-step-request": typed = try HubManageStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-inbox-request-method": typed = try HubHubInboxRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-inbox-request": typed = try HubHubInboxRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-health-request-method": typed = try HubHubHealthRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -788,8 +797,11 @@ internal enum GeneratedSchema {
         case "hub::hub-chunk": typed = try HubHubChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-end-type": typed = try HubHubEndType.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-end": typed = try HubHubEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-transfer-type": typed = try HubHubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub::hub-transfer": typed = try HubHubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-log-path": typed = try HubManageLogPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-log-entry": typed = try HubManageLogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-tail-log-result": typed = try HubManageTailLogResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-log-type": typed = try HubManageLogType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::manage-log": typed = try HubManageLog.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-frame": typed = try HubHubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "sandbox::sandbox-entry": typed = try SandboxSandboxEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "sandbox::gridbot-state": typed = try SandboxGridbotState.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -911,7 +923,6 @@ internal enum GeneratedSchema {
         case "wire": typed = try Wire.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-null": typed = try HubNull.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-bool": typed = try HubBool.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-oid": typed = try HubOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-hash": typed = try HubHash.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-build-version": typed = try HubBuildVersion.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-build-record": typed = try HubBuildRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -925,23 +936,25 @@ internal enum GeneratedSchema {
         case "hub-size": typed = try HubSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-read-size": typed = try HubReadSize.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-queue": typed = try HubQueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-maybe-oid": typed = try HubMaybeOid.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-tree": typed = try HubMaybeTree.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub-maybe-generation": typed = try HubMaybeGeneration.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-target": typed = try HubTarget.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-maybe-step": typed = try HubMaybeStep.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-maybe-error": typed = try HubMaybeError.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-maybe-secret": typed = try HubMaybeSecret.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-empty": typed = try HubEmpty.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-state": typed = try HubState.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-ref": typed = try HubRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-fetch-ref": typed = try HubFetchRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-method": typed = try HubMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-methods": typed = try HubMethods.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-purpose-delegation": typed = try HubPurposeDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-delegation-statement": typed = try HubDelegationStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-ref-purpose": typed = try HubRefPurpose.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-ref-statement": typed = try HubRefStatement.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-signed-delegation": typed = try HubSignedDelegation.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-signed-ref": typed = try HubSignedRef.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-file-bytes": typed = try ManageFileBytes.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-code-path": typed = try ManageCodePath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-file-change": typed = try ManageFileChange.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-files": typed = try ManageFiles.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-patch": typed = try ManagePatch.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-patch-signing": typed = try ManagePatchSigning.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-status": typed = try HubStatus.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-queued": typed = try HubQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-receipt-queued": typed = try HubReceiptQueued.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -958,8 +971,8 @@ internal enum GeneratedSchema {
         case "hub-health-items": typed = try HubHealthItems.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-enroll-params": typed = try HubEnrollParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-install-params": typed = try HubInstallParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-push-params": typed = try HubPushParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-fetch-params": typed = try HubFetchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-patch-params": typed = try ManagePatchParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-tail-log-params": typed = try ManageTailLogParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-events-params": typed = try HubEventsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-actions-params": typed = try HubActionsParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-read-params": typed = try HubReadParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -978,22 +991,22 @@ internal enum GeneratedSchema {
         case "hub-stop-request": typed = try HubStopRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-status-request-method": typed = try HubStatusRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-status-request": typed = try HubStatusRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-git-push-request-method": typed = try HubGitPushRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-git-push-request": typed = try HubGitPushRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-git-fetch-request-method": typed = try HubGitFetchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-git-fetch-request": typed = try HubGitFetchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-patch-request-method": typed = try ManagePatchRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-patch-request": typed = try ManagePatchRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-tail_log-request-method": typed = try ManageTailLogRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-tail_log-request": typed = try ManageTailLogRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-events-request-method": typed = try HubEventsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-events-request": typed = try HubEventsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-actions-request-method": typed = try HubActionsRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-actions-request": typed = try HubActionsRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-read-request-method": typed = try DebugReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-read-request": typed = try DebugReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-write-request-method": typed = try DebugWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-write-request": typed = try DebugWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-pause-request-method": typed = try DebugPauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-pause-request": typed = try DebugPauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-step-request-method": typed = try DebugStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "debug-step-request": typed = try DebugStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-read-request-method": typed = try ManageReadRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-read-request": typed = try ManageReadRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-write-request-method": typed = try ManageWriteRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-write-request": typed = try ManageWriteRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-pause-request-method": typed = try ManagePauseRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-pause-request": typed = try ManagePauseRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-step-request-method": typed = try ManageStepRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-step-request": typed = try ManageStepRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-inbox-request-method": typed = try HubInboxRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-inbox-request": typed = try HubInboxRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-health-request-method": typed = try HubHealthRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1018,8 +1031,11 @@ internal enum GeneratedSchema {
         case "hub-chunk": typed = try HubChunk.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-end-type": typed = try HubEndType.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-end": typed = try HubEnd.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-transfer-type": typed = try HubTransferType.init(cborValue: value, depth: 0).cborValue(depth: 0)
-        case "hub-transfer": typed = try HubTransfer.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-log-path": typed = try ManageLogPath.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-log-entry": typed = try ManageLogEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-tail-log-result": typed = try ManageTailLogResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-log-type": typed = try ManageLogType.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "manage-log": typed = try ManageLog.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-frame": typed = try HubFrame.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "sandbox-entry": typed = try SandboxEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "gridbot-state": typed = try GridbotState.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -3338,8 +3354,6 @@ public typealias HubHubNull = CBORValue
 
 public typealias HubHubBool = Swift.Bool
 
-public typealias HubHubOid = CBORValue
-
 public typealias HubHubHash = CBORValue
 
 public typealias HubHubBuildVersion = Swift.String
@@ -3347,15 +3361,15 @@ public typealias HubHubBuildVersion = Swift.String
 public struct HubHubBuildRecord: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-build-record"
     public var `version`: HubHubBuildVersion
-    public var `source_commit`: HubHubOid
+    public var `source_tree`: HubHubHash
     public var `recipe_sha256`: HubHubHash
     public var `policy_sha256`: HubHubHash
     public var `transform_sha256`: HubHubHash
     public var `original_sha256`: HubHubHash
     public var `rewritten_sha256`: HubHubHash
-    public init(`version`: HubHubBuildVersion, `source_commit`: HubHubOid, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
+    public init(`version`: HubHubBuildVersion, `source_tree`: HubHubHash, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
         self.`version` = `version`
-        self.`source_commit` = `source_commit`
+        self.`source_tree` = `source_tree`
         self.`recipe_sha256` = `recipe_sha256`
         self.`policy_sha256` = `policy_sha256`
         self.`transform_sha256` = `transform_sha256`
@@ -3367,7 +3381,7 @@ public struct HubHubBuildRecord: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`version` = try HubHubBuildVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
-        self.`source_commit` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_commit")), depth: depth + 1)
+        self.`source_tree` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_tree")), depth: depth + 1)
         self.`recipe_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "recipe_sha256")), depth: depth + 1)
         self.`policy_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy_sha256")), depth: depth + 1)
         self.`transform_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "transform_sha256")), depth: depth + 1)
@@ -3378,7 +3392,7 @@ public struct HubHubBuildRecord: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
-        entries.append(.init("source_commit", try self.`source_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("source_tree", try self.`source_tree`.cborValue(depth: depth + 1)))
         entries.append(.init("recipe_sha256", try self.`recipe_sha256`.cborValue(depth: depth + 1)))
         entries.append(.init("policy_sha256", try self.`policy_sha256`.cborValue(depth: depth + 1)))
         entries.append(.init("transform_sha256", try self.`transform_sha256`.cborValue(depth: depth + 1)))
@@ -3410,14 +3424,14 @@ public typealias HubHubReadSize = Swift.UInt64
 
 public typealias HubHubQueue = Swift.UInt64
 
-public indirect enum HubHubMaybeOid: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-maybe-oid"
-    case variant1(HubHubOid)
+public indirect enum HubHubMaybeTree: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-tree"
+    case variant1(HubHubHash)
     case variant2(HubHubNull)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.reference("hub::hub-oid"), cborValue)) != nil {
-            self = .variant1(try HubHubOid.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::hub-hash"), cborValue)) != nil {
+            self = .variant1(try HubHubHash.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
@@ -3432,7 +3446,39 @@ public indirect enum HubHubMaybeOid: CBORMessage, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-oid"), value)
+            try CBORCodec.validateNode(.reference("hub::hub-hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubHubMaybeGeneration: CBORMessage, Sendable {
+    public static let schemaRule = "hub::hub-maybe-generation"
+    case variant1(CommonUint64)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant1(try CommonUint64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-null"), value)
@@ -3620,78 +3666,6 @@ public indirect enum HubHubState: CBORMessage, Sendable {
     }
 }
 
-public indirect enum HubHubRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-ref"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    case variant3(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/hub")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/hub")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
-        case .variant3(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
-public indirect enum HubHubFetchRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-fetch-ref"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
 public indirect enum HubHubMethod: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-method"
     case variant1(Swift.String)
@@ -3733,11 +3707,11 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
             self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("hub.git.push")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.patch")), cborValue)) != nil {
             self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("hub.git.fetch")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.tail_log")), cborValue)) != nil {
             self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -3749,19 +3723,19 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
             self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.read")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.read")), cborValue)) != nil {
             self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.write")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.write")), cborValue)) != nil {
             self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.pause")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.pause")), cborValue)) != nil {
             self = .variant12(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.step")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.step")), cborValue)) != nil {
             self = .variant13(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -3804,10 +3778,10 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
             try CBORCodec.validateNode(.literal(.text("hub.status")), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub.git.push")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.patch")), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub.git.fetch")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.tail_log")), value)
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.events")), value)
@@ -3816,16 +3790,16 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
             try CBORCodec.validateNode(.literal(.text("hub.actions")), value)
         case .variant10(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.read")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.read")), value)
         case .variant11(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.write")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.write")), value)
         case .variant12(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.pause")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.pause")), value)
         case .variant13(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.step")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.step")), value)
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.inbox")), value)
@@ -3894,96 +3868,6 @@ public struct HubHubDelegationStatement: CBORMessage, Sendable {
     }
 }
 
-public indirect enum HubHubRefPurpose: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-ref-purpose"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    case variant3(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("hub-ref")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("published-ref")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("logs-ref")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub-ref")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("published-ref")), value)
-        case .variant3(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("logs-ref")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
-public struct HubHubRefStatement: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-ref-statement"
-    public var `purpose`: HubHubRefPurpose
-    public var `hub`: CommonNodeId
-    public var `coglet`: CommonCogletId
-    public var `ref`: HubHubRef
-    public var `old`: HubHubMaybeOid
-    public var `new`: HubHubOid
-    public var `archive_sha256`: HubHubHash
-    public var `generation`: CommonUint64
-    public init(`purpose`: HubHubRefPurpose, `hub`: CommonNodeId, `coglet`: CommonCogletId, `ref`: HubHubRef, `old`: HubHubMaybeOid, `new`: HubHubOid, `archive_sha256`: HubHubHash, `generation`: CommonUint64) {
-        self.`purpose` = `purpose`
-        self.`hub` = `hub`
-        self.`coglet` = `coglet`
-        self.`ref` = `ref`
-        self.`old` = `old`
-        self.`new` = `new`
-        self.`archive_sha256` = `archive_sha256`
-        self.`generation` = `generation`
-    }
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        try CBORCodec.validate(Self.schemaRule, cborValue)
-        let entries = try cborValue.requireMap()
-        self.`purpose` = try HubHubRefPurpose.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
-        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
-        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
-        self.`ref` = try HubHubRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
-        self.`old` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "old")), depth: depth + 1)
-        self.`new` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "new")), depth: depth + 1)
-        self.`archive_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "archive_sha256")), depth: depth + 1)
-        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        var entries: [CBORMapEntry] = []
-        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
-        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
-        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
-        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
-        entries.append(.init("old", try self.`old`.cborValue(depth: depth + 1)))
-        entries.append(.init("new", try self.`new`.cborValue(depth: depth + 1)))
-        entries.append(.init("archive_sha256", try self.`archive_sha256`.cborValue(depth: depth + 1)))
-        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
-        let value = CBORValue.map(entries)
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
 public struct HubHubSignedDelegation: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-signed-delegation"
     public var `statement`: HubHubDelegationStatement
@@ -4014,30 +3898,112 @@ public struct HubHubSignedDelegation: CBORMessage, Sendable {
     }
 }
 
-public struct HubHubSignedRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-signed-ref"
-    public var `statement`: HubHubRefStatement
-    public var `signer`: CommonNodeId
+public typealias HubManageFileBytes = CBORValue
+
+public typealias HubManageCodePath = CBORValue
+
+public struct HubManageFileChange: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-file-change"
+    public var `path`: HubManageCodePath
+    public var `bytes`: HubManageFileBytes?
+    public init(`path`: HubManageCodePath, `bytes`: HubManageFileBytes? = nil) {
+        self.`path` = `path`
+        self.`bytes` = `bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubManageCodePath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`bytes` = try CBORCodec.field(entries, "bytes").map { try HubManageFileBytes.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        if let v = self.`bytes` { entries.append(.init("bytes", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubManageFiles = [HubManageFileChange]
+
+public struct HubManagePatch: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-patch"
+    public var `base`: HubHubHash?
+    public var `revision`: HubHubHash
+    public var `generation`: CommonUint64
+    public var `files`: HubManageFiles
     public var `signature`: HubHubSignature
-    public init(`statement`: HubHubRefStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
-        self.`statement` = `statement`
-        self.`signer` = `signer`
+    public init(`base`: HubHubHash? = nil, `revision`: HubHubHash, `generation`: CommonUint64, `files`: HubManageFiles, `signature`: HubHubSignature) {
+        self.`base` = `base`
+        self.`revision` = `revision`
+        self.`generation` = `generation`
+        self.`files` = `files`
         self.`signature` = `signature`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`statement` = try HubHubRefStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
-        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`base` = try CBORCodec.field(entries, "base").map { try HubHubHash.init(cborValue: $0, depth: depth + 1) }
+        self.`revision` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`files` = try HubManageFiles.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "files")), depth: depth + 1)
         self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
-        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        if let v = self.`base` { entries.append(.init("base", try v.cborValue(depth: depth + 1))) }
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("files", try self.`files`.cborValue(depth: depth + 1)))
         entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubManagePatchSigning: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-patch-signing"
+    public var `hub`: CommonNodeId
+    public var `coglet`: CommonCogletId
+    public var `base`: HubHubHash?
+    public var `revision`: HubHubHash
+    public var `generation`: CommonUint64
+    public var `files`: HubManageFiles
+    public init(`hub`: CommonNodeId, `coglet`: CommonCogletId, `base`: HubHubHash? = nil, `revision`: HubHubHash, `generation`: CommonUint64, `files`: HubManageFiles) {
+        self.`hub` = `hub`
+        self.`coglet` = `coglet`
+        self.`base` = `base`
+        self.`revision` = `revision`
+        self.`generation` = `generation`
+        self.`files` = `files`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`base` = try CBORCodec.field(entries, "base").map { try HubHubHash.init(cborValue: $0, depth: depth + 1) }
+        self.`revision` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`files` = try HubManageFiles.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "files")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        if let v = self.`base` { entries.append(.init("base", try v.cborValue(depth: depth + 1))) }
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("files", try self.`files`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -4047,13 +4013,15 @@ public struct HubHubSignedRef: CBORMessage, Sendable {
 public struct HubHubStatus: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-status"
     public var `state`: HubHubState
-    public var `live_commit`: HubHubMaybeOid
+    public var `live_tree`: HubHubMaybeTree
+    public var `generation`: HubHubMaybeGeneration
     public var `step`: CommonUint64
     public var `pending`: HubHubQueue
     public var `error`: HubHubMaybeError
-    public init(`state`: HubHubState, `live_commit`: HubHubMaybeOid, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
+    public init(`state`: HubHubState, `live_tree`: HubHubMaybeTree, `generation`: HubHubMaybeGeneration, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
         self.`state` = `state`
-        self.`live_commit` = `live_commit`
+        self.`live_tree` = `live_tree`
+        self.`generation` = `generation`
         self.`step` = `step`
         self.`pending` = `pending`
         self.`error` = `error`
@@ -4063,7 +4031,8 @@ public struct HubHubStatus: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`state` = try HubHubState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
-        self.`live_commit` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_commit")), depth: depth + 1)
+        self.`live_tree` = try HubHubMaybeTree.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_tree")), depth: depth + 1)
+        self.`generation` = try HubHubMaybeGeneration.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
         self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
         self.`pending` = try HubHubQueue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
         self.`error` = try HubHubMaybeError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
@@ -4072,7 +4041,8 @@ public struct HubHubStatus: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
-        entries.append(.init("live_commit", try self.`live_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("live_tree", try self.`live_tree`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
         entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
         entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
         entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
@@ -4363,8 +4333,8 @@ public struct HubHubEnrollParams: CBORMessage, Sendable {
 public struct HubHubInstallParams: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-install-params"
     public var `delegation`: HubHubSignedDelegation
-    public var `initial`: HubHubSignedRef
-    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubSignedRef) {
+    public var `initial`: HubHubHash
+    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubHash) {
         self.`delegation` = `delegation`
         self.`initial` = `initial`
     }
@@ -4373,7 +4343,7 @@ public struct HubHubInstallParams: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`delegation` = try HubHubSignedDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "delegation")), depth: depth + 1)
-        self.`initial` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
+        self.`initial` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -4386,13 +4356,11 @@ public struct HubHubInstallParams: CBORMessage, Sendable {
     }
 }
 
-public struct HubHubPushParams: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-push-params"
-    public var `update`: HubHubSignedRef
+public struct HubManagePatchParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-patch-params"
     public var `size`: HubHubSize
     public var `sha256`: HubHubHash
-    public init(`update`: HubHubSignedRef, `size`: HubHubSize, `sha256`: HubHubHash) {
-        self.`update` = `update`
+    public init(`size`: HubHubSize, `sha256`: HubHubHash) {
         self.`size` = `size`
         self.`sha256` = `sha256`
     }
@@ -4400,14 +4368,12 @@ public struct HubHubPushParams: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
         self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
         self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
         entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
         entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
@@ -4416,22 +4382,22 @@ public struct HubHubPushParams: CBORMessage, Sendable {
     }
 }
 
-public struct HubHubFetchParams: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-fetch-params"
-    public var `ref`: HubHubFetchRef
-    public init(`ref`: HubHubFetchRef) {
-        self.`ref` = `ref`
+public struct HubManageTailLogParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-tail-log-params"
+    public var `from_offset`: CommonUint64
+    public init(`from_offset`: CommonUint64) {
+        self.`from_offset` = `from_offset`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`ref` = try HubHubFetchRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+        self.`from_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "from_offset")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        entries.append(.init("from_offset", try self.`from_offset`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -4886,17 +4852,17 @@ public struct HubHubStatusRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubHubGitPushRequestMethod = Swift.String
+public typealias HubManagePatchRequestMethod = Swift.String
 
-public struct HubHubGitPushRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-git-push-request"
-    public var `method`: HubHubGitPushRequestMethod
+public struct HubManagePatchRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-patch-request"
+    public var `method`: HubManagePatchRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
-    public var `params`: HubHubPushParams
+    public var `params`: HubManagePatchParams
     public var `context`: HubHubContext
-    public init(`method`: HubHubGitPushRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubPushParams, `context`: HubHubContext) {
+    public init(`method`: HubManagePatchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubManagePatchParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -4908,11 +4874,11 @@ public struct HubHubGitPushRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubHubGitPushRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManagePatchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
-        self.`params` = try HubHubPushParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`params` = try HubManagePatchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
         self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -4930,17 +4896,17 @@ public struct HubHubGitPushRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubHubGitFetchRequestMethod = Swift.String
+public typealias HubManageTailLogRequestMethod = Swift.String
 
-public struct HubHubGitFetchRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-git-fetch-request"
-    public var `method`: HubHubGitFetchRequestMethod
+public struct HubManageTailLogRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-tail_log-request"
+    public var `method`: HubManageTailLogRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
-    public var `params`: HubHubFetchParams
+    public var `params`: HubManageTailLogParams
     public var `context`: HubHubContext
-    public init(`method`: HubHubGitFetchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubFetchParams, `context`: HubHubContext) {
+    public init(`method`: HubManageTailLogRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubManageTailLogParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -4952,11 +4918,11 @@ public struct HubHubGitFetchRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubHubGitFetchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageTailLogRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
-        self.`params` = try HubHubFetchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`params` = try HubManageTailLogParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
         self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -5058,17 +5024,17 @@ public struct HubHubActionsRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubDebugReadRequestMethod = Swift.String
+public typealias HubManageReadRequestMethod = Swift.String
 
-public struct HubDebugReadRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::debug-read-request"
-    public var `method`: HubDebugReadRequestMethod
+public struct HubManageReadRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-read-request"
+    public var `method`: HubManageReadRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubReadParams
     public var `context`: HubHubContext
-    public init(`method`: HubDebugReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
+    public init(`method`: HubManageReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -5080,7 +5046,7 @@ public struct HubDebugReadRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -5102,16 +5068,16 @@ public struct HubDebugReadRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubDebugWriteRequestMethod = Swift.String
+public typealias HubManageWriteRequestMethod = Swift.String
 
-public struct HubDebugWriteRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::debug-write-request"
-    public var `method`: HubDebugWriteRequestMethod
+public struct HubManageWriteRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-write-request"
+    public var `method`: HubManageWriteRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubWriteParams
-    public init(`method`: HubDebugWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
+    public init(`method`: HubManageWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -5122,7 +5088,7 @@ public struct HubDebugWriteRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -5142,17 +5108,17 @@ public struct HubDebugWriteRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubDebugPauseRequestMethod = Swift.String
+public typealias HubManagePauseRequestMethod = Swift.String
 
-public struct HubDebugPauseRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::debug-pause-request"
-    public var `method`: HubDebugPauseRequestMethod
+public struct HubManagePauseRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-pause-request"
+    public var `method`: HubManagePauseRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubEmpty
     public var `context`: HubHubContext
-    public init(`method`: HubDebugPauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+    public init(`method`: HubManagePauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -5164,7 +5130,7 @@ public struct HubDebugPauseRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugPauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManagePauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -5186,17 +5152,17 @@ public struct HubDebugPauseRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubDebugStepRequestMethod = Swift.String
+public typealias HubManageStepRequestMethod = Swift.String
 
-public struct HubDebugStepRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub::debug-step-request"
-    public var `method`: HubDebugStepRequestMethod
+public struct HubManageStepRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-step-request"
+    public var `method`: HubManageStepRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubEmpty
     public var `context`: HubHubContext
-    public init(`method`: HubDebugStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+    public init(`method`: HubManageStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -5208,7 +5174,7 @@ public struct HubDebugStepRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -5405,14 +5371,14 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
     case variant3(HubHubStartRequest)
     case variant4(HubHubStopRequest)
     case variant5(HubHubStatusRequest)
-    case variant6(HubHubGitPushRequest)
-    case variant7(HubHubGitFetchRequest)
+    case variant6(HubManagePatchRequest)
+    case variant7(HubManageTailLogRequest)
     case variant8(HubHubEventsRequest)
     case variant9(HubHubActionsRequest)
-    case variant10(HubDebugReadRequest)
-    case variant11(HubDebugWriteRequest)
-    case variant12(HubDebugPauseRequest)
-    case variant13(HubDebugStepRequest)
+    case variant10(HubManageReadRequest)
+    case variant11(HubManageWriteRequest)
+    case variant12(HubManagePauseRequest)
+    case variant13(HubManageStepRequest)
     case variant14(HubHubInboxRequest)
     case variant15(HubHubHealthRequest)
     case variant16(HubHubReceiptRequest)
@@ -5439,12 +5405,12 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
             self = .variant5(try HubHubStatusRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-git-push-request"), cborValue)) != nil {
-            self = .variant6(try HubHubGitPushRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-patch-request"), cborValue)) != nil {
+            self = .variant6(try HubManagePatchRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), cborValue)) != nil {
-            self = .variant7(try HubHubGitFetchRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-tail_log-request"), cborValue)) != nil {
+            self = .variant7(try HubManageTailLogRequest.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-events-request"), cborValue)) != nil {
@@ -5455,20 +5421,20 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
             self = .variant9(try HubHubActionsRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-read-request"), cborValue)) != nil {
-            self = .variant10(try HubDebugReadRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-read-request"), cborValue)) != nil {
+            self = .variant10(try HubManageReadRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-write-request"), cborValue)) != nil {
-            self = .variant11(try HubDebugWriteRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-write-request"), cborValue)) != nil {
+            self = .variant11(try HubManageWriteRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-pause-request"), cborValue)) != nil {
-            self = .variant12(try HubDebugPauseRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-pause-request"), cborValue)) != nil {
+            self = .variant12(try HubManagePauseRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-step-request"), cborValue)) != nil {
-            self = .variant13(try HubDebugStepRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-step-request"), cborValue)) != nil {
+            self = .variant13(try HubManageStepRequest.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-inbox-request"), cborValue)) != nil {
@@ -5510,10 +5476,10 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-status-request"), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-git-push-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-patch-request"), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-tail_log-request"), value)
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-events-request"), value)
@@ -5522,16 +5488,16 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-actions-request"), value)
         case .variant10(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-read-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-read-request"), value)
         case .variant11(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-write-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-write-request"), value)
         case .variant12(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-pause-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-pause-request"), value)
         case .variant13(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-step-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-step-request"), value)
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-inbox-request"), value)
@@ -5906,40 +5872,90 @@ public struct HubHubEnd: CBORMessage, Sendable {
     }
 }
 
-public typealias HubHubTransferType = Swift.String
+public typealias HubManageLogPath = CBORValue
 
-public struct HubHubTransfer: CBORMessage, Sendable {
-    public static let schemaRule = "hub::hub-transfer"
-    public var `type`: HubHubTransferType
-    public var `correlation_id`: CommonCorrelationId
-    public var `size`: HubHubSize
-    public var `sha256`: HubHubHash
-    public var `update`: HubHubSignedRef
-    public init(`type`: HubHubTransferType, `correlation_id`: CommonCorrelationId, `size`: HubHubSize, `sha256`: HubHubHash, `update`: HubHubSignedRef) {
-        self.`type` = `type`
-        self.`correlation_id` = `correlation_id`
-        self.`size` = `size`
-        self.`sha256` = `sha256`
-        self.`update` = `update`
+public struct HubManageLogEntry: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-log-entry"
+    public var `path`: HubManageLogPath
+    public var `file_offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`path`: HubManageLogPath, `file_offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`path` = `path`
+        self.`file_offset` = `file_offset`
+        self.`hex` = `hex`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`type` = try HubHubTransferType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`path` = try HubManageLogPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`file_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "file_offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("file_offset", try self.`file_offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubManageTailLogResult: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-tail-log-result"
+    public var `next_offset`: CommonUint64
+    public init(`next_offset`: CommonUint64) {
+        self.`next_offset` = `next_offset`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubManageLogType = Swift.String
+
+public struct HubManageLog: CBORMessage, Sendable {
+    public static let schemaRule = "hub::manage-log"
+    public var `type`: HubManageLogType
+    public var `correlation_id`: CommonCorrelationId
+    public var `offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`type`: HubManageLogType, `correlation_id`: CommonCorrelationId, `offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`offset` = `offset`
+        self.`hex` = `hex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubManageLogType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
-        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
-        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
-        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
         entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
-        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
-        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
-        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -5954,7 +5970,7 @@ public indirect enum HubHubFrame: CBORMessage, Sendable {
     case variant4(HubHubCredit)
     case variant5(HubHubChunk)
     case variant6(HubHubEnd)
-    case variant7(HubHubTransfer)
+    case variant7(HubManageLog)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-request"), cborValue)) != nil {
@@ -5981,8 +5997,8 @@ public indirect enum HubHubFrame: CBORMessage, Sendable {
             self = .variant6(try HubHubEnd.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-transfer"), cborValue)) != nil {
-            self = .variant7(try HubHubTransfer.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-log"), cborValue)) != nil {
+            self = .variant7(try HubManageLog.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -6011,7 +6027,7 @@ public indirect enum HubHubFrame: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-end"), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-transfer"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-log"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -9832,8 +9848,6 @@ public typealias HubNull = CBORValue
 
 public typealias HubBool = Swift.Bool
 
-public typealias HubOid = CBORValue
-
 public typealias HubHash = CBORValue
 
 public typealias HubBuildVersion = Swift.String
@@ -9841,15 +9855,15 @@ public typealias HubBuildVersion = Swift.String
 public struct HubBuildRecord: CBORMessage, Sendable {
     public static let schemaRule = "hub-build-record"
     public var `version`: HubHubBuildVersion
-    public var `source_commit`: HubHubOid
+    public var `source_tree`: HubHubHash
     public var `recipe_sha256`: HubHubHash
     public var `policy_sha256`: HubHubHash
     public var `transform_sha256`: HubHubHash
     public var `original_sha256`: HubHubHash
     public var `rewritten_sha256`: HubHubHash
-    public init(`version`: HubHubBuildVersion, `source_commit`: HubHubOid, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
+    public init(`version`: HubHubBuildVersion, `source_tree`: HubHubHash, `recipe_sha256`: HubHubHash, `policy_sha256`: HubHubHash, `transform_sha256`: HubHubHash, `original_sha256`: HubHubHash, `rewritten_sha256`: HubHubHash) {
         self.`version` = `version`
-        self.`source_commit` = `source_commit`
+        self.`source_tree` = `source_tree`
         self.`recipe_sha256` = `recipe_sha256`
         self.`policy_sha256` = `policy_sha256`
         self.`transform_sha256` = `transform_sha256`
@@ -9861,7 +9875,7 @@ public struct HubBuildRecord: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`version` = try HubHubBuildVersion.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
-        self.`source_commit` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_commit")), depth: depth + 1)
+        self.`source_tree` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source_tree")), depth: depth + 1)
         self.`recipe_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "recipe_sha256")), depth: depth + 1)
         self.`policy_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "policy_sha256")), depth: depth + 1)
         self.`transform_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "transform_sha256")), depth: depth + 1)
@@ -9872,7 +9886,7 @@ public struct HubBuildRecord: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
-        entries.append(.init("source_commit", try self.`source_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("source_tree", try self.`source_tree`.cborValue(depth: depth + 1)))
         entries.append(.init("recipe_sha256", try self.`recipe_sha256`.cborValue(depth: depth + 1)))
         entries.append(.init("policy_sha256", try self.`policy_sha256`.cborValue(depth: depth + 1)))
         entries.append(.init("transform_sha256", try self.`transform_sha256`.cborValue(depth: depth + 1)))
@@ -9904,14 +9918,14 @@ public typealias HubReadSize = Swift.UInt64
 
 public typealias HubQueue = Swift.UInt64
 
-public indirect enum HubMaybeOid: CBORMessage, Sendable {
-    public static let schemaRule = "hub-maybe-oid"
-    case variant1(HubHubOid)
+public indirect enum HubMaybeTree: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-tree"
+    case variant1(HubHubHash)
     case variant2(HubHubNull)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.reference("hub::hub-oid"), cborValue)) != nil {
-            self = .variant1(try HubHubOid.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::hub-hash"), cborValue)) != nil {
+            self = .variant1(try HubHubHash.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
@@ -9926,7 +9940,39 @@ public indirect enum HubMaybeOid: CBORMessage, Sendable {
         switch self {
         case .variant1(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-oid"), value)
+            try CBORCodec.validateNode(.reference("hub::hub-hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::hub-null"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum HubMaybeGeneration: CBORMessage, Sendable {
+    public static let schemaRule = "hub-maybe-generation"
+    case variant1(CommonUint64)
+    case variant2(HubHubNull)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("common::uint64"), cborValue)) != nil {
+            self = .variant1(try CommonUint64.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::hub-null"), cborValue)) != nil {
+            self = .variant2(try HubHubNull.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("common::uint64"), value)
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-null"), value)
@@ -10114,78 +10160,6 @@ public indirect enum HubState: CBORMessage, Sendable {
     }
 }
 
-public indirect enum HubRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub-ref"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    case variant3(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/hub")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/hub")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
-        case .variant3(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
-public indirect enum HubFetchRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub-fetch-ref"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("refs/published/main")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("refs/heads/logs")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/published/main")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("refs/heads/logs")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
 public indirect enum HubMethod: CBORMessage, Sendable {
     public static let schemaRule = "hub-method"
     case variant1(Swift.String)
@@ -10227,11 +10201,11 @@ public indirect enum HubMethod: CBORMessage, Sendable {
             self = .variant5(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("hub.git.push")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.patch")), cborValue)) != nil {
             self = .variant6(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("hub.git.fetch")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.tail_log")), cborValue)) != nil {
             self = .variant7(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -10243,19 +10217,19 @@ public indirect enum HubMethod: CBORMessage, Sendable {
             self = .variant9(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.read")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.read")), cborValue)) != nil {
             self = .variant10(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.write")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.write")), cborValue)) != nil {
             self = .variant11(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.pause")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.pause")), cborValue)) != nil {
             self = .variant12(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.literal(.text("debug.step")), cborValue)) != nil {
+        if (try? CBORCodec.validateNode(.literal(.text("manage.step")), cborValue)) != nil {
             self = .variant13(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
@@ -10298,10 +10272,10 @@ public indirect enum HubMethod: CBORMessage, Sendable {
             try CBORCodec.validateNode(.literal(.text("hub.status")), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub.git.push")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.patch")), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub.git.fetch")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.tail_log")), value)
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.events")), value)
@@ -10310,16 +10284,16 @@ public indirect enum HubMethod: CBORMessage, Sendable {
             try CBORCodec.validateNode(.literal(.text("hub.actions")), value)
         case .variant10(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.read")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.read")), value)
         case .variant11(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.write")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.write")), value)
         case .variant12(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.pause")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.pause")), value)
         case .variant13(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("debug.step")), value)
+            try CBORCodec.validateNode(.literal(.text("manage.step")), value)
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.inbox")), value)
@@ -10388,96 +10362,6 @@ public struct HubDelegationStatement: CBORMessage, Sendable {
     }
 }
 
-public indirect enum HubRefPurpose: CBORMessage, Sendable {
-    public static let schemaRule = "hub-ref-purpose"
-    case variant1(Swift.String)
-    case variant2(Swift.String)
-    case variant3(Swift.String)
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        if (try? CBORCodec.validateNode(.literal(.text("hub-ref")), cborValue)) != nil {
-            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("published-ref")), cborValue)) != nil {
-            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        if (try? CBORCodec.validateNode(.literal(.text("logs-ref")), cborValue)) != nil {
-            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
-            return
-        }
-        throw CBORFailure.invalid("no union branch matched")
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        let value: CBORValue
-        switch self {
-        case .variant1(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("hub-ref")), value)
-        case .variant2(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("published-ref")), value)
-        case .variant3(let v):
-            value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.literal(.text("logs-ref")), value)
-        }
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
-public struct HubRefStatement: CBORMessage, Sendable {
-    public static let schemaRule = "hub-ref-statement"
-    public var `purpose`: HubHubRefPurpose
-    public var `hub`: CommonNodeId
-    public var `coglet`: CommonCogletId
-    public var `ref`: HubHubRef
-    public var `old`: HubHubMaybeOid
-    public var `new`: HubHubOid
-    public var `archive_sha256`: HubHubHash
-    public var `generation`: CommonUint64
-    public init(`purpose`: HubHubRefPurpose, `hub`: CommonNodeId, `coglet`: CommonCogletId, `ref`: HubHubRef, `old`: HubHubMaybeOid, `new`: HubHubOid, `archive_sha256`: HubHubHash, `generation`: CommonUint64) {
-        self.`purpose` = `purpose`
-        self.`hub` = `hub`
-        self.`coglet` = `coglet`
-        self.`ref` = `ref`
-        self.`old` = `old`
-        self.`new` = `new`
-        self.`archive_sha256` = `archive_sha256`
-        self.`generation` = `generation`
-    }
-    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
-        try CBORCodec.checkDepth(depth)
-        try CBORCodec.validate(Self.schemaRule, cborValue)
-        let entries = try cborValue.requireMap()
-        self.`purpose` = try HubHubRefPurpose.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "purpose")), depth: depth + 1)
-        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
-        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
-        self.`ref` = try HubHubRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
-        self.`old` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "old")), depth: depth + 1)
-        self.`new` = try HubHubOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "new")), depth: depth + 1)
-        self.`archive_sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "archive_sha256")), depth: depth + 1)
-        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
-    }
-    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
-        try CBORCodec.checkDepth(depth)
-        var entries: [CBORMapEntry] = []
-        entries.append(.init("purpose", try self.`purpose`.cborValue(depth: depth + 1)))
-        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
-        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
-        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
-        entries.append(.init("old", try self.`old`.cborValue(depth: depth + 1)))
-        entries.append(.init("new", try self.`new`.cborValue(depth: depth + 1)))
-        entries.append(.init("archive_sha256", try self.`archive_sha256`.cborValue(depth: depth + 1)))
-        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
-        let value = CBORValue.map(entries)
-        try CBORCodec.validate(Self.schemaRule, value)
-        return value
-    }
-}
-
 public struct HubSignedDelegation: CBORMessage, Sendable {
     public static let schemaRule = "hub-signed-delegation"
     public var `statement`: HubHubDelegationStatement
@@ -10508,30 +10392,112 @@ public struct HubSignedDelegation: CBORMessage, Sendable {
     }
 }
 
-public struct HubSignedRef: CBORMessage, Sendable {
-    public static let schemaRule = "hub-signed-ref"
-    public var `statement`: HubHubRefStatement
-    public var `signer`: CommonNodeId
+public typealias ManageFileBytes = CBORValue
+
+public typealias ManageCodePath = CBORValue
+
+public struct ManageFileChange: CBORMessage, Sendable {
+    public static let schemaRule = "manage-file-change"
+    public var `path`: HubManageCodePath
+    public var `bytes`: HubManageFileBytes?
+    public init(`path`: HubManageCodePath, `bytes`: HubManageFileBytes? = nil) {
+        self.`path` = `path`
+        self.`bytes` = `bytes`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`path` = try HubManageCodePath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`bytes` = try CBORCodec.field(entries, "bytes").map { try HubManageFileBytes.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        if let v = self.`bytes` { entries.append(.init("bytes", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias ManageFiles = [HubManageFileChange]
+
+public struct ManagePatch: CBORMessage, Sendable {
+    public static let schemaRule = "manage-patch"
+    public var `base`: HubHubHash?
+    public var `revision`: HubHubHash
+    public var `generation`: CommonUint64
+    public var `files`: HubManageFiles
     public var `signature`: HubHubSignature
-    public init(`statement`: HubHubRefStatement, `signer`: CommonNodeId, `signature`: HubHubSignature) {
-        self.`statement` = `statement`
-        self.`signer` = `signer`
+    public init(`base`: HubHubHash? = nil, `revision`: HubHubHash, `generation`: CommonUint64, `files`: HubManageFiles, `signature`: HubHubSignature) {
+        self.`base` = `base`
+        self.`revision` = `revision`
+        self.`generation` = `generation`
+        self.`files` = `files`
         self.`signature` = `signature`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`statement` = try HubHubRefStatement.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "statement")), depth: depth + 1)
-        self.`signer` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signer")), depth: depth + 1)
+        self.`base` = try CBORCodec.field(entries, "base").map { try HubHubHash.init(cborValue: $0, depth: depth + 1) }
+        self.`revision` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`files` = try HubManageFiles.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "files")), depth: depth + 1)
         self.`signature` = try HubHubSignature.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "signature")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("statement", try self.`statement`.cborValue(depth: depth + 1)))
-        entries.append(.init("signer", try self.`signer`.cborValue(depth: depth + 1)))
+        if let v = self.`base` { entries.append(.init("base", try v.cborValue(depth: depth + 1))) }
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("files", try self.`files`.cborValue(depth: depth + 1)))
         entries.append(.init("signature", try self.`signature`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ManagePatchSigning: CBORMessage, Sendable {
+    public static let schemaRule = "manage-patch-signing"
+    public var `hub`: CommonNodeId
+    public var `coglet`: CommonCogletId
+    public var `base`: HubHubHash?
+    public var `revision`: HubHubHash
+    public var `generation`: CommonUint64
+    public var `files`: HubManageFiles
+    public init(`hub`: CommonNodeId, `coglet`: CommonCogletId, `base`: HubHubHash? = nil, `revision`: HubHubHash, `generation`: CommonUint64, `files`: HubManageFiles) {
+        self.`hub` = `hub`
+        self.`coglet` = `coglet`
+        self.`base` = `base`
+        self.`revision` = `revision`
+        self.`generation` = `generation`
+        self.`files` = `files`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`hub` = try CommonNodeId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hub")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`base` = try CBORCodec.field(entries, "base").map { try HubHubHash.init(cborValue: $0, depth: depth + 1) }
+        self.`revision` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`generation` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
+        self.`files` = try HubManageFiles.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "files")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("hub", try self.`hub`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        if let v = self.`base` { entries.append(.init("base", try v.cborValue(depth: depth + 1))) }
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
+        entries.append(.init("files", try self.`files`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -10541,13 +10507,15 @@ public struct HubSignedRef: CBORMessage, Sendable {
 public struct HubStatus: CBORMessage, Sendable {
     public static let schemaRule = "hub-status"
     public var `state`: HubHubState
-    public var `live_commit`: HubHubMaybeOid
+    public var `live_tree`: HubHubMaybeTree
+    public var `generation`: HubHubMaybeGeneration
     public var `step`: CommonUint64
     public var `pending`: HubHubQueue
     public var `error`: HubHubMaybeError
-    public init(`state`: HubHubState, `live_commit`: HubHubMaybeOid, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
+    public init(`state`: HubHubState, `live_tree`: HubHubMaybeTree, `generation`: HubHubMaybeGeneration, `step`: CommonUint64, `pending`: HubHubQueue, `error`: HubHubMaybeError) {
         self.`state` = `state`
-        self.`live_commit` = `live_commit`
+        self.`live_tree` = `live_tree`
+        self.`generation` = `generation`
         self.`step` = `step`
         self.`pending` = `pending`
         self.`error` = `error`
@@ -10557,7 +10525,8 @@ public struct HubStatus: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`state` = try HubHubState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "state")), depth: depth + 1)
-        self.`live_commit` = try HubHubMaybeOid.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_commit")), depth: depth + 1)
+        self.`live_tree` = try HubHubMaybeTree.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "live_tree")), depth: depth + 1)
+        self.`generation` = try HubHubMaybeGeneration.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "generation")), depth: depth + 1)
         self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
         self.`pending` = try HubHubQueue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "pending")), depth: depth + 1)
         self.`error` = try HubHubMaybeError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "error")), depth: depth + 1)
@@ -10566,7 +10535,8 @@ public struct HubStatus: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("state", try self.`state`.cborValue(depth: depth + 1)))
-        entries.append(.init("live_commit", try self.`live_commit`.cborValue(depth: depth + 1)))
+        entries.append(.init("live_tree", try self.`live_tree`.cborValue(depth: depth + 1)))
+        entries.append(.init("generation", try self.`generation`.cborValue(depth: depth + 1)))
         entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
         entries.append(.init("pending", try self.`pending`.cborValue(depth: depth + 1)))
         entries.append(.init("error", try self.`error`.cborValue(depth: depth + 1)))
@@ -10857,8 +10827,8 @@ public struct HubEnrollParams: CBORMessage, Sendable {
 public struct HubInstallParams: CBORMessage, Sendable {
     public static let schemaRule = "hub-install-params"
     public var `delegation`: HubHubSignedDelegation
-    public var `initial`: HubHubSignedRef
-    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubSignedRef) {
+    public var `initial`: HubHubHash
+    public init(`delegation`: HubHubSignedDelegation, `initial`: HubHubHash) {
         self.`delegation` = `delegation`
         self.`initial` = `initial`
     }
@@ -10867,7 +10837,7 @@ public struct HubInstallParams: CBORMessage, Sendable {
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
         self.`delegation` = try HubHubSignedDelegation.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "delegation")), depth: depth + 1)
-        self.`initial` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
+        self.`initial` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
@@ -10880,13 +10850,11 @@ public struct HubInstallParams: CBORMessage, Sendable {
     }
 }
 
-public struct HubPushParams: CBORMessage, Sendable {
-    public static let schemaRule = "hub-push-params"
-    public var `update`: HubHubSignedRef
+public struct ManagePatchParams: CBORMessage, Sendable {
+    public static let schemaRule = "manage-patch-params"
     public var `size`: HubHubSize
     public var `sha256`: HubHubHash
-    public init(`update`: HubHubSignedRef, `size`: HubHubSize, `sha256`: HubHubHash) {
-        self.`update` = `update`
+    public init(`size`: HubHubSize, `sha256`: HubHubHash) {
         self.`size` = `size`
         self.`sha256` = `sha256`
     }
@@ -10894,14 +10862,12 @@ public struct HubPushParams: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
         self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
         self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
         entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
         entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
@@ -10910,22 +10876,22 @@ public struct HubPushParams: CBORMessage, Sendable {
     }
 }
 
-public struct HubFetchParams: CBORMessage, Sendable {
-    public static let schemaRule = "hub-fetch-params"
-    public var `ref`: HubHubFetchRef
-    public init(`ref`: HubHubFetchRef) {
-        self.`ref` = `ref`
+public struct ManageTailLogParams: CBORMessage, Sendable {
+    public static let schemaRule = "manage-tail-log-params"
+    public var `from_offset`: CommonUint64
+    public init(`from_offset`: CommonUint64) {
+        self.`from_offset` = `from_offset`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`ref` = try HubHubFetchRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "ref")), depth: depth + 1)
+        self.`from_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "from_offset")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
-        entries.append(.init("ref", try self.`ref`.cborValue(depth: depth + 1)))
+        entries.append(.init("from_offset", try self.`from_offset`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -11380,17 +11346,17 @@ public struct HubStatusRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubGitPushRequestMethod = Swift.String
+public typealias ManagePatchRequestMethod = Swift.String
 
-public struct HubGitPushRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub-git-push-request"
-    public var `method`: HubHubGitPushRequestMethod
+public struct ManagePatchRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-patch-request"
+    public var `method`: HubManagePatchRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
-    public var `params`: HubHubPushParams
+    public var `params`: HubManagePatchParams
     public var `context`: HubHubContext
-    public init(`method`: HubHubGitPushRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubPushParams, `context`: HubHubContext) {
+    public init(`method`: HubManagePatchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubManagePatchParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11402,11 +11368,11 @@ public struct HubGitPushRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubHubGitPushRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManagePatchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
-        self.`params` = try HubHubPushParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`params` = try HubManagePatchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
         self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -11424,17 +11390,17 @@ public struct HubGitPushRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias HubGitFetchRequestMethod = Swift.String
+public typealias ManageTailLogRequestMethod = Swift.String
 
-public struct HubGitFetchRequest: CBORMessage, Sendable {
-    public static let schemaRule = "hub-git-fetch-request"
-    public var `method`: HubHubGitFetchRequestMethod
+public struct ManageTailLogRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-tail_log-request"
+    public var `method`: HubManageTailLogRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
-    public var `params`: HubHubFetchParams
+    public var `params`: HubManageTailLogParams
     public var `context`: HubHubContext
-    public init(`method`: HubHubGitFetchRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubFetchParams, `context`: HubHubContext) {
+    public init(`method`: HubManageTailLogRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubManageTailLogParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11446,11 +11412,11 @@ public struct HubGitFetchRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubHubGitFetchRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageTailLogRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
-        self.`params` = try HubHubFetchParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`params` = try HubManageTailLogParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
         self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -11552,17 +11518,17 @@ public struct HubActionsRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias DebugReadRequestMethod = Swift.String
+public typealias ManageReadRequestMethod = Swift.String
 
-public struct DebugReadRequest: CBORMessage, Sendable {
-    public static let schemaRule = "debug-read-request"
-    public var `method`: HubDebugReadRequestMethod
+public struct ManageReadRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-read-request"
+    public var `method`: HubManageReadRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubReadParams
     public var `context`: HubHubContext
-    public init(`method`: HubDebugReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
+    public init(`method`: HubManageReadRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubReadParams, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11574,7 +11540,7 @@ public struct DebugReadRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageReadRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -11596,16 +11562,16 @@ public struct DebugReadRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias DebugWriteRequestMethod = Swift.String
+public typealias ManageWriteRequestMethod = Swift.String
 
-public struct DebugWriteRequest: CBORMessage, Sendable {
-    public static let schemaRule = "debug-write-request"
-    public var `method`: HubDebugWriteRequestMethod
+public struct ManageWriteRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-write-request"
+    public var `method`: HubManageWriteRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubWriteParams
-    public init(`method`: HubDebugWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
+    public init(`method`: HubManageWriteRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubWriteParams) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11616,7 +11582,7 @@ public struct DebugWriteRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageWriteRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -11636,17 +11602,17 @@ public struct DebugWriteRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias DebugPauseRequestMethod = Swift.String
+public typealias ManagePauseRequestMethod = Swift.String
 
-public struct DebugPauseRequest: CBORMessage, Sendable {
-    public static let schemaRule = "debug-pause-request"
-    public var `method`: HubDebugPauseRequestMethod
+public struct ManagePauseRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-pause-request"
+    public var `method`: HubManagePauseRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubEmpty
     public var `context`: HubHubContext
-    public init(`method`: HubDebugPauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+    public init(`method`: HubManagePauseRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11658,7 +11624,7 @@ public struct DebugPauseRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugPauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManagePauseRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -11680,17 +11646,17 @@ public struct DebugPauseRequest: CBORMessage, Sendable {
     }
 }
 
-public typealias DebugStepRequestMethod = Swift.String
+public typealias ManageStepRequestMethod = Swift.String
 
-public struct DebugStepRequest: CBORMessage, Sendable {
-    public static let schemaRule = "debug-step-request"
-    public var `method`: HubDebugStepRequestMethod
+public struct ManageStepRequest: CBORMessage, Sendable {
+    public static let schemaRule = "manage-step-request"
+    public var `method`: HubManageStepRequestMethod
     public var `target`: CommonCogletId
     public var `correlation_id`: CommonCorrelationId
     public var `timeout_ms`: HubHubTimeout
     public var `params`: HubHubEmpty
     public var `context`: HubHubContext
-    public init(`method`: HubDebugStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
+    public init(`method`: HubManageStepRequestMethod, `target`: CommonCogletId, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubHubEmpty, `context`: HubHubContext) {
         self.`method` = `method`
         self.`target` = `target`
         self.`correlation_id` = `correlation_id`
@@ -11702,7 +11668,7 @@ public struct DebugStepRequest: CBORMessage, Sendable {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`method` = try HubDebugStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`method` = try HubManageStepRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
         self.`target` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
         self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
@@ -11899,14 +11865,14 @@ public indirect enum HubRequest: CBORMessage, Sendable {
     case variant3(HubHubStartRequest)
     case variant4(HubHubStopRequest)
     case variant5(HubHubStatusRequest)
-    case variant6(HubHubGitPushRequest)
-    case variant7(HubHubGitFetchRequest)
+    case variant6(HubManagePatchRequest)
+    case variant7(HubManageTailLogRequest)
     case variant8(HubHubEventsRequest)
     case variant9(HubHubActionsRequest)
-    case variant10(HubDebugReadRequest)
-    case variant11(HubDebugWriteRequest)
-    case variant12(HubDebugPauseRequest)
-    case variant13(HubDebugStepRequest)
+    case variant10(HubManageReadRequest)
+    case variant11(HubManageWriteRequest)
+    case variant12(HubManagePauseRequest)
+    case variant13(HubManageStepRequest)
     case variant14(HubHubInboxRequest)
     case variant15(HubHubHealthRequest)
     case variant16(HubHubReceiptRequest)
@@ -11933,12 +11899,12 @@ public indirect enum HubRequest: CBORMessage, Sendable {
             self = .variant5(try HubHubStatusRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-git-push-request"), cborValue)) != nil {
-            self = .variant6(try HubHubGitPushRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-patch-request"), cborValue)) != nil {
+            self = .variant6(try HubManagePatchRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), cborValue)) != nil {
-            self = .variant7(try HubHubGitFetchRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-tail_log-request"), cborValue)) != nil {
+            self = .variant7(try HubManageTailLogRequest.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-events-request"), cborValue)) != nil {
@@ -11949,20 +11915,20 @@ public indirect enum HubRequest: CBORMessage, Sendable {
             self = .variant9(try HubHubActionsRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-read-request"), cborValue)) != nil {
-            self = .variant10(try HubDebugReadRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-read-request"), cborValue)) != nil {
+            self = .variant10(try HubManageReadRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-write-request"), cborValue)) != nil {
-            self = .variant11(try HubDebugWriteRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-write-request"), cborValue)) != nil {
+            self = .variant11(try HubManageWriteRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-pause-request"), cborValue)) != nil {
-            self = .variant12(try HubDebugPauseRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-pause-request"), cborValue)) != nil {
+            self = .variant12(try HubManagePauseRequest.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::debug-step-request"), cborValue)) != nil {
-            self = .variant13(try HubDebugStepRequest.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-step-request"), cborValue)) != nil {
+            self = .variant13(try HubManageStepRequest.init(cborValue: cborValue, depth: depth))
             return
         }
         if (try? CBORCodec.validateNode(.reference("hub::hub-inbox-request"), cborValue)) != nil {
@@ -12004,10 +11970,10 @@ public indirect enum HubRequest: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-status-request"), value)
         case .variant6(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-git-push-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-patch-request"), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-git-fetch-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-tail_log-request"), value)
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-events-request"), value)
@@ -12016,16 +11982,16 @@ public indirect enum HubRequest: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-actions-request"), value)
         case .variant10(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-read-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-read-request"), value)
         case .variant11(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-write-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-write-request"), value)
         case .variant12(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-pause-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-pause-request"), value)
         case .variant13(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::debug-step-request"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-step-request"), value)
         case .variant14(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-inbox-request"), value)
@@ -12400,40 +12366,90 @@ public struct HubEnd: CBORMessage, Sendable {
     }
 }
 
-public typealias HubTransferType = Swift.String
+public typealias ManageLogPath = CBORValue
 
-public struct HubTransfer: CBORMessage, Sendable {
-    public static let schemaRule = "hub-transfer"
-    public var `type`: HubHubTransferType
-    public var `correlation_id`: CommonCorrelationId
-    public var `size`: HubHubSize
-    public var `sha256`: HubHubHash
-    public var `update`: HubHubSignedRef
-    public init(`type`: HubHubTransferType, `correlation_id`: CommonCorrelationId, `size`: HubHubSize, `sha256`: HubHubHash, `update`: HubHubSignedRef) {
-        self.`type` = `type`
-        self.`correlation_id` = `correlation_id`
-        self.`size` = `size`
-        self.`sha256` = `sha256`
-        self.`update` = `update`
+public struct ManageLogEntry: CBORMessage, Sendable {
+    public static let schemaRule = "manage-log-entry"
+    public var `path`: HubManageLogPath
+    public var `file_offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`path`: HubManageLogPath, `file_offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`path` = `path`
+        self.`file_offset` = `file_offset`
+        self.`hex` = `hex`
     }
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         try CBORCodec.validate(Self.schemaRule, cborValue)
         let entries = try cborValue.requireMap()
-        self.`type` = try HubHubTransferType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`path` = try HubManageLogPath.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "path")), depth: depth + 1)
+        self.`file_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "file_offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("path", try self.`path`.cborValue(depth: depth + 1)))
+        entries.append(.init("file_offset", try self.`file_offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct ManageTailLogResult: CBORMessage, Sendable {
+    public static let schemaRule = "manage-tail-log-result"
+    public var `next_offset`: CommonUint64
+    public init(`next_offset`: CommonUint64) {
+        self.`next_offset` = `next_offset`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`next_offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "next_offset")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("next_offset", try self.`next_offset`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias ManageLogType = Swift.String
+
+public struct ManageLog: CBORMessage, Sendable {
+    public static let schemaRule = "manage-log"
+    public var `type`: HubManageLogType
+    public var `correlation_id`: CommonCorrelationId
+    public var `offset`: CommonUint64
+    public var `hex`: HubHubChunkHex
+    public init(`type`: HubManageLogType, `correlation_id`: CommonCorrelationId, `offset`: CommonUint64, `hex`: HubHubChunkHex) {
+        self.`type` = `type`
+        self.`correlation_id` = `correlation_id`
+        self.`offset` = `offset`
+        self.`hex` = `hex`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try HubManageLogType.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
         self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
-        self.`size` = try HubHubSize.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "size")), depth: depth + 1)
-        self.`sha256` = try HubHubHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sha256")), depth: depth + 1)
-        self.`update` = try HubHubSignedRef.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "update")), depth: depth + 1)
+        self.`offset` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "offset")), depth: depth + 1)
+        self.`hex` = try HubHubChunkHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "hex")), depth: depth + 1)
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
         try CBORCodec.checkDepth(depth)
         var entries: [CBORMapEntry] = []
         entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
         entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
-        entries.append(.init("size", try self.`size`.cborValue(depth: depth + 1)))
-        entries.append(.init("sha256", try self.`sha256`.cborValue(depth: depth + 1)))
-        entries.append(.init("update", try self.`update`.cborValue(depth: depth + 1)))
+        entries.append(.init("offset", try self.`offset`.cborValue(depth: depth + 1)))
+        entries.append(.init("hex", try self.`hex`.cborValue(depth: depth + 1)))
         let value = CBORValue.map(entries)
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -12448,7 +12464,7 @@ public indirect enum HubFrame: CBORMessage, Sendable {
     case variant4(HubHubCredit)
     case variant5(HubHubChunk)
     case variant6(HubHubEnd)
-    case variant7(HubHubTransfer)
+    case variant7(HubManageLog)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-request"), cborValue)) != nil {
@@ -12475,8 +12491,8 @@ public indirect enum HubFrame: CBORMessage, Sendable {
             self = .variant6(try HubHubEnd.init(cborValue: cborValue, depth: depth))
             return
         }
-        if (try? CBORCodec.validateNode(.reference("hub::hub-transfer"), cborValue)) != nil {
-            self = .variant7(try HubHubTransfer.init(cborValue: cborValue, depth: depth))
+        if (try? CBORCodec.validateNode(.reference("hub::manage-log"), cborValue)) != nil {
+            self = .variant7(try HubManageLog.init(cborValue: cborValue, depth: depth))
             return
         }
         throw CBORFailure.invalid("no union branch matched")
@@ -12505,7 +12521,7 @@ public indirect enum HubFrame: CBORMessage, Sendable {
             try CBORCodec.validateNode(.reference("hub::hub-end"), value)
         case .variant7(let v):
             value = try v.cborValue(depth: depth)
-            try CBORCodec.validateNode(.reference("hub::hub-transfer"), value)
+            try CBORCodec.validateNode(.reference("hub::manage-log"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value

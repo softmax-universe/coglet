@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://coglet.dev/spec/messages/tickets.schema.json",
-  "title": "Generic factory tickets \u2014 DRAFT 0.1 (M3 freeze)",
+  "title": "Generic factory tickets — DRAFT 0.1 (M3 freeze)",
   "$comment": "DRAFT; not frozen at v0. Semantic checks are specified in the companion Markdown.",
   "$defs": {
     "ticket": {
@@ -87,17 +87,17 @@
               },
               "minItems": 0
             },
-            "debug_read": {
+            "manage_read": {
               "type": "boolean"
             },
-            "debug_write": {
+            "manage_write": {
               "type": "boolean"
             }
           },
           "required": [
             "edit_paths",
-            "debug_read",
-            "debug_write"
+            "manage_read",
+            "manage_write"
           ],
           "additionalProperties": false
         },

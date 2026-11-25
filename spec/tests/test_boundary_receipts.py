@@ -21,7 +21,7 @@ class BoundaryReceipts(unittest.IsolatedAsyncioTestCase):
         test_abi.AbiFixtures.setUpClass()
         cls.validators = test_abi.AbiFixtures()
         cls.vectors = json.loads((SPEC / 'fixtures/abi/boundary-receipts.fixture').read_text())
-        cls.timelines = json.loads((SPEC.parent / 'conformance/abi/boundary-receipts.json').read_text())
+        cls.timelines = json.loads((SPEC / 'fixtures/abi/boundary-receipts-timeline.fixture').read_text())
 
     def test_generator_and_named_coverage(self):
         self.assertEqual((self.vectors, self.timelines), generate(write_files=False))

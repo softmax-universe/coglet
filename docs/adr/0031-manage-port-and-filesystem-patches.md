@@ -1,13 +1,13 @@
 # ADR-0031: Manage port, and patches on a plain filesystem
 
-- Status: Proposed; direction decided by David 2026-11-25, wire change not yet scheduled
+- Status: Accepted decision (PR #157); hub 1.0 wire implementation pending independent review and merge
 - Date: 2026-11-25
 - Authors: Coglet Orchestrator (on David's instruction)
-- Related PR: this ADR's PR
+- Related PR: [#157](https://github.com/softmax-universe/coglet/pull/157) (decision); accepting spec PR linked in Approval
 - Supersedes / superseded by: supersedes the "debug port, debug methods → back
   channel" row of [ADR-0020](0020-vocabulary.md); replaces the
-  [Git control plane](../../spec/hub-protocol.md#git-control-plane) of
-  [ADR-0004](0004-hub-protocol.md) once its wire change lands.
+  [Git control plane](../../spec/hub-protocol.md#filesystem-patches-and-log-tails) of
+  [ADR-0004](0004-hub-protocol.md) in the hub 1.0 wire revision below.
 
 ## Context
 
@@ -130,6 +130,40 @@ part of 0.1 and needs its own ADR.
   [ADR-0009](0009-spec-v0-freeze.md) freeze: protocol version bump, fixtures
   regenerated, and a compatibility window in which peers accept both the
   `debug.*` and `manage.*` names. `hub.git.*` has no alias; it is removed.
+- Hub message version is **1.0**; the framing ALPN `coglet/hub/0` stays unchanged
+  (its suffix identifies transport framing). Common/surface 0.1 schemas and
+  ADR-0020 stage-2 hub/surface identifiers are unchanged; there is no downgrade
+  to the old hub method set.
+- Accept `debug.read`, `debug.write`, `debug.pause`, `debug.step` as name-only
+  input aliases until **2027-02-25T00:00:00Z** (exclusive). Normalize to the
+  corresponding manage method before schema validation, grant lookup, intent
+  hashing, receipt and audit storage; emitted names are canonical. Verify signed
+  delegation bytes before canonicalizing its method grants. Historical
+  `runtime.debug_step` is mapped only by explicit archive import into a new
+  trace, never in-place mutation of journal bytes. See the normative
+  [alias table](../../spec/hub-protocol.md#compatibility-alias-table-temporary).
+- `Patch.bytes` and its signature are lowercase hex on the common profile wire,
+  not CBOR byte strings. The 64 MiB cap counts the complete deterministic-CBOR
+  Patch, including hex overhead and signature. A `manage.patch` request declares
+  its size/hash and uses bounded credit/chunk/end frames. This keeps the 1 MiB
+  frame cap; it does not add binary values to the common CBOR profile.
+- A tree hash uses the existing ABI path-to-hex snapshot hash restricted to
+  absolute `/code/...` paths. Status returns `live_tree` and `generation` (both
+  null pre-install); install consumes the exact applied staged revision.
+  Sorted unique FileChanges use 1..32 relative ASCII path segments (1..128 bytes
+  each), 1..4096 entries, whole-file puts/deletes and no symlink traversal.
+- Patch signatures bind the pinned router and coglet target plus every Patch
+  field except signature in the `coglet/hub/0:manage.patch\n` signing domain.
+  Base/generation CAS, original-scope receipts and ADR-0026's two apply
+  boundaries survive restart; pre-install staging never creates live state.
+- `manage.tail_log` uses a durable per-coglet ordered canonical-JSONL stream of
+  `/logs` append entries (`path`, `file_offset`, `hex`). Byte offsets survive
+  restart and file rotation; each credit-bounded operation streams at most
+  65536 bytes and returns `next_offset`. No implicit export/read grant is added.
+- The spec-only migration regenerates new ABI timeline companions under
+  `spec/fixtures/abi/*-timeline.fixture`. Legacy 0.1 implementation harness
+  inputs under `conformance/` remain unchanged for the separately owned runtime
+  conversion. Passing new specification oracles does not qualify those runtimes.
 - Work in flight (the ADR-0018 deploy pipeline, applying router pushes, the
   runtime receiver, H-transform publication) lands as it is and is converted
   afterwards, so no reviewed work is thrown away.
@@ -145,7 +179,7 @@ part of 0.1 and needs its own ADR.
 
 ## Consequences
 
-- One breaking protocol change, to be scheduled with a compatibility window.
+- One breaking hub protocol change, version 1.0, with the dated alias window above.
 - The runtime, router, CLI (`coglet push`), mocks and conformance lose their
   Git dependencies; `git fsck`/bundle limits and SHA-1 ids disappear from the
   wire.
@@ -166,5 +200,12 @@ part of 0.1 and needs its own ADR.
 
 ## Approval
 
-Direction: David, 2026-11-25 (quoted above). Independent review and the
-accepting PR are recorded here when they happen.
+Direction: David, 2026-11-25 (quoted above). The docs-only decision landed in
+[PR #157](https://github.com/softmax-universe/coglet/pull/157), merge commit
+`8629abd49132dd97bad8472143f03e0c2ae10723`, after
+[independent exact-head approval](https://github.com/softmax-universe/coglet/pull/157#pullrequestreview-6050166767).
+
+The hub 1.0 spec PR must have green required checks and independent exact-head
+approval before the main merge queue lands it. That review/landing accepts the
+wire revision, not runtime/router/CLI/mock conformance or ADR-0003 qualification.
+Spec PR: PENDING_SPEC_PR.
