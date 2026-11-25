@@ -344,6 +344,7 @@ version = "0.1.0"
 dependencies = [
  "coglet-engine",
  "coglet-proto",
+ "coglet-types",
  "coglet-types-hub0",
  "hex",
  "iroh",

@@ -623,6 +623,7 @@ dependencies = [
  "coglet-mock",
  "coglet-proto",
  "coglet-runtime",
+ "coglet-types",
  "coglet-types-hub0",
  "hex",
  "iroh",

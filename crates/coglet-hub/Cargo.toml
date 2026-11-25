@@ -13,6 +13,8 @@ test-controls = ["coglet-proto/test-controls"]
 coglet-proto = { path = "../coglet-proto" }
 # ADR-0031: existing implementation remains hub/0 until its separate migration.
 coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
+# Filesystem ABI versions evolve independently from the frozen serving router.
+coglet-types-current = { package = "coglet-types", path = "../coglet-types" }
 coglet-engine = { path = "../coglet-engine" }
 wat = "=1.263.0"
 wasmparser = "=0.245.1"

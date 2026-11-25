@@ -42,9 +42,12 @@ fn fixture() -> Fixture {
     fixture_with(WAT, None)
 }
 fn fixture_with(wat: &str, output_pin: Option<&str>) -> Fixture {
+    fixture_with_version(wat, output_pin, "1.0")
+}
+fn fixture_with_version(wat: &str, output_pin: Option<&str>, version: &str) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let coglet = format!("coglet:{}", iroh::SecretKey::from_bytes(&[7; 32]).public());
-    let manifest = json!({"version":"1.0","id":coglet,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr.interpreter","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
+    let manifest = json!({"version":version,"id":coglet,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr.interpreter","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
     fs::write(dir.path().join("guest.wat"), wat).unwrap();
     fs::write(
         dir.path().join("manifest.json"),
@@ -77,6 +80,14 @@ fn fixture_with(wat: &str, output_pin: Option<&str>) -> Fixture {
         },
     }
 }
+#[test]
+fn builder_rejects_legacy_manifest_even_with_exact_approved_artifact_pins() {
+    for version in ["0.1", "0.2", "1.1", "2.0"] {
+        let f = fixture_with_version(WAT, None, version);
+        assert!(matches!(f.builder.compile(&f.request), Err(Error::Invalid)));
+    }
+}
+
 struct Signing {
     root: TempDir,
     store: Store,
