@@ -20,6 +20,7 @@ private final class NativeProbe {
     var blocked = true
     var closed = false
     var queries = 0
+    var refusal: Int32?
 }
 private func probe(_ link: OpaquePointer?) -> NativeProbe {
     Unmanaged<NativeProbe>.fromOpaque(UnsafeRawPointer(link!)).takeUnretainedValue()
@@ -43,6 +44,7 @@ private func nativeRecv(_ link: OpaquePointer?, _ out: UnsafeMutablePointer<UInt
     guard let link, let n, cap >= 0, out != nil || cap == 0 else { return -1 }
     let state = probe(link)
     n.pointee = state.bytes.count
+    if let refusal = state.refusal { n.pointee = 0; state.queries += 1; return refusal }
     if state.bytes.isEmpty { return 1 }
     if cap < state.bytes.count { state.queries += 1; return 2 }
     out!.update(from: state.bytes, count: state.bytes.count)
@@ -158,6 +160,8 @@ final class TransportTests: XCTestCase {
         XCTAssertThrowsError(try transport.receive())
     }
     func testABISizeQueryAndShortRetryDoNotDequeue() throws {
+        // Existing size-query/exact-read contract is qualified separately from
+        // the refusal diagnostics below.
         let state = NativeProbe()
         Thread.current.threadDictionary["coglet-abi-test"] = state
         defer { Thread.current.threadDictionary.removeObject(forKey: "coglet-abi-test") }
@@ -176,6 +180,20 @@ final class TransportTests: XCTestCase {
         XCTAssertEqual(exact, original)
         XCTAssertEqual(nativeRecv(link, nil, 0, &size), 1)
         XCTAssertEqual(size, 0)
+    }
+    func testEmbeddedQueryRefusalRetainsStatusAndCountWithoutRetry() throws {
+        let state = NativeProbe()
+        state.refusal = -2
+        Thread.current.threadDictionary["coglet-abi-test"] = state
+        defer { Thread.current.threadDictionary.removeObject(forKey: "coglet-abi-test") }
+        let transport = try EmbeddedSurfaceTransport(abi: .init(open: nativeOpen, send: nativeSend, recv: nativeRecv, close: nativeClose))
+        XCTAssertThrowsError(try transport.receive()) { error in
+            XCTAssertEqual(error as? SurfaceFailure, .protocolViolation("invalid ABI size query: status=-2 count=0 (before close)"))
+        }
+        XCTAssertEqual(state.queries, 1)
+        XCTAssertTrue(state.closed)
+        XCTAssertThrowsError(try transport.receive())
+        XCTAssertEqual(state.queries, 1, "failure must close without an additional ABI query")
     }
     func testRealSocketPeerCredentialsDirectionQueueAndClose() throws {
         var pair: [Int32] = [-1, -1]

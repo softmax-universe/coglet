@@ -55,13 +55,13 @@ public final class EmbeddedSurfaceTransport {
         let query = abi.recv(link, nil, 0, &count)
         if query == 1, count == 0 { return nil }
         guard query == 2, count > 0, count <= SurfaceWire.maximumFrame else {
-            close(); throw SurfaceFailure.protocolViolation("invalid ABI size query")
+            close(); throw SurfaceFailure.protocolViolation("invalid ABI size query: status=\(query) count=\(count) (before close)")
         }
         var bytes = [UInt8](repeating: 0, count: count)
         let capacity = count
         let result = bytes.withUnsafeMutableBufferPointer { abi.recv(link, $0.baseAddress, capacity, &count) }
         guard result == 0, count == capacity else {
-            close(); throw SurfaceFailure.protocolViolation("invalid ABI exact read")
+            close(); throw SurfaceFailure.protocolViolation("invalid ABI exact read: status=\(result) count=\(count) capacity=\(capacity) (before close)")
         }
         do { try version.validateIncoming(bytes) }
         catch { close(); throw error }

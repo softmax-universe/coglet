@@ -72,7 +72,8 @@ private actor RuntimeExecutor {
     #if COGLET_RUNTIME_TEST_HOOKS
     private var pumpDiagnostics: [String] = []
     private func tracePump(_ value: String) {
-        if pumpDiagnostics.count < 4096 { pumpDiagnostics.append(value) }
+        if pumpDiagnostics.count == 4096 { pumpDiagnostics.removeFirst() }
+        pumpDiagnostics.append("t=\(now()) " + value)
     }
     private func traceFrame(_ prefix: String, _ bytes: [UInt8]) {
         guard let value = try? CBORCodec.decodeProfile(bytes) else { tracePump(prefix + " invalid"); return }
@@ -95,6 +96,9 @@ private actor RuntimeExecutor {
         if let file = try? FileHandle(forWritingTo: url) { defer { try? file.close() }; try? file.seekToEnd(); try? file.write(contentsOf: raw) }
     }
     private func check(_ result: Int32, _ operation: String) throws {
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("ABI \(operation) result=\(result)")
+        #endif
         guard result == 0 else { throw HostFailure("\(operation) failed (\(result)); see runtime log") }
     }
     private func sendJSON(_ data: Data, _ call: (UnsafePointer<UInt8>?, Int) -> Int32) -> Int32 {
@@ -103,6 +107,9 @@ private actor RuntimeExecutor {
     func start(localReset: Bool, generation: UInt64, appMailbox: AppSurfaceMailbox? = nil,
                appCapture: AppSurfaceCapture? = nil) throws -> [InstalledCoglet] {
         guard !active else { throw HostFailure("Runtime already running") }
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("start begin generation=\(generation) localReset=\(localReset)")
+        #endif
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         try fm.createDirectory(at: root.appendingPathComponent("logs"), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -151,7 +158,13 @@ private actor RuntimeExecutor {
                 surface = try makeSession()
             }
             owner = id; session = surface
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("open begin")
+            #endif
             link = try EmbeddedSurfaceTransport(abi: .init(open: coglet_surface_open, send: coglet_surface_send, recv: coglet_surface_recv, close: coglet_surface_close), contractProfile: provision.profile)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("open complete; hello/selection begin")
+            #endif
             // Bootstrap sends ONLY hello, then consumes its selection. Caps and
             // grants stay in the SDK until all native/token custody is installed.
             try surface.start()
@@ -159,6 +172,9 @@ private actor RuntimeExecutor {
                 throw HostFailure("Embedded surface negotiation unavailable")
             }
             try surface.receive(selection)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("selection complete")
+            #endif
             token = try surface.openNativeObservationSession(owner: id, epoch: surface.grantEpoch)
             if provision.enablesApp, let appMailbox, let appCapture {
                 appConnection = try AppSurfaceConnection(session: surface, mailbox: appMailbox, grant: grant,
@@ -169,10 +185,21 @@ private actor RuntimeExecutor {
             // An app-enabled guest must not see caps/grants or copied private
             // state before MainActor attaches this exact native listener and
             // publishes its post-attachment baseline. Legacy speech is unchanged.
-            if appConnection == nil { try pump() }
+            if appConnection == nil {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("startup pump begin")
+                #endif
+                try pump()
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("startup pump complete")
+                #endif
+            }
             log("runtime started")
             return [.init(id: id, version: manifest["version"] as? String ?? "unknown", status: .running)]
         } catch {
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("start failure generation=\(generation) error=\(error)")
+            #endif
             cleanup(); log("runtime startup failed"); throw error
         }
     }
@@ -262,6 +289,9 @@ private actor RuntimeExecutor {
         log("runtime stopped")
     }
     private func cleanup() {
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("cleanup begin active=\(active) generation=\(String(describing: generation)) status=\(coglet_runtime_status())")
+        #endif
         backend?.stop(owner: nil); sink.stop(owner: nil); generation = nil; sink.actions = []
         // Fence native effects first, then persist settled BACK CHANNEL receipts
         // while the ADAPTER session is connected. close() cancels pending actions.
@@ -273,7 +303,15 @@ private actor RuntimeExecutor {
         try? session?.close(); session = nil; token = nil; owner = nil; queued = []
         link?.close(); link = nil
         appConnection = nil; backend = nil
-        if active { _ = coglet_runtime_stop() }; active = false
+        if active {
+            let result = coglet_runtime_stop()
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("ABI stop result=\(result)")
+            #endif
+        }; active = false
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("cleanup end status=\(coglet_runtime_status())")
+        #endif
         if lockFD >= 0 { _ = flock(lockFD, LOCK_UN); _ = Darwin.close(lockFD); lockFD = -1 }
     }
     #if COGLET_RUNTIME_TEST_HOOKS

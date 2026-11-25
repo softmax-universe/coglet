@@ -11,13 +11,20 @@ final class RuntimeHostTests: XCTestCase {
         let source = try XCTUnwrap(env["SOFTMAX_ECHO_INSTALL"])
         let trap = try XCTUnwrap(env["SOFTMAX_TRAP_INSTALL"])
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("runtime-host-" + UUID().uuidString)
+        var returnFromPreservationFailure = false
         defer {
             if let path = env["SOFTMAX_RUNTIME_DIAGNOSTICS_DIR"] {
                 let target = URL(fileURLWithPath: path).appendingPathComponent(root.lastPathComponent)
-                try? FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try? FileManager.default.copyItem(at: root, to: target)
+                do {
+                    try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try FileManager.default.copyItem(at: root, to: target)
+                } catch {
+                    XCTFail("Runtime diagnostics copy failed; original retained at \(root.path): \(error)")
+                    // Never delete the sole copy of first-failure evidence.
+                    returnFromPreservationFailure = true
+                }
             }
-            try? FileManager.default.removeItem(at: root)
+            if !returnFromPreservationFailure { try? FileManager.default.removeItem(at: root) }
         }
         func provision(_ directory: URL, from source: String) throws {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -128,6 +135,13 @@ final class RuntimeHostTests: XCTestCase {
         try XCTUnwrap(device.callbacks.last)()
         XCTAssertNil(try outcome(beforeRestartReceipt), "native receipt has not been reconciled")
         await host.restart() // Deliberately no poll before restarting either.
+        guard host.state == .running else {
+            #if COGLET_RUNTIME_TEST_HOOKS
+            let trace = await host.diagnosticsForTesting()
+            try Data(trace.joined(separator: "\n").utf8).write(to: good.appendingPathComponent("pump-first-restart-failure.log"))
+            #endif
+            return XCTFail("First restart failed: \(host.errorMessage ?? "no error"); no subsequent panic/restart attempted")
+        }
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(try outcome(beforeRestartReceipt)?["status"], .text("succeeded"))
         // No synthetic UI-success path: actual C ABI panic returns an error.
