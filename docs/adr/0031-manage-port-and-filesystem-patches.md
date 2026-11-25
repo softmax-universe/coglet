@@ -1,6 +1,6 @@
 # ADR-0031: Manage port, and patches on a plain filesystem
 
-- Status: Accepted decision (PR #157); hub 1.0 wire implementation pending independent review and merge
+- Status: Accepted decision (PR #157); hub 1.0 wire revision effective on reviewed merge of #164
 - Date: 2026-11-25
 - Authors: Coglet Orchestrator (on David's instruction)
 - Related PR: [#157](https://github.com/softmax-universe/coglet/pull/157) (decision); accepting spec PR linked in Approval
@@ -208,4 +208,6 @@ Direction: David, 2026-11-25 (quoted above). The docs-only decision landed in
 The hub 1.0 spec PR must have green required checks and independent exact-head
 approval before the main merge queue lands it. That review/landing accepts the
 wire revision, not runtime/router/CLI/mock conformance or ADR-0003 qualification.
-Spec PR: PENDING_SPEC_PR.
+Spec PR: [#164](https://github.com/softmax-universe/coglet/pull/164). Its
+independent exact-head approval is recorded in the PR reviews; the merge-queue
+landing is the effective acceptance of this wire revision.
