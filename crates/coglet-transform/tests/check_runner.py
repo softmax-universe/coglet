@@ -36,11 +36,12 @@ class PairGuard(unittest.TestCase):
             path.mkdir()
             for name in runner.REQUIRED_FILES:
                 (path / name).write_bytes(b"synthetic unit input, not execution evidence")
+            (path / "tool-build.jsonl").write_text(json.dumps({"reason": "compiler-artifact", "executable": "/fixture/coglet-transform", "target": {"name": "coglet-transform", "kind": ["bin"]}, "profile": {"test": False}}) + "\n")
             (path / "fuzz.results").write_bytes(b"\0" * (960 * 80))
             (path / "rustc.txt").write_text("synthetic compiler\nhost: " + arch)
             for name, expected in runner.EXPECTED.items():
                 (path / f"{name}.log").write_text("\n".join(f"test {test} ... ok" for test in sorted(expected)) + f"\ntest result: ok. {len(expected)} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out")
-            manifest = {"arch": arch, "mode": "native", "actual_checkout": "unit-head", "github_run": "unit-run", "github_attempt": "unit-attempt", "tests": {key: sorted(value) for key, value in runner.EXPECTED.items()}, "files": {name: hashlib.sha256((path / name).read_bytes()).hexdigest() for name in runner.REQUIRED_FILES}}
+            manifest = {"production_tool": "coglet-transform", "case_count": 960, "arch": arch, "mode": "native", "actual_checkout": "unit-head", "github_run": "unit-run", "github_attempt": "unit-attempt", "tests": {key: sorted(value) for key, value in runner.EXPECTED.items()}, "files": {name: hashlib.sha256((path / name).read_bytes()).hexdigest() for name in runner.REQUIRED_FILES}}
             (path / "manifest.json").write_text(json.dumps(manifest))
 
     def test_pair_guards(self):

@@ -95,4 +95,23 @@ pub const STATEMENTS: &[Statement] = &[
         read_dependencies: &[],
         order: &[],
     },
+    Statement {
+        id: "work_queue_get",
+        sql: "SELECT task_id, state, priority, lease_owner, lease_until, attempt, version FROM work_queue WHERE task_id=?1 ORDER BY task_id",
+        mode: "read",
+        expected_affected: None,
+        parameters: &["text"],
+        columns: &[
+            ("task_id", "text"),
+            ("state", "text"),
+            ("priority", "int64"),
+            ("lease_owner", "nullable_text"),
+            ("lease_until", "nullable_int64"),
+            ("attempt", "int64"),
+            ("version", "int64"),
+        ],
+        table: "work_queue",
+        read_dependencies: &[],
+        order: &["task_id"],
+    },
 ];
