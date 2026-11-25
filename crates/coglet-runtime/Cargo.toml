@@ -34,7 +34,7 @@ serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"], optional = true }
-tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
 rusqlite = { version = "0.38", features = ["bundled"] }
@@ -61,6 +61,10 @@ required-features = ["native-engine"]
 
 [[example]]
 name = "generate_archive_companions"
+required-features = ["native-engine"]
+
+[[example]]
+name = "runtime_receiver_peer"
 required-features = ["native-engine"]
 
 [[test]]
