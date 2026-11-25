@@ -144,6 +144,8 @@ pub struct Stats {
     /// Inbox messages that were not the awaited reply: foreign, duplicate, late, other kinds.
     pub ignored: u64,
     pub bad_observations: u64,
+    /// Wakes whose inbox lines could not be read or validated (skipped, never fatal).
+    pub inbox_faults: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,7 +154,7 @@ pub struct Pending {
     pub issued_tick: u64,
 }
 
-/// Everything the loop remembers between steps (one JSON file, sorted keys).
+/// Everything the loop remembers between steps (one JSON file, declaration order).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound(serialize = "P: Serialize", deserialize = "P: DeserializeOwned"))]
 pub struct State<P> {
@@ -230,8 +232,15 @@ impl<C: Controller> FastLoop<C> {
             .filter_map(|e| e.payload.get("index"))
             .filter_map(|v| serde_json::to_value(v).ok()?.as_u64())
             .max();
-        if let Some(upto) = upto {
-            self.consume_inbox(ctx, &mut state, upto)?;
+        if let Some(upto) = upto
+            && upto >= state.inbox_cursor
+            && self.consume_inbox(ctx, &mut state, upto).is_err()
+        {
+            // The slow path must never stop the fast path. An unreadable, oversized
+            // or damaged inbox is counted, its lines up to the wake are skipped, and
+            // any pending request simply times out. The runtime keeps the file.
+            state.stats.inbox_faults += 1;
+            state.inbox_cursor = upto.saturating_add(1);
         }
         for event in events
             .iter()
@@ -252,37 +261,42 @@ impl<C: Controller> FastLoop<C> {
         state: &mut State<C::Plan>,
         upto: u64,
     ) -> Result<(), HostError> {
-        if upto < state.inbox_cursor {
-            return Ok(()); // wake for an already-consumed line
-        }
         let bytes = ctx
             .read_file("/data/inbox.jsonl")?
             .ok_or(HostError::InvalidArgument)?;
         if bytes.len() > MAX_INBOX_BYTES {
             return Err(HostError::ResourceExhausted);
         }
+        // Canonical JSONL: LF-terminated lines, no CR, no blank lines.
+        if !bytes.is_empty() && bytes.last() != Some(&b'\n') || bytes.contains(&b'\r') {
+            return Err(HostError::InvalidArgument);
+        }
         let text = std::str::from_utf8(&bytes).map_err(|_| HostError::InvalidArgument)?;
+        // Every append produced a wake, so lines up to the highest wake index are all
+        // wake-announced; earlier lines were validated when first consumed and are skipped.
+        let mut staged = Vec::new();
         let mut next = 0u64;
-        for line in text.lines() {
-            let row: Value = serde_json::from_str(line).map_err(|_| HostError::InvalidArgument)?;
-            // Indices are contiguous from zero; a gap means a damaged inbox.
-            if row["index"].as_u64() != Some(next) {
-                return Err(HostError::InvalidArgument);
-            }
+        for line in text.split_terminator('\n') {
             let index = next;
-            next += 1;
+            next += 1; // bounded by the 1 MiB file cap
             if index < state.inbox_cursor {
                 continue;
             }
             if index > upto {
                 break;
             }
-            self.apply_row(state, &row);
+            let row: Value = serde_json::from_str(line).map_err(|_| HostError::InvalidArgument)?;
+            validate_row(&row, index)?;
+            staged.push(row);
         }
         if next <= upto {
             return Err(HostError::InvalidArgument); // wake names a line that is not there
         }
-        state.inbox_cursor = upto + 1;
+        // Validated whole range first: a bad line leaves no partial application.
+        for row in &staged {
+            self.apply_row(state, row);
+        }
+        state.inbox_cursor = upto.saturating_add(1);
         Ok(())
     }
 
@@ -302,7 +316,10 @@ impl<C: Controller> FastLoop<C> {
         state.pending = None;
         if payload["status"] != "succeeded" {
             state.stats.plan_failures += 1;
-            state.next_plan_tick = state.tick + 1 + self.config.backoff_ticks;
+            state.next_plan_tick = state
+                .tick
+                .saturating_add(1)
+                .saturating_add(self.config.backoff_ticks);
             return;
         }
         match self.controller.parse_plan(&payload["output"]) {
@@ -313,7 +330,10 @@ impl<C: Controller> FastLoop<C> {
             }
             None => {
                 state.stats.plans_rejected += 1;
-                state.next_plan_tick = state.tick + 1 + self.config.backoff_ticks;
+                state.next_plan_tick = state
+                    .tick
+                    .saturating_add(1)
+                    .saturating_add(self.config.backoff_ticks);
             }
         }
     }
@@ -338,8 +358,8 @@ impl<C: Controller> FastLoop<C> {
             state.plan = None;
             return Ok(());
         }
-        state.tick += 1;
-        state.stats.ticks += 1;
+        state.tick = state.tick.saturating_add(1);
+        state.stats.ticks = state.stats.ticks.saturating_add(1);
         let cfg = &self.config;
         if state.plan.is_some() && state.tick.saturating_sub(state.plan_tick) > cfg.plan_ttl_ticks {
             state.plan = None;
@@ -350,7 +370,7 @@ impl<C: Controller> FastLoop<C> {
         {
             state.pending = None;
             state.stats.plan_timeouts += 1;
-            state.next_plan_tick = state.tick + cfg.backoff_ticks;
+            state.next_plan_tick = state.tick.saturating_add(cfg.backoff_ticks);
         }
 
         // Fast path: local, bounded, never waits.
@@ -411,7 +431,7 @@ impl<C: Controller> FastLoop<C> {
             // A refused request stages nothing; it must not cost the tick its action.
             if ctx.llm(&request).is_err() {
                 state.stats.plan_refused += 1;
-                state.next_plan_tick = state.tick + cfg.backoff_ticks;
+                state.next_plan_tick = state.tick.saturating_add(cfg.backoff_ticks);
                 return Ok(());
             }
             state.pending = Some(Pending {
@@ -422,4 +442,23 @@ impl<C: Controller> FastLoop<C> {
         }
         Ok(())
     }
+}
+
+/// Schema-validate one inbox line (ABI inbox section): the message, its embedded event
+/// and, for `llm.reply`, the reply payload. Also binds index, id and sender to the event.
+fn validate_row(row: &Value, index: u64) -> Result<(), HostError> {
+    let bad = |_: String| HostError::InvalidArgument;
+    let cbor = |v: &Value| coglet_types::Value::serialized(v).map_err(|e| bad(e.to_string()));
+    coglet_types::validate("abi::inbox-message", &cbor(row)?).map_err(bad)?;
+    let event = &row["event"];
+    if row["index"].as_u64() != Some(index)
+        || row["sender"] != event["source"]
+        || row["id"] != event["correlation_id"]
+    {
+        return Err(HostError::InvalidArgument);
+    }
+    if event["kind"] == "llm.reply" {
+        coglet_types::validate("abi::llm-reply", &cbor(&event["payload"])?).map_err(bad)?;
+    }
+    Ok(())
 }

@@ -6,9 +6,12 @@ Bear conversation route plug a `Controller` into `FastLoop`; the loop owns the
 bounded-compute and async-plan mechanics.
 
 - **Fast path, every observation.** `Controller::decide` runs locally against a
-  deterministic work `Budget` (units the controller charges itself). If a charge
+  deterministic work `Budget` (units the controller charges itself; the loop cannot
+  verify the controller charges honestly). If a charge
   is refused the loop emits the controller's O(1) `fallback` instead and counts
-  the tick as degraded. No LLM call, no waiting, no inbox read on this path.
+  the tick as degraded. The tick itself makes no LLM call and never waits. A step
+  that carries a new `runtime.inbox` wake first reads and validates the inbox (capped
+  at 1 MiB, not charged to `Budget`), then ticks; steps without a new wake never open it.
 - **Slow path, asynchronous.** With nothing pending, `wants_plan` stages one
   `llm.complete` request. The reply arrives in a later step as a `runtime.inbox`
   wake over `/data/inbox.jsonl`; only the awaited request id from the configured
@@ -16,8 +19,14 @@ bounded-compute and async-plan mechanics.
   and a host-refused request back off and never cost a tick its action. Late,
   duplicate, foreign and unrelated inbox messages are counted and ignored.
 - **State.** One JSON file under `/data` (tick, plan, pending request, inbox
-  cursor, stats). Replay of the recorded batches and inbox bytes reproduces every
-  effect and every state byte. A damaged inbox aborts the step (runtime rolls back).
+  cursor, stats; serialized in field declaration order). Replay of the recorded batches and inbox bytes reproduces every
+  effect and every state byte. Inbox lines are validated against the ABI schemas
+  (message, event, `llm-reply`; canonical LF lines; contiguous index; sender equals
+  event source) before any is applied. A damaged, oversized or unreadable inbox is
+  counted (`inbox_faults`), its lines up to the wake are skipped and the fast path
+  carries on; the pending request times out. The ABI has no inbox rotation, so a
+  coglet whose inbox passes 1 MiB loses its slow path (and runs on reflexes) until
+  the runtime offers a way to trim or seek; that is a known limit.
 
 The budget is a work count, not wall time. It sits inside the runtime's manifest
 `compute` / `wall_time_us` limits, which stay the hard bound on any step.
@@ -43,7 +52,11 @@ The budget is a work count, not wall time. It sits inside the runtime's manifest
 - `unanswered_request_times_out_and_its_late_reply_is_ignored`
 - `refused_request_costs_neither_the_action_nor_the_tick`
 - `plan_expires_after_ttl_and_a_finished_plan_is_dropped`
-- `damaged_inbox_aborts_the_step_and_leaves_state_untouched`
+- `damaged_inbox_is_counted_and_never_stops_the_fast_path` (missing line, CRLF, no
+  final LF, index gap, sender/source mismatch, schema-invalid reply, oversize)
+- `inbox_is_not_read_unless_a_wake_names_a_new_line`
+- `action_deadline_overflow_is_refused_not_wrapped`
+- `zero_backoff_retries_a_refused_request_on_the_next_tick_and_nonzero_waits`
 - `bad_observations_are_counted_and_skipped_without_effects`
 
 ## Limits

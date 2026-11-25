@@ -742,7 +742,7 @@ fn failed_foreign_duplicate_and_malformed_replies_never_stall_ticks() {
     assert_eq!(at, rejected_at + 10);
 
     // Provider failure: counted, backoff, no stall.
-    let failed = json!({"request_id": id2, "status": "failed", "error": {"code": "unavailable", "message": "x"}});
+    let failed = json!({"request_id": id2, "status": "failed", "error": {"code": "unavailable", "message": "x", "retryable": true}});
     rig.step(&[(ROUTER, "llm.reply", failed)], Some(obs()))
         .unwrap();
     assert_eq!(rig.state().stats.plan_failures, 1);
@@ -817,24 +817,175 @@ fn plan_expires_after_ttl_and_a_finished_plan_is_dropped() {
     assert!(rig.state().plan.is_none());
 }
 
+/// One step carrying an observation and a wake for `wake_index`, over raw inbox bytes
+/// that replace the whole file (so damaged shapes can be injected).
+fn step_with_inbox(rig: &mut Rig, raw: &[u8], wake_index: u64) -> Result<Out, HostError> {
+    rig.host
+        .files
+        .insert("/data/inbox.jsonl".into(), raw.to_vec());
+    let time = (rig.step + 1) * TICK_US;
+    let events = vec![
+        ev(
+            COGLET,
+            "runtime.inbox",
+            500 + rig.step,
+            time,
+            json!({"index": wake_index, "id": corr(5)}),
+            &corr(5),
+        ),
+        ev(
+            SURFACE,
+            "fixture.state",
+            600 + rig.step,
+            time,
+            obs(),
+            &corr(0x2000 + rig.step),
+        ),
+    ];
+    rig.run(rig.step, time, 42, events, vec![], true)?;
+    rig.step += 1;
+    let step = rig.journal.last().unwrap();
+    let mut out = Out {
+        actions: vec![],
+        requests: vec![],
+    };
+    for (op, bytes) in &step.calls {
+        match op {
+            Operation::Emit => out.actions.push(decode(*op, bytes)),
+            Operation::Llm => out.requests.push(decode(*op, bytes)),
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+fn inbox_line(index: u64, sender: &str, source: &str, payload: Value) -> Vec<u8> {
+    let id = corr(0x1000 + index);
+    let event = ev(source, "llm.reply", index + 1, 1, payload, &id);
+    let row = json!({"event": event, "id": id, "index": index, "sender": sender});
+    let mut line = serde_json::to_string(&row).unwrap().into_bytes();
+    line.push(b'\n');
+    line
+}
+
 #[test]
-fn damaged_inbox_aborts_the_step_and_leaves_state_untouched() {
+fn damaged_inbox_is_counted_and_never_stops_the_fast_path() {
+    let good = |rid: &str| inbox_line(0, ROUTER, ROUTER, plan_reply(rid));
+    let foreign = "hub:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    let cases: Vec<(&str, Box<dyn Fn(&str) -> (Vec<u8>, u64)>)> = vec![
+        ("wake names a missing line", Box::new(|_| (vec![], 3))),
+        (
+            "CRLF line ending",
+            Box::new(move |r| {
+                let mut l = good(r);
+                l.pop();
+                l.extend_from_slice(b"\r\n");
+                (l, 0)
+            }),
+        ),
+        (
+            "missing final LF",
+            Box::new(move |r| {
+                let mut l = good(r);
+                l.pop();
+                (l, 0)
+            }),
+        ),
+        (
+            "non-contiguous index",
+            Box::new(|r| (inbox_line(1, ROUTER, ROUTER, plan_reply(r)), 1)),
+        ),
+        (
+            "sender differs from the embedded event source",
+            Box::new(move |r| (inbox_line(0, ROUTER, foreign, plan_reply(r)), 0)),
+        ),
+        (
+            "llm-reply fails its schema",
+            Box::new(|r| {
+                let mut p = plan_reply(r);
+                p["unexpected"] = json!(1);
+                (inbox_line(0, ROUTER, ROUTER, p), 0)
+            }),
+        ),
+        (
+            "inbox beyond the size cap",
+            Box::new(|_| (vec![b'x'; coglet_fast_loop::MAX_INBOX_BYTES + 1], 0)),
+        ),
+    ];
+    for (name, make) in cases {
+        let mut rig = Rig::new(config());
+        let id = request_id(&rig.step(&[], Some(obs())).unwrap());
+        let (raw, wake) = make(&id);
+        let before = rig.state();
+        let out = step_with_inbox(&mut rig, &raw, wake).unwrap();
+        assert_eq!(out.actions.len(), 1, "{name}: the tick still acts");
+        let s = rig.state();
+        assert_eq!(s.stats.inbox_faults, 1, "{name}");
+        assert!(s.plan.is_none(), "{name}: damaged reply installs nothing");
+        assert_eq!(s.pending, before.pending, "{name}: request stays pending");
+        assert_eq!(
+            s.inbox_cursor,
+            wake + 1,
+            "{name}: lines skipped, not retried"
+        );
+        // The next tick also acts and the awaited request still times out normally.
+        assert_eq!(
+            rig.step(&[], Some(obs())).unwrap().actions.len(),
+            1,
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn inbox_is_not_read_unless_a_wake_names_a_new_line() {
     let mut rig = Rig::new(config());
     rig.step(&[], Some(obs())).unwrap();
-    let before = rig.host.files.clone();
-    // A wake naming a line that does not exist.
-    let wake = ev(
+    assert!(!rig.host.reads.iter().any(|p| p == "/data/inbox.jsonl"));
+    let id = rig.state().pending.unwrap().request_id;
+    rig.step(&[(ROUTER, "llm.reply", plan_reply(&id))], Some(obs()))
+        .unwrap();
+    assert!(rig.host.reads.iter().any(|p| p == "/data/inbox.jsonl"));
+    // A stale wake for the consumed line does not read it again.
+    let stale = ev(
         COGLET,
         "runtime.inbox",
-        99,
-        5,
-        json!({"index": 5, "id": corr(5)}),
-        &corr(5),
+        90,
+        1,
+        json!({"index": 0, "id": corr(0x1000)}),
+        &corr(0x1000),
     );
-    let result = rig.run(1, 40_000, 42, vec![wake], vec![], true);
+    let obs_ev = ev(SURFACE, "fixture.state", 91, 1, obs(), &corr(7));
+    rig.run(9, 9, 42, vec![stale, obs_ev], vec![], true)
+        .unwrap();
+    assert!(!rig.host.reads.iter().any(|p| p == "/data/inbox.jsonl"));
+}
+
+#[test]
+fn action_deadline_overflow_is_refused_not_wrapped() {
+    let mut rig = Rig::new(config());
+    let event = ev(SURFACE, "fixture.state", 1, u64::MAX, obs(), &corr(1));
+    let result = rig.run(0, u64::MAX, 42, vec![event], vec![], true);
     assert_eq!(result, Err(HostError::InvalidArgument));
-    assert_eq!(rig.host.files, before);
-    assert!(rig.host.calls.is_empty());
+    assert!(rig.host.files.is_empty() && rig.host.calls.is_empty());
+}
+
+#[test]
+fn zero_backoff_retries_a_refused_request_on_the_next_tick_and_nonzero_waits() {
+    for (backoff, expect_gap) in [(0u64, 1u64), (5, 5)] {
+        let mut cfg = config();
+        cfg.backoff_ticks = backoff;
+        let mut rig = Rig::new(cfg);
+        rig.host.refuse_llm = true;
+        rig.step(&[], Some(obs())).unwrap();
+        assert_eq!(rig.state().stats.plan_refused, 1);
+        rig.host.refuse_llm = false;
+        let mut gap = 0;
+        while rig.step(&[], Some(obs())).unwrap().requests.is_empty() {
+            gap += 1;
+            assert!(gap < 20);
+        }
+        assert_eq!(gap + 1, expect_gap, "backoff {backoff}");
+    }
 }
 
 #[test]
