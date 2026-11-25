@@ -14,7 +14,7 @@ struct HubSettings: View {
             Text(model.hubStatus).fontWeight(.semibold).accessibilityIdentifier("hub.status")
             #if DEBUG
             Text("Development identity — local unencrypted file, separate from production Keychain. Use only test routers.")
-                .font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("hub.development-warning")
+                .font(.caption).foregroundStyle(.primary).accessibilityIdentifier("hub.development-warning")
             #endif
             if let name = model.hubConnection?.pairing?.name { Text(name).textSelection(.enabled) }
             if let device = model.hubConnection?.deviceID {
