@@ -73,16 +73,19 @@ import SoftmaxCore
                     try capture(name + "-large", NSSize(width: 460, height: 480), CommandPaletteView(commands: commands, dismiss: {}, query: query).environment(\.softmaxTextScale, 1.6))
                 }
                 for step in 0..<3 {
-                    try capture("onboarding-\(step)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: step))
-                    try capture("onboarding-\(step)-large", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: step).environment(\.softmaxTextScale, 1.6))
+                    model.onboardingStep = step
+                    try capture("onboarding-\(step)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}))
+                    try capture("onboarding-\(step)-large", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}).environment(\.softmaxTextScale, 1.6))
                 }
                 for permission in PermissionStatus.allCases {
                     model.permissions = PermissionSnapshot(microphone: permission, inputMonitoring: permission)
-                    try capture("onboarding-voice-\(permission.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: 1))
+                    model.onboardingStep = 1
+                    try capture("onboarding-voice-\(permission.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}))
                 }
                 for status in [LoginItemStatus.disabled, .enabled, .requiresApproval, .unavailable, .unknown] {
                     model.loginItem = status
-                    try capture("onboarding-login-\(status.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}, step: 2))
+                    model.onboardingStep = 2
+                    try capture("onboarding-login-\(status.rawValue)", NSSize(width: 620, height: 600), OnboardingView(model: model, openSettings: {}, finish: {}))
                 }
                 for tab in SettingsTab.allCases {
                     model.selectedTab = tab
