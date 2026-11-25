@@ -3,7 +3,7 @@ on:
   push:
     tags: ['v*']
   pull_request:
-    paths: ['release/**', '.github/workflows/release.yml', 'Package.swift', 'docs/releasing.md']
+    paths: ['release/**', '.github/workflows/release.yml', 'Package.swift', 'docs/releasing.md', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'Cargo.lock']
   workflow_dispatch:
 permissions:
   contents: read
@@ -69,6 +69,38 @@ jobs:
           path: dist/*
           if-no-files-found: error
           retention-days: 7
+  native-armv7:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+      - name: Install pinned cross tooling and QEMU
+        run: |
+          rustup target add armv7-unknown-linux-gnueabihf
+          uv venv "$RUNNER_TEMP/native-tools"
+          uv pip install --python "$RUNNER_TEMP/native-tools/bin/python" cargo-zigbuild==0.20.1 ziglang==0.13.0
+          echo "$RUNNER_TEMP/native-tools/bin" >> "$GITHUB_PATH"
+          sudo apt-get update
+          sudo apt-get install -y cmake binutils qemu-user libc6-dev-armhf-cross
+      - name: Build separate WAMR daemon and lifecycle validator (glibc 2.27)
+        run: |
+          cargo zigbuild --locked --release --target armv7-unknown-linux-gnueabihf.2.27 -p coglet-runtime --features native-engine --bin cogletd --bin coglet-runtime-git-validator
+          python3 release/assemble.py binaries --native --tag "$RELEASE_TAG" --platform linux-armv7 --bins target/armv7-unknown-linux-gnueabihf/release --out dist
+          mkdir "$RUNNER_TEMP/native-extracted"
+          tar -xzf "dist/coglet-$RELEASE_TAG-linux-armv7-native.tar.gz" -C "$RUNNER_TEMP/native-extracted"
+          python3 release/native_smoke.py --bins "$RUNNER_TEMP/native-extracted"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-armv7-native
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
   packages:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -130,7 +162,7 @@ jobs:
           fi
           COGLET_RELEASE_SOURCE="file://$RUNNER_TEMP/coglet" swift run --package-path release/swift-consumer --scratch-path "$RUNNER_TEMP/swift-consumer-build" PinProbe
   inventory:
-    needs: [binaries, packages, swift-package]
+    needs: [binaries, native-armv7, packages, swift-package]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -182,7 +214,7 @@ jobs:
         run: |
           SOURCE_SHA=$(git rev-parse HEAD)
           (cd dist && sha256sum -c SHA256SUMS)
-          gh release create "$RELEASE_TAG" dist/* --verify-tag --target "$SOURCE_SHA" --draft --title "Coglet $RELEASE_TAG" --notes "Source commit: $SOURCE_SHA. Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. See docs/releasing.md in this tag for pinning and qualification limits. These are reference-engine cogletd builds, not WAMR/product qualification. Rust crates are distributed as a complete path-preserving source workspace; nothing is uploaded to package registries."
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --target "$SOURCE_SHA" --draft --title "Coglet $RELEASE_TAG" --notes "Source commit: $SOURCE_SHA. Build: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. See docs/releasing.md in this tag for pinning and qualification limits. Unsuffixed binaries use the reference engine; linux-armv7-native ships WAMR and the lifecycle validator targeting glibc 2.27. QEMU smoke is not product qualification. Rust crates are distributed as a complete path-preserving source workspace; nothing is uploaded to package registries."
           gh release download "$RELEASE_TAG" --dir downloaded
           cmp dist/SHA256SUMS downloaded/SHA256SUMS
           (cd downloaded && sha256sum -c ../dist/SHA256SUMS)
