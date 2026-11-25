@@ -184,6 +184,13 @@ private actor RuntimeExecutor {
     }
     private func cleanup() {
         sink.stop(owner: nil); generation = nil; sink.actions = []
+        // Fence native effects first, then persist settled BACK CHANNEL receipts
+        // while the ADAPTER session is connected. close() cancels pending actions.
+        // SDK completion failures kill the session; teardown must still finish.
+        if let session {
+            do { try sink.reconcile(session) }
+            catch { log("runtime output reconciliation failed; restart required") }
+        }
         try? session?.close(); session = nil; token = nil; owner = nil; queued = []
         link?.close(); link = nil
         if active { _ = coglet_runtime_stop() }; active = false
