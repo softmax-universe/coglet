@@ -85,7 +85,11 @@ jobs:
           enable-cache: ${{ inputs.bundle-mode != 'proof' }}
       - name: Duplex-audio simulator to runtime heard history and offline replay
         if: ${{ (inputs.bundle-mode || 'normal') == 'normal' }}
-        run: cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored
+        run: |
+          args=$(python3 scripts/ci/quarantine.py rust-args)
+          extra=()
+          if [ -n "$args" ]; then mapfile -t extra <<< "$args"; fi
+          cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored "${extra[@]}"
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
       - name: Factory opt-in DB guest slice (not runtime DB conformance)
