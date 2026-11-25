@@ -134,6 +134,68 @@ workflow uploads and downloads the dedicated feed asset and byte-compares it.
 The feed is public and needs no GitHub credentials in the client. Before the first
 stable release, the stable-feed URL is intentionally unavailable; RC users can
 manually test their release's appcast but are not silently enrolled in a beta feed.
+### Isolated installed-update acceptance (RC2 or later)
+
+Use Sparkle 2.10.1's existing **per-user `SUFeedURL` preference**, not a modified
+signed bundle or a new beta channel. The pinned upstream
+[`SPUUpdater.m`](https://github.com/sparkle-project/Sparkle/blob/2.10.1/Sparkle/SPUUpdater.m)
+`retrieveFeedURL:` checks this preference before the bundle's stable feed; its
+startup warning explicitly permits `defaults write` for testing. Softmax supplies
+no feed delegate override and does not clear this preference. RC2 already uses
+this updater path, the production public key and the `developer-id` marker, so it
+can be the **prior** app (version `0.0.1-rc2`, build `8`); it is NOT the integrated
+runtime/router/Face candidate. Select a newer immutable successor RC whose source
+contains all integration merges and whose verified bundle build exceeds `8`.
+Use that newer release's immutable `appcast.xml` as the acceptance feed. No stable
+feed publication or special mutable test-feed release is necessary.
+
+The physical acceptance owner runs these commands as the logged-in test user on
+the Mac mini, with Softmax fully quit (including before cleanup). Replace
+`NEWER_TAG` with the actual verified successor tag from the release manifest:
+
+```sh
+# Preserve only the relevant preference; never restore an entire stale domain.
+# Use a fresh directory and retain it until cleanup succeeds.
+backup=$(mktemp -d "$HOME/softmax-feed-backup.XXXXXX")
+if defaults read com.softmax.app SUFeedURL > "$backup/previous" 2>/dev/null; then
+  touch "$backup/existed"
+fi
+defaults write com.softmax.app SUFeedURL -string \
+  'https://github.com/softmax-universe/coglet/releases/download/NEWER_TAG/appcast.xml'
+defaults read com.softmax.app SUFeedURL
+```
+
+Install/launch the prior Developer ID app normally (not `--ui-testing`), leave
+automatic checks off, then choose **Check for Updates…** in the menu or Settings.
+Record the installed old/new versions, app signatures, successful relaunch and
+feed URL. This preference does not alter the app signature or the pinned Ed25519
+key; an invalid signature must still fail. Archive/signature checks alone do not
+establish that this installed update worked. If the newer feed is unavailable,
+stop and repair its publication rather than redirecting RC users to stable.
+
+After fully quitting the updated app, restore exactly the prior feed state in the
+same shell (or recover `backup` from the directory recorded above):
+
+```sh
+if test -f "$backup/existed"; then
+  defaults write com.softmax.app SUFeedURL -string "$(cat "$backup/previous")"
+  defaults read com.softmax.app SUFeedURL
+else
+  defaults delete com.softmax.app SUFeedURL
+  # Expected: the domain/default pair does not exist, exit nonzero.
+  if defaults read com.softmax.app SUFeedURL; then
+    printf '%s\n' 'ERROR: test feed preference still exists' >&2
+    false
+  fi
+fi
+# Keep backup until the readback above matches its original state.
+```
+
+Relaunch normally. With no prior override it returns to the bundled stable feed
+(which remains intentionally unavailable before the first stable release).
+Do not delete unrelated Sparkle or application preferences. This procedure is
+opt-in for the acceptance user only and does not enroll any other installed app.
+
 Keep the feed release as a prerelease so it does not become GitHub's "latest"
 product release. Tag builds share one global publication concurrency group; do not
 publish older stable semantic versions after a newer one. To roll back, publish a **higher bundle build**

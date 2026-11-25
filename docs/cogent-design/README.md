@@ -80,7 +80,7 @@ Detail: [App integration](app-integration.md#adapter).
 ## Coglet
 
 A coglet is a **policy**, a **memory**, an **event loop** and **capabilities**.
-It handles events, and it has a **back channel** for receiving patches and
+It handles events, and it has a **manage port** for receiving patches and
 streaming logs to its manager.
 
 **What it does.** It does one job: being the face, driving one app, running the
@@ -117,7 +117,7 @@ Coglet
   handle(event)
       Process an event, or a small batch of them.
 
-  -- back channel, to its manager
+  -- manage port, to its manager
 
   patch(change)
       Receive a patch to its policy: code, prompts or skills. This is how it learns.
@@ -144,7 +144,7 @@ A runtime supports running a set of coglets. It manages **routing events**,
 **What it does.** It loads each coglet and runs its event loop. It **delivers events** to the coglets that subscribed to them, and **carries
 what a coglet asks for** to the right place: an adapter, another coglet, a
 model. It also serves each
-coglet's back channel, so the coglet's own code never has to. A runtime can sit
+coglet's manage port, so the coglet's own code never has to. A runtime can sit
 inside an app, on the user's machine, or on Softmax infrastructure, and it can
 be connected to several adapters at once.
 
@@ -261,11 +261,11 @@ coglet there handles the request; see the note below.*
    nothing, and a ticket is filed with the factory.
 6. The factory writes the new skill, tests it against a local Blender
    simulator, and returns the patch in its ticket result.
-7. The patch is applied to the Blender coglet through its back channel, and
+7. The patch is applied to the Blender coglet through its manage port, and
    Face is told. Face tells the user it can now draw tori.
 
 **Not settled: who files the ticket.** It could be the fast loop, acting on the
 request as it arrives, or the optimizer, acting on what it sees in the fast
 loop's interactions. The same question applies to who applies the patch. The
 messages are the same either way (`ticket.submit` to the factory, `patch` on
-the back channel), so the other pieces can be built before this is decided.
+the manage port), so the other pieces can be built before this is decided.

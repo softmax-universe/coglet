@@ -1,7 +1,8 @@
 # Coglet build plan (v1, 2026-11-23)
 
 Approved by David on 2026-11-23 ("write up the plan, spin out sessions, and put it into action").
-Design of record: [`docs/design/coglet-runtime.md`](design/coglet-runtime.md), copied from mindister main `0e7bd24bf`.
+Current design: [`docs/cogent-design/`](cogent-design/README.md), in the names of ADR-0020 and ADR-0031; `spec/` stays the source of truth for what is built.
+Earlier design of record: [`docs/design/coglet-runtime.md`](design/coglet-runtime.md), copied from mindister main `0e7bd24bf`. Where the two differ, the newer pages win.
 Review that shaped this revision: [`docs/design/plan-review-2026-11-23.md`](design/plan-review-2026-11-23.md).
 
 ## Goal
@@ -46,6 +47,10 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 | Face | Lives in coglet: `surfaces/face-mac/` (Swift) and `coglets/face/`. Persona and voice config stay in the product repos. |
 | Kanban board | The `default` board, tenant `coglet`, with titles prefixed `coglet:`. Pool workers serve the default board. |
 | Java adapter SDK | Lives in mindister: single consumer (game adapter). Decided by David 2026-11-24. |
+| Softmax app adapter | The Softmax app (`apps/softmax-mac/`) exposes an adapter so coglets can see and control all app state. ADR-0030, David 2026-11-24. |
+| Coglet storage | A plain filesystem (`/code`, `/data`, `/logs`), no Git repository inside a coglet. Coglets process events, accept patches and let their manager tail their logs. Git comes later as a Gitlet. ADR-0031, David 2026-11-25. |
+| Manage port | The interface a coglet's manager uses is the **manage port** (`manage.*`), everywhere. It replaces the debug port, the `debug.*` methods and the name "back channel". ADR-0031, David 2026-11-25. |
+| Mac test host | Real-Mac proofs run on the Mac mini, not the MacBook Pro. David 2026-11-24. |
 
 ## Repo layout (`softmax-universe/coglet`)
 
@@ -53,17 +58,17 @@ Build the coglet framework as cleanly factored pieces in the right repos:
 spec/
   conventions.md            CBOR profile (deterministic), id + capability-name grammar,
                             event/action envelope, error codes, versioning/negotiation
-  abi.md                    handle(events, step, logical_time, seed); host fns; /code /data /logs;
+  abi.md                    handle(events, step, logical_time, seed); host fns; /code /data /logs (plain files);
                             /data/inbox.jsonl message format; journal + trace format
   surface-protocol.md       hello/caps, event, read/reply, act (accept→outcome), grants, health,
                             kill switch; transports: local socket AND in-process (embedded runtime)
   capabilities/speech.md    speech-start, partial, end-of-utterance, playback position, barge-in;
                             speak-chunk, stop, backchannel; STT/TTS placement; s2s sessions
   capabilities/expression.md
-  hub-protocol.md           one iroh ALPN, a QUIC stream per op: enroll, lifecycle, git control
-                            plane (refs hub / logs / published/main, signing, build-then-commit),
-                            events/actions, debug (read/write/pause/step, audit), inbox, health;
-                            per-method grants
+  hub-protocol.md           one iroh ALPN, a QUIC stream per op: enroll, lifecycle, events/actions,
+                            manage port (patch, tail_log, read/write, pause/step, status, audit;
+                            signed patches, build-then-commit), inbox, health; per-method grants.
+                            The Git control plane is removed by ADR-0031 (Git later as a Gitlet)
   manifest.schema.json      id, subscriptions, required caps, exclusive outputs, budgets
   policy.schema.json        gates, approval, probation (frozen at M3, not v0)
   messages/                 CDDL + JSON Schema for every message
@@ -77,7 +82,7 @@ crates/                     Cargo workspace
   coglet-engine-wasmtime    later
   coglet-fs                 copy-on-write, content-addressed FS, tree hashes, flush
   coglet-runtime            library (C ABI) + bin `cogletd`: event router, timers, batching, budgets,
-                            journal/replay, git sync, router link, debug agent
+                            journal/replay, patch apply, log tail, router link, manage agent
   coglet-proto              router protocol over iroh
   coglet-hub                kernel: identity/enroll, registry, routing, promotion, policy,
                             probation, action arbitration, audit
@@ -95,9 +100,11 @@ surfaces/
 sim/
   worlds/gridbot  cartpole  arm2d  duplex-audio  paint
   scenarios/                recorded traces, fault-injection scripts
-apps/visualizer/            web: live view (back-channel client) + simulated mode
+apps/visualizer/            web: live view (manage client) + simulated mode
+apps/softmax-mac/           the Softmax app for Mac, with its own adapter (ADR-0030)
 coglets/
   echo  counter  gridbot-pilot  face  fast-loop  factory (generic ticket API + mock factory)
+  optimizer  memory  (in the design pages; not yet filed as cards)
 release/                    cogletd binaries, SDK packages, harness, face-mac build; products pin versions
 docs/adr/  docs/design/
 ```
@@ -166,7 +173,7 @@ P4: Mindister lane (game adapter, avatar, fast loop, factory, Face→router→av
   1. skeleton, conventions, then the spikes;
   2. ABI, router protocol and the harness;
   3. at Phase 2, engine, runtime and router proto first.
-- **Macs:** at most one Face card per Mac at a time. Swift compile and unit CI run on GitHub macOS runners; the MacBook Pro is only for real acoustic proofs.
+- **Macs:** at most one Face card per Mac at a time. Swift compile and unit CI run on GitHub macOS runners; the Mac mini is the host for real-Mac and acoustic proofs.
 - **Estimates** (unmeasured, likely optimistic):
   - specs and spikes: 2–3 days;
   - Phase 2: about 4–5 days;

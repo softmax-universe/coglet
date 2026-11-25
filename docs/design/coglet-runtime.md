@@ -1,5 +1,11 @@
 # Mindister Coglet Architecture
 
+> **Superseded in part (2026-11-25).** [ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md)
+> drops the per-coglet Git repository and Git sync: a coglet is plain files that
+> accept signed patches, and its manager tails its logs. The debug methods, debug
+> stream and debug agent below are now the **manage port** (`manage.*`). Current
+> design: [`docs/cogent-design/`](../cogent-design/README.md).
+
 Design notes from the November 2026 discussion with David. Mindister is the in-progress implementation; caos is inspiration and the eventual substrate.
 
 ## Vocabulary

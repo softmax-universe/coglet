@@ -11,6 +11,7 @@ use std::{
 };
 
 pub mod enrollment;
+pub mod operator;
 pub mod process;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]

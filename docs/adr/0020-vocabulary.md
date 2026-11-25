@@ -6,8 +6,10 @@
 - Number: 0020. 0018 and 0019 are in use by open work; the orchestrator may
   renumber.
 - Related PR: recorded in the accepting review
-- Supersedes / superseded by: none. Stage 1 changes prose only and does not
-  change spec-v0.
+- Supersedes / superseded by: the "debug port, debug methods → back channel"
+  row is superseded by [ADR-0031](0031-manage-port-and-filesystem-patches.md):
+  the name is **manage port** (`manage.*`). Stage 1 changes prose only and does
+  not change spec-v0.
 
 ## Context
 

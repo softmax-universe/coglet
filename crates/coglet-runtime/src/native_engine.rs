@@ -1,6 +1,5 @@
 //! Opt-in, qualified interpreter route. No ambient host I/O.
-#[path = "wasi.rs"]
-mod wasi;
+use crate::wasi;
 use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
 use coglet_engine::{
     Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,

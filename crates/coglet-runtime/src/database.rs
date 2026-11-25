@@ -103,6 +103,7 @@ pub struct DatabaseHost<'h, 'db> {
     ordinary: &'h mut StepHost,
     calls: Vec<V>,
     poisoned_return: bool,
+    wasi: Option<crate::wasi::Wasi>,
 }
 impl<'h, 'db> DatabaseHost<'h, 'db> {
     pub fn new(unit: &'h mut Unit<'db>, ordinary: &'h mut StepHost) -> Self {
@@ -111,6 +112,7 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
             ordinary,
             calls: vec![],
             poisoned_return: false,
+            wasi: None,
         }
     }
     pub fn calls(&self) -> &[V] {
@@ -131,6 +133,12 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
         if outcome.result.is_ok() && self.unit.is_poisoned() {
             self.poisoned_return = true;
             outcome.result = Err(Error::Trap("database unit conflict".into()));
+        }
+        if outcome.result.is_ok()
+            && let Some(wasi) = self.wasi.take()
+            && let Err(error) = wasi.commit(&mut self.ordinary.files)
+        {
+            outcome.result = Err(Error::Trap(error));
         }
         if outcome.result.is_err() {
             self.unit.abort();
@@ -175,6 +183,17 @@ impl Host for DatabaseHost<'_, '_> {
         budget: &mut StepBudget,
     ) -> coglet_engine::Result<u32> {
         budget.check_deadline()?;
+        if module == "wasi_snapshot_preview1" {
+            if self.wasi.is_none() {
+                self.wasi =
+                    Some(crate::wasi::Wasi::new(&self.ordinary.files).map_err(Error::Trap)?);
+            }
+            return self
+                .wasi
+                .as_mut()
+                .ok_or(Error::InvalidArgument)?
+                .call(name, args, memory, budget);
+        }
         if module != "coglet_v0" {
             return Err(Error::UnqualifiedModule);
         }
@@ -186,6 +205,13 @@ impl Host for DatabaseHost<'_, '_> {
             let len = u32::try_from(args[1]).map_err(|_| Error::InvalidPointer)?;
             let raw = memory.read(ptr, len)?;
             let result = self.ordinary.import(name, &raw).map_err(Error::Trap)?;
+            if name == "log"
+                && result == 0
+                && let Some(wasi) = self.wasi.as_mut()
+            {
+                wasi.sync_events_log(&self.ordinary.files)
+                    .map_err(Error::Trap)?;
+            }
             self.calls.push(
                 profile_value(self.ordinary.calls.last().ok_or(Error::InvalidArgument)?, 0)
                     .map_err(Error::Trap)?,
