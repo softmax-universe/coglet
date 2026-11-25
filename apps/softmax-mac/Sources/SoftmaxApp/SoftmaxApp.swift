@@ -15,7 +15,7 @@ func settingsArrowProbe(_ message: String) {
     guard ProcessInfo.processInfo.arguments.contains("--ui-testing"),
           let path = ProcessInfo.processInfo.environment["SOFTMAX_SETTINGS_ARROW_PROBE"] else { return }
     let responder = (NSApp.keyWindow?.firstResponder).map { String(describing: type(of: $0)) } ?? "nil"
-    let line = "\(ProcessInfo.processInfo.systemUptime) keyWindow=\(NSApp.keyWindow?.title ?? "nil") responder=\(responder) \(message)\n"
+    let line = "\(ProcessInfo.processInfo.systemUptime) active=\(NSApp.isActive) keyWindow=\(NSApp.keyWindow?.title ?? "nil") responder=\(responder) \(message)\n"
     if let handle = FileHandle(forWritingAtPath: path) {
         defer { try? handle.close() }
         _ = try? handle.seekToEnd()

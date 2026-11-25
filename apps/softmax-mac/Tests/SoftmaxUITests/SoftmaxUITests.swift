@@ -219,7 +219,9 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.buttons["General"].exists)
         XCTAssertTrue(settings.buttons["Hotkey"].exists)
         XCTAssertTrue(settings.buttons["Audio"].exists)
+        print("SETTINGS_ARROW_TEST first Down begin uptime=\(ProcessInfo.processInfo.systemUptime)")
         settings.typeKey(.downArrow, modifierFlags: [])
+        print("SETTINGS_ARROW_TEST first Down end uptime=\(ProcessInfo.processInfo.systemUptime)")
 
         settings.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Focused search Down must select Hotkey")

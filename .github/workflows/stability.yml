@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       settings-search:
-        description: 'Run the opt-in native Settings first-arrow diagnostic (20 iterations)'
+        description: 'Run the opt-in Settings first-arrow diagnostic in UI-suite context (5 iterations)'
         type: boolean
         default: false
       repeats:
@@ -44,14 +44,14 @@ jobs:
       - name: Generate project
         working-directory: apps/softmax-mac
         run: xcodegen generate
-      - name: Repeat exact first-arrow test without retry-on-failure
+      - name: Repeat UI-suite context without retry-on-failure
         working-directory: apps/softmax-mac
         run: >-
           xcodebuild test -project Softmax.xcodeproj -scheme Softmax
           -destination 'platform=macOS' -derivedDataPath build
           -resultBundlePath SettingsSearchStability.xcresult CODE_SIGNING_ALLOWED=NO
-          -only-testing:SoftmaxUITests/SoftmaxUITests/testSettingsFocusedSearchArrowNavigation
-          -test-iterations 20 -test-repetition-relaunch-enabled YES
+          -only-testing:SoftmaxUITests
+          -test-iterations 5 -test-repetition-relaunch-enabled YES
       - uses: actions/upload-artifact@v4
         if: always()
         with:
