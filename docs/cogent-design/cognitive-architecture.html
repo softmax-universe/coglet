@@ -234,7 +234,7 @@ centre and how they are wired.</p>
 </svg>
 </figure>
 <p><em>Teal arrows are families of messages between two coglets, with the calls
-listed beside them. Blue arrows are the back channel, which is separate: a
+listed beside them. Blue arrows are the manage port, which is separate: a
 patch going in to a coglet, and logs streaming out of one. The full list is in
 the table below.</em></p>
 <div class="tablewrap"><table>
@@ -302,14 +302,14 @@ the table below.</em></p>
 <td><code>patch</code></td>
 <td>a <code>Candidate</code></td>
 <td>any coglet</td>
-<td>the back channel, through the router</td>
+<td>the manage port, through the router</td>
 </tr>
 <tr>
 <td>optimizer</td>
 <td><code>tail_log</code>, <code>read_state</code></td>
 <td></td>
 <td>fast loop</td>
-<td>the back channel</td>
+<td>the manage port</td>
 </tr>
 <tr>
 <td>fast loop, optimizer</td>
@@ -520,7 +520,7 @@ telling Face.</p>
   <span class="kw">provides</span>  <span class="op">ticket.update</span>       <span class="ty">TicketUpdate</span>    <span class="rt">addressed</span>
             <span class="sd">Pass progress on to Face.</span>
   <span class="kw">provides</span>  <span class="op">ticket.result</span>       <span class="ty">TicketResult</span>    <span class="rt">addressed</span>
-            <span class="sd">On `done`, apply the candidate to the target coglet through its back channel, then</span>
+            <span class="sd">On `done`, apply the candidate to the target coglet through its manage port, then</span>
             <span class="sd">send a FeatureUpdate.</span>
   <span class="kw">calls</span>     <span class="op">feature.update</span>      <span class="ty">FeatureUpdate</span>   <span class="rt">addressed</span>
   <span class="kw">calls</span>     <span class="op">ticket.submit</span>       <span class="ty">TicketSubmit</span>    <span class="rt">bound</span>
@@ -531,7 +531,7 @@ telling Face.</p>
   <span class="kw">provides</span>  <span class="op">memory.result</span>       <span class="ty">MemoryResult</span>    <span class="rt">addressed</span>
   <span class="kw">calls</span>     <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
   <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span></pre></div>
-<p>It also uses the back channel's <code>patch</code> on the coglets it is granted.</p>
+<p>It also uses the manage port's <code>patch</code> on the coglets it is granted.</p>
 <h2 id="factorycoglet">FactoryCoglet<a class="headerlink" href="#factorycoglet" title="Permanent link">#</a></h2>
 <p>Takes tickets and produces artifacts: a new skill, a changed coglet. It tests
 its work, for example against a local simulator of the target app, before it
@@ -582,8 +582,8 @@ through a factory adapter, so it can be replaced.</p>
 
 <span class="nc">TicketCapabilities</span>
   <span class="na">edit_paths</span>   <span class="ty">[str]</span>  <span class="sd">Repo-relative roots the work may edit. Empty means analysis only.</span>
-  <span class="na">debug_read</span>   <span class="ty">bool</span>
-  <span class="na">debug_write</span>  <span class="ty">bool</span>
+  <span class="na">manage_read</span>   <span class="ty">bool</span>
+  <span class="na">manage_write</span>  <span class="ty">bool</span>
 
 <span class="nc">TicketGates</span>
   <span class="na">required</span>        <span class="ty">[&quot;journal_replay&quot; | &quot;headless_game&quot;]</span>
@@ -621,9 +621,9 @@ through a factory adapter, so it can be replaced.</p>
   <span class="na">ticket_id</span>  <span class="ty">Id</span>
   <span class="na">after_seq</span>  <span class="ty">u64</span>  <span class="sd">Zero replays from the start.</span></pre></div>
 <h3 id="ticket-reports">Ticket reports<a class="headerlink" href="#ticket-reports" title="Permanent link">#</a></h3>
-<p>The <code>Candidate</code> in a finished ticket is what gets applied: its commit becomes
-the <code>revision</code> of the <a href="coglets-and-runtime.html#back-channel"><code>Patch</code></a> sent on
-the target coglet's back channel.</p>
+<p>The <code>Candidate</code> in a finished ticket is what gets applied: its built policy tree
+becomes the <code>revision</code> of the <a href="coglets-and-runtime.html#manage-port"><code>Patch</code></a> sent
+on the target coglet's manage port. It is a filesystem tree hash, not a Git commit.</p>
 <p>Factory to the submitter.</p>
 <div class="codehilite idl"><pre><span class="nc">TicketReceipt</span>
   <span class="sd">The answer to submit, answer, amend or cancel. It carries the same `correlation_id` as the</span>
@@ -669,8 +669,8 @@ the target coglet's back channel.</p>
   <span class="na">error</span>      <span class="ty">Error?</span>                          <span class="sd">Present when failed or abandoned.</span>
 
 <span class="nc">Candidate</span>
-  <span class="sd">The patch: what is applied to the target coglet through its back channel.</span>
-  <span class="na">commit</span>         <span class="ty">str</span>  <span class="sd">A signed, built commit. Never a branch name.</span>
+  <span class="sd">The patch: what is applied to the target coglet through its manage port.</span>
+  <span class="na">revision</span>       <span class="ty">TreeHash</span>  <span class="sd">The signed, built policy tree. Never a branch name or Git commit.</span>
   <span class="na">signature_ref</span>  <span class="ty">str</span></pre></div>
 <h3 id="factory-adapter-workercontrol">Factory adapter: <code>worker.control</code><a class="headerlink" href="#factory-adapter-workercontrol" title="Permanent link">#</a></h3>
 <p>The adapter wraps a real scheduler (Hermes Kanban first). One <code>job</code> is one
@@ -710,7 +710,7 @@ attempt at one ticket revision.</p>
 <h2 id="optimizercoglet">OptimizerCoglet<a class="headerlink" href="#optimizercoglet" title="Permanent link">#</a></h2>
 <p>Watches how the fast loop's interactions go, files tickets with the factory to
 make things better, and patches coglets as needed. It has no messages of its
-own: it reads through the back channel and files ordinary tickets.</p>
+own: it reads through the manage port and files ordinary tickets.</p>
 <h3 id="optimizercoglet_1"><code>OptimizerCoglet</code><a class="headerlink" href="#optimizercoglet_1" title="Permanent link">#</a></h3>
 <div class="codehilite idl"><pre><span class="nc">OptimizerCoglet</span>
   <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
@@ -721,12 +721,12 @@ own: it reads through the back channel and files ordinary tickets.</p>
   <span class="kw">provides</span>  <span class="op">ticket.receipt</span>      <span class="ty">TicketReceipt</span>   <span class="rt">addressed</span>
   <span class="kw">provides</span>  <span class="op">ticket.update</span>       <span class="ty">TicketUpdate</span>    <span class="rt">addressed</span>
   <span class="kw">provides</span>  <span class="op">ticket.result</span>       <span class="ty">TicketResult</span>    <span class="rt">addressed</span>
-            <span class="sd">On `done`, apply the candidate through the target coglet&#x27;s back channel.</span>
+            <span class="sd">On `done`, apply the candidate through the target coglet&#x27;s manage port.</span>
   <span class="kw">calls</span>     <span class="op">ticket.submit</span>       <span class="ty">TicketSubmit</span>    <span class="rt">bound</span>
   <span class="kw">calls</span>     <span class="op">ticket.replay</span>       <span class="ty">TicketReplay</span>    <span class="rt">bound</span>
   <span class="kw">calls</span>     <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
   <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span></pre></div>
-<p>It uses the back channel's <code>tail_log</code> and <code>read_state</code> on the fast loop, and
+<p>It uses the manage port's <code>tail_log</code> and <code>read_state</code> on the fast loop, and
 <code>patch</code> on the coglets it is granted.</p>
 <h2 id="memorycoglet">MemoryCoglet<a class="headerlink" href="#memorycoglet" title="Permanent link">#</a></h2>
 <p>The cogent's memory: what it has learned about the user, the apps and what has
@@ -774,9 +774,9 @@ shared. Version 0 matches on tags and keywords and uses no model.</p>
 <h2 id="routercoglet">RouterCoglet<a class="headerlink" href="#routercoglet" title="Permanent link">#</a></h2>
 <p>The coglet that reaches devices. It knows which runtimes the cogent may use,
 installs coglets on them, and carries two things between runtimes: messages
-from one coglet to another, and back-channel operations such as <code>patch</code>.</p>
+from one coglet to another, and manage operations such as <code>patch</code>.</p>
 <p>It is a coglet like the others in the centre: it has a policy, memory and a
-back channel, so it can be patched and watched the same way. What passes
+manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 <a href="coglets-and-runtime.html#runtime-and-router">Runtime and router</a>.</p>
 <p>Messages between two coglets on the same runtime do not go through the router;

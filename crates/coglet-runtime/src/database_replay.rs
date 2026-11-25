@@ -55,6 +55,7 @@ struct ReplayHost<'h> {
     next: usize,
     poisoned: bool,
     diverged: Option<String>,
+    wasi: crate::wasi::Wasi,
 }
 impl ReplayHost<'_> {
     fn diverge(&mut self, why: impl Into<String>) -> EngineError {
@@ -148,6 +149,9 @@ impl Host for ReplayHost<'_> {
             // Sticky: a guest that ignored the first error cannot continue.
             return Err(EngineError::Trap("replay divergence".into()));
         }
+        if module == "wasi_snapshot_preview1" {
+            return self.wasi.call(name, args, memory, budget);
+        }
         if module != "coglet_v0" {
             return Err(EngineError::UnqualifiedModule);
         }
@@ -166,6 +170,11 @@ impl Host for ReplayHost<'_> {
             Ok(result) => result,
             Err(error) => return Err(EngineError::Trap(error)),
         };
+        if name == "log" && result == 0 {
+            self.wasi
+                .sync_events_log(&self.ordinary.files)
+                .map_err(EngineError::Trap)?;
+        }
         let expected = self.recorded(name)?.clone();
         let actual = self
             .ordinary
@@ -252,7 +261,9 @@ impl<E: SharedEngine> Engine for ReplayAttempt<'_, E> {
             .prepared
             .take()
             .ok_or("replay execution requires successful admission")?;
+        let wasi = crate::wasi::Wasi::new(&host.files)?;
         let mut replay = ReplayHost {
+            wasi,
             ordinary: host,
             expected: self.calls,
             next: 0,
@@ -269,6 +280,9 @@ impl<E: SharedEngine> Engine for ReplayAttempt<'_, E> {
                 "replay divergence: {} recorded call(s) were never made",
                 self.calls.len() - replay.next
             ));
+        }
+        if outcome.result.is_ok() && !replay.poisoned {
+            replay.wasi.commit(&mut replay.ordinary.files)?;
         }
         let poisoned_return = outcome.result.is_ok() && replay.poisoned;
         if poisoned_return {

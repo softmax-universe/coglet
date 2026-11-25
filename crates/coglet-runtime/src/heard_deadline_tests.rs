@@ -156,6 +156,100 @@ impl Drop for Fixture {
     }
 }
 
+// Test-only adapter FIFO: bytes are queued before two unrelated durable commits.
+// Advancing the injected kernel clock, rather than sleeping, holds the original
+// reply past its issued deadline on every runner.
+fn queued_pair(name: &str, delay: u64) -> (Fixture, Value, Vec<u8>) {
+    let mut f = Fixture::new(name);
+    assert_eq!(f.send(&position(1)), 0);
+    let read = f.read();
+    let queued_reply = reply(&read, 1);
+    for seq in [2, 3] {
+        f.slow_next_commit(delay);
+        assert_eq!(f.send(&position(seq)), 0);
+        f.read();
+    }
+    (f, read, queued_reply)
+}
+
+#[test]
+fn queued_read_reply_control_without_delay() {
+    let (mut f, read, raw) = queued_pair("pair-control", 0);
+    assert_eq!(read["body"]["deadline"], 1_000_130 + OFFSET);
+    assert_eq!(f.send(&raw), 0);
+    assert!(!f.session.is_closed());
+    let service = f.service.lock().unwrap();
+    assert_eq!(service.state.heard_pending.len(), 2);
+    assert_eq!(
+        service
+            .state
+            .staged_boundary
+            .as_ref()
+            .unwrap()
+            .changes
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn expired_read_completes_negatively_to_supervisor() {
+    let (mut f, read, raw) = queued_pair("pair-delayed", 600_000);
+    let now = f.clock.load(Ordering::SeqCst);
+    assert_eq!(now, 1_200_130);
+    assert_eq!(read["body"]["deadline"], 1_000_130 + OFFSET);
+    f.session.tick(now);
+    assert_eq!(
+        f.session
+            .read_expiry_diagnostics()
+            .cloned()
+            .collect::<Vec<_>>(),
+        vec![json!({
+            "event":"surface.read_expired","read_id":read["body"]["correlation_id"],
+            "issued_deadline":1_000_130,"expiry_tick":now,"queued_inbound_frames_ahead":null
+        })]
+    );
+    let result = f
+        .session
+        .take_read_result(C, now)
+        .expect("negative native completion");
+    assert_eq!(result["correlation_id"], read["body"]["correlation_id"]);
+    assert_eq!(result["ok"], false);
+    assert_eq!(result["error"]["code"], "deadline_exceeded");
+    assert!(f.session.take_read_result(C, now).is_none());
+    assert_eq!(f.send(&raw), 0); // tombstoned, no successful materialization
+    assert!(f.session.take_read_result(C, now).is_none());
+    let service = f.service.lock().unwrap();
+    assert_eq!(service.state.heard_pending.len(), 3);
+    assert!(service.state.staged_boundary.is_none());
+}
+
+#[test]
+fn expire_reads_does_not_disconnect_before_native_completion() {
+    for late in [0, 1] {
+        let mut f = Fixture::new(&format!("negative-native-{late}"));
+        assert_eq!(f.send(&position(1)), 0);
+        let read = f.read();
+        let deadline = read["body"]["deadline"].as_u64().unwrap() - OFFSET;
+        f.session.tick(deadline + late);
+        assert!(
+            !f.session.is_closed(),
+            "expiry must preserve native completion"
+        );
+        assert!(
+            f.session
+                .take_read_result("other", deadline + late)
+                .is_none()
+        );
+        assert_eq!(
+            f.session.take_read_result(C, deadline + late).unwrap()["error"]["code"],
+            "deadline_exceeded"
+        );
+        assert!(f.service.lock().unwrap().state.staged_boundary.is_none());
+        assert_eq!(f.service.lock().unwrap().state.heard_pending.len(), 1);
+    }
+}
+
 #[test]
 fn slow_durable_store_gives_heard_read_one_second_from_publication() {
     let mut f = Fixture::new("slow");
@@ -277,11 +371,16 @@ fn queued_replies_behind_slow_store_remain_fifo_and_do_not_extend_issued_deadlin
     let newer = f.read();
     assert_eq!(newer["body"]["deadline"], cutoff + OFFSET + 500_000);
     f.session.tick(cutoff);
-    f.assert_purged();
+    assert!(!f.session.is_closed());
+    assert_eq!(
+        f.session.take_read_result(C, cutoff).unwrap()["error"]["code"],
+        "deadline_exceeded"
+    );
+    assert_eq!(f.service.lock().unwrap().state.heard_pending.len(), 2);
 }
 
 #[test]
-fn reply_at_or_after_published_deadline_disconnects_and_purges_private_state() {
+fn reply_at_or_after_published_deadline_completes_negatively_and_keeps_reasoning_fenced() {
     for late in [0, 1] {
         let mut f = Fixture::new(&format!("late-{late}"));
         f.slow_next_commit(600_000);
@@ -289,10 +388,23 @@ fn reply_at_or_after_published_deadline_disconnects_and_purges_private_state() {
         let read = f.read();
         let deadline = read["body"]["deadline"].as_u64().unwrap() - OFFSET;
         f.clock.store(deadline + late, Ordering::SeqCst);
-        f.send(&reply(&read, 1));
-        f.assert_purged();
+        assert_eq!(f.send(&reply(&read, 1)), 0);
+        assert!(!f.session.is_closed());
         assert!(f.session.front().is_none());
+        assert_eq!(
+            f.session.take_read_result(C, deadline + late).unwrap()["error"]["code"],
+            "deadline_exceeded"
+        );
+        assert!(f.session.take_read_result(C, deadline + late).is_none());
         assert!(f.service.lock().unwrap().state.staged_boundary.is_none());
+        let mut service = f.service.lock().unwrap();
+        assert_eq!(service.state.heard_pending.len(), 1);
+        assert!(
+            service
+                .begin_attempt(&json!({"logical_time":deadline + late}))
+                .unwrap()
+                .is_none()
+        );
     }
 }
 
@@ -318,6 +430,82 @@ fn negative_heard_reply_is_fail_closed_not_a_successful_empty_observation() {
         f.assert_purged();
         assert!(f.service.lock().unwrap().state.staged_boundary.is_none());
     }
+}
+
+#[test]
+fn expired_heard_completion_is_fenced_by_revoke_kill_and_disconnect() {
+    for boundary in ["grants", "kill", "disconnect"] {
+        let mut f = Fixture::new(&format!("expiry-{boundary}"));
+        assert_eq!(f.send(&position(1)), 0);
+        let read = f.read();
+        let now = read["body"]["deadline"].as_u64().unwrap() - OFFSET;
+        f.session.tick(now);
+        f.clock.store(now, Ordering::SeqCst);
+        match boundary {
+            "grants" => assert_eq!(
+                f.send(&frame(
+                    "grants",
+                    json!({"epoch":2,"entries":[],"correlation_id":"9".repeat(32)})
+                )),
+                0
+            ),
+            "kill" => assert_eq!(
+                f.send(&frame(
+                    "kill",
+                    json!({"reason":"operator","correlation_id":"9".repeat(32)})
+                )),
+                0
+            ),
+            _ => f.session.disconnect(),
+        }
+        assert!(f.session.take_read_result(C, now).is_none());
+        let service = f.service.lock().unwrap();
+        assert!(service.state.heard_pending.is_empty());
+        assert!(service.state.staged_boundary.is_none());
+        assert_eq!(service.queued(), 0);
+    }
+}
+
+#[test]
+fn unconsumed_heard_expiries_backpressure_without_silent_drop() {
+    let mut f = Fixture::new("heard-completion-pressure");
+    for seq in 1..=128 {
+        assert_eq!(f.send(&position(seq)), 0);
+        f.read();
+    }
+    f.session.tick(1_000_130);
+    assert!(!f.session.is_closed());
+    let request = |s: &mut SurfaceSession| {
+        s.request_read(
+            C,
+            "speech.heard",
+            json!({"item":ITEM}),
+            &"f".repeat(32),
+            2_000_000,
+            1_000_130,
+        )
+    };
+    assert!(
+        request(&mut f.session)
+            .unwrap_err()
+            .contains("resource_exhausted")
+    );
+    for _ in 0..128 {
+        assert_eq!(
+            f.session.take_read_result(C, 1_000_130).unwrap()["error"]["code"],
+            "deadline_exceeded"
+        );
+    }
+    assert!(f.session.take_read_result(C, 1_000_130).is_none());
+    assert!(request(&mut f.session).is_ok());
+    let mut service = f.service.lock().unwrap();
+    assert_eq!(service.state.heard_pending.len(), 128);
+    assert!(
+        service
+            .begin_attempt(&json!({"logical_time":1_000_130}))
+            .unwrap()
+            .is_none()
+    );
 }
 
 #[test]

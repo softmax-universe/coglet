@@ -6,7 +6,7 @@ Part of the [cogent design](README.md).
 ## Anatomy of a coglet
 
 A coglet is a **policy**, a **memory**, an **event loop** and **capabilities**.
-It handles events, and it has a **back channel** for receiving patches and
+It handles events, and it has a **manage port** for receiving patches and
 streaming logs to its manager.
 
 The policy is whatever decides what the coglet does: **symbolic code**, **LLM
@@ -30,7 +30,7 @@ Coglet
       Process an event. It may read and write its memory and ask for things: an action on an
       adapter, a message to another coglet, a model call, a timer, a log line.
 
-  -- back channel: how its manager changes and watches it
+  -- manage port: how its manager changes and watches it
 
   patch(change)
       Receive a patch to its policy: code, prompts or skills. This is how a coglet learns.
@@ -44,7 +44,7 @@ Coglet
       Stop it, and run it one event at a time, for debugging.
 ```
 
-| | Front end | Back channel |
+| | Front end | Manage port |
 |---|---|---|
 | Who uses it | The runtime, on behalf of adapters and other coglets | Its manager: a person, or a cogent coglet such as the fast loop or the optimizer |
 | What it is for | Doing the work | Changing and inspecting the coglet |
@@ -52,7 +52,10 @@ Coglet
 | The coglet's own code | Is what runs | Does nothing; the runtime serves these between events |
 
 A coglet is stored as four things: its policy, its memory, its logs, and a
-manifest naming the capabilities it wants.
+manifest naming the capabilities it wants. They are plain files (`/code`,
+`/data` and `/logs`); there is no Git repository inside a coglet. Version
+history and Git sync can come later as a separate Gitlet
+([ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md)).
 
 A capability is anything a coglet is allowed to use. Some come
 from adapters and some from the runtime itself. A coglet names the ones it
@@ -191,18 +194,18 @@ LogEntry
   fields   ProfileMap
 ```
 
-## Back channel
+## Manage port
 
-The back channel is how a coglet's manager changes it and watches it. The
+The manage port is how a coglet's manager changes it and watches it. The
 manager can be a person, or another coglet such as the fast loop or the
 optimizer applying a patch.
 
-The coglet's own policy does nothing to serve the back channel. The runtime
+The coglet's own policy does nothing to serve the manage port. The runtime
 does it, between events, and keeps a record of every change. Each operation
 needs its own grant, and reading is off unless granted.
 
 ```idl
-BackChannel
+ManagePort
   patch(coglet, Patch) -> ChangeReceipt
       Replace part or all of the coglet's policy. Takes effect before the next event.
   tail_log(coglet) -> stream of LogEntry
@@ -215,11 +218,17 @@ BackChannel
       Handle exactly one event while paused.
 
 Patch
-  # A change to a coglet's policy: code, prompts, skills, or any mix.
-  base       str?  The policy revision this was made from. The patch is refused if the
-                   coglet has moved on.
-  revision   str   The new revision.
-  signature  str   Proof of who made it.
+  # A change to a coglet's policy: code, prompts, skills, or any mix. Files, not Git.
+  base        TreeHash?     The policy tree this was made from. The patch is refused if the
+                            coglet has moved on.
+  revision    TreeHash      The policy tree after the patch.
+  generation  u64           Higher than the last patch applied, so an old one cannot be replayed.
+  files       [FileChange]  Whole files to write or delete in the policy. Never memory or logs.
+  signature   str           Proof of who made it.
+
+FileChange
+  path   str     Where in the policy.
+  bytes  bytes?  The new file; absent means delete it.
 
 ReadState
   path    str  What to read: a place in the coglet's memory or log.
@@ -244,7 +253,7 @@ ChangeReceipt
   error  Error?
 
 OnBehalfOf
-  # Sent with every back-channel request.
+  # Sent with every manage request.
   manager  SourceId  Who is asking.
   ticket   Id?       The factory ticket that authorizes it, if any.
 ```
@@ -358,7 +367,7 @@ RouterToRuntime
   act(coglet, Action) -> Accept
       Ask the runtime to carry out one action on a coglet's behalf.
   set_message_grants(coglet, MessageGrants) -> ChangeReceipt
-  -- plus every BackChannel operation, each with OnBehalfOf
+  -- plus every ManagePort operation, each with OnBehalfOf
 
 JoinParams
   versions  [SpecVersion]
@@ -506,4 +515,4 @@ older names for the same things:
 | router | hub |
 | runtime | device, runtime |
 | message between coglets | not defined yet |
-| back channel | the `debug.*` and `hub.git.*` methods |
+| manage port | the `debug.*` and `hub.git.*` methods, to become `manage.*` under [ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md) |

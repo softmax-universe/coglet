@@ -1,0 +1,1429 @@
+{
+  "board": "coglet-factory-t01a20f44e61e630a",
+  "synthetic": true,
+  "source_revision": "7f66691722b7efceaaf24d9fe766eb60057d932f",
+  "records": [
+    {
+      "label": "create",
+      "observed_at": "2026-11-24T21:56:14.020058+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-create",
+              "op": "create",
+              "task": "t_a20f44e61e630a01",
+              "fields": {
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "created_by": "coglet-factory-fixture",
+                "idempotency_key": "factory-fixture-create-0001",
+                "workspace_kind": "scratch",
+                "review_required": 0
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_text": "error code: 1010\n"
+        }
+      }
+    },
+    {
+      "label": "created-readback",
+      "observed_at": "2026-11-24T21:56:14.051746+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_text": "error code: 1010\n"
+        }
+      }
+    },
+    {
+      "label": "claim",
+      "observed_at": "2026-11-24T21:56:14.236088+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/leases",
+        "body": {
+          "action": "grant",
+          "task": "t_a20f44e61e630a01",
+          "run_uid": "factory-fixture-run-0001",
+          "ttl_s": 900,
+          "lane": "ready",
+          "client_op_id": "factory-fixture-claim"
+        }
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_text": "error code: 1010\n"
+        }
+      }
+    },
+    {
+      "label": "claim-readback",
+      "observed_at": "2026-11-24T21:56:14.274462+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "body": {
+          "error_text": "error code: 1010\n"
+        }
+      }
+    },
+    {
+      "label": "create",
+      "observed_at": "2026-11-24T21:56:23.934872+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-create",
+              "op": "create",
+              "task": "t_a20f44e61e630a01",
+              "fields": {
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "created_by": "coglet-factory-fixture",
+                "idempotency_key": "factory-fixture-create-0001",
+                "workspace_kind": "scratch",
+                "review_required": 0
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-create",
+              "status": "applied",
+              "seq": 2,
+              "version": 1,
+              "row": {
+                "uid": "t_a20f44e61e630a01",
+                "id": "t_a20f44e61e630a01",
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "status": "ready",
+                "priority": 0,
+                "created_by": "coglet-factory-fixture",
+                "created_at": 1795557383,
+                "started_at": null,
+                "completed_at": null,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": null,
+                "idempotency_key": "factory-fixture-create-0001",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": null,
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{}",
+                "lease_holder": null,
+                "lease_run_uid": null,
+                "lease_expires": null,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795557383837,
+                "seq": 1,
+                "version": 1,
+                "updated_at": 1795557383837,
+                "hlc": "1795557383837-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 2
+        }
+      }
+    },
+    {
+      "label": "created-readback",
+      "observed_at": "2026-11-24T21:56:24.075265+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_a20f44e61e630a01",
+          "state": "live",
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "ready",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": null,
+            "completed_at": null,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": null,
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": null,
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{}",
+            "lease_holder": null,
+            "lease_run_uid": null,
+            "lease_expires": null,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 1,
+            "version": 1,
+            "updated_at": 1795557383837,
+            "hlc": "1795557383837-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 2
+        }
+      }
+    },
+    {
+      "label": "claim",
+      "observed_at": "2026-11-24T21:56:24.338715+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/leases",
+        "body": {
+          "action": "grant",
+          "task": "t_a20f44e61e630a01",
+          "run_uid": "factory-fixture-run-0001",
+          "ttl_s": 900,
+          "lane": "ready",
+          "client_op_id": "factory-fixture-claim"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "client_op_id": "factory-fixture-claim",
+          "status": "applied",
+          "seq": 7,
+          "version": 3,
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "running",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": 1795557384,
+            "completed_at": null,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": null,
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": "factory-fixture-run-0001",
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795557384241-0000-server\",\"human_request\":\"1795557384241-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557384241-0000-server\",\"lease_holder\":\"1795557384241-0000-server\",\"lease_run_uid\":\"1795557384241-0000-server\",\"lease_expires\":\"1795557384241-0000-server\"}",
+            "lease_holder": "worker-a1",
+            "lease_run_uid": "factory-fixture-run-0001",
+            "lease_expires": 1795558284241,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 6,
+            "version": 3,
+            "updated_at": 1795557384241,
+            "hlc": "1795557384241-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "task": "t_a20f44e61e630a01",
+          "action": "grant",
+          "source_predecessor": null,
+          "lease": {
+            "task_id": "t_a20f44e61e630a01",
+            "holder": "worker-a1",
+            "run_uid": "factory-fixture-run-0001",
+            "lane": "ready",
+            "ttl_ms": 900000,
+            "granted_at": 1795557384241,
+            "expires": 1795558284241
+          }
+        }
+      }
+    },
+    {
+      "label": "claim-readback",
+      "observed_at": "2026-11-24T21:56:24.477494+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_a20f44e61e630a01",
+          "state": "live",
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "running",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": 1795557384,
+            "completed_at": null,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": null,
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": "factory-fixture-run-0001",
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795557384241-0000-server\",\"human_request\":\"1795557384241-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557384241-0000-server\",\"lease_holder\":\"1795557384241-0000-server\",\"lease_run_uid\":\"1795557384241-0000-server\",\"lease_expires\":\"1795557384241-0000-server\"}",
+            "lease_holder": "worker-a1",
+            "lease_run_uid": "factory-fixture-run-0001",
+            "lease_expires": 1795558284241,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 6,
+            "version": 3,
+            "updated_at": 1795557384241,
+            "hlc": "1795557384241-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 7
+        }
+      }
+    },
+    {
+      "label": "heartbeat",
+      "observed_at": "2026-11-24T21:56:36.689876+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/leases",
+        "body": {
+          "action": "renew",
+          "task": "t_a20f44e61e630a01",
+          "run_uid": "factory-fixture-run-0001",
+          "ttl_s": 900,
+          "client_op_id": "factory-fixture-heartbeat"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "client_op_id": "factory-fixture-heartbeat",
+          "status": "applied",
+          "seq": 9,
+          "version": 4,
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "running",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": 1795557384,
+            "completed_at": null,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": null,
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": "factory-fixture-run-0001",
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795557384241-0000-server\",\"human_request\":\"1795557384241-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557384241-0000-server\",\"lease_holder\":\"1795557396642-0000-server\",\"lease_run_uid\":\"1795557396642-0000-server\",\"lease_expires\":\"1795557396642-0000-server\"}",
+            "lease_holder": "worker-a1",
+            "lease_run_uid": "factory-fixture-run-0001",
+            "lease_expires": 1795558296642,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 9,
+            "version": 4,
+            "updated_at": 1795557396642,
+            "hlc": "1795557396642-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "task": "t_a20f44e61e630a01",
+          "action": "renew",
+          "lease": {
+            "task_id": "t_a20f44e61e630a01",
+            "holder": "worker-a1",
+            "run_uid": "factory-fixture-run-0001",
+            "lane": "ready",
+            "ttl_ms": 900000,
+            "granted_at": 1795557384241,
+            "expires": 1795558296642
+          }
+        }
+      }
+    },
+    {
+      "label": "progress",
+      "observed_at": "2026-11-24T21:56:36.882822+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-progress",
+              "op": "comment",
+              "task": "t_a20f44e61e630a01",
+              "run_uid": "factory-fixture-run-0001",
+              "body": "Synthetic progress: \"quoted\"\nsecond line",
+              "author": "factory-fixture"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-progress",
+              "status": "applied",
+              "seq": 11,
+              "version": 4,
+              "row": {
+                "uid": "t_a20f44e61e630a01",
+                "id": "t_a20f44e61e630a01",
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "status": "running",
+                "priority": 0,
+                "created_by": "coglet-factory-fixture",
+                "created_at": 1795557383,
+                "started_at": 1795557384,
+                "completed_at": null,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": null,
+                "idempotency_key": "factory-fixture-create-0001",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": "factory-fixture-run-0001",
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{\"status\":\"1795557384241-0000-server\",\"human_request\":\"1795557384241-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557384241-0000-server\",\"lease_holder\":\"1795557396642-0000-server\",\"lease_run_uid\":\"1795557396642-0000-server\",\"lease_expires\":\"1795557396642-0000-server\"}",
+                "lease_holder": "worker-a1",
+                "lease_run_uid": "factory-fixture-run-0001",
+                "lease_expires": 1795558296642,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795557383837,
+                "seq": 9,
+                "version": 4,
+                "updated_at": 1795557396642,
+                "hlc": "1795557396642-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 11
+        }
+      }
+    },
+    {
+      "label": "complete",
+      "observed_at": "2026-11-24T21:56:37.135429+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-complete",
+              "op": "complete",
+              "task": "t_a20f44e61e630a01",
+              "run_uid": "factory-fixture-run-0001",
+              "summary": "Synthetic contract result; no work executed.",
+              "result": "Synthetic contract result; no work executed.",
+              "metadata": {
+                "synthetic": true
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-complete",
+              "status": "applied",
+              "seq": 17,
+              "version": 7,
+              "row": {
+                "uid": "t_a20f44e61e630a01",
+                "id": "t_a20f44e61e630a01",
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "status": "done",
+                "priority": 0,
+                "created_by": "coglet-factory-fixture",
+                "created_at": 1795557383,
+                "started_at": 1795557384,
+                "completed_at": 1795557397,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": "Synthetic contract result; no work executed.",
+                "idempotency_key": "factory-fixture-create-0001",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": null,
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{\"status\":\"1795557397068-0000-server\",\"human_request\":\"1795557397068-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557397068-0000-server\",\"lease_holder\":\"1795557397068-0000-server\",\"lease_run_uid\":\"1795557397068-0000-server\",\"lease_expires\":\"1795557397068-0000-server\",\"result\":\"1795557397068-0000-server\",\"completed_at\":\"1795557397068-0000-server\",\"block_kind\":\"1795557397068-0000-server\",\"block_recurrences\":\"1795557397068-0000-server\",\"consecutive_failures\":\"1795557397068-0000-server\",\"last_failure_error\":\"1795557397068-0000-server\"}",
+                "lease_holder": null,
+                "lease_run_uid": null,
+                "lease_expires": null,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795557383837,
+                "seq": 16,
+                "version": 7,
+                "updated_at": 1795557397068,
+                "hlc": "1795557397068-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 17
+        }
+      }
+    },
+    {
+      "label": "completed-readback",
+      "observed_at": "2026-11-24T21:56:37.281508+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_a20f44e61e630a01",
+          "state": "live",
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "done",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": 1795557384,
+            "completed_at": 1795557397,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": "Synthetic contract result; no work executed.",
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": null,
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795557397068-0000-server\",\"human_request\":\"1795557397068-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557397068-0000-server\",\"lease_holder\":\"1795557397068-0000-server\",\"lease_run_uid\":\"1795557397068-0000-server\",\"lease_expires\":\"1795557397068-0000-server\",\"result\":\"1795557397068-0000-server\",\"completed_at\":\"1795557397068-0000-server\",\"block_kind\":\"1795557397068-0000-server\",\"block_recurrences\":\"1795557397068-0000-server\",\"consecutive_failures\":\"1795557397068-0000-server\",\"last_failure_error\":\"1795557397068-0000-server\"}",
+            "lease_holder": null,
+            "lease_run_uid": null,
+            "lease_expires": null,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 16,
+            "version": 7,
+            "updated_at": 1795557397068,
+            "hlc": "1795557397068-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 17
+        }
+      }
+    },
+    {
+      "label": "run-readback",
+      "observed_at": "2026-11-24T21:56:37.414559+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=task_runs&uid=factory-fixture-run-0001",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "task_runs",
+          "uid": "factory-fixture-run-0001",
+          "state": "live",
+          "row": {
+            "uid": "factory-fixture-run-0001",
+            "task_id": "t_a20f44e61e630a01",
+            "profile": "factory-contract-fixture",
+            "step_key": null,
+            "status": "done",
+            "max_runtime_seconds": null,
+            "started_at": 1795557384,
+            "ended_at": 1795557397,
+            "outcome": "completed",
+            "summary": "Synthetic contract result; no work executed.",
+            "metadata": "{\"synthetic\":true}",
+            "error": null,
+            "seq": 15,
+            "version": 2,
+            "updated_at": 1795557397068,
+            "hlc": "1795557397068-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 17
+        }
+      }
+    },
+    {
+      "label": "archive",
+      "observed_at": "2026-11-24T21:56:37.852817+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-archive",
+              "op": "archive",
+              "task": "t_a20f44e61e630a01",
+              "reason": "Isolated fixture capture finished"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-archive",
+              "status": "applied",
+              "seq": 19,
+              "version": 8,
+              "row": {
+                "uid": "t_a20f44e61e630a01",
+                "id": "t_a20f44e61e630a01",
+                "title": "Synthetic Factory contract fixture; no real execution",
+                "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+                "assignee": "factory-contract-fixture",
+                "status": "archived",
+                "priority": 0,
+                "created_by": "coglet-factory-fixture",
+                "created_at": 1795557383,
+                "started_at": 1795557384,
+                "completed_at": 1795557397,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": "Synthetic contract result; no work executed.",
+                "idempotency_key": "factory-fixture-create-0001",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": null,
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{\"status\":\"1795557397794-0000-server\",\"human_request\":\"1795557397794-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557397068-0000-server\",\"lease_holder\":\"1795557397068-0000-server\",\"lease_run_uid\":\"1795557397068-0000-server\",\"lease_expires\":\"1795557397068-0000-server\",\"result\":\"1795557397068-0000-server\",\"completed_at\":\"1795557397068-0000-server\",\"block_kind\":\"1795557397068-0000-server\",\"block_recurrences\":\"1795557397068-0000-server\",\"consecutive_failures\":\"1795557397068-0000-server\",\"last_failure_error\":\"1795557397068-0000-server\"}",
+                "lease_holder": null,
+                "lease_run_uid": null,
+                "lease_expires": null,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795557383837,
+                "seq": 18,
+                "version": 8,
+                "updated_at": 1795557397794,
+                "hlc": "1795557397794-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 19
+        }
+      }
+    },
+    {
+      "label": "archived-readback",
+      "observed_at": "2026-11-24T21:56:38.005629+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_a20f44e61e630a01",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_a20f44e61e630a01",
+          "state": "live",
+          "row": {
+            "uid": "t_a20f44e61e630a01",
+            "id": "t_a20f44e61e630a01",
+            "title": "Synthetic Factory contract fixture; no real execution",
+            "body": "Isolated HTTP contract recording. Never dispatch. No actual work or spend.",
+            "assignee": "factory-contract-fixture",
+            "status": "archived",
+            "priority": 0,
+            "created_by": "coglet-factory-fixture",
+            "created_at": 1795557383,
+            "started_at": 1795557384,
+            "completed_at": 1795557397,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": "Synthetic contract result; no work executed.",
+            "idempotency_key": "factory-fixture-create-0001",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": null,
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795557397794-0000-server\",\"human_request\":\"1795557397794-0000-server\",\"started_at\":\"1795557384241-0000-server\",\"current_run_uid\":\"1795557397068-0000-server\",\"lease_holder\":\"1795557397068-0000-server\",\"lease_run_uid\":\"1795557397068-0000-server\",\"lease_expires\":\"1795557397068-0000-server\",\"result\":\"1795557397068-0000-server\",\"completed_at\":\"1795557397068-0000-server\",\"block_kind\":\"1795557397068-0000-server\",\"block_recurrences\":\"1795557397068-0000-server\",\"consecutive_failures\":\"1795557397068-0000-server\",\"last_failure_error\":\"1795557397068-0000-server\"}",
+            "lease_holder": null,
+            "lease_run_uid": null,
+            "lease_expires": null,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795557383837,
+            "seq": 18,
+            "version": 8,
+            "updated_at": 1795557397794,
+            "hlc": "1795557397794-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 19
+        }
+      }
+    },
+    {
+      "label": "rust-complete",
+      "observed_at": "2026-11-24T22:15:02.744336+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-rust-complete",
+              "op": "complete",
+              "task": "t_bdb339768bc5e4fe",
+              "run_uid": "factory:t_bdb339768bc5e4fe:1",
+              "summary": "Synthetic Rust adapter compatibility; no agent work executed.",
+              "result": "Synthetic Rust adapter compatibility; no agent work executed.",
+              "metadata": {
+                "synthetic": true
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-rust-complete",
+              "status": "applied",
+              "seq": 36,
+              "version": 7,
+              "row": {
+                "uid": "t_bdb339768bc5e4fe",
+                "id": "t_bdb339768bc5e4fe",
+                "title": "Factory factory.contract.fixture 11111111111111111111111111111111",
+                "body": "{\"correlation_id\":\"11111111111111111111111111111111\",\"kind\":\"factory.contract.fixture\",\"payload_cbor_hex\":\"a0\",\"task_id\":\"11111111111111111111111111111111\"}",
+                "assignee": "factory-contract-fixture",
+                "status": "done",
+                "priority": 0,
+                "created_by": "coglet-factory",
+                "created_at": 1795558501,
+                "started_at": 1795558501,
+                "completed_at": 1795558502,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": "Synthetic Rust adapter compatibility; no agent work executed.",
+                "idempotency_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": null,
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{\"status\":\"1795558502664-0000-server\",\"human_request\":\"1795558502664-0000-server\",\"started_at\":\"1795558501524-0000-server\",\"current_run_uid\":\"1795558502664-0000-server\",\"lease_holder\":\"1795558502664-0000-server\",\"lease_run_uid\":\"1795558502664-0000-server\",\"lease_expires\":\"1795558502664-0000-server\",\"result\":\"1795558502664-0000-server\",\"completed_at\":\"1795558502664-0000-server\",\"block_kind\":\"1795558502664-0000-server\",\"block_recurrences\":\"1795558502664-0000-server\",\"consecutive_failures\":\"1795558502664-0000-server\",\"last_failure_error\":\"1795558502664-0000-server\"}",
+                "lease_holder": null,
+                "lease_run_uid": null,
+                "lease_expires": null,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795558501024,
+                "seq": 35,
+                "version": 7,
+                "updated_at": 1795558502664,
+                "hlc": "1795558502664-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 36
+        }
+      }
+    },
+    {
+      "label": "rust-complete-readback",
+      "observed_at": "2026-11-24T22:15:03.004745+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_bdb339768bc5e4fe",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_bdb339768bc5e4fe",
+          "state": "live",
+          "row": {
+            "uid": "t_bdb339768bc5e4fe",
+            "id": "t_bdb339768bc5e4fe",
+            "title": "Factory factory.contract.fixture 11111111111111111111111111111111",
+            "body": "{\"correlation_id\":\"11111111111111111111111111111111\",\"kind\":\"factory.contract.fixture\",\"payload_cbor_hex\":\"a0\",\"task_id\":\"11111111111111111111111111111111\"}",
+            "assignee": "factory-contract-fixture",
+            "status": "done",
+            "priority": 0,
+            "created_by": "coglet-factory",
+            "created_at": 1795558501,
+            "started_at": 1795558501,
+            "completed_at": 1795558502,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": "Synthetic Rust adapter compatibility; no agent work executed.",
+            "idempotency_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": null,
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795558502664-0000-server\",\"human_request\":\"1795558502664-0000-server\",\"started_at\":\"1795558501524-0000-server\",\"current_run_uid\":\"1795558502664-0000-server\",\"lease_holder\":\"1795558502664-0000-server\",\"lease_run_uid\":\"1795558502664-0000-server\",\"lease_expires\":\"1795558502664-0000-server\",\"result\":\"1795558502664-0000-server\",\"completed_at\":\"1795558502664-0000-server\",\"block_kind\":\"1795558502664-0000-server\",\"block_recurrences\":\"1795558502664-0000-server\",\"consecutive_failures\":\"1795558502664-0000-server\",\"last_failure_error\":\"1795558502664-0000-server\"}",
+            "lease_holder": null,
+            "lease_run_uid": null,
+            "lease_expires": null,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795558501024,
+            "seq": 35,
+            "version": 7,
+            "updated_at": 1795558502664,
+            "hlc": "1795558502664-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 36
+        }
+      }
+    },
+    {
+      "label": "rust-run-readback",
+      "observed_at": "2026-11-24T22:15:03.255989+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=task_runs&uid=factory:t_bdb339768bc5e4fe:1",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "task_runs",
+          "uid": "factory:t_bdb339768bc5e4fe:1",
+          "state": "live",
+          "row": {
+            "uid": "factory:t_bdb339768bc5e4fe:1",
+            "task_id": "t_bdb339768bc5e4fe",
+            "profile": "factory-contract-fixture",
+            "step_key": null,
+            "status": "done",
+            "max_runtime_seconds": null,
+            "started_at": 1795558501,
+            "ended_at": 1795558502,
+            "outcome": "completed",
+            "summary": "Synthetic Rust adapter compatibility; no agent work executed.",
+            "metadata": "{\"synthetic\":true}",
+            "error": null,
+            "seq": 34,
+            "version": 2,
+            "updated_at": 1795558502664,
+            "hlc": "1795558502664-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 36
+        }
+      }
+    },
+    {
+      "label": "rust-archive",
+      "observed_at": "2026-11-24T22:15:03.996276+00:00",
+      "request": {
+        "method": "POST",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/ops",
+        "body": {
+          "ops": [
+            {
+              "client_op_id": "factory-fixture-rust-archive",
+              "op": "archive",
+              "task": "t_bdb339768bc5e4fe",
+              "reason": "Rust adapter live compatibility fixture complete"
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "client_op_id": "factory-fixture-rust-archive",
+              "status": "applied",
+              "seq": 38,
+              "version": 8,
+              "row": {
+                "uid": "t_bdb339768bc5e4fe",
+                "id": "t_bdb339768bc5e4fe",
+                "title": "Factory factory.contract.fixture 11111111111111111111111111111111",
+                "body": "{\"correlation_id\":\"11111111111111111111111111111111\",\"kind\":\"factory.contract.fixture\",\"payload_cbor_hex\":\"a0\",\"task_id\":\"11111111111111111111111111111111\"}",
+                "assignee": "factory-contract-fixture",
+                "status": "archived",
+                "priority": 0,
+                "created_by": "coglet-factory",
+                "created_at": 1795558501,
+                "started_at": 1795558501,
+                "completed_at": 1795558502,
+                "workspace_kind": "scratch",
+                "branch_name": null,
+                "tenant": null,
+                "result": "Synthetic Rust adapter compatibility; no agent work executed.",
+                "idempotency_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "consecutive_failures": 0,
+                "last_failure_error": null,
+                "max_runtime_seconds": null,
+                "current_run_uid": null,
+                "workflow_template_id": null,
+                "current_step_key": null,
+                "skills": null,
+                "requires": null,
+                "model_override": null,
+                "model_pin_mandatory": null,
+                "provider_override": null,
+                "reasoning_effort": null,
+                "max_retries": null,
+                "goal_mode": 0,
+                "review_required": 0,
+                "goal_max_turns": null,
+                "block_kind": null,
+                "human_request": null,
+                "containment_episode": null,
+                "block_recurrences": 0,
+                "completion_contract": null,
+                "field_hlc": "{\"status\":\"1795558503920-0000-server\",\"human_request\":\"1795558503920-0000-server\",\"started_at\":\"1795558501524-0000-server\",\"current_run_uid\":\"1795558502664-0000-server\",\"lease_holder\":\"1795558502664-0000-server\",\"lease_run_uid\":\"1795558502664-0000-server\",\"lease_expires\":\"1795558502664-0000-server\",\"result\":\"1795558502664-0000-server\",\"completed_at\":\"1795558502664-0000-server\",\"block_kind\":\"1795558502664-0000-server\",\"block_recurrences\":\"1795558502664-0000-server\",\"consecutive_failures\":\"1795558502664-0000-server\",\"last_failure_error\":\"1795558502664-0000-server\"}",
+                "lease_holder": null,
+                "lease_run_uid": null,
+                "lease_expires": null,
+                "delete_pending": 0,
+                "created_on": null,
+                "runs_on": null,
+                "ready_since": 1795558501024,
+                "seq": 37,
+                "version": 8,
+                "updated_at": 1795558503920,
+                "hlc": "1795558503920-0000-server",
+                "origin_gateway": "worker-a1",
+                "deleted_at": null,
+                "admission_class": "normal",
+                "admission_frees": null,
+                "alarm_source": null,
+                "placement_policy": null,
+                "workspace_source": null,
+                "workspace_custody": null
+              }
+            }
+          ],
+          "head": 38
+        }
+      }
+    },
+    {
+      "label": "rust-archived-readback",
+      "observed_at": "2026-11-24T22:15:04.242738+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v2/boards/coglet-factory-t01a20f44e61e630a/evidence?table=tasks&uid=t_bdb339768bc5e4fe",
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "board": "coglet-factory-t01a20f44e61e630a",
+          "table": "tasks",
+          "uid": "t_bdb339768bc5e4fe",
+          "state": "live",
+          "row": {
+            "uid": "t_bdb339768bc5e4fe",
+            "id": "t_bdb339768bc5e4fe",
+            "title": "Factory factory.contract.fixture 11111111111111111111111111111111",
+            "body": "{\"correlation_id\":\"11111111111111111111111111111111\",\"kind\":\"factory.contract.fixture\",\"payload_cbor_hex\":\"a0\",\"task_id\":\"11111111111111111111111111111111\"}",
+            "assignee": "factory-contract-fixture",
+            "status": "archived",
+            "priority": 0,
+            "created_by": "coglet-factory",
+            "created_at": 1795558501,
+            "started_at": 1795558501,
+            "completed_at": 1795558502,
+            "workspace_kind": "scratch",
+            "branch_name": null,
+            "tenant": null,
+            "result": "Synthetic Rust adapter compatibility; no agent work executed.",
+            "idempotency_key": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "consecutive_failures": 0,
+            "last_failure_error": null,
+            "max_runtime_seconds": null,
+            "current_run_uid": null,
+            "workflow_template_id": null,
+            "current_step_key": null,
+            "skills": null,
+            "requires": null,
+            "model_override": null,
+            "model_pin_mandatory": null,
+            "provider_override": null,
+            "reasoning_effort": null,
+            "max_retries": null,
+            "goal_mode": 0,
+            "review_required": 0,
+            "goal_max_turns": null,
+            "block_kind": null,
+            "human_request": null,
+            "containment_episode": null,
+            "block_recurrences": 0,
+            "completion_contract": null,
+            "field_hlc": "{\"status\":\"1795558503920-0000-server\",\"human_request\":\"1795558503920-0000-server\",\"started_at\":\"1795558501524-0000-server\",\"current_run_uid\":\"1795558502664-0000-server\",\"lease_holder\":\"1795558502664-0000-server\",\"lease_run_uid\":\"1795558502664-0000-server\",\"lease_expires\":\"1795558502664-0000-server\",\"result\":\"1795558502664-0000-server\",\"completed_at\":\"1795558502664-0000-server\",\"block_kind\":\"1795558502664-0000-server\",\"block_recurrences\":\"1795558502664-0000-server\",\"consecutive_failures\":\"1795558502664-0000-server\",\"last_failure_error\":\"1795558502664-0000-server\"}",
+            "lease_holder": null,
+            "lease_run_uid": null,
+            "lease_expires": null,
+            "delete_pending": 0,
+            "created_on": null,
+            "runs_on": null,
+            "ready_since": 1795558501024,
+            "seq": 37,
+            "version": 8,
+            "updated_at": 1795558503920,
+            "hlc": "1795558503920-0000-server",
+            "origin_gateway": "worker-a1",
+            "deleted_at": null,
+            "admission_class": "normal",
+            "admission_frees": null,
+            "alarm_source": null,
+            "placement_policy": null,
+            "workspace_source": null,
+            "workspace_custody": null
+          },
+          "tombstone": null,
+          "floor": 0,
+          "feed_floor": 0,
+          "head": 38
+        }
+      }
+    }
+  ],
+  "rust_adapter_probe": {
+    "submit": {
+      "remote_id": "t_bdb339768bc5e4fe",
+      "run_uid": "factory:t_bdb339768bc5e4fe:1",
+      "submitted": true
+    },
+    "poll": {
+      "outcome": "Succeeded { note: \"Synthetic Rust adapter compatibility; no agent work executed.\" }",
+      "remote_id": "t_bdb339768bc5e4fe",
+      "run_uid": "factory:t_bdb339768bc5e4fe:1"
+    }
+  }
+}
