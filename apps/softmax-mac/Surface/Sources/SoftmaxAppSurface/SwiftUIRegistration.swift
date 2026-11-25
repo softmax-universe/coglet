@@ -118,12 +118,12 @@ public struct CogletAsyncButton: View {
     private let registry: ControlRegistry
     private let sensitive: Bool
     private let failure: (ControlRegistryFailure) -> Void
-    private let action: (ControlRegistry.EffectContext?) async throws -> Void
+    private let action: @MainActor (ControlRegistry.EffectContext?) async throws -> Void
     private let userFailure: () -> Void
     public init(_ title: String, id: String, registry: ControlRegistry, window: String, route: String,
                 sensitive: Bool = false, failure: @escaping (ControlRegistryFailure) -> Void,
                 userFailure: @escaping () -> Void = {},
-                action: @escaping (ControlRegistry.EffectContext?) async throws -> Void) {
+                action: @escaping @MainActor (ControlRegistry.EffectContext?) async throws -> Void) {
         self.title = title; self.id = id; self.registry = registry; self.window = window; self.route = route
         self.sensitive = sensitive; self.failure = failure; self.userFailure = userFailure; self.action = action
     }
