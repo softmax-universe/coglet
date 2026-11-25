@@ -451,6 +451,33 @@ mod tests {
         );
         let mut link = ptr::null_mut();
         assert_eq!(unsafe { coglet_surface_open(1, &mut link) }, 0);
+        // A real queued hello reply must not bypass inactivity preflight.
+        let hello = crate::cbor(&serde_json::json!({"type":"hello","body":{
+            "surface":"surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "clock":0,"offer":{"versions":["0.1"]},"correlation_id":"1".repeat(32)
+        }}))
+        .unwrap();
+        assert_eq!(
+            unsafe { coglet_surface_send(link, hello.as_ptr(), hello.len()) },
+            0
+        );
+        assert!(unsafe { &*link }.session.front().is_some());
+        unsafe { &mut *link }.clock = Instant::now() - std::time::Duration::from_secs(3);
+        let mut expired_n = 123;
+        assert_eq!(
+            unsafe { coglet_surface_recv(link, ptr::null_mut(), 0, &mut expired_n) },
+            -2
+        );
+        assert_eq!(expired_n, 0);
+        assert!(unsafe { &*link }.session.front().is_none());
+        unsafe { coglet_surface_close(link) };
+        assert_eq!(unsafe { coglet_surface_open(1, &mut link) }, 0);
+        assert_eq!(
+            unsafe { coglet_surface_send(link, hello.as_ptr(), hello.len()) },
+            0
+        );
+        assert!(unsafe { &*link }.session.front().is_some());
+        // Keep ready output queued across the panic and stop-generation checks.
         assert_eq!(coglet_runtime_test_panic(), -2);
         assert!(RUNTIME.is_poisoned());
         let mut n = 123;

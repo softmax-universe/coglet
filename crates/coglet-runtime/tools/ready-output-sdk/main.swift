@@ -16,7 +16,22 @@ func symbol<T>(_ name: String, _: T.Type) -> T {
     return unsafeBitCast(pointer, to: T.self)
 }
 let realOpen = symbol("coglet_surface_open", SurfaceRuntimeABI.Open.self)
+let realClose = symbol("coglet_surface_close", SurfaceRuntimeABI.Close.self)
+let realRecv = symbol("coglet_surface_recv", SurfaceRuntimeABI.Recv.self)
 var rawLink: OpaquePointer?
+// SDK may close on its receive worker. Defer only allocation release until join;
+// its own transport still becomes closed immediately. No production SDK edit.
+var closeRequests = 0
+var injectReceiveError = false
+func deferredClose(_ link: OpaquePointer?) {
+    require(link == rawLink, "close identity")
+    closeRequests += 1
+}
+func diagnosticRecv(_ link: OpaquePointer?, _ out: UnsafeMutablePointer<UInt8>?, _ cap: Int,
+                    _ n: UnsafeMutablePointer<Int>?) -> Int32 {
+    if injectReceiveError { n?.pointee = 0; return -2 }
+    return realRecv(link, out, cap, n)
+}
 var openBefore: UInt64 = 0
 var openAfter: UInt64 = 0
 func trackingOpen(_ version: UInt32, _ out: UnsafeMutablePointer<OpaquePointer?>?) -> Int32 {
@@ -73,8 +88,8 @@ let session = try SurfaceSession(identity: identity, boundCoglets: [owner],
         resources: ["display.face"], expires: now() + 60_000_000)], clock: now)
 let transport = try EmbeddedSurfaceTransport(abi: .init(open: trackingOpen,
     send: symbol("coglet_surface_send", SurfaceRuntimeABI.Send.self),
-    recv: symbol("coglet_surface_recv", SurfaceRuntimeABI.Recv.self),
-    close: symbol("coglet_surface_close", SurfaceRuntimeABI.Close.self)))
+    recv: diagnosticRecv,
+    close: deferredClose))
 func flush() throws {
     for bytes in session.drain() { require(try transport.send(bytes), "send would block") }
 }
@@ -90,6 +105,7 @@ Thread.sleep(forTimeInterval: 1.05)
 let box = Reply()
 let joined = DispatchSemaphore(value: 0)
 let abiEntry = now()
+injectReceiveError = CommandLine.arguments[3] == "receive-error"
 DispatchQueue.global().async {
     do { box.put(.success(try transport.receive())) } catch { box.put(.failure(error)) }
     joined.signal()
@@ -129,7 +145,16 @@ print("ADR0034 calibration per_link_zero_sdk_bracket_us=[\(openBefore),\(openAft
 print("ADR0034 SOURCE-BOUND mode=\(obstruct ? "obstruct" : "control") sdk_baseline_us=\(baseline) abi_entry_sdk_us=\(abiEntry) receipt_sdk_us=\(String(describing: receipt)) timeout_sdk_us=\(String(describing: timeout)) paired_capture_sdk_us=\(now()) entries=\(pumpEntries) stop=\(stopObserved) effects=\(backend.effects)")
 print(String(decoding: capture, as: UTF8.self))
 if let control { freeHold(control) }
-transport.close(); try session.close(); require(stop() == 0, "runtime stop after exclusive close")
+transport.close()
+require(closeRequests == 1, "SDK close callback exactly once")
+realClose(rawLink); rawLink = nil
+try session.close(); require(stop() == 0, "runtime stop after exclusive close")
+if injectReceiveError {
+    require(loopError != nil && receipt == nil && backend.effects == 0,
+        "receive-error control did not exercise SDK automatic close")
+    print("SDK_RECEIVE_ERROR_CLOSE_EXECUTED")
+    exit(0)
+}
 if let loopError { throw loopError }
 require(backend.effects == 0, "pre-heard effect escaped")
 if let timeout {

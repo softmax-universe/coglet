@@ -48,7 +48,7 @@ fn swift_sdk_ready_health_obstruction_and_control() {
         (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))",
     )
     .unwrap();
-    for mode in ["control", "obstruct"] {
+    for mode in ["control", "receive-error", "obstruct"] {
         let dir = scratch.path().join(mode);
         std::fs::create_dir(&dir).unwrap();
         let setup = with_wasm(setup(), &wasm);
@@ -85,7 +85,11 @@ fn swift_sdk_ready_health_obstruction_and_control() {
         let stderr = std::fs::read_to_string(dir.join("stderr.log")).unwrap();
         eprintln!("Swift {mode}: {stdout}\n{stderr}");
         assert!(status.success(), "Swift SDK oracle {mode}: {status}");
-        assert!(stdout.contains("SDK_READY_HEALTH_EXECUTED"));
+        assert!(stdout.contains(if mode == "receive-error" {
+            "SDK_RECEIVE_ERROR_CLOSE_EXECUTED"
+        } else {
+            "SDK_READY_HEALTH_EXECUTED"
+        }));
         let recovered = RuntimeService::open(&dir.join("state.wal"), &setup, 128).unwrap();
         assert_eq!(recovered.records().len(), 1);
         let record = &recovered.records()[0];
