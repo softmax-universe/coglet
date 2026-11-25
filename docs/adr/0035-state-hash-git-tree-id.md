@@ -3,8 +3,11 @@
 - Status: Proposed
 - Date: 2026-11-25
 - Authors: David Bloomin (design), Coglet orchestrator
-- Related PR: recorded in the publishing PR; implementation card `coglet: state hash = git SHA-256 tree id`
-- Supersedes / superseded by: none; first stage of [staged unforged integration](../cogent-design/unforged-staging.md)
+- Related PR: #179; implementation card `coglet: state hash = git SHA-256 tree id`
+- Supersedes / superseded by: amends [ADR-0006](0006-coglet-abi.md) and the
+  `spec-v0` ABI frozen by [ADR-0009](0009-spec-v0-freeze.md); supersedes the tree
+  identity clause of [ADR-0031](0031-manage-port-and-filesystem-patches.md) §2.
+  First stage of [staged unforged integration](../cogent-design/unforged-staging.md).
 
 ## Context
 
@@ -13,16 +16,23 @@ unforged, where a coglet's state is a git tree. [Staged
 integration](../cogent-design/unforged-staging.md) defers almost all of that work,
 with one exception: the filesystem state hash.
 
-Today the state hash is SHA-256 over the deterministic CBOR encoding of the whole
-snapshot map (path to hex bytes). It is computed in two places:
-`Snapshot::tree_hash` in `crates/coglet-fs/src/lib.rs` and `Snapshot::tree_hash`
-in `crates/coglet-runtime/src/filesystem.rs`.
+Today the state hash is defined in `spec/abi.md` (Journal and trace):
+`tree_hash = lowercase SHA256(core_deterministic_CBOR(snapshot))`, over the
+path-to-hex map of `/code`, `/data` and `/logs`. `spec/hub-protocol.md` restates
+that definition for `debug.read.snapshot_hash` and `debug.write.expected_hash`.
+It is computed in three places: `Snapshot::tree_hash` in
+`crates/coglet-fs/src/lib.rs` (returns `String`), `Snapshot::tree_hash` in
+`crates/coglet-runtime/src/filesystem.rs` (returns `Result<String>`), and
+`digest()` in `spec/tests/test_abi.py`, which the fixture generators use.
 
-Every trace, golden fixture and conformance test recorded from now on bakes in
+Every trace, golden fixture and conformance case recorded from now on bakes in
 that definition. Changing it later means regenerating or converting all of them.
-Changing it now is a small, contained edit, and it makes every future recording
-replayable by unforged without conversion. Affected specs: `spec/abi.md`
-(Batching and filesystem, Journal and trace) and `spec/conventions.md`.
+Changing it now makes every future state hash a git tree id that any git tool,
+and unforged, can check.
+
+The definition is part of `spec-v0`, which ADR-0009 froze on 2026-11-23, and
+`spec/conventions.md` forbids changing a field's meaning in a minor version, with
+no implicit 0.x exception. So this is a breaking change and is versioned as one.
 
 ## Decision
 
@@ -33,56 +43,96 @@ format, of the snapshot laid out as a directory tree.
 - Each snapshot path becomes a tree path with the leading slash removed
   (`/data/count` becomes `data/count`).
 - Every file is a blob with mode `100644`. Directories are trees with mode
-  `40000`. No other modes exist.
+  `40000`. No other modes exist. The implicit roots `/code`, `/data` and `/logs`
+  appear only if they contain a file; git has no empty trees inside a tree.
 - Entries are ordered by git's rule (byte order, with tree names compared as if
   followed by `/`).
 - Object ids are 32 raw bytes inside tree objects and 64 lowercase hex characters
   everywhere else.
 - The empty snapshot hashes to the SHA-256 empty tree id.
 
-The ABI's existing path rules already exclude symlinks, empty directories,
-file/directory collisions and `.git` entries, so every valid snapshot maps to
-exactly one tree.
+**Two new ABI path rules**, so that every valid snapshot maps to exactly one tree.
+The ABI already forbids symlinks, hardlinks, device nodes, control characters,
+backslash, and empty, `.` and `..` components. It adds:
 
-There is one implementation, in `coglet-fs`, with no git binary at runtime and no
-new heavy dependency (`sha2` is already used). `coglet-runtime`'s
-`Snapshot::tree_hash` calls it. Method names and the return type (64 lowercase
-hex) stay the same.
+- no path component equal to `.git`, compared case-insensitively (git refuses
+  such entries; `GitStore` already rejects them for logs);
+- no path that is both a file and a directory. Both crates already refuse this
+  in code; the ABI now says so.
 
-Spec text changes: `spec/abi.md` (Batching and filesystem, Journal and trace) and
-`spec/conventions.md` state the new definition, as do the CDDL / JSON Schema
-descriptions where they describe the hash. The comment in
-`crates/coglet-fs/src/git.rs` that says git object ids are not ABI tree hashes is
-updated; the logs-only `GitStore` is unchanged.
+**Fields whose values change meaning**: every state hash, which is
+`initial_hash`, `final_hash`, `before_hash`, `input_hash`, `output_hash` and
+`state_hash` in the ABI trace, step and boundary records (including the 0.2
+database records in `spec/messages/database.cddl`), and `snapshot_hash` /
+`expected_hash` on the router protocol's snapshot read and write.
+
+**Versioning.** The records that carry a state hash move to their next major
+version, and the router protocol's snapshot read and write carry the new
+definition only in the manage protocol that ADR-0031 introduces (`manage.*`
+1.0), so the hub `debug.*` 0.1 methods are not redefined in place. A `spec-v0`
+verifier rejects the new hashes by design; there is no dual-hash window.
+
+**One Rust implementation**, with no git binary at runtime and no new heavy
+dependency (`sha2` is already used). `coglet-runtime` depends on `coglet-fs`
+only with its `native-engine` feature, so the function lives where both always
+reach it (making that dependency unconditional, or a small shared module).
+Each `tree_hash` keeps its name and its own return type. The Python reference
+in `spec/tests/test_abi.py` gets the same algorithm, so the fixture generators
+regenerate by re-running.
+
+**Stored trees.** `DiskStore` names persisted trees by their state hash and
+refuses a tree whose name does not match. On first load after the upgrade it
+accepts a tree whose name matches the old CBOR digest, then rewrites it under
+its git tree id, once. Restart and resume ([ADR-0027](0027-daemon-restart-resume.md))
+keep working across the upgrade.
+
+Spec text changes: `spec/abi.md` (Journal and trace, where the definition lives,
+and the path rules), `spec/hub-protocol.md` (the restated definition, pointed
+at the ABI), the CDDL and JSON Schema descriptions where they describe the hash,
+and a cross-reference in `spec/conventions.md`. The comment in
+`crates/coglet-fs/src/git.rs` that says git object ids are not ABI tree hashes
+is updated; the logs-only `GitStore` is unchanged.
 
 ### What does not change
 
 - `record_hash`, `code_hash`, `manifest_hash` and every other hash that is not a
   filesystem state hash keep their current definitions.
-- The trace and journal formats keep their fields. Only the values of
-  `initial_hash`, `final_hash`, `output_hash` and `state_hash` change meaning.
-- No dependency on unforged, no git binary at runtime, no change to the hub git
-  transfer (bundles stay as specified), no change to the surface protocol, the
+- The trace and journal records keep their fields; only the values listed above
+  change meaning.
+- No dependency on unforged, no git binary at runtime, no change to how code
+  reaches a runtime (ADR-0031's `manage.patch`), to the adapter protocol, the
   router, step semantics or effect staging.
+
+Matching unforged is limited to this tree. In the full design the root of a
+coglet's commit also holds `manifest.cbor` and `out/`, so a later stage that
+adopts it hashes the ABI snapshot as its own subtree; this ADR does not promise
+that a stage-1 state hash equals a later root tree id.
 
 ## Alternatives
 
 - **Adopt the full unforged design now** (coglet = ref, step = commit, patch =
   merge, router = unforged repository). Rejected for now: it would rewrite the
-  journal, trace format, hub git transfer and router storage while M1 and the v0
-  freeze are in flight, and unforged is not ready for the critical path.
+  journal, trace format, the router's storage and how code reaches a runtime,
+  and unforged is not ready for the critical path.
 - **Keep the CBOR state hash and convert later.** Rejected: every recording made
   in the meantime would need conversion or regeneration.
+- **Add a separate `tree_id` field next to the CBOR hash** (additive, so a minor
+  version). Rejected: two state hashes in every record forever, and every
+  verifier checks both.
 
 ## Consequences
 
-- Every golden fixture and recorded trace whose state hashes change is
-  regenerated by re-running, never by hand-editing, in `spec/fixtures/` and the
-  crates' test data.
+- Every fixture and recorded trace whose state hashes change is regenerated by
+  re-running, never by hand-editing: `spec/fixtures/`, `conformance/abi/*.json`
+  and `conformance/hub/*.json`, the visualizer trace fixtures under
+  `tools/visualizer/tests/fixtures/`, and the crates' test data.
 - This change blocks new golden fixtures until it lands, so fixtures are recorded
   once against the new definition.
 - Old recordings with CBOR state hashes do not verify under the new definition;
-  none are retained as compatibility inputs.
+  none are retained as compatibility inputs. Stored trees are upgraded once, as
+  above.
+- ADR-0031's manage protocol (PR #164) and this ADR touch the same snapshot read
+  and write; whichever lands second carries the other's definition.
 - Later stages (proof test, centre cold path, router on unforged, one effect
   path) each need their own ADR and start only after the previous stage passes.
 
@@ -93,8 +143,12 @@ updated; the logs-only `GitStore` is unchanged.
   contents), the computed id equals the id real `git` produces in a repository
   initialized with `--object-format=sha256` (via `git mktree` or `git
   write-tree`). The test may use the git binary; production code may not.
-- `state_hash_single_implementation`: `coglet-fs` and `coglet-runtime` return the
-  same id for the same snapshot.
+- `state_hash_rejects_unmappable_paths`: a snapshot with a `.git` component, or
+  with a path that is both a file and a directory, is refused before hashing.
+- `state_hash_single_implementation`: `coglet-fs`, `coglet-runtime` and the
+  Python reference return the same id for the same snapshot.
+- `disk_store_upgrades_cbor_named_trees`: a store written under the old names
+  loads once and is rewritten under git tree ids.
 - `cli_build_run_replay_equal_hash_list_and_inspect` and all conformance suites
   pass with regenerated fixtures, on both WAMR and Wasmtime where applicable.
 
