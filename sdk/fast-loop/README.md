@@ -21,13 +21,14 @@ bounded-compute and async-plan mechanics.
 - **State.** One JSON file under `/data` (tick, plan, pending request, inbox
   cursor, stats; serialized in field declaration order). Replay of the recorded batches and inbox bytes reproduces every
   effect and every state byte. Inbox lines are validated against the ABI schemas
-  (`inbox-message` and, for `llm.reply`, `llm-reply`; LF-terminated lines without CR;
-  index equals position; sender equals
-  event source) before any is applied. Not checked here, because the runtime owns the
-  append: key order and duplicate keys, message-id uniqueness, and the schemas of
-  other event kinds (`action.outcome`, `runtime.action_rejected`), which this loop
-  ignores. The message `id` is the runtime's and is not compared with the event
-  correlation_id. A damaged, oversized or unreadable inbox is
+  (canonical sorted-key compact JSON, LF-terminated, no CR; `inbox-message`; for
+  `llm.reply`, `action.outcome` and `runtime.action_rejected` their payload schemas;
+  index equals position; sender equals the event source; outcome correlation ids
+  agree) for every line up to the woken index before any is applied; later lines are
+  not read. Not checked: message-id uniqueness across lines. The message `id` is the
+  runtime's and is not compared with the event correlation_id. Numbers go through
+  explicit JSON/profile-value conversion, so a build that enables serde_json
+  `arbitrary_precision` behaves the same. A damaged, oversized or unreadable inbox is
   counted (`inbox_faults`), its lines up to the wake are skipped and the fast path
   carries on; the pending request times out. The ABI has no inbox rotation, so a
   coglet whose inbox passes 1 MiB loses its slow path (and runs on reflexes) until
@@ -57,10 +58,12 @@ The budget is a work count, not wall time. It sits inside the runtime's manifest
 - `unanswered_request_times_out_and_its_late_reply_is_ignored`
 - `refused_request_costs_neither_the_action_nor_the_tick`
 - `plan_expires_after_ttl_and_a_finished_plan_is_dropped`
+- `lines_after_the_woken_index_are_neither_validated_nor_applied`
+- `budget_charge_refuses_without_overflow_or_partial_charge`
 - `valid_reply_with_runtime_allocated_id_is_applied`
 - `provider_failure_and_timeout_back_off_exactly_backoff_ticks`
 - `extreme_counters_and_config_saturate_instead_of_wrapping_or_panicking`
-- `damaged_inbox_is_counted_and_never_stops_the_fast_path` (missing line, CRLF, no
+- `damaged_inbox_is_counted_and_never_stops_the_fast_path` (missing line, CRLF, non-canonical spacing, malformed or mismatched action.outcome, no
   final LF, index gap, sender/source mismatch, schema-invalid reply, oversize)
 - `inbox_is_not_read_unless_a_wake_names_a_new_line`
 - `action_deadline_overflow_is_refused_not_wrapped`

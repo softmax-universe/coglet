@@ -20,8 +20,9 @@
 //! and inbox bytes reproduces every effect and every state byte.
 use coglet_guest_rust::{Action, Context, Event, Host, HostError, LlmRequest};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 
 /// Largest inbox file the loop will read, in bytes.
 pub const MAX_INBOX_BYTES: usize = 1024 * 1024;
@@ -230,7 +231,7 @@ impl<C: Controller> FastLoop<C> {
             .iter()
             .filter(|e| e.kind == "runtime.inbox")
             .filter_map(|e| e.payload.get("index"))
-            .filter_map(|v| serde_json::to_value(v).ok()?.as_u64())
+            .filter_map(|v| u64::try_from(v.as_integer()?).ok())
             .max();
         if let Some(upto) = upto
             && upto >= state.inbox_cursor
@@ -286,7 +287,7 @@ impl<C: Controller> FastLoop<C> {
                 break;
             }
             let row: Value = serde_json::from_str(line).map_err(|_| HostError::InvalidArgument)?;
-            validate_row(&row, index)?;
+            validate_row(&row, line, index)?;
             staged.push(row);
         }
         if next <= upto {
@@ -344,9 +345,10 @@ impl<C: Controller> FastLoop<C> {
         state: &mut State<C::Plan>,
         event: &Event,
     ) -> Result<(), HostError> {
-        let payload =
-            serde_json::to_value(&event.payload).map_err(|_| HostError::InvalidArgument)?;
-        let Some(obs) = self.controller.parse_observation(&payload) else {
+        let Some(obs) = cbor_map_to_json(&event.payload)
+            .ok()
+            .and_then(|payload| self.controller.parse_observation(&payload))
+        else {
             state.stats.bad_observations += 1;
             return Ok(());
         };
@@ -391,8 +393,7 @@ impl<C: Controller> FastLoop<C> {
                 .logical_time
                 .checked_add(cfg.action_deadline_us)
                 .ok_or(HostError::InvalidArgument)?;
-            let args = serde_json::from_value(Value::Object(command.args))
-                .map_err(|_| HostError::InvalidArgument)?;
+            let args = json_map_to_cbor(&command.args)?;
             let id = ctx.next_id()?;
             ctx.emit(&Action {
                 id,
@@ -425,8 +426,7 @@ impl<C: Controller> FastLoop<C> {
                 correlation_id,
                 capability: "llm.complete".into(),
                 model: cfg.route.clone(),
-                input: serde_json::from_value(json!(input))
-                    .map_err(|_| HostError::InvalidArgument)?,
+                input: json_map_to_cbor(&input)?,
             };
             // A refused request stages nothing; it must not cost the tick its action.
             if ctx.llm(&request).is_err() {
@@ -444,19 +444,106 @@ impl<C: Controller> FastLoop<C> {
     }
 }
 
-/// Schema-validate one inbox line (ABI inbox section): the message, its embedded event
-/// and, for `llm.reply`, the reply payload. Also binds index and sender to the event. `id` is the runtime's own message ID and is
-/// deliberately not tied to the event correlation_id (the ABI does not require equality).
-fn validate_row(row: &Value, index: u64) -> Result<(), HostError> {
+/// Schema-validate one inbox line (ABI inbox section): canonical bytes, the message and
+/// its embedded event, and the payload of the event kinds the ABI names (`llm.reply`,
+/// `action.outcome`, `runtime.action_rejected`). Also binds index and sender to the event.
+/// `id` is the runtime's own message ID and is deliberately not tied to the event
+/// correlation_id (the ABI does not require equality).
+fn validate_row(row: &Value, line: &str, index: u64) -> Result<(), HostError> {
     let bad = |_: String| HostError::InvalidArgument;
-    let cbor = |v: &Value| coglet_types::Value::serialized(v).map_err(|e| bad(e.to_string()));
-    coglet_types::validate("abi::inbox-message", &cbor(row)?).map_err(bad)?;
+    // Canonical JSONL is sorted-key, compact, literal-UTF-8 JSON, which is what serde_json
+    // writes for a parsed object (default BTreeMap order). A non-canonical spelling, a
+    // duplicate key or a float re-serializes differently and is refused.
+    if serde_json::to_string(row).map_err(|_| HostError::InvalidArgument)? != line {
+        return Err(HostError::InvalidArgument);
+    }
+    coglet_types::validate("abi::inbox-message", &json_to_cbor(row)?).map_err(bad)?;
     let event = &row["event"];
     if row["index"].as_u64() != Some(index) || row["sender"] != event["source"] {
         return Err(HostError::InvalidArgument);
     }
-    if event["kind"] == "llm.reply" {
-        coglet_types::validate("abi::llm-reply", &cbor(&event["payload"])?).map_err(bad)?;
+    let payload = || json_to_cbor(&event["payload"]);
+    match event["kind"].as_str() {
+        Some("llm.reply") => coglet_types::validate("abi::llm-reply", &payload()?).map_err(bad)?,
+        Some("action.outcome") => {
+            coglet_types::validate("common::action-outcome", &payload()?).map_err(bad)?;
+            if event["correlation_id"] != event["payload"]["correlation_id"] {
+                return Err(HostError::InvalidArgument);
+            }
+        }
+        Some("runtime.action_rejected") => {
+            coglet_types::validate("abi::action-rejection", &payload()?).map_err(bad)?
+        }
+        _ => {}
     }
     Ok(())
+}
+
+// Explicit JSON <-> profile-value conversion. Going through serde would break when another
+// crate in the build enables serde_json's `arbitrary_precision`, which serializes numbers
+// as a private map. Profile values have no floats, so any non-integer number is refused.
+type Cbor = coglet_types::Value;
+
+fn json_to_cbor(value: &Value) -> Result<Cbor, HostError> {
+    Ok(match value {
+        Value::Null => Cbor::Null,
+        Value::Bool(b) => Cbor::Bool(*b),
+        Value::Number(n) => match (n.as_u64(), n.as_i64()) {
+            (Some(u), _) => Cbor::Integer(u.into()),
+            (_, Some(i)) => Cbor::Integer(i.into()),
+            _ => return Err(HostError::InvalidArgument),
+        },
+        Value::String(s) => Cbor::Text(s.clone()),
+        Value::Array(items) => {
+            Cbor::Array(items.iter().map(json_to_cbor).collect::<Result<_, _>>()?)
+        }
+        Value::Object(map) => Cbor::Map(
+            map.iter()
+                .map(|(k, v)| Ok((Cbor::Text(k.clone()), json_to_cbor(v)?)))
+                .collect::<Result<_, HostError>>()?,
+        ),
+    })
+}
+
+fn json_map_to_cbor(map: &Map<String, Value>) -> Result<BTreeMap<String, Cbor>, HostError> {
+    map.iter()
+        .map(|(k, v)| Ok((k.clone(), json_to_cbor(v)?)))
+        .collect()
+}
+
+fn cbor_to_json(value: &Cbor) -> Result<Value, HostError> {
+    Ok(match value {
+        Cbor::Null => Value::Null,
+        Cbor::Bool(b) => Value::Bool(*b),
+        Cbor::Integer(i) => {
+            let i = i128::from(*i);
+            match (u64::try_from(i), i64::try_from(i)) {
+                (Ok(u), _) => Value::from(u),
+                (_, Ok(s)) => Value::from(s),
+                _ => return Err(HostError::InvalidArgument),
+            }
+        }
+        Cbor::Text(s) => Value::String(s.clone()),
+        Cbor::Array(items) => {
+            Value::Array(items.iter().map(cbor_to_json).collect::<Result<_, _>>()?)
+        }
+        Cbor::Map(entries) => Value::Object(
+            entries
+                .iter()
+                .map(|(k, v)| match k {
+                    Cbor::Text(k) => Ok((k.clone(), cbor_to_json(v)?)),
+                    _ => Err(HostError::InvalidArgument),
+                })
+                .collect::<Result<_, HostError>>()?,
+        ),
+        _ => return Err(HostError::InvalidArgument),
+    })
+}
+
+fn cbor_map_to_json(map: &BTreeMap<String, Cbor>) -> Result<Value, HostError> {
+    Ok(Value::Object(
+        map.iter()
+            .map(|(k, v)| Ok((k.clone(), cbor_to_json(v)?)))
+            .collect::<Result<_, HostError>>()?,
+    ))
 }

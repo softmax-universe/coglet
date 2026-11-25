@@ -858,14 +858,34 @@ fn step_with_inbox(rig: &mut Rig, raw: &[u8], wake_index: u64) -> Result<Out, Ho
     }
     Ok(out)
 }
-fn inbox_line(index: u64, sender: &str, source: &str, payload: Value) -> Vec<u8> {
-    let id = corr(0x3000 + index); // distinct from the event correlation_id, as the runtime allocates it
-    let corr_id = corr(0x1000 + index);
-    let event = ev(source, "llm.reply", index + 1, 1, payload, &corr_id);
+/// Inbox line for `kind`; `source` is the embedded event source, `sender` the authenticated one.
+fn raw_line(
+    index: u64,
+    kind: &str,
+    sender: &str,
+    source: &str,
+    payload: Value,
+    corr_id: &str,
+) -> Vec<u8> {
+    let id = corr(0x3000 + index); // runtime-allocated, distinct from the event correlation_id
+    let event = ev(source, kind, index + 1, 1, payload, corr_id);
     let row = json!({"event": event, "id": id, "index": index, "sender": sender});
     let mut line = serde_json::to_string(&row).unwrap().into_bytes();
     line.push(b'\n');
     line
+}
+fn inbox_line(index: u64, sender: &str, source: &str, payload: Value) -> Vec<u8> {
+    raw_line(
+        index,
+        "llm.reply",
+        sender,
+        source,
+        payload,
+        &corr(0x1000 + index),
+    )
+}
+fn inbox_kind_line(index: u64, kind: &str, sender: &str, payload: Value, corr_id: &str) -> Vec<u8> {
+    raw_line(index, kind, sender, sender, payload, corr_id)
 }
 
 #[test]
@@ -882,6 +902,32 @@ fn damaged_inbox_is_counted_and_never_stops_the_fast_path() {
                 l.pop();
                 l.extend_from_slice(b"\r\n");
                 (l, 0)
+            }),
+        ),
+        (
+            "non-canonical spacing",
+            Box::new(move |r| {
+                let row: Value = serde_json::from_slice(&good(r)).unwrap();
+                let mut l = serde_json::to_string_pretty(&row)
+                    .unwrap()
+                    .replace('\n', " ")
+                    .into_bytes();
+                l.push(b'\n');
+                (l, 0)
+            }),
+        ),
+        (
+            "action.outcome with a malformed payload",
+            Box::new(|_| {
+                let p = json!({"id": corr(1), "correlation_id": corr(2), "status": "succeeded"});
+                (inbox_kind_line(0, "action.outcome", ROUTER, p, &corr(2)), 0)
+            }),
+        ),
+        (
+            "action.outcome whose event and payload correlation ids differ",
+            Box::new(|_| {
+                let p = json!({"id": corr(1), "correlation_id": corr(2), "status": "succeeded", "result": {}});
+                (inbox_kind_line(0, "action.outcome", ROUTER, p, &corr(3)), 0)
             }),
         ),
         (
@@ -1080,6 +1126,45 @@ fn extreme_counters_and_config_saturate_instead_of_wrapping_or_panicking() {
     );
     rig.run(1, 1, 42, vec![wake], vec![], true).unwrap();
     assert_eq!(rig.state().inbox_cursor, u64::MAX);
+}
+
+#[test]
+fn lines_after_the_woken_index_are_neither_validated_nor_applied() {
+    let mut rig = Rig::new(config());
+    let id = request_id(&rig.step(&[], Some(obs())).unwrap());
+    let outcome =
+        json!({"id": corr(1), "correlation_id": corr(2), "status": "succeeded", "result": {}});
+    let mut raw = inbox_kind_line(0, "action.outcome", ROUTER, outcome, &corr(2));
+    raw.extend(inbox_line(1, ROUTER, ROUTER, plan_reply(&id)));
+    raw.extend(b"not json at all\n");
+    // Wake for line 0 only: a valid action.outcome is ignored without fault; the reply on
+    // line 1 is not applied yet and the garbage on line 2 is not even parsed.
+    step_with_inbox(&mut rig, &raw, 0).unwrap();
+    let s = rig.state();
+    assert_eq!(
+        (s.stats.inbox_faults, s.stats.ignored, s.inbox_cursor),
+        (0, 1, 1)
+    );
+    assert!(s.plan.is_none() && s.pending.is_some());
+    // The wake for line 1 applies the reply, and line 2 is still not read.
+    step_with_inbox(&mut rig, &raw, 1).unwrap();
+    let s = rig.state();
+    assert_eq!(
+        (s.stats.inbox_faults, s.stats.plans_applied, s.inbox_cursor),
+        (0, 1, 2)
+    );
+}
+
+#[test]
+fn budget_charge_refuses_without_overflow_or_partial_charge() {
+    let mut b = Budget::new(10);
+    assert!(b.charge(7).is_ok());
+    assert_eq!(b.charge(4), Err(Exhausted));
+    assert_eq!(b.used(), 7, "a refused charge costs nothing");
+    assert_eq!(b.charge(u64::MAX), Err(Exhausted));
+    assert!(b.charge(3).is_ok());
+    assert_eq!((b.used(), b.limit()), (10, 10));
+    assert_eq!(b.charge(1), Err(Exhausted));
 }
 
 #[test]
