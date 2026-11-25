@@ -1,12 +1,12 @@
 //! Opt-in, qualified interpreter route. No ambient host I/O.
 #[path = "wasi.rs"]
 mod wasi;
-use crate::{cbor, digest, validate, Engine, EngineReport, Result, StepHost};
+use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
 use coglet_engine::{
     Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,
 };
 use coglet_engine_wamr::Wamr;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
 pub struct NativeEngine {

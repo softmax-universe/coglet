@@ -367,10 +367,7 @@ impl Fixture {
                 &authority,
                 hub.id(),
                 &grants,
-                &hub_methods(case)
-                    .into_iter()
-                    .filter(|m| *m != "hub.receipt" || case != "cross-owner-receipt")
-                    .collect::<Vec<_>>(),
+                &hub_methods(case),
                 &hub_actor,
                 None,
             )?;
@@ -822,10 +819,8 @@ impl Fixture {
                     return Err("inbox-boundary-queued missing cancelled receipt".into());
                 }
             }
-            "queue-backpressure" => {
-                if inbox_contains(state, "ffffffffffffffffffffffffffffffff") {
-                    return Err("backpressure admitted the overflowing inbox".into());
-                }
+            "queue-backpressure" if inbox_contains(state, "ffffffffffffffffffffffffffffffff") => {
+                return Err("backpressure admitted the overflowing inbox".into());
             }
             _ => {}
         }
@@ -869,7 +864,7 @@ fn inbox_contains(state: &Value, id: &str) -> bool {
 }
 
 pub fn ready() -> Result<()> {
-    eprint!("COGLET_CONFORMANCE_READY\n");
+    eprintln!("COGLET_CONFORMANCE_READY");
     std::io::stderr().flush()?;
     Ok(())
 }

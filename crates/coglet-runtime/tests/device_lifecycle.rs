@@ -20,19 +20,19 @@ use coglet_mock::hub::MockHub;
 use coglet_proto::{
     authority::{Authority, Grant, Scope},
     signing,
-    transport::{Role, Session, ALPN},
+    transport::{ALPN, Role, Session},
 };
 use coglet_runtime::{DeviceConfig, DeviceHandler, TargetPin};
-use iroh::{endpoint::presets, Endpoint, SecretKey};
-use serde_json::{json, Value};
+use iroh::{Endpoint, SecretKey, endpoint::presets};
+use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     process::Command,
     sync::{
-        atomic::{AtomicU64, Ordering},
         Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -1569,12 +1569,13 @@ async fn first_install_expiry_leaves_no_code_identity_and_new_ref_retries_cleanl
                 env.trap.lock().unwrap().is_none(),
                 "precommit gate executed"
             );
-            assert!(env
-                .handler
-                .as_ref()
-                .unwrap()
-                .share_service(&env.coglet)
-                .is_none());
+            assert!(
+                env.handler
+                    .as_ref()
+                    .unwrap()
+                    .share_service(&env.coglet)
+                    .is_none()
+            );
             let wal = env
                 .config
                 .wal_root
@@ -1978,12 +1979,14 @@ async fn subprocess_lifecycle(resume: bool, tamper: bool) {
                     assert_eq!(record["status"], "committed", "{record}");
                     assert_eq!(record["engine"]["policy"], native_compute_mode());
                     assert!(record["usage"]["compute"].as_u64().unwrap() > 0);
-                    assert!(record["events"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .any(|event| event["kind"] == "speech.start"
-                            && event["seq"].as_u64().is_some_and(|seq| seq >= 3)));
+                    assert!(
+                        record["events"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|event| event["kind"] == "speech.start"
+                                && event["seq"].as_u64().is_some_and(|seq| seq >= 3))
+                    );
                 }
             }
         }
@@ -3093,13 +3096,15 @@ async fn installed_push_original_id_queued_then_applied() {
                 .share_service(&env.coglet)
                 .unwrap();
             let mut locked = service.lock().unwrap();
-            assert!(locked
-                .run_next(
-                    &Value::Null,
-                    &mut coglet_runtime::MockEngine::new(Value::Null)
-                )
-                .unwrap()
-                .is_none());
+            assert!(
+                locked
+                    .run_next(
+                        &Value::Null,
+                        &mut coglet_runtime::MockEngine::new(Value::Null)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
         }
         barrier.release();
         let pushed = pushing.await.unwrap();

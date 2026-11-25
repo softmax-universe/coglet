@@ -191,10 +191,10 @@ impl RuntimeService {
         } else {
             None
         };
-        let trace = json!(digest(
-            format!("code:{}:{}", revision.operation_id, revision.intent).as_bytes()
-        )[..32]
-            .to_owned());
+        let trace = json!(
+            digest(format!("code:{}:{}", revision.operation_id, revision.intent).as_bytes())[..32]
+                .to_owned()
+        );
         if next.completed_segments.iter().any(|s| s.trace_id == trace) || old_trace == trace {
             return Err("conflict: code trace identity already used".into());
         }

@@ -83,32 +83,38 @@ fn installed_code_pending_fences_next_step_across_reopen() {
         .enqueue(setup["inputs"]["events"][0].clone())
         .unwrap();
     service.fence_code(true).unwrap();
-    assert!(service
-        .run_next(
-            &setup["inputs"],
-            &mut MockEngine::new(setup["guest_script"].clone())
-        )
-        .unwrap()
-        .is_none());
+    assert!(
+        service
+            .run_next(
+                &setup["inputs"],
+                &mut MockEngine::new(setup["guest_script"].clone())
+            )
+            .unwrap()
+            .is_none()
+    );
     assert!(service.records().is_empty());
     drop(service);
     let mut service = RuntimeService::open(&root.path().join("state.wal"), &setup, 8).unwrap();
     assert!(service.code_pending());
-    assert!(service
-        .run_next(
-            &setup["inputs"],
-            &mut MockEngine::new(setup["guest_script"].clone())
-        )
-        .unwrap()
-        .is_none());
+    assert!(
+        service
+            .run_next(
+                &setup["inputs"],
+                &mut MockEngine::new(setup["guest_script"].clone())
+            )
+            .unwrap()
+            .is_none()
+    );
     service.fence_code(false).unwrap();
-    assert!(service
-        .run_next(
-            &setup["inputs"],
-            &mut MockEngine::new(setup["guest_script"].clone())
-        )
-        .unwrap()
-        .is_some());
+    assert!(
+        service
+            .run_next(
+                &setup["inputs"],
+                &mut MockEngine::new(setup["guest_script"].clone())
+            )
+            .unwrap()
+            .is_some()
+    );
 }
 
 #[test]
