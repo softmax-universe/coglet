@@ -57,7 +57,10 @@ private final class WorkerSendStep: @unchecked Sendable {
     let entered = DispatchSemaphore(value: 0)
     let release = DispatchSemaphore(value: 0)
     let result: Int32
-    init(_ result: Int32 = 0) { self.result = result }
+    let elapsedUS: UInt64
+    init(_ result: Int32 = 0, elapsedUS: UInt64 = 0) {
+        self.result = result; self.elapsedUS = elapsedUS
+    }
 }
 private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: Int) -> Int32 {
     let f = fixture(); f.record("send")
@@ -69,6 +72,7 @@ private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: 
     entered?.signal(); gate?.wait()
     step?.entered.signal(); step?.release.wait()
     return f.lock.withLock {
+        f.clockUS += step?.elapsedUS ?? 0
         let result = step?.result ?? f.sendResult ?? (f.blocked ? 1 : 0)
         guard result == 0 else { return result }
         let type = try? SurfaceWire.decode(bytes, from: .surface)["type"]
@@ -126,6 +130,215 @@ final class FaceRuntimeWorkerTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(5))
         }
         XCTAssertTrue(try link.flush(), "worker did not drain within watchdog")
+    }
+    func testPendingInboundReadDeliveredBeforeQueuedSendCanExpireIt() async throws {
+        try await Self.exercisePendingInboundRead()
+    }
+    @MainActor private static func exercisePendingInboundRead() async throws {
+        // A zero-cost control and an exclusive-deadline crossing use the same
+        // step ordering. Virtual time, not a sleep, models the second ABI call.
+        for elapsedUS: UInt64 in [0, 1_000_000] {
+            let f = WorkerFixture(), first = WorkerSendStep(), second = WorkerSendStep(elapsedUS: elapsedUS)
+            f.blocked = false; f.sendSteps = [first, second]
+            let owner = "coglet:" + String(repeating: "a", count: 64)
+            let backend = FaceSurfaceBackend(audio: TestDuplex(), synthesis: TestSynthesis(), renderer: .init { _ in })
+            let session = try SurfaceSession(identity: "surface:" + String(repeating: "b", count: 64),
+                boundCoglets: [owner], operations: FaceSurfaceHost.operations, store: WorkerLedger(), backend: backend,
+                initialGrants: [.init(coglet: owner, operations: ["speech.config"], resources: [], expires: 10_000_000)],
+                clock: { f.lock.withLock { f.clockUS } })
+            defer { try? session.close() }
+            backend.activate(owner: owner, epoch: session.grantEpoch, emit: { _, _ in })
+            try session.start()
+            let initial = try XCTUnwrap(session.drain().first)
+            let correlation = try XCTUnwrap(SurfaceWire.decode(initial, from: .surface)["body"]?["correlation_id"])
+            try session.receive(SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])),
+                ("correlation_id", correlation)])), from: .runtime))
+            _ = session.drain()
+            let frames = try (0..<2).map { index in
+                try SurfaceWire.encode(.message("health", .record([
+                    ("state", .text("ready")), ("clock", .unsigned(0)), ("pending", .unsigned(0)),
+                    ("correlation_id", .text(String(format: "%032x", index)))])), from: .runtime)
+            } + [SurfaceWire.encode(.message("read", .record([
+                ("coglet", .text(owner)), ("capability", .text("speech.config")), ("args", .record([])),
+                ("grant_epoch", .unsigned(session.grantEpoch)), ("deadline", .unsigned(1_000_000)),
+                ("correlation_id", .text(String(repeating: "d", count: 32)))])), from: .runtime)]
+            let events = try [workerEvent(0), workerEvent(1)]
+            WorkerFixture.lock.withLock { WorkerFixture.current = f }
+            let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+            defer { first.release.signal(); second.release.signal(); link.close() }
+            do {
+                XCTAssertTrue(try link.send(events[0]))
+                guard first.entered.wait(timeout: .now() + 2) == .success else {
+                    XCTFail("first send did not enter"); throw FaceRuntimeFailure.runtime
+                }
+                // Publish only AFTER first send enters: startup's timer cannot
+                // consume these frames before the diagnostic interleaving.
+                f.lock.withLock { f.inbound = frames }
+                XCTAssertTrue(try link.send(events[1]))
+                first.release.signal()
+                guard second.entered.wait(timeout: .now() + 2) == .success else {
+                    XCTFail("second send did not enter"); throw FaceRuntimeFailure.runtime
+                }
+                // Second-send entry is the publication barrier, not an arbitrary
+                // scheduler yield. Its gate stays held throughout this snapshot.
+                var delivered: [[UInt8]] = []
+                while let frame = try link.receive() { delivered.append(frame); try session.receive(frame) }
+                XCTAssertEqual(delivered.count, frames.count,
+                    "pending runtime frames must reach MainActor before queued send completes; elapsedUS=\(elapsedUS)")
+                XCTAssertEqual(delivered, Array(frames.prefix(delivered.count)), "inbound FIFO changed")
+                XCTAssertEqual(f.lock.withLock { f.clockUS }, 0)
+                second.release.signal()
+                // Watchdog only bounds scheduler/teardown progress. It does not
+                // advance the protocol clock or supply the expiration oracle.
+                let watchdog = ContinuousClock.now + .seconds(2)
+                while delivered.count < frames.count && ContinuousClock.now < watchdog {
+                    if let frame = try link.receive() {
+                        delivered.append(frame); try session.receive(frame)
+                    } else { try await Task.sleep(for: .milliseconds(1)) }
+                }
+                XCTAssertEqual(delivered, frames, "frames must not be dropped or reordered")
+                let replies = try session.drain().map { try SurfaceWire.decode($0, from: .surface) }
+                    .filter { $0["type"] == .text("read_reply") }
+                XCTAssertEqual(replies.count, 1)
+                XCTAssertEqual(replies.first?["body"]?["ok"], .boolean(true),
+                    "read queued at clock 0 expired behind second send; elapsedUS=\(elapsedUS), error=\(String(describing: replies.first?["body"]?["error"]?["code"]))")
+                try await waitForDrain(link)
+                XCTAssertEqual(f.lock.withLock { f.clockUS }, elapsedUS)
+                XCTAssertEqual(f.lock.withLock { f.attempts }, events)
+                XCTAssertEqual(f.lock.withLock { f.messages }, events)
+                try await link.shutdown()
+                XCTAssertEqual(f.lock.withLock { Array(f.calls.suffix(3)) }, ["close", "stop", "status"])
+            } catch {
+                first.release.signal(); second.release.signal()
+                try await link.shutdown()
+                throw error
+            }
+        }
+    }
+    func testInboundBurstYieldsToQueuedSendAfterExactlySixteenFrames() async throws {
+        try await Self.exerciseInboundBurstFairness()
+    }
+    @MainActor private static func exerciseInboundBurstFairness() async throws {
+        let f = WorkerFixture(), first = WorkerSendStep(), second = WorkerSendStep()
+        f.blocked = false; f.sendSteps = [first, second]
+        let frames = try (0..<49).map { index in
+            try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])),
+                ("correlation_id", .text(String(format: "%032x", index)))])), from: .runtime)
+        }
+        let events = try [workerEvent(0), workerEvent(1)]
+        WorkerFixture.lock.withLock { WorkerFixture.current = f }
+        let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+        defer { first.release.signal(); second.release.signal(); link.close() }
+        do {
+            XCTAssertTrue(try link.send(events[0]))
+            guard first.entered.wait(timeout: .now() + 2) == .success else {
+                XCTFail("first send did not enter"); throw FaceRuntimeFailure.runtime
+            }
+            // Publish behind the entered send, so startup polling cannot consume
+            // any part of this burst. Both outbound frames are queued at release.
+            f.lock.withLock { f.inbound = frames }
+            XCTAssertTrue(try link.send(events[1]))
+            first.release.signal()
+            guard second.entered.wait(timeout: .now() + 2) == .success else {
+                XCTFail("inbound burst starved the queued second send"); throw FaceRuntimeFailure.runtime
+            }
+            // The held second ABI call is a serial-worker publication barrier.
+            // No sleep or scheduler yield supplies the sixteen-frame oracle.
+            XCTAssertEqual(f.lock.withLock { f.received }, 16)
+            XCTAssertEqual(f.lock.withLock { f.inbound }, Array(frames.dropFirst(16)))
+            XCTAssertEqual(f.lock.withLock { f.attempts }, events)
+            XCTAssertEqual(f.lock.withLock { f.messages }, [events[0]])
+            var delivered: [[UInt8]] = []
+            while let frame = try link.receive() { delivered.append(frame) }
+            XCTAssertEqual(delivered, Array(frames.prefix(16)))
+            second.release.signal()
+            let watchdog = ContinuousClock.now + .seconds(3)
+            while delivered.count < frames.count && ContinuousClock.now < watchdog {
+                if let frame = try link.receive() { delivered.append(frame) }
+                else { try await Task.sleep(for: .milliseconds(1)) }
+            }
+            XCTAssertEqual(delivered, frames, "all bursts must preserve FIFO without drops or duplicates")
+            try await waitForDrain(link)
+            XCTAssertNil(try link.receive())
+            XCTAssertEqual(f.lock.withLock { f.received }, frames.count)
+            XCTAssertTrue(f.lock.withLock { f.inbound.isEmpty })
+            XCTAssertEqual(f.lock.withLock { f.attempts }, events)
+            XCTAssertEqual(f.lock.withLock { f.messages }, events)
+            try await link.shutdown()
+            XCTAssertEqual(f.lock.withLock { Array(f.calls.suffix(3)) }, ["close", "stop", "status"])
+        } catch {
+            first.release.signal(); second.release.signal()
+            try await link.shutdown()
+            throw error
+        }
+    }
+    func testFullInboundMailboxPreservesPinnedSendAndResumesWithoutDroppingFrames() async throws {
+        try await Self.exerciseFullInboundWithPinnedSend()
+    }
+    @MainActor private static func exerciseFullInboundWithPinnedSend() async throws {
+        let f = WorkerFixture(), first = WorkerSendStep(1), retry = WorkerSendStep()
+        f.blocked = false
+        let frames = try (0..<129).map { index in
+            try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text("0.1"))])),
+                ("correlation_id", .text(String(format: "%032x", index)))])), from: .runtime)
+        }
+        f.inbound = frames
+        WorkerFixture.lock.withLock { WorkerFixture.current = f }
+        let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+        defer { first.release.signal(); retry.release.signal(); link.close() }
+        do {
+            let fillWatchdog = ContinuousClock.now + .seconds(3)
+            while f.lock.withLock({ f.received }) < 128 && ContinuousClock.now < fillWatchdog {
+                try await Task.sleep(for: .milliseconds(1))
+            }
+            XCTAssertEqual(f.lock.withLock { f.received }, 128)
+            f.lock.withLock { f.sendSteps = [first, retry] }
+            let head = try workerEvent(0), tail = try workerEvent(1), reply = try workerReply(2)
+            XCTAssertTrue(try link.send(head))
+            guard first.entered.wait(timeout: .now() + 2) == .success else {
+                XCTFail("full inbound mailbox blocked outbound send"); throw FaceRuntimeFailure.runtime
+            }
+            for frame in [tail, reply] { XCTAssertTrue(try link.send(frame)) }
+            let callsAtFirstSend = f.lock.withLock { f.calls.count }
+            first.release.signal()
+            guard retry.entered.wait(timeout: .now() + 2) == .success else {
+                XCTFail("full inbound mailbox blocked pinned-head retry"); throw FaceRuntimeFailure.runtime
+            }
+            // No capacity was reclaimed between the would-block and retry. The
+            // second entry proves outbound progress despite a full 128-frame box.
+            XCTAssertEqual(f.lock.withLock { f.received }, 128)
+            XCTAssertEqual(f.lock.withLock { f.inbound }, [frames[128]])
+            XCTAssertEqual(f.lock.withLock { Array(f.calls.dropFirst(callsAtFirstSend)) }, ["send"],
+                "must not query or consume runtime input while the mailbox is full")
+            XCTAssertEqual(f.lock.withLock { f.attempts }, [head, head], "reply must not displace pinned bytes")
+            XCTAssertTrue(f.lock.withLock { f.messages.isEmpty })
+            var delivered: [[UInt8]] = []
+            while let frame = try link.receive() { delivered.append(frame) }
+            XCTAssertEqual(delivered, Array(frames.prefix(128)))
+            XCTAssertEqual(f.lock.withLock { f.inbound }, [frames[128]], "held retry must keep worker paused")
+            retry.release.signal()
+            let drainWatchdog = ContinuousClock.now + .seconds(3)
+            while delivered.count < frames.count && ContinuousClock.now < drainWatchdog {
+                if let frame = try link.receive() { delivered.append(frame) }
+                else { try await Task.sleep(for: .milliseconds(1)) }
+            }
+            XCTAssertEqual(delivered, frames, "capacity recovery must preserve all inbound frames in order")
+            try await waitForDrain(link)
+            XCTAssertNil(try link.receive())
+            XCTAssertEqual(f.lock.withLock { f.received }, frames.count)
+            XCTAssertTrue(f.lock.withLock { f.inbound.isEmpty })
+            XCTAssertEqual(f.lock.withLock { f.attempts }, [head, head, reply, tail])
+            XCTAssertEqual(f.lock.withLock { f.messages }, [head, reply, tail])
+            try await link.shutdown()
+            XCTAssertEqual(f.lock.withLock { Array(f.calls.suffix(3)) }, ["close", "stop", "status"])
+        } catch {
+            first.release.signal(); retry.release.signal()
+            try await link.shutdown()
+            throw error
+        }
     }
     func testReadReplyDelayPairAvoidsTwoEarlierEventCommits() async throws {
         try await Self.exerciseReadReplyDelayPair()

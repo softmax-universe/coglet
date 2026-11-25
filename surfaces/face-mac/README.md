@@ -92,6 +92,24 @@ clock (two event commits at 600,000 µs each) to exercise ordering deterministic
 wall-clock waits are watchdogs only. These tests are not actual C-ABI runtime,
 native media, deadline-success or acoustic qualification.
 
+## Embedded-worker inbound fairness
+
+After each send attempt the worker drains up to 16 pending inbound frames before
+selecting another outgoing frame. This avoids delaying a read behind one durable
+ABI send for each earlier inbound health/action frame. A burst is bounded and
+then yields to outbound traffic; the 128-frame / 8 MiB receive limits are checked
+before every ABI receive. Full inbound backpressure still permits outbound sends
+and pinned-head retries. No outbound ordering barrier or stop fence changes.
+
+`testPendingInboundReadDeliveredBeforeQueuedSendCanExpireIt` exercises the Swift
+SDK with a gated ABI fixture and a one-second virtual send cost (with a zero-cost
+control). Additional tests require a yield after precisely 16 of 49 frames and
+preserve all 129 inbound frames across a full mailbox plus pinned retry. These are
+source-level scheduling regressions, not attribution of the earlier real-runtime
+health timeout or third-read expiry. An entered ABI receive can itself pump native
+and durable work; neither the burst cap nor off-main ownership bounds its latency.
+Original actual-C-ABI qualification, independent review and native CI remain gates.
+
 ## Compiled adapter simulator path
 
 `swift build --package-path surfaces/face-mac --product face-mac` produces an

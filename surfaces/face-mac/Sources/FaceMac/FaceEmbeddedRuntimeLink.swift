@@ -208,16 +208,23 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
                     }
                 }
                 guard !lock.withLock({ closed }) else { cleanup(); return }
-                let room = lock.withLock { incoming.count < 128 && incomingBytes <= Self.byteLimit - SurfaceWire.maximumFrame }
-                // Full inbound mailbox applies backpressure without consuming or
-                // discarding runtime frames. MainActor keeps its independent stop.
-                guard room else { return }
-                phase = .receive
-                let next = try transport.receive()
-                if let next {
+                // Drain a bounded inbound burst before selecting another send.
+                // A read already behind health/action frames must not wait for
+                // one synchronous durable ABI send per preceding inbound frame.
+                // This changes no outbound order and never retracts a pinned send.
+                var received = false
+                for _ in 0..<16 {
+                    guard !lock.withLock({ closed }) else { cleanup(); return }
+                    let room = lock.withLock { incoming.count < 128 && incomingBytes <= Self.byteLimit - SurfaceWire.maximumFrame }
+                    // Full inbound mailbox applies backpressure without consuming
+                    // or discarding runtime frames. MainActor stop is independent.
+                    guard room else { return }
+                    phase = .receive
+                    guard let next = try transport.receive() else { break }
+                    received = true
                     lock.withLock { if !closed { incoming.append(next); incomingBytes += next.count } }
                 }
-                if next == nil { break }
+                if !received { break }
             }
         } catch {
             let diagnostic = FaceRuntimeDiagnostic(phase: phase, error: error)
