@@ -1,13 +1,13 @@
 # Router protocol — 1.0
 
-> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
+> **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../../../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
-Normative MUST/SHOULD follow RFC 2119. Decision: [ADR-0004](../docs/adr/0004-hub-protocol.md),
+Normative MUST/SHOULD follow RFC 2119. Decision: [ADR-0004](../../../docs/adr/0004-hub-protocol.md),
 submitted first as [PR #7](https://github.com/softmax-universe/coglet/pull/7).
-Import [common conventions](conventions.md), including identities, errors, version
+Import [common conventions](../../conventions.md), including identities, errors, version
 negotiation, event/action envelopes and deterministic CBOR; do not redefine them.
-The executable message definitions are [CDDL](messages/hub.cddl) and
-[JSON Schema](messages/hub.schema.json). JSON is a diagnostic view, not the wire.
+The executable message definitions are [CDDL](hub.cddl.frozen) and
+[JSON Schema](hub.schema.json.frozen). JSON is a diagnostic view, not the wire.
 This is a new protocol, not compatibility with any prior product protocol.
 
 ## Transport and session
@@ -178,7 +178,7 @@ attempt or duplicating committed effects. Recovery creates no new start receipt
 and preserves historical receipt ordering; retrying an old start cannot reverse
 a later stop. Here `running` means scheduler-enabled and eligible to execute when
 input is ready, not continuous CPU use. See
-[ADR-0027](../docs/adr/0027-daemon-restart-resume.md).
+[ADR-0027](../../../docs/adr/0027-daemon-restart-resume.md).
 
 Boundary processing is serialized per coglet and durable: (1) finish or abort the
 current step; (2) append audit and apply queued manage/inbox mutations in receipt
@@ -354,7 +354,7 @@ unsolicited stream, private-data export or batch publication is created.
 Build-then-patch is a router responsibility. Pin source and build recipe/toolchain,
 compile core Wasm into a temporary **original** module, then apply the selected
 publication policy before gates, signing or transfer. When the proposed
-[ADR-0003](../docs/adr/0003-determinism-rules.md) policy is selected, run its
+[ADR-0003](../../../docs/adr/0003-determinism-rules.md) policy is selected, run its
 R1/R2/R4/R5 admission checks and R3 NaN-result rewrite on the router; validate the
 rewritten module and run gates against those exact output bytes. Include the
 output as `bin/step.wasm` together with source, manifest, prompts and the build
@@ -564,7 +564,7 @@ The legacy 0.1 `conformance/hub/` cases and runtime implementations are migrated
 separately, not accepted as 1.0 coverage by these spec-only tests. The filesystem
 patch, signed-negative and fresh-process tail vectors here are specification
 oracles, not proof that a router/runtime or mock implements the new wire revision.
-Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
+Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](../../abi.md):
 SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including
 `/code`, `/data`, `/logs`, excluding journal storage. `manage.read.snapshot_hash`
 and `manage.write.expected_hash` use that definition. No alternate hash or inbox

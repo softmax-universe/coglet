@@ -5,11 +5,18 @@ Only fixtures/schemas are generated; this is not a runtime implementation.
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 from test_common import encode
 from state_hash import snapshot_hash as digest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get('COGLET_ABI_GENERATOR_ROOT', Path(__file__).resolve().parents[2]))
+# The serving runtime deliberately pins the old router contract until its
+# migration lands. ABI hashes/versions still use the current contract.
+RUNTIME_CORPUS = os.environ.get('COGLET_ABI_RUNTIME_CORPUS') == '1'
+WRITE_METHOD = 'debug.write' if RUNTIME_CORPUS else 'manage.write'
+STEP_NAME = 'debug-step' if RUNTIME_CORPUS else 'manage-step'
+STEP_KIND = 'runtime.debug_step' if RUNTIME_CORPUS else 'runtime.manage_step'
 BASE = 'https://coglet.dev/spec/'
 COMMON = BASE + 'messages/common.schema.json#/$defs/'
 ABI = BASE + 'messages/abi.schema.json'
@@ -46,7 +53,7 @@ def record(name, fields):
 
 def write(path, value):
     # Spec case contracts stay separate from the legacy runtime harness corpus.
-    if path.startswith('conformance/abi/'):
+    if path.startswith('conformance/abi/') and not RUNTIME_CORPUS:
         path = 'spec/fixtures/abi/' + Path(path).stem + '-timeline.fixture'
     path = ROOT / path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -198,7 +205,9 @@ manifest_bytes = encode(man)
 codehash = hashlib.sha256(code).hexdigest()
 manhash = hashlib.sha256(manifest_bytes).hexdigest()
 # Test-only identity transform provenance, not a qualified production build.
-provenance = dict(version='2.0', source_tree=digest({k: v for k, v in files.items() if k.startswith('/code/')}),
+code_source = ({'source_commit': 'a'*40} if RUNTIME_CORPUS else
+               {'source_tree': digest({k: v for k, v in files.items() if k.startswith('/code/')})})
+provenance = dict(version='0.1' if RUNTIME_CORPUS else '2.0', **code_source,
                   recipe_sha256=hashlib.sha256(b'fixture recipe').hexdigest(),
                   policy_sha256=hashlib.sha256(b'test-only policy').hexdigest(),
                   transform_sha256=hashlib.sha256(b'test-only identity transform').hexdigest(),
@@ -225,7 +234,7 @@ llm_reply = dict(request_id=ID, status='succeeded', output=dict(text='hello'))
 inbox = dict(index=0, id=ID, sender=HUB, event=dict(event, source=HUB, kind='hub.steer', payload=dict(text='hello')))
 empty_ledger = dict(actions=[], timers=[], llm_requests=[])
 trace = dict(version='1.0', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_actions=[], initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_files=files, code_hash=codehash, manifest_hash=manhash, final_hash=base['output_hash'], trailing_boundary=None, initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
-valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='manage.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
+valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method=WRITE_METHOD, target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
 valids['action-rejection'] = dict(id=ID, correlation_id=ID, accepted=False,
     error=dict(code='permission_denied', message='grant revoked', retryable=False))
 valids['boundary-record'] = seal(dict(version='1.0', trace_id=base['trace_id'], coglet=COG,
@@ -254,10 +263,10 @@ write('spec/fixtures/abi/cases.json', cases)
 # are the language-neutral mock-engine input; adapters supply equivalent guests.
 timelines = []
 records = []
-for name in ['manage-step', 'no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
+for name in [STEP_NAME, 'no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
     rec = copy.deepcopy(base)
-    if name == 'manage-step':
-        rec['events'] = [dict(event, source=COG, kind='runtime.manage_step', payload={})]
+    if name == STEP_NAME:
+        rec['events'] = [dict(event, source=COG, kind=STEP_KIND, payload={})]
     elif name == 'invalid-call':
         rec['calls'] = [dict(op='timer', argument_hex='ff', result=1)]
     elif name == 'duplicate-timer':
@@ -384,13 +393,13 @@ write('conformance/abi/provenance.json', [dict(name=c['name'], steps=[
 ]) for c in provenance_cases])
 
 trace_case('async-reply-control', reply_trace)
-debug_trace = dict(trace, records=[dict(records)['manage-step']])
-trace_case('manage-step-control', debug_trace)
+debug_trace = dict(trace, records=[dict(records)[STEP_NAME]])
+trace_case(STEP_NAME+'-control', debug_trace)
 for field, value in [('source', SURFACE), ('logical_time', 9), ('payload', {'untrusted': True})]:
     bad = copy.deepcopy(debug_trace)
     bad['records'][0]['events'][0][field] = value
     bad['records'][0] = seal(bad['records'][0])
-    trace_case('manage-step-wrong-'+field, bad, False, 'debug step wake binding')
+    trace_case(STEP_NAME+'-wrong-'+field, bad, False, 'debug step wake binding')
 for name, error in [('reply-missing-output', 'embedded llm-reply'),
                     ('inbox-missing-sender', 'embedded inbox-message'),
                     ('inbox-spaces', 'noncanonical inbox'),

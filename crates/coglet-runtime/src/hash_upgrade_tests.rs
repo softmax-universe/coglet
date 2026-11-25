@@ -81,7 +81,7 @@ fn disk_store_upgrades_cbor_named_trees() {
     let (setup, record) = old_wal(&path, None, false);
     let before = std::fs::read(&path).unwrap();
     let service = RuntimeService::open(&path, &setup, 8).unwrap();
-    assert_eq!(service.store.records(), &[record.clone()]);
+    assert_eq!(service.store.records(), std::slice::from_ref(&record));
     assert_eq!(service.state.runtime.manifest["version"], "1.0");
     assert_eq!(service.state.completed_segments.len(), 1);
     assert!(service.state.completed_segments[0].hash_upgrade);
@@ -289,6 +289,258 @@ fn hash_upgrade_database_keeps_exact_historical_record_bytes() {
     assert_eq!(service.state.completed_segments.len(), 1);
     assert_eq!(std::fs::read(&path).unwrap(), before);
     assert_eq!(service.store.database_record_bytes(0), Some(raw.as_slice()));
+}
+
+// A recovery integration fixture, not old guest admission: create exactly the
+// durable legacy PREPARED envelope and SQLite decision state a retired host
+// left behind. All step/filesystem hashes are produced in the private old mode;
+// no retained journal bytes are converted or rewritten.
+#[cfg(feature = "native-engine")]
+fn old_database_preparation(
+    root: &Path,
+    committed: bool,
+) -> (Value, Vec<u8>, Vec<u8>, std::path::PathBuf) {
+    let path = root.join("pending.wal");
+    let mut setup = fixture();
+    setup["manifest"]["version"] = json!("1.1");
+    setup["manifest"]["database"] =
+        json!({"schema_min":1,"schema_max":1,"catalog_hash":"a".repeat(64)});
+    setup["initial_db_revision"] = json!(0);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let mut old = setup.clone();
+    old["manifest"]["version"] = json!("0.2");
+    old["guest_script"]["writes"]["/data/recovered"] = json!(hex::encode(b"committed"));
+    let (record, artifacts) = historical_scope(true, || {
+        service.state.runtime = Runtime::from_fixture(&old).unwrap();
+        service.enqueue(old["inputs"]["events"][0].clone()).unwrap();
+        let (inputs, events, mut next) = service.begin_attempt(&old["inputs"]).unwrap().unwrap();
+        let mut engine = MockEngine::new(old["guest_script"].clone());
+        let mut attempt = DurableAttempt {
+            engine: &mut engine,
+            store: &mut service.store,
+            before: &service.state,
+            entered: None,
+        };
+        let mut result = next.runtime.step(&inputs, &mut attempt).unwrap();
+        service.state.runtime.unresolved_attempt = attempt.entered.take();
+        service.state.fenced_staged_prefix = Some(0);
+        // Assemble the legacy database envelope before it is stored anywhere.
+        let record = &mut result["journal"];
+        record["version"] = json!("0.2");
+        record["db_before"] = json!(0);
+        record["db_after"] = json!(1);
+        record["db_schema_version"] = json!(1);
+        record["db_catalog_hash"] = json!("a".repeat(64));
+        record.as_object_mut().unwrap().remove("record_hash");
+        record["record_hash"] = json!(digest(&cbor(record).unwrap()));
+        next.runtime.previous = record["record_hash"].clone();
+        next.runtime.records = vec![record.clone()];
+        next.runtime.db_revision = Some(1);
+        let raw = cbor(record).unwrap();
+        coglet_types::decode("database::db-step-record", &raw).unwrap();
+        assert!(hash_upgrade::decode_current("database::db-step-record", &raw).is_err());
+        RuntimeService::consume_attempt(&mut next, &events, &result).unwrap();
+        (raw, cbor(&serde_json::to_value(next).unwrap()).unwrap())
+    });
+    assert!(service.has_unresolved_attempt());
+    drop(service);
+    let db = coglet_db::Database::open(root, setup["manifest"]["id"].as_str().unwrap()).unwrap();
+    let sql = rusqlite::Connection::open(db.path()).unwrap();
+    sql.execute_batch("CREATE TABLE proof(value TEXT NOT NULL); PRAGMA user_version=1;")
+        .unwrap();
+    let projection: Value = coglet_types::decode("database::db-step-record", &record)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    let owner = projection["coglet"].as_str().unwrap();
+    let trace = projection["trace_id"].as_str().unwrap();
+    let step = projection["step"].as_u64().unwrap();
+    let body = format!(
+        "COGLET-PREPARED-1\n{owner}\n{trace}\n{step}\n1\n{}\n{}\n{}\n",
+        "a".repeat(64),
+        hex::encode(&record),
+        hex::encode(&artifacts)
+    );
+    let prepared_dir = db.path().parent().unwrap().join("prepared");
+    std::fs::create_dir_all(&prepared_dir).unwrap();
+    let prepared = prepared_dir.join(format!(
+        "{}.prepared",
+        digest(format!("{owner}\n{trace}\n{step}").as_bytes())
+    ));
+    std::fs::write(&prepared, format!("{body}{}\n", digest(body.as_bytes()))).unwrap();
+    if committed {
+        sql.execute_batch("BEGIN IMMEDIATE; INSERT INTO proof VALUES ('committed');")
+            .unwrap();
+        sql.execute(
+            "UPDATE _coglet_state SET revision=?1",
+            [1u64.to_be_bytes().as_slice()],
+        )
+        .unwrap();
+        sql.execute("INSERT INTO _coglet_markers(coglet,trace_id,step,record_hash,catalog_hash,revision,published) VALUES (?1,?2,?3,?4,?5,?6,0)",
+            rusqlite::params![owner, trace, step.to_be_bytes().as_slice(), projection["record_hash"].as_str().unwrap(), "a".repeat(64), 1u64.to_be_bytes().as_slice()]).unwrap();
+        sql.execute_batch("COMMIT").unwrap();
+    }
+    drop((sql, db));
+    (setup, record, artifacts, prepared)
+}
+
+#[cfg(feature = "native-engine")]
+fn recover_old_database_preparation(committed: bool) {
+    use crate::database::Publication;
+    use coglet_db::{Database, Recovered};
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().canonicalize().unwrap();
+    let path = root.join("pending.wal");
+    let (setup, raw, artifacts, prepared) = old_database_preparation(&root, committed);
+    let pending_bytes = std::fs::read(&prepared).unwrap();
+    let before = std::fs::read(&path).unwrap();
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let mut db = Database::open(&root, setup["manifest"]["id"].as_str().unwrap()).unwrap();
+    assert!(service.has_unresolved_attempt());
+    assert_eq!(service.state.runtime.manifest["version"], "0.2");
+    assert!(service.state.completed_segments.is_empty());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert!(db.reconciled().unwrap_err().starts_with("held:"));
+    assert!(
+        service
+            .run_next(&setup["inputs"], &mut NeverEnterGuest)
+            .is_err()
+    );
+    let mut publications = 0;
+    let mut unavailable = |kind: Publication, _: &coglet_db::StepId| -> Result<()> {
+        assert_eq!(
+            kind,
+            if committed {
+                Publication::Committed
+            } else {
+                Publication::Aborted
+            }
+        );
+        // Host callbacks never inherit the private historical validator scope.
+        assert!(!hash_upgrade::historical());
+        let mut old = setup.clone();
+        old["manifest"]["version"] = json!("0.2");
+        assert!(Runtime::from_fixture(&old).is_err());
+        assert!(hash_upgrade::decode_current("database::db-step-record", &raw).is_err());
+        publications += 1;
+        Err("publication temporarily unavailable".into())
+    };
+    assert!(
+        service
+            .recover_database(&mut db, Some(&mut unavailable))
+            .unwrap_err()
+            .starts_with("held:")
+    );
+    assert_eq!(publications, 1);
+    assert!(service.has_unresolved_attempt());
+    assert!(service.state.completed_segments.is_empty());
+    assert_eq!(std::fs::read(&prepared).unwrap(), pending_bytes);
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    drop((service, db));
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let mut db = Database::open(&root, setup["manifest"]["id"].as_str().unwrap()).unwrap();
+    let recovered = service.recover_database(&mut db, None).unwrap();
+    assert!(matches!(
+        (&recovered, committed),
+        (Recovered::RolledForward(_), true) | (Recovered::Aborted(_), false)
+    ));
+    assert!(!service.has_unresolved_attempt());
+    assert!(!hash_upgrade::historical());
+    assert_eq!(service.queued(), 0);
+    assert_eq!(service.state.completed_segments.len(), 1);
+    assert!(service.state.completed_segments[0].hash_upgrade);
+    assert_eq!(service.state.completed_segments[0].end, 1);
+    // ADR35's database successor is ABI 1.1 (the plain ABI successor is 1.0).
+    assert_eq!(service.state.runtime.manifest["version"], "1.1");
+    assert_eq!(service.state.runtime.step, 0);
+    assert!(service.state.runtime.previous.is_null());
+    assert_eq!(
+        service.state.runtime.db_revision,
+        Some(u64::from(committed))
+    );
+    assert_eq!(service.store.records().len(), 1);
+    let record = &service.store.records()[0];
+    assert_eq!(record["version"], "0.2");
+    let published = service.store.database_record_bytes(0).unwrap().to_vec();
+    if committed {
+        assert_eq!(published, raw);
+        assert_eq!(
+            service.store.database_artifacts_hash(0),
+            Some(digest(&artifacts).as_str())
+        );
+        assert_eq!(
+            service.state.runtime.files.files()["/data/recovered"],
+            hex::encode(b"committed")
+        );
+    } else {
+        assert_eq!(record["status"], "aborted");
+        assert_eq!(record["failure"]["kind"], "db_recovery_abort");
+        let prepared_record: Value = coglet_types::decode("database::db-step-record", &raw)
+            .unwrap()
+            .deserialized()
+            .unwrap();
+        assert_eq!(
+            record["failure"]["prepared_record_hash"],
+            prepared_record["record_hash"]
+        );
+        assert_eq!(record["output_hash"], record["input_hash"]);
+        assert!(
+            !service
+                .state
+                .runtime
+                .files
+                .files()
+                .contains_key("/data/recovered")
+        );
+    }
+    let old_id = service.state.completed_segments[0].trace_id.clone();
+    let archive = service.export_segment(&old_id).unwrap();
+    assert_eq!(
+        archive["blobs"][digest(&published)],
+        hex::encode(&published)
+    );
+    assert!(Runtime::import_trace(&archive).is_err());
+    let live_id = service.state.runtime.trace_id.clone().unwrap();
+    let live = service.state.runtime.export_trace(&live_id).unwrap();
+    assert_eq!(live["initial_files"], record["output_files"]);
+    assert_ne!(live["initial_hash"], record["output_hash"]);
+    Runtime::import_trace(&live).unwrap();
+    let sql = rusqlite::Connection::open(db.path()).unwrap();
+    let rows: i64 = sql
+        .query_row("SELECT count(*) FROM proof", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(rows, i64::from(committed));
+    drop(sql);
+    assert!(!prepared.exists());
+    db.reconciled().unwrap();
+    let after = std::fs::read(&path).unwrap();
+    assert!(after.starts_with(&before));
+    assert_eq!(
+        service.recover_database(&mut db, None).unwrap(),
+        Recovered::Nothing
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), after);
+    drop((service, db));
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(service.state.completed_segments.len(), 1);
+    assert_eq!(service.state.runtime.trace_id, Some(live_id));
+    assert_eq!(
+        service.store.database_record_bytes(0),
+        Some(published.as_slice())
+    );
+    assert_eq!(std::fs::read(&path).unwrap(), after);
+}
+
+#[cfg(feature = "native-engine")]
+#[test]
+fn hash_upgrade_recovers_old_database_prepared_commit_before_single_cut() {
+    recover_old_database_preparation(true);
+}
+
+#[cfg(feature = "native-engine")]
+#[test]
+fn hash_upgrade_recovers_old_database_prepared_abort_before_single_cut() {
+    recover_old_database_preparation(false);
 }
 
 #[test]

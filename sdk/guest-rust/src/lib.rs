@@ -1,4 +1,4 @@
-//! Guest ABI 0.1. Successful imports stage effects, not external completion.
+//! Guest ABI 1.0. Successful imports stage effects, not external completion.
 //! No ambient time or randomness is used; contexts receive recorded runtime inputs.
 #[cfg(feature = "database")]
 pub mod database;

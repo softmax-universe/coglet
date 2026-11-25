@@ -228,10 +228,15 @@ impl Journal for WalJournal<'_, '_> {
         let saved: Value = coglet_types::decode_profile(artifacts)?
             .deserialized()
             .map_err(|e| e.to_string())?;
-        let state: ServiceState =
-            serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+        // Snapshot's hash mode is deliberately not serialized. Rehydrate it
+        // against the validated prepared record's ABI, not an ambient caller's
+        // mode: old PREPARED artifacts carry CBOR snapshot hashes, never Git ids.
+        let state: ServiceState = historical_scope(legacy_version(&projection["version"]), || {
+            serde_json::from_value(saved).map_err(|e| e.to_string())
+        })?;
         let runtime = &state.runtime;
-        if runtime.unresolved_attempt.is_some()
+        if legacy_version(&runtime.manifest["version"]) != legacy_version(&projection["version"])
+            || runtime.unresolved_attempt.is_some()
             || runtime.previous != projection["record_hash"]
             || json!(runtime.step) != json!(projection["step"].as_u64().ok_or("step")? + 1)
             || json!(runtime.time) != projection["logical_time"]

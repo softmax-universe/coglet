@@ -1,4 +1,4 @@
-//! Fast loop: low-latency control with asynchronous planning (guest SDK, ABI 0.1).
+//! Fast loop: low-latency control with asynchronous planning (guest SDK, ABI 1.0).
 //!
 //! A [`FastLoop`] splits a controller into two paths that never wait on each other:
 //!

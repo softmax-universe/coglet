@@ -312,6 +312,7 @@ version = "0.1.0"
 dependencies = [
  "coglet-engine",
  "coglet-types",
+ "coglet-types-hub0",
  "fs2",
  "hex",
  "rusqlite",
@@ -376,6 +377,7 @@ dependencies = [
  "coglet-engine-wamr",
  "coglet-fs",
  "coglet-proto",
+ "coglet-types",
  "coglet-types-hub0",
  "hex",
  "iroh",

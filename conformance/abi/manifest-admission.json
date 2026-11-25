@@ -6,7 +6,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -65,7 +65,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -124,7 +124,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -183,7 +183,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -242,7 +242,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -299,7 +299,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [
@@ -356,7 +356,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [
               "speech.speak_chunk"
@@ -417,7 +417,7 @@
         "send": {
           "operation": "abi.manifest_admit",
           "manifest": {
-            "version": "0.1",
+            "version": "1.0",
             "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
             "subscriptions": [],
             "required_capabilities": [

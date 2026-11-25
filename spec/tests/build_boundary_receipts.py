@@ -7,6 +7,8 @@ import json
 from test_common import SPEC
 from test_abi import digest, record_hash
 
+WRITE_METHOD = 'manage.write'
+
 
 def clone(value):
     return copy.deepcopy(value)
@@ -55,7 +57,7 @@ def generate(write_files=True):
         return sample
 
     def write(path, before, after):
-        return dict(actor=hub, audit_id='6'*32, ticket=None, method='manage.write',
+        return dict(actor=hub, audit_id='6'*32, ticket=None, method=WRITE_METHOD,
                     target=coglet, path=path, before=before, after=after)
 
     standalone = clone(trace)

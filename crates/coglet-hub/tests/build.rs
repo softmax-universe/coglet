@@ -44,7 +44,7 @@ fn fixture() -> Fixture {
 fn fixture_with(wat: &str, output_pin: Option<&str>) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
     let coglet = format!("coglet:{}", iroh::SecretKey::from_bytes(&[7; 32]).public());
-    let manifest = json!({"version":"0.1","id":coglet,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr.interpreter","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
+    let manifest = json!({"version":"1.0","id":coglet,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr.interpreter","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
     fs::write(dir.path().join("guest.wat"), wat).unwrap();
     fs::write(
         dir.path().join("manifest.json"),

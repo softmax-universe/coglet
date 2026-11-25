@@ -272,7 +272,7 @@ async fn exercise(crash: Option<&'static str>, daemon: bool) {
     });
     let source = root.path().join("source");
     std::fs::create_dir(&source).unwrap();
-    let manifest = json!({"version":"0.1","id":target,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr-2.4.3-fast-cumulative-v1","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
+    let manifest = json!({"version":"1.0","id":target,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr-2.4.3-fast-cumulative-v1","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
     let manifest = serde_json::to_vec(&manifest).unwrap();
     std::fs::write(source.join("guest.wat"), WAT).unwrap();
     std::fs::write(source.join("manifest.json"), &manifest).unwrap();

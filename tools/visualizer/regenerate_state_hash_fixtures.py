@@ -68,7 +68,7 @@ def main():
         tmp = Path(temp)
         run('cargo', 'run', '--locked', '-p', 'coglet-cli', '--example', 'visualizer_fixture_guest', '--', tmp / 'log.wasm')
         coglet = 'coglet:' + 'c' * 64
-        manifest = dict(version='0.1', id=coglet, subscriptions=[], required_capabilities=[], exclusive_outputs=[],
+        manifest = dict(version='1.0', id=coglet, subscriptions=[], required_capabilities=[], exclusive_outputs=[],
                         budgets=dict(compute_mode='wamr-2.4.3-fast-cumulative-v1', compute=100000,
                                      memory_pages=2, host_bytes=1000000, wall_time_us=2000000, max_events=64))
         write(tmp / 'manifest.json', manifest)

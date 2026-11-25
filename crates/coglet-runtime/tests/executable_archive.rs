@@ -261,15 +261,15 @@ mod native {
         for (name, expected) in [
             (
                 "boundary-receipts",
-                "a70c703450d90da28df45c6d8900e0fa73bcc670198b959f04d7b82937c68e1d",
+                "f71273c8c95fe68e5d2f1f7aa0744eccf44257f2878ea0adb5c45b77c42ed78b",
             ),
             (
                 "provenance",
-                "e9e9f94064240db63187116b7eb82415179663757aaf43ecb4a109d5c30c9376",
+                "2cfd07fd8ca9ba64b88996102c155a3a4eb065980d101116f6f649a5c45b52ba",
             ),
             (
                 "heard-archive",
-                "b58d747cad67b2e706ec0c1049b4f4452fd42bbae744d1d3ca9346eef0684368",
+                "efa862a38b6b8012b194b61bf6866e9dbd017ebf39f33370fe191b2230a3721f",
             ),
         ] {
             assert_eq!(
