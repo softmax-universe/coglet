@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-label="A coglet is a ref. It points at the commit of its latest step; that commit&#x27;s tree holds the manifest, code, data, logs and the effects the step staged.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="unforged-tree-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="unforged-tree-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="unforged-tree-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="unforged-tree-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="unforged-tree-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="unforged-tree-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="unforged-tree-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="unforged-tree-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="399" rx="12" class="dg-bg"/>
+<text x="30" y="40" text-anchor="start" class="dg-cap">REFS, PER COGLET</text>
+<rect x="30" y="56" width="210" height="36" rx="6" class="dg-hub"/>
+<text x="42" y="78" text-anchor="start" class="dg-code">…/state</text>
+<text x="230" y="78" text-anchor="end" class="dg-m">latest step</text>
+<rect x="30" y="100" width="210" height="36" rx="6" class="dg-hub"/>
+<text x="42" y="122" text-anchor="start" class="dg-code">…/policy</text>
+<text x="230" y="122" text-anchor="end" class="dg-m">candidate code</text>
+<rect x="30" y="144" width="210" height="36" rx="6" class="dg-hub"/>
+<text x="42" y="166" text-anchor="start" class="dg-code">…/published</text>
+<text x="230" y="166" text-anchor="end" class="dg-m">promoted code</text>
+<rect x="30" y="188" width="210" height="36" rx="6" class="dg-hub"/>
+<text x="42" y="210" text-anchor="start" class="dg-code">…/inputs</text>
+<text x="230" y="210" text-anchor="end" class="dg-m">recorded inputs</text>
+<text x="30" y="250" text-anchor="start" class="dg-code">refs/coglets/&lt;id&gt;/…</text>
+<text x="30" y="268" text-anchor="start" class="dg-m">one namespace per runtime:</text>
+<text x="30" y="284" text-anchor="start" class="dg-code">refs/namespaces/&lt;node&gt;/…</text>
+<text x="300" y="40" text-anchor="start" class="dg-cap">STEP COMMITS</text>
+<rect x="300" y="56" width="190" height="52" rx="8" class="dg-runtime"/>
+<text x="395.0" y="79.0" text-anchor="middle" class="dg-b">step 39</text>
+<text x="395.0" y="95.0" text-anchor="middle" class="dg-m">parents: step n−1, input n</text>
+<rect x="300" y="126" width="190" height="52" rx="8" class="dg-runtime"/>
+<text x="395.0" y="149.0" text-anchor="middle" class="dg-b">step 40</text>
+<text x="395.0" y="165.0" text-anchor="middle" class="dg-m">parents: step n−1, input n</text>
+<line x1="395" y1="126" x2="395" y2="110" class="dg-ink" stroke-width="1.6" marker-end="url(#unforged-tree-ink)"/>
+<rect x="300" y="196" width="190" height="52" rx="8" class="dg-coglet"/>
+<text x="395.0" y="219.0" text-anchor="middle" class="dg-b">step 41</text>
+<text x="395.0" y="235.0" text-anchor="middle" class="dg-m">parents: step n−1, input n</text>
+<line x1="395" y1="196" x2="395" y2="180" class="dg-ink" stroke-width="1.6" marker-end="url(#unforged-tree-ink)"/>
+<line x1="242" y1="74" x2="298" y2="196" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-tree-blue)"/>
+<text x="300" y="290" text-anchor="start" class="dg-m">trailers on every step commit:</text>
+<text x="300" y="308" text-anchor="start" class="dg-code">Coglet-Step: 41</text>
+<text x="300" y="325" text-anchor="start" class="dg-code">Engine: &lt;resolver oid&gt;</text>
+<text x="300" y="342" text-anchor="start" class="dg-code">Status: committed</text>
+<line x1="492" y1="222" x2="548" y2="150" class="dg-ink" stroke-width="1.6" marker-end="url(#unforged-tree-ink)"/>
+<rect x="550" y="30" width="380" height="340" rx="8" class="dg-runtime"/>
+<text x="566" y="54" text-anchor="start" class="dg-cap">TREE OF STEP 41</text>
+<rect x="566" y="68" width="348" height="30" rx="6" class="dg-coglet"/>
+<text x="578" y="87" text-anchor="start" class="dg-code">manifest.cbor</text>
+<text x="904" y="87" text-anchor="end" class="dg-m">what it subscribes to, needs, owns</text>
+<rect x="566" y="104" width="348" height="30" rx="6" class="dg-coglet"/>
+<text x="578" y="123" text-anchor="start" class="dg-code">code/bin/step.wasm</text>
+<text x="904" y="123" text-anchor="end" class="dg-m">the policy&#x27;s code</text>
+<rect x="566" y="140" width="348" height="30" rx="6" class="dg-coglet"/>
+<text x="578" y="159" text-anchor="start" class="dg-code">code/prompts/  code/skills/</text>
+<text x="904" y="159" text-anchor="end" class="dg-m">the policy&#x27;s words</text>
+<rect x="566" y="176" width="348" height="30" rx="6" class="dg-bg"/>
+<text x="578" y="195" text-anchor="start" class="dg-code">data/…</text>
+<text x="904" y="195" text-anchor="end" class="dg-m">its memory, written by the guest</text>
+<rect x="566" y="212" width="348" height="30" rx="6" class="dg-bg"/>
+<text x="578" y="231" text-anchor="start" class="dg-code">data/inbox.jsonl</text>
+<text x="904" y="231" text-anchor="end" class="dg-m">append-only, written by the runtime</text>
+<rect x="566" y="248" width="348" height="30" rx="6" class="dg-bg"/>
+<text x="578" y="267" text-anchor="start" class="dg-code">logs/events.jsonl</text>
+<text x="904" y="267" text-anchor="end" class="dg-m">append-only</text>
+<rect x="566" y="284" width="348" height="30" rx="6" class="dg-adapter"/>
+<text x="578" y="303" text-anchor="start" class="dg-code">out/actions/&lt;id&gt;.cbor</text>
+<text x="904" y="303" text-anchor="end" class="dg-m">effects staged by this step</text>
+<rect x="566" y="320" width="348" height="30" rx="6" class="dg-adapter"/>
+<text x="578" y="339" text-anchor="start" class="dg-code">out/timers/  out/llm/</text>
+<text x="904" y="339" text-anchor="end" class="dg-m">sent only after the ref moves</text>
+</svg>
