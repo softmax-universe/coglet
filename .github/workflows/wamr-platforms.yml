@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
+    paths: ['scripts/test_apple_factory_slice.py', 'scripts/tests/test_apple_factory_slice.py', 'spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
+    paths: ['scripts/test_apple_factory_slice.py', 'scripts/tests/test_apple_factory_slice.py', 'spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,7 +41,9 @@ jobs:
       - name: Build and test native WAMR runtime (C ABI start/stop and real Wasm)
         run: |
           cargo build --locked -p coglet-runtime --features native-engine
-          cargo test --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine -- --test-threads=1
+          # Slow Factory interpreter scenarios have their own bounded shards below.
+          # Keep the remaining runtime tests (including the base Factory cases).
+          cargo test --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine -- --test-threads=1 --skip factory_goals:: --skip factory_research::
           cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
       - name: Compile production echo without ambient WASI imports
         run: |
@@ -52,6 +54,29 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
+  # Keep real-WAMR Factory coverage without raising the 25-minute Apple cap.
+  # Goals, research acceptance and the multi-completion backlog are disjoint;
+  # apple above still executes all other native runtime/engine tests.
+  apple-factory:
+    needs: apple
+    runs-on: [self-hosted, macOS, coglet-mac]
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        slice: [goals, research, backlog]
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '14.0'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Factory guest target
+        run: rustup target add wasm32-wasip1
+      - name: Qualify Factory slice on native WAMR (nonzero test manifest)
+        env:
+          FACTORY_SLICE: ${{ matrix.slice }}
+        run: |
+          python3 scripts/tests/test_apple_factory_slice.py
+          python3 scripts/test_apple_factory_slice.py "$FACTORY_SLICE"
   # Own 25-minute budget. On a slow runner the debug suites above already use
   # about 21 of the apple job's 25 minutes, and this release rebuild was
   # cancelled mid-smoke (job cap, not a test failure). Splitting does not raise
