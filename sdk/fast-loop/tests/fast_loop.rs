@@ -1055,12 +1055,14 @@ fn extreme_counters_and_config_saturate_instead_of_wrapping_or_panicking() {
     cfg.plan_ttl_ticks = u64::MAX;
     cfg.plan_timeout_ticks = u64::MAX;
     let mut rig = Rig::new(cfg);
-    let mut state: State<Waypoints> = State::default();
-    state.tick = u64::MAX;
+    let mut state: State<Waypoints> = State {
+        tick: u64::MAX,
+        inbox_cursor: u64::MAX,
+        next_plan_tick: u64::MAX,
+        plan_tick: u64::MAX,
+        ..State::default()
+    };
     state.stats.ticks = u64::MAX;
-    state.inbox_cursor = u64::MAX;
-    state.next_plan_tick = u64::MAX;
-    state.plan_tick = u64::MAX;
     rig.host
         .files
         .insert(STATE.into(), state.to_bytes().unwrap());
