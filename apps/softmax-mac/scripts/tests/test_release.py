@@ -174,6 +174,31 @@ class ReleasePolicyTests(unittest.TestCase):
         with patch.dict(os.environ,{'SPARKLE_PRIVATE_KEY':base64.b64encode(bytes(64)).decode()}):
             with self.assertRaises(ValueError): release.prepare_sparkle_key('adhoc')
 
+    def test_isolated_acceptance_keeps_upstream_preference_and_production_trust(self):
+        # This guards our integration, not Sparkle's implementation or installed
+        # update behavior. The native acceptance card exercises the actual route.
+        app = SCRIPTS.parent
+        info = plistlib.loads((app / 'Info.plist').read_bytes())
+        self.assertEqual(info['SUPublicEDKey'], PUBLIC_KEY)
+        self.assertEqual(info['SUFeedURL'],
+                         'https://github.com/softmax-universe/coglet/releases/download/softmax-mac-updates/appcast.xml')
+        updater = (app / 'Sources/SoftmaxApp/Updates.swift').read_text()
+        self.assertIn('SoftmaxReleaseChannel', updater)
+        self.assertIn('== "developer-id"', updater)
+        self.assertIn('startingUpdater: false', updater)
+        self.assertIn('if enabled { controller.startUpdater() }', updater)
+        self.assertNotIn('clearFeedURLFromUserDefaults', updater)
+        self.assertNotIn('feedURLString', updater)
+        self.assertNotIn('setFeedURL', updater)
+        self.assertNotIn('SUFeedURL', updater)
+        workflow = (app.parents[1] / '.github/workflows/softmax-mac-release.yml').read_text()
+        self.assertIn("!contains(github.ref_name, '-rc') && !contains(github.ref_name, '-beta')", workflow)
+        doc = (app.parents[1] / 'docs/releasing-softmax-mac.md').read_text()
+        self.assertIn('defaults write com.softmax.app SUFeedURL -string', doc)
+        self.assertIn('defaults delete com.softmax.app SUFeedURL', doc)
+        self.assertIn('"$backup/previous"', doc)
+        self.assertIn('"$backup/existed"', doc)
+
     def test_notary_rejection_is_fatal(self):
         with patch.object(release,'run',side_effect=['{"id":"test-rejection","status":"Invalid"}',None]):
             with self.assertRaises(RuntimeError): release.notarize(Path('app.zip'),Path('temp'))

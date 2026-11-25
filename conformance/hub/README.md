@@ -69,6 +69,9 @@ to these profiles before opening the connection:
   256 pending mutations, no slot available, no append admitted by this request.
 - `cross-owner-receipt`: operation `88` repeated 16 bytes belongs to another
   authenticated actor; do not disclose it. `unknown-receipt` has no such ID.
+  Both return `not_found` with the same error shape for the caller (apart from
+  request correlation), even with receipt and original-method authority. Missing
+  grants are not a substitute for this ownership check. See ADR-0032.
 - Event cases start watermark zero; identical batch is accepted once, sequence
   two is a gap. `action-expired` has authority/clock mapping, but deadline zero
   is already expired: no surface dispatch or subsequent action-outcome.

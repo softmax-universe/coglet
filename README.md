@@ -7,7 +7,7 @@ Sandboxed Wasm coglets, the adapters that host them, and the router that control
 - Design: [docs/design/coglet-runtime.md](docs/design/coglet-runtime.md)
 - The previous COG/LET Python framework lives on branch `legacy/v0` (tag `legacy-v0`).
 
-## `coglet` sandbox CLI (M2 component, not full deployment acceptance)
+## `coglet` CLI (sandbox, enrollment and local operator control)
 
 Build both executables together (WAMR requires CMake and a C compiler):
 
@@ -29,7 +29,10 @@ Commands:
   list      List metadata for *.json frozen traces in a local directory (sorted by name)
   identity  Create a new private device key; print its public node ID
   enroll    Enroll this device with a pinned hub; invite is read from a private file
-  deploy    Unavailable until the hub operator/device Git+lifecycle adapter is qualified
+  deploy    Build/sign, transfer, install and start through the router's local admin socket
+  push      Build/sign and transfer only; does not install or start
+  status    Obtain a durable runtime status observation (fresh ID for a fresh sample)
+  stop      Stop at a confirmed runtime boundary
   help      Print this message or the help of the given subcommand(s)
 ```
 
@@ -129,18 +132,50 @@ IP:port, but iroh authentication still pins the exact router node ID and ALPN.
 The reference Kernel test exercises real encrypted enrollment, reconnect/null
 recovery and refusal of the consumed invitation with no secret in output/audit.
 
-**`deploy` and its alias `push` currently fail nonzero without effects.** The frozen
-`hub.git.push`, `hub.install` and `hub.start` methods are router→device, not CLI→router.
-The merged reference router has no qualified operator deployment tool, and the
-streaming Git/device lifecycle producer chain is incomplete. No invented reverse
-RPC, direct device bypass, registration-only success or local spool is advertised
-as deployment. The M2 card's end-to-end enroll/deploy acceptance remains open
-until that tool is integrated and exercised against the reference router.
+`deploy`, `push`, `status` and `stop` use the [ADR-0018 local operator
+socket](docs/adr/0018-local-operator-control.md). Run the CLI **on the router host
+as its service user**, directly or by launching that CLI over SSH. Never forward
+the socket. The client checks the service-owned 0700 parent, 0600 socket and
+OS-authenticated server UID; there is no root exception or new iroh method.
+
+```sh
+# Persist a fresh 32-hex operation ID BEFORE submission. Keep it for retries.
+# The router must already have this source, recipe, delegation and actor grants provisioned.
+coglet deploy --operator-socket "$ROUTER_STATE/operator.sock" \
+  --operation-id "$DEPLOY_ID" --device "$DEVICE_ID" --target "$COGLET_ID" \
+  --source-commit "$SOURCE_COMMIT" --build-profile "$BUILD_PROFILE" \
+  --delegation-id "$DELEGATION_ID"
+# push takes the same flags but stages verified code only: no install or start.
+coglet status --operator-socket "$ROUTER_STATE/operator.sock" \
+  --operation-id "$STATUS_ID" --device "$DEVICE_ID" --target "$COGLET_ID"
+coglet stop --operator-socket "$ROUTER_STATE/operator.sock" \
+  --operation-id "$STOP_ID" --device "$DEVICE_ID" --target "$COGLET_ID"
+```
+
+Deployment builds/signs the **router-provisioned pinned source**, not an unsigned
+local sandbox package. The CLI accepts no repository URL, shell recipe or private
+signing key. It does not grant itself authority or bypass policy. The router
+performs build → transfer → install → start and confirms running. `push` is a
+separate initial-staging operation, not an alias for deployment. The current
+producer supports initial deployment only; pushing and then deploying the same
+provisioned generation under a different operation ID can conflict. Hot updates
+and ADR-0031 filesystem/manage conversion are separate producer work.
+
+A validated response is printed as JSON, including failed/queued receipts.
+Exit **0** means `applied`; **3** means durable `queued` admission (NOT success);
+**1** means rejection, failed/cancelled receipt, or transport/validation failure.
+Clap usage errors exit 2. After a timeout, disconnect or malformed response,
+outcome may be unknown: retry the **same operation ID and identical intent**,
+never mint another ID to repeat uncertain effects. `--timeout-ms` (1..300000,
+default 30000) bounds waiting, not application authority. There is no automatic
+retry. Status retries return the original observation: use a fresh ID for a new
+sample. Deploy is a saga, not rollback: failure may leave prior stages applied.
 
 ### Named CLI checks
 
 ```sh
-# The integration test needs the actual sibling cogletd executable above.
+# Integration tests need the real sibling cogletd and router build validator.
+cargo build --locked -p coglet-cli -p coglet-runtime -p coglet-hub
 # The source-build test uses this installed target and its own temporary Cargo target dir.
 rustup target add wasm32-wasip1
 cargo test --locked -p coglet-cli
@@ -158,5 +193,14 @@ imports; private trace; per-step hashes),
 `sandbox_missing_grants_unknown_events_and_bad_wasm_are_rejected`,
 `child_supervisor_times_out_and_bounds_both_output_streams`, and
 `file_reader_refuses_fifo_symlink_and_world_readable_secrets`.
-These are component tests, **not full router or M1 conformance**. Deployment, final
-independent exact-head review, required CI and merge remain the card's gates.
+Additional named checks:
+`cli_reference_router_deploy_push_status_stop_and_idempotent_retry` (CLI process,
+in-process reference router, real signed builder and encrypted iroh to production
+DeviceHandler), `cli_reference_router_push_is_staging_not_install_or_start`,
+`cli_operator_queued_failed_and_malformed_never_report_success`,
+`operator_client_refuses_symlink_and_public_socket_directory`, and
+`operator_response_rejects_ambiguous_or_unbound_receipts`.
+Synthetic fault peers are only refusal controls, never deployment proof. The CLI
+integration uses an in-process runtime handler; actual daemon/restart qualification
+is retained in the producer's `operator_cogletd_deploy_running_stop_status` proof.
+These are CLI acceptance checks, not full router or M1 conformance.
