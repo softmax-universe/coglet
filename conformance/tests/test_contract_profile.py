@@ -127,6 +127,18 @@ class ShippedFiles(unittest.TestCase):
         self.assertNotIn('contract_profile', json.loads(raw))
         tomllib.loads((CONF / 'impls-surface02.toml').read_text())
 
+    def test_swift_surface02_uses_same_cases_and_pin_without_claiming_runtime(self):
+        entries = registry(CONF / 'impls-surface02-swift.toml')
+        self.assertEqual(len(entries), 1)
+        entry = entries[0]
+        self.assertEqual(entry['name'], 'surface-swift-reference-02')
+        self.assertEqual(entry['suites'], ['surface02'])
+        self.assertEqual(entry['peer_roles'], ['runtime'])  # harness role; implementation is a surface
+        self.assertEqual(entry['contract_profile'], 'surface-0.2')
+        self.assertFalse(entry['fixture_clock'])  # production real clock, unchanged wire deadlines
+        self.assertEqual(entry['ready_line'], 'COGLET_CONFORMANCE_READY')
+        self.assertEqual(entry['fixtures'], registry(CONF / 'impls-surface02.toml')[0]['fixtures'])
+
 
 class EndToEnd(unittest.TestCase):
     def test_default_launch_provisions_surface_01_even_if_the_ambient_env_says_otherwise(self):
