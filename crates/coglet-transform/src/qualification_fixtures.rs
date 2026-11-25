@@ -37,10 +37,10 @@ fn fixture_with_executable(executable: Option<Vec<u8>>) -> (RawCiEvidence, Trust
         } else {
             &[183, 0]
         });
-        if arch == std::env::consts::ARCH {
-            if let Some(bytes) = &executable {
-                exe = bytes.clone();
-            }
+        if arch == std::env::consts::ARCH
+            && let Some(bytes) = &executable
+        {
+            exe = bytes.clone();
         }
         let mut files = BTreeMap::from([
             ("transform.source", crate::transform_source_bytes().to_vec()),
@@ -203,7 +203,14 @@ mod tests {
         // Repack with a self-consistent digest to reach manifest binding checks.
         for (field, value) in [
             ("mode", json!("emulated")),
-            ("arch", json!("aarch64")),
+            (
+                "arch",
+                json!(if std::env::consts::ARCH == "x86_64" {
+                    "aarch64"
+                } else {
+                    "x86_64"
+                }),
+            ),
             ("github_attempt", json!("1")),
             ("case_count", json!(0)),
             ("production_tool", json!("qualification-test")),

@@ -27,6 +27,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Qualify the run's head, never a PR's synthetic merge checkout.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Execute native R3 component inventory without skips
         env:
           CARGO_BUILD_JOBS: 2
@@ -49,6 +52,9 @@ jobs:
       - name: Both native architecture legs are mandatory
         run: test '${{ needs.transform-native.result }}' = 'success'
       - uses: actions/checkout@v4
+        with:
+          # Qualify the run's head, never a PR's synthetic merge checkout.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/dependency-restore
         with:
           job: rust
