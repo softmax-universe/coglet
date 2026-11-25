@@ -122,6 +122,10 @@ mount escapes forbidden. Mount permissions apply to descriptors too, including
 open/rename operations; no chmod escalation. Denial returns WASI permission errno
 without change. Reads see this step's copy-on-write overlay.
 
+Filesystem state hashes use the Git SHA-256 tree object id defined below
+(ADR-0035), not the CBOR encoding of the snapshot map. `.git` components remain
+ordinary ABI names; Git checkout/index/fsck restrictions do not alter ABI paths.
+
 Success atomically commits files, input consumption and durable journal/outbox
 BEFORE any dispatch. Abort discards all guest writes/actions/timers/LLM requests;
 output_hash equals input_hash. Boundary interventions survive guest abort.
@@ -368,8 +372,18 @@ timers, LLM requests, logs, usage and status/failure. Replies are inbox bytes.
 
 Snapshots map absolute paths to lowercase even-length hex bytes; empty hex is an
 empty file. Include /code, /data and /logs, exclude journal storage and implicit
-roots. tree_hash=lowercase SHA256(core_deterministic_CBOR(snapshot)). No host
-metadata or NaN normalization. record_hash=SHA256(CBOR(record without record_hash))
+roots. `tree_hash` is the Git tree object id in SHA-256 object format
+([ADR-0035](../docs/adr/0035-state-hash-git-tree-id.md)). Remove each path's leading
+slash; files are mode `100644` blobs and implicit directories mode `40000` trees,
+with no other modes. Object ids are SHA256(`kind + " " + decimal_byte_length + NUL
++ object_body`). Blob bodies are raw file bytes. A tree body concatenates entries
+`mode + " " + UTF8(name) + NUL + raw_32_byte_object_id`, in byte order with tree
+names compared as if followed by `/`. No Unicode normalization or host metadata
+is included. Empty snapshots use the SHA-256 empty tree id. State ids are 64
+lowercase hex outside tree objects, including `initial_hash`, `final_hash`,
+`before_hash`, `input_hash`, `output_hash` and filesystem `state_hash` fields.
+The snapshot map remains the wire/archive representation, not the hash input.
+record_hash=SHA256(CBOR(record without record_hash))
 for both closed, disjoint record shapes; there is no extra hash domain prefix.
 previous=null at step 0, otherwise the preceding record_hash. Trace begins at
 step 0, snapshots chain exactly, and initial_hash is the first pre-boundary tree

@@ -14,7 +14,9 @@ pub enum GitPoint {
 }
 /// Logs-only projection into a caller-initialized private Git repository. Never
 /// writes `/data` (even as unreachable objects), a working tree or the index.
-/// Git object IDs are NOT ABI SHA256 tree hashes. Requires Git with core.fsync.
+/// This logs-only projection is not the full ABI snapshot tree. ABI state hashes
+/// use Git SHA-256 tree IDs, independently of this repository's object format.
+/// Requires Git with core.fsync.
 pub struct GitStore {
     repo: PathBuf,
 }

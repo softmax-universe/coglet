@@ -11,17 +11,14 @@ from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode
+from state_hash import snapshot_hash as digest
 from heard_archive import HEARD_PATH, read_state, check_transition
 
 BASE = 'https://coglet.dev/spec/'
 
 
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
-
-
 def record_hash(rec):
-    return digest({k: v for k, v in rec.items() if k != 'record_hash'})
+    return hashlib.sha256(encode({k: v for k, v in rec.items() if k != 'record_hash'})).hexdigest()
 
 
 def valid_path(path):

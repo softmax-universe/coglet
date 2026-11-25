@@ -28,9 +28,10 @@ Clean implementation of `spec/abi.md` filesystem primitives. No legacy code.
   canonical JSONL, inbox index/id dedup, heard monotonicity and origin), record
   exact before/after bytes, and retain boundary changes on guest abort. The FS
   preserves those bytes, never reserializes or invents protocol messages.
-- Snapshot ABI hashes are SHA256 of core-deterministic CBOR mapping absolute
-  paths to lowercase file hex, including all mounts. Blob IDs are SHA256 of raw
-  content. Git OIDs are separate and must never substitute for ABI hashes.
+- Snapshot ABI hashes are Git SHA-256 tree object ids, including all mounts
+  (ADR-0035). Files are mode 100644 blobs and directories mode 40000 trees.
+  DiskStore blob IDs remain SHA256 of raw content. The logs-only GitStore
+  projection is not the full ABI snapshot tree.
 
 ## Disk checkpoint
 

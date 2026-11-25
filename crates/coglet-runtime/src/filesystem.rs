@@ -1,4 +1,4 @@
-use crate::{Result, cbor};
+use crate::Result;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -204,9 +204,7 @@ impl Snapshot {
         if let Some(hash) = self.1.get() {
             return Ok(hash.clone());
         }
-        let hash = digest(&cbor(
-            &serde_json::to_value(self.0.as_ref()).map_err(|e| e.to_string())?,
-        )?);
+        let hash = coglet_fs::snapshot_tree_hash(&self.0).map_err(|e| e.to_string())?;
         // Another reader can only compute the same hash from immutable bytes.
         let _ = self.1.set(hash.clone());
         Ok(hash)
