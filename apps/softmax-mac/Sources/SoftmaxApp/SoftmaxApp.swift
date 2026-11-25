@@ -53,13 +53,13 @@ struct StatusLabel: View {
 final class ShellModel: ObservableObject {
     /// Actual window visibility and existing Settings selection, not shadow state.
     lazy var appControls = ControlRegistry(revision: 0, interactionAllowed: { [weak self] window in
-        guard let self else { return false }
-        return self.hubPairingRoute == nil || window == "hub_pairing"
+        self?.appInteractionAllowed?(window) ?? false
     }) { [weak self] window in
         self?.appSurfaceRoute?(window)
     }
     // Installed by the actual window owner; absent ownership is unavailable.
     var appSurfaceRoute: ((String) -> String?)?
+    var appInteractionAllowed: ((String) -> Bool)?
     var appSurface: AppSurfaceAdapter?
     var synchronizeAppSurface: (() -> Void)?
     var hubPairingRoute: String? {
@@ -474,6 +474,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         talkHUD.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         face.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         model.appSurfaceRoute = { [weak self] in self?.appRoute($0) }
+        model.appInteractionAllowed = { [weak self] window in
+            guard let self, !self.hasUnqualifiedAppModal else { return false }
+            return self.model.hubPairingRoute == nil || window == "hub_pairing"
+        }
         model.synchronizeAppSurface = { [weak self] in
             guard let self else { return }
             do { try self.model.appControls.synchronizeNativeState(windows: Self.appWindows) }
@@ -486,6 +490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }, currentRoute: { [weak self] in self?.appRoute($0) },
             navigate: { [weak self] window, route in
                 guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings":
                     guard let tab = SettingsTab.allCases.first(where: { $0.rawValue.lowercased() == route }) else {
@@ -503,6 +508,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }, open: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings": self.showSettings()
                 case "about": self.showAbout()
@@ -516,6 +522,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }, close: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "face": self.face.hide()
                 case "orb": self.model.orbEnabled = false
@@ -534,6 +541,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         "command_palette", "about", "keyboard_shortcuts", "hub_pairing", "sign_out_confirmation", "quit_confirmation"]
     private func appWindow(_ id: String) -> NSWindow? {
         NSApp.windows.first { $0.identifier?.rawValue == "softmax." + id }
+    }
+    private var hasUnqualifiedAppModal: Bool {
+        // Until every native confirmation/sheet has its own qualified owner,
+        // refuse an incomplete snapshot rather than claim those panels closed.
+        if NSApp.modalWindow != nil { return true }
+        return model.hubPairingRoute == nil && NSApp.windows.contains {
+            $0.attachedSheet?.isVisible == true
+        }
     }
     private func appRoute(_ window: String) -> String? {
         if window == "menu_bar" { return model.menuBarOpen ? "menu" : nil }
@@ -563,7 +578,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             return (.unsigned(UInt64((elapsed * 1000).rounded(.down))), .unsigned(UInt64((Double(level) * 1000).rounded(.down))))
         }
-        guard !model.appControlRegistrationFailed else { throw AppSurfaceFailure.unavailable }
+        guard !model.appControlRegistrationFailed, !hasUnqualifiedAppModal else { throw AppSurfaceFailure.unavailable }
         let defaults = UserDefaults.standard
         let appearance = defaults.string(forKey: "appearance") ?? "System"
         let scale = defaults.object(forKey: "textScale") == nil ? 1.0 : defaults.double(forKey: "textScale")
