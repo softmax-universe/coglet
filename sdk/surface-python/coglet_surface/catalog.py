@@ -25,13 +25,20 @@ def name(value, contract_profile):
 
 
 def wire_schema(version):
-    # Frozen generated 0.1 IR is never mutated. Only the additive name rule differs.
+    # Select generated roots, never synthesize a widened copy of frozen IR.
     if version not in ('0.1', '0.2'):
         raise ValueError('unknown wire version')
     result = dict(SCHEMA)
     if version == '0.2':
-        for key in ('capability-name', 'common::capability-name'):
-            result[key] = dict(op='regexp', pattern=NAME02)
+        for family, rules in (
+                ('common', ('capability-name', 'event', 'action')),
+                ('surface', ('surface-message', 'cap-entry', 'capabilities',
+                             'grant', 'grants', 'read', 'act', 'schema-refs'))):
+            for rule in rules:
+                target = f'surface02::s02-{rule}'
+                if target not in SCHEMA:
+                    raise ValueError(f'missing generated rule: {target}')
+                result[f'{family}::{rule}'] = dict(op='ref', name=target)
     return result
 
 

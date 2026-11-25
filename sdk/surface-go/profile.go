@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -40,7 +39,6 @@ const (
 	wire02        = "0.2"
 	maxCatalog    = 1 << 20
 	extPrefix     = "ext::"
-	capNameRule   = "common::capability-name"
 	appNamePatten = `^softmax\.app\.[a-z][a-z0-9_]{0,31}$`
 )
 
@@ -522,9 +520,8 @@ func rewriteRefs(v any) any {
 	return v
 }
 
-// buildSchema returns the frozen schema IR, optionally widening only
-// capability-name by the single softmax.app.<component> alternative, plus the
-// catalog's local rules under ext::. The frozen types package is not modified.
+// buildSchema selects generated surface02 roots for negotiated 0.2 and adds
+// the catalog's local rules under ext::. Frozen generated rules stay unchanged.
 func buildSchema(relaxed bool, c *TrustedCatalog) (*codec.Schema, error) {
 	dec := json.NewDecoder(strings.NewReader(types.SchemaJSON))
 	dec.UseNumber()
@@ -533,18 +530,17 @@ func buildSchema(relaxed bool, c *TrustedCatalog) (*codec.Schema, error) {
 		return nil, err
 	}
 	if relaxed {
-		orig, ok := base[capNameRule]
-		if !ok {
-			return nil, errors.New("missing capability-name rule")
+		families := map[string][]string{
+			"common":  {"capability-name", "event", "action"},
+			"surface": {"surface-message", "cap-entry", "capabilities", "grant", "grants", "read", "act", "schema-refs"},
 		}
-		alt := map[string]any{"op": "intersection", "items": []any{
-			map[string]any{"op": "primitive", "name": "tstr"},
-			map[string]any{"op": "regexp", "pattern": appNamePatten},
-		}}
-		wide := map[string]any{"op": "union", "items": []any{orig, alt}}
-		for k, v := range base {
-			if reflect.DeepEqual(v, orig) {
-				base[k] = wide
+		for family, rules := range families {
+			for _, rule := range rules {
+				target := "surface02::s02-" + rule
+				if _, ok := base[target]; !ok {
+					return nil, fmt.Errorf("missing generated rule %s", target)
+				}
+				base[family+"::"+rule] = map[string]any{"op": "ref", "name": target}
 			}
 		}
 	}
