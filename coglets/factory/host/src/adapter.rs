@@ -59,6 +59,9 @@ pub enum AdapterError {
 }
 
 pub trait HermesAdapter {
+    fn supports_cancel(&self) -> bool {
+        false
+    }
     /// Unsupported retry leaves the exact attempt held for evidence polling,
     /// never a local requeue that would invent a remote lifecycle operation.
     fn supports_retry(&self) -> bool {
@@ -137,6 +140,9 @@ impl MockAdapter {
 }
 
 impl HermesAdapter for MockAdapter {
+    fn supports_cancel(&self) -> bool {
+        true
+    }
     fn create(&mut self, spec: &TaskSpec) -> Result<RemoteTask, AdapterError> {
         if self.crash_keys.iter().any(|k| k == &spec.idempotency_key) {
             self.crash_keys.retain(|k| k != &spec.idempotency_key);

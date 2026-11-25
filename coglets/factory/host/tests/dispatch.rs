@@ -1,3 +1,4 @@
+mod cancellation;
 use coglet_db::{Database, OutboxState};
 use coglet_factory_host::{
     ContractKanbanServer, FactoryHost, HermesAdapter, MockAdapter, Outcome, WorkerReport,
