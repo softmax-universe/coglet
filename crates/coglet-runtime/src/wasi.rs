@@ -59,7 +59,7 @@ impl Wasi {
     }
 
     pub(super) fn commit(self, files: &mut Snapshot) -> crate::Result<()> {
-        *files = Snapshot::from_fs(self.overlay.commit())?;
+        *files = files.from_fs_after(self.overlay.commit())?;
         Ok(())
     }
 

@@ -151,6 +151,28 @@ impl Snapshot {
         Ok(snapshot)
     }
 
+    // Diagnostic incremental projection: reuse encoded bytes only after exact
+    // decoded-byte equality, then run the ordinary complete snapshot validator.
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn from_fs_after(&self, decoded: coglet_fs::Snapshot) -> Result<Self> {
+        let prior = self.decoded_fs()?;
+        let mut files = BTreeMap::new();
+        for (path, bytes) in decoded.files() {
+            let encoded = if prior.read(path).is_ok_and(|old| old == bytes) {
+                self.files()
+                    .get(path)
+                    .ok_or("missing original projection")?
+                    .clone()
+            } else {
+                hex::encode(bytes)
+            };
+            files.insert(path.to_owned(), encoded);
+        }
+        let snapshot = Self::new(files)?;
+        let _ = snapshot.2.set(decoded);
+        Ok(snapshot)
+    }
+
     #[cfg(feature = "native-engine")]
     pub(crate) fn decoded_fs(&self) -> Result<&coglet_fs::Snapshot> {
         if let Some(decoded) = self.2.get() {
@@ -242,6 +264,35 @@ mod tests {
         }
         assert!(decode_hex("a").is_err());
         assert!(decode_hex("é").is_err());
+    }
+
+    #[cfg(feature = "native-engine")]
+    #[test]
+    fn incremental_fs_projection_matches_full_export_on_changed_code_and_data() {
+        let initial = Snapshot::new(BTreeMap::from([
+            ("/code/bin/step.wasm".into(), "0061736d".into()),
+            ("/data/state".into(), "01".into()),
+        ]))
+        .unwrap();
+        for files in [
+            BTreeMap::from([
+                ("/code/bin/step.wasm".into(), vec![0, 97, 115, 109]),
+                ("/data/state".into(), vec![2]),
+                ("/data/new".into(), vec![3]),
+            ]),
+            BTreeMap::from([("/code/bin/step.wasm".into(), vec![0, 97, 115, 110])]),
+            BTreeMap::new(),
+        ] {
+            let decoded = coglet_fs::Snapshot::from_files(files).unwrap();
+            let expected = Snapshot::from_fs(decoded.clone()).unwrap();
+            let projected = initial.from_fs_after(decoded).unwrap();
+            assert_eq!(projected, expected);
+            assert_eq!(
+                projected.tree_hash().unwrap(),
+                expected.tree_hash().unwrap()
+            );
+            assert_eq!(projected.decoded_fs().unwrap().export(), *projected.files());
+        }
     }
 
     #[test]

@@ -1052,6 +1052,14 @@ impl Runtime {
         } else {
             engine.database_observation(committed)?
         };
+        #[cfg(feature = "native-engine")]
+        let code_hash = self
+            .files
+            .decoded_fs()?
+            .blob_hash("/code/bin/step.wasm")
+            .map_err(|e| e.to_string())?
+            .to_owned();
+        #[cfg(not(feature = "native-engine"))]
         let code_hash = digest(&crate::filesystem::decode_hex(
             &self.files.files()["/code/bin/step.wasm"],
         )?);
