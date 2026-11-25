@@ -140,6 +140,18 @@ never requeues it or aborts sibling dispatch cycles. Transport/auth/admission
 errors are not worker failures: missing configuration refuses, and non-success
 HTTP responses preserve uncertainty rather than publishing `task.failed`.
 Heartbeat persistence is capped by the returned server lease deadline.
+Uncertain grants (including `phase=claiming` before any token was saved) first
+read the deterministic `task_runs` evidence. `never_existed` alone permits grant
+replay; unknown/deleted evidence remains held. Known runs must match task and
+origin gateway. Live runs additionally match current run, lease run and holder;
+their deadline is server-capped. Expired or terminal recovered runs get a local
+polling-only correlation record with deadline zero, never a fresh grant/renewal.
+That record and the saved binding can each survive another reopen; result ingestion
+still commits exactly one durable delivery under the original attempt/token.
+The Board's cached lease operation returns its original verdict with the **current**
+lease (`board.ts:887-914`), which is null after completion clears it
+(`transitions.ts:1137`). Repeating grant cannot recover a terminal result: exact
+run evidence is required even when no local claim response exists.
 This is idempotent reconciliation, **not exactly-once worker execution**.
 
 ### Recorded wire fixtures and provenance
@@ -159,7 +171,10 @@ succeeded. The fake selects successful records by label and HTTP status.
 `ContractKanbanServer` implements the cited schema with row/lease/run templates
 loaded from those recorded responses. It normalizes only fixture identities and
 mutable lifecycle fields, validates semantic ops, requires gateway bearer, and
-can commit create then drop its response. It is separate from HttpKanban and has
+can commit create or grant then drop its response. Lease-op recall preserves the
+cached verdict but attaches the current lease, including expired/null states,
+as specified by the pinned source above (these replay cases are source-derived,
+not additional live recordings). It is separate from HttpKanban and has
 no `/v1/tasks` route. CI is offline: it does not replay writes to the live Board.
 
 ### Wasm dispatch/result consumption and crash boundaries

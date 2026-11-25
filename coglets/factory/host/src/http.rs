@@ -275,6 +275,58 @@ impl HermesAdapter for HttpKanban {
         })
     }
 
+    fn recover_claim(
+        &mut self,
+        remote: &str,
+        owner: &str,
+        until: u64,
+        attempt: u64,
+    ) -> Result<Option<Lease>, AdapterError> {
+        let token = Self::run(remote, attempt)?;
+        // Only never_existed permits another grant. Unknown/deleted evidence
+        // must remain held, including after the service's op cache expires.
+        let Some(run) = self.evidence("task_runs", &token)? else {
+            return Ok(None);
+        };
+        if run["task_id"] != remote || run["origin_gateway"] != self.gateway {
+            return Err(AdapterError::Conflict(
+                "wrong task run or grant holder".into(),
+            ));
+        }
+        let mut effective_until = 0;
+        if run["ended_at"].is_null() {
+            let task = self
+                .evidence("tasks", remote)?
+                .ok_or(AdapterError::Uncertain)?;
+            if task["current_run_uid"] != token
+                || task["lease_run_uid"] != token
+                || task["lease_holder"] != self.gateway
+                || task["status"] != "running"
+            {
+                return Err(AdapterError::Uncertain);
+            }
+            let expires = task["lease_expires"]
+                .as_u64()
+                .ok_or(AdapterError::Uncertain)?;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|_| failed("clock unavailable"))?
+                .as_millis();
+            if u128::from(expires) > now {
+                effective_until = local_deadline(&json!({"expires":expires}), until)?;
+            }
+        }
+        // Terminal or expired evidence is a polling-only correlation record.
+        // It never authorizes a new remote run, retry, or lease extension.
+        Ok(Some(Lease {
+            remote_id: remote.into(),
+            owner: owner.into(),
+            until: effective_until,
+            attempt,
+            token,
+        }))
+    }
+
     fn restore_lease(
         &mut self,
         remote: &str,
@@ -362,8 +414,10 @@ impl HermesAdapter for HttpKanban {
         let Some(run) = self.evidence("task_runs", token)? else {
             return Ok(None);
         };
-        if run["task_id"] != remote {
-            return Err(AdapterError::Conflict("wrong task run".into()));
+        if run["task_id"] != remote || run["origin_gateway"] != self.gateway {
+            return Err(AdapterError::Conflict(
+                "wrong task run or grant holder".into(),
+            ));
         }
         if run["ended_at"].is_null() {
             return Ok(None);

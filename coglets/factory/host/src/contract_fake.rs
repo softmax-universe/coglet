@@ -29,8 +29,11 @@ struct State {
     tasks: BTreeMap<String, Value>,
     runs: BTreeMap<String, Value>,
     ops: BTreeMap<String, Value>,
+    lease_ops: BTreeMap<String, Value>,
     requests: Vec<Value>,
     lose_create_reply: bool,
+    lose_grant_reply: bool,
+    unknown_run: bool,
 }
 fn template(label: &str, pointer: &str) -> Value {
     let capture: Value = serde_json::from_str(RECORDING).unwrap();
@@ -96,6 +99,23 @@ impl ContractKanbanServer {
     }
     pub fn requests(&self) -> Vec<Value> {
         self.state.lock().unwrap().requests.clone()
+    }
+    pub fn lose_next_grant_reply(&self) {
+        self.state.lock().unwrap().lose_grant_reply = true;
+    }
+    pub fn expire_lease(&self, remote: &str) {
+        self.state.lock().unwrap().tasks.get_mut(remote).unwrap()["lease_expires"] = json!(1);
+    }
+    pub fn unknown_run_evidence(&self, unknown: bool) {
+        self.state.lock().unwrap().unknown_run = unknown;
+    }
+    pub fn change_run_holder(&self, remote: &str) {
+        let mut state = self.state.lock().unwrap();
+        let run = state.tasks[remote]["current_run_uid"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        state.runs.get_mut(&run).unwrap()["origin_gateway"] = json!("another-worker");
     }
     pub fn post_result(&self, remote: &str, succeeded: bool, note: &str) {
         let mut state = self.state.lock().unwrap();
@@ -186,6 +206,10 @@ fn handle(mut stream: TcpStream, shared: &Mutex<State>) -> std::io::Result<()> {
         state.lose_create_reply = false;
         return Ok(());
     }
+    if state.lose_grant_reply && body["action"] == "grant" {
+        state.lose_grant_reply = false;
+        return Ok(());
+    }
     let body = response.to_string();
     write!(
         stream,
@@ -207,6 +231,9 @@ fn route(state: &mut State, method: &str, path: &str, body: &Value) -> Value {
         let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
         let table = params.get("table").unwrap();
         let uid = params.get("uid").unwrap();
+        if table == "task_runs" && state.unknown_run {
+            return json!({"board":BOARD,"table":table,"uid":uid,"state":"unknown","row":null});
+        }
         let row = match table.as_str() {
             "tasks" => state.tasks.get(uid),
             "task_runs" => state.runs.get(uid),
@@ -264,6 +291,17 @@ fn route(state: &mut State, method: &str, path: &str, body: &Value) -> Value {
             return rejected("not_found");
         };
         let action = body["action"].as_str().unwrap();
+        let id = body["client_op_id"].as_str().unwrap();
+        // Pinned board.ts:887-914: replay the cached verdict/row but
+        // attach the CURRENT lease, including null after completion.
+        if let Some(prior) = state.lease_ops.get(id) {
+            if prior["task"] != remote || prior["action"] != action {
+                return rejected("op_id_taken");
+            }
+            let mut response = prior.clone();
+            response["lease"] = current_lease(row);
+            return response;
+        }
         if (action == "grant" && row["status"] != "ready" && row["current_run_uid"] != run)
             || (action == "renew" && row["current_run_uid"] != run)
         {
@@ -287,7 +325,21 @@ fn route(state: &mut State, method: &str, path: &str, body: &Value) -> Value {
             r["ended_at"] = Value::Null;
             state.runs.insert(run.into(), r);
         }
-        return json!({"status":"applied","client_op_id":body["client_op_id"],"task":remote,"action":action,"row":row,"lease":lease});
+        let response = json!({"status":"applied","client_op_id":body["client_op_id"],"task":remote,"action":action,"row":row,"lease":lease});
+        state.lease_ops.insert(id.into(), response.clone());
+        return response;
     }
     json!({"error":"unknown route"})
+}
+
+fn current_lease(row: &Value) -> Value {
+    if row["lease_holder"].is_null() {
+        return Value::Null;
+    }
+    let mut lease = template("claim", "/lease");
+    lease["task_id"] = row["uid"].clone();
+    lease["run_uid"] = row["lease_run_uid"].clone();
+    lease["holder"] = row["lease_holder"].clone();
+    lease["expires"] = row["lease_expires"].clone();
+    lease
 }

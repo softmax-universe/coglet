@@ -210,6 +210,42 @@ impl<A: HermesAdapter> Dispatcher<A> {
             if db.get_work_queue(&task_id)?.is_some() {
                 continue;
             }
+            if binding.phase == "claiming" || binding.phase == "claimed" {
+                match self.adapter.recover_claim(
+                    &binding.remote_id,
+                    HOST_OWNER,
+                    now.saturating_add(LEASE_MS) as u64,
+                    row.attempt,
+                ) {
+                    Ok(Some(lease)) => {
+                        if lease.remote_id != binding.remote_id
+                            || lease.attempt != row.attempt
+                            || lease.owner != HOST_OWNER
+                            || lease.token.is_empty()
+                            || (!binding.token.is_empty() && binding.token != lease.token)
+                        {
+                            return Err("recovered claim identity mismatch".into());
+                        }
+                        db.set_binding_phase(&row.intent_id, "claimed", &lease.token)?;
+                        self.persist_local_lease(
+                            db,
+                            &task_id,
+                            &lease.token,
+                            row.attempt,
+                            lease.until as i64,
+                        )?;
+                        // Ingest below polls the exact run, even with an expired
+                        // correlation-only record. Never grant or renew here.
+                        finished += 1;
+                        continue;
+                    }
+                    Ok(None) => {}
+                    Err(AdapterError::Uncertain) => continue,
+                    Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
+                        return Err(note);
+                    }
+                }
+            }
             if binding.phase == "claimed" && !binding.token.is_empty() {
                 // The remote run may have finished before the crashed host
                 // wrote its local lease. Reconcile that exact saved run first;
@@ -334,7 +370,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
             .get_outbox(intent_id)?
             .ok_or_else(|| "unknown intent".to_string())?;
         let task_id = task_id_of(&row);
-        self.fence(db, &task_id, attempt, lease)?;
+        self.effect_fence(db, &task_id, attempt, lease)?;
         if let Some(remote) = db.get_binding(intent_id)? {
             self.adapter
                 .cancel(&remote, attempt, lease)
@@ -364,7 +400,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
             .get_outbox(intent_id)?
             .ok_or_else(|| "unknown intent".to_string())?;
         let task_id = task_id_of(&row);
-        let queue = self.fence(db, &task_id, attempt, lease)?;
+        let queue = self.effect_fence(db, &task_id, attempt, lease)?;
         let mut until = now.saturating_add(LEASE_MS);
         if let Some(remote) = db.get_binding(intent_id)? {
             until = self
@@ -391,13 +427,27 @@ impl<A: HermesAdapter> Dispatcher<A> {
         let row = db
             .get_outbox(intent_id)?
             .ok_or_else(|| "unknown intent".to_string())?;
-        self.fence(db, &task_id_of(&row), attempt, lease)?;
+        self.effect_fence(db, &task_id_of(&row), attempt, lease)?;
         if let Some(remote) = db.get_binding(intent_id)? {
             self.adapter
                 .progress(&remote, note, attempt, lease)
                 .map_err(|e| format!("{e:?}"))?;
         }
         Ok(())
+    }
+
+    fn effect_fence(
+        &self,
+        db: &Database,
+        task_id: &str,
+        attempt: u64,
+        lease: &str,
+    ) -> Result<WorkQueueRow> {
+        let queue = self.fence(db, task_id, attempt, lease)?;
+        if queue.lease_until == Some(0) {
+            return Err("recovered claim is polling-only".into());
+        }
+        Ok(queue)
     }
 
     pub fn expire_leases(&mut self, db: &mut Database, now: i64) -> Result<Vec<String>> {
