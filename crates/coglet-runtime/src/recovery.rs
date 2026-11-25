@@ -146,7 +146,7 @@ impl RuntimeService {
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
         #[cfg(feature = "device")]
-        Self::receiver_finish_step(&mut next, &json!({"journal":record}))?;
+        Self::receiver_finish_step(&mut next, &json!({"journal":record}), &state.runtime.files)?;
         Self::finish_pending_stops(
             &mut next,
             journal.iter().filter(|r| r.get("step").is_some()).count() as u64,

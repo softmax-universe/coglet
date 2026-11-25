@@ -623,7 +623,12 @@ impl RuntimeService {
     }
 
     /// Host-side consequences of a recorded step, shared by all commit paths.
-    fn consume_attempt(next: &mut ServiceState, events: &[Value], result: &Value) -> Result<()> {
+    fn consume_attempt(
+        next: &mut ServiceState,
+        events: &[Value],
+        result: &Value,
+        _before: &Snapshot,
+    ) -> Result<()> {
         for action in result["journal"]["actions"]
             .as_array()
             .ok_or("missing committed actions")?
@@ -635,7 +640,7 @@ impl RuntimeService {
         next.private_events
             .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
         #[cfg(feature = "device")]
-        Self::receiver_finish_step(next, result)?;
+        Self::receiver_finish_step(next, result, _before)?;
         Ok(())
     }
 
@@ -666,7 +671,7 @@ impl RuntimeService {
             );
         }
         let result = result?;
-        Self::consume_attempt(&mut next, &events, &result)?;
+        Self::consume_attempt(&mut next, &events, &result, &self.state.runtime.files)?;
         self.store.commit(
             &serde_json::to_value(&next).map_err(|e| e.to_string())?,
             Some(&result["journal"]),

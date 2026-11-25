@@ -60,6 +60,7 @@ impl RuntimeService {
     pub(in crate::execution) fn receiver_finish_step(
         next: &mut ServiceState,
         result: &Value,
+        before: &Snapshot,
     ) -> Result<()> {
         let Some(id) = next.receiver.active_step.take() else {
             return Ok(());
@@ -84,8 +85,8 @@ impl RuntimeService {
         );
         saved.response = Some(json!({"step":step,"receipt":saved.receipt}));
         next.receiver.audit.push(json!({"operation_id":id,"actor":saved.scope.actor,"ticket":saved.scope.ticket,
-            "method":"debug.step","target":saved.request["target"],"step":step,"before_hash":result["journal"]["before_hash"],
-            "after_hash":result["journal"]["output_hash"],"outcome":saved.receipt["state"]}));
+            "method":"debug.step","target":saved.request["target"],"step":step,"before_hash":before.frozen_hub0_hash()?,
+            "after_hash":next.runtime.files.frozen_hub0_hash()?,"outcome":saved.receipt["state"]}));
         next.receiver.pending.remove(0);
         Ok(())
     }

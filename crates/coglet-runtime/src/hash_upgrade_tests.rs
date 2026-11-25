@@ -339,7 +339,8 @@ fn old_database_preparation(
         let raw = cbor(record).unwrap();
         coglet_types::decode("database::db-step-record", &raw).unwrap();
         assert!(hash_upgrade::decode_current("database::db-step-record", &raw).is_err());
-        RuntimeService::consume_attempt(&mut next, &events, &result).unwrap();
+        RuntimeService::consume_attempt(&mut next, &events, &result, &service.state.runtime.files)
+            .unwrap();
         (raw, cbor(&serde_json::to_value(next).unwrap()).unwrap())
     });
     assert!(service.has_unresolved_attempt());

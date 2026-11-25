@@ -433,7 +433,7 @@ impl RuntimeService {
             );
         }
         let result = result?;
-        Self::consume_attempt(&mut next, &events, &result)?;
+        Self::consume_attempt(&mut next, &events, &result, &self.state.runtime.files)?;
         let state = serde_json::to_value(&next).map_err(|e| e.to_string())?;
         let Some(raw) = result["record_raw"].as_str() else {
             // No database call happened: ordinary ABI commit of a 0.1 record.
@@ -575,7 +575,8 @@ mod tests {
             entered: None,
         };
         let result = next.runtime.step(&inputs, &mut attempt).unwrap();
-        RuntimeService::consume_attempt(&mut next, &events, &result).unwrap();
+        RuntimeService::consume_attempt(&mut next, &events, &result, &service.state.runtime.files)
+            .unwrap();
         let raw = hex::decode(result["record_raw"].as_str().unwrap()).unwrap();
         let artifacts = cbor(&serde_json::to_value(next).unwrap()).unwrap();
         let id = StepId {
