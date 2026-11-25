@@ -65,7 +65,7 @@ The harness is a transactional test host and a mock LLM, not the native runtime 
 a WAMR engine, and replay means re-executing the guest against recorded inputs. The
 fixture controller and map are test code; this crate does not ship a game policy.
 Builds for `wasm32-wasip1` (checked locally, not yet a CI step; a product guest crate
-should build its own guest). The 50 ms wall
-bound is a coarse regression guard on shared CI hardware, not a latency claim for a
+should build its own guest). The 50 ms wall bound times the in-memory test host only,
+so it is a coarse regression guard on shared CI hardware, not a latency claim for a
 device. Mindister's avatar adoption and the Baby Bear conversation route are
 separate cards.

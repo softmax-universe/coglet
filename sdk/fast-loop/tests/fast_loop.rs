@@ -871,7 +871,8 @@ fn inbox_line(index: u64, sender: &str, source: &str, payload: Value) -> Vec<u8>
 fn damaged_inbox_is_counted_and_never_stops_the_fast_path() {
     let good = |rid: &str| inbox_line(0, ROUTER, ROUTER, plan_reply(rid));
     let foreign = "hub:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-    let cases: Vec<(&str, Box<dyn Fn(&str) -> (Vec<u8>, u64)>)> = vec![
+    type Make = Box<dyn Fn(&str) -> (Vec<u8>, u64)>;
+    let cases: Vec<(&str, Make)> = vec![
         ("wake names a missing line", Box::new(|_| (vec![], 3))),
         (
             "CRLF line ending",
