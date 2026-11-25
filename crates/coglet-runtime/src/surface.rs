@@ -310,7 +310,7 @@ impl SurfaceSession {
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
         let decoded = coglet_types::decode_profile(raw)?;
         // Hello is common to both minors; afterwards the selected minor governs.
-        coglet_types::validate(self.wire.rule("surface-message"), &decoded)?;
+        crate::validate_contract(self.wire.rule("surface-message"), &decoded)?;
         let message: Value = decoded.deserialized().map_err(|e| e.to_string())?;
         let body = &message["body"];
         let kind = message["type"].as_str().ok_or("missing type")?;

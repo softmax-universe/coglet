@@ -98,7 +98,7 @@ impl ReplayHost<'_> {
         let call = self.recorded("db")?.clone();
         let sent = memory.read(ptr, len)?;
         let wanted = if let Some(argument) = get(&call, "argument") {
-            coglet_types::encode(self.ordinary.contract_profile.rule(REQUEST_RULE), argument)
+            crate::encode_contract(self.ordinary.contract_profile.rule(REQUEST_RULE), argument)
         } else {
             get(&call, "argument_hex")
                 .and_then(V::as_text)
@@ -348,8 +348,8 @@ impl Runtime {
             // Checks the schema and the record hash over the exact bytes.
             let record = database_projection_with_profile(raw, candidate.contract_profile)?;
             let rule = candidate.contract_profile.rule(RECORD_RULE);
-            let native = coglet_types::decode(rule, raw)?;
-            if coglet_types::encode(rule, &native)? != *raw {
+            let native = crate::decode_contract(rule, raw)?;
+            if crate::encode_contract(rule, &native)? != *raw {
                 return Err("replay record bytes are not canonical".into());
             }
             let calls = get(&native, "calls")

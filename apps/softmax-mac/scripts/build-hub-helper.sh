@@ -17,6 +17,8 @@ lipo -create \
   "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/softmax-hub-link" \
   "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/softmax-hub-link" \
   -output "$staging"
-lipo "$staging" -verify_arch arm64 x86_64
+# -verify_arch consumes the following architecture list; put its single input
+# after that list so Apple lipo does not parse the input as another architecture.
+lipo -verify_arch arm64 x86_64 "$staging"
 chmod 755 "$staging"
 mv -f "$staging" "$destination"

@@ -428,7 +428,7 @@ impl Runtime {
                 .ok_or("missing manifest blob")?,
         )
         .map_err(|e| e.to_string())?;
-        let manifest: Value = coglet_types::decode(profile.rule(manifest_rule), &manifest_raw)?
+        let manifest: Value = crate::decode_contract(profile.rule(manifest_rule), &manifest_raw)?
             .deserialized()
             .map_err(|e| e.to_string())?;
         if manifest["id"] != trace["coglet"] {

@@ -53,9 +53,10 @@ impl StepHost {
             "log" => ("log-entry", "logs"),
             _ => return Err(format!("unimplemented host operation: {op}")),
         };
-        let argument: Option<Value> = coglet_types::decode(self.contract_profile.rule(schema), raw)
-            .ok()
-            .and_then(|v| v.deserialized().ok());
+        let argument: Option<Value> =
+            crate::decode_contract(self.contract_profile.rule(schema), raw)
+                .ok()
+                .and_then(|v| v.deserialized().ok());
         let mut result = 0;
         if let Some(argument) = &argument {
             if (op == "emit" && argument["coglet"] != self.identity)

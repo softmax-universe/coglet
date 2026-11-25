@@ -89,7 +89,7 @@ fn binding() -> SurfaceBinding {
 }
 fn dec(raw: &[u8]) -> Value {
     // 0.2 is the superset decoder for inspection; assertions on 0.1 validity are explicit.
-    coglet_types::decode(ContractProfile::Surface02.rule("surface-message"), raw)
+    coglet_profile_types::decode(ContractProfile::Surface02.rule("surface-message"), raw)
         .unwrap()
         .deserialized()
         .unwrap()

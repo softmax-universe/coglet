@@ -3,7 +3,7 @@
 fn app_database_plan() -> Plan {
     let mut request = coglet_types::decode_profile(&enqueue()).unwrap();
     *entry(request.as_map_mut().unwrap(), "kind") = text("softmax.app.invoke");
-    let bytes = coglet_types::encode("surface02::s02-db-enqueue", &request).unwrap();
+    let bytes = coglet_profile_types::encode("surface02::s02-db-enqueue", &request).unwrap();
     vec![vec![("db", statement("put")), ("db", bytes), ("emit", action())]]
 }
 
@@ -83,7 +83,7 @@ fn app_database_profile_path<E: SharedEngine>(
     let frames = fx.journal(&service);
     assert_eq!(frames.len(), 1);
     assert!(coglet_types::decode("database::db-step-record", &frames[0]).is_err());
-    let record = coglet_types::decode("surface02::s02-db-step-record", &frames[0]).unwrap();
+    let record = coglet_profile_types::decode("surface02::s02-db-step-record", &frames[0]).unwrap();
     let calls = field(&record, "calls").as_array().unwrap();
     assert_eq!(calls.len(), 3);
     assert_eq!(field(field(&calls[1], "argument"), "kind").as_text(), Some("softmax.app.invoke"));

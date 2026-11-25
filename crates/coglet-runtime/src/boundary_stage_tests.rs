@@ -52,8 +52,13 @@ fn non_empty_boundary_still_applies_and_matches_full_clone_path() {
     // empty fast path, and the source runtime is not mutated.
     assert_ne!(staged.0, runtime.files);
     assert_eq!(
-        crate::boundary::inbox(&staged.0).unwrap().len(),
-        crate::boundary::inbox(&runtime.files).unwrap().len() + 1
+        crate::boundary::inbox_with_profile(&staged.0, runtime.contract_profile)
+            .unwrap()
+            .len(),
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile)
+            .unwrap()
+            .len()
+            + 1
     );
 }
 

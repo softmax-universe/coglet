@@ -1148,7 +1148,7 @@ impl Runtime {
                 coglet_types::Value::Text("record_hash".into()),
                 coglet_types::Value::Text(hash),
             ));
-            let raw = coglet_types::encode(
+            let raw = crate::encode_contract(
                 self.contract_profile.rule("database::db-step-record"),
                 &native,
             )?;

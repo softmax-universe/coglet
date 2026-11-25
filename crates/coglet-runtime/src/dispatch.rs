@@ -54,7 +54,7 @@ impl Dispatch {
         }
         let raw = hex::decode(&self.envelope_hex).map_err(|e| e.to_string())?;
         let envelope: Value =
-            coglet_types::decode(runtime.contract_profile.rule("surface-message"), &raw)?
+            crate::decode_contract(runtime.contract_profile.rule("surface-message"), &raw)?
                 .deserialized()
                 .map_err(|e| e.to_string())?;
         let mut original = envelope["body"]["action"].clone();
@@ -280,7 +280,7 @@ impl RuntimeService {
             }
             // The exact retained bytes must also be valid under this link's minor.
             let retained = hex::decode(&saved.envelope_hex).map_err(|e| e.to_string())?;
-            coglet_types::decode(session.wire_profile().rule("surface-message"), &retained)?;
+            crate::decode_contract(session.wire_profile().rule("surface-message"), &retained)?;
             // Completed records may expire at the surface. Never silently retry
             // beyond even the minimum guaranteed retention window.
             let retained_until = saved.intent["deadline"]
@@ -439,7 +439,7 @@ impl RuntimeService {
             .as_str()
             .ok_or("missing operation")?;
         let publish = if self.catalog.single_owner(operation) {
-            let envelope: Value = coglet_types::decode(
+            let envelope: Value = crate::decode_contract(
                 self.state.contract_profile.rule("surface-message"),
                 &hex::decode(&dispatch.envelope_hex).map_err(|e| e.to_string())?,
             )?
@@ -512,7 +512,7 @@ impl RuntimeService {
         }
         let raw = hex::decode(&d.envelope_hex).map_err(|e| e.to_string())?;
         let envelope: Value =
-            coglet_types::decode(self.state.contract_profile.rule("surface-message"), &raw)?
+            crate::decode_contract(self.state.contract_profile.rule("surface-message"), &raw)?
                 .deserialized()
                 .map_err(|e| e.to_string())?;
         if envelope["body"]["grant_epoch"] != session.grant_epoch() {
@@ -612,7 +612,7 @@ impl RuntimeService {
                 && hex::decode(&d.envelope_hex)
                     .ok()
                     .and_then(|raw| {
-                        coglet_types::decode(
+                        crate::decode_contract(
                             self.state.contract_profile.rule("surface-message"),
                             &raw,
                         )
