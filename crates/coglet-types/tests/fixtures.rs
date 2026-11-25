@@ -1,6 +1,15 @@
 //! Recursively walks spec/fixtures/**/*.json against the generated schema.
 use ciborium::Value;
-use coglet_types::{decode, decode_profile, encode, validate};
+use coglet_types::{decode, decode_profile, encode};
+
+// Exercise the unchanged full-IR evaluator as an independent lookup oracle for
+// every frozen positive/negative shape below, including exact refusal messages.
+fn validate(rule: &str, value: &Value) -> Result<(), String> {
+    let lazy = coglet_types::validate(rule, value);
+    let eager = coglet_types::validate_with_schema(coglet_types::SCHEMA_JSON, rule, value);
+    assert_eq!(lazy, eager, "lazy/full IR disagreement for {rule}");
+    lazy
+}
 use std::path::{Path, PathBuf};
 
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
