@@ -68,6 +68,8 @@ final class ShellModel: ObservableObject {
     var signOutConfirmationOpen = false {
         didSet { if signOutConfirmationOpen != oldValue { synchronizeAppSurface?() } }
     }
+    weak var hubPairingNativeWindow: NSWindow?
+    weak var signOutNativeWindow: NSWindow?
     @Published var onboardingStep = 0 {
         didSet {
             guard onboardingStep != oldValue else { return }
@@ -598,14 +600,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Until every native confirmation/sheet has its own qualified owner,
         // refuse an incomplete snapshot rather than claim those panels closed.
         if NSApp.modalWindow != nil { return true }
-        return model.hubPairingRoute == nil && !model.signOutConfirmationOpen && NSApp.windows.contains {
-            $0.attachedSheet?.isVisible == true
+        return NSApp.windows.contains {
+            guard let sheet = $0.attachedSheet, sheet.isVisible else { return false }
+            if model.hubPairingRoute != nil, sheet === model.hubPairingNativeWindow { return false }
+            if model.signOutConfirmationOpen, sheet === model.signOutNativeWindow { return false }
+            return true
         }
     }
     private func appRoute(_ window: String) -> String? {
         if window == "menu_bar" { return model.menuBarOpen ? "menu" : nil }
-        if window == "hub_pairing" { return model.hubPairingRoute }
-        if window == "sign_out_confirmation" { return model.signOutConfirmationOpen ? "sign_out" : nil }
+        if window == "hub_pairing" {
+            return model.hubPairingNativeWindow?.isVisible == true ? model.hubPairingRoute : nil
+        }
+        if window == "sign_out_confirmation" {
+            return model.signOutConfirmationOpen && model.signOutNativeWindow?.isVisible == true ? "sign_out" : nil
+        }
         guard let native = appWindow(window), native.isVisible, !native.isMiniaturized else { return nil }
         switch window {
         case "settings": return model.selectedTab.rawValue.lowercased()

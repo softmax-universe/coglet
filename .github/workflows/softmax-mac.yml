@@ -28,7 +28,7 @@ jobs:
           uv run --python 3.12 --with-requirements apps/softmax-mac/Surface/requirements.txt python apps/softmax-mac/Surface/test_surface.py
           swift test --package-path apps/softmax-mac/Surface
       - name: Hub account tests (before native runtime build)
-        run: swift test --package-path apps/softmax-mac --filter 'Hub(Connection|Keychain)Tests'
+        run: swift test --package-path apps/softmax-mac --filter 'Hub(Connection|EnrollmentCommand|Keychain)Tests'
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
@@ -118,7 +118,8 @@ jobs:
           app=build/Build/Products/Debug/Softmax.app
           helper="$app/Contents/Helpers/softmax-hub-link"
           test -x "$helper"
-          lipo "$helper" -verify_arch arm64 x86_64
+          lipo "$helper" -verify_arch arm64
+          lipo "$helper" -verify_arch x86_64
           bash scripts/sign-dev.sh "$app"
           codesign --verify --strict --verbose=2 "$helper"
           codesign --verify --deep --strict --verbose=2 "$app"

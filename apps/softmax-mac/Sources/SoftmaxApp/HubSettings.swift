@@ -103,6 +103,12 @@ private struct HubSignOutSheet: View {
         }.padding(SoftmaxDesignTokens.spacing[4]).frame(width: 440).modifier(SoftmaxTheme())
             .onAppear { model.signOutConfirmationOpen = true }
             .onDisappear { model.signOutConfirmationOpen = false }
+            .background(AppSheetOwner { old, new in
+                if new != nil || model.signOutNativeWindow === old {
+                    model.signOutNativeWindow = new
+                    model.synchronizeAppSurface?()
+                }
+            })
     }
 }
 
@@ -175,6 +181,12 @@ private struct HubPairingSheet: View {
             .onAppear { model.hubPairingRoute = route }
             .onChange(of: manual) { _, _ in model.hubPairingRoute = route }
             .onDisappear { clearSecrets(); model.hubPairingRoute = nil }
+            .background(AppSheetOwner { old, new in
+                if new != nil || model.hubPairingNativeWindow === old {
+                    model.hubPairingNativeWindow = new
+                    model.synchronizeAppSurface?()
+                }
+            })
     }
     @MainActor fileprivate func registerField(_ view: some View, _ id: String, _ label: String, _ text: Binding<String>, secure: Bool) -> some View {
         view.coglet(id: "\(idPrefix).\(id)", registry: model.appControls, window: window, route: route,
@@ -224,6 +236,39 @@ private struct HubPairingSheet: View {
             guard values.count == 1, let value = values.first, (try? HubPairing.parse(value)) != nil else { throw HubError.pairing }
             code = value; error = nil
         } catch { self.error = "Choose an image containing one valid router pairing QR code." }
+    }
+}
+
+/// Captures only this view's actual AppKit sheet. It never dismisses a foreign
+/// sheet or treats all native modals as qualified merely because a flag is set.
+private struct AppSheetOwner: NSViewRepresentable {
+    let changed: (NSWindow?, NSWindow?) -> Void
+    final class Probe: NSView {
+        var changed: ((NSWindow?, NSWindow?) -> Void)?
+        weak var previous: NSWindow?
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            publish(window)
+        }
+        func publish(_ next: NSWindow?) {
+            guard previous !== next else { return }
+            let old = previous
+            previous = next
+            changed?(old, next)
+        }
+    }
+    func makeNSView(context: Context) -> Probe {
+        let view = Probe()
+        view.changed = changed
+        return view
+    }
+    func updateNSView(_ view: Probe, context: Context) {
+        view.changed = changed
+        view.publish(view.window)
+    }
+    static func dismantleNSView(_ view: Probe, coordinator: ()) {
+        view.publish(nil)
+        view.changed = nil
     }
 }
 
