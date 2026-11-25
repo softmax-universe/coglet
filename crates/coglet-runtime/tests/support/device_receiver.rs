@@ -92,7 +92,7 @@ async fn back_channel_real_receiver_write_read_receipt_and_restart() {
         json!({"path":"/data/notes/a","text":"private λ","expected_hash":hash}),
     );
     let op = write["correlation_id"].as_str().unwrap().to_owned();
-    assert_eq!(env.call(write.clone()).await["result"]["state"], "queued");
+    assert_eq!(env.call(write.clone()).await["result"]["state"], "applied");
     assert_eq!(terminal(&mut env, &op).await["state"], "applied");
     let read = env.request(
         "debug.read",
@@ -179,12 +179,12 @@ async fn back_channel_real_receiver_inbox_dedup_reopened_wal_oracle() {
         "logical_time":0,"payload":{"note":"not synthesized"},"correlation_id":"b2".repeat(16)}});
     let request = intervention(&mut env, "hub.inbox", json!({"message":message}));
     let op = request["correlation_id"].as_str().unwrap().to_owned();
-    assert_eq!(env.call(request).await["result"]["state"], "queued");
+    assert_eq!(env.call(request).await["result"]["state"], "applied");
     assert_eq!(terminal(&mut env, &op).await["state"], "applied");
     env.restart_handler().await;
     let duplicate = intervention(&mut env, "hub.inbox", json!({"message":message}));
     let op = duplicate["correlation_id"].as_str().unwrap().to_owned();
-    assert_eq!(env.call(duplicate).await["result"]["state"], "queued");
+    assert_eq!(env.call(duplicate).await["result"]["state"], "applied");
     assert_eq!(terminal(&mut env, &op).await["state"], "applied");
     let read = env.request(
         "debug.read",
@@ -336,6 +336,112 @@ async fn real_bounded_guest_allows_durable_inbox_cancel_while_running() {
         "not_found",
         "cancel did not create an inbox file"
     );
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn ordinary_guest_completion_drives_deferred_inbox_without_another_request() {
+    use coglet_runtime::{SurfaceBinding, SurfaceSession, cbor};
+    let wat = r#"(module (memory (export "memory") 1 2)
+        (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+          (loop $busy br $busy) i32.const 0))"#;
+    let mut env = receiver_env_guest(209, wat, 2_000_000_000).await;
+    let initial = json!({"id":correlation(830),"sender":env.actor,
+        "event":{"source":env.actor,"kind":"test.note","seq":0,"logical_time":T0,"payload":{},"correlation_id":correlation(829)}});
+    let initial = intervention(&mut env, "hub.inbox", json!({"message":initial}));
+    let initial_id = initial["correlation_id"].as_str().unwrap().to_owned();
+    assert_eq!(env.call(initial).await["result"]["state"], "applied");
+    assert_eq!(terminal(&mut env, &initial_id).await["state"], "applied");
+    assert_eq!(env.simple("hub.start").await["type"], "reply");
+    let shared = env
+        .handler
+        .as_ref()
+        .unwrap()
+        .share_service(&env.coglet)
+        .unwrap();
+    // A real ordinary adapter pump, not debug.step (whose caller also drains).
+    // The already applied inbox wake gives the guest one pending input.
+    let service = shared.clone();
+    let coglet = env.coglet.clone();
+    let running = tokio::task::spawn_blocking(move || {
+        let adapter = format!("surface:{}", "b".repeat(64));
+        let mut session = SurfaceSession::with_service(
+            SurfaceBinding::new(adapter.clone(), vec![coglet.clone()]).unwrap(),
+            service.clone(),
+        )
+        .unwrap();
+        for kind in ["hello", "capabilities", "grants"] {
+            let now = service.lock().unwrap().supervised_now().unwrap();
+            let body = match kind {
+                "hello" => {
+                    json!({"surface":adapter,"offer":{"versions":["0.1"]},"clock":now,"correlation_id":correlation(831)})
+                }
+                "capabilities" => {
+                    json!({"revision":1,"clock":now,"entries":[],"correlation_id":correlation(832)})
+                }
+                _ => {
+                    json!({"epoch":1,"entries":[{"coglet":coglet,"operations":[],"resources":[],"expires":now+10_000_000}],"correlation_id":correlation(833)})
+                }
+            };
+            assert_eq!(
+                session.send(&cbor(&json!({"type":kind,"body":body})).unwrap(), now),
+                0
+            );
+        }
+        let now = service.lock().unwrap().supervised_now().unwrap();
+        session.pump_dispatch(now).unwrap();
+    });
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if shared.try_lock().is_ok_and(|s| s.has_unresolved_attempt()) {
+                break;
+            }
+            assert!(!running.is_finished());
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let message = json!({"id":correlation(834),"sender":env.actor,
+        "event":{"source":env.actor,"kind":"test.note","seq":1,"logical_time":T0,"payload":{},"correlation_id":correlation(835)}});
+    let inbox = intervention(&mut env, "hub.inbox", json!({"message":message}));
+    let id = inbox["correlation_id"].as_str().unwrap().to_owned();
+    assert_eq!(env.call(inbox).await["result"]["state"], "queued");
+    assert!(!running.is_finished());
+    running.await.unwrap();
+    // No receipt/read/network operation is sent while waiting: only the
+    // runtime-owned driver can materialize this pending inbox boundary.
+    tokio::time::timeout(Duration::from_secs(8), async {
+        loop {
+            if shared.lock().unwrap().managed_status()["pending"] == 0 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("ordinary guest completion must not strand durable queue");
+    assert_eq!(shared.lock().unwrap().records().len(), 1);
+    drop(shared);
+    env.restart_handler().await;
+    let receipt = env.request("hub.receipt", json!({"operation_id":id}));
+    assert_eq!(env.call(receipt).await["result"]["state"], "applied");
+    let read = env.request(
+        "debug.read",
+        json!({"path":"/data/inbox.jsonl","offset":0,"limit":65536}),
+    );
+    let result = env.call(read).await;
+    let lines: Vec<Value> = result["result"]["text"]
+        .as_str()
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 2);
+    assert_eq!(lines[1]["id"], message["id"]);
+    assert_eq!(lines[1]["index"], 1);
+    assert_eq!(lines[1]["event"], message["event"]);
 }
 
 #[cfg(feature = "native-engine")]

@@ -53,6 +53,23 @@ checkpoint. It contains no spec or wire changes, and no Factory DB/WASI edits.
 - Final separate feature-native full suite, required exact-head CI and independent
   exact-head review are NOT done. There is no PR or merge yet.
 
+## Qualification recovery and driver tranche
+
+The detached checkpoint `ab394c9` full-workspace chain exited 101 in
+`managed_lifecycle::native_scheduler_obeys_durable_stop_and_resumes_only_after_explicit_start`.
+The remaining chain did not run. Isolated reproduction failed identically:
+synthetic adapter times preceded initialization of the newly resampled durable
+clock. The test now uses `supervised_now` consistently, retaining fresh fence
+checks rather than relaxing production clock/authority rules. Managed lifecycle
+9/9 then passed. After the driver and idle-boundary changes, the native encrypted
+receiver group passed 10/10, native all-target clippy `-D warnings` passed, and
+fmt/diff checks passed. Initial new ordinary-guest test attempts did not enter a
+guest: one used an unsubscribed external event, then one omitted the actual
+adapter pump. The corrected test uses an admitted inbox wake and explicit real
+`pump_dispatch`, observes the unresolved fence while still running and retains
+the original bounded guest observation. Neither failed fixture attempt counts
+as execution proof. Full new-head qualification remains required.
+
 ## Acceptance work still required
 
 1. **Real in-progress guest concurrency now implemented, frozen harness pending.**
@@ -69,10 +86,17 @@ checkpoint. It contains no spec or wire changes, and no Factory DB/WASI edits.
    The whole native suite passed before the three review fixes, not after them;
    run final whole-suite qualification on the published exact head.
    None of this registers/qualifies the unchanged frozen case names yet.
-2. Add a bounded completion/retry driver: head work after a transient failure or
-   attempt reconciliation must not remain indefinitely stranded. Preactivation
-   step kill-switch/manifest failures now become durable failed receipts and
-   advance, but unresolved attempts still need their real completion observation.
+2. **Bounded receiver completion/retry driver implemented.** A runtime-owned weak
+   driver retries after 250ms with exponential transient-error backoff capped at
+   5s. Target-local async permits serialize all drains; custody stays with the
+   blocking worker even if its awaiting future is cancelled. A batch handles at
+   most 256 operations, and unresolved attempts remain unselected until their
+   original observation is reconciled. An actual ordinary adapter/WAMR guest
+   regression admits an inbox while the guest runs, sends no further network
+   request, waits for automatic materialization, then reopens receipt/file state.
+   Idle head inbox/debug writes now materialize synchronously under original
+   authority, returning the actual applied receipt; in-progress work still queues.
+   This is not yet the frozen named fixture/restart qualification.
 3. Execute frozen inventory groups unchanged against actual receiver and retain
    all required reopened WAL/audit oracles (especially held guest cancel and
    256-pending backpressure). Existing tests are operational regressions, NOT

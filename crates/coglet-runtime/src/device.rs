@@ -95,6 +95,7 @@ struct Inner {
     validator: PathBuf,
     clock: Arc<dyn Fn() -> Option<u64> + Send + Sync>,
     services: Mutex<BTreeMap<String, Arc<Mutex<RuntimeService>>>>,
+    receiver_drains: BTreeMap<String, Arc<tokio::sync::Mutex<()>>>,
     adapter_started: AtomicBool,
 }
 
@@ -122,9 +123,15 @@ impl DeviceHandler {
         create_private_dir(&config.wal_root)?;
         create_private_dir(&config.quarantine)?;
         let store = AcceptedRefStore::new(authority.clone()).map_err(store_text)?;
+        let receiver_drains = config
+            .targets
+            .keys()
+            .map(|id| (id.clone(), Arc::new(tokio::sync::Mutex::new(()))))
+            .collect();
         let handler = Self {
             inner: Arc::new(Inner {
                 config,
+                receiver_drains,
                 authority,
                 store,
                 validator: validator.as_ref().to_owned(),
@@ -134,6 +141,7 @@ impl DeviceHandler {
             }),
         };
         handler.resume_initial_pushes()?;
+        handler.resume_receiver()?;
         Ok(handler)
     }
 
