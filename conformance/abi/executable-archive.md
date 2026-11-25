@@ -26,7 +26,7 @@ can independently be compiled with `wat::parse_str`; the inventory test compares
 those bytes against both the source recipe and each archive's code digest.
 
 Generation runs real WAMR imports to obtain new journal records, provenance,
-manifest/code pins and core-deterministic CBOR tree/chain hashes. Wall duration
+manifest/code pins, Git SHA-256 state tree ids and deterministic CBOR chain hashes. Wall duration
 is an actual nondeterministic observation, so regenerating archives can change
 record hashes. Module builds are reproducible; regenerating journals is not a
 promise of byte-identical wall observations. Replay compares deterministic

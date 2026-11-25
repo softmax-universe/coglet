@@ -517,7 +517,7 @@ schemas, exact golden CBOR, framing negatives and test-key signatures.
 Case data/schema checks are NOT a claim that a router/runtime or mock already passes
 wire conformance. The harness owner must execute the same cases against both.
 Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
-SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including
+the Git SHA-256 tree object id of the snapshot directory tree, including
 `/code`, `/data`, `/logs`, excluding journal storage. `debug.read.snapshot_hash`
 and `debug.write.expected_hash` use that definition. No alternate hash or inbox
 format is standardized here.

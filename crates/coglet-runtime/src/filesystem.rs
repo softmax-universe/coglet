@@ -1,4 +1,4 @@
-use crate::{Result, cbor};
+use crate::Result;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -96,9 +96,7 @@ impl Snapshot {
             .push_str(&hex::encode(line));
     }
     pub fn tree_hash(&self) -> Result<String> {
-        Ok(digest(&cbor(
-            &serde_json::to_value(&self.0).map_err(|e| e.to_string())?,
-        )?))
+        coglet_fs::snapshot_tree_hash(&self.0).map_err(|e| e.to_string())
     }
 
     /// Replace a file from the guest's copy-on-write view. Append-only mounts

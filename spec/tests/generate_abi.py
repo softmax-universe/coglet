@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 from test_common import encode
+from state_hash import snapshot_hash as digest
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE = 'https://coglet.dev/spec/'
@@ -71,10 +72,6 @@ def write(path, value):
                 complete(child)
     complete(value)
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
-
-
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
 
 
 U = ref('uint64')
@@ -207,7 +204,7 @@ base = dict(version='0.1', trace_id='5'*32, coglet=COG, step=0, logical_time=10,
 def seal(rec):
     rec = copy.deepcopy(rec)
     rec.pop('record_hash', None)
-    rec['record_hash'] = digest(rec)
+    rec['record_hash'] = hashlib.sha256(encode(rec)).hexdigest()
     return rec
 
 base = seal(base)
