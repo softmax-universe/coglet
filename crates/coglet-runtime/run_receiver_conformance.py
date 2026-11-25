@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Run the unchanged frozen hub receiver subset against the real DeviceHandler peer."""
 from pathlib import Path
+import argparse
 import os
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from receiver_peer_driver import stop_owned
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -50,6 +52,9 @@ def run(cmd, **kwargs):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--case", choices=CASES, action="append", help="diagnostic subset; not full receiver qualification")
+    selected = tuple(parser.parse_args().case or CASES)
     run(
         [
             "cargo",
@@ -109,12 +114,15 @@ if __name__ == "__main__":
     if wasm.is_file():
         ENV["COGLET_COUNTER_WASM"] = str(wasm)
     report = ROOT / "target/hub-receiver-conformance.xml"
-    with tempfile.TemporaryDirectory(
+    state = tempfile.mkdtemp(
         prefix="coglet-runtime-receiver-", dir=os.environ.get("TMPDIR", ROOT / "target")
-    ) as state:
+    )
+    ENV["COGLET_FIXTURE_RECEIVER_STATE"] = state
+    print(f"Receiver oracle evidence: {state}", flush=True)
+    try:
         suite = Path(state) / "hub"
         suite.mkdir()
-        for case in CASES:
+        for case in selected:
             (suite / f"{case}.json").symlink_to(ROOT / f"conformance/hub/{case}.json")
         run(
             [
@@ -127,9 +135,12 @@ if __name__ == "__main__":
                 str(report),
             ]
         )
+    finally:
+        for custody in Path(state).glob("*.custody.json"):
+            stop_owned(custody)
     cases = ET.parse(report).findall(".//testcase")
     names = sorted(c.get("name") or "" for c in cases)
-    if names != sorted(CASES) or any(
+    if names != sorted(selected) or any(
         c.find("skipped") is not None
         or c.find("failure") is not None
         or c.find("error") is not None
@@ -138,6 +149,8 @@ if __name__ == "__main__":
         raise SystemExit(
             f"incomplete receiver subset {names}; skips are not passes"
         )
+    from check_receiver_evidence import check
+    print(check(state, selected))
     print(
         f"Receiver subset: {len(cases)} unchanged hub cases passed; zero skipped. "
         "Full hub conformance is not claimed."

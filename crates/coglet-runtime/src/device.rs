@@ -813,18 +813,11 @@ impl DeviceHandler {
                 }
             }
             "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" => {
-                let result = self
-                    .back_channel(context, request.clone(), coglet.clone(), pin)
-                    .await;
-                if result.as_ref().is_ok_and(|r| r["state"] == "queued") {
-                    let handler = self.clone();
-                    tokio::spawn(async move {
-                        if let Err(error) = handler.drain_receiver(&coglet).await {
-                            eprintln!("runtime back-channel remains queued: {error}");
-                        }
-                    });
-                }
-                result
+                // The owned retry driver drains durable queued work. Spawning
+                // one strong handler/permit waiter per admission would turn a
+                // full queue into an unbounded tail behind a single guest.
+                self.back_channel(context, request.clone(), coglet.clone(), pin)
+                    .await
             }
             _ => Err("permission_denied".into()),
         };

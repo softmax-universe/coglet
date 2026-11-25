@@ -3,11 +3,12 @@ name = "coglet-runtime-receiver-real-iroh"
 suites = ["hub"]
 peer_roles = ["hub"]
 transport = "stdio"
-command = ["target/release/examples/runtime_receiver_peer"]
+command = ["python3", "crates/coglet-runtime/receiver_peer_driver.py", "bridge"]
 ready_line = "COGLET_CONFORMANCE_READY"
 connect_timeout_ms = 300000
 
 [implementations.fixtures."hub.reverse-stream"]
+teardown = ["python3", "crates/coglet-runtime/receiver_peer_driver.py", "teardown"]
 [implementations.fixtures."hub.action-expired"]
 [implementations.fixtures."hub.cross-owner-receipt"]
 [implementations.fixtures."hub.unknown-receipt"]

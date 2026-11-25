@@ -7,6 +7,17 @@ use support::{CASES, Fixture};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let result = run().await;
+    if let Ok(path) = std::env::var("COGLET_RECEIVER_RESULT") {
+        let report = serde_json::json!({"ok":result.is_ok(),"error":result.as_ref().err().map(ToString::to_string)});
+        let temporary = format!("{path}.pending");
+        std::fs::write(&temporary, serde_json::to_vec(&report)?)?;
+        std::fs::rename(temporary, path)?;
+    }
+    result
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let case = std::env::var("COGLET_CONFORMANCE_CASE")?;
     if !support::supported(&case) {
         return Err(format!("unsupported isolated fixture {case}").into());

@@ -34,7 +34,10 @@ const WASM_WAT: &str = r#"(module (memory (export "memory") 1 2)
 const LOOP_WAT: &str = r#"(module (memory (export "memory") 1 2)
     (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
     (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
-      (loop $busy br $busy) i32.const 0))"#;
+      local.get 2 i64.const 0 i64.gt_u
+      if (loop $busy
+        i32.const 0 i32.const 0 i32.const 65536 memory.fill
+        br $busy) end i32.const 0))"#;
 
 pub const CASES: &[&str] = &[
     "action-expired",
@@ -92,8 +95,16 @@ pub struct Fixture {
     session: Session,
     connection: Connection,
     handler: Option<DeviceHandler>,
+    config: DeviceConfig,
+    device_session: Session,
+    baseline: Value,
+    baseline_records: Vec<Value>,
+    observations: Vec<(Value, Value)>,
+    prepared: Vec<(Value, Value)>,
+    quarantine_baseline: Vec<String>,
     serve: JoinHandle<()>,
     _hold: Option<JoinHandle<Value>>,
+    held_since: Option<tokio::time::Instant>,
     _device: Endpoint,
     _hub: Endpoint,
     _hub_serve: JoinHandle<()>,
@@ -246,7 +257,7 @@ fn bundle(
     let wall_time_us: u64 = match case {
         "inbox-boundary-queued" => 600_000,
         // 256 durable queued inboxes are filled while this real guest runs.
-        "queue-backpressure" => 4_000_000,
+        "queue-backpressure" => 8_000_000,
         _ => 2_000_000,
     };
     let manifest = json!({"version":"0.1","id":coglet,"subscriptions":[],
@@ -461,7 +472,7 @@ impl Fixture {
             adapter: None,
         };
         let handler = DeviceHandler::new(
-            config,
+            config.clone(),
             Authority::open(&authority_path)?,
             validator_path(),
             Arc::new(|| Some(T0)),
@@ -514,8 +525,16 @@ impl Fixture {
             session: hub_session,
             connection: hub_conn,
             handler: Some(handler),
+            config,
+            device_session,
+            baseline: Value::Null,
+            baseline_records: Vec::new(),
+            observations: Vec::new(),
+            prepared: Vec::new(),
+            quarantine_baseline: Vec::new(),
             serve,
             _hold: None,
+            held_since: None,
             _device: device,
             _hub: hub,
             _hub_serve: hub_serve,
@@ -560,6 +579,31 @@ impl Fixture {
         if installed["type"] != "reply" {
             return Err(format!("install failed: {installed}").into());
         }
+        // Every default has a genuinely committed native step zero, not an
+        // installed-but-never-run tree. No scheduler is pumped implicitly.
+        for (n, method) in [
+            (0x20u32, "debug.pause"),
+            (0x21, "debug.step"),
+            (0x23, "hub.stop"),
+        ] {
+            let reply = self
+                .session
+                .request(request(
+                    &self.coglet,
+                    method,
+                    &format!("{n:032x}"),
+                    json!({}),
+                    &self.hub_actor,
+                    None,
+                ))
+                .await?;
+            if reply["type"] != "reply" {
+                return Err(format!("step-zero {method} failed: {reply}").into());
+            }
+            if method == "debug.step" && reply["result"]["receipt"]["state"] != "applied" {
+                return Err(format!("step-zero guest failed: {reply}").into());
+            }
+        }
         if matches!(case, "read-grant-is-not-write" | "read-scoped-allowed") {
             self.seed_file().await?;
         }
@@ -567,71 +611,91 @@ impl Fixture {
             self.seed_other_receipt().await?;
         }
         if matches!(case, "pause-single-step" | "single-step-requires-pause") {
-            let start = request(
-                &self.coglet,
-                "hub.start",
-                "00000000000000000000000000000003",
-                json!({}),
-                &self.hub_actor,
-                None,
-            );
-            let started = self.session.request(start).await?;
+            let started = self
+                .session
+                .request(request(
+                    &self.coglet,
+                    "hub.start",
+                    "00000000000000000000000000000003",
+                    json!({}),
+                    &self.hub_actor,
+                    None,
+                ))
+                .await?;
             if started["type"] != "reply" {
                 return Err(format!("start failed: {started}").into());
             }
         }
-        if case == "pause-single-step" {
-            // Complete real native step zero (pause, single-step), then resume running.
-            for (n, method) in [
-                (0x20u32, "debug.pause"),
-                (0x21, "debug.step"),
-                (0x22, "hub.start"),
-            ] {
-                let req = request(
-                    &self.coglet,
-                    method,
-                    &format!("{n:032x}"),
-                    json!({}),
-                    &self.hub_actor,
-                    None,
-                );
-                let reply = self.session.request(req).await?;
-                if reply["type"] != "reply" {
-                    return Err(format!("step-zero {method} failed: {reply}").into());
-                }
-                if std::env::var_os("RECEIVER_FIXTURE_TRACE").is_some() {
-                    eprintln!("fixture: step-zero {method} -> {reply}");
-                }
-            }
+        // Sample the ORIGINAL retired WAL, then reopen the same receiver. This
+        // establishes immutable before/after oracles without a production seam.
+        let store = self.retire_and_open().await?;
+        self.baseline = store.state().ok_or("missing baseline state")?.clone();
+        self.baseline_records = store.records().to_vec();
+        if self.baseline_records.len() != 1 || self.baseline_records[0]["step"] != 0 {
+            return Err("baseline lacks actual committed native step zero".into());
         }
+        if inbox_bytes(&self.baseline).is_some()
+            || self.baseline["router"]["queue"] != json!([])
+            || self.baseline["receiver"]["pending"] != json!([])
+            || self.baseline_records[0]["status"] != "committed"
+        {
+            return Err("baseline has an inbox file".into());
+        }
+        drop(store);
+        self.quarantine_baseline = self.quarantine_entries()?;
+        self.reopen_receiver()?;
         if matches!(case, "inbox-boundary-queued" | "queue-backpressure") {
             self.hold_guest().await?;
         }
         if case == "queue-backpressure" {
             // The held debug.step already occupies one of the 256 pending slots.
             self.fill_pending(255).await?;
+            // Hold readiness until the last reply can still meet its frozen
+            // 2s deadline while the ACTUAL bounded guest completes within the
+            // separate 9s teardown bound. This changes setup, not case timers.
+            tokio::time::sleep_until(
+                self.held_since.ok_or("no held start")? + Duration::from_millis(2500),
+            )
+            .await;
+            let status = request(
+                &self.coglet,
+                "hub.status",
+                &format!("{:032x}", 0x5000),
+                json!({}),
+                &self.hub_actor,
+                None,
+            );
+            let reply = self.session.request(status.clone()).await?;
+            if reply["result"]["pending"] != 256
+                || self._hold.as_ref().is_none_or(JoinHandle::is_finished)
+            {
+                return Err(format!("pressure not live/full: {reply}").into());
+            }
+            self.prepared.push((status, reply));
         }
         Ok(())
     }
 
-    fn tree_hash(&self) -> Result<String> {
-        let service = self
-            .handler
-            .as_ref()
-            .unwrap()
-            .share_service(&self.coglet)
-            .ok_or("no service")?;
-        let setup = service
-            .lock()
-            .map_err(|_| "poison")?
-            .managed_setup()
-            .clone();
-        let files = serde_json::from_value(setup["initial_files"].clone())?;
-        Ok(coglet_runtime::Snapshot::new(files)?.tree_hash()?)
+    async fn tree_hash(&self) -> Result<String> {
+        let reply = self
+            .session
+            .request(request(
+                &self.coglet,
+                "debug.read",
+                "00000000000000000000000000000024",
+                json!({"path":"@step/0","offset":0,"limit":64}),
+                &self.hub_actor,
+                None,
+            ))
+            .await?;
+        reply["result"]["snapshot_hash"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| format!("committed snapshot read failed: {reply}").into())
     }
 
     async fn seed_file(&self) -> Result<()> {
-        let hash = self.tree_hash()?;
+        let hash = self.tree_hash().await?;
         let write = json!({"method":"debug.write","target":self.coglet,
             "correlation_id":"00000000000000000000000000000004","timeout_ms":30000,
             "params":{"path":"/data/test.txt","text":"original","expected_hash":hash,"actor":self.operator}});
@@ -643,7 +707,7 @@ impl Fixture {
     }
 
     async fn seed_other_receipt(&self) -> Result<()> {
-        let hash = self.tree_hash()?;
+        let hash = self.tree_hash().await?;
         let write = json!({"method":"debug.write","target":self.coglet,
             "correlation_id":OTHER_OP,"timeout_ms":30000,
             "params":{"path":"/data/notes/other","text":"owned","expected_hash":hash,"actor":self.other_actor}});
@@ -703,10 +767,11 @@ impl Fixture {
         })
         .await??;
         self._hold = Some(hold);
+        self.held_since = Some(tokio::time::Instant::now());
         Ok(())
     }
 
-    async fn fill_pending(&self, count: usize) -> Result<()> {
+    async fn fill_pending(&mut self, count: usize) -> Result<()> {
         let handler = self.handler.as_ref().ok_or("no handler")?.clone();
         let peer = self._hub.id();
         let local = self._device.id();
@@ -722,7 +787,7 @@ impl Fixture {
                 local,
                 deadline: tokio::time::Instant::now() + Duration::from_secs(30),
             };
-            let reply = handler.handle(context, inbox).await;
+            let reply = handler.handle(context, inbox.clone()).await;
             if i % 32 == 0 && std::env::var_os("RECEIVER_FIXTURE_TRACE").is_some() {
                 eprintln!(
                     "fixture: pending fill {i} at {:?}",
@@ -732,11 +797,12 @@ impl Fixture {
             if reply["result"]["state"] != "queued" {
                 return Err(format!("pending fill {i} failed: {reply}").into());
             }
+            self.prepared.push((inbox, reply));
         }
         Ok(())
     }
 
-    pub async fn forward(&self, request: Value) -> Result<Value> {
+    pub async fn forward(&mut self, request: Value) -> Result<Value> {
         if request["method"] == "hub.git.fetch" {
             let (mut send, mut recv) = self.connection.open_bi().await?;
             wire::write_frame(&mut send, &request).await?;
@@ -747,16 +813,23 @@ impl Fixture {
             } else {
                 let _ = send.finish();
             }
+            self.observations.push((request, frame.clone()));
             return Ok(frame);
         }
-        Ok(self.session.request(request).await?)
+        let reply = self.session.request(request.clone()).await?;
+        self.observations.push((request, reply.clone()));
+        Ok(reply)
     }
 
-    pub async fn oracle(&mut self, case: &str, last: &Value) -> Result<()> {
-        if let Some(hold) = self._hold.take() {
-            hold.abort();
-            let _ = tokio::time::timeout(Duration::from_millis(200), hold).await;
-        }
+    fn quarantine_entries(&self) -> Result<Vec<String>> {
+        let mut entries = std::fs::read_dir(&self.config.quarantine)?
+            .map(|e| e.map(|e| e.file_name().to_string_lossy().into_owned()))
+            .collect::<std::io::Result<Vec<_>>>()?;
+        entries.sort();
+        Ok(entries)
+    }
+
+    async fn retire_and_open(&mut self) -> Result<coglet_runtime::DurableStore> {
         self.serve.abort();
         let _ = (&mut self.serve).await;
         drop(self.handler.take());
@@ -765,34 +838,68 @@ impl Fixture {
             .join("wal")
             .join(digest(self.coglet.as_bytes()))
             .join("state.wal");
-        let trace = std::env::var_os("RECEIVER_FIXTURE_TRACE").is_some();
-        let began = std::time::Instant::now();
-        let store = {
-            let mut waited = 0;
-            let mut path = wal.clone();
-            loop {
-                match coglet_runtime::DurableStore::open(&path) {
-                    Ok(store) => break store,
-                    Err(error) if error.starts_with("WAL already owned:") => {
-                        tokio::time::sleep(Duration::from_millis(10)).await;
-                        waited += 1;
-                        if waited == 20 {
-                            // A real bounded guest still holds the WAL. Replay a
-                            // byte copy of the fsynced durable log instead.
-                            let copy = self.root.join("oracle-copy");
-                            std::fs::create_dir_all(&copy)?;
-                            path = copy.join("state.wal");
-                            std::fs::copy(&wal, &path)?;
-                        }
-                    }
-                    Err(error) => return Err(error.into()),
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            match coglet_runtime::DurableStore::open(&wal) {
+                Ok(store) => return Ok(store),
+                Err(error)
+                    if error.starts_with("WAL already owned:")
+                        && tokio::time::Instant::now() < deadline =>
+                {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
                 }
+                Err(error) => return Err(error.into()),
             }
-        };
-        if trace {
-            eprintln!("fixture: oracle wal reopen {:?}", began.elapsed());
         }
+    }
+
+    fn reopen_receiver(&mut self) -> Result<()> {
+        let handler = DeviceHandler::new(
+            self.config.clone(),
+            Authority::open(self.root.join("authority.sqlite"))?,
+            validator_path(),
+            Arc::new(|| Some(T0)),
+        )?;
+        self.serve = tokio::spawn({
+            let handler = handler.clone();
+            let session = self.device_session.clone();
+            async move {
+                let _ = session.serve(Arc::new(handler)).await;
+            }
+        });
+        self.handler = Some(handler);
+        Ok(())
+    }
+
+    pub async fn oracle(&mut self, case: &str, last: &Value) -> Result<()> {
+        if let Some(hold) = self._hold.take() {
+            // Await REAL guest completion, never abort a guest to manufacture
+            // a recovered snapshot. Its returned failure is a recorded outcome.
+            let reply = tokio::time::timeout(Duration::from_secs(7), hold).await??;
+            if reply["type"] != "reply" || reply["result"]["receipt"]["state"] == "queued" {
+                return Err(format!("held guest did not finish: {reply}").into());
+            }
+        }
+        let store = self.retire_and_open().await?;
         let state = store.state().ok_or("missing wal state")?;
+        if case.starts_with("fetch-") {
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
+            while self.quarantine_entries()? != self.quarantine_baseline {
+                if tokio::time::Instant::now() >= deadline {
+                    return Err("fetch reset retained a quarantine lease".into());
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }
+        if let Ok(path) = std::env::var("COGLET_RECEIVER_RESULT") {
+            std::fs::write(
+                format!("{path}.oracle.json"),
+                serde_json::to_vec_pretty(&json!({
+                    "case":case,"baseline":self.baseline,"baseline_records":self.baseline_records,
+                    "state":state,"records":store.records(),"observations":self.observations,"prepared":self.prepared,
+                }))?,
+            )?;
+        }
         match case {
             "action-expired" => {
                 if !state["dispatches"]
@@ -805,7 +912,7 @@ impl Fixture {
                         .as_object()
                         .map(|o| o.len())
                         != Some(1)
-                    || !store.records().is_empty()
+                    || store.records() != self.baseline_records
                 {
                     return Err("action-expired wal oracle failed".into());
                 }
@@ -885,11 +992,11 @@ pub async fn serve_stdio(mut fixture: Fixture, requests: usize, case: &str) -> R
                 started.elapsed()
             );
         }
+        wire::write_frame(&mut output, &reply).await?;
+        output.flush().await?;
         if index + 1 == requests {
             fixture.oracle(case, &reply).await?;
         }
-        wire::write_frame(&mut output, &reply).await?;
-        output.flush().await?;
     }
     Ok(())
 }

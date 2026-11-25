@@ -266,8 +266,13 @@ impl DeviceHandler {
                     // Unopened WALs are deliberately retried too: initial startup
                     // recovery may fail transiently before it caches a service.
                     // Do filesystem/SQL/WAL work on the blocking pool below.
-                    if handler.drain_receiver(coglet).await.is_err() {
-                        failed = true;
+                    if let Ok(permit) = handler.inner.receiver_drains[coglet]
+                        .clone()
+                        .try_lock_owned()
+                    {
+                        if handler.drain_receiver_owned(coglet, permit).await.is_err() {
+                            failed = true;
+                        }
                     }
                 }
                 delay = if failed {
@@ -286,12 +291,21 @@ impl DeviceHandler {
     /// authority is rechecked under the same SQL guard as each WAL publication.
     /// This is also the restart driver; no caller-chosen replacement operation.
     pub async fn drain_receiver(&self, coglet: &str) -> Result<()> {
-        let coglet = coglet.to_owned();
-        let pin = self.pin(&coglet)?.clone();
-        let permit = self.inner.receiver_drains[&coglet]
+        self.pin(coglet)?;
+        let permit = self.inner.receiver_drains[coglet]
             .clone()
             .lock_owned()
             .await;
+        self.drain_receiver_owned(coglet, permit).await
+    }
+
+    async fn drain_receiver_owned(
+        &self,
+        coglet: &str,
+        permit: tokio::sync::OwnedMutexGuard<()>,
+    ) -> Result<()> {
+        let coglet = coglet.to_owned();
+        let pin = self.pin(&coglet)?.clone();
         // Validate the retained active artifact, not the original install's
         // manifest, before a receiver guest. Do not repeat artifact verification
         // for idle retry ticks or ordinary inbox/write drains.
@@ -329,9 +343,9 @@ impl DeviceHandler {
                 return Ok(());
             };
             let service = handler.open_service(&coglet, &setup)?;
-            // At most one full queue per batch; continuing admissions cannot
-            // monopolize the worker or starve another configured target.
-            for _ in 0..256 {
+            // Small batches bound shutdown custody and time before other
+            // targets are serviced. The owned driver resumes the next batch.
+            for _ in 0..16 {
                 let Some(request) = service
                     .lock()
                     .map_err(|_| "unavailable")?
@@ -352,7 +366,9 @@ impl DeviceHandler {
                     };
                     handler
                         .receiver_step_unlocked(&coglet, &pin, &request, &service, live_setup)?;
-                    continue;
+                    // A terminal step reply must not wait for unrelated inbox
+                    // materializations. They retain durable pending custody.
+                    return Ok(());
                 }
                 let outcome = handler.inner.authority.runtime_boundary_operation(
                     handler.inner.config.hub,
