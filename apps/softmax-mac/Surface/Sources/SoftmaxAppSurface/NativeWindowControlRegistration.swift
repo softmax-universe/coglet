@@ -29,7 +29,8 @@ public final class NativeWindowControlRegistration {
                                    (.miniaturizeButton, "minimize"), (.zoomButton, "zoom")] {
                 guard let button = window.standardWindowButton(kind) else { continue }
                 buttons.append(try NativeButtonRegistration(button: button, registry: registry,
-                    id: id + ".titlebar." + suffix, window: id, route: route))
+                    id: id + ".titlebar." + suffix, window: id, route: route,
+                    preserveNativeAccessibilityIdentity: true))
             }
         } catch {
             // Never leave a partially registered presentation usable.

@@ -127,7 +127,15 @@ final class NativeButtonRegistrationTests: XCTestCase {
         var route = "general"
         let registry = ControlRegistry(revision: 0, currentRoute: { _ in route })
         let owner = NativeWindowControlRegistration(registry: registry)
+        let systemIdentifiers = try [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].map {
+            try XCTUnwrap(window.standardWindowButton($0)).accessibilityIdentifier()
+        }
         try owner.synchronize(window: window, id: "settings", route: route)
+        let registeredIdentifiers = try [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].map {
+            try XCTUnwrap(window.standardWindowButton($0)).accessibilityIdentifier()
+        }
+        XCTAssertEqual(registeredIdentifiers, systemIdentifiers,
+                       "Registering native chrome must not replace Apple's AX identity used by its child tree")
         let old = try registry.prepare(args("settings.titlebar.close"), sensitive: false)
         let revision = registry.revision
         try owner.synchronize(window: window, id: "settings", route: route)

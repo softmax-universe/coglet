@@ -11,7 +11,8 @@ public final class NativeButtonRegistration: NSObject {
     private var mount: ControlRegistry.Mount?
 
     public init(button: NSButton, registry: ControlRegistry, id: String, window: String,
-                route: String, sensitive: Bool = false) throws {
+                route: String, sensitive: Bool = false,
+                preserveNativeAccessibilityIdentity: Bool = false) throws {
         guard let native = button.window else { throw ControlRegistryFailure.unavailable }
         self.registry = registry
         super.init()
@@ -31,7 +32,10 @@ public final class NativeButtonRegistration: NSObject {
                 }
                 button.performClick(nil)
             })
-        button.setAccessibilityIdentifier(id)
+        // AppKit's standard window buttons synthesize their own AX identities
+        // and internal child relationships. Keep them intact; the semantic
+        // catalog id still lives in the registry, independently of OS chrome.
+        if !preserveNativeAccessibilityIdentity { button.setAccessibilityIdentifier(id) }
         NotificationCenter.default.addObserver(self, selector: #selector(retirePresentation(_:)),
             name: NSWindow.willCloseNotification, object: native)
         NotificationCenter.default.addObserver(self, selector: #selector(retirePresentation(_:)),
