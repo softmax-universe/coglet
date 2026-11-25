@@ -106,6 +106,10 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
     private var pending: [UUID: Pending] = [:]
     private let clock: @Sendable () -> UInt64
     private var lastClock: UInt64?
+    private var emission: UUID?
+    private var nativeEvents: [(operation: String, payload: CogletTypes.CBORValue)] = []
+    private var eventBytes = 0
+    private var eventRevision: UInt64?
     /// Must use the SAME monotonic microsecond clock/epoch as the SDK session.
     /// This mailbox is a single app-owner backend, not a shared speech backend.
     public init(clock: @escaping @Sendable () -> UInt64 = { DispatchTime.now().uptimeNanoseconds / 1_000 }) { self.clock = clock }
@@ -170,6 +174,58 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         return pending.values.filter { $0.stage == .queued && $0.result == nil }.map(\.ticket)
     }
+    /// Native callback copies only its already-redacted, closed payload. It
+    /// captures THIS mailbox, never a token resolved from a successor session.
+    public func observe(operation: String, payload: CBORValue) throws {
+        let rule: String
+        switch operation {
+        case "softmax.app.view_changed": rule = "app-view-changed"
+        case "softmax.app.focus_changed": rule = "app-focus-changed"
+        case "softmax.app.control_changed": rule = "app-control-changed"
+        case "softmax.app.window_changed": rule = "app-window-changed"
+        default: throw NativeSurfaceError("invalid_argument")
+        }
+        try CBORCodec.validate(rule, payload)
+        let bytes = try CBORCodec.encodeProfile(payload)
+        guard bytes.count <= 262_144 else { retire(); throw NativeSurfaceError("resource_exhausted") }
+        let copied = try CogletTypes.CBORCodec.decodeProfile(bytes)
+        guard case .unsigned(let revision)? = payload["revision"] else { throw NativeSurfaceError("invalid_argument") }
+        lock.lock(); defer { lock.unlock() }
+        let now = try sampleLocked()
+        guard active, let grant, grant.expires > now else { throw NativeSurfaceError("unavailable") }
+        guard grant.operations.contains(operation) else { return }
+        guard eventRevision.map({ revision >= $0 }) ?? true,
+              nativeEvents.count < 64, eventBytes + bytes.count <= 1_048_576 else {
+            active = false; retired = true; capture = nil; self.grant = nil; nativeEvents = []; eventBytes = 0
+            throw NativeSurfaceError("resource_exhausted")
+        }
+        eventRevision = revision; nativeEvents.append((operation, copied)); eventBytes += bytes.count
+    }
+    public func drainEvents() -> [(operation: String, payload: CogletTypes.CBORValue)] {
+        lock.lock(); defer { lock.unlock() }
+        guard active else { nativeEvents = []; eventBytes = 0; return [] }
+        let result = nativeEvents; nativeEvents = []; eventBytes = 0; return result
+    }
+    /// Single in-progress whole-frame ABI emission. This admission linearizes
+    /// before native stop, but the ABI may copy/pump after stop returns. Neither
+    /// stop nor this gate waits for guest execution; entered work is NOT undone.
+    /// A would-block retry requires a NEW permit. Never preauthorize a batch.
+    public func enterEmission(incarnation: UInt64, epoch: UInt64) throws -> UUID {
+        lock.lock(); defer { lock.unlock() }
+        let now = try sampleLocked()
+        guard active, self.incarnation == incarnation, self.epoch == epoch,
+              let grant, grant.expires > now, emission == nil else { throw NativeSurfaceError("unavailable") }
+        let permit = UUID(); emission = permit; return permit
+    }
+    public func finishEmission(_ permit: UUID) {
+        lock.lock(); defer { lock.unlock() }
+        if emission == permit { emission = nil }
+    }
+    public func isLive(incarnation: UInt64, epoch: UInt64) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let now = try? sampleLocked() else { return false }
+        return active && self.incarnation == incarnation && self.epoch == epoch && (grant?.expires ?? 0) > now
+    }
     /// Linearization point is the successful `authorized` gate immediately before
     /// the synchronous native callback. Stop cancels not-yet-entered tickets and
     /// never waits on main/native code; it cannot undo an already-entered effect.
@@ -207,7 +263,26 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
     }
     public func stop() {
         lock.lock(); defer { lock.unlock() }
+        stopLocked()
+    }
+    /// Product lifecycle/off-switch, unlike the SDK's preactivation safety stop,
+    /// permanently refuses a startup that is still awaiting durable admission.
+    public func retire() {
+        lock.lock(); defer { lock.unlock() }
+        retired = true; stopLocked()
+    }
+    /// SDK owner-local action expiry/stop fences all not-yet-entered commands of
+    /// that owner, without inventing a grant revocation or replacing its source.
+    /// Global stop, grant replacement and disconnect still retire the incarnation.
+    public func cancelPending(owner: String) {
+        lock.lock(); defer { lock.unlock() }
+        for id in pending.keys where pending[id]?.ticket.owner == owner && pending[id]?.stage == .queued && pending[id]?.result == nil {
+            pending[id]?.result = .failed(NativeSurfaceError("cancelled"))
+        }
+    }
+    private func stopLocked() {
         active = false; capture = nil; grant = nil
+        nativeEvents = []; eventBytes = 0
         if everActive { retired = true }
         for id in pending.keys where pending[id]?.stage == .queued && pending[id]?.result == nil {
             pending[id]?.result = .failed(NativeSurfaceError("cancelled"))
@@ -256,7 +331,10 @@ public final class AppSurfaceBackend: SurfaceNativeBackend {
             return value
         } catch { throw AppSurfaceMailbox.failure(error) }
     }
-    public func stop(owner: String?) { prepared = nil; mailbox.stop() }
+    public func stop(owner: String?) {
+        prepared = nil
+        if let owner { mailbox.cancelPending(owner: owner) } else { mailbox.stop() }
+    }
     public func reconcile(_ session: SurfaceSession) throws {
         for receipt in mailbox.drainReceipts() {
             try session.complete(owner: receipt.ticket.owner, id: receipt.ticket.id,

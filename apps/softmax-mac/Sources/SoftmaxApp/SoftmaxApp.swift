@@ -467,8 +467,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Task { await model.runtime.stop(); NSApp.terminate(nil) }
     }
 
-    // Product native dispatch. Runtime transport activation remains separate: this
-    // object grants no authority and never runs a guest or performs ledger I/O.
+    // Product native dispatch; the runtime actor owns transport, SDK admission
+    // and durable sequencing. These closures neither grant authority nor run a guest.
     private func installAppSurface() {
         commands.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         talkHUD.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
@@ -535,6 +535,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 default: throw AppSurfaceFailure.unsupported
                 }
             })
+        if let adapter = model.appSurface {
+            model.runtime.installAppSurface(adapter, refresh: { [weak self] in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                // A fresh sampled native revision includes transient meters and
+                // hub status too, not only SwiftUI control binding mutations.
+                try self.model.appControls.nativeStateChanged()
+                try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+            }, events: { [weak self] handler in
+                self?.model.appControls.onChange = handler
+            })
+        }
     }
 
     private static let appWindows = ["main", "menu_bar", "settings", "onboarding", "face", "chat", "orb", "hud",

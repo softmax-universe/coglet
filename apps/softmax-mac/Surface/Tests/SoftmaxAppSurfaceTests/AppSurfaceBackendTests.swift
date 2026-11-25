@@ -81,7 +81,8 @@ private actor BackendHarness {
     let clock: BackendClock
     let incarnation: UInt64
     private let wire: BackendWire
-    init(capture: AppSurfaceCapture, clock: BackendClock, allowed: Set<String>? = nil) throws {
+    private let connection: AppSurfaceConnection?
+    init(capture: AppSurfaceCapture, clock: BackendClock, allowed: Set<String>? = nil, withConnection: Bool = false) throws {
         wire = try BackendWire()
         self.clock = clock
         mailbox = AppSurfaceMailbox(clock: { clock.now() }); backend = AppSurfaceBackend(mailbox: mailbox)
@@ -94,12 +95,18 @@ private actor BackendHarness {
         session = try SurfaceSession(identity: "surface:" + String(repeating: "a", count: 64), boundCoglets: [owner],
             operations: operations, store: BackendStore(), backend: backend, contractProfile: .surface02,
             trustedCatalog: catalog, initialGrants: [grant], clock: { clock.now() }, correlation: { cid })
-        incarnation = try session.reserveSourceIncarnation()
+        let reserved = withConnection ? nil : try session.reserveSourceIncarnation()
         try session.start(); _ = try wire.outgoing(session.drain())
         try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("hello_reply"), "body": obj([
             "selection": obj(["version": .text("0.2")]), "correlation_id": .text(cid)])]), from: .runtime)))
         _ = try wire.outgoing(session.drain())
-        try mailbox.activate(incarnation: incarnation, epoch: session.grantEpoch, grant: grant, capture: capture)
+        if withConnection {
+            let attached = try AppSurfaceConnection(session: session, mailbox: mailbox, grant: grant, operations: operations, capture: capture)
+            connection = attached; incarnation = attached.incarnation
+        } else {
+            connection = nil; incarnation = reserved!
+            try mailbox.activate(incarnation: incarnation, epoch: session.grantEpoch, grant: grant, capture: capture)
+        }
     }
     func act(_ capability: String, args: W, id: String = cid, deadline: UInt64 = 1000) throws -> [W] {
         XCTAssertFalse(Thread.isMainThread)
@@ -122,9 +129,111 @@ private actor BackendHarness {
     func close() throws { try session.close() }
     func tick() throws -> [W] { try session.tick(); return try frames() }
     func frames() throws -> [W] { try wire.outgoing(session.drain()) }
+    func eventFrames() throws -> [W] {
+        try XCTUnwrap(connection).publishEvents(session)
+        return try frames()
+    }
+    func replaceExtension() throws {
+        _ = try session.openExtensionObservationSession(owner: owner, operation: "softmax.app.view_changed", epoch: session.grantEpoch)
+    }
+    func replaceSpeech() throws { _ = try session.openNativeObservationSession(owner: owner, epoch: session.grantEpoch) }
+    func guardedSend(_ stoppedDuringAttempt: Bool = false) throws -> Bool {
+        try XCTUnwrap(connection).emit(session: session) {
+            if stoppedDuringAttempt { mailbox.retire() }
+            return true
+        }
+    }
+    func queuedSuccessfulRead() throws -> [[UInt8]] {
+        try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("read"), "body": obj([
+            "coglet": .text(owner), "capability": .text("softmax.app.state"), "args": .map([]), "deadline": .unsigned(1000),
+            "grant_epoch": .unsigned(session.grantEpoch), "correlation_id": .text(cid)])]), from: .runtime, contractProfile: .surface02)))
+        return session.drain()
+    }
 }
 
 final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
+    func testOwnerLocalDeadlineCancelsTicketsWithoutRetiringReadOrEventStream() async throws {
+        let clock = BackendClock()
+        let (host, capture) = try await MainActor.run { let host = try Host(); return (host, try host.adapter.capture()) }
+        let h = try BackendHarness(capture: capture, clock: clock, withConnection: true)
+        _ = try await h.act("softmax.app.invoke", args: invoke("settings.general.button"), deadline: 50)
+        let old = try XCTUnwrap(h.mailbox.queuedCommands().first)
+        clock.advance(50)
+        let expiry = try await h.tick()
+        XCTAssertEqual(expiry.first?["body"]?["payload"]?["status"], .text("expired"))
+        await MainActor.run { h.mailbox.execute(old, adapter: host.adapter); XCTAssertEqual(host.pressCalls, 0) }
+        let stillLive = try await h.guardedSend()
+        XCTAssertTrue(stillLive)
+        _ = try await h.reconcile()
+        let next = try await h.act("softmax.app.invoke", args: invoke("settings.general.button"), id: String(repeating: "f", count: 32))
+        XCTAssertEqual(next.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(h.mailbox.queuedCommands().first)
+        await MainActor.run { h.mailbox.execute(ticket, adapter: host.adapter); XCTAssertEqual(host.pressCalls, 1) }
+        let completed = try await h.reconcile()
+        XCTAssertEqual(completed.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        try await h.close()
+    }
+    func testRealProductEventDoesNotInventASelectedReadRequirement() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), allowed: ["softmax.app.view_changed"], withConnection: true)
+        try h.mailbox.observe(operation: "softmax.app.view_changed", payload: .map([
+            .init("revision", .unsigned(capture.revision)), .init("window", .text("settings")), .init("route", .text("general"))]))
+        let events = try await h.eventFrames()
+        XCTAssertEqual(events.count, 1) // actual product catalog has NO selection.reads
+        try await h.close()
+    }
+    func testConnectionPublishesNativeEventsWithReservedSourceAndClosesOldCustody() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        try h.mailbox.observe(operation: "softmax.app.view_changed", payload: .map([
+            .init("revision", .unsigned(capture.revision)), .init("window", .text("settings")), .init("route", .text("general"))]))
+        let events = try await h.eventFrames()
+        XCTAssertEqual(events.count, 1)
+        XCTAssertEqual(events.first?["body"]?["kind"], .text("softmax.app.view_changed"))
+        guard case .unsigned(let seq)? = events.first?["body"]?["seq"] else { return XCTFail("missing event sequence") }
+        XCTAssertGreaterThan(seq, h.incarnation)
+        let sent = try await h.guardedSend()
+        XCTAssertTrue(sent)
+        try await h.replaceExtension() // SAME epoch, distinct SDK stream custody
+        do { _ = try await h.guardedSend(); XCTFail("old stream emitted") } catch { }
+        try await h.close()
+    }
+    func testAlreadyDrainedPrivateReadCannotBeSentAfterSpeechReplacement() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        let drained = try await h.queuedSuccessfulRead()
+        XCTAssertEqual(drained.count, 1)
+        XCTAssertEqual(try SurfaceWire.decode(drained[0], from: .surface, contractProfile: .surface02)["body"]?["ok"], .boolean(true))
+        try await h.replaceSpeech()
+        do { _ = try await h.guardedSend(); XCTFail("already drained private reply emitted") } catch { }
+        try await h.close()
+    }
+    func testNativeStopDoesNotWaitForEnteredEmissionAndRefusesNextAttempt() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        // Stop reenters the gate from INSIDE the ABI-attempt closure. The entered
+        // attempt is not claimed undone, but its result and next send are fenced.
+        do { _ = try await h.guardedSend(true); XCTFail("stopped stream reused") } catch { }
+        do { _ = try await h.guardedSend(); XCTFail("next attempt entered") } catch { }
+        try await h.close()
+    }
+    func testNativeEventQueueOverflowRetiresInsteadOfDroppingObservations() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        let event = N.map([.init("revision", .unsigned(capture.revision)), .init("window", .text("settings")), .init("route", .text("general"))])
+        for _ in 0..<64 { try h.mailbox.observe(operation: "softmax.app.view_changed", payload: event) }
+        XCTAssertThrowsError(try h.mailbox.observe(operation: "softmax.app.view_changed", payload: event))
+        do { _ = try await h.eventFrames(); XCTFail("overflow stream remained active") } catch { }
+        XCTAssertTrue(h.mailbox.drainEvents().isEmpty)
+        try await h.close()
+    }
+    func testIndependentStartupRetirementIsNotAnSDKPreparationStop() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let m = AppSurfaceMailbox(clock: { 10 })
+        m.retire()
+        XCTAssertThrowsError(try m.activate(incarnation: 0, epoch: 1,
+            grant: .init(coglet: owner, operations: [], resources: [], expires: 1000), capture: capture))
+    }
     func testMailboxClockRollbackCannotExtendQueuedAuthority() async throws {
         let clock = BackendClock()
         let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }

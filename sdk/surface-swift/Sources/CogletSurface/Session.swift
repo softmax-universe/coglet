@@ -124,6 +124,12 @@ public final class SurfaceSession {
     private var normalizers: [String: SpeechObservations] = [:]
     public var grantEpoch: UInt64 { ledger.epoch }
     public var isKilled: Bool { ledger.killed }
+    /// Serialized-owner stream custody identity. Changes on every observation
+    /// replacement/closure, grant replacement, kill or disconnect, including
+    /// replacements within the SAME epoch. Hosts retaining drained private bytes
+    /// must retire the old whole stream when this changes; never relabel a queue.
+    /// This is not a native-thread lock or permission to emit after native stop.
+    public private(set) var egressCustody = UUID()
 
     public init(identity: String, boundCoglets: Set<String>, operations: [SurfaceOperation],
                 store: any SurfaceLedgerStore, backend: any SurfaceNativeBackend,
@@ -210,6 +216,7 @@ public final class SurfaceSession {
         guard connected, negotiated, !ledger.killed, epoch == ledger.epoch,
               boundCoglets.contains(owner), let grant = grants.first(where: { $0.coglet == owner }),
               grant.expires > clock() else { throw NativeSurfaceError("permission_denied") }
+        egressCustody = UUID()
         backend.stop(owner: owner)
         output.removeAll { $0.observationOwner == owner && $0.extensionOperation == nil }
         let token = NativeObservationToken(owner: owner, epoch: epoch, session: UUID())
@@ -218,6 +225,7 @@ public final class SurfaceSession {
     }
     public func closeNativeObservationSession(_ token: NativeObservationToken) {
         guard observationTokens[token.owner] == token else { return }
+        egressCustody = UUID()
         backend.stop(owner: token.owner)
         observationTokens[token.owner] = nil; normalizers[token.owner] = nil
         output.removeAll { $0.observationOwner == token.owner && $0.extensionOperation == nil }
@@ -228,6 +236,7 @@ public final class SurfaceSession {
         guard connected, negotiated, let binding = sessionOperations[operation], binding.direction == .event,
               trustedCatalog?.operations.contains(where: { $0.name == operation }) == true else { throw NativeSurfaceError("permission_denied") }
         try authorize(owner: owner, operation: binding, epoch: epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+        egressCustody = UUID()
         output.removeAll { $0.observationOwner == owner && $0.extensionOperation == operation }
         let token = ExtensionObservationToken(owner: owner, operation: operation, epoch: epoch, session: UUID())
         extensionTokens[owner + "/" + operation] = token
@@ -237,6 +246,7 @@ public final class SurfaceSession {
     public func closeExtensionObservationSession(_ token: ExtensionObservationToken) {
         let key = token.owner + "/" + token.operation
         guard extensionTokens[key] == token else { return }
+        egressCustody = UUID()
         extensionTokens[key] = nil
         output.removeAll { $0.observationOwner == token.owner && $0.extensionOperation == token.operation }
     }
@@ -346,6 +356,7 @@ public final class SurfaceSession {
             guard connected, !ledger.killed else { throw SurfaceFailure.closed }
             let now = try sample()
             guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
+            egressCustody = UUID()
             backend.stop(owner: nil)
             output.removeAll { $0.observationOwner != nil }
             observationTokens = [:]; extensionTokens = [:]; normalizers = [:]
@@ -406,6 +417,7 @@ public final class SurfaceSession {
     }
     public func kill(reason: String) throws {
         guard !retired else { throw SurfaceFailure.closed }
+        egressCustody = UUID()
         // Native hardware stop must ALREADY have happened, independently of the
         // control queue. Repeat it here as a defense in depth.
         backend.stop(owner: nil)
@@ -444,6 +456,7 @@ public final class SurfaceSession {
 
     public func disconnect() {
         guard !retired else { return }
+        egressCustody = UUID()
         backend.stop(owner: nil)
         guard connected else { return }
         connected = false; grants = []; output = []
