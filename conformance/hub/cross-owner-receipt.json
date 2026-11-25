@@ -24,7 +24,7 @@
       "match": {
         "correlation_id": "00000000000000000000000000000012",
         "type": "error",
-        "error.code": "permission_denied"
+        "error.code": "not_found"
       },
       "within_ms": 2000
     }
