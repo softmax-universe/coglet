@@ -13,6 +13,9 @@
 //! guest through the handler's shared RuntimeService (not an adapter socket).
 #![cfg(target_os = "linux")]
 
+#[path = "support/device_receiver.rs"]
+mod receiver_tests;
+
 use coglet_mock::hub::MockHub;
 use coglet_proto::{
     authority::{Authority, Grant, Scope},
@@ -133,6 +136,7 @@ fn correlation(n: u64) -> String {
 /// Scenario knobs. Defaults are the happy path.
 #[derive(Clone)]
 struct Options {
+    back_channel: bool,
     delegation_methods: Vec<&'static str>,
     pin_grant_generation: u64,
     pin_delegation_generation: u64,
@@ -144,6 +148,7 @@ struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
+            back_channel: false,
             delegation_methods: vec![
                 "hub.install",
                 "hub.start",
@@ -223,8 +228,23 @@ impl Env {
             authority.open_window(Duration::from_secs(30))?;
             let grants: Vec<Grant> = METHODS
                 .iter()
+                .copied()
+                .chain(
+                    [
+                        "debug.read",
+                        "debug.write",
+                        "hub.inbox",
+                        "hub.cancel",
+                        "debug.pause",
+                        "debug.step",
+                        "hub.actions",
+                        "hub.git.fetch",
+                    ]
+                    .into_iter()
+                    .filter(|_| options.back_channel),
+                )
                 .map(|method| Grant {
-                    method: (*method).into(),
+                    method: method.into(),
                     target: Some(coglet.clone()),
                     expires: T0 + 100_000,
                     generation: GRANT_GEN,
@@ -256,7 +276,10 @@ impl Env {
                     actor: who.clone(),
                     ticket: ticket.map(str::to_owned),
                 };
-                for grant in &grants {
+                for grant in grants
+                    .iter()
+                    .filter(|g| METHODS.contains(&g.method.as_str()))
+                {
                     authority.provision_scope(hub.id(), &scope, grant)?;
                 }
             }
@@ -292,6 +315,7 @@ impl Env {
                 "grant_generation": options.pin_grant_generation,
                 "delegation_generation": options.pin_delegation_generation,
                 "native_schedule": native_schedule,
+                "back_channel": if options.back_channel { json!({"read_paths":["/data/","@step/"],"write_paths":["/data/notes/"]}) } else { json!({}) },
             }))?,
         );
         std::fs::write(root.join("kill.json"), b"{\"latched\":false}")?;
@@ -412,14 +436,25 @@ impl Env {
         extra: &[(&str, &[u8])],
         wasm_wat: &str,
     ) -> Bundle {
+        self.bundle_guest(generation, old, extra, wasm_wat, 10000)
+    }
+
+    fn bundle_guest(
+        &self,
+        generation: u64,
+        old: Option<&str>,
+        extra: &[(&str, &[u8])],
+        wat: &str,
+        compute: u64,
+    ) -> Bundle {
         let work = self.root.join(format!("git-{generation}"));
         std::fs::create_dir_all(&work).unwrap();
         git(&work, &["init", "--initial-branch=hub"]);
-        let wasm = wat::parse_str(wasm_wat).unwrap();
+        let wasm = wat::parse_str(wat).unwrap();
         let mode = native_compute_mode();
         let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
             "required_capabilities":[],"exclusive_outputs":[],
-            "budgets":{"compute":10000,"compute_mode":mode,"memory_pages":2,
+            "budgets":{"compute":compute,"compute_mode":mode,"memory_pages":2,
                 "wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}});
         std::fs::write(
             work.join("manifest.json"),
