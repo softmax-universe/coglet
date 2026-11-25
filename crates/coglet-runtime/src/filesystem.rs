@@ -1,4 +1,7 @@
-use crate::{Result, cbor};
+use crate::Result;
+#[cfg(test)]
+use crate::cbor;
+use crate::cbor_encoding::{head, text};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -51,6 +54,24 @@ pub fn valid_path(path: &str) -> bool {
         && !path
             .chars()
             .any(|c| c <= '\u{1f}' || c == '\u{7f}' || c == '\\')
+}
+
+// Canonical text keys sort by encoded bytes, not BTreeMap's lexical order.
+// Borrow both strings: the only payload copy is into the final CBOR buffer.
+fn tree_cbor(files: &BTreeMap<String, String>) -> Vec<u8> {
+    let mut entries: Vec<_> = files.iter().collect();
+    entries.sort_unstable_by(|(a, _), (b, _)| {
+        a.len()
+            .cmp(&b.len())
+            .then_with(|| a.as_bytes().cmp(b.as_bytes()))
+    });
+    let mut out = Vec::new();
+    head(&mut out, 5, entries.len() as u64);
+    for (path, encoded) in entries {
+        text(&mut out, path);
+        text(&mut out, encoded);
+    }
+    out
 }
 
 pub fn digest(bytes: &[u8]) -> String {
@@ -204,9 +225,7 @@ impl Snapshot {
         if let Some(hash) = self.1.get() {
             return Ok(hash.clone());
         }
-        let hash = digest(&cbor(
-            &serde_json::to_value(self.0.as_ref()).map_err(|e| e.to_string())?,
-        )?);
+        let hash = digest(&tree_cbor(self.files()));
         // Another reader can only compute the same hash from immutable bytes.
         let _ = self.1.set(hash.clone());
         Ok(hash)
@@ -240,6 +259,94 @@ impl Snapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn borrowed_tree_cbor_matches_profile_at_every_header_boundary() {
+        fn differential(files: &BTreeMap<String, String>) {
+            let json = serde_json::to_value(files).unwrap();
+            let profile = crate::profile_value(&json, 0).unwrap();
+            let reference = coglet_types::encode_profile(&profile).unwrap();
+            assert_eq!(tree_cbor(files), reference);
+            assert_eq!(tree_cbor(files), cbor(&json).unwrap());
+        }
+
+        differential(&BTreeMap::new());
+        // Odd lengths are encoder cases, not valid snapshot hex. Exercise the
+        // exact byte boundaries independently of Snapshot's even-hex validator.
+        for len in (0..=257).chain([65534, 65535, 65536, 65537]) {
+            let mut files = BTreeMap::new();
+            for prefix in [
+                "/data/",
+                "/data/é",
+                "/data/中",
+                "/data/😀",
+                "/data/e\u{301}",
+            ] {
+                files.insert(format!("{prefix}{}", "z".repeat(len)), "a".repeat(len));
+            }
+            differential(&files);
+            // Keys at exact UTF-8 byte lengths, not character counts.
+            if len >= 6 {
+                differential(&BTreeMap::from([(
+                    format!("/data/{}", "x".repeat(len - 6)),
+                    "".into(),
+                )]));
+            }
+        }
+        assert_eq!(tree_cbor(&BTreeMap::new()), b"\xa0");
+        assert_eq!(
+            tree_cbor(&BTreeMap::from([
+                ("aa".into(), "00".into()),
+                ("z".into(), "".into())
+            ])),
+            b"\xa2\x61z\x60\x62aa\x6200"
+        );
+        for count in [
+            1, 22, 23, 24, 25, 254, 255, 256, 257, 65534, 65535, 65536, 65537,
+        ] {
+            let files = (0..count)
+                .map(|i| (format!("/data/{i:05}é"), "00".into()))
+                .collect();
+            differential(&files);
+        }
+    }
+
+    #[test]
+    fn borrowed_tree_hash_generated_snapshots_and_warm_clone_mutations() {
+        fn reference(snapshot: &Snapshot) -> String {
+            let json = serde_json::to_value(snapshot.files()).unwrap();
+            digest(&coglet_types::encode_profile(&crate::profile_value(&json, 0).unwrap()).unwrap())
+        }
+        let empty = Snapshot::new(BTreeMap::new()).unwrap();
+        assert_eq!(empty.tree_hash().unwrap(), digest(b"\xa0"));
+        let mut seed = 42u64;
+        for count in 0..=64 {
+            let mut files = BTreeMap::new();
+            for i in 0..count {
+                seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+                let path = format!("/data/{}{}", ["é", "中", "😀", "e\u{301}"][i % 4], i);
+                files.insert(path, hex::encode(seed.to_be_bytes().repeat(i)));
+            }
+            let original = Snapshot::new(files).unwrap();
+            let expected = reference(&original);
+            assert_eq!(original.tree_hash().unwrap(), expected);
+            // Clone the already populated cache, then independently mutate both
+            // clones through each mutation entrypoint and compare full oracles.
+            let mut guest = original.clone();
+            let mut host = original.clone();
+            assert!(guest.1.get().is_some());
+            assert!(host.1.get().is_some());
+            guest.guest_write("/data/é", &seed.to_le_bytes()).unwrap();
+            host.append_host_log(b"event\n");
+            for changed in [&guest, &host] {
+                assert!(changed.1.get().is_none());
+                assert_eq!(changed.tree_hash().unwrap(), reference(changed));
+                assert_ne!(changed.tree_hash().unwrap(), expected);
+                assert_eq!(changed.tree_hash().unwrap(), reference(changed));
+            }
+            assert_eq!(original.tree_hash().unwrap(), expected);
+        }
+    }
 
     #[test]
     fn strict_hex_matches_reference_and_rejects_every_non_lowercase_byte() {
