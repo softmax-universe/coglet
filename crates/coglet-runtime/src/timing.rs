@@ -1,6 +1,8 @@
 //! Test-hook-only, bounded, in-memory timing ring. Compiled out of production:
 //! without `ffi-test-hooks` the `timing_span!` macro expands to nothing. No I/O
-//! happens per span; the ring is dumped once, at the first ABI refusal. Records
+//! happens per span; the ring is dumped once, at the first ABI refusal. A bounded
+//! cross-thread completed-span summary is exported after stop, including success.
+//! Records
 //! hold only static labels, a sequence counter, monotonic elapsed time and a
 //! raw size: never ids, frame bodies or private values.
 
@@ -111,16 +113,20 @@ mod imp {
     pub(crate) struct Span {
         label: &'static str,
         size: u64,
+        start: Instant,
     }
     impl Span {
         pub(crate) fn begin(label: &'static str, size: u64) -> Self {
+            let start = Instant::now();
             record(Edge::Begin, label, size);
-            Self { label, size }
+            Self { label, size, start }
         }
     }
     impl Drop for Span {
         fn drop(&mut self) {
+            let ns = u64::try_from(self.start.elapsed().as_nanos()).unwrap_or(u64::MAX);
             record(Edge::End, self.label, self.size);
+            crate::timing_summary::completed(self.label, ns, self.size);
         }
     }
 

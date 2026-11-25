@@ -162,7 +162,7 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
 /// Poisoned service state is discarded, NEVER unpoisoned for continued execution.
 #[unsafe(no_mangle)]
 pub extern "C" fn coglet_runtime_stop() -> i32 {
-    guarded(|| {
+    let status = guarded(|| {
         // Only stop may recover the outer ownership slot: it never executes the
         // possibly poisoned RuntimeService and drops it before clearing poison.
         let mut runtime = RUNTIME.lock().unwrap_or_else(|e| e.into_inner());
@@ -174,7 +174,11 @@ pub extern "C" fn coglet_runtime_stop() -> i32 {
         GENERATION.fetch_add(1, Ordering::SeqCst);
         FENCED.store(false, Ordering::SeqCst);
         0
-    })
+    });
+    // All runtime guards have dropped. Diagnostics never change the ABI result.
+    #[cfg(feature = "ffi-test-hooks")]
+    let status = crate::timing_summary::export_after_stop(status);
+    status
 }
 
 #[repr(C)]
