@@ -562,6 +562,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-fast-loop"
+version = "0.1.0"
+dependencies = [
+ "coglet-guest-rust",
+ "coglet-types",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "coglet-fs"
 version = "0.1.0"
 dependencies = [
