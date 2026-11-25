@@ -646,7 +646,17 @@ pub fn handle<H: Host + DbHost>(
                     let expired = queue.state == "pending"
                         || (queue.state == "leased"
                             && queue.lease_until.is_some_and(|until| until <= at));
+                    // A goal-owned attempt keeps its status and worker
+                    // reservation: the host retries the same dispatch identity,
+                    // so the goal stays active until an attempt-fenced result.
+                    // Releasing the worker here would admit another goal while
+                    // this attempt is still running.
+                    let goal_task = parse::<serde_json::Value>(&task.data_json)?
+                        .get("goal_id")
+                        .and_then(|v| v.as_str())
+                        .is_some();
                     if expired
+                        && !goal_task
                         && !matches!(task.status.as_str(), "completed" | "cancelled" | "failed")
                     {
                         task.status = "pending".into();
@@ -869,7 +879,17 @@ fn validate<H: DbHost>(
             }
             Decision::Defer { until } => {
                 mutations += 1;
-                if *until <= at {
+                // Same rule as the authenticated command: only a goal that is
+                // not yet admitted may be deferred. An active goal holds a
+                // dispatched attempt; deferring it (or its leased task) would
+                // let review admit a second concurrent attempt and detach the
+                // first from cancellation.
+                let deferrable = if c.subject.object_type == "goal" {
+                    matches!(c.subject.status.as_str(), "open" | "deferred")
+                } else {
+                    !goal_owned
+                };
+                if *until <= at || !deferrable {
                     return Err(bad());
                 }
             }

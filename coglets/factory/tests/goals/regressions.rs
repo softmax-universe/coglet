@@ -200,3 +200,128 @@ fn model_created_goal_starts_emitted_review_timer() {
     assert_eq!(h.get(GOAL).0, "active");
     assert_eq!(h.count("outbox"), 1);
 }
+
+// Drive the goal to `active` using only guest-emitted timers.
+fn activate(h: &mut TestHost) -> String {
+    authorize(h);
+    create(h, 1, GOAL, 1);
+    for seq in 10..13 {
+        timer(h, seq);
+    }
+    assert_eq!(h.get(GOAL).0, "active");
+    h.get(GOAL).1["active_task"].as_str().unwrap().to_owned()
+}
+
+fn drain_timers(h: &mut TestHost, first: u64) {
+    let mut seq = first;
+    while !h.timers.is_empty() {
+        timer(h, seq);
+        seq += 1;
+        assert!(seq < first + 32, "review must settle");
+    }
+}
+
+#[test]
+fn model_defer_cannot_redispatch_active_goal_or_its_task() {
+    for on_task in [false, true] {
+        let mut h = TestHost::new();
+        let task = activate(&mut h);
+        let subject = if on_task { task.clone() } else { GOAL.into() };
+        h.run(event(
+            "factory.review",
+            20,
+            [("task_id", Value::Text(subject))],
+        ));
+        let reply = h.response(21, vec![Decision::Defer { until: 500 }]);
+        h.run(reply);
+        assert_eq!(h.get(GOAL).0, "active");
+        assert_eq!(h.get(&task).0, "dispatched");
+        assert!(h.get(GOAL).1.get("defer_until").is_none());
+        assert!(h.get(&task).1.get("defer_until").is_none());
+        // Run every emitted review, then one well past the refused deferral time.
+        drain_timers(&mut h, 30);
+        let mut late = event("factory.goal_review", 90, []);
+        late.logical_time = 1_000;
+        h.run(late);
+        drain_timers(&mut h, 100);
+        let goal = h.get(GOAL);
+        assert_eq!(goal.0, "active");
+        assert_eq!(goal.1["active_task"], task.as_str());
+        assert_eq!(goal.1["attempts"], 1);
+        assert_eq!(goal.1["remaining_budget"], 1);
+        assert_eq!(h.count("outbox"), 1, "exactly one dispatch");
+        assert_eq!(h.get("factory-policy").1["available_workers"], 1);
+        // Cancellation still reaches the one and only attempt.
+        let cancel = command_event(&mut h, 200, "factory.goal_cancel", json!({"goal_id":GOAL}));
+        h.run(cancel);
+        assert_eq!(h.get(GOAL).0, "cancelled");
+        assert_eq!(h.get(&task).1["cancel_requested"], true);
+        assert_eq!(h.count("outbox"), 2, "one dispatch plus one cancel");
+    }
+}
+
+#[test]
+fn model_defer_still_applies_to_unadmitted_goal() {
+    let mut h = TestHost::new();
+    authorize(&mut h);
+    create(&mut h, 1, GOAL, 1);
+    h.timers.clear();
+    h.run(event(
+        "factory.review",
+        2,
+        [("task_id", Value::Text(GOAL.into()))],
+    ));
+    let reply = h.response(3, vec![Decision::Defer { until: 500 }]);
+    h.run(reply);
+    assert_eq!(h.get(GOAL).0, "deferred");
+    assert_eq!(h.get(GOAL).1["defer_until"], 500);
+    assert_eq!(h.count("outbox"), 0);
+}
+
+#[test]
+fn goal_task_lease_expiry_keeps_reservation_until_fenced_result() {
+    let mut h = TestHost::new();
+    let task = activate(&mut h);
+    h.db.execute(
+        "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,'leased',0,'first',3,1,1)",
+        [&task],
+    )
+    .unwrap();
+    let mut expired = event(
+        "task.lease_expired",
+        20,
+        [("task_id", Value::Text(task.clone()))],
+    );
+    expired.logical_time = 10;
+    h.run(expired);
+    assert_eq!(h.get(&task).0, "dispatched");
+    assert_eq!(h.get(&task).1["capacity_reserved"], true);
+    assert_eq!(h.get(GOAL).0, "active");
+    assert_eq!(h.get("factory-policy").1["available_workers"], 1);
+    assert!(h.staged.is_empty());
+    // The host retries the same dispatch identity under a newer attempt.
+    h.db.execute(
+        "UPDATE work_queue SET lease_owner='second',lease_until=1000,attempt=2,version=2 WHERE task_id=?1",
+        [&task],
+    )
+    .unwrap();
+    let result = |lease: &str, attempt: i64, seq| {
+        event(
+            "task.completed",
+            seq,
+            [
+                ("task_id", Value::Text(task.clone())),
+                ("lease", Value::Text(lease.into())),
+                ("attempt", Value::Integer(attempt.into())),
+            ],
+        )
+    };
+    h.run(result("first", 1, 21));
+    assert_eq!(h.get(GOAL).0, "active", "expired attempt is stale");
+    assert_eq!(h.get("factory-policy").1["available_workers"], 1);
+    h.run(result("second", 2, 22));
+    assert_eq!(h.get(&task).0, "completed");
+    assert_eq!(h.get(GOAL).0, "completed");
+    assert_eq!(h.get("factory-policy").1["available_workers"], 2);
+    assert_eq!(h.count("outbox"), 1);
+}

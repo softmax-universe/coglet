@@ -63,9 +63,15 @@ focused tests does not substitute for it.
   `factory.goal` (create), `factory.goal_cancel {goal_id}`, `factory.goal_defer
   {goal_id, until}`. Cancellation is terminal and idempotent; deferral never
   touches a cancelled/active/terminal goal. Model `CREATE_GOAL` now carries
-  `priority` and `budget` (defaults 0/1, bounded by policy) plus a
-  `derived_from` relation; `PRIORITIZE`/`DEFER` on a goal subject use the same
-  fields. Decisions for a cancelled/completed/exhausted subject are rejected and
+  `priority` (at most the policy `max_priority`) and `budget` (defaults 0/1)
+  plus a `derived_from` relation. A goal's `budget`, from the inbox or the
+  model, has only a lower bound of 1 and no per-goal ceiling; what caps actual
+  admissions is the global `remaining_budget`, spent one per admission.
+  `PRIORITIZE`/`DEFER` on a goal subject use the same fields. Model `DEFER`
+  follows the command rule: it is refused unless the goal is `open` or
+  `deferred`, and refused for a goal-owned task, so an active goal never gains a
+  second concurrent attempt. Decisions for a cancelled/completed/exhausted
+  subject are rejected and
   stale replies for them are never replanned.
 - **Periodic bounded review** (`factory.goal_review` or the `runtime.timer` it
   arms): scan steps are strictly read-only pages of 4 goals (`open`, then due
@@ -82,6 +88,12 @@ focused tests does not substitute for it.
 - **Goal-task results**: completion completes the goal; failure/cancel returns
   it to `open` (budget left) or `exhausted`, never to the model, so retries obey
   the goal's own budget. A cancelled goal stays cancelled.
+- **Lease expiry**: `task.lease_expired` for a goal-owned task leaves the task
+  `dispatched` with its worker reserved and the goal `active`. The host retries
+  the same dispatch identity under a newer attempt, and only an attempt-fenced
+  result (or cancellation) completes or reopens the goal and frees the worker.
+  With an adapter that cannot retry, the host raises no expiry and keeps polling
+  the original attempt.
 - **Cancellation delivery**: active-goal cancellation atomically emits a
   `factory.cancel` outbox effect and records `cancel_requested` on its task.
   Deployments must separately grant `factory.cancel`; missing grant rolls back
@@ -134,7 +146,7 @@ focused tests does not substitute for it.
   false cancellation receipt, and unsupported HTTP cancellation alongside an
   independently dispatched/completed sibling and the retained attempt's eventual
   completion. Direct cancellation refuses expired or terminal attempts before I/O.
-  Native workspace: 32 executive, 7 repository, 29 host tests pass; strict Clippy
+  Native workspace: 35 executive, 7 repository, 29 host tests pass; strict Clippy
   passes. An unbound cancelled claim remains conservatively held: no durable
   submit-start marker distinguishes it from a lost remote create reply. No
   indefinite-uncertainty resolution is claimed.
