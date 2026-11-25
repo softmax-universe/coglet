@@ -45,7 +45,7 @@ struct HubSettings: View {
             if model.hubConnection?.pairing != nil {
                 if model.hubConnection?.state != .connected {
                     CogletButton("Reconnect router", id: "\(idPrefix).reconnect", registry: model.appControls, window: window,
-                        route: route, failure: model.appControlFailure) { model.hubConnection?.retryNow() }
+                        route: route, adapterSynchronous: false, failure: model.appControlFailure) { model.hubConnection?.retryNow() }
                 }
             } else {
                 Text("Pair this device using a code or QR image from your router. You can finish setup without pairing.")
