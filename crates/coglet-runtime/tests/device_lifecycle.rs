@@ -15,6 +15,9 @@
 
 #[path = "support/device_receiver.rs"]
 mod receiver_tests;
+#[path = "support/wal_readiness.rs"]
+mod wal_readiness;
+use wal_readiness::{wait_wal_code_fence_released, wal_code_fence_released};
 
 use coglet_mock::hub::MockHub;
 use coglet_proto::{
@@ -2336,15 +2339,28 @@ async fn original_push_daemon_crash(installed_target: bool) {
             restarted = ChildGuard::spawn(&config_path, &mirror_log);
             env.session = child_session(&env.hub, device, &mut restarted, &mirror_log).await;
         }
-        let terminal = tokio::time::timeout(Duration::from_secs(15), async {
-            loop {
+        let wal = root
+            .join("wal")
+            .join(coglet_runtime::digest(env.coglet.as_bytes()))
+            .join("state.wal");
+        // One shared 15s deadline covers receipt readiness and WAL quiescence.
+        let (terminal, quiescent_snapshot) = tokio::time::timeout(Duration::from_secs(15), async {
+            let terminal = loop {
                 let receipt = result_of(&receipt_of(&mut env, &push_id).await);
                 if receipt["state"] == "applied" {
                     break receipt;
                 }
                 assert_eq!(receipt["state"], "queued");
                 tokio::time::sleep(Duration::from_millis(10)).await;
-            }
+            };
+            let snapshot = if installed_target {
+                // The terminal receipt can precede the final code_pending
+                // true->false WAL frame; retain the exact predicate-checked bytes.
+                Some(wait_wal_code_fence_released(&wal).await)
+            } else {
+                None
+            };
+            (terminal, snapshot)
         })
         .await
         .unwrap();
@@ -2374,11 +2390,12 @@ async fn original_push_daemon_crash(installed_target: bool) {
         assert_eq!(error_code(&denied), "not_found", "{denied}");
         assert_eq!(error_of(&denied), error_of(&unknown));
         if installed_target {
-            let wal = root
-                .join("wal")
-                .join(coglet_runtime::digest(env.coglet.as_bytes()))
-                .join("state.wal");
-            let before = std::fs::read(&wal).unwrap();
+            let before = quiescent_snapshot.expect("installed retry requires exact ready bytes");
+            assert_eq!(
+                wal_code_fence_released(&before),
+                Ok(true),
+                "before-snapshot must be a quiescent WAL"
+            );
             let retry = env.request_with(
                 "hub.git.push",
                 push_id.clone(),
@@ -2401,6 +2418,7 @@ async fn original_push_daemon_crash(installed_target: bool) {
             restarted.kill_and_wait();
             let saved = coglet_runtime::DurableStore::open(&wal).unwrap();
             let state = saved.state().unwrap();
+            assert_eq!(state["managed"]["code_pending"], json!(false));
             assert_eq!(
                 state["completed_segments"]
                     .as_array()
