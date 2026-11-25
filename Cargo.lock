@@ -475,6 +475,7 @@ dependencies = [
  "hex",
  "iroh",
  "libc",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",
