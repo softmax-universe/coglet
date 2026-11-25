@@ -3,6 +3,10 @@
 //! No signing keys, network, mutable registry or clock are used by the rewrite.
 //! Digest records are not credentials.
 pub mod admit;
+pub mod qualification;
+pub use qualification::{
+    CiQualification, QualificationError, RawCiEvidence, TrustRoot, verify_ci_qualification,
+};
 pub mod oracle;
 pub mod rewrite;
 
@@ -55,8 +59,14 @@ pub fn transform_source_bytes() -> &'static [u8] {
         include_str!("lib.rs"),
         "\0rewrite.rs\0",
         include_str!("rewrite.rs"),
+        "\0qualification.rs\0",
+        include_str!("qualification.rs"),
+        "\0oracle.rs\0",
+        include_str!("oracle.rs"),
         "\0admit.rs\0",
         include_str!("admit.rs"),
+        "\0bin/coglet-transform.rs\0",
+        include_str!("bin/coglet-transform.rs"),
         "\0Cargo.toml\0",
         include_str!("../Cargo.toml"),
         "\0Cargo.lock\0",

@@ -502,7 +502,7 @@ impl Database {
     /// Host-owned dispatcher mutation: serialized with step commits under the
     /// owner lease, fenced until decisions are published, and advancing the same
     /// revision. The closure may touch only host dispatch state.
-    #[cfg_attr(not(test), allow(dead_code))]
+    /// hotspot: crates/coglet-db/src/coordinator.rs — sibling cards share this fence.
     pub(crate) fn dispatcher_mutation(
         &mut self,
         mutate: impl FnOnce(&Connection) -> Result<()>,

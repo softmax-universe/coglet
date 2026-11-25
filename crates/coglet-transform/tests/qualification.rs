@@ -7,7 +7,45 @@ use coglet_engine_wasmtime::Wasmtime;
 use coglet_transform::oracle::{Op, Width, r3_bits};
 use coglet_transform::rewrite::{Pins, rewrite};
 use coglet_transform::sha256_hex;
+use std::io::Write;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
+
+fn production_rewrite(original: &[u8]) -> Vec<u8> {
+    let tool = std::env::var_os("COGLET_TRANSFORM_EXE")
+        .unwrap_or_else(|| env!("CARGO_BIN_EXE_coglet-transform").into());
+    let mut child = Command::new(tool)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(original).unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    output.stdout
+}
+
+#[test]
+fn production_transform_tool_native_proof() {
+    let original =
+        guest("i32.const 256 local.get $seed f64.reinterpret_i64 f64.const 1 f64.add f64.store");
+    let output = production_rewrite(&original);
+    assert_ne!(output, original);
+    assert_eq!(output, rewrite(&original, &Pins::default()).unwrap().output);
+    assert_eq!(
+        run(&Wamr::interpreter(), &output, 0xfff8_0000_0000_0042).unwrap(),
+        0x7ff8_0000_0000_0000
+    );
+    assert_eq!(
+        run(&Wasmtime::default(), &output, 0xfff8_0000_0000_0042).unwrap(),
+        0x7ff8_0000_0000_0000
+    );
+}
 
 struct Capture(Vec<u8>);
 impl Host for Capture {
@@ -163,7 +201,8 @@ fn corpus() -> Vec<Case> {
                 continue;
             }
             let original = guest(&op_body(op, width));
-            let output = rewrite(&original, &Pins::default()).unwrap().output;
+            let output = production_rewrite(&original);
+            assert_eq!(output, rewrite(&original, &Pins::default()).unwrap().output);
             if op.rewritten() {
                 assert_ne!(output, original);
             }

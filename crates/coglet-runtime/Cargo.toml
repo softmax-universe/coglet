@@ -37,6 +37,8 @@ iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"], 
 tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
+coglet-factory-host = { path = "../../coglets/factory/host" }
+coglet-llm = { path = "../coglet-llm" }
 rusqlite = { version = "0.38", features = ["bundled"] }
 coglet-hub = { path = "../coglet-hub" }
 coglet-proto = { path = "../coglet-proto" }
