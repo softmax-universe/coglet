@@ -1,6 +1,7 @@
 // Package surface implements the supervisor-bound Coglet surface protocol 0.1
-// on the generated types and strict deterministic CBOR codec. It is not a hub
-// enrollment client: local OS peer authentication precedes surface negotiation.
+// (and, only by explicit trusted opt-in, 0.2) on the generated types and strict
+// deterministic CBOR codec. It is not a hub enrollment client: local OS peer
+// authentication precedes surface negotiation.
 package surface
 
 import (
@@ -37,6 +38,15 @@ type Config struct {
 	EpochFloor uint64
 	Clock      func() uint64
 	Stop       func()
+	// ContractProfile is trusted local provisioning: "" (omitted, normalized to
+	// and persisted as "surface-0.1"), "surface-0.1" or "surface-0.2". Any other
+	// value is refused; there is no fallback. It is never inferred from a peer.
+	// "surface-0.2" offers wire 0.2 then 0.1 and admits the narrow
+	// softmax.app.<component> names; "surface-0.1" offers only 0.1.
+	ContractProfile string
+	// TrustedCatalog is the optional verified immutable catalog (see
+	// NewTrustedCatalog). Its digest and the profile are persisted as a pair.
+	TrustedCatalog *TrustedCatalog
 }
 
 // RequestContext is immutable authority captured at admission. ItemID is the
@@ -86,6 +96,11 @@ type Surface struct {
 	revision, lastClock, lastReceived, lastHealth, peerClock uint64
 	reads                                                    map[string]bool
 	closed                                                   bool
+	profile, version                                         string
+	strict, wide                                             *codec.Schema
+	local                                                    map[string]Binding
+	localRes                                                 map[string][]string
+	sel                                                      map[string]*artifactSel
 }
 
 func ID() string {
@@ -103,19 +118,60 @@ func New(c Config) (*Surface, error) {
 	if err := types.Validate("common::surface-id", c.Identity); err != nil {
 		return nil, err
 	}
+	profile, err := NormalizeProfile(c.ContractProfile)
+	if err != nil {
+		return nil, err
+	}
+	digest := ""
+	if c.TrustedCatalog != nil {
+		if c.TrustedCatalog.art == nil || !hex64.MatchString(c.TrustedCatalog.digest) {
+			return nil, errors.New("unverified trusted catalog")
+		}
+		if err = c.TrustedCatalog.checkProfile(profile); err != nil {
+			return nil, err
+		}
+		digest = c.TrustedCatalog.digest
+	}
+	strict, err := buildSchema(false, c.TrustedCatalog)
+	if err != nil {
+		return nil, err
+	}
+	wide := strict
+	if profile == ProfileSurface02 {
+		if wide, err = buildSchema(true, c.TrustedCatalog); err != nil {
+			return nil, err
+		}
+	}
 	if c.Clock == nil {
 		start := time.Now()
 		base := uint64(start.UnixMicro())
 		c.Clock = func() uint64 { return base + uint64(time.Since(start).Microseconds()) }
 	}
-	s := &Surface{identity: c.Identity, coglets: map[string]bool{}, operations: map[string]registered{}, state: "closed", clock: c.Clock, stop: c.Stop, revision: 1, reads: map[string]bool{}}
+	s := &Surface{identity: c.Identity, coglets: map[string]bool{}, operations: map[string]registered{}, state: "closed", clock: c.Clock, stop: c.Stop, revision: 1, reads: map[string]bool{},
+		profile: profile, strict: strict, wide: wide, local: map[string]Binding{}, localRes: map[string][]string{}, sel: map[string]*artifactSel{}}
+	if cat := c.TrustedCatalog; cat != nil {
+		for name, op := range cat.art.Operations {
+			b := Binding{Entry: op.Entry, Direction: op.Direction, Input: op.Input, local: true, rin: cat.in[name], rout: cat.out[name]}
+			if op.Output != nil {
+				o := *op.Output
+				b.Output = &o
+			}
+			s.local[name] = b
+			s.localRes[name] = append([]string{}, op.Resources...)
+			s.sel[name] = op.Selection
+		}
+	}
 	for _, id := range c.Coglets {
 		if err := types.Validate("common::coglet-id", id); err != nil {
 			return nil, err
 		}
 		s.coglets[id] = true
 	}
-	l, err := openLedger(c.Ledger, c.Identity, c.Create)
+	var catalogRaw []byte
+	if c.TrustedCatalog != nil {
+		catalogRaw = c.TrustedCatalog.raw
+	}
+	l, err := openLedger(c.Ledger, c.Identity, c.Create, profile, digest, catalogRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +248,7 @@ func (s *Surface) guard(err *error) {
 func (s *Surface) abort() error {
 	s.stopNative()
 	s.state = "closed"
+	s.version = ""
 	s.ledger.data.Running = false
 	s.grants = nil
 	s.queue = nil
@@ -207,7 +264,7 @@ func (s *Surface) abort() error {
 func (s *Surface) Register(op Operation) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	b, ok := catalog[op.Name]
+	b, ok := s.binding(op.Name)
 	if !ok || s.state != "closed" || s.closed {
 		return errors.New("unknown binding or invalid lifecycle")
 	}
@@ -217,19 +274,64 @@ func (s *Surface) Register(op Operation) error {
 	if b.Direction != "event" && op.Execute == nil {
 		return errors.New("operation needs Execute")
 	}
-	for _, r := range requiredResources(op.Name) {
+	for _, r := range s.required(op.Name) {
 		if !includes(op.Resources, r) {
 			return errors.New("missing binding resource")
 		}
 	}
 	for _, r := range op.Resources {
-		if err := types.Validate("common::capability-name", r); err != nil {
-			return err
+		if !nameV1.MatchString(r) {
+			return errors.New("invalid resource name for contract profile")
 		}
 	}
 	op.Resources = append([]string{}, op.Resources...)
 	s.operations[op.Name] = registered{op, b}
 	return nil
+}
+
+// binding resolves a built-in or trusted-catalog operation. Catalog names can
+// never shadow built-ins (refused at load).
+func (s *Surface) binding(name string) (Binding, bool) {
+	if b, ok := s.local[name]; ok {
+		return b, true
+	}
+	b, ok := catalog[name]
+	return b, ok
+}
+func (s *Surface) required(name string) []string {
+	if r, ok := s.localRes[name]; ok {
+		return r
+	}
+	return requiredResources(name)
+}
+
+// BoundOperation is the session-aware form of the package function: it also
+// resolves operations from this session's trusted catalog.
+func (s *Surface) BoundOperation(name string, prepare func(map[string]any, RequestContext) error, execute func(map[string]any, RequestContext) (map[string]any, error)) (Operation, error) {
+	if _, ok := s.binding(name); !ok {
+		return Operation{}, errors.New("unknown operation binding")
+	}
+	return Operation{Name: name, Resources: append([]string{}, s.required(name)...), Prepare: prepare, Execute: execute}, nil
+}
+
+// wireSchema is selected by the NEGOTIATED version, never by the profile alone.
+func (s *Surface) wireSchema() *codec.Schema {
+	if s.version == wire02 {
+		return s.wide
+	}
+	return s.strict
+}
+
+// available is false for catalog operations on a downgraded (0.1) connection of
+// a surface-0.2 provisioning: only built-ins are advertised, granted or served.
+func (s *Surface) available(name string) bool {
+	if _, local := s.local[name]; local && s.profile == ProfileSurface02 && s.version != wire02 {
+		return false
+	}
+	return true
+}
+func (s *Surface) msg(kind string, body any) ([]byte, error) {
+	return encodeWith(s.wireSchema(), kind, body)
 }
 func (s *Surface) Open(cid string) (raw []byte, err error) {
 	s.mu.Lock()
@@ -251,7 +353,11 @@ func (s *Surface) Open(cid string) (raw []byte, err error) {
 	s.peerClock = 0
 	s.lastReceived = n
 	s.lastHealth = n
-	raw, err = message("hello", map[string]any{"surface": s.identity, "offer": map[string]any{"versions": []any{"0.1"}}, "clock": n, "correlation_id": cid})
+	offer := []any{wire01}
+	if s.profile == ProfileSurface02 {
+		offer = []any{wire02, wire01}
+	}
+	raw, err = s.msg("hello", map[string]any{"surface": s.identity, "offer": map[string]any{"versions": offer}, "clock": n, "correlation_id": cid})
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +374,7 @@ func message(kind string, body any) ([]byte, error) {
 	return raw, err
 }
 func (s *Surface) emit(kind string, body any) error {
-	raw, err := message(kind, body)
+	raw, err := s.msg(kind, body)
 	if err != nil {
 		return err
 	}
@@ -318,6 +424,9 @@ func (s *Surface) capabilities() error {
 	sort.Strings(names)
 	for _, name := range names {
 		op := s.operations[name]
+		if !s.available(name) {
+			continue
+		}
 		b := op.binding
 		e := entries[b.Entry]
 		if e == nil {
@@ -376,15 +485,20 @@ func (s *Surface) grant(entries []types.Grant) error {
 	seen, owners := map[string]bool{}, map[string]bool{}
 	copyEntries := make([]types.Grant, 0, len(entries))
 	for _, g := range entries {
-		if err = types.Validate("surface::grant", g); err != nil {
+		if err = s.wireSchema().Validate("surface::grant", g); err != nil {
 			return Refuse("invalid_argument")
 		}
 		if !s.coglets[g.Coglet] || seen[g.Coglet] || g.Expires <= n {
 			return Refuse("invalid_argument")
 		}
 		seen[g.Coglet] = true
+		for _, r := range g.Resources {
+			if !nameV1.MatchString(r) {
+				return Refuse("invalid_argument")
+			}
+		}
 		for _, name := range g.Operations {
-			if _, ok := s.operations[name]; !ok {
+			if _, ok := s.operations[name]; !ok || !s.available(name) {
 				return Refuse("invalid_argument")
 			}
 		}
@@ -425,7 +539,11 @@ func (s *Surface) Receive(raw []byte) (err error) {
 	if s.closed || len(raw) == 0 || len(raw) > MaxFrame {
 		return errors.New("invalid frame/lifecycle")
 	}
-	v, err := types.Decode(wire, raw)
+	sch := s.wireSchema()
+	if s.state == "negotiating" {
+		sch = s.wide // reply carries no capability names; version is checked below
+	}
+	v, err := sch.Decode(wire, raw)
 	if err != nil {
 		return err
 	}
@@ -438,9 +556,12 @@ func (s *Surface) Receive(raw []byte) (err error) {
 	}
 	s.lastReceived = n
 	if s.state == "negotiating" {
-		if kind != "hello_reply" || b["correlation_id"] != s.helloID || b["selection"].(map[string]any)["version"] != "0.1" {
+		selection, _ := b["selection"].(map[string]any)
+		ver, _ := selection["version"].(string)
+		if kind != "hello_reply" || b["correlation_id"] != s.helloID || (ver != wire01 && !(ver == wire02 && s.profile == ProfileSurface02)) {
 			return errors.New("invalid negotiation")
 		}
+		s.version = ver
 		s.state = "ready"
 		return s.capabilities()
 	}
@@ -464,14 +585,14 @@ func (s *Surface) Receive(raw []byte) (err error) {
 	}
 }
 func decodeMessage(raw []byte) (map[string]any, error) {
-	v, e := types.Decode(wire, raw)
+	v, e := anyWireSchema().Decode(wire, raw)
 	if e != nil {
 		return nil, e
 	}
 	return v.(map[string]any), nil
 }
 func actionFrom(raw []byte) (map[string]any, error) {
-	v, err := types.Decode(wire, raw)
+	v, err := anyWireSchema().Decode(wire, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -522,7 +643,7 @@ func (s *Surface) admit(a map[string]any, epoch uint64, direction string) (op re
 		return op, ctx, Refuse("permission_denied")
 	}
 	op, ok := s.operations[name]
-	if !ok || op.binding.Direction != direction {
+	if !ok || op.binding.Direction != direction || !s.available(name) {
 		return op, ctx, Refuse("invalid_argument")
 	}
 	for _, r := range op.Resources {
@@ -538,7 +659,7 @@ func (s *Surface) admit(a map[string]any, epoch uint64, direction string) (op re
 		return op, ctx, Refuse("invalid_argument")
 	}
 	args := a["args"].(map[string]any)
-	if types.Validate(rule(op.binding.Input), args) != nil {
+	if s.wireSchema().Validate(op.binding.inRule(), args) != nil {
 		return op, ctx, Refuse("invalid_argument")
 	}
 	if e := semantic(name, args); e != nil {
@@ -559,6 +680,11 @@ func (s *Surface) act(raw []byte, b map[string]any) error {
 	key := actionKey(a)
 	if !s.coglets[a["coglet"].(string)] {
 		return s.emit("accept", receipt(a, "permission_denied"))
+	}
+	if capName, _ := a["capability"].(string); !s.available(capName) {
+		// Unavailable on this connection: no admission fact, no replay of a
+		// retained receipt and no dispatch.
+		return s.emit("accept", receipt(a, "invalid_argument"))
 	}
 	s.prune()
 	if old := s.ledger.data.Actions[key]; old != nil {
@@ -670,7 +796,7 @@ func (s *Surface) complete(ctx RequestContext, status string, result map[string]
 		if op.binding.Output == nil {
 			return false, errors.New("missing output binding")
 		}
-		if err = types.Validate(rule(*op.binding.Output), result); err != nil {
+		if err = s.wireSchema().Validate(op.binding.outRule(), result); err != nil {
 			return false, err
 		}
 		if err = semantic(op.Name, result); err != nil {
@@ -723,7 +849,7 @@ func (s *Surface) Event(ctx RequestContext, name string, payload map[string]any)
 		return err
 	}
 	op, ok := s.operations[name]
-	if !ok || op.binding.Direction != "event" {
+	if !ok || op.binding.Direction != "event" || !s.available(name) {
 		return Refuse("invalid_argument")
 	}
 	allowed := false
@@ -740,11 +866,31 @@ func (s *Surface) Event(ctx RequestContext, name string, payload map[string]any)
 	if !allowed {
 		return Refuse("permission_denied")
 	}
-	if err = types.Validate(rule(op.binding.Input), payload); err != nil {
+	if err = s.wireSchema().Validate(op.binding.inRule(), payload); err != nil {
 		return err
 	}
 	if err = semantic(name, payload); err != nil {
 		return err
+	}
+	if sel := s.sel[name]; sel != nil {
+		read, e := s.selectedRead(name, payload)
+		if e != nil {
+			return e
+		}
+		both := false
+		for _, g := range s.grants {
+			if g.Coglet == ctx.Coglet && includes(g.Operations, read) {
+				both = true
+				for _, r := range s.operations[read].Resources {
+					if !includes(g.Resources, r) {
+						both = false
+					}
+				}
+			}
+		}
+		if !both {
+			return Refuse("permission_denied")
+		}
 	}
 	err = s.eventFrame(name, payload, ID())
 	s.guard(&err)
@@ -779,7 +925,7 @@ func (s *Surface) read(b map[string]any) error {
 		err = ctx.Effect(func() error { var e error; result, e = op.Execute(b["args"].(map[string]any), ctx); return e })
 	}
 	if err == nil {
-		err = types.Validate(rule(*op.binding.Output), result)
+		err = s.wireSchema().Validate(op.binding.outRule(), result)
 	}
 	if err == nil {
 		err = semantic(op.Name, result)
@@ -905,7 +1051,7 @@ func (s *Surface) Tick() (err error) {
 	return nil
 }
 func privateFrame(raw []byte) bool {
-	v, e := types.Decode(wire, raw)
+	v, e := anyWireSchema().Decode(wire, raw)
 	if e != nil {
 		return true
 	}
@@ -913,7 +1059,7 @@ func privateFrame(raw []byte) bool {
 	return m["type"] == "read_reply" || (m["type"] == "event" && m["body"].(map[string]any)["kind"] != "action.outcome")
 }
 func authorityFrame(raw []byte) bool {
-	v, e := types.Decode(wire, raw)
+	v, e := anyWireSchema().Decode(wire, raw)
 	if e != nil {
 		return true
 	}

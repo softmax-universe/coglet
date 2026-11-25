@@ -1,0 +1,35 @@
+# Separately selected surface-0.2 claims (ADR-0030 section 1a). The default impls.toml and the
+# frozen conformance/surface + conformance/speech cases stay at surface-0.1 and are not touched.
+# Run with:  conformance/run --registry conformance/impls-surface02.toml --contract-profile surface-0.2
+#
+# Only the Python and Go SDK reference adapters are registered. The production Rust runtime and
+# Swift SDK have no executable surface-0.2 adapter yet (owner card t_01a20fdfde58e6ba): nothing
+# here claims they run these cases. Register them here, with the same fixtures, once they can
+# honour COGLET_CONFORMANCE_CONTRACT_PROFILE and the pinned catalog fixture env.
+[[implementations]]
+name = "surface-python-reference-02"
+suites = ["surface02"]
+peer_roles = ["runtime"]
+transport = "stdio"
+contract_profile = "surface-0.2"
+command = ["env", "PYTHONPATH=sdk/surface-python", "python3", "-m", "coglet_surface.reference", "--conformance-clock"]
+ready_line = "COGLET_PYTHON_READY"
+fixture_clock = true
+[implementations.fixtures.surface02-base.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"
+
+[[implementations]]
+name = "surface-go-reference-02"
+suites = ["surface02"]
+peer_roles = ["runtime"]
+transport = "stdio"
+contract_profile = "surface-0.2"
+command = ["target/coglet-go-surface"]
+ready_line = "COGLET_CONFORMANCE_READY"
+fixture_clock = true
+[implementations.fixtures.surface02-base.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"

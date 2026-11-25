@@ -1,0 +1,77 @@
+{
+  "name": "app-read-state",
+  "description": "selected 0.2 app read through the pinned catalog",
+  "contract_profile": "surface-0.2",
+  "peer_role": "runtime",
+  "fixtures": [
+    "surface02-base"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.2",
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.2"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "read",
+        "body": {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "capability": "softmax.app.state",
+          "args": {
+            "id": 1
+          },
+          "grant_epoch": 1,
+          "deadline": 1000000,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "read_reply",
+        "body.correlation_id": "11111111111111111111111111111111",
+        "body.ok": true,
+        "body.value.title": "hello"
+      },
+      "within_ms": 200
+    }
+  ]
+}

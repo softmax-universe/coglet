@@ -182,6 +182,52 @@ length frame; it never goes on the QUIC wire. Responses contain only wire frames
 not control metadata. The encrypted binary integration test covers two sends on
 one operation stream, with an intervening reply.
 
+## Contract profile selection (ADR-0030 section 1a)
+
+`contract_profile` is trusted local provisioning, not wire negotiation. Values are
+exactly `surface-0.1` or `surface-0.2`; anything else (empty, wrong case, padded,
+non-string) is a configuration error, never a fallback.
+
+- Registry: optional `contract_profile` per implementation, default `surface-0.1`.
+- Cases: optional top-level `contract_profile`, default `surface-0.1`. Every case under
+  `conformance/surface` and `conformance/speech` is frozen at the implicit default.
+- CLI: `--contract-profile {surface-0.1,surface-0.2}`. Omitted means "use the
+  registry"; an explicit value must agree with **every** selected registry entry
+  (or direct-mode/`--self-test` implementation), else the run fails.
+- Preflight: all of the above, plus case-vs-implementation agreement, are checked
+  before any peer is launched. A `surface-0.2` case never runs against a
+  `surface-0.1`-provisioned peer or vice versa; there is no skip.
+- Delivery: the harness always sets `COGLET_CONFORMANCE_CONTRACT_PROFILE` in the peer
+  (and setup/teardown hook) environment, overriding any inherited value; omission is
+  an explicit `surface-0.1`. Fixture hook env may not set it (only `COGLET_FIXTURE_*`).
+  It is never put in a wire frame. Because delivery is launch-time env, only `stdio`
+  entries may select `surface-0.2`; attached `unix`/`iroh` peers cannot.
+- A pinned catalog is a separate trusted fixture input: `COGLET_FIXTURE_CATALOG`
+  (path) with `COGLET_FIXTURE_CATALOG_SHA256` (the independent pin), supplied together.
+
+### `surface02` suite (separately selected)
+
+`conformance/surface02/` holds `surface-0.2` runtime-role cases (version selection,
+pinned-catalog read and action, input-schema rejection, built-in-only downgrade to
+`0.1`). Their trusted inputs live in `conformance/surface02-fixtures/`
+(`adapter-config.json`, `app-catalog.json`). Run only with
+`conformance/impls-surface02.toml`:
+
+    conformance/run --registry conformance/impls-surface02.toml --contract-profile surface-0.2
+
+The Python (`python -m coglet_surface.reference --conformance-clock`) and Go
+(`sdk/surface-go/cmd/conformance`, built to `target/coglet-go-surface`) adapters read the
+environment through their SDK provisioning entry points (`coglet_surface.reference.provision`,
+Go `provision()`), then pass `contract_profile`/`TrustedCatalog` to the SDK constructor.
+
+**Not claimed:** the production Rust runtime/reference/mock surfaces and the Swift SDK have no
+`surface-0.2` registration; they are owned by `t_01a20fdfde58e6ba` and must not be added to
+`impls-surface02.toml` until an executable adapter honours the env contract above. The cases
+above cover wire/dispatch seams only; the `s02-*` rule families (event, action, capabilities,
+grants, read, act) are not exercised by these cases beyond what the shared Python/Go reference
+implementations already do. Known adapter seam gap: the Go SDK has no negotiated-version
+accessor, so its downgrade adapter retries a built-ins-only grant when the full grant is refused.
+
 ## Reports and proof boundaries
 
 `--junit PATH` writes a JUnit XML report (default `target/conformance-results.xml`)
