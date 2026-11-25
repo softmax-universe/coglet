@@ -68,7 +68,7 @@ def validate_case(case):
     for step in case['steps']:
         if not isinstance(step, dict):
             raise ValueError('step must be an object')
-        actions = set(step) & {'send', 'send_hex', 'expect', 'expect_hex', 'match', 'journal_hash', 'silence_ms'}
+        actions = set(step) & {'send', 'send_hex', 'expect', 'expect_hex', 'match', 'journal_hash', 'silence_ms', 'expect_close'}
         if len(actions) != 1 or set(step) - actions - {'at_ms', 'within_ms', 'path', 'stream', 'finish'}:
             raise ValueError('step requires exactly one supported action')
         action = next(iter(actions))
@@ -101,6 +101,8 @@ def validate_case(case):
             raise ValueError('journal_hash must be lowercase 256-bit hex')
         if action == 'silence_ms':
             millis(step[action])
+        if action == 'expect_close' and step[action] is not True:
+            raise ValueError('expect_close must be true')
 
 
 def cases_for(root, suite):
@@ -533,6 +535,23 @@ async def timeline(peer, case):
                 if fixture_clock:
                     await asyncio.wait_for(peer.clock_ack(), timeout)
                 continue
+            if 'expect_close' in step:
+                # A timeout is not EOF, and even one unexpected byte (including
+                # a truncated frame prefix) must not count as clean closure.
+                try:
+                    await asyncio.wait_for(peer.reader.readexactly(1), timeout)
+                except asyncio.IncompleteReadError as error:
+                    if error.partial:
+                        raise AssertionError('unexpected bytes before close') from error
+                    # A crashed stdio adapter is not evidence that its production
+                    # peer deliberately closed. A bridge must end cleanly too.
+                    process = getattr(peer, 'process', None)
+                    if process is not None:
+                        status = await asyncio.wait_for(process.wait(), timeout)
+                        if status != 0:
+                            raise AssertionError(f'peer exited with status {status} before close')
+                    continue
+                raise AssertionError('unexpected bytes before close')
             if 'silence_ms' in step:
                 if fixture_clock:
                     target = peer.fixture_time + round(millis(step['silence_ms']) * 1_000_000)
