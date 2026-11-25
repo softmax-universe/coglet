@@ -12,8 +12,13 @@ use std::{
     time::Instant,
 };
 
+#[cfg(feature = "ffi-test-hooks")]
+#[path = "ffi_test_hooks.rs"]
+mod test_hooks;
 #[path = "ffi_timing.rs"]
 pub mod timing;
+#[cfg(feature = "ffi-test-hooks")]
+pub use test_hooks::*;
 
 static BINDING: OnceLock<SurfaceBinding> = OnceLock::new();
 static RUNTIME: Mutex<Option<Arc<Mutex<crate::RuntimeService>>>> = Mutex::new(None);
@@ -366,9 +371,11 @@ pub unsafe extern "C" fn coglet_surface_recv(
             call.clock_us = Some(link.timings.now());
             link.session.tick(now);
             call.tick_us = Some(link.timings.now());
+            call.output_depth = link.session.output_depth();
             if let Some(bytes) = link.session.front() {
                 call.ready_us = Some(link.timings.now());
                 call.ready_bytes = bytes.len();
+                call.output_kind = timing::OutputKind::of_valid_frame(bytes);
             }
             // ADR-0034: tick above is mandatory (expiry/revocation/inactivity).
             // Once its front is eligible, do not put optional guest/fsync work
@@ -383,6 +390,8 @@ pub unsafe extern "C" fn coglet_surface_recv(
             if call.ready_us.is_none() {
                 call.ready_us = Some(link.timings.now());
                 call.ready_bytes = bytes.len();
+                call.output_depth = link.session.output_depth();
+                call.output_kind = timing::OutputKind::of_valid_frame(bytes);
             }
             unsafe {
                 n.write(bytes.len());

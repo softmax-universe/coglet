@@ -178,6 +178,9 @@ impl SurfaceSession {
     pub fn front(&self) -> Option<&[u8]> {
         self.output.front().map(Vec::as_slice)
     }
+    pub(crate) fn output_depth(&self) -> usize {
+        self.output.len()
+    }
     pub fn pop(&mut self) -> Option<Vec<u8>> {
         self.output.pop_front()
     }
