@@ -222,19 +222,14 @@ fn write_paths(case: &str) -> Vec<&'static str> {
 }
 
 fn fetch_logs_snapshot() -> Result<Value> {
-    let fixtures: Value = serde_json::from_slice(&std::fs::read(
-        "crates/coglet-runtime/tests/data/hub0/fetch.json",
-    )?)?;
-    let entry = fixtures
-        .as_array()
-        .ok_or("fetch.json")?
-        .iter()
-        .find(|row| row["ref"] == "refs/heads/logs")
-        .ok_or("logs snapshot missing")?;
-    let last = entry["history"]
-        .as_array()
-        .and_then(|h| h.last())
-        .ok_or("logs history")?;
+    // Crate-owned harness input (not a spec fixture): compiled in so the peer
+    // cannot lose it to an unrelated spec change. Guarded by
+    // tests/receiver_harness_inputs.rs. Content is the final `refs/heads/logs`
+    // entry of the frozen hub0 corpus (tests/data/hub0/fetch.json), unchanged.
+    let last: Value = serde_json::from_str(include_str!("receiver-fetch-logs-snapshot.json"))?;
+    if last["ref"] != "refs/heads/logs" {
+        return Err("logs snapshot missing".into());
+    }
     Ok(json!({
         "update": last["update"],
         "bundle_hex": last["bundle_hex"],

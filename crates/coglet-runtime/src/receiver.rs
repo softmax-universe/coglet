@@ -653,7 +653,8 @@ impl RuntimeService {
             )
         } else {
             let message = &request["params"]["message"];
-            let messages = crate::boundary::inbox(&runtime.files)?;
+            let messages =
+                crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile)?;
             if let Some(existing) = messages.iter().find(|m| m["id"] == message["id"]) {
                 let mut delivery = existing.clone();
                 delivery

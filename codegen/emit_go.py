@@ -173,13 +173,13 @@ class Emitter:
             return kinds.pop() if len(kinds) == 1 else 'any'
         raise ValueError(f'unsupported IR op {op!r}')
 
-    def conv(self, node):
+    def conv(self, node, indent='\t'):
         """Go expression: func(any) (T, error) building T from a validated value."""
         op = node['op']
         if op == 'ref':
             return 'as' + self.names[node['name']]
         if op == 'default':
-            return self.conv(node['item'])
+            return self.conv(node['item'], indent)
         if op == 'tuple':
             return 'func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) }'
         gt = self.go_type(node)
@@ -194,11 +194,14 @@ class Emitter:
         if gt == 'int64':
             return 'codec.AsInt64'
         if op in ('union', 'intersection'):
-            return self.conv(node['items'][0])
-        if op == 'array':
-            return f'func(x any) ({gt}, error) {{ return codec.AsList(x, {self.conv(node["item"])}) }}'
-        if op == 'map':
-            return f'func(x any) ({gt}, error) {{ return codec.AsMap(x, {self.conv(node["item"])}) }}'
+            return self.conv(node['items'][0], indent)
+        if op in ('array', 'map'):
+            # Explicit newlines avoid gofmt's name-length-dependent expansion.
+            # Generation stays deterministic even without an installed gofmt.
+            helper = 'AsList' if op == 'array' else 'AsMap'
+            child = self.conv(node['item'], indent + '\t')
+            return (f'func(x any) ({gt}, error) {{\n'
+                    f'{indent}\treturn codec.{helper}(x, {child})\n{indent}}}')
         if op == 'record':
             return 'codec.AsObject'
         raise ValueError(f'unsupported IR op {op!r}')
@@ -258,7 +261,7 @@ class Emitter:
             out += ['\tif _, ok := x.(map[string]any); !ok {', '\t\treturn out, codec.ErrShape', '\t}']
         for ident, _, f in fields:
             key = go_string(f['name'])
-            fn = self.call(self.conv(f['type']))
+            fn = self.call(self.conv(f['type'], '\t\t' if f['optional'] else '\t'))
             if f['optional']:
                 out += [f'\tif raw, ok := m[{key}]; ok {{', f'\t\tt, err := {fn}(raw)', '\t\tif err != nil {',
                         '\t\t\treturn out, err', '\t\t}', f'\t\tout.{ident} = &t', '\t}']
@@ -266,7 +269,7 @@ class Emitter:
                 out += [f'\tif out.{ident}, err = {fn}(m[{key}]); err != nil {{', '\t\treturn out, err', '\t}']
         if rest is not None:
             known = ' || '.join(f'k == {go_string(f["name"])}' for f in record['fields'])
-            fn = self.call(self.conv(rest['item']))
+            fn = self.call(self.conv(rest['item'], '\t\t'))
             out += [f'\tout.Rest = make(map[string]{self.go_type(rest["item"])})', '\tfor k, raw := range m {']
             if known:
                 out += [f'\t\tif {known} {{', '\t\t\tcontinue', '\t\t}']

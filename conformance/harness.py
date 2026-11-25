@@ -19,6 +19,17 @@ ROOT = Path(__file__).resolve().parent.parent
 SUITES = ROOT / 'conformance'
 NAME = re.compile(r'[a-z][a-z0-9_-]*\Z')
 LABEL = re.compile(r'[a-z][a-z0-9_.-]*\Z')
+# ADR-0030 section 1a: trusted local provisioning identity, never a wire field.
+PROFILES = ('surface-0.1', 'surface-0.2')
+DEFAULT_PROFILE = 'surface-0.1'
+PROFILE_ENV = 'COGLET_CONFORMANCE_CONTRACT_PROFILE'
+
+
+def profile_value(value, what):
+    """Exact profile spelling only: no case folding, trimming or fallback."""
+    if type(value) is not str or value not in PROFILES:
+        raise ValueError(f'{what} must be exactly one of {", ".join(PROFILES)}')
+    return value
 
 
 def load_json(path):
@@ -40,13 +51,14 @@ def millis(value):
 
 
 def validate_case(case):
-    if not isinstance(case, dict) or set(case) - {'name', 'steps', 'timeout_ms', 'description', 'peer_role', 'fixtures'}:
+    if not isinstance(case, dict) or set(case) - {'name', 'steps', 'timeout_ms', 'description', 'peer_role', 'fixtures', 'contract_profile'}:
         raise ValueError('case must have name, steps and optional timeout_ms/description')
     if not isinstance(case.get('name'), str) or not case['name']:
         raise ValueError('case name must be nonempty text')
     if not isinstance(case.get('steps'), list) or not case['steps']:
         raise ValueError('case steps must be a nonempty array')
     millis(case.get('timeout_ms', 10000))
+    profile_value(case.get('contract_profile', DEFAULT_PROFILE), 'case contract_profile')
     if not isinstance(case.get('peer_role', 'runtime'), str) or not NAME.fullmatch(case.get('peer_role', 'runtime')):
         raise ValueError('invalid peer_role')
     labels = case.get('fixtures', [])
@@ -56,7 +68,7 @@ def validate_case(case):
     for step in case['steps']:
         if not isinstance(step, dict):
             raise ValueError('step must be an object')
-        actions = set(step) & {'send', 'send_hex', 'expect', 'expect_hex', 'match', 'journal_hash', 'silence_ms'}
+        actions = set(step) & {'send', 'send_hex', 'expect', 'expect_hex', 'match', 'journal_hash', 'silence_ms', 'expect_close'}
         if len(actions) != 1 or set(step) - actions - {'at_ms', 'within_ms', 'path', 'stream', 'finish'}:
             raise ValueError('step requires exactly one supported action')
         action = next(iter(actions))
@@ -89,6 +101,8 @@ def validate_case(case):
             raise ValueError('journal_hash must be lowercase 256-bit hex')
         if action == 'silence_ms':
             millis(step[action])
+        if action == 'expect_close' and step[action] is not True:
+            raise ValueError('expect_close must be true')
 
 
 def cases_for(root, suite):
@@ -112,7 +126,8 @@ def cases_for(root, suite):
 
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
-               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock', 'fixture_scheduler'}
+               'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock', 'fixture_scheduler',
+               'contract_profile'}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -137,6 +152,9 @@ def validate_impl(impl):
         if not re.fullmatch('[0-9a-f]{64}', impl.get('endpoint', '')) or not impl.get('alpn'):
             raise ValueError('iroh requires endpoint hex and alpn')
     millis(impl.get('connect_timeout_ms', 5000))
+    if profile_value(impl.get('contract_profile', DEFAULT_PROFILE), 'contract_profile') != DEFAULT_PROFILE and transport != 'stdio':
+        # Provisioning is launch-time env; an already-running unix/iroh peer cannot receive it.
+        raise ValueError('non-default contract_profile requires stdio transport')
     if 'fixture_clock' in impl and (type(impl['fixture_clock']) is not bool
                                       or transport != 'stdio'):
         raise ValueError('fixture_clock requires stdio and a boolean')
@@ -166,6 +184,26 @@ def validate_impl(impl):
             raise ValueError('clock socket is harness-owned, not a fixture env setting')
         if not isinstance(env, dict) or any(not re.fullmatch(r'COGLET_FIXTURE_[A-Z0-9_]+', k) or not isinstance(v, str) for k, v in env.items()):
             raise ValueError('fixture env requires COGLET_FIXTURE_* string values')
+
+
+def select_profiles(implementations, override):
+    """Apply the optional CLI selector; it must agree with every selected registry entry."""
+    if override is not None:
+        profile_value(override, '--contract-profile')
+        for impl in implementations:
+            have = impl.get('contract_profile', DEFAULT_PROFILE)
+            if have != override:
+                raise ValueError(f'--contract-profile {override} conflicts with implementation '
+                                 f'{impl["name"]} contract_profile {have}')
+    return implementations
+
+
+def check_case_profile(impl, suite, case):
+    want = case.get('contract_profile', DEFAULT_PROFILE)
+    have = impl.get('contract_profile', DEFAULT_PROFILE)
+    if want != have:
+        raise ValueError(f'{impl["name"]}.{suite}/{case["name"]} requires {want} but implementation '
+                         f'is provisioned {have}')
 
 
 def quarantined_ids(path):
@@ -497,6 +535,24 @@ async def timeline(peer, case):
                 if fixture_clock:
                     await asyncio.wait_for(peer.clock_ack(), timeout)
                 continue
+            if 'expect_close' in step:
+                close_deadline = time.monotonic() + timeout
+                # A timeout is not EOF, and even one unexpected byte (including
+                # a truncated frame prefix) must not count as clean closure.
+                try:
+                    await asyncio.wait_for(peer.reader.readexactly(1), timeout)
+                except asyncio.IncompleteReadError as error:
+                    if error.partial:
+                        raise AssertionError('unexpected bytes before close') from error
+                    # A crashed stdio adapter is not evidence that its production
+                    # peer deliberately closed. A bridge must end cleanly too.
+                    process = getattr(peer, 'process', None)
+                    if process is not None:
+                        status = await asyncio.wait_for(process.wait(), max(0, close_deadline - time.monotonic()))
+                        if status != 0:
+                            raise AssertionError(f'peer exited with status {status} before close')
+                    continue
+                raise AssertionError('unexpected bytes before close')
             if 'silence_ms' in step:
                 if fixture_clock:
                     target = peer.fixture_time + round(millis(step['silence_ms']) * 1_000_000)
@@ -567,6 +623,8 @@ async def run_case(impl, suite, case):
         return (f'{impl["name"]}.{suite}', case['name'], 0, None, skipped)
     env = dict(os.environ, COGLET_CONFORMANCE_CASE=case['name'],
                COGLET_CONFORMANCE_SUITE=suite, COGLET_CONFORMANCE_PEER_ROLE=case.get('peer_role', 'runtime'))
+    # Always set (overriding any inherited value) so omission is an explicit 0.1.
+    env[PROFILE_ENV] = impl.get('contract_profile', DEFAULT_PROFILE)
     for label in labels:
         env.update(hooks[label].get('env', {}))
     peer = Peer(impl, env)
@@ -638,13 +696,18 @@ async def execute(args):
                 if args.key_file:
                     impl['key_file'] = args.key_file
             impl['framing'] = args.framing
+            if args.contract_profile is not None:
+                impl['contract_profile'] = args.contract_profile
             validate_impl(impl)
             implementations = [impl]
         else:
             implementations = registry(args.registry)
+        select_profiles(implementations, args.contract_profile)
         # Preflight all claims before launching anything, never silently skip a suite.
         jobs = [(impl, suite, case) for impl in implementations for suite in impl['suites']
                 for case in cases_for(args.cases, suite)]
+        for impl, suite, case in jobs:
+            check_case_profile(impl, suite, case)  # before any launch
         if not jobs:
             print('No implementations registered; no conformance claims made.')
         quarantined = quarantined_ids(args.quarantine)
@@ -685,6 +748,10 @@ def main():
     parser.add_argument('--address', help='optional direct iroh IP:port')
     parser.add_argument('--driver')
     parser.add_argument('--key-file', help='iroh fixture secret key file, never key material')
+    parser.add_argument('--contract-profile', choices=PROFILES, default=None,
+                        help='trusted local contract profile (default surface-0.1); must agree with every '
+                             'selected registry entry contract_profile; passed via ' + PROFILE_ENV
+                             + ', never on the wire')
     parser.add_argument('--framing', choices=['u32be', 'cbor-sequence'], default='u32be')
     parser.add_argument('--registry', type=Path, default=SUITES / 'impls.toml')
     parser.add_argument('--cases', type=Path, default=SUITES)

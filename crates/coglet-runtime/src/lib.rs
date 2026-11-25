@@ -3,7 +3,9 @@ mod admission;
 pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
+mod contract_profile;
 mod trusted_catalog;
+pub use contract_profile::ContractProfile;
 pub use trusted_catalog::TrustedExtensionCatalog;
 #[cfg(feature = "device")]
 mod device;
@@ -163,15 +165,26 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
     Ok(out)
 }
 
+mod profile_codec;
+
 pub fn validate(rule: &str, value: &Value) -> Result<()> {
     let abi = matches!(
         rule,
-        "manifest" | "trace" | "step-record" | "boundary-record"
+        "manifest"
+            | "trace"
+            | "step-record"
+            | "boundary-record"
+            | "abi::manifest"
+            | "abi::trace"
+            | "abi::step-record"
+            | "abi::boundary-record"
     ) || rule.starts_with("database::");
     if abi && !(hash_upgrade::historical() && hash_upgrade::legacy_version(&value["version"])) {
         coglet_types_current::decode(rule, &cbor(value)?).map(|_| ())
     } else {
-        coglet_types::validate(rule, &profile_value(value, 0)?)
+        // Selected surface02 roots route to the current types; every other
+        // legacy/historical or frozen hub rule stays on the pinned hub0 types.
+        profile_codec::validate(rule, &profile_value(value, 0)?)
     }
 }
 

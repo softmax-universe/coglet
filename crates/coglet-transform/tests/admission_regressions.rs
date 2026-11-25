@@ -58,7 +58,7 @@ fn publication_rejects_unbound_evidence_and_profile_pins() {
 fn all_qualification_pins_are_required() {
     let (key, evidence, allow, now, statement) = support::fixture();
     let good = sign(&key, statement);
-    type Change = fn(&mut coglet_transform::QualifiedPins);
+    type Change = fn(&mut coglet_transform::GatePins);
     let changes: &[Change] = &[
         |p| p.profile.push('x'),
         |p| p.transform_artifact_sha256.push('x'),
@@ -67,7 +67,6 @@ fn all_qualification_pins_are_required() {
         |p| p.compute_mode.push('x'),
         |p| p.arch.push('x'),
         |p| p.exec_mode.push('x'),
-        |p| p.source_commit.push('x'),
         |p| p.transform_source_sha256.push('x'),
         |p| p.toolchain_sha256.push('x'),
         |p| p.dependency_lock_sha256.push('x'),
@@ -75,8 +74,6 @@ fn all_qualification_pins_are_required() {
         |p| p.corpus_sha256.push('x'),
         |p| p.gate_outputs_sha256.push('x'),
         |p| p.engine_artifact_sha256.push('x'),
-        |p| p.original_sha256.push('x'),
-        |p| p.output_sha256.push('x'),
     ];
     for change in changes {
         let mut wrong = allow.clone();

@@ -79,6 +79,7 @@ fn ordinary(mode: &str) -> StepHost {
         crate::Snapshot::new(Default::default()).unwrap(),
         Default::default(),
         &json!({"coglet":"coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","grants":["db.read","db.write"],"budgets":{"compute_mode":mode,"host_bytes":1_000_000}}),
+        crate::ContractProfile::Surface01,
     )
 }
 fn field<'a>(v: &'a V, key: &str) -> &'a V {

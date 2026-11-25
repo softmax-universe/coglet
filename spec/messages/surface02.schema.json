@@ -1,0 +1,1805 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/surface02.schema.json",
+  "title": "Explicitly provisioned surface-0.2 contracts",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/s02-surface-message"
+    },
+    {
+      "$ref": "#/$defs/s02-event"
+    },
+    {
+      "$ref": "#/$defs/s02-action"
+    },
+    {
+      "$ref": "#/$defs/s02-manifest"
+    },
+    {
+      "$ref": "#/$defs/s02-db-manifest"
+    },
+    {
+      "$ref": "#/$defs/s02-trace"
+    },
+    {
+      "$ref": "#/$defs/s02-db-trace"
+    }
+  ],
+  "$defs": {
+    "s02-call": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "timer"
+            },
+            "argument": {
+              "$ref": "abi.schema.json#/$defs/timer-request"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "emit"
+            },
+            "argument": {
+              "$ref": "#/$defs/s02-action"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "llm"
+            },
+            "argument": {
+              "$ref": "#/$defs/s02-llm-request"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "log"
+            },
+            "argument": {
+              "$ref": "abi.schema.json#/$defs/log-entry"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "enum": [
+                "timer",
+                "emit",
+                "llm",
+                "log"
+              ]
+            },
+            "argument_hex": {
+              "$ref": "abi.schema.json#/$defs/hex"
+            },
+            "result": {
+              "const": 1
+            }
+          },
+          "required": [
+            "op",
+            "argument_hex",
+            "result"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "s02-inbox-message": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "sender": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "event": {
+          "$ref": "#/$defs/s02-event"
+        }
+      },
+      "required": [
+        "index",
+        "id",
+        "sender",
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "s02-llm-request": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "capability": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "input": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        }
+      },
+      "required": [
+        "id",
+        "correlation_id",
+        "capability",
+        "model",
+        "input"
+      ],
+      "additionalProperties": false
+    },
+    "s02-manifest": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.0"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "exclusive_outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "budgets": {
+          "$ref": "abi.schema.json#/$defs/budgets"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "subscriptions",
+        "required_capabilities",
+        "exclusive_outputs",
+        "budgets"
+      ],
+      "additionalProperties": false
+    },
+    "s02-step-record": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "1.0"
+            },
+            "trace_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-call"
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "committed"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "1.0"
+            },
+            "trace_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-call"
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "aborted"
+            },
+            "failure": {
+              "$ref": "abi.schema.json#/$defs/failure"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status",
+            "failure"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "s02-trace": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.0"
+        },
+        "trace_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "initial_effect_ids": {
+          "$ref": "abi.schema.json#/$defs/effect-ledger"
+        },
+        "initial_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-action"
+          },
+          "minItems": 0
+        },
+        "initial_inbox_wakes": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/uint64"
+          },
+          "minItems": 0
+        },
+        "initial_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "initial_files": {
+          "$ref": "abi.schema.json#/$defs/snapshot"
+        },
+        "code_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "manifest_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "final_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "trailing_boundary": {
+          "anyOf": [
+            {
+              "$ref": "abi.schema.json#/$defs/boundary-record"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initial_timers": {
+          "type": "array",
+          "items": {
+            "$ref": "abi.schema.json#/$defs/timer-request"
+          },
+          "minItems": 0
+        },
+        "initial_llm_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-llm-request"
+          },
+          "minItems": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-step-record"
+          },
+          "minItems": 0
+        },
+        "blobs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "abi.schema.json#/$defs/hex"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "trace_id",
+        "coglet",
+        "initial_effect_ids",
+        "initial_actions",
+        "initial_inbox_wakes",
+        "initial_hash",
+        "initial_files",
+        "code_hash",
+        "manifest_hash",
+        "final_hash",
+        "trailing_boundary",
+        "initial_timers",
+        "initial_llm_requests",
+        "records",
+        "blobs"
+      ],
+      "additionalProperties": false
+    },
+    "s02-action": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/action-id"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "capability": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "args": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "deadline": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "id",
+        "coglet",
+        "capability",
+        "args",
+        "deadline",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-capability-name": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|softmax\\.app\\.[a-z][a-z0-9_]{0,31})(?![\\s\\S])"
+    },
+    "s02-event": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "kind": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "seq": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "logical_time": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "payload": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "source",
+        "kind",
+        "seq",
+        "logical_time",
+        "payload",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-database": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/s02-db-request"
+        },
+        {
+          "$ref": "database.schema.json#/$defs/db-reply"
+        },
+        {
+          "$ref": "database.schema.json#/$defs/db-outcome"
+        },
+        {
+          "$ref": "#/$defs/s02-db-host-call"
+        },
+        {
+          "$ref": "#/$defs/s02-db-manifest"
+        },
+        {
+          "$ref": "#/$defs/s02-db-step-record"
+        },
+        {
+          "$ref": "#/$defs/s02-db-trace"
+        },
+        {
+          "$ref": "database.schema.json#/$defs/db-boundary-record"
+        }
+      ]
+    },
+    "s02-db-enqueue": {
+      "type": "object",
+      "properties": {
+        "operation": {
+          "const": "enqueue"
+        },
+        "intent_id": {
+          "$ref": "common.schema.json#/$defs/action-id"
+        },
+        "idempotency_key": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "kind": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "payload": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "operation",
+        "intent_id",
+        "idempotency_key",
+        "kind",
+        "payload",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-db-host-call": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument": {
+              "$ref": "#/$defs/s02-db-request"
+            },
+            "result": {
+              "const": 0
+            },
+            "response": {
+              "$ref": "database.schema.json#/$defs/db-reply"
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result",
+            "response"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument": {
+              "$ref": "#/$defs/s02-db-request"
+            },
+            "result": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          "required": [
+            "op",
+            "argument",
+            "result"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "db"
+            },
+            "argument_hex": {
+              "$ref": "abi.schema.json#/$defs/hex"
+            },
+            "result": {
+              "const": 1
+            }
+          },
+          "required": [
+            "op",
+            "argument_hex",
+            "result"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "s02-db-manifest": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.1"
+        },
+        "id": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "subscriptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "exclusive_outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          },
+          "minItems": 0
+        },
+        "budgets": {
+          "$ref": "abi.schema.json#/$defs/budgets"
+        },
+        "database": {
+          "$ref": "database.schema.json#/$defs/db-config"
+        }
+      },
+      "required": [
+        "version",
+        "id",
+        "subscriptions",
+        "required_capabilities",
+        "exclusive_outputs",
+        "budgets",
+        "database"
+      ],
+      "additionalProperties": false
+    },
+    "s02-db-request": {
+      "anyOf": [
+        {
+          "$ref": "database.schema.json#/$defs/db-statement"
+        },
+        {
+          "$ref": "#/$defs/s02-db-enqueue"
+        }
+      ]
+    },
+    "s02-db-step-record": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "1.1"
+            },
+            "trace_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/s02-call"
+                  },
+                  {
+                    "$ref": "#/$defs/s02-db-host-call"
+                  }
+                ]
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "committed"
+            },
+            "db_before": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_after": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_schema_version": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_catalog_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status",
+            "db_before",
+            "db_after",
+            "db_schema_version",
+            "db_catalog_hash"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "const": "1.1"
+            },
+            "trace_id": {
+              "$ref": "common.schema.json#/$defs/correlation-id"
+            },
+            "coglet": {
+              "$ref": "common.schema.json#/$defs/coglet-id"
+            },
+            "step": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "logical_time": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "seed": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "previous": {
+              "anyOf": [
+                {
+                  "$ref": "abi.schema.json#/$defs/hash"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "code_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "manifest_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "before_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "input_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "output_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "record_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            },
+            "engine": {
+              "$ref": "abi.schema.json#/$defs/engine"
+            },
+            "budgets": {
+              "$ref": "abi.schema.json#/$defs/budgets"
+            },
+            "grants": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-capability-name"
+              },
+              "minItems": 0
+            },
+            "events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-event"
+              },
+              "minItems": 1
+            },
+            "boundary": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/boundary-change"
+              },
+              "minItems": 0
+            },
+            "calls": {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/s02-call"
+                  },
+                  {
+                    "$ref": "#/$defs/s02-db-host-call"
+                  }
+                ]
+              },
+              "minItems": 0
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-action"
+              },
+              "minItems": 0
+            },
+            "timers": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/timer-request"
+              },
+              "minItems": 0
+            },
+            "llm_requests": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/s02-llm-request"
+              },
+              "minItems": 0
+            },
+            "logs": {
+              "type": "array",
+              "items": {
+                "$ref": "abi.schema.json#/$defs/log-entry"
+              },
+              "minItems": 0
+            },
+            "input_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "output_files": {
+              "$ref": "abi.schema.json#/$defs/snapshot"
+            },
+            "usage": {
+              "$ref": "abi.schema.json#/$defs/usage"
+            },
+            "status": {
+              "const": "aborted"
+            },
+            "failure": {
+              "$ref": "database.schema.json#/$defs/db-failure"
+            },
+            "db_before": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_after": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_schema_version": {
+              "$ref": "common.schema.json#/$defs/uint64"
+            },
+            "db_catalog_hash": {
+              "$ref": "abi.schema.json#/$defs/hash"
+            }
+          },
+          "required": [
+            "version",
+            "trace_id",
+            "coglet",
+            "step",
+            "logical_time",
+            "seed",
+            "previous",
+            "code_hash",
+            "manifest_hash",
+            "before_hash",
+            "input_hash",
+            "output_hash",
+            "record_hash",
+            "engine",
+            "budgets",
+            "grants",
+            "events",
+            "boundary",
+            "calls",
+            "actions",
+            "timers",
+            "llm_requests",
+            "logs",
+            "input_files",
+            "output_files",
+            "usage",
+            "status",
+            "failure",
+            "db_before",
+            "db_after",
+            "db_schema_version",
+            "db_catalog_hash"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "s02-db-trace": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": "1.1"
+        },
+        "trace_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "initial_effect_ids": {
+          "$ref": "abi.schema.json#/$defs/effect-ledger"
+        },
+        "initial_actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-action"
+          },
+          "minItems": 0
+        },
+        "initial_inbox_wakes": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/uint64"
+          },
+          "minItems": 0
+        },
+        "initial_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "initial_files": {
+          "$ref": "abi.schema.json#/$defs/snapshot"
+        },
+        "code_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "manifest_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "final_hash": {
+          "$ref": "abi.schema.json#/$defs/hash"
+        },
+        "trailing_boundary": {
+          "anyOf": [
+            {
+              "$ref": "database.schema.json#/$defs/db-boundary-record"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "initial_timers": {
+          "type": "array",
+          "items": {
+            "$ref": "abi.schema.json#/$defs/timer-request"
+          },
+          "minItems": 0
+        },
+        "initial_llm_requests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-llm-request"
+          },
+          "minItems": 0
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-db-step-record"
+          },
+          "minItems": 0
+        },
+        "blobs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "abi.schema.json#/$defs/hex"
+          }
+        },
+        "initial_db_revision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "final_db_revision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "version",
+        "trace_id",
+        "coglet",
+        "initial_effect_ids",
+        "initial_actions",
+        "initial_inbox_wakes",
+        "initial_hash",
+        "initial_files",
+        "code_hash",
+        "manifest_hash",
+        "final_hash",
+        "trailing_boundary",
+        "initial_timers",
+        "initial_llm_requests",
+        "records",
+        "blobs",
+        "initial_db_revision",
+        "final_db_revision"
+      ],
+      "additionalProperties": false
+    },
+    "s02-act": {
+      "type": "object",
+      "properties": {
+        "grant_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "action": {
+          "$ref": "#/$defs/s02-action"
+        }
+      },
+      "required": [
+        "grant_epoch",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "s02-cap-entry": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "reads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "exclusive": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "schemas": {
+          "$ref": "#/$defs/s02-schema-refs"
+        }
+      },
+      "required": [
+        "name",
+        "events",
+        "reads",
+        "actions",
+        "exclusive",
+        "schemas"
+      ],
+      "additionalProperties": false
+    },
+    "s02-capabilities": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "clock": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-cap-entry"
+          }
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "revision",
+        "clock",
+        "entries",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-grant": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-capability-name"
+          }
+        },
+        "expires": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "coglet",
+        "operations",
+        "resources",
+        "expires"
+      ],
+      "additionalProperties": false
+    },
+    "s02-grants": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/s02-grant"
+          }
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "epoch",
+        "entries",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-read": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "capability": {
+          "$ref": "#/$defs/s02-capability-name"
+        },
+        "args": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "grant_epoch": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 18446744073709551615
+        },
+        "deadline": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "coglet",
+        "capability",
+        "args",
+        "grant_epoch",
+        "deadline",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "s02-schema-refs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/s02-capability-name"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "s02-surface-message": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "hello"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/hello"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "hello_reply"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/hello-reply"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "capabilities"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/s02-capabilities"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "grants"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/s02-grants"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "event"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/s02-event"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "read"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/s02-read"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "read_reply"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/read-reply"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "act"
+              ]
+            },
+            "body": {
+              "$ref": "#/$defs/s02-act"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "accept"
+              ]
+            },
+            "body": {
+              "$ref": "common.schema.json#/$defs/action-accept"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "health"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/health"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "kill"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/kill"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "error"
+              ]
+            },
+            "body": {
+              "$ref": "surface.schema.json#/$defs/surface-error"
+            }
+          },
+          "required": [
+            "type",
+            "body"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

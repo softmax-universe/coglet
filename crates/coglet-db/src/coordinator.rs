@@ -110,9 +110,18 @@ pub(super) fn record_hash_of(raw: &[u8]) -> Result<String> {
     Ok(sha_hex(&coglet_types::encode_profile(&V::Map(rest))?))
 }
 
-/// New decisions must use the current closed database 1.1 schema.
-fn validate_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1> {
-    let record = coglet_types::DatabaseDbStepRecord1::from_cbor(raw)?;
+/// New decisions must use the selected current closed database 1.1 schema.
+pub(super) fn validate_committed(
+    raw: &[u8],
+    profile: ContractProfile,
+) -> Result<coglet_types::DatabaseDbStepRecord1> {
+    let record: coglet_types::DatabaseDbStepRecord1 =
+        coglet_types::decode(profile.rule("database::db-step-record"), raw)?
+            .deserialized()
+            .map_err(|e| e.to_string())?;
+    if record.version != "1.1" {
+        return Err("not a current database 1.1 record".into());
+    }
     validate_record_hash(raw, record)
 }
 
@@ -120,8 +129,11 @@ fn validate_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1>
 /// from the public completion path. Validate the frozen closed schema BEFORE
 /// deserializing into the field-compatible current Rust struct; do not translate
 /// versions, filesystem hashes, or the prepared record hash.
-pub(super) fn validate_stored_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1> {
-    if let Ok(record) = validate_committed(raw) {
+pub(super) fn validate_stored_committed_with_profile(
+    raw: &[u8],
+    profile: ContractProfile,
+) -> Result<coglet_types::DatabaseDbStepRecord1> {
+    if let Ok(record) = validate_committed(raw, profile) {
         return Ok(record);
     }
     let value = coglet_types_hub0::decode("database::db-step-record", raw)?;
@@ -131,6 +143,11 @@ pub(super) fn validate_stored_committed(raw: &[u8]) -> Result<coglet_types::Data
         return Err("not a historical database 0.2 record".into());
     }
     validate_record_hash(raw, record)
+}
+
+#[cfg(test)]
+pub(super) fn validate_stored_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1> {
+    validate_stored_committed_with_profile(raw, ContractProfile::default())
 }
 
 fn validate_record_hash(
@@ -151,15 +168,26 @@ fn validate_record_hash(
 /// Retains calls, events, boundary, input snapshot and usage; discards guest
 /// files and staged effects; `db_after = db_before`; new record hash.
 pub fn recovery_abort_record(prepared: &[u8]) -> Result<Vec<u8>> {
-    let c = validate_committed(prepared)?;
-    abort_overlay(c)
+    recovery_abort_record_with_profile(prepared, ContractProfile::default())
+}
+pub fn recovery_abort_record_with_profile(
+    prepared: &[u8],
+    profile: ContractProfile,
+) -> Result<Vec<u8>> {
+    abort_overlay(validate_committed(prepared, profile)?, profile)
 }
 
-fn stored_recovery_abort_record(prepared: &[u8]) -> Result<Vec<u8>> {
-    abort_overlay(validate_stored_committed(prepared)?)
+fn stored_recovery_abort_record(prepared: &[u8], profile: ContractProfile) -> Result<Vec<u8>> {
+    abort_overlay(
+        validate_stored_committed_with_profile(prepared, profile)?,
+        profile,
+    )
 }
 
-fn abort_overlay(c: coglet_types::DatabaseDbStepRecord1) -> Result<Vec<u8>> {
+fn abort_overlay(
+    c: coglet_types::DatabaseDbStepRecord1,
+    profile: ContractProfile,
+) -> Result<Vec<u8>> {
     let historical = c.version == "0.2";
     let failure = V::Map(vec![
         (V::Text("kind".into()), V::Text("db_recovery_abort".into())),
@@ -209,7 +237,7 @@ fn abort_overlay(c: coglet_types::DatabaseDbStepRecord1) -> Result<Vec<u8>> {
         if historical {
             coglet_types_hub0::encode("database::db-step-record", &value)
         } else {
-            coglet_types::encode("database::db-step-record", &value)
+            coglet_types::encode(profile.rule("database::db-step-record"), &value)
         }
     };
     a.record_hash = record_hash_of(&encode(&a)?)?;
@@ -222,8 +250,9 @@ impl Prepared {
         decision: &Decision,
         pins_catalog: &str,
         owner: &str,
+        profile: ContractProfile,
     ) -> Result<(Self, coglet_types::DatabaseDbStepRecord1)> {
-        let r = validate_committed(&decision.record)?;
+        let r = validate_committed(&decision.record, profile)?;
         if r.coglet != owner {
             return Err("record names another owner".into());
         }
@@ -457,6 +486,13 @@ impl Database {
     /// a decision is only rolled forward from its exact preparation when its
     /// marker is committed, or authoritatively aborted when the marker is absent.
     pub fn recover(&mut self, journal: &mut dyn Journal) -> Result<Recovered> {
+        self.recover_with_profile(journal, ContractProfile::default())
+    }
+    pub fn recover_with_profile(
+        &mut self,
+        journal: &mut dyn Journal,
+        profile: ContractProfile,
+    ) -> Result<Recovered> {
         self.refuse_if_halted()?;
         if !self.connection.is_autocommit() {
             // An uncertain in-process commit: roll back whatever is uncommitted;
@@ -485,7 +521,7 @@ impl Database {
             .file_name()
             .is_some_and(|n| n == prepared.file_name().as_str())
             && prepared.id.coglet == self.owner
-            && validate_stored_committed(&prepared.record).is_ok_and(|r| {
+            && validate_stored_committed_with_profile(&prepared.record, profile).is_ok_and(|r| {
                 r.coglet == prepared.id.coglet
                     && r.db_catalog_hash == prepared.catalog_hash
                     && r.db_after == prepared.revision
@@ -529,7 +565,7 @@ impl Database {
                 if later != 0 {
                     return Err(self.halt("later marker exists without this decision".into()));
                 }
-                let abort = stored_recovery_abort_record(&prepared.record)?;
+                let abort = stored_recovery_abort_record(&prepared.record, profile)?;
                 journal
                     .publish_abort(&prepared.id, &abort)
                     .map_err(held_once)?;
@@ -589,7 +625,7 @@ impl Unit<'_> {
             return Err("no database calls: use ordinary ABI commit".into());
         }
         let (prepared, record) =
-            Prepared::from_decision(decision, &pins.catalog_hash, &self.db.owner)?;
+            Prepared::from_decision(decision, &pins.catalog_hash, &self.db.owner, self.profile)?;
         if record.db_before != self.revision
             || record.db_after != self.resulting_revision()?
             || record.db_schema_version != pins.schema_version
@@ -655,19 +691,24 @@ impl Unit<'_> {
 /// Test-only forgery of a preparation file (corruption scenarios).
 #[cfg(test)]
 pub(super) fn forge_prepared(db: &Database, decision: &Decision) -> Result<()> {
-    let (p, _) = Prepared::from_decision(decision, &decision_catalog(decision)?, &db.owner)?;
-    db.persist_prepared(&p)
+    forge_prepared_with_profile(db, decision, ContractProfile::default())
 }
 #[cfg(test)]
-fn decision_catalog(decision: &Decision) -> Result<String> {
-    Ok(validate_committed(&decision.record)?.db_catalog_hash)
+pub(super) fn forge_prepared_with_profile(
+    db: &Database,
+    decision: &Decision,
+    profile: ContractProfile,
+) -> Result<()> {
+    let catalog = validate_committed(&decision.record, profile)?.db_catalog_hash;
+    let (p, _) = Prepared::from_decision(decision, &catalog, &db.owner, profile)?;
+    db.persist_prepared(&p)
 }
 
 /// Emulate the historical producer for physical crash tests, without opening
 /// any production admission path for legacy decisions.
 #[cfg(test)]
 pub(super) fn legacy_complete_for_test(mut unit: Unit<'_>, decision: &Decision) {
-    let r = validate_stored_committed(&decision.record).unwrap();
+    let r = validate_stored_committed_with_profile(&decision.record, unit.profile).unwrap();
     assert_eq!(r.version, "0.2");
     let p = Prepared {
         id: StepId {

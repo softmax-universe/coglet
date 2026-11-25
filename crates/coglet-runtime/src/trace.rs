@@ -69,6 +69,7 @@ impl Engine for ObservedTransition<'_> {
 fn exact_database_record_bytes(
     blobs: &serde_json::Map<String, Value>,
     record: &Value,
+    profile: crate::ContractProfile,
 ) -> Result<Vec<u8>> {
     let mut found = None;
     for (hash, bytes) in blobs {
@@ -81,7 +82,7 @@ fn exact_database_record_bytes(
         if hex::encode(&raw) != hex_text || hash != &digest(&raw) {
             continue;
         }
-        let Ok(projection) = crate::journal::database_projection(&raw) else {
+        let Ok(projection) = crate::journal::database_projection_with_profile(&raw, profile) else {
             continue;
         };
         if projection != *record {
@@ -375,15 +376,26 @@ impl Runtime {
     /// ABI 0.2 archives (`database::db-trace`) additionally require content-addressed
     /// exact `db-step-record` bytes; the JSON projection is not the authority.
     pub fn import_trace(trace: &Value) -> Result<Self> {
-        if trace.get("version") == Some(&json!("1.1")) {
-            return Self::import_database_trace(trace);
-        }
-        validate("trace", trace)?;
-        Self::import_archive(trace, "manifest")
+        Self::import_trace_with_profile(trace, crate::ContractProfile::Surface01)
     }
 
-    fn import_database_trace(trace: &Value) -> Result<Self> {
-        validate("database::db-trace", trace)?;
+    /// Trusted caller selects local rules; no archive or peer field can opt in.
+    pub fn import_trace_with_profile(
+        trace: &Value,
+        profile: crate::ContractProfile,
+    ) -> Result<Self> {
+        // Both local name profiles use the current ABI hash identity.
+        // Legacy 0.x archives are not public replay inputs.
+        let database = trace.get("version") == Some(&json!("1.1"));
+        if database {
+            return Self::import_database_trace(trace, profile);
+        }
+        profile.validate("trace", trace)?;
+        Self::import_archive(trace, "manifest", profile)
+    }
+
+    fn import_database_trace(trace: &Value, profile: crate::ContractProfile) -> Result<Self> {
+        profile.validate("database::db-trace", trace)?;
 
         let blobs = trace["blobs"].as_object().ok_or("missing blobs")?;
         let records = trace["records"].as_array().ok_or("missing records")?;
@@ -408,15 +420,19 @@ impl Runtime {
             }
         }
         for record in records {
-            let raw = exact_database_record_bytes(blobs, record)?;
-            if crate::journal::database_projection(&raw)? != *record {
+            let raw = exact_database_record_bytes(blobs, record, profile)?;
+            if crate::journal::database_projection_with_profile(&raw, profile)? != *record {
                 return Err("exact database record does not match archive projection".into());
             }
         }
-        Self::import_archive(trace, "database::db-manifest")
+        Self::import_archive(trace, "database::db-manifest", profile)
     }
 
-    fn import_archive(trace: &Value, manifest_rule: &str) -> Result<Self> {
+    fn import_archive(
+        trace: &Value,
+        manifest_rule: &str,
+        profile: crate::ContractProfile,
+    ) -> Result<Self> {
         let blobs = trace["blobs"].as_object().ok_or("missing blobs")?;
         for (hash, bytes) in blobs {
             let raw =
@@ -435,13 +451,17 @@ impl Runtime {
                 .ok_or("missing manifest blob")?,
         )
         .map_err(|e| e.to_string())?;
-        let manifest: Value = hash_upgrade::decode_current(manifest_rule, &manifest_raw)?
-            .deserialized()
-            .map_err(|e| e.to_string())?;
+        let manifest: Value = if profile == crate::ContractProfile::Surface01 {
+            hash_upgrade::decode_current(manifest_rule, &manifest_raw)?
+        } else {
+            crate::profile_codec::decode(profile.rule(manifest_rule), &manifest_raw)?
+        }
+        .deserialized()
+        .map_err(|e| e.to_string())?;
         if manifest["id"] != trace["coglet"] {
             return Err("trace manifest identity mismatch".into());
         }
-        let mut setup = json!({"manifest":manifest});
+        let mut setup = json!({"manifest":manifest,"contract_profile":profile});
         if manifest_rule == "database::db-manifest" {
             setup["initial_db_revision"] = trace["initial_db_revision"].clone();
         }
@@ -546,10 +566,11 @@ impl Runtime {
         blobs.insert(manifest_hash.clone(), json!(hex::encode(manifest)));
         let mut records = Vec::new();
         for record in self.records.iter().filter(|r| r.get("step").is_some()) {
-            let raw = exact_database_record_bytes(&blobs, record).map_err(|_| {
-                "ABI 0.2 database trace export requires exact record bytes".to_string()
-            })?;
-            let projection = crate::journal::database_projection(&raw)?;
+            let raw = exact_database_record_bytes(&blobs, record, self.contract_profile).map_err(
+                |_| "ABI 0.2 database trace export requires exact record bytes".to_string(),
+            )?;
+            let projection =
+                crate::journal::database_projection_with_profile(&raw, self.contract_profile)?;
             if projection != *record {
                 return Err("exact database record does not match runtime projection".into());
             }
@@ -596,7 +617,8 @@ impl Runtime {
         ] {
             trace[key] = self.initial_setup[key].clone();
         }
-        validate("database::db-trace", &trace)?;
+        self.contract_profile
+            .validate("database::db-trace", &trace)?;
         Ok(trace)
     }
 
@@ -637,7 +659,7 @@ impl Runtime {
         ] {
             trace[key] = self.initial_setup[key].clone();
         }
-        validate("trace", &trace)?;
+        self.contract_profile.validate("trace", &trace)?;
         Ok(trace)
     }
 
@@ -653,7 +675,7 @@ impl Runtime {
         if !self.sealed || self.trace_id.as_ref() == Some(trace_id) {
             return Err("new segment requires sealed predecessor and fresh trace identity".into());
         }
-        let mut setup = json!({"manifest":self.manifest,"initial_files":self.files.files(),
+        let mut setup = json!({"manifest":self.manifest,"contract_profile":self.contract_profile,"initial_files":self.files.files(),
             "initial_effect_ids":self.ledger,"initial_actions":self.pending_actions.values().collect::<Vec<_>>(),
             "initial_inbox_wakes":self.inbox_wakes,"initial_timers":self.pending_timers.values().collect::<Vec<_>>(),
             "initial_llm_requests":self.pending_llm.values().collect::<Vec<_>>()});

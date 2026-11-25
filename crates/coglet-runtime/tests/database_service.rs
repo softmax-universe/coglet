@@ -24,6 +24,7 @@ use std::{
 
 include!("support/database_backup.rs");
 include!("support/database_properties.rs");
+include!("support/database_profile.rs");
 
 const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 type Plan = Vec<Vec<(&'static str, Vec<u8>)>>;

@@ -212,6 +212,82 @@ impl Drop for Host {
         let _ = std::fs::remove_dir_all(&self.dir);
     }
 }
+#[test]
+fn daemon_local_contract_profile_provisioning() {
+    let raw = serde_json::to_vec(&json!({"version":1,"namespace":"softmax",
+        "entries":{"softmax.app":["softmax.app_control"]},
+        "schemas":{"https://example.invalid/softmax/1#empty":"empty"},
+        "rules":{"empty":{"op":"record","fields":[]}},
+        "operations":{"softmax.app.invoke":{"entry":"softmax.app","direction":"action",
+            "input":"https://example.invalid/softmax/1#empty",
+            "output":"https://example.invalid/softmax/1#empty",
+            "resources":["softmax.app_control"],"single_owner":true}}}))
+    .unwrap();
+    for pinned in [false, true] {
+        let mut host = Host::new(
+            if pinned {
+                "profile-pinned"
+            } else {
+                "profile-bare"
+            },
+            false,
+            &raw,
+            &[C],
+        );
+        // No option or malformed/duplicate options cannot opt in by catalog contents.
+        for args in [
+            vec!["--contract-profile".into(), "surface-0.3".into()],
+            vec!["--contract-profile".into(), "".into()],
+            vec!["--contract-profile".into()],
+            vec![
+                "--contract-profile".into(),
+                "surface-0.2".into(),
+                "--contract-profile".into(),
+                "surface-0.2".into(),
+            ],
+        ] {
+            host.startup_fails(&args);
+        }
+        if pinned {
+            host.startup_fails(&host.pin_args(&digest(&raw)));
+        }
+        let mut command = host.command();
+        if pinned {
+            command.args(host.pin_args(&digest(&raw)));
+        }
+        command.args(["--contract-profile", "surface-0.2"]);
+        host.child = Some(command.stdout(Stdio::null()).spawn().unwrap());
+        drop(host.connect()); // actual listener readiness, not process spawn
+        host.stop();
+        let state = host.state();
+        assert_eq!(state["contract_profile"], "surface-0.2");
+        if pinned {
+            assert_eq!(state["catalog_pin"], digest(&raw));
+        } else {
+            assert!(state["catalog_pin"].is_null());
+        }
+        // A saved nondefault setup does not silently override the omitted CLI flag.
+        let mut setup = host.setup.clone();
+        setup["contract_profile"] = json!("surface-0.2");
+        std::fs::write(
+            host.dir.join("setup.json"),
+            serde_json::to_vec(&setup).unwrap(),
+        )
+        .unwrap();
+        host.startup_fails(&[]);
+        host.startup_fails(&["--contract-profile".into(), "surface-0.1".into()]);
+        // Matching selectors and the same pair recover; exercise reverse option order.
+        let mut command = host.command();
+        command.args(["--contract-profile", "surface-0.2"]);
+        if pinned {
+            command.args(host.pin_args(&digest(&raw)));
+        }
+        host.child = Some(command.stdout(Stdio::null()).spawn().unwrap());
+        drop(host.connect());
+        host.stop();
+    }
+}
+
 struct Link(UnixStream);
 impl Link {
     fn send(&mut self, kind: &str, body: Value) {

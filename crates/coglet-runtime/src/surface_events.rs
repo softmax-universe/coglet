@@ -64,16 +64,20 @@ impl RuntimeService {
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("observations deferred until attempt reconciliation".into());
         }
-        validate("event", event)?;
+        session.wire_profile().validate("event", event)?;
         let kind = event["kind"].as_str().ok_or("missing event kind")?;
+        if session.withholds(kind) {
+            return Err("permission_denied: extension unavailable at negotiated 0.1".into());
+        }
+        // The link's negotiated catalog view, never the provisioned superset.
+        let catalog = session.catalog();
         if event["source"] != session.surface()
             || self.surface_epoch(session.surface()) != session.grant_epoch()
         {
             return Err("unauthenticated or stale event source".into());
         }
-        self.catalog
-            .check(kind, "event", false, &event["payload"])?;
-        if self.catalog.single_owner(kind) && crate::cbor(&event["payload"])?.len() > 262_144 {
+        catalog.check(kind, "event", false, &event["payload"])?;
+        if catalog.single_owner(kind) && crate::cbor(&event["payload"])?.len() > 262_144 {
             return Err("event payload exceeds encoded byte limit".into());
         }
         if event["payload"]["text"]
@@ -84,7 +88,7 @@ impl RuntimeService {
         }
         let coglet = self.state.runtime.manifest["id"].as_str().unwrap();
         let expires = session.event_lease(coglet, kind, now)?;
-        if let Some(read) = self.catalog.selected_read(kind, &event["payload"])? {
+        if let Some(read) = catalog.selected_read(kind, &event["payload"])? {
             if kind == "game.observation"
                 && event["payload"]["grant_epoch"] != session.grant_epoch()
             {

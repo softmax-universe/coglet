@@ -1,0 +1,163 @@
+{
+  "name": "runtime-app-downgrade-builtin-action",
+  "description": "Provisioned 0.2 runtime retains a built-in Face route when peer negotiates 0.1; same built-in action payload as surface counterpart.",
+  "contract_profile": "surface-0.2",
+  "peer_role": "surface",
+  "fixtures": [
+    "runtime02-face"
+  ],
+  "steps": [
+    {
+      "send": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "hello_reply",
+        "body.selection.version": "0.1",
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "capabilities",
+        "body": {
+          "revision": 1,
+          "clock": 0,
+          "entries": [
+            {
+              "name": "expression.control",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "expression.set_expression"
+              ],
+              "exclusive": [
+                "display.face"
+              ],
+              "schemas": {
+                "expression.set_expression": "https://coglet.dev/spec/messages/expression.schema.json#/$defs/set-expression"
+              }
+            }
+          ],
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "send": {
+        "type": "grants",
+        "body": {
+          "epoch": 1,
+          "entries": [
+            {
+              "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "operations": [
+                "expression.set_expression"
+              ],
+              "resources": [
+                "display.face"
+              ],
+              "expires": 10000000
+            }
+          ],
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "act",
+        "body.grant_epoch": 1,
+        "body.action.id": "11111111111111111111111111111111",
+        "body.action.coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "body.action.capability": "expression.set_expression",
+        "body.action.args": {
+          "expression": "listening",
+          "intensity": 500,
+          "duration_ms": 1000
+        },
+        "body.action.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "accept",
+        "body": {
+          "id": "11111111111111111111111111111111",
+          "correlation_id": "11111111111111111111111111111111",
+          "accepted": true
+        }
+      }
+    },
+    {
+      "send": {
+        "type": "health",
+        "body": {
+          "state": "ready",
+          "clock": 100,
+          "pending": 1,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "health",
+        "body.pending": 1,
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "event",
+        "body": {
+          "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "action.outcome",
+          "seq": 1,
+          "logical_time": 100,
+          "payload": {
+            "id": "11111111111111111111111111111111",
+            "correlation_id": "11111111111111111111111111111111",
+            "status": "succeeded",
+            "result": {}
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "send": {
+        "type": "health",
+        "body": {
+          "state": "ready",
+          "clock": 100,
+          "pending": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "health",
+        "body.pending": 0,
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    }
+  ]
+}

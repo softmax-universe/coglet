@@ -121,9 +121,12 @@ fn detached_preguest_boundary_change_refuses_without_guest_and_preserves_publica
     drop(shared);
     let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
     assert_eq!(
-        crate::boundary::inbox(&reopened.receiver_snapshot().files)
-            .unwrap()
-            .len(),
+        crate::boundary::inbox_with_profile(
+            &reopened.receiver_snapshot().files,
+            reopened.contract_profile()
+        )
+        .unwrap()
+        .len(),
         1
     );
     assert_eq!(

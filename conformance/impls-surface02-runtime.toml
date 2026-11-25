@@ -1,0 +1,40 @@
+# Actual production runtime through an opaque authenticated Linux stdio bridge.
+# Harness peer_role=surface, complementary to unchanged surface02 SDK cases.
+# Build cogletd; export absolute COGLET_FIXTURE_COGLETD and private TMPDIR.
+[[implementations]]
+name = "runtime-cogletd-02"
+suites = ["surface02-runtime"]
+peer_roles = ["surface"]
+transport = "stdio"
+contract_profile = "surface-0.2"
+command = ["python3", "crates/coglet-runtime/tools/profile_fixture_bridge.py"]
+ready_line = "COGLET_CONFORMANCE_READY"
+fixture_clock = false
+
+[implementations.fixtures.runtime02-base.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"
+COGLET_FIXTURE_RUNTIME_SETUP = "conformance/surface02-runtime-fixtures/base-setup.json"
+COGLET_FIXTURE_RUNTIME_BINDING = "conformance/surface02-runtime-fixtures/runtime-binding.json"
+
+[implementations.fixtures.runtime02-read.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"
+COGLET_FIXTURE_RUNTIME_SETUP = "conformance/surface02-runtime-fixtures/read-setup.json"
+COGLET_FIXTURE_RUNTIME_BINDING = "conformance/surface02-runtime-fixtures/runtime-binding.json"
+
+[implementations.fixtures.runtime02-rename.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"
+COGLET_FIXTURE_RUNTIME_SETUP = "conformance/surface02-runtime-fixtures/rename-setup.json"
+COGLET_FIXTURE_RUNTIME_BINDING = "conformance/surface02-runtime-fixtures/runtime-binding.json"
+
+[implementations.fixtures.runtime02-face.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"
+COGLET_FIXTURE_RUNTIME_SETUP = "conformance/surface02-runtime-fixtures/face-setup.json"
+COGLET_FIXTURE_RUNTIME_BINDING = "conformance/surface02-runtime-fixtures/runtime-binding.json"

@@ -19,9 +19,9 @@ public enum SurfaceWire {
     public static let maximumFrame = 1_048_576
     public static let maximumQueuedMessages = 128
 
-    public static func decode(_ bytes: [UInt8], from peer: SurfacePeer) throws -> CBORValue {
+    public static func decode(_ bytes: [UInt8], from peer: SurfacePeer, contractProfile: SurfaceContractProfile = .surface01) throws -> CBORValue {
         guard !bytes.isEmpty, bytes.count <= maximumFrame else { throw SurfaceFailure.invalidFrame }
-        let value = try CBORCodec.decode(rule: "surface::surface-message", bytes: bytes)
+        let value = try CBORCodec.decode(rule: contractProfile.rule("surface::surface-message"), bytes: bytes)
         guard case .text(let type) = value["type"] else { throw SurfaceFailure.invalidFrame }
         let allowed = peer == .runtime
             ? ["hello_reply", "read", "act", "health", "error"]
@@ -30,9 +30,9 @@ public enum SurfaceWire {
         return value
     }
 
-    public static func encode(_ value: CBORValue, from peer: SurfacePeer) throws -> [UInt8] {
-        let bytes = try CBORCodec.encode(rule: "surface::surface-message", value: value)
-        _ = try decode(bytes, from: peer)
+    public static func encode(_ value: CBORValue, from peer: SurfacePeer, contractProfile: SurfaceContractProfile = .surface01) throws -> [UInt8] {
+        let bytes = try CBORCodec.encode(rule: contractProfile.rule("surface::surface-message"), value: value)
+        _ = try decode(bytes, from: peer, contractProfile: contractProfile)
         return bytes
     }
 

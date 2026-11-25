@@ -1,0 +1,82 @@
+{
+  "operation": "abi.step",
+  "initial_files": {
+    "/code/bin/step.wasm": "0061736d01000000",
+    "/data/count": "30",
+    "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
+  },
+  "manifest": {
+    "version": "1.0",
+    "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "subscriptions": [],
+    "required_capabilities": [],
+    "exclusive_outputs": [],
+    "budgets": {
+      "compute": 10000,
+      "compute_mode": "fixture.interpreter",
+      "memory_pages": 2,
+      "wall_time_us": 100000,
+      "max_events": 16,
+      "host_bytes": 65536
+    }
+  },
+  "inputs": {
+    "trace_id": "55555555555555555555555555555555",
+    "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "step": 0,
+    "logical_time": 10,
+    "seed": 7,
+    "previous": null,
+    "engine": {
+      "build": "fixture-v1",
+      "policy": "TBD-by-ADR-0003"
+    },
+    "budgets": {
+      "compute": 10000,
+      "compute_mode": "fixture.interpreter",
+      "memory_pages": 2,
+      "wall_time_us": 100000,
+      "max_events": 16,
+      "host_bytes": 65536
+    },
+    "grants": [],
+    "events": [],
+    "boundary": []
+  },
+  "guest_script": {
+    "calls": [],
+    "writes": {},
+    "termination": "committed",
+    "usage": {
+      "compute": 10,
+      "memory_pages": 1,
+      "wall_time_us": 20,
+      "host_bytes": 0
+    }
+  },
+  "initial_effect_ids": {
+    "actions": [
+      "11111111111111111111111111111111"
+    ],
+    "timers": [],
+    "llm_requests": []
+  },
+  "initial_inbox_wakes": [],
+  "initial_timers": [],
+  "initial_llm_requests": [],
+  "contract_profile": "surface-0.2",
+  "initial_actions": [
+    {
+      "id": "11111111111111111111111111111111",
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "expression.set_expression",
+      "args": {
+        "expression": "listening",
+        "intensity": 500,
+        "duration_ms": 1000
+      },
+      "deadline": 1000000,
+      "correlation_id": "11111111111111111111111111111111"
+    }
+  ]
+}

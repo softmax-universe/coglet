@@ -47,6 +47,12 @@ impl SurfaceBinding {
 
 pub struct SurfaceSession {
     catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
+    /// Trusted local ceiling (what this runtime can validate), never peer input.
+    ceiling: crate::ContractProfile,
+    /// Negotiated wire minor; selects every surface-message/action/event rule.
+    wire: crate::ContractProfile,
+    /// Provisioned catalog withheld from a downgraded (ceiling 0.2, wire 0.1) link.
+    withheld: Option<std::sync::Arc<crate::TrustedExtensionCatalog>>,
     binding: SurfaceBinding,
     negotiated: bool,
     closed: bool,
@@ -87,6 +93,9 @@ impl SurfaceSession {
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
             catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
+            ceiling: crate::ContractProfile::Surface01,
+            wire: crate::ContractProfile::Surface01,
+            withheld: None,
             binding,
             negotiated: false,
             closed: false,
@@ -115,6 +124,23 @@ impl SurfaceSession {
     }
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+    /// Wire minor selected by hello; `Surface01` before negotiation.
+    pub fn wire_profile(&self) -> crate::ContractProfile {
+        self.wire
+    }
+    /// Trusted extension operations/names are usable unless the local ceiling
+    /// is 0.2 but this link selected 0.1 (only built-in Face/speech remain).
+    pub(crate) fn extensions_enabled(&self) -> bool {
+        self.withheld.is_none()
+    }
+    pub(crate) fn catalog(&self) -> &crate::TrustedExtensionCatalog {
+        &self.catalog
+    }
+    pub(crate) fn withholds(&self, name: &str) -> bool {
+        self.withheld
+            .as_ref()
+            .is_some_and(|catalog| catalog.is_extension_name(name))
     }
     /// Native transport pump. Reconnect automatically reconciles saved IDs.
     pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
@@ -197,7 +223,7 @@ impl SurfaceSession {
         self.heard_reads.clear();
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
-        validate("surface-message", &message)?;
+        self.wire.validate("surface-message", &message)?;
         let bytes = cbor(&message)?;
         if bytes.len() > SURFACE_MAX_FRAME {
             return Err("response too large".into());
@@ -280,7 +306,8 @@ impl SurfaceSession {
     }
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
         let decoded = coglet_types::decode_profile(raw)?;
-        coglet_types::validate("surface-message", &decoded)?;
+        // Hello is common to both minors; afterwards the selected minor governs.
+        crate::profile_codec::validate(self.wire.rule("surface-message"), &decoded)?;
         let message: Value = decoded.deserialized().map_err(|e| e.to_string())?;
         let body = &message["body"];
         let kind = message["type"].as_str().ok_or("missing type")?;
@@ -294,15 +321,39 @@ impl SurfaceSession {
             if body["surface"] != self.binding.surface {
                 return self.error("unauthenticated", &body["correlation_id"]);
             }
-            if !body["offer"]["versions"]
+            let offered = body["offer"]["versions"]
                 .as_array()
-                .ok_or("offer required")?
-                .iter()
-                .any(|v| v == "0.1")
+                .ok_or("offer required")?;
+            // Highest common minor bounded by the trusted local ceiling.
+            let selected = if self.ceiling == crate::ContractProfile::Surface02
+                && offered.iter().any(|v| v == "0.2")
             {
+                crate::ContractProfile::Surface02
+            } else if offered.iter().any(|v| v == "0.1") {
+                crate::ContractProfile::Surface01
+            } else {
                 return self.error("unsupported_version", &body["correlation_id"]);
+            };
+            self.wire = selected;
+            if self.ceiling == crate::ContractProfile::Surface02
+                && selected == crate::ContractProfile::Surface01
+            {
+                // Keep provisioned identity in the service; this link sees
+                // only built-ins, with no extension names in any direction.
+                let echo = self.catalog.echo_fixture;
+                let mut builtin = crate::TrustedExtensionCatalog::without_artifact(selected);
+                builtin.echo_fixture = echo;
+                self.withheld = Some(std::mem::replace(
+                    &mut self.catalog,
+                    std::sync::Arc::new(builtin),
+                ));
             }
-            self.enqueue(json!({"type":"hello_reply","body":{"selection":{"version":"0.1"},"correlation_id":body["correlation_id"]}}))?;
+            let version = if selected == crate::ContractProfile::Surface02 {
+                "0.2"
+            } else {
+                "0.1"
+            };
+            self.enqueue(json!({"type":"hello_reply","body":{"selection":{"version":version},"correlation_id":body["correlation_id"]}}))?;
             self.negotiated = true;
             self.last_health = now;
             self.peer_clock = body["clock"].as_u64();

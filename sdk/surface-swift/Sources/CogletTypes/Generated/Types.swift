@@ -237,6 +237,31 @@ internal enum GeneratedSchema {
         "surface::kill": .record([.init(name: "reason", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,16384}$")])), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface::surface-error": .record([.init(name: "error", optional: false, node: .reference("common::error")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface::surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
+        "surface02::surface02": .union([.reference("surface02::s02-surface-message"), .reference("surface02::s02-event"), .reference("surface02::s02-action"), .reference("surface02::s02-manifest"), .reference("surface02::s02-db-manifest"), .reference("surface02::s02-trace"), .reference("surface02::s02-db-trace")]),
+        "surface02::s02-call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "surface02::s02-inbox-message": .record([.init(name: "index", optional: false, node: .reference("common::uint64")), .init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("surface02::s02-event"))]),
+        "surface02::s02-llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
+        "surface02::s02-manifest": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets"))]),
+        "surface02::s02-step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))])]),
+        "surface02::s02-trace": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_files", optional: false, node: .reference("abi::snapshot")), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "final_hash", optional: false, node: .reference("abi::hash")), .init(name: "trailing_boundary", optional: false, node: .union([.reference("abi::boundary-record"), .literal(.null)])), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "records", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex")))]),
+        "surface02::s02-action": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-capability-name": .intersection([.text, .regexp("^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|softmax\\.app\\.[a-z][a-z0-9_]{0,31})$")]),
+        "surface02::s02-event": .record([.init(name: "source", optional: false, node: .reference("common::source-id")), .init(name: "kind", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "seq", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-database": .union([.reference("surface02::s02-db-request"), .reference("database::db-reply"), .reference("database::db-outcome"), .reference("surface02::s02-db-host-call"), .reference("surface02::s02-db-manifest"), .reference("surface02::s02-db-step-record"), .reference("surface02::s02-db-trace"), .reference("database::db-boundary-record")]),
+        "surface02::s02-db-enqueue": .record([.init(name: "operation", optional: false, node: .literal(.text("enqueue"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "idempotency_key", optional: false, node: .reference("common::correlation-id")), .init(name: "kind", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-db-host-call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "surface02::s02-db-manifest": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "database", optional: false, node: .reference("database::db-config"))]),
+        "surface02::s02-db-request": .union([.reference("database::db-statement"), .reference("surface02::s02-db-enqueue")]),
+        "surface02::s02-db-step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))])]),
+        "surface02::s02-db-trace": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_files", optional: false, node: .reference("abi::snapshot")), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "final_hash", optional: false, node: .reference("abi::hash")), .init(name: "trailing_boundary", optional: false, node: .union([.reference("database::db-boundary-record"), .literal(.null)])), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "records", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-db-step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex"))), .init(name: "initial_db_revision", optional: false, node: .reference("common::uint64")), .init(name: "final_db_revision", optional: false, node: .reference("common::uint64"))]),
+        "surface02::s02-act": .record([.init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "action", optional: false, node: .reference("surface02::s02-action"))]),
+        "surface02::s02-cap-entry": .record([.init(name: "name", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "events", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "reads", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "schemas", optional: false, node: .reference("surface02::s02-schema-refs"))]),
+        "surface02::s02-capabilities": .record([.init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-cap-entry"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-grant": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "operations", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "resources", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "expires", optional: false, node: .reference("common::uint64"))]),
+        "surface02::s02-grants": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-grant"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-read": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "surface02::s02-schema-refs": .boundedMap(0, nil, .reference("surface02::s02-capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
+        "surface02::s02-surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
         "abi": .union([.reference("abi::trace"), .reference("abi::step-record"), .reference("abi::boundary-record"), .reference("abi::inbox-message"), .reference("abi::timer-request"), .reference("abi::llm-request"), .reference("abi::llm-reply"), .reference("abi::log-entry"), .reference("abi::manifest")]),
         "hash": .intersection([.text, .regexp("^[0-9a-f]{64}$")]),
         "hex": .intersection([.text, .regexp("^([0-9a-f]{2})*$")]),
@@ -471,6 +496,31 @@ internal enum GeneratedSchema {
         "kill": .record([.init(name: "reason", optional: false, node: .intersection([.text, .regexp("^[\\s\\S]{1,16384}$")])), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface-error": .record([.init(name: "error", optional: false, node: .reference("common::error")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
         "surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface::capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface::grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("common::event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface::read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
+        "surface02": .union([.reference("surface02::s02-surface-message"), .reference("surface02::s02-event"), .reference("surface02::s02-action"), .reference("surface02::s02-manifest"), .reference("surface02::s02-db-manifest"), .reference("surface02::s02-trace"), .reference("surface02::s02-db-trace")]),
+        "s02-call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "s02-inbox-message": .record([.init(name: "index", optional: false, node: .reference("common::uint64")), .init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "sender", optional: false, node: .reference("common::source-id")), .init(name: "event", optional: false, node: .reference("surface02::s02-event"))]),
+        "s02-llm-request": .record([.init(name: "id", optional: false, node: .reference("common::correlation-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "model", optional: false, node: .intersection([.text, .size(1, 18446744073709551615)])), .init(name: "input", optional: false, node: .reference("common::profile-map"))]),
+        "s02-manifest": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets"))]),
+        "s02-step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))])]),
+        "s02-trace": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_files", optional: false, node: .reference("abi::snapshot")), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "final_hash", optional: false, node: .reference("abi::hash")), .init(name: "trailing_boundary", optional: false, node: .union([.reference("abi::boundary-record"), .literal(.null)])), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "records", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex")))]),
+        "s02-action": .record([.init(name: "id", optional: false, node: .reference("common::action-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-capability-name": .intersection([.text, .regexp("^([a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31}|softmax\\.app\\.[a-z][a-z0-9_]{0,31})$")]),
+        "s02-event": .record([.init(name: "source", optional: false, node: .reference("common::source-id")), .init(name: "kind", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "seq", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-database": .union([.reference("surface02::s02-db-request"), .reference("database::db-reply"), .reference("database::db-outcome"), .reference("surface02::s02-db-host-call"), .reference("surface02::s02-db-manifest"), .reference("surface02::s02-db-step-record"), .reference("surface02::s02-db-trace"), .reference("database::db-boundary-record")]),
+        "s02-db-enqueue": .record([.init(name: "operation", optional: false, node: .literal(.text("enqueue"))), .init(name: "intent_id", optional: false, node: .reference("common::action-id")), .init(name: "idempotency_key", optional: false, node: .reference("common::correlation-id")), .init(name: "kind", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "payload", optional: false, node: .reference("common::profile-map")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-db-host-call": .union([.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))])]),
+        "s02-db-manifest": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "id", optional: false, node: .reference("common::coglet-id")), .init(name: "subscriptions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "required_capabilities", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive_outputs", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "database", optional: false, node: .reference("database::db-config"))]),
+        "s02-db-request": .union([.reference("database::db-statement"), .reference("surface02::s02-db-enqueue")]),
+        "s02-db-step-record": .union([.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))])]),
+        "s02-db-trace": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "initial_effect_ids", optional: false, node: .reference("abi::effect-ledger")), .init(name: "initial_actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "initial_inbox_wakes", optional: false, node: .boundedArray(0, nil, .reference("common::uint64"))), .init(name: "initial_hash", optional: false, node: .reference("abi::hash")), .init(name: "initial_files", optional: false, node: .reference("abi::snapshot")), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "final_hash", optional: false, node: .reference("abi::hash")), .init(name: "trailing_boundary", optional: false, node: .union([.reference("database::db-boundary-record"), .literal(.null)])), .init(name: "initial_timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "initial_llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "records", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-db-step-record"))), .init(name: "blobs", optional: false, node: .boundedMap(0, nil, .text, .reference("abi::hex"))), .init(name: "initial_db_revision", optional: false, node: .reference("common::uint64")), .init(name: "final_db_revision", optional: false, node: .reference("common::uint64"))]),
+        "s02-act": .record([.init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "action", optional: false, node: .reference("surface02::s02-action"))]),
+        "s02-cap-entry": .record([.init(name: "name", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "events", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "reads", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "exclusive", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "schemas", optional: false, node: .reference("surface02::s02-schema-refs"))]),
+        "s02-capabilities": .record([.init(name: "revision", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "clock", optional: false, node: .reference("common::uint64")), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-cap-entry"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-grant": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "operations", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "resources", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "expires", optional: false, node: .reference("common::uint64"))]),
+        "s02-grants": .record([.init(name: "epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "entries", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-grant"))), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-read": .record([.init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "capability", optional: false, node: .reference("surface02::s02-capability-name")), .init(name: "args", optional: false, node: .reference("common::profile-map")), .init(name: "grant_epoch", optional: false, node: .range(.unsigned(1), .unsigned(18446744073709551615))), .init(name: "deadline", optional: false, node: .reference("common::uint64")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "s02-schema-refs": .boundedMap(0, nil, .reference("surface02::s02-capability-name"), .intersection([.text, .regexp("^[\\s\\S]{1,2048}$")])),
+        "s02-surface-message": .union([.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))])]),
         "@AbiLogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
         "@AbiLlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
         "@AbiLlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
@@ -531,6 +581,32 @@ internal enum GeneratedSchema {
         "@SurfaceSurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
         "@SurfaceSurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
         "@SurfaceSurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
+        "@Surface02S02CallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@Surface02S02CallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@Surface02S02CallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@Surface02S02CallVariant4": .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@Surface02S02CallVariant5": .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@Surface02S02StepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@Surface02S02StepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]),
+        "@Surface02S02TraceTrailingBoundary": .union([.reference("abi::boundary-record"), .literal(.null)]),
+        "@Surface02S02DbHostCallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]),
+        "@Surface02S02DbHostCallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]),
+        "@Surface02S02DbHostCallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@Surface02S02DbStepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@Surface02S02DbStepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]),
+        "@Surface02S02DbTraceTrailingBoundary": .union([.reference("database::db-boundary-record"), .literal(.null)]),
+        "@Surface02S02SurfaceMessageVariant1": .record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]),
+        "@Surface02S02SurfaceMessageVariant2": .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]),
+        "@Surface02S02SurfaceMessageVariant3": .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]),
+        "@Surface02S02SurfaceMessageVariant4": .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]),
+        "@Surface02S02SurfaceMessageVariant5": .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]),
+        "@Surface02S02SurfaceMessageVariant6": .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]),
+        "@Surface02S02SurfaceMessageVariant7": .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]),
+        "@Surface02S02SurfaceMessageVariant8": .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]),
+        "@Surface02S02SurfaceMessageVariant9": .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]),
+        "@Surface02S02SurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
+        "@Surface02S02SurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
+        "@Surface02S02SurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
         "@LogEntryLevel": .union([.literal(.text("debug")), .literal(.text("info")), .literal(.text("warn")), .literal(.text("error"))]),
         "@LlmReplyVariant1": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("succeeded"))), .init(name: "output", optional: false, node: .reference("common::profile-map"))]),
         "@LlmReplyVariant2": .record([.init(name: "request_id", optional: false, node: .reference("common::correlation-id")), .init(name: "status", optional: false, node: .literal(.text("failed"))), .init(name: "error", optional: false, node: .reference("common::error"))]),
@@ -591,6 +667,32 @@ internal enum GeneratedSchema {
         "@SurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
         "@SurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
         "@SurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
+        "@S02CallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@S02CallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@S02CallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@S02CallVariant4": .record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]),
+        "@S02CallVariant5": .record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@S02StepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@S02StepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]),
+        "@S02TraceTrailingBoundary": .union([.reference("abi::boundary-record"), .literal(.null)]),
+        "@S02DbHostCallVariant1": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]),
+        "@S02DbHostCallVariant2": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]),
+        "@S02DbHostCallVariant3": .record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]),
+        "@S02DbStepRecordVariant1": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]),
+        "@S02DbStepRecordVariant2": .record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]),
+        "@S02DbTraceTrailingBoundary": .union([.reference("database::db-boundary-record"), .literal(.null)]),
+        "@S02SurfaceMessageVariant1": .record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]),
+        "@S02SurfaceMessageVariant2": .record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]),
+        "@S02SurfaceMessageVariant3": .record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]),
+        "@S02SurfaceMessageVariant4": .record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]),
+        "@S02SurfaceMessageVariant5": .record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]),
+        "@S02SurfaceMessageVariant6": .record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]),
+        "@S02SurfaceMessageVariant7": .record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]),
+        "@S02SurfaceMessageVariant8": .record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]),
+        "@S02SurfaceMessageVariant9": .record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]),
+        "@S02SurfaceMessageVariant10": .record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]),
+        "@S02SurfaceMessageVariant11": .record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]),
+        "@S02SurfaceMessageVariant12": .record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]),
         "@AbiCallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
         "@AbiStepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@AbiStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
@@ -600,6 +702,13 @@ internal enum GeneratedSchema {
         "@DatabaseDbStepRecordVariant1CallsItem": .union([.reference("abi::call"), .reference("database::db-host-call")]),
         "@DatabaseDbStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@DatabaseDbStepRecordVariant2CallsItem": .union([.reference("abi::call"), .reference("database::db-host-call")]),
+        "@Surface02S02CallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
+        "@Surface02S02StepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@Surface02S02StepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@Surface02S02DbStepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@Surface02S02DbStepRecordVariant1CallsItem": .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]),
+        "@Surface02S02DbStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@Surface02S02DbStepRecordVariant2CallsItem": .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]),
         "@CallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
         "@StepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@StepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
@@ -609,6 +718,13 @@ internal enum GeneratedSchema {
         "@DbStepRecordVariant1CallsItem": .union([.reference("abi::call"), .reference("database::db-host-call")]),
         "@DbStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
         "@DbStepRecordVariant2CallsItem": .union([.reference("abi::call"), .reference("database::db-host-call")]),
+        "@S02CallVariant5Op": .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))]),
+        "@S02StepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@S02StepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@S02DbStepRecordVariant1Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@S02DbStepRecordVariant1CallsItem": .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]),
+        "@S02DbStepRecordVariant2Previous": .union([.reference("abi::hash"), .literal(.null)]),
+        "@S02DbStepRecordVariant2CallsItem": .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]),
     ]
     static func typedRoundTrip(rule: Swift.String, bytes: [Swift.UInt8]) throws -> [Swift.UInt8] {
         let value = try CBORCodec.decode(rule: rule, bytes: bytes)
@@ -848,6 +964,31 @@ internal enum GeneratedSchema {
         case "surface::kill": typed = try SurfaceKill.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::surface-error": typed = try SurfaceSurfaceError.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface::surface-message": typed = try SurfaceSurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::surface02": typed = try Surface02Surface02.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-call": typed = try Surface02S02Call.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-inbox-message": typed = try Surface02S02InboxMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-llm-request": typed = try Surface02S02LlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-manifest": typed = try Surface02S02Manifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-step-record": typed = try Surface02S02StepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-trace": typed = try Surface02S02Trace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-action": typed = try Surface02S02Action.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-capability-name": typed = try Surface02S02CapabilityName.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-event": typed = try Surface02S02Event.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-database": typed = try Surface02S02Database.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-enqueue": typed = try Surface02S02DbEnqueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-host-call": typed = try Surface02S02DbHostCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-manifest": typed = try Surface02S02DbManifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-request": typed = try Surface02S02DbRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-step-record": typed = try Surface02S02DbStepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-db-trace": typed = try Surface02S02DbTrace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-act": typed = try Surface02S02Act.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-cap-entry": typed = try Surface02S02CapEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-capabilities": typed = try Surface02S02Capabilities.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-grant": typed = try Surface02S02Grant.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-grants": typed = try Surface02S02Grants.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-read": typed = try Surface02S02Read.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-schema-refs": typed = try Surface02S02SchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02::s02-surface-message": typed = try Surface02S02SurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "abi": typed = try Abi.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hash": typed = try Hash.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hex": typed = try Hex.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1082,6 +1223,31 @@ internal enum GeneratedSchema {
         case "kill": typed = try Kill.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface-error": typed = try SurfaceError.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "surface-message": typed = try SurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "surface02": typed = try Surface02.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-call": typed = try S02Call.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-inbox-message": typed = try S02InboxMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-llm-request": typed = try S02LlmRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-manifest": typed = try S02Manifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-step-record": typed = try S02StepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-trace": typed = try S02Trace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-action": typed = try S02Action.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-capability-name": typed = try S02CapabilityName.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-event": typed = try S02Event.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-database": typed = try S02Database.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-enqueue": typed = try S02DbEnqueue.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-host-call": typed = try S02DbHostCall.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-manifest": typed = try S02DbManifest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-request": typed = try S02DbRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-step-record": typed = try S02DbStepRecord.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-db-trace": typed = try S02DbTrace.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-act": typed = try S02Act.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-cap-entry": typed = try S02CapEntry.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-capabilities": typed = try S02Capabilities.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-grant": typed = try S02Grant.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-grants": typed = try S02Grants.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-read": typed = try S02Read.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-schema-refs": typed = try S02SchemaRefs.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "s02-surface-message": typed = try S02SurfaceMessage.init(cborValue: value, depth: 0).cborValue(depth: 0)
         default: throw CBORFailure.invalid("unknown typed rule")
         }
         return try CBORCodec.encode(rule: rule, value: typed)
@@ -7564,6 +7730,1132 @@ public indirect enum SurfaceSurfaceMessage: CBORMessage, Sendable {
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface::act"))]), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02Surface02: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::surface02"
+    case variant1(Surface02S02SurfaceMessage)
+    case variant2(Surface02S02Event)
+    case variant3(Surface02S02Action)
+    case variant4(Surface02S02Manifest)
+    case variant5(Surface02S02DbManifest)
+    case variant6(Surface02S02Trace)
+    case variant7(Surface02S02DbTrace)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-surface-message"), cborValue)) != nil {
+            self = .variant1(try Surface02S02SurfaceMessage.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-event"), cborValue)) != nil {
+            self = .variant2(try Surface02S02Event.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-action"), cborValue)) != nil {
+            self = .variant3(try Surface02S02Action.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-manifest"), cborValue)) != nil {
+            self = .variant4(try Surface02S02Manifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), cborValue)) != nil {
+            self = .variant5(try Surface02S02DbManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-trace"), cborValue)) != nil {
+            self = .variant6(try Surface02S02Trace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-trace"), cborValue)) != nil {
+            self = .variant7(try Surface02S02DbTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-surface-message"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-event"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-action"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-manifest"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-trace"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-trace"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02Call: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-call"
+    case variant1(Surface02S02CallVariant1)
+    case variant2(Surface02S02CallVariant2)
+    case variant3(Surface02S02CallVariant3)
+    case variant4(Surface02S02CallVariant4)
+    case variant5(Surface02S02CallVariant5)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant1(try Surface02S02CallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try Surface02S02CallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant3(try Surface02S02CallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant4(try Surface02S02CallVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant5(try Surface02S02CallVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02InboxMessage: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-inbox-message"
+    public var `index`: CommonUint64
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: Surface02S02Event
+    public init(`index`: CommonUint64, `id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: Surface02S02Event) {
+        self.`index` = `index`
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`index` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "index")), depth: depth + 1)
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try Surface02S02Event.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("index", try self.`index`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02LlmRequest: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-llm-request"
+    public var `id`: CommonCorrelationId
+    public var `correlation_id`: CommonCorrelationId
+    public var `capability`: Surface02S02CapabilityName
+    public var `model`: CBORValue
+    public var `input`: CommonProfileMap
+    public init(`id`: CommonCorrelationId, `correlation_id`: CommonCorrelationId, `capability`: Surface02S02CapabilityName, `model`: CBORValue, `input`: CommonProfileMap) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`capability` = `capability`
+        self.`model` = `model`
+        self.`input` = `input`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`model` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "model")), depth: depth + 1)
+        self.`input` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("model", try self.`model`.cborValue(depth: depth + 1)))
+        entries.append(.init("input", try self.`input`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Manifest: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [Surface02S02CapabilityName]
+    public var `required_capabilities`: [Surface02S02CapabilityName]
+    public var `exclusive_outputs`: [Surface02S02CapabilityName]
+    public var `budgets`: AbiBudgets
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [Surface02S02CapabilityName], `required_capabilities`: [Surface02S02CapabilityName], `exclusive_outputs`: [Surface02S02CapabilityName], `budgets`: AbiBudgets) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02StepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-step-record"
+    case variant1(Surface02S02StepRecordVariant1)
+    case variant2(Surface02S02StepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try Surface02S02StepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), cborValue)) != nil {
+            self = .variant2(try Surface02S02StepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Trace: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_actions`: [Surface02S02Action]
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_files`: AbiSnapshot
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `final_hash`: AbiHash
+    public var `trailing_boundary`: Surface02S02TraceTrailingBoundary
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [Surface02S02LlmRequest]
+    public var `records`: [Surface02S02StepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_actions`: [Surface02S02Action], `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_files`: AbiSnapshot, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `final_hash`: AbiHash, `trailing_boundary`: Surface02S02TraceTrailingBoundary, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [Surface02S02LlmRequest], `records`: [Surface02S02StepRecord], `blobs`: [CBORMapEntry]) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_actions` = `initial_actions`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_files` = `initial_files`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`final_hash` = `final_hash`
+        self.`trailing_boundary` = `trailing_boundary`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_actions")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_files")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`final_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_hash")), depth: depth + 1)
+        self.`trailing_boundary` = try Surface02S02TraceTrailingBoundary.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trailing_boundary")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [Surface02S02StepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_actions", try self.`initial_actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_files", try self.`initial_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_hash", try self.`final_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("trailing_boundary", try self.`trailing_boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Action: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-action"
+    public var `id`: CommonActionId
+    public var `coglet`: CommonCogletId
+    public var `capability`: Surface02S02CapabilityName
+    public var `args`: CommonProfileMap
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`id`: CommonActionId, `coglet`: CommonCogletId, `capability`: Surface02S02CapabilityName, `args`: CommonProfileMap, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`id` = `id`
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias Surface02S02CapabilityName = CBORValue
+
+public struct Surface02S02Event: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-event"
+    public var `source`: CommonSourceId
+    public var `kind`: Surface02S02CapabilityName
+    public var `seq`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`source`: CommonSourceId, `kind`: Surface02S02CapabilityName, `seq`: CommonUint64, `logical_time`: CommonUint64, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
+        self.`source` = `source`
+        self.`kind` = `kind`
+        self.`seq` = `seq`
+        self.`logical_time` = `logical_time`
+        self.`payload` = `payload`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`source` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source")), depth: depth + 1)
+        self.`kind` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seq")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("source", try self.`source`.cborValue(depth: depth + 1)))
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("seq", try self.`seq`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("payload", try self.`payload`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02Database: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-database"
+    case variant1(Surface02S02DbRequest)
+    case variant2(DatabaseDbReply)
+    case variant3(DatabaseDbOutcome)
+    case variant4(Surface02S02DbHostCall)
+    case variant5(Surface02S02DbManifest)
+    case variant6(Surface02S02DbStepRecord)
+    case variant7(Surface02S02DbTrace)
+    case variant8(DatabaseDbBoundaryRecord)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-request"), cborValue)) != nil {
+            self = .variant1(try Surface02S02DbRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-reply"), cborValue)) != nil {
+            self = .variant2(try DatabaseDbReply.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-outcome"), cborValue)) != nil {
+            self = .variant3(try DatabaseDbOutcome.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant4(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), cborValue)) != nil {
+            self = .variant5(try Surface02S02DbManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-step-record"), cborValue)) != nil {
+            self = .variant6(try Surface02S02DbStepRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-trace"), cborValue)) != nil {
+            self = .variant7(try Surface02S02DbTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-boundary-record"), cborValue)) != nil {
+            self = .variant8(try DatabaseDbBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-reply"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-outcome"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-step-record"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-trace"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-boundary-record"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbEnqueue: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-enqueue"
+    public var `operation`: Swift.String
+    public var `intent_id`: CommonActionId
+    public var `idempotency_key`: CommonCorrelationId
+    public var `kind`: Surface02S02CapabilityName
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`operation`: Swift.String, `intent_id`: CommonActionId, `idempotency_key`: CommonCorrelationId, `kind`: Surface02S02CapabilityName, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
+        self.`operation` = `operation`
+        self.`intent_id` = `intent_id`
+        self.`idempotency_key` = `idempotency_key`
+        self.`kind` = `kind`
+        self.`payload` = `payload`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation")), depth: depth + 1)
+        self.`intent_id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intent_id")), depth: depth + 1)
+        self.`idempotency_key` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "idempotency_key")), depth: depth + 1)
+        self.`kind` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation", try self.`operation`.cborValue(depth: depth + 1)))
+        entries.append(.init("intent_id", try self.`intent_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("idempotency_key", try self.`idempotency_key`.cborValue(depth: depth + 1)))
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("payload", try self.`payload`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbHostCall: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-host-call"
+    case variant1(Surface02S02DbHostCallVariant1)
+    case variant2(Surface02S02DbHostCallVariant2)
+    case variant3(Surface02S02DbHostCallVariant3)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), cborValue)) != nil {
+            self = .variant1(try Surface02S02DbHostCallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbHostCallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant3(try Surface02S02DbHostCallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbManifest: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [Surface02S02CapabilityName]
+    public var `required_capabilities`: [Surface02S02CapabilityName]
+    public var `exclusive_outputs`: [Surface02S02CapabilityName]
+    public var `budgets`: AbiBudgets
+    public var `database`: DatabaseDbConfig
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [Surface02S02CapabilityName], `required_capabilities`: [Surface02S02CapabilityName], `exclusive_outputs`: [Surface02S02CapabilityName], `budgets`: AbiBudgets, `database`: DatabaseDbConfig) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+        self.`database` = `database`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`database` = try DatabaseDbConfig.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "database")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("database", try self.`database`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbRequest: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-request"
+    case variant1(DatabaseDbStatement)
+    case variant2(Surface02S02DbEnqueue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("database::db-statement"), cborValue)) != nil {
+            self = .variant1(try DatabaseDbStatement.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-enqueue"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbEnqueue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-statement"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-enqueue"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbStepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-step-record"
+    case variant1(Surface02S02DbStepRecordVariant1)
+    case variant2(Surface02S02DbStepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try Surface02S02DbStepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbStepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbTrace: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-db-trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_actions`: [Surface02S02Action]
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_files`: AbiSnapshot
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `final_hash`: AbiHash
+    public var `trailing_boundary`: Surface02S02DbTraceTrailingBoundary
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [Surface02S02LlmRequest]
+    public var `records`: [Surface02S02DbStepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public var `initial_db_revision`: CommonUint64
+    public var `final_db_revision`: CommonUint64
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_actions`: [Surface02S02Action], `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_files`: AbiSnapshot, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `final_hash`: AbiHash, `trailing_boundary`: Surface02S02DbTraceTrailingBoundary, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [Surface02S02LlmRequest], `records`: [Surface02S02DbStepRecord], `blobs`: [CBORMapEntry], `initial_db_revision`: CommonUint64, `final_db_revision`: CommonUint64) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_actions` = `initial_actions`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_files` = `initial_files`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`final_hash` = `final_hash`
+        self.`trailing_boundary` = `trailing_boundary`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+        self.`initial_db_revision` = `initial_db_revision`
+        self.`final_db_revision` = `final_db_revision`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_actions")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_files")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`final_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_hash")), depth: depth + 1)
+        self.`trailing_boundary` = try Surface02S02DbTraceTrailingBoundary.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trailing_boundary")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [Surface02S02DbStepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+        self.`initial_db_revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_db_revision")), depth: depth + 1)
+        self.`final_db_revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_db_revision")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_actions", try self.`initial_actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_files", try self.`initial_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_hash", try self.`final_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("trailing_boundary", try self.`trailing_boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_db_revision", try self.`initial_db_revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_db_revision", try self.`final_db_revision`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Act: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-act"
+    public var `grant_epoch`: Swift.UInt64
+    public var `action`: Surface02S02Action
+    public init(`grant_epoch`: Swift.UInt64, `action`: Surface02S02Action) {
+        self.`grant_epoch` = `grant_epoch`
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`action` = try Surface02S02Action.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CapEntry: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-cap-entry"
+    public var `name`: Surface02S02CapabilityName
+    public var `events`: [Surface02S02CapabilityName]
+    public var `reads`: [Surface02S02CapabilityName]
+    public var `actions`: [Surface02S02CapabilityName]
+    public var `exclusive`: [Surface02S02CapabilityName]
+    public var `schemas`: Surface02S02SchemaRefs
+    public init(`name`: Surface02S02CapabilityName, `events`: [Surface02S02CapabilityName], `reads`: [Surface02S02CapabilityName], `actions`: [Surface02S02CapabilityName], `exclusive`: [Surface02S02CapabilityName], `schemas`: Surface02S02SchemaRefs) {
+        self.`name` = `name`
+        self.`events` = `events`
+        self.`reads` = `reads`
+        self.`actions` = `actions`
+        self.`exclusive` = `exclusive`
+        self.`schemas` = `schemas`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`name` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`events` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`reads` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reads")), depth: depth + 1)
+        self.`actions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`exclusive` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive")), depth: depth + 1)
+        self.`schemas` = try Surface02S02SchemaRefs.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "schemas")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("reads", try self.`reads`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive", try self.`exclusive`.cborValue(depth: depth + 1)))
+        entries.append(.init("schemas", try self.`schemas`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Capabilities: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-capabilities"
+    public var `revision`: Swift.UInt64
+    public var `clock`: CommonUint64
+    public var `entries`: [Surface02S02CapEntry]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`revision`: Swift.UInt64, `clock`: CommonUint64, `entries`: [Surface02S02CapEntry], `correlation_id`: CommonCorrelationId) {
+        self.`revision` = `revision`
+        self.`clock` = `clock`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`entries` = try [Surface02S02CapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Grant: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-grant"
+    public var `coglet`: CommonCogletId
+    public var `operations`: [Surface02S02CapabilityName]
+    public var `resources`: [Surface02S02CapabilityName]
+    public var `expires`: CommonUint64
+    public init(`coglet`: CommonCogletId, `operations`: [Surface02S02CapabilityName], `resources`: [Surface02S02CapabilityName], `expires`: CommonUint64) {
+        self.`coglet` = `coglet`
+        self.`operations` = `operations`
+        self.`resources` = `resources`
+        self.`expires` = `expires`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`operations` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operations")), depth: depth + 1)
+        self.`resources` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "resources")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("operations", try self.`operations`.cborValue(depth: depth + 1)))
+        entries.append(.init("resources", try self.`resources`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Grants: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-grants"
+    public var `epoch`: Swift.UInt64
+    public var `entries`: [Surface02S02Grant]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`epoch`: Swift.UInt64, `entries`: [Surface02S02Grant], `correlation_id`: CommonCorrelationId) {
+        self.`epoch` = `epoch`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`entries` = try [Surface02S02Grant].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02Read: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-read"
+    public var `coglet`: CommonCogletId
+    public var `capability`: Surface02S02CapabilityName
+    public var `args`: CommonProfileMap
+    public var `grant_epoch`: Swift.UInt64
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`coglet`: CommonCogletId, `capability`: Surface02S02CapabilityName, `args`: CommonProfileMap, `grant_epoch`: Swift.UInt64, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`grant_epoch` = `grant_epoch`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias Surface02S02SchemaRefs = [CBORMapEntry]
+
+public indirect enum Surface02S02SurfaceMessage: CBORMessage, Sendable {
+    public static let schemaRule = "surface02::s02-surface-message"
+    case variant1(Surface02S02SurfaceMessageVariant1)
+    case variant2(Surface02S02SurfaceMessageVariant2)
+    case variant3(Surface02S02SurfaceMessageVariant3)
+    case variant4(Surface02S02SurfaceMessageVariant4)
+    case variant5(Surface02S02SurfaceMessageVariant5)
+    case variant6(Surface02S02SurfaceMessageVariant6)
+    case variant7(Surface02S02SurfaceMessageVariant7)
+    case variant8(Surface02S02SurfaceMessageVariant8)
+    case variant9(Surface02S02SurfaceMessageVariant9)
+    case variant10(Surface02S02SurfaceMessageVariant10)
+    case variant11(Surface02S02SurfaceMessageVariant11)
+    case variant12(Surface02S02SurfaceMessageVariant12)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), cborValue)) != nil {
+            self = .variant1(try Surface02S02SurfaceMessageVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), cborValue)) != nil {
+            self = .variant2(try Surface02S02SurfaceMessageVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), cborValue)) != nil {
+            self = .variant3(try Surface02S02SurfaceMessageVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), cborValue)) != nil {
+            self = .variant4(try Surface02S02SurfaceMessageVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), cborValue)) != nil {
+            self = .variant5(try Surface02S02SurfaceMessageVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), cborValue)) != nil {
+            self = .variant6(try Surface02S02SurfaceMessageVariant6.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), cborValue)) != nil {
+            self = .variant7(try Surface02S02SurfaceMessageVariant7.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), cborValue)) != nil {
+            self = .variant8(try Surface02S02SurfaceMessageVariant8.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), cborValue)) != nil {
+            self = .variant9(try Surface02S02SurfaceMessageVariant9.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), cborValue)) != nil {
+            self = .variant10(try Surface02S02SurfaceMessageVariant10.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), cborValue)) != nil {
+            self = .variant11(try Surface02S02SurfaceMessageVariant11.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), cborValue)) != nil {
+            self = .variant12(try Surface02S02SurfaceMessageVariant12.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), value)
         case .variant9(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), value)
@@ -14076,6 +15368,1132 @@ public indirect enum SurfaceMessage: CBORMessage, Sendable {
     }
 }
 
+public indirect enum Surface02: CBORMessage, Sendable {
+    public static let schemaRule = "surface02"
+    case variant1(Surface02S02SurfaceMessage)
+    case variant2(Surface02S02Event)
+    case variant3(Surface02S02Action)
+    case variant4(Surface02S02Manifest)
+    case variant5(Surface02S02DbManifest)
+    case variant6(Surface02S02Trace)
+    case variant7(Surface02S02DbTrace)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-surface-message"), cborValue)) != nil {
+            self = .variant1(try Surface02S02SurfaceMessage.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-event"), cborValue)) != nil {
+            self = .variant2(try Surface02S02Event.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-action"), cborValue)) != nil {
+            self = .variant3(try Surface02S02Action.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-manifest"), cborValue)) != nil {
+            self = .variant4(try Surface02S02Manifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), cborValue)) != nil {
+            self = .variant5(try Surface02S02DbManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-trace"), cborValue)) != nil {
+            self = .variant6(try Surface02S02Trace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-trace"), cborValue)) != nil {
+            self = .variant7(try Surface02S02DbTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-surface-message"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-event"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-action"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-manifest"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-trace"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-trace"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02Call: CBORMessage, Sendable {
+    public static let schemaRule = "s02-call"
+    case variant1(S02CallVariant1)
+    case variant2(S02CallVariant2)
+    case variant3(S02CallVariant3)
+    case variant4(S02CallVariant4)
+    case variant5(S02CallVariant5)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant1(try S02CallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try S02CallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant3(try S02CallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant4(try S02CallVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant5(try S02CallVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("timer"))), .init(name: "argument", optional: false, node: .reference("abi::timer-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("emit"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-action")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("llm"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-llm-request")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("log"))), .init(name: "argument", optional: false, node: .reference("abi::log-entry")), .init(name: "result", optional: false, node: .range(.unsigned(0), .unsigned(4)))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .union([.literal(.text("timer")), .literal(.text("emit")), .literal(.text("llm")), .literal(.text("log"))])), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02InboxMessage: CBORMessage, Sendable {
+    public static let schemaRule = "s02-inbox-message"
+    public var `index`: CommonUint64
+    public var `id`: CommonCorrelationId
+    public var `sender`: CommonSourceId
+    public var `event`: Surface02S02Event
+    public init(`index`: CommonUint64, `id`: CommonCorrelationId, `sender`: CommonSourceId, `event`: Surface02S02Event) {
+        self.`index` = `index`
+        self.`id` = `id`
+        self.`sender` = `sender`
+        self.`event` = `event`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`index` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "index")), depth: depth + 1)
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`sender` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "sender")), depth: depth + 1)
+        self.`event` = try Surface02S02Event.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "event")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("index", try self.`index`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("sender", try self.`sender`.cborValue(depth: depth + 1)))
+        entries.append(.init("event", try self.`event`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02LlmRequest: CBORMessage, Sendable {
+    public static let schemaRule = "s02-llm-request"
+    public var `id`: CommonCorrelationId
+    public var `correlation_id`: CommonCorrelationId
+    public var `capability`: Surface02S02CapabilityName
+    public var `model`: CBORValue
+    public var `input`: CommonProfileMap
+    public init(`id`: CommonCorrelationId, `correlation_id`: CommonCorrelationId, `capability`: Surface02S02CapabilityName, `model`: CBORValue, `input`: CommonProfileMap) {
+        self.`id` = `id`
+        self.`correlation_id` = `correlation_id`
+        self.`capability` = `capability`
+        self.`model` = `model`
+        self.`input` = `input`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`model` = try CBORValue.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "model")), depth: depth + 1)
+        self.`input` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("model", try self.`model`.cborValue(depth: depth + 1)))
+        entries.append(.init("input", try self.`input`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Manifest: CBORMessage, Sendable {
+    public static let schemaRule = "s02-manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [Surface02S02CapabilityName]
+    public var `required_capabilities`: [Surface02S02CapabilityName]
+    public var `exclusive_outputs`: [Surface02S02CapabilityName]
+    public var `budgets`: AbiBudgets
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [Surface02S02CapabilityName], `required_capabilities`: [Surface02S02CapabilityName], `exclusive_outputs`: [Surface02S02CapabilityName], `budgets`: AbiBudgets) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02StepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "s02-step-record"
+    case variant1(S02StepRecordVariant1)
+    case variant2(S02StepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try S02StepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), cborValue)) != nil {
+            self = .variant2(try S02StepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.0"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-call"))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("abi::failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Trace: CBORMessage, Sendable {
+    public static let schemaRule = "s02-trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_actions`: [Surface02S02Action]
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_files`: AbiSnapshot
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `final_hash`: AbiHash
+    public var `trailing_boundary`: S02TraceTrailingBoundary
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [Surface02S02LlmRequest]
+    public var `records`: [Surface02S02StepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_actions`: [Surface02S02Action], `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_files`: AbiSnapshot, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `final_hash`: AbiHash, `trailing_boundary`: S02TraceTrailingBoundary, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [Surface02S02LlmRequest], `records`: [Surface02S02StepRecord], `blobs`: [CBORMapEntry]) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_actions` = `initial_actions`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_files` = `initial_files`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`final_hash` = `final_hash`
+        self.`trailing_boundary` = `trailing_boundary`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_actions")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_files")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`final_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_hash")), depth: depth + 1)
+        self.`trailing_boundary` = try S02TraceTrailingBoundary.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trailing_boundary")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [Surface02S02StepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_actions", try self.`initial_actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_files", try self.`initial_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_hash", try self.`final_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("trailing_boundary", try self.`trailing_boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Action: CBORMessage, Sendable {
+    public static let schemaRule = "s02-action"
+    public var `id`: CommonActionId
+    public var `coglet`: CommonCogletId
+    public var `capability`: Surface02S02CapabilityName
+    public var `args`: CommonProfileMap
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`id`: CommonActionId, `coglet`: CommonCogletId, `capability`: Surface02S02CapabilityName, `args`: CommonProfileMap, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`id` = `id`
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias S02CapabilityName = CBORValue
+
+public struct S02Event: CBORMessage, Sendable {
+    public static let schemaRule = "s02-event"
+    public var `source`: CommonSourceId
+    public var `kind`: Surface02S02CapabilityName
+    public var `seq`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`source`: CommonSourceId, `kind`: Surface02S02CapabilityName, `seq`: CommonUint64, `logical_time`: CommonUint64, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
+        self.`source` = `source`
+        self.`kind` = `kind`
+        self.`seq` = `seq`
+        self.`logical_time` = `logical_time`
+        self.`payload` = `payload`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`source` = try CommonSourceId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "source")), depth: depth + 1)
+        self.`kind` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`seq` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seq")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("source", try self.`source`.cborValue(depth: depth + 1)))
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("seq", try self.`seq`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("payload", try self.`payload`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02Database: CBORMessage, Sendable {
+    public static let schemaRule = "s02-database"
+    case variant1(Surface02S02DbRequest)
+    case variant2(DatabaseDbReply)
+    case variant3(DatabaseDbOutcome)
+    case variant4(Surface02S02DbHostCall)
+    case variant5(Surface02S02DbManifest)
+    case variant6(Surface02S02DbStepRecord)
+    case variant7(Surface02S02DbTrace)
+    case variant8(DatabaseDbBoundaryRecord)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-request"), cborValue)) != nil {
+            self = .variant1(try Surface02S02DbRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-reply"), cborValue)) != nil {
+            self = .variant2(try DatabaseDbReply.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-outcome"), cborValue)) != nil {
+            self = .variant3(try DatabaseDbOutcome.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant4(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), cborValue)) != nil {
+            self = .variant5(try Surface02S02DbManifest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-step-record"), cborValue)) != nil {
+            self = .variant6(try Surface02S02DbStepRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-trace"), cborValue)) != nil {
+            self = .variant7(try Surface02S02DbTrace.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("database::db-boundary-record"), cborValue)) != nil {
+            self = .variant8(try DatabaseDbBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-request"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-reply"), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-outcome"), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-manifest"), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-step-record"), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-trace"), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-boundary-record"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbEnqueue: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-enqueue"
+    public var `operation`: Swift.String
+    public var `intent_id`: CommonActionId
+    public var `idempotency_key`: CommonCorrelationId
+    public var `kind`: Surface02S02CapabilityName
+    public var `payload`: CommonProfileMap
+    public var `correlation_id`: CommonCorrelationId
+    public init(`operation`: Swift.String, `intent_id`: CommonActionId, `idempotency_key`: CommonCorrelationId, `kind`: Surface02S02CapabilityName, `payload`: CommonProfileMap, `correlation_id`: CommonCorrelationId) {
+        self.`operation` = `operation`
+        self.`intent_id` = `intent_id`
+        self.`idempotency_key` = `idempotency_key`
+        self.`kind` = `kind`
+        self.`payload` = `payload`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`operation` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operation")), depth: depth + 1)
+        self.`intent_id` = try CommonActionId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "intent_id")), depth: depth + 1)
+        self.`idempotency_key` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "idempotency_key")), depth: depth + 1)
+        self.`kind` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "kind")), depth: depth + 1)
+        self.`payload` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "payload")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("operation", try self.`operation`.cborValue(depth: depth + 1)))
+        entries.append(.init("intent_id", try self.`intent_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("idempotency_key", try self.`idempotency_key`.cborValue(depth: depth + 1)))
+        entries.append(.init("kind", try self.`kind`.cborValue(depth: depth + 1)))
+        entries.append(.init("payload", try self.`payload`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbHostCall: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-host-call"
+    case variant1(S02DbHostCallVariant1)
+    case variant2(S02DbHostCallVariant2)
+    case variant3(S02DbHostCallVariant3)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), cborValue)) != nil {
+            self = .variant1(try S02DbHostCallVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), cborValue)) != nil {
+            self = .variant2(try S02DbHostCallVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), cborValue)) != nil {
+            self = .variant3(try S02DbHostCallVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .literal(.unsigned(0))), .init(name: "response", optional: false, node: .reference("database::db-reply"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument", optional: false, node: .reference("surface02::s02-db-request")), .init(name: "result", optional: false, node: .range(.unsigned(1), .unsigned(4)))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "op", optional: false, node: .literal(.text("db"))), .init(name: "argument_hex", optional: false, node: .reference("abi::hex")), .init(name: "result", optional: false, node: .literal(.unsigned(1)))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbManifest: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-manifest"
+    public var `version`: Swift.String
+    public var `id`: CommonCogletId
+    public var `subscriptions`: [Surface02S02CapabilityName]
+    public var `required_capabilities`: [Surface02S02CapabilityName]
+    public var `exclusive_outputs`: [Surface02S02CapabilityName]
+    public var `budgets`: AbiBudgets
+    public var `database`: DatabaseDbConfig
+    public init(`version`: Swift.String, `id`: CommonCogletId, `subscriptions`: [Surface02S02CapabilityName], `required_capabilities`: [Surface02S02CapabilityName], `exclusive_outputs`: [Surface02S02CapabilityName], `budgets`: AbiBudgets, `database`: DatabaseDbConfig) {
+        self.`version` = `version`
+        self.`id` = `id`
+        self.`subscriptions` = `subscriptions`
+        self.`required_capabilities` = `required_capabilities`
+        self.`exclusive_outputs` = `exclusive_outputs`
+        self.`budgets` = `budgets`
+        self.`database` = `database`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`id` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "id")), depth: depth + 1)
+        self.`subscriptions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "subscriptions")), depth: depth + 1)
+        self.`required_capabilities` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "required_capabilities")), depth: depth + 1)
+        self.`exclusive_outputs` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive_outputs")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`database` = try DatabaseDbConfig.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "database")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("id", try self.`id`.cborValue(depth: depth + 1)))
+        entries.append(.init("subscriptions", try self.`subscriptions`.cborValue(depth: depth + 1)))
+        entries.append(.init("required_capabilities", try self.`required_capabilities`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive_outputs", try self.`exclusive_outputs`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("database", try self.`database`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbRequest: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-request"
+    case variant1(DatabaseDbStatement)
+    case variant2(Surface02S02DbEnqueue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("database::db-statement"), cborValue)) != nil {
+            self = .variant1(try DatabaseDbStatement.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-enqueue"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbEnqueue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-statement"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-enqueue"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbStepRecord: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-step-record"
+    case variant1(S02DbStepRecordVariant1)
+    case variant2(S02DbStepRecordVariant2)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), cborValue)) != nil {
+            self = .variant1(try S02DbStepRecordVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]), cborValue)) != nil {
+            self = .variant2(try S02DbStepRecordVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("committed")))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "version", optional: false, node: .literal(.text("1.1"))), .init(name: "trace_id", optional: false, node: .reference("common::correlation-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "logical_time", optional: false, node: .reference("common::uint64")), .init(name: "seed", optional: false, node: .reference("common::uint64")), .init(name: "previous", optional: false, node: .union([.reference("abi::hash"), .literal(.null)])), .init(name: "code_hash", optional: false, node: .reference("abi::hash")), .init(name: "manifest_hash", optional: false, node: .reference("abi::hash")), .init(name: "before_hash", optional: false, node: .reference("abi::hash")), .init(name: "input_hash", optional: false, node: .reference("abi::hash")), .init(name: "output_hash", optional: false, node: .reference("abi::hash")), .init(name: "record_hash", optional: false, node: .reference("abi::hash")), .init(name: "db_before", optional: false, node: .reference("common::uint64")), .init(name: "db_after", optional: false, node: .reference("common::uint64")), .init(name: "db_schema_version", optional: false, node: .reference("common::uint64")), .init(name: "db_catalog_hash", optional: false, node: .reference("abi::hash")), .init(name: "engine", optional: false, node: .reference("abi::engine")), .init(name: "budgets", optional: false, node: .reference("abi::budgets")), .init(name: "grants", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-capability-name"))), .init(name: "events", optional: false, node: .boundedArray(1, nil, .reference("surface02::s02-event"))), .init(name: "boundary", optional: false, node: .boundedArray(0, nil, .reference("abi::boundary-change"))), .init(name: "calls", optional: false, node: .boundedArray(0, nil, .union([.reference("surface02::s02-call"), .reference("surface02::s02-db-host-call")]))), .init(name: "actions", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-action"))), .init(name: "timers", optional: false, node: .boundedArray(0, nil, .reference("abi::timer-request"))), .init(name: "llm_requests", optional: false, node: .boundedArray(0, nil, .reference("surface02::s02-llm-request"))), .init(name: "logs", optional: false, node: .boundedArray(0, nil, .reference("abi::log-entry"))), .init(name: "input_files", optional: false, node: .reference("abi::snapshot")), .init(name: "output_files", optional: false, node: .reference("abi::snapshot")), .init(name: "usage", optional: false, node: .reference("abi::usage")), .init(name: "status", optional: false, node: .literal(.text("aborted"))), .init(name: "failure", optional: false, node: .reference("database::db-failure"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbTrace: CBORMessage, Sendable {
+    public static let schemaRule = "s02-db-trace"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `initial_effect_ids`: AbiEffectLedger
+    public var `initial_actions`: [Surface02S02Action]
+    public var `initial_inbox_wakes`: [CommonUint64]
+    public var `initial_hash`: AbiHash
+    public var `initial_files`: AbiSnapshot
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `final_hash`: AbiHash
+    public var `trailing_boundary`: S02DbTraceTrailingBoundary
+    public var `initial_timers`: [AbiTimerRequest]
+    public var `initial_llm_requests`: [Surface02S02LlmRequest]
+    public var `records`: [Surface02S02DbStepRecord]
+    public var `blobs`: [CBORMapEntry]
+    public var `initial_db_revision`: CommonUint64
+    public var `final_db_revision`: CommonUint64
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `initial_effect_ids`: AbiEffectLedger, `initial_actions`: [Surface02S02Action], `initial_inbox_wakes`: [CommonUint64], `initial_hash`: AbiHash, `initial_files`: AbiSnapshot, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `final_hash`: AbiHash, `trailing_boundary`: S02DbTraceTrailingBoundary, `initial_timers`: [AbiTimerRequest], `initial_llm_requests`: [Surface02S02LlmRequest], `records`: [Surface02S02DbStepRecord], `blobs`: [CBORMapEntry], `initial_db_revision`: CommonUint64, `final_db_revision`: CommonUint64) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`initial_effect_ids` = `initial_effect_ids`
+        self.`initial_actions` = `initial_actions`
+        self.`initial_inbox_wakes` = `initial_inbox_wakes`
+        self.`initial_hash` = `initial_hash`
+        self.`initial_files` = `initial_files`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`final_hash` = `final_hash`
+        self.`trailing_boundary` = `trailing_boundary`
+        self.`initial_timers` = `initial_timers`
+        self.`initial_llm_requests` = `initial_llm_requests`
+        self.`records` = `records`
+        self.`blobs` = `blobs`
+        self.`initial_db_revision` = `initial_db_revision`
+        self.`final_db_revision` = `final_db_revision`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`initial_effect_ids` = try AbiEffectLedger.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_effect_ids")), depth: depth + 1)
+        self.`initial_actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_actions")), depth: depth + 1)
+        self.`initial_inbox_wakes` = try [CommonUint64].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_inbox_wakes")), depth: depth + 1)
+        self.`initial_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_hash")), depth: depth + 1)
+        self.`initial_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_files")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`final_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_hash")), depth: depth + 1)
+        self.`trailing_boundary` = try S02DbTraceTrailingBoundary.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trailing_boundary")), depth: depth + 1)
+        self.`initial_timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_timers")), depth: depth + 1)
+        self.`initial_llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_llm_requests")), depth: depth + 1)
+        self.`records` = try [Surface02S02DbStepRecord].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "records")), depth: depth + 1)
+        self.`blobs` = try [CBORMapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "blobs")), depth: depth + 1)
+        self.`initial_db_revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "initial_db_revision")), depth: depth + 1)
+        self.`final_db_revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "final_db_revision")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_effect_ids", try self.`initial_effect_ids`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_actions", try self.`initial_actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_inbox_wakes", try self.`initial_inbox_wakes`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_hash", try self.`initial_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_files", try self.`initial_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_hash", try self.`final_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("trailing_boundary", try self.`trailing_boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_timers", try self.`initial_timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_llm_requests", try self.`initial_llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("records", try self.`records`.cborValue(depth: depth + 1)))
+        entries.append(.init("blobs", try self.`blobs`.cborValue(depth: depth + 1)))
+        entries.append(.init("initial_db_revision", try self.`initial_db_revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("final_db_revision", try self.`final_db_revision`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Act: CBORMessage, Sendable {
+    public static let schemaRule = "s02-act"
+    public var `grant_epoch`: Swift.UInt64
+    public var `action`: Surface02S02Action
+    public init(`grant_epoch`: Swift.UInt64, `action`: Surface02S02Action) {
+        self.`grant_epoch` = `grant_epoch`
+        self.`action` = `action`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`action` = try Surface02S02Action.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "action")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("action", try self.`action`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02CapEntry: CBORMessage, Sendable {
+    public static let schemaRule = "s02-cap-entry"
+    public var `name`: Surface02S02CapabilityName
+    public var `events`: [Surface02S02CapabilityName]
+    public var `reads`: [Surface02S02CapabilityName]
+    public var `actions`: [Surface02S02CapabilityName]
+    public var `exclusive`: [Surface02S02CapabilityName]
+    public var `schemas`: Surface02S02SchemaRefs
+    public init(`name`: Surface02S02CapabilityName, `events`: [Surface02S02CapabilityName], `reads`: [Surface02S02CapabilityName], `actions`: [Surface02S02CapabilityName], `exclusive`: [Surface02S02CapabilityName], `schemas`: Surface02S02SchemaRefs) {
+        self.`name` = `name`
+        self.`events` = `events`
+        self.`reads` = `reads`
+        self.`actions` = `actions`
+        self.`exclusive` = `exclusive`
+        self.`schemas` = `schemas`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`name` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "name")), depth: depth + 1)
+        self.`events` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`reads` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reads")), depth: depth + 1)
+        self.`actions` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`exclusive` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "exclusive")), depth: depth + 1)
+        self.`schemas` = try Surface02S02SchemaRefs.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "schemas")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("name", try self.`name`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("reads", try self.`reads`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("exclusive", try self.`exclusive`.cborValue(depth: depth + 1)))
+        entries.append(.init("schemas", try self.`schemas`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Capabilities: CBORMessage, Sendable {
+    public static let schemaRule = "s02-capabilities"
+    public var `revision`: Swift.UInt64
+    public var `clock`: CommonUint64
+    public var `entries`: [Surface02S02CapEntry]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`revision`: Swift.UInt64, `clock`: CommonUint64, `entries`: [Surface02S02CapEntry], `correlation_id`: CommonCorrelationId) {
+        self.`revision` = `revision`
+        self.`clock` = `clock`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`revision` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+        self.`clock` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "clock")), depth: depth + 1)
+        self.`entries` = try [Surface02S02CapEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        entries.append(.init("clock", try self.`clock`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Grant: CBORMessage, Sendable {
+    public static let schemaRule = "s02-grant"
+    public var `coglet`: CommonCogletId
+    public var `operations`: [Surface02S02CapabilityName]
+    public var `resources`: [Surface02S02CapabilityName]
+    public var `expires`: CommonUint64
+    public init(`coglet`: CommonCogletId, `operations`: [Surface02S02CapabilityName], `resources`: [Surface02S02CapabilityName], `expires`: CommonUint64) {
+        self.`coglet` = `coglet`
+        self.`operations` = `operations`
+        self.`resources` = `resources`
+        self.`expires` = `expires`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`operations` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "operations")), depth: depth + 1)
+        self.`resources` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "resources")), depth: depth + 1)
+        self.`expires` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "expires")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("operations", try self.`operations`.cborValue(depth: depth + 1)))
+        entries.append(.init("resources", try self.`resources`.cborValue(depth: depth + 1)))
+        entries.append(.init("expires", try self.`expires`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Grants: CBORMessage, Sendable {
+    public static let schemaRule = "s02-grants"
+    public var `epoch`: Swift.UInt64
+    public var `entries`: [Surface02S02Grant]
+    public var `correlation_id`: CommonCorrelationId
+    public init(`epoch`: Swift.UInt64, `entries`: [Surface02S02Grant], `correlation_id`: CommonCorrelationId) {
+        self.`epoch` = `epoch`
+        self.`entries` = `entries`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "epoch")), depth: depth + 1)
+        self.`entries` = try [Surface02S02Grant].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "entries")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("epoch", try self.`epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("entries", try self.`entries`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02Read: CBORMessage, Sendable {
+    public static let schemaRule = "s02-read"
+    public var `coglet`: CommonCogletId
+    public var `capability`: Surface02S02CapabilityName
+    public var `args`: CommonProfileMap
+    public var `grant_epoch`: Swift.UInt64
+    public var `deadline`: CommonUint64
+    public var `correlation_id`: CommonCorrelationId
+    public init(`coglet`: CommonCogletId, `capability`: Surface02S02CapabilityName, `args`: CommonProfileMap, `grant_epoch`: Swift.UInt64, `deadline`: CommonUint64, `correlation_id`: CommonCorrelationId) {
+        self.`coglet` = `coglet`
+        self.`capability` = `capability`
+        self.`args` = `args`
+        self.`grant_epoch` = `grant_epoch`
+        self.`deadline` = `deadline`
+        self.`correlation_id` = `correlation_id`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`capability` = try Surface02S02CapabilityName.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "capability")), depth: depth + 1)
+        self.`args` = try CommonProfileMap.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "args")), depth: depth + 1)
+        self.`grant_epoch` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grant_epoch")), depth: depth + 1)
+        self.`deadline` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "deadline")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("capability", try self.`capability`.cborValue(depth: depth + 1)))
+        entries.append(.init("args", try self.`args`.cborValue(depth: depth + 1)))
+        entries.append(.init("grant_epoch", try self.`grant_epoch`.cborValue(depth: depth + 1)))
+        entries.append(.init("deadline", try self.`deadline`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias S02SchemaRefs = [CBORMapEntry]
+
+public indirect enum S02SurfaceMessage: CBORMessage, Sendable {
+    public static let schemaRule = "s02-surface-message"
+    case variant1(S02SurfaceMessageVariant1)
+    case variant2(S02SurfaceMessageVariant2)
+    case variant3(S02SurfaceMessageVariant3)
+    case variant4(S02SurfaceMessageVariant4)
+    case variant5(S02SurfaceMessageVariant5)
+    case variant6(S02SurfaceMessageVariant6)
+    case variant7(S02SurfaceMessageVariant7)
+    case variant8(S02SurfaceMessageVariant8)
+    case variant9(S02SurfaceMessageVariant9)
+    case variant10(S02SurfaceMessageVariant10)
+    case variant11(S02SurfaceMessageVariant11)
+    case variant12(S02SurfaceMessageVariant12)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), cborValue)) != nil {
+            self = .variant1(try S02SurfaceMessageVariant1.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), cborValue)) != nil {
+            self = .variant2(try S02SurfaceMessageVariant2.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), cborValue)) != nil {
+            self = .variant3(try S02SurfaceMessageVariant3.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), cborValue)) != nil {
+            self = .variant4(try S02SurfaceMessageVariant4.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), cborValue)) != nil {
+            self = .variant5(try S02SurfaceMessageVariant5.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), cborValue)) != nil {
+            self = .variant6(try S02SurfaceMessageVariant6.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), cborValue)) != nil {
+            self = .variant7(try S02SurfaceMessageVariant7.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), cborValue)) != nil {
+            self = .variant8(try S02SurfaceMessageVariant8.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), cborValue)) != nil {
+            self = .variant9(try S02SurfaceMessageVariant9.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), cborValue)) != nil {
+            self = .variant10(try S02SurfaceMessageVariant10.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), cborValue)) != nil {
+            self = .variant11(try S02SurfaceMessageVariant11.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), cborValue)) != nil {
+            self = .variant12(try S02SurfaceMessageVariant12.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello"))), .init(name: "body", optional: false, node: .reference("surface::hello"))]), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("hello_reply"))), .init(name: "body", optional: false, node: .reference("surface::hello-reply"))]), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("capabilities"))), .init(name: "body", optional: false, node: .reference("surface02::s02-capabilities"))]), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("grants"))), .init(name: "body", optional: false, node: .reference("surface02::s02-grants"))]), value)
+        case .variant5(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("event"))), .init(name: "body", optional: false, node: .reference("surface02::s02-event"))]), value)
+        case .variant6(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read"))), .init(name: "body", optional: false, node: .reference("surface02::s02-read"))]), value)
+        case .variant7(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("read_reply"))), .init(name: "body", optional: false, node: .reference("surface::read-reply"))]), value)
+        case .variant8(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("act"))), .init(name: "body", optional: false, node: .reference("surface02::s02-act"))]), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("accept"))), .init(name: "body", optional: false, node: .reference("common::action-accept"))]), value)
+        case .variant10(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("health"))), .init(name: "body", optional: false, node: .reference("surface::health"))]), value)
+        case .variant11(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("kill"))), .init(name: "body", optional: false, node: .reference("surface::kill"))]), value)
+        case .variant12(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.record([.init(name: "type", optional: false, node: .literal(.text("error"))), .init(name: "body", optional: false, node: .reference("surface::surface-error"))]), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum AbiLogEntryLevel: CBORMessage, Sendable {
     public static let schemaRule = "@AbiLogEntryLevel"
     case variant1(Swift.String)
@@ -16516,6 +18934,1170 @@ public struct SurfaceSurfaceMessageVariant11: CBORMessage, Sendable {
 
 public struct SurfaceSurfaceMessageVariant12: CBORMessage, Sendable {
     public static let schemaRule = "@SurfaceSurfaceMessageVariant12"
+    public var `type`: Swift.String
+    public var `body`: SurfaceSurfaceError
+    public init(`type`: Swift.String, `body`: SurfaceSurfaceError) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceSurfaceError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: AbiTimerRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiTimerRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiTimerRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02Action
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02Action, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02Action.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant3"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02LlmRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02LlmRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02LlmRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CallVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant4"
+    public var `op`: Swift.String
+    public var `argument`: AbiLogEntry
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLogEntry, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLogEntry.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02CallVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant5"
+    public var `op`: Surface02S02CallVariant5Op
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: Surface02S02CallVariant5Op, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Surface02S02CallVariant5Op.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02StepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02StepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: Surface02S02StepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02Call]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: Surface02S02StepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02Call], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try Surface02S02StepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02Call].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02StepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02StepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: Surface02S02StepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02Call]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: AbiFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: Surface02S02StepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02Call], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: AbiFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try Surface02S02StepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02Call].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try AbiFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02TraceTrailingBoundary: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02TraceTrailingBoundary"
+    case variant1(AbiBoundaryRecord)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::boundary-record"), cborValue)) != nil {
+            self = .variant1(try AbiBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::boundary-record"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbHostCallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbHostCallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02DbRequest
+    public var `result`: Swift.UInt64
+    public var `response`: DatabaseDbReply
+    public init(`op`: Swift.String, `argument`: Surface02S02DbRequest, `result`: Swift.UInt64, `response`: DatabaseDbReply) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+        self.`response` = `response`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02DbRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+        self.`response` = try DatabaseDbReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "response")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        entries.append(.init("response", try self.`response`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbHostCallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbHostCallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02DbRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02DbRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02DbRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbHostCallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbHostCallVariant3"
+    public var `op`: Swift.String
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbStepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: Surface02S02DbStepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `db_before`: CommonUint64
+    public var `db_after`: CommonUint64
+    public var `db_schema_version`: CommonUint64
+    public var `db_catalog_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02DbStepRecordVariant1CallsItem]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: Surface02S02DbStepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `db_before`: CommonUint64, `db_after`: CommonUint64, `db_schema_version`: CommonUint64, `db_catalog_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02DbStepRecordVariant1CallsItem], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`db_before` = `db_before`
+        self.`db_after` = `db_after`
+        self.`db_schema_version` = `db_schema_version`
+        self.`db_catalog_hash` = `db_catalog_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try Surface02S02DbStepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`db_before` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_before")), depth: depth + 1)
+        self.`db_after` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_after")), depth: depth + 1)
+        self.`db_schema_version` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_schema_version")), depth: depth + 1)
+        self.`db_catalog_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_catalog_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02DbStepRecordVariant1CallsItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_before", try self.`db_before`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_after", try self.`db_after`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_schema_version", try self.`db_schema_version`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_catalog_hash", try self.`db_catalog_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02DbStepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: Surface02S02DbStepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `db_before`: CommonUint64
+    public var `db_after`: CommonUint64
+    public var `db_schema_version`: CommonUint64
+    public var `db_catalog_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02DbStepRecordVariant2CallsItem]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: DatabaseDbFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: Surface02S02DbStepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `db_before`: CommonUint64, `db_after`: CommonUint64, `db_schema_version`: CommonUint64, `db_catalog_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02DbStepRecordVariant2CallsItem], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: DatabaseDbFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`db_before` = `db_before`
+        self.`db_after` = `db_after`
+        self.`db_schema_version` = `db_schema_version`
+        self.`db_catalog_hash` = `db_catalog_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try Surface02S02DbStepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`db_before` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_before")), depth: depth + 1)
+        self.`db_after` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_after")), depth: depth + 1)
+        self.`db_schema_version` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_schema_version")), depth: depth + 1)
+        self.`db_catalog_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_catalog_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02DbStepRecordVariant2CallsItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try DatabaseDbFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_before", try self.`db_before`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_after", try self.`db_after`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_schema_version", try self.`db_schema_version`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_catalog_hash", try self.`db_catalog_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbTraceTrailingBoundary: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbTraceTrailingBoundary"
+    case variant1(DatabaseDbBoundaryRecord)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("database::db-boundary-record"), cborValue)) != nil {
+            self = .variant1(try DatabaseDbBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-boundary-record"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant1"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHello
+    public init(`type`: Swift.String, `body`: SurfaceHello) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHello.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant2"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHelloReply
+    public init(`type`: Swift.String, `body`: SurfaceHelloReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHelloReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant3"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Capabilities
+    public init(`type`: Swift.String, `body`: Surface02S02Capabilities) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Capabilities.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant4"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Grants
+    public init(`type`: Swift.String, `body`: Surface02S02Grants) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Grants.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant5"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Event
+    public init(`type`: Swift.String, `body`: Surface02S02Event) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Event.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant6: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant6"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Read
+    public init(`type`: Swift.String, `body`: Surface02S02Read) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Read.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant7: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant7"
+    public var `type`: Swift.String
+    public var `body`: SurfaceReadReply
+    public init(`type`: Swift.String, `body`: SurfaceReadReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceReadReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant8: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant8"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Act
+    public init(`type`: Swift.String, `body`: Surface02S02Act) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Act.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant9: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant9"
+    public var `type`: Swift.String
+    public var `body`: CommonActionAccept
+    public init(`type`: Swift.String, `body`: CommonActionAccept) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonActionAccept.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant10: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant10"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHealth
+    public init(`type`: Swift.String, `body`: SurfaceHealth) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHealth.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant11: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant11"
+    public var `type`: Swift.String
+    public var `body`: SurfaceKill
+    public init(`type`: Swift.String, `body`: SurfaceKill) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceKill.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct Surface02S02SurfaceMessageVariant12: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02SurfaceMessageVariant12"
     public var `type`: Swift.String
     public var `body`: SurfaceSurfaceError
     public init(`type`: Swift.String, `body`: SurfaceSurfaceError) {
@@ -19004,6 +22586,1170 @@ public struct SurfaceMessageVariant12: CBORMessage, Sendable {
     }
 }
 
+public struct S02CallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: AbiTimerRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiTimerRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiTimerRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02CallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02Action
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02Action, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02Action.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02CallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant3"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02LlmRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02LlmRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02LlmRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02CallVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant4"
+    public var `op`: Swift.String
+    public var `argument`: AbiLogEntry
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: AbiLogEntry, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try AbiLogEntry.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02CallVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant5"
+    public var `op`: S02CallVariant5Op
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: S02CallVariant5Op, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try S02CallVariant5Op.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02StepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@S02StepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: S02StepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02Call]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: S02StepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02Call], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try S02StepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02Call].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02StepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@S02StepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: S02StepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [Surface02S02Call]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: AbiFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: S02StepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [Surface02S02Call], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: AbiFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try S02StepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [Surface02S02Call].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try AbiFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02TraceTrailingBoundary: CBORMessage, Sendable {
+    public static let schemaRule = "@S02TraceTrailingBoundary"
+    case variant1(AbiBoundaryRecord)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::boundary-record"), cborValue)) != nil {
+            self = .variant1(try AbiBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::boundary-record"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbHostCallVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbHostCallVariant1"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02DbRequest
+    public var `result`: Swift.UInt64
+    public var `response`: DatabaseDbReply
+    public init(`op`: Swift.String, `argument`: Surface02S02DbRequest, `result`: Swift.UInt64, `response`: DatabaseDbReply) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+        self.`response` = `response`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02DbRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+        self.`response` = try DatabaseDbReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "response")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        entries.append(.init("response", try self.`response`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbHostCallVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbHostCallVariant2"
+    public var `op`: Swift.String
+    public var `argument`: Surface02S02DbRequest
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument`: Surface02S02DbRequest, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument` = `argument`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument` = try Surface02S02DbRequest.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument", try self.`argument`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbHostCallVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbHostCallVariant3"
+    public var `op`: Swift.String
+    public var `argument_hex`: AbiHex
+    public var `result`: Swift.UInt64
+    public init(`op`: Swift.String, `argument_hex`: AbiHex, `result`: Swift.UInt64) {
+        self.`op` = `op`
+        self.`argument_hex` = `argument_hex`
+        self.`result` = `result`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`op` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "op")), depth: depth + 1)
+        self.`argument_hex` = try AbiHex.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "argument_hex")), depth: depth + 1)
+        self.`result` = try Swift.UInt64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "result")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("op", try self.`op`.cborValue(depth: depth + 1)))
+        entries.append(.init("argument_hex", try self.`argument_hex`.cborValue(depth: depth + 1)))
+        entries.append(.init("result", try self.`result`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbStepRecordVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant1"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: S02DbStepRecordVariant1Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `db_before`: CommonUint64
+    public var `db_after`: CommonUint64
+    public var `db_schema_version`: CommonUint64
+    public var `db_catalog_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [S02DbStepRecordVariant1CallsItem]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: S02DbStepRecordVariant1Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `db_before`: CommonUint64, `db_after`: CommonUint64, `db_schema_version`: CommonUint64, `db_catalog_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [S02DbStepRecordVariant1CallsItem], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`db_before` = `db_before`
+        self.`db_after` = `db_after`
+        self.`db_schema_version` = `db_schema_version`
+        self.`db_catalog_hash` = `db_catalog_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try S02DbStepRecordVariant1Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`db_before` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_before")), depth: depth + 1)
+        self.`db_after` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_after")), depth: depth + 1)
+        self.`db_schema_version` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_schema_version")), depth: depth + 1)
+        self.`db_catalog_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_catalog_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [S02DbStepRecordVariant1CallsItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_before", try self.`db_before`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_after", try self.`db_after`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_schema_version", try self.`db_schema_version`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_catalog_hash", try self.`db_catalog_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02DbStepRecordVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant2"
+    public var `version`: Swift.String
+    public var `trace_id`: CommonCorrelationId
+    public var `coglet`: CommonCogletId
+    public var `step`: CommonUint64
+    public var `logical_time`: CommonUint64
+    public var `seed`: CommonUint64
+    public var `previous`: S02DbStepRecordVariant2Previous
+    public var `code_hash`: AbiHash
+    public var `manifest_hash`: AbiHash
+    public var `before_hash`: AbiHash
+    public var `input_hash`: AbiHash
+    public var `output_hash`: AbiHash
+    public var `record_hash`: AbiHash
+    public var `db_before`: CommonUint64
+    public var `db_after`: CommonUint64
+    public var `db_schema_version`: CommonUint64
+    public var `db_catalog_hash`: AbiHash
+    public var `engine`: AbiEngine
+    public var `budgets`: AbiBudgets
+    public var `grants`: [Surface02S02CapabilityName]
+    public var `events`: [Surface02S02Event]
+    public var `boundary`: [AbiBoundaryChange]
+    public var `calls`: [S02DbStepRecordVariant2CallsItem]
+    public var `actions`: [Surface02S02Action]
+    public var `timers`: [AbiTimerRequest]
+    public var `llm_requests`: [Surface02S02LlmRequest]
+    public var `logs`: [AbiLogEntry]
+    public var `input_files`: AbiSnapshot
+    public var `output_files`: AbiSnapshot
+    public var `usage`: AbiUsage
+    public var `status`: Swift.String
+    public var `failure`: DatabaseDbFailure
+    public init(`version`: Swift.String, `trace_id`: CommonCorrelationId, `coglet`: CommonCogletId, `step`: CommonUint64, `logical_time`: CommonUint64, `seed`: CommonUint64, `previous`: S02DbStepRecordVariant2Previous, `code_hash`: AbiHash, `manifest_hash`: AbiHash, `before_hash`: AbiHash, `input_hash`: AbiHash, `output_hash`: AbiHash, `record_hash`: AbiHash, `db_before`: CommonUint64, `db_after`: CommonUint64, `db_schema_version`: CommonUint64, `db_catalog_hash`: AbiHash, `engine`: AbiEngine, `budgets`: AbiBudgets, `grants`: [Surface02S02CapabilityName], `events`: [Surface02S02Event], `boundary`: [AbiBoundaryChange], `calls`: [S02DbStepRecordVariant2CallsItem], `actions`: [Surface02S02Action], `timers`: [AbiTimerRequest], `llm_requests`: [Surface02S02LlmRequest], `logs`: [AbiLogEntry], `input_files`: AbiSnapshot, `output_files`: AbiSnapshot, `usage`: AbiUsage, `status`: Swift.String, `failure`: DatabaseDbFailure) {
+        self.`version` = `version`
+        self.`trace_id` = `trace_id`
+        self.`coglet` = `coglet`
+        self.`step` = `step`
+        self.`logical_time` = `logical_time`
+        self.`seed` = `seed`
+        self.`previous` = `previous`
+        self.`code_hash` = `code_hash`
+        self.`manifest_hash` = `manifest_hash`
+        self.`before_hash` = `before_hash`
+        self.`input_hash` = `input_hash`
+        self.`output_hash` = `output_hash`
+        self.`record_hash` = `record_hash`
+        self.`db_before` = `db_before`
+        self.`db_after` = `db_after`
+        self.`db_schema_version` = `db_schema_version`
+        self.`db_catalog_hash` = `db_catalog_hash`
+        self.`engine` = `engine`
+        self.`budgets` = `budgets`
+        self.`grants` = `grants`
+        self.`events` = `events`
+        self.`boundary` = `boundary`
+        self.`calls` = `calls`
+        self.`actions` = `actions`
+        self.`timers` = `timers`
+        self.`llm_requests` = `llm_requests`
+        self.`logs` = `logs`
+        self.`input_files` = `input_files`
+        self.`output_files` = `output_files`
+        self.`usage` = `usage`
+        self.`status` = `status`
+        self.`failure` = `failure`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`version` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "version")), depth: depth + 1)
+        self.`trace_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "trace_id")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`step` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "step")), depth: depth + 1)
+        self.`logical_time` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logical_time")), depth: depth + 1)
+        self.`seed` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "seed")), depth: depth + 1)
+        self.`previous` = try S02DbStepRecordVariant2Previous.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "previous")), depth: depth + 1)
+        self.`code_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "code_hash")), depth: depth + 1)
+        self.`manifest_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "manifest_hash")), depth: depth + 1)
+        self.`before_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "before_hash")), depth: depth + 1)
+        self.`input_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_hash")), depth: depth + 1)
+        self.`output_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_hash")), depth: depth + 1)
+        self.`record_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "record_hash")), depth: depth + 1)
+        self.`db_before` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_before")), depth: depth + 1)
+        self.`db_after` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_after")), depth: depth + 1)
+        self.`db_schema_version` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_schema_version")), depth: depth + 1)
+        self.`db_catalog_hash` = try AbiHash.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "db_catalog_hash")), depth: depth + 1)
+        self.`engine` = try AbiEngine.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "engine")), depth: depth + 1)
+        self.`budgets` = try AbiBudgets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "budgets")), depth: depth + 1)
+        self.`grants` = try [Surface02S02CapabilityName].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "grants")), depth: depth + 1)
+        self.`events` = try [Surface02S02Event].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "events")), depth: depth + 1)
+        self.`boundary` = try [AbiBoundaryChange].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "boundary")), depth: depth + 1)
+        self.`calls` = try [S02DbStepRecordVariant2CallsItem].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "calls")), depth: depth + 1)
+        self.`actions` = try [Surface02S02Action].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "actions")), depth: depth + 1)
+        self.`timers` = try [AbiTimerRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timers")), depth: depth + 1)
+        self.`llm_requests` = try [Surface02S02LlmRequest].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "llm_requests")), depth: depth + 1)
+        self.`logs` = try [AbiLogEntry].init(cborValue: CBORCodec.required(CBORCodec.field(entries, "logs")), depth: depth + 1)
+        self.`input_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "input_files")), depth: depth + 1)
+        self.`output_files` = try AbiSnapshot.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "output_files")), depth: depth + 1)
+        self.`usage` = try AbiUsage.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "usage")), depth: depth + 1)
+        self.`status` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`failure` = try DatabaseDbFailure.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "failure")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("version", try self.`version`.cborValue(depth: depth + 1)))
+        entries.append(.init("trace_id", try self.`trace_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("step", try self.`step`.cborValue(depth: depth + 1)))
+        entries.append(.init("logical_time", try self.`logical_time`.cborValue(depth: depth + 1)))
+        entries.append(.init("seed", try self.`seed`.cborValue(depth: depth + 1)))
+        entries.append(.init("previous", try self.`previous`.cborValue(depth: depth + 1)))
+        entries.append(.init("code_hash", try self.`code_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("manifest_hash", try self.`manifest_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("before_hash", try self.`before_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_hash", try self.`input_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_hash", try self.`output_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("record_hash", try self.`record_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_before", try self.`db_before`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_after", try self.`db_after`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_schema_version", try self.`db_schema_version`.cborValue(depth: depth + 1)))
+        entries.append(.init("db_catalog_hash", try self.`db_catalog_hash`.cborValue(depth: depth + 1)))
+        entries.append(.init("engine", try self.`engine`.cborValue(depth: depth + 1)))
+        entries.append(.init("budgets", try self.`budgets`.cborValue(depth: depth + 1)))
+        entries.append(.init("grants", try self.`grants`.cborValue(depth: depth + 1)))
+        entries.append(.init("events", try self.`events`.cborValue(depth: depth + 1)))
+        entries.append(.init("boundary", try self.`boundary`.cborValue(depth: depth + 1)))
+        entries.append(.init("calls", try self.`calls`.cborValue(depth: depth + 1)))
+        entries.append(.init("actions", try self.`actions`.cborValue(depth: depth + 1)))
+        entries.append(.init("timers", try self.`timers`.cborValue(depth: depth + 1)))
+        entries.append(.init("llm_requests", try self.`llm_requests`.cborValue(depth: depth + 1)))
+        entries.append(.init("logs", try self.`logs`.cborValue(depth: depth + 1)))
+        entries.append(.init("input_files", try self.`input_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("output_files", try self.`output_files`.cborValue(depth: depth + 1)))
+        entries.append(.init("usage", try self.`usage`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("failure", try self.`failure`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbTraceTrailingBoundary: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbTraceTrailingBoundary"
+    case variant1(DatabaseDbBoundaryRecord)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("database::db-boundary-record"), cborValue)) != nil {
+            self = .variant1(try DatabaseDbBoundaryRecord.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("database::db-boundary-record"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant1: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant1"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHello
+    public init(`type`: Swift.String, `body`: SurfaceHello) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHello.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant2: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant2"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHelloReply
+    public init(`type`: Swift.String, `body`: SurfaceHelloReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHelloReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant3: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant3"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Capabilities
+    public init(`type`: Swift.String, `body`: Surface02S02Capabilities) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Capabilities.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant4: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant4"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Grants
+    public init(`type`: Swift.String, `body`: Surface02S02Grants) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Grants.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant5: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant5"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Event
+    public init(`type`: Swift.String, `body`: Surface02S02Event) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Event.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant6: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant6"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Read
+    public init(`type`: Swift.String, `body`: Surface02S02Read) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Read.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant7: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant7"
+    public var `type`: Swift.String
+    public var `body`: SurfaceReadReply
+    public init(`type`: Swift.String, `body`: SurfaceReadReply) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceReadReply.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant8: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant8"
+    public var `type`: Swift.String
+    public var `body`: Surface02S02Act
+    public init(`type`: Swift.String, `body`: Surface02S02Act) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try Surface02S02Act.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant9: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant9"
+    public var `type`: Swift.String
+    public var `body`: CommonActionAccept
+    public init(`type`: Swift.String, `body`: CommonActionAccept) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try CommonActionAccept.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant10: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant10"
+    public var `type`: Swift.String
+    public var `body`: SurfaceHealth
+    public init(`type`: Swift.String, `body`: SurfaceHealth) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceHealth.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant11: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant11"
+    public var `type`: Swift.String
+    public var `body`: SurfaceKill
+    public init(`type`: Swift.String, `body`: SurfaceKill) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceKill.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct S02SurfaceMessageVariant12: CBORMessage, Sendable {
+    public static let schemaRule = "@S02SurfaceMessageVariant12"
+    public var `type`: Swift.String
+    public var `body`: SurfaceSurfaceError
+    public init(`type`: Swift.String, `body`: SurfaceSurfaceError) {
+        self.`type` = `type`
+        self.`body` = `body`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`type` = try Swift.String.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "type")), depth: depth + 1)
+        self.`body` = try SurfaceSurfaceError.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "body")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("type", try self.`type`.cborValue(depth: depth + 1)))
+        entries.append(.init("body", try self.`body`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum AbiCallVariant5Op: CBORMessage, Sendable {
     public static let schemaRule = "@AbiCallVariant5Op"
     case variant1(Swift.String)
@@ -19316,6 +24062,246 @@ public indirect enum DatabaseDbStepRecordVariant2CallsItem: CBORMessage, Sendabl
     }
 }
 
+public indirect enum Surface02S02CallVariant5Op: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02CallVariant5Op"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("timer")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("emit")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("llm")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("log")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("timer")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("emit")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("llm")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("log")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02StepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02StepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02StepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02StepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbStepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbStepRecordVariant1CallsItem: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant1CallsItem"
+    case variant1(Surface02S02Call)
+    case variant2(Surface02S02DbHostCall)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-call"), cborValue)) != nil {
+            self = .variant1(try Surface02S02Call.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-call"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbStepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum Surface02S02DbStepRecordVariant2CallsItem: CBORMessage, Sendable {
+    public static let schemaRule = "@Surface02S02DbStepRecordVariant2CallsItem"
+    case variant1(Surface02S02Call)
+    case variant2(Surface02S02DbHostCall)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-call"), cborValue)) != nil {
+            self = .variant1(try Surface02S02Call.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-call"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum CallVariant5Op: CBORMessage, Sendable {
     public static let schemaRule = "@CallVariant5Op"
     case variant1(Swift.String)
@@ -19622,6 +24608,246 @@ public indirect enum DbStepRecordVariant2CallsItem: CBORMessage, Sendable {
         case .variant2(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("database::db-host-call"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02CallVariant5Op: CBORMessage, Sendable {
+    public static let schemaRule = "@S02CallVariant5Op"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    case variant3(Swift.String)
+    case variant4(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("timer")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("emit")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("llm")), cborValue)) != nil {
+            self = .variant3(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("log")), cborValue)) != nil {
+            self = .variant4(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("timer")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("emit")), value)
+        case .variant3(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("llm")), value)
+        case .variant4(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("log")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02StepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@S02StepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02StepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@S02StepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbStepRecordVariant1Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant1Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbStepRecordVariant1CallsItem: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant1CallsItem"
+    case variant1(Surface02S02Call)
+    case variant2(Surface02S02DbHostCall)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-call"), cborValue)) != nil {
+            self = .variant1(try Surface02S02Call.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-call"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbStepRecordVariant2Previous: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant2Previous"
+    case variant1(AbiHash)
+    case variant2(CBORValue)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("abi::hash"), cborValue)) != nil {
+            self = .variant1(try AbiHash.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.null), cborValue)) != nil {
+            self = .variant2(try CBORValue.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("abi::hash"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.null), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public indirect enum S02DbStepRecordVariant2CallsItem: CBORMessage, Sendable {
+    public static let schemaRule = "@S02DbStepRecordVariant2CallsItem"
+    case variant1(Surface02S02Call)
+    case variant2(Surface02S02DbHostCall)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-call"), cborValue)) != nil {
+            self = .variant1(try Surface02S02Call.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), cborValue)) != nil {
+            self = .variant2(try Surface02S02DbHostCall.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-call"), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("surface02::s02-db-host-call"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
