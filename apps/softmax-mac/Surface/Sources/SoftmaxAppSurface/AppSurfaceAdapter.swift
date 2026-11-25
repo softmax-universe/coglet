@@ -1,5 +1,9 @@
 import Foundation
 
+/// Native callbacks contain only the product's generated, already-redacted
+/// payload type. This alias lets hosts avoid importing two CBOR enums unqualified.
+public typealias AppSurfaceEventHandler = (String, CBORValue) -> Void
+
 /// Adapter refusals carry no user values or provider diagnostics.
 public enum AppSurfaceFailure: Swift.Error, Equatable {
     case invalidArguments, unavailable, conflict, permissionDenied, unsupported, exhausted, `internal`

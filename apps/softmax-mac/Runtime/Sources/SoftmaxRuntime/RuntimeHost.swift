@@ -9,6 +9,7 @@ import class SoftmaxAppSurface.AppSurfaceMailbox
 import class SoftmaxAppSurface.AppSurfaceConnection
 import struct SoftmaxAppSurface.AppSurfaceCapture
 import struct SoftmaxAppSurface.AppSurfaceProvisioning
+import typealias SoftmaxAppSurface.AppSurfaceEventHandler
 
 public enum RuntimeState: String, Sendable { case running, stopped, error }
 public struct InstalledCoglet: Identifiable, Sendable {
@@ -151,7 +152,10 @@ private actor RuntimeExecutor {
             }
             sink.output.resume()
             self.generation = generation
-            try pump()
+            // An app-enabled guest must not see caps/grants or copied private
+            // state before MainActor attaches this exact native listener and
+            // publishes its post-attachment baseline. Legacy speech is unchanged.
+            if appConnection == nil { try pump() }
             log("runtime started")
             return [.init(id: id, version: manifest["version"] as? String ?? "unknown", status: .running)]
         } catch {
@@ -200,6 +204,11 @@ private actor RuntimeExecutor {
     func appSource(generation expected: UInt64) -> (incarnation: UInt64, epoch: UInt64)? {
         guard generation == expected, let appConnection else { return nil }
         return (appConnection.incarnation, appConnection.epoch)
+    }
+    func finishAppStartup(generation expected: UInt64) throws {
+        guard generation == expected else { throw HostFailure("Stale app startup") }
+        do { try pump() }
+        catch { cleanup(); throw error }
     }
     func transcript(_ text: String, generation expected: UInt64, outputEpoch: UInt64) throws -> [RuntimeAction] {
         guard generation == expected else { return [] }
@@ -268,13 +277,13 @@ private actor RuntimeExecutor {
     private var busy = false
     private var appAdapter: AppSurfaceAdapter?
     private var refreshApp: (() throws -> Void)?
-    private var setAppEvents: (((@MainActor (String, SoftmaxAppSurface.CBORValue) -> Void)?) -> Void)?
+    private var setAppEvents: ((AppSurfaceEventHandler?) -> Void)?
     private var appMailbox: AppSurfaceMailbox?
     private var appIncarnation: UInt64?
     /// Install before startup. Replacing the native owner retires its whole old
     /// stream, never lends an old callback the successor's observation token.
     public func installAppSurface(_ adapter: AppSurfaceAdapter, refresh: @escaping () throws -> Void,
-        events: @escaping ((@MainActor (String, SoftmaxAppSurface.CBORValue) -> Void)?) -> Void) {
+        events: @escaping (AppSurfaceEventHandler?) -> Void) {
         detachAppSurface()
         appAdapter = adapter; refreshApp = refresh; setAppEvents = events
     }
@@ -326,6 +335,7 @@ private actor RuntimeExecutor {
                     catch { mailbox.retire() }
                 })
                 try refreshAppSurface()
+                try await executor.finishAppStartup(generation: generation)
             } else { appMailbox = nil }
             state = .running; errorMessage = nil
             if automaticallyPolls {
