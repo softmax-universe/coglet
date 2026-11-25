@@ -12,7 +12,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -20,15 +20,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -46,7 +46,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "76956d129c5d661ccd0b63b8d3cb0f34a3670c5961db7ec06508ec6291bfe14a"
+        "record_hash": "a80e5516106c86c26bee11f687b1236ab1349d3aa237711e5b23e2cdc2321eb9"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -58,7 +58,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -78,7 +78,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -86,15 +86,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "b252b0877cf000b65cbe17265d52e22a9aa45a7b8e71ab961c41c00dde641a53",
+      "final_hash": "3c9454c9b33c683055d6959437eed24c2e48b10f3954e5cb8ba8cde2eb531ced",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "b252b0877cf000b65cbe17265d52e22a9aa45a7b8e71ab961c41c00dde641a53",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "3c9454c9b33c683055d6959437eed24c2e48b10f3954e5cb8ba8cde2eb531ced",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/code/build/provenance.cbor": "a76776657273696f6e63302e316d706f6c6963795f7368613235367840386635336265383136346366313033353433613230613233626639306361626466356337356664303838613733643138653962363163643134613666613765326d7265636970655f7368613235367840313137613465643265313266303561613565336632383963386631323263386439333337663165303464306439393464663032313030643133646665346235326d736f757263655f636f6d6d69747828616161616161616161616161616161616161616161616161616161616161616161616161616161616f6f726967696e616c5f7368613235367840393361343462626239366337353132313865346330306434373965346331343335383132326133383961636361313632303562316534643064633566393437367072657772697474656e5f736861323536784039336134346262623936633735313231386534633030643437396534633134333538313232613338396163636131363230356231653464306463356639343736707472616e73666f726d5f736861323536784033646332366261376430646262663464333632636163613736306430343733653739353162396436336363376137323937356265613038356462333739323431"
@@ -121,7 +121,7 @@
             "after": null
           }
         ],
-        "record_hash": "fb267c7cb20e80c03c1efb81e06d43994e284a9aeaed371fb26d7761010dcfbd"
+        "record_hash": "5ab23358c1b2c9c84d26d7c28660512dc9f6b8503705e4499c9e1cb30c43aaca"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -133,7 +133,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "b252b0877cf000b65cbe17265d52e22a9aa45a7b8e71ab961c41c00dde641a53",
+      "final_hash": "3c9454c9b33c683055d6959437eed24c2e48b10f3954e5cb8ba8cde2eb531ced",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -153,7 +153,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -161,15 +161,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "previous": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -187,7 +187,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "8070e79fbff4fdba2f33e604dbd0fefe101370e2cad60089f6e25fe7ea25c986"
+        "record_hash": "27bf439616d25cfd3a05a4cd99cb3176b806596e1ac37265c500be3e2e806b3c"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -202,9 +202,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -254,7 +254,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3"
+          "record_hash": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf"
         }
       ],
       "blobs": {
@@ -264,7 +264,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -284,7 +284,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -292,15 +292,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "924b337543105d6c7f378121e7910ee809e6dcc56a5c436e3479dcf569a652df",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "previous": "172dbb8048b06e8bd2a2fd8d91ccd8dce386247103eba9be0d9fb8e2b61a445c",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -318,7 +318,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "4e4146987f4a82d0e6db9be75765c6eac21495c9ffd3d1c5a00bf13618d53e6d"
+        "record_hash": "cabfd0d7f54a837f04e5b1ddeae51c8e2966f396e5c2e3bcf4affac31c5ab5ad"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -333,9 +333,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -385,7 +385,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "924b337543105d6c7f378121e7910ee809e6dcc56a5c436e3479dcf569a652df",
+          "record_hash": "172dbb8048b06e8bd2a2fd8d91ccd8dce386247103eba9be0d9fb8e2b61a445c",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -403,7 +403,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -423,7 +423,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -431,7 +431,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "final_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -443,7 +443,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "final_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -463,7 +463,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -471,15 +471,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -497,7 +497,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "86ddf119369b2e8ef9c0d2a7458bbb2e13c74912855e4a4cf425a0e2d9b7a3b6"
+        "record_hash": "f4cf8e8469377f49435ab15a15bb2b42dc5e613587a49f6d28c709026b4c1b4c"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -523,7 +523,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -531,15 +531,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "3c2842c048bf10ac89265cb74828e82a560b4b63ce74d7222668e5c414ac0734",
+      "final_hash": "a13e69f173a8dcefc7293ef31c83aac72df36db2a1134953ad45cb1db44fd0f9",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "3c2842c048bf10ac89265cb74828e82a560b4b63ce74d7222668e5c414ac0734",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "a13e69f173a8dcefc7293ef31c83aac72df36db2a1134953ad45cb1db44fd0f9",
         "output_files": {
           "/code/bin/step.wasm": "00",
           "/data/count": "30",
@@ -557,7 +557,7 @@
             "after": "00"
           }
         ],
-        "record_hash": "465ab7651a7fa368a22452e2f9009ce11c9674bc28981b07c51d7daa1d202b32"
+        "record_hash": "07203a98f2394bee9d2ba67300d13ebd2d0ff9b93a4a1439bb93ab50a9425b56"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -583,7 +583,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -591,15 +591,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "final_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -617,7 +617,7 @@
             "after": null
           }
         ],
-        "record_hash": "1e3b011666d2ea3c064f982e97d97113a17ba66eccc9ab75a3b6b1cfee4d3f9d"
+        "record_hash": "c804f953f8e66ce8b90609ef157c6c69e24126eef3f37d3411b3e5136dfc8a67"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -643,7 +643,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -651,15 +651,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": "0000000000000000000000000000000000000000000000000000000000000000",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -677,7 +677,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "063dfc69124e586f4f3083a10e0dfa89ce546677816bc6de91b28844375ca73f"
+        "record_hash": "fd3c4bfb5957cc54d33f90bc82d9fff3ee6259d01d8e33b3ad408ef2c581f2f6"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -692,9 +692,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -744,7 +744,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3"
+          "record_hash": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf"
         }
       ],
       "blobs": {
@@ -768,7 +768,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -776,15 +776,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 9,
-        "previous": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+        "previous": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -802,7 +802,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "911c599b8c0a38da7bf8711440bce4cf3628fe6f2a7f34db04b4703d48c18292"
+        "record_hash": "d067ecf906269ca1a831645b37082741e31363d94d505dba7a42eaf4164083ad"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -817,9 +817,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -869,7 +869,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3"
+          "record_hash": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf"
         }
       ],
       "blobs": {
@@ -893,7 +893,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -901,7 +901,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "85d76d0ddb9f91aab44158980e1174f4ff7c5639479f56256b228e6ee3ae87ce",
+      "final_hash": "662cf758f44cb2dc2186dafbd0735b11e52d25d7d00dba6e29ecbcf39bfbc516",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -916,9 +916,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -968,7 +968,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3"
+          "record_hash": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf"
         }
       ],
       "blobs": {
@@ -992,7 +992,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1000,15 +1000,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "76262d11617d5eefbfb577d2a798d919f31f5c939e9b15cd2c140144e542ab99",
+      "final_hash": "42ab07660f59a244705461282a13fe685815ee0f46f9ef1824cf93e00eec9a23",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "76262d11617d5eefbfb577d2a798d919f31f5c939e9b15cd2c140144e542ab99",
+        "previous": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "42ab07660f59a244705461282a13fe685815ee0f46f9ef1824cf93e00eec9a23",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "31",
@@ -1027,7 +1027,7 @@
             "after": "31"
           }
         ],
-        "record_hash": "6aab99230e24fe1b99c0b3e4e90899636ea9997cd3c5d5f3f1adad19538eca20"
+        "record_hash": "3e7dc060a8a1d1e07caae8a0956579915f453ca659743df419f04a5bc16ad499"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1042,9 +1042,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -1094,7 +1094,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "b66e6a12e720d58eed0a785ab2c211aa21707e0db25230734387d534dd566ab3"
+          "record_hash": "bee944599eebddd4eda23a52268a1c298637cd91bc6b2524eb74457f715a5fcf"
         }
       ],
       "blobs": {
@@ -1131,7 +1131,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1139,7 +1139,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "final_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1151,7 +1151,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "final_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "pending_actions": [
         "44444444444444444444444444444444"
       ],
@@ -1186,7 +1186,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1194,15 +1194,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1221,7 +1221,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "dbb213d955b988b14f84614c80f7d5209050f87dcf235152c532230eade94c96"
+        "record_hash": "b8674544149eebc2927481c06448a6c9867476788e14a624d33e0cab0c205e83"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1233,7 +1233,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -1255,7 +1255,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1263,15 +1263,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+        "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1290,7 +1290,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "9acf623696f356add05240c6c46bb09baf4b21640920a18e1e06c2b0af4567d4"
+        "record_hash": "904d5cba89c042e3edbc8473cd4db49fea9bf53a69f5efb2eb7808c49f4257be"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1305,9 +1305,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -1383,7 +1383,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         }
       ],
       "blobs": {
@@ -1393,7 +1393,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -1419,7 +1419,7 @@
       "initial_inbox_wakes": [
         0
       ],
-      "initial_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "initial_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1428,7 +1428,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1443,9 +1443,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "input_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+          "before_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "input_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -1500,7 +1500,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "ce1582542fc4cf6eabdf1db82d32c0c97e2a675a3b6f07f41299ee977cfc2999"
+          "record_hash": "94535291c346b146907887c6f74f8675fbbd1f6d14b85fb7510ce6663a72d967"
         }
       ],
       "blobs": {
@@ -1510,7 +1510,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -1534,7 +1534,7 @@
       "initial_inbox_wakes": [
         0
       ],
-      "initial_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "initial_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1543,7 +1543,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1558,9 +1558,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "input_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+          "before_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "input_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -1615,7 +1615,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "31bc4c6f0e1508fad1a853d907b9c1f7ff3df9fdaef4d3701b6e8966f44fa873",
+          "record_hash": "33add9c380a6119beeaf1319d59186b59af49f03489d1f2d7cc140b0e071a192",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -1633,7 +1633,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -1666,7 +1666,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1674,15 +1674,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "e444f38171c6712532b4b952db0a3cc4bc4c3af555e1362679bce3f14df904b2",
+      "final_hash": "69f2c22f9e97d4ede1bb6f8acdb22381e79cbc5853a8f41d0aafbcd4a3426263",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "e444f38171c6712532b4b952db0a3cc4bc4c3af555e1362679bce3f14df904b2",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "69f2c22f9e97d4ede1bb6f8acdb22381e79cbc5853a8f41d0aafbcd4a3426263",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1701,7 +1701,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223939393939393939393939393939393939393939393939393939393939393939227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "c540f660de81e90857cd386303d4b124b35aa33a800216aed1855c2853cd9fca"
+        "record_hash": "ccc69a5462f2b7e4d0a1dbcb0a427e137f43d48a5492b1ae393151c0108217cc"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1740,7 +1740,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1748,15 +1748,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "5af07dc74f1b99a674c9461c0f86a9527e600480c824e33e29c815f58ceb7d78",
+      "final_hash": "6a34f8be73893e526ac2d4a5207332db940ce2336191f2112af9e2e9f85c8744",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "5af07dc74f1b99a674c9461c0f86a9527e600480c824e33e29c815f58ceb7d78",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "6a34f8be73893e526ac2d4a5207332db940ce2336191f2112af9e2e9f85c8744",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1775,7 +1775,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223939393939393939393939393939393939393939393939393939393939393939222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223939393939393939393939393939393939393939393939393939393939393939222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "180aa9c4aef3a6db15d5f82c81adc3f769b3fbf9a30c8145d6d56d76e821adc0"
+        "record_hash": "8c3c52ab6eee54ca7bf8040c0d8a68184a003b31da93a99572c24a32850636d9"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1814,7 +1814,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1822,15 +1822,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "362bbccb173b4577897d8d0d6f6d1440899ef96dc2c694c82ee4ca40c670248a",
+      "final_hash": "1adc426837b9501e45f80fa176b402657c72f2a1836a2ce2c7c1648933b737b4",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "362bbccb173b4577897d8d0d6f6d1440899ef96dc2c694c82ee4ca40c670248a",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "1adc426837b9501e45f80fa176b402657c72f2a1836a2ce2c7c1648933b737b4",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1849,7 +1849,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a322c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223939393939393939393939393939393939393939393939393939393939393939222c22696e646578223a312c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "e3988abc0c597e77740cc0a643b2e5c1ac2336d943841d5047609a60167d7b4f"
+        "record_hash": "6dff01098b33cb60f99456dfe03bc6c2d1ff9d94f71a28999c5da25c93955abd"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1888,7 +1888,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1896,15 +1896,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "853d40d46b9d6ad8dffba12a5fc6c6114ca645e26673ad070059644a2527490a",
+      "final_hash": "452f2af467d04a3bc92353a76f7ee873e66577cfa16958b0f11a39aadb1e5c26",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "853d40d46b9d6ad8dffba12a5fc6c6114ca645e26673ad070059644a2527490a",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "452f2af467d04a3bc92353a76f7ee873e66577cfa16958b0f11a39aadb1e5c26",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1923,7 +1923,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a226875623a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a226875623a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333227d0a"
           }
         ],
-        "record_hash": "6e8a672179367f64696626ea793f34c45142ea5e1dd48bd682fa1e45024b20db"
+        "record_hash": "8aed07079fa85d8143b0f6fdafca5139d812a008ca6d0629593050e77f387ba4"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -1962,7 +1962,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -1970,15 +1970,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -1997,7 +1997,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "3f7ad77ec0c19f0d8852ce5fca0b58df3bf2d0b5f4a5b7535e22e3eea0ce6bdf"
+        "record_hash": "97631a3431cad02729207419aad8472b3494cdf6a2f470d81533733a38cb03e6"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2036,7 +2036,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2044,15 +2044,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2071,7 +2071,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "266c83e6c34cf3b3caf321cfb8be4dd3f754dbd4acf2a1c898045dfc76c1b5f8"
+        "record_hash": "de550f2c7af3fd373a7c6a11e73a9bb41616a9aede9b0b3e7d7c2bfd54daefeb"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2083,7 +2083,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -2105,7 +2105,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2113,15 +2113,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+        "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2140,7 +2140,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "c8c4fdde1aeabb2530b47caf9d836fd7eb304954cbd81c2f2c6b720bf094a692"
+        "record_hash": "d6bbfe9288e9d20583dd1ad58fbf63b910408d76efd9e27419dcaf5f15d27da0"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2155,9 +2155,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -2233,7 +2233,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         }
       ],
       "blobs": {
@@ -2243,7 +2243,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -2269,7 +2269,7 @@
       "initial_inbox_wakes": [
         0
       ],
-      "initial_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "initial_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2278,7 +2278,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2293,9 +2293,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "input_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+          "before_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "input_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -2350,7 +2350,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "dc460bcf7d0c35d8e7e8c70c4d88c36b2700d0c9144e8cea88093109f732b650"
+          "record_hash": "5ccbf88b604795a10d1aff542cbf46e399b8934b3cf0b98cedd5e5fe1298c879"
         }
       ],
       "blobs": {
@@ -2360,7 +2360,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -2384,7 +2384,7 @@
       "initial_inbox_wakes": [
         0
       ],
-      "initial_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "initial_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2393,7 +2393,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2408,9 +2408,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "input_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+          "before_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "input_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -2465,7 +2465,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "b80485839a024323fab2c20dc5603bdb7fe72c8617af7202dab0072e7b3ad20a",
+          "record_hash": "580e4e28835bc212d75012972efec82dcb29cccefd3bbab8993c012b19b06657",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -2483,7 +2483,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -2516,7 +2516,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2524,15 +2524,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "ea62db3aa64609b1643032613a5413a5d25a17ad890892a591451361483242c9",
+      "final_hash": "9a6008227953f54951f0f2d239600bc95934d6f1d0028831d6824096b6b96599",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "ea62db3aa64609b1643032613a5413a5d25a17ad890892a591451361483242c9",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "9a6008227953f54951f0f2d239600bc95934d6f1d0028831d6824096b6b96599",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2551,7 +2551,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223939393939393939393939393939393939393939393939393939393939393939222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "5b47ef7960c98a6503e0cc4357a4fc93e4ac8836083a5fb5040abb6af9cf1e59"
+        "record_hash": "0bcde1b7e917f3c366b04ae8a7a54b9ccfbc101d1081b1945e258b628dbc011f"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2590,7 +2590,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2598,15 +2598,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "c51df80b496a022c680d8cd980cd644ded24a1d87c73e32dd8051aa2b0f738b6",
+      "final_hash": "aa56d1020e0ff98b9d89836d8886a8228229a1a404d451941a6ef5b6a3d4d1b1",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "c51df80b496a022c680d8cd980cd644ded24a1d87c73e32dd8051aa2b0f738b6",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "aa56d1020e0ff98b9d89836d8886a8228229a1a404d451941a6ef5b6a3d4d1b1",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2625,7 +2625,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223939393939393939393939393939393939393939393939393939393939393939222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223939393939393939393939393939393939393939393939393939393939393939222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "e7b7910021bdcd669c0688bd7c13ad69e299b1724a9da92a6dc4a7f5784f0621"
+        "record_hash": "91cfa6492ceea1642fa4cc5d197a36077fbc4ebd2531ce698174d0faf0a16299"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2664,7 +2664,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2672,15 +2672,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "eb2d7a9ce2e7da1cb4234392c207d9b6c39c38ba4b20fc73138ba8d295770cbc",
+      "final_hash": "bc3afd0cd10c56e6d6b4a671062bd82f332a3c7920be5c7cddf1f513ea3c97ff",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "eb2d7a9ce2e7da1cb4234392c207d9b6c39c38ba4b20fc73138ba8d295770cbc",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "bc3afd0cd10c56e6d6b4a671062bd82f332a3c7920be5c7cddf1f513ea3c97ff",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2699,7 +2699,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a322c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223939393939393939393939393939393939393939393939393939393939393939222c22696e646578223a312c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "efe6f37308725d100f39e614997e42e5c2a4f4a8e1c1a55165eee70e21a17603"
+        "record_hash": "37a5bc00ec5b32270588b0f8841d0b81b5fbb93e567211cec97823ecbe690191"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2738,7 +2738,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2746,15 +2746,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "7fb2d3387529c5614da01968e4121608709aeb8d888fdd9e7c8b10837e4f0da4",
+      "final_hash": "82b81649cbdcd506de742b81619e80bc800e3828aa96154e70845968c4564234",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "7fb2d3387529c5614da01968e4121608709aeb8d888fdd9e7c8b10837e4f0da4",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "82b81649cbdcd506de742b81619e80bc800e3828aa96154e70845968c4564234",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2773,7 +2773,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a226875623a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a226875623a33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333227d0a"
           }
         ],
-        "record_hash": "84add3fb8efcae46df923b281e5b2fadb2cf97576b263125ba0c2cafab8210b7"
+        "record_hash": "243deaedb3661bd7554bb38218e428629997cce71256023b5946f93b1f08ea8b"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2812,7 +2812,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2820,15 +2820,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -2847,7 +2847,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "80279f5fab9cb247c090ed34cb85c0029a7553e5e4c00793172ed38c702b035f"
+        "record_hash": "a03941a0805ebc81413813dbe14fea2d481c1f68424942b2f6272f24f3ddd5ba"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2873,7 +2873,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -2881,7 +2881,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -2896,9 +2896,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -2974,7 +2974,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         },
         {
           "version": "0.1",
@@ -2983,12 +2983,12 @@
           "step": 1,
           "logical_time": 20,
           "seed": 7,
-          "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
+          "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3054,7 +3054,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "3dbabd1fa5dec1d6f7889682edaa859f05a80c990a2ea00176983a92c932760f"
+          "record_hash": "f7239531f4f7d0bcdf13b4c21926c3287be03c0b68f6dfbb2c12e63dddfb6db3"
         }
       ],
       "blobs": {
@@ -3064,7 +3064,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -3084,7 +3084,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3092,7 +3092,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3107,9 +3107,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3185,7 +3185,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         },
         {
           "version": "0.1",
@@ -3194,12 +3194,12 @@
           "step": 1,
           "logical_time": 20,
           "seed": 7,
-          "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
+          "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
-          "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
+          "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3265,7 +3265,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "106611c08b555a5764cc244db2732a7d3797214a695887506ddebe2bec178ba3",
+          "record_hash": "df3025a3fa3d3f173ed40ddf30a5eb90b3bd53fd5302e0a862112e0f0ef95554",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -3283,7 +3283,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -3303,7 +3303,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3311,7 +3311,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3326,9 +3326,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3404,7 +3404,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         },
         {
           "version": "0.1",
@@ -3413,12 +3413,12 @@
           "step": 1,
           "logical_time": 20,
           "seed": 7,
-          "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
+          "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3484,7 +3484,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "85d1f5e4ee1714d873eb13a7372f63ebaa3ecf6ca075097648e6e6cdf5a12f35"
+          "record_hash": "01f076da797753396f20e0f8e7a95698ca19b5527fddc1554b4d55c436097b2a"
         }
       ],
       "blobs": {
@@ -3494,7 +3494,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -3514,7 +3514,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3522,7 +3522,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3537,9 +3537,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3615,7 +3615,7 @@
             "host_bytes": 0
           },
           "status": "committed",
-          "record_hash": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6"
+          "record_hash": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad"
         },
         {
           "version": "0.1",
@@ -3624,12 +3624,12 @@
           "step": 1,
           "logical_time": 20,
           "seed": 7,
-          "previous": "e6825fbc077725a3068bfe60aa06f04e32707c1da0bc420ad156f9d92b19efb6",
+          "previous": "504649675d4a0b91c491b4251ad165bc195565ab1d6ef89a7e2a55f817953dad",
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
-          "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
+          "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -3695,7 +3695,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "9a2389139fbd0f683915413f7c8992b221c8e61c4e6efb1ff31cc6c3bf9a809d",
+          "record_hash": "137464404ca57dabb7c0e1a6766ff9241557957f06b5d59bcaf8790ad45c41df",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -3713,7 +3713,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "pending_actions": [],
       "pending_inbox_wakes": [],
       "pending_timers": [],
@@ -3746,7 +3746,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3754,15 +3754,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "5e2f5af92fe53cd155dea72263b42537abba0ed308a09810d22081942a17e0fb",
+      "final_hash": "54a3f851e33853e8938ac69631dd3ac4787c1fb372c543a3ce14fa22d8b6b4ba",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "5e2f5af92fe53cd155dea72263b42537abba0ed308a09810d22081942a17e0fb",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "54a3f851e33853e8938ac69631dd3ac4787c1fb372c543a3ce14fa22d8b6b4ba",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -3781,7 +3781,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a22696e7465726e616c222c226d657373616765223a227465726d696e616c206661696c757265222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22737461747573223a226661696c6564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "7cb342206aedf310009d6d585da9ce188fd6dc9ade772c6ba88d4f8c108eb815"
+        "record_hash": "75bcc8604032f1cfc1ca2337fa245d0b6b5e34696b18cd492e8e6fe6b5150c55"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3793,7 +3793,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "5e2f5af92fe53cd155dea72263b42537abba0ed308a09810d22081942a17e0fb",
+      "final_hash": "54a3f851e33853e8938ac69631dd3ac4787c1fb372c543a3ce14fa22d8b6b4ba",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -3828,7 +3828,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3836,15 +3836,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "f66e61c30817db264ebe0e140de87b04c23943e566b14c6f6da94e43b92ff36c",
+      "final_hash": "f5bd1c863318d047ccb5ccbdb47b31570db51fe6e8b1e08387ad88f5d9161378",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "f66e61c30817db264ebe0e140de87b04c23943e566b14c6f6da94e43b92ff36c",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "f5bd1c863318d047ccb5ccbdb47b31570db51fe6e8b1e08387ad88f5d9161378",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -3863,7 +3863,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a2263616e63656c6c6564222c226d657373616765223a227465726d696e616c206661696c757265222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22737461747573223a2263616e63656c6c6564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "4609fa60b102157d20392fe393f2e91d6ed53603e49af24186c921d857902d40"
+        "record_hash": "9a3951c03a696577652757766cdc1372d8fb376815657ca623cc80801d061b8b"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3875,7 +3875,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "f66e61c30817db264ebe0e140de87b04c23943e566b14c6f6da94e43b92ff36c",
+      "final_hash": "f5bd1c863318d047ccb5ccbdb47b31570db51fe6e8b1e08387ad88f5d9161378",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -3910,7 +3910,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -3918,15 +3918,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "1bb246bb61fdbb83c76defcc6b4bce3adb876c06fc405ee50d8e9f6ae2c528d9",
+      "final_hash": "5908cc33b9257fb62614442605baa8de6f35022ffa509e8254015d8ffee10789",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "1bb246bb61fdbb83c76defcc6b4bce3adb876c06fc405ee50d8e9f6ae2c528d9",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "5908cc33b9257fb62614442605baa8de6f35022ffa509e8254015d8ffee10789",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -3945,7 +3945,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a22646561646c696e655f6578636565646564222c226d657373616765223a227465726d696e616c206661696c757265222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22737461747573223a2265787069726564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "ac3a70fe861ab8106775264743d102a334a67443384f07dae0113efd72b79137"
+        "record_hash": "0a744d0f879b07476e57c3fda5dd5890c8cb4e428e0f5ea2c039c184cf09020c"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -3957,7 +3957,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "1bb246bb61fdbb83c76defcc6b4bce3adb876c06fc405ee50d8e9f6ae2c528d9",
+      "final_hash": "5908cc33b9257fb62614442605baa8de6f35022ffa509e8254015d8ffee10789",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -3992,7 +3992,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4000,15 +4000,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "7fcd8e5f76ee4aa6ca655ab36ece261bf1035a666474deb0cc80e6531a83373f",
+      "final_hash": "01ed425d016fae042aa17b9ab3c72317cc37e19f4bb15ce7fd46fc19e401528f",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "7fcd8e5f76ee4aa6ca655ab36ece261bf1035a666474deb0cc80e6531a83373f",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "01ed425d016fae042aa17b9ab3c72317cc37e19f4bb15ce7fd46fc19e401528f",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4027,7 +4027,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "5f5130e92447b45b3f1f5800a7fac995b9de8f24a93cfde51ea49e6cbbe2abb2"
+        "record_hash": "835650cdb99ad8267d1fac446779d76125a029342cec15379a4ad143924412ae"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4039,7 +4039,7 @@
     },
     "valid": true,
     "state": {
-      "final_hash": "7fcd8e5f76ee4aa6ca655ab36ece261bf1035a666474deb0cc80e6531a83373f",
+      "final_hash": "01ed425d016fae042aa17b9ab3c72317cc37e19f4bb15ce7fd46fc19e401528f",
       "pending_actions": [],
       "pending_inbox_wakes": [
         0
@@ -4074,7 +4074,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4082,15 +4082,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "94ee08e6e4e11ab1e035a244405b0318640b5f08dc3e77aecea8d707cc1acd99",
+      "final_hash": "4ae64332a91912bf070d98cb56ede08d1dfdd9be29464b8982e443090276f64e",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "94ee08e6e4e11ab1e035a244405b0318640b5f08dc3e77aecea8d707cc1acd99",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "4ae64332a91912bf070d98cb56ede08d1dfdd9be29464b8982e443090276f64e",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4109,7 +4109,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a747275652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "a28e07c02f9a0fb788c2e642735d81fc1bd71faf319b4d6a8dbb9f0dfc8a3371"
+        "record_hash": "ad9f57384e1946f4b38bb65203798cbe73d29753fcf847f1574208133f208c0b"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4148,7 +4148,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4156,15 +4156,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "8c63d814b14a896c5393956596576b0be2ea359d7185aa8b7231b3a36be99f7a",
+      "final_hash": "558b3c29f4a3431c7363b96c61e2301e526ab209c7e8d8ce4e0e2312938278d6",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "8c63d814b14a896c5393956596576b0be2ea359d7185aa8b7231b3a36be99f7a",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "558b3c29f4a3431c7363b96c61e2301e526ab209c7e8d8ce4e0e2312938278d6",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4183,7 +4183,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "dfc8934a40258200e1d528d63a9e7e67b9d93b5f829febc3125708f0e2759bae"
+        "record_hash": "81134934cf726b12aa3447802eb2542cdc92723f37cae54fd5b10a567978438a"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4220,7 +4220,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4228,15 +4228,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4255,7 +4255,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a2272756e74696d652e616374696f6e5f72656a6563746564222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b226163636570746564223a66616c73652c22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226572726f72223a7b22636f6465223a227065726d697373696f6e5f64656e696564222c226d657373616765223a226772616e74207265766f6b6564222c22726574727961626c65223a66616c73657d2c226964223a223434343434343434343434343434343434343434343434343434343434343434227d2c22736571223a312c22736f75726365223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22636f676c65743a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d0a"
           }
         ],
-        "record_hash": "dbb213d955b988b14f84614c80f7d5209050f87dcf235152c532230eade94c96"
+        "record_hash": "b8674544149eebc2927481c06448a6c9867476788e14a624d33e0cab0c205e83"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4304,7 +4304,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4312,15 +4312,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
         "previous": null,
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4339,7 +4339,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "266c83e6c34cf3b3caf321cfb8be4dd3f754dbd4acf2a1c898045dfc76c1b5f8"
+        "record_hash": "de550f2c7af3fd373a7c6a11e73a9bb41616a9aede9b0b3e7d7c2bfd54daefeb"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4365,7 +4365,7 @@
       },
       "initial_actions": [],
       "initial_inbox_wakes": [],
-      "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4373,15 +4373,15 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": {
         "version": "0.1",
         "trace_id": "55555555555555555555555555555555",
         "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
         "logical_time": 20,
-        "previous": "7bda40f1b9ed13d842346206246ed727de06c7f0fd4f16fe0ed72cb8a291e7cc",
-        "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-        "output_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+        "previous": "462888716df328532854eca7b9cae1ecc8ca4d18d55c457232ab39e8280f9773",
+        "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+        "output_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
         "output_files": {
           "/code/bin/step.wasm": "0061736d01000000",
           "/data/count": "30",
@@ -4400,7 +4400,7 @@
             "after": "7b226576656e74223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226b696e64223a22616374696f6e2e6f7574636f6d65222c226c6f676963616c5f74696d65223a32302c227061796c6f6164223a7b22636f7272656c6174696f6e5f6964223a223434343434343434343434343434343434343434343434343434343434343434222c226964223a223434343434343434343434343434343434343434343434343434343434343434222c22726573756c74223a7b7d2c22737461747573223a22737563636565646564227d2c22736571223a312c22736f75726365223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d2c226964223a223737373737373737373737373737373737373737373737373737373737373737222c22696e646578223a302c2273656e646572223a22737572666163653a32323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232323232227d0a"
           }
         ],
-        "record_hash": "5f0183ff2285d7320ec99c623726e94efc003acb51318baaecc523f44d138340"
+        "record_hash": "d5a33020f3e5311306cc3b6e8d4d18a7e12b2bdfb7e33dd45fa2ced865e631c6"
       },
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4415,9 +4415,9 @@
           "previous": null,
           "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
           "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-          "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-          "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+          "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+          "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
           "engine": {
             "build": "fixture-v1",
             "policy": "TBD-by-ADR-0003"
@@ -4482,7 +4482,7 @@
             "host_bytes": 0
           },
           "status": "aborted",
-          "record_hash": "7bda40f1b9ed13d842346206246ed727de06c7f0fd4f16fe0ed72cb8a291e7cc",
+          "record_hash": "462888716df328532854eca7b9cae1ecc8ca4d18d55c457232ab39e8280f9773",
           "failure": {
             "kind": "guest_return",
             "error": {
@@ -4527,7 +4527,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "initial_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4536,7 +4536,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "140ccaacceb924e0126d11bd81acbd228fa125f75bfa928374efa0f86b2b48be",
+      "final_hash": "8ac607b4800732c3aa02a5dc62e04458080c5fe2d169d6302fd1e288f13fc4ec",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],
@@ -4575,7 +4575,7 @@
         }
       ],
       "initial_inbox_wakes": [],
-      "initial_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "initial_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "initial_files": {
         "/code/bin/step.wasm": "0061736d01000000",
         "/data/count": "30",
@@ -4584,7 +4584,7 @@
       },
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "final_hash": "9ff3dd493bb598e1135488e5bdc3e7ab8208ec9b72a1e2427c8937943088ec1e",
+      "final_hash": "c43abbd12497f98293c175963d8a9165bff5095897d44152e4fd769b3e2cccf2",
       "trailing_boundary": null,
       "initial_timers": [],
       "initial_llm_requests": [],

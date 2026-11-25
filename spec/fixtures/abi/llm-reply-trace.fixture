@@ -9,7 +9,7 @@
   },
   "initial_actions": [],
   "initial_inbox_wakes": [],
-  "initial_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+  "initial_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
   "initial_files": {
     "/code/bin/step.wasm": "0061736d01000000",
     "/data/count": "30",
@@ -17,7 +17,7 @@
   },
   "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
   "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-  "final_hash": "d8104d7c27af0d8b4fddb04d1098c6e84d245f89d933e32890277ace997da1d2",
+  "final_hash": "400df9fdc459653b7673ecd2640683d654eb8b8db72c130c9f2a782de4813db9",
   "trailing_boundary": null,
   "initial_timers": [],
   "initial_llm_requests": [],
@@ -32,9 +32,9 @@
       "previous": null,
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-      "input_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-      "output_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
+      "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+      "input_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+      "output_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
       "engine": {
         "build": "fixture-v1",
         "policy": "TBD-by-ADR-0003"
@@ -108,7 +108,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "9868d9e004cdd196fb36a7bf737fb0277d121ef29eedf0fd71ceddb7113a2839"
+      "record_hash": "a5ccaacf8208c4750c3da634be1dd44742ecbc0b98deef8cbe2a42d790fc1565"
     },
     {
       "version": "0.1",
@@ -117,12 +117,12 @@
       "step": 1,
       "logical_time": 20,
       "seed": 7,
-      "previous": "9868d9e004cdd196fb36a7bf737fb0277d121ef29eedf0fd71ceddb7113a2839",
+      "previous": "a5ccaacf8208c4750c3da634be1dd44742ecbc0b98deef8cbe2a42d790fc1565",
       "code_hash": "93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476",
       "manifest_hash": "ef1fee4fa7085d0d8fe8cec8bd560432717ab828200d38f2daf6986916666848",
-      "before_hash": "559e3192406c919cdf0b67bc4ad6fb6e8a8403740088ea706cd050c649161216",
-      "input_hash": "d8104d7c27af0d8b4fddb04d1098c6e84d245f89d933e32890277ace997da1d2",
-      "output_hash": "d8104d7c27af0d8b4fddb04d1098c6e84d245f89d933e32890277ace997da1d2",
+      "before_hash": "1110ec40b15a4fb21748ab438bc52d348cd54b360e95ce38b3bdabcd850ae84b",
+      "input_hash": "400df9fdc459653b7673ecd2640683d654eb8b8db72c130c9f2a782de4813db9",
+      "output_hash": "400df9fdc459653b7673ecd2640683d654eb8b8db72c130c9f2a782de4813db9",
       "engine": {
         "build": "fixture-v1",
         "policy": "TBD-by-ADR-0003"
@@ -188,7 +188,7 @@
         "host_bytes": 0
       },
       "status": "committed",
-      "record_hash": "746c38df87b2bb9ffeae4437e5f8e357927a43109a8c698ecf8575a3b1b608b0"
+      "record_hash": "f601da81b1ac84a15088ba41e0f58ad884cb0ee84b11ba1efab2385eec3d05ad"
     }
   ],
   "blobs": {

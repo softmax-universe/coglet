@@ -47,7 +47,8 @@
       "type": "object",
       "additionalProperties": {
         "$ref": "#/$defs/hex"
-      }
+      },
+      "description": "Absolute paths to hex bytes. Filesystem state identity is the Git SHA-256 tree object id (100644 blobs, 40000 directories, Git ordering), not a hash of this CBOR map; see ABI and ADR-0035."
     },
     "budgets": {
       "type": "object",

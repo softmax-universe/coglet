@@ -1,5 +1,7 @@
 ; Import common.cddl after this file. Shapes only; semantic invariants are in abi.md.
 abi = trace / step-record / boundary-record / inbox-message / timer-request / llm-request / llm-reply / log-entry / manifest
+; Filesystem state hashes: Git SHA-256 tree ids, 100644 blobs, 40000 trees, Git ordering (ADR-0035).
+; Snapshot CBOR is the wire representation, not the filesystem hash input.
 hash = tstr .regexp "^[0-9a-f]{64}$"
 hex = tstr .regexp "^([0-9a-f]{2})*$"
 path = tstr .regexp "^/(code|data|logs)(/[^/\\x00-\\x1f\\x7f\\\\]+)+$"
