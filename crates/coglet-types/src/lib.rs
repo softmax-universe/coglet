@@ -655,28 +655,18 @@ mod lazy_schema_tests {
     #[test]
     fn fresh_schema_parses_only_reached_rules_and_rejects_unknown() {
         let schema = Schema::embedded();
-        let value = Value::Text(format!("coglet:{}", "a".repeat(64)));
-        validate_in(&schema, "coglet-id", &value).unwrap();
+        // The runtime is also compiled against generated, non-Coglet schemas.
+        // Parsing one rule must not eagerly parse the rest of that schema.
+        let rule = generated::SCHEMA_RULES.first().unwrap().0;
+        schema.rule(rule).unwrap();
         let Schema::Embedded(cache) = &schema else {
             unreachable!()
         };
         let parsed = cache.iter().filter(|slot| slot.get().is_some()).count();
-        assert!(
-            parsed > 0 && parsed < 10,
-            "parsed {parsed} of {} rules",
-            cache.len()
-        );
+        assert!(parsed == 1, "parsed {parsed} of {} rules", cache.len());
         assert_eq!(
-            validate_in(&schema, "not-a-rule", &value),
+            schema.rule("not-a-rule"),
             Err("unknown rule `not-a-rule`".into())
-        );
-        assert!(
-            validate_in(
-                &schema,
-                "coglet-id",
-                &Value::Text(format!("coglet:{}\n", "a".repeat(64)))
-            )
-            .is_err()
         );
     }
 
