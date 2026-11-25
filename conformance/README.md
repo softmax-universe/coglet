@@ -80,6 +80,7 @@ supply actual envelope values from `spec/`. Supported step actions (exactly one)
 | `match` | Consume the next frame; require every dotted-path/value equality; numeric components index arrays. Additional fields are allowed. |
 | `journal_hash` | Consume the next frame; compare a lowercase 64-hex journal/state hash. `path` defaults to `state_hash`; the suite specifies the normative hash, never the runner. |
 | `silence_ms` | Require no bytes for this interval. EOF is failure, not silence. |
+| `expect_close: true` | Require clean transport EOF with no intervening byte; timeout/reset are failures. A stdio adapter must also exit zero within the same `within_ms` budget; a crashed bridge is not protocol refusal evidence. |
 
 `within_ms` defaults to 1000 and bounds the **whole** frame read/write, not each
 byte. No messages are silently discarded while searching for a match. A missing
@@ -181,6 +182,91 @@ control prefix is u64be stream id + one finish byte + payload, inside a u32be
 length frame; it never goes on the QUIC wire. Responses contain only wire frames,
 not control metadata. The encrypted binary integration test covers two sends on
 one operation stream, with an intervening reply.
+
+## Contract profile selection (ADR-0030 section 1a)
+
+`contract_profile` is trusted local provisioning, not wire negotiation. Values are
+exactly `surface-0.1` or `surface-0.2`; anything else (empty, wrong case, padded,
+non-string) is a configuration error, never a fallback.
+
+- Registry: optional `contract_profile` per implementation, default `surface-0.1`.
+- Cases: optional top-level `contract_profile`, default `surface-0.1`. Every case under
+  `conformance/surface` and `conformance/speech` is frozen at the implicit default.
+- CLI: `--contract-profile {surface-0.1,surface-0.2}`. Omitted means "use the
+  registry"; an explicit value must agree with **every** selected registry entry
+  (or direct-mode/`--self-test` implementation), else the run fails.
+- Preflight: all of the above, plus case-vs-implementation agreement, are checked
+  before any peer is launched. A `surface-0.2` case never runs against a
+  `surface-0.1`-provisioned peer or vice versa; there is no skip.
+- Delivery: the harness always sets `COGLET_CONFORMANCE_CONTRACT_PROFILE` in the peer
+  (and setup/teardown hook) environment, overriding any inherited value; omission is
+  an explicit `surface-0.1`. Fixture hook env may not set it (only `COGLET_FIXTURE_*`).
+  It is never put in a wire frame. Because delivery is launch-time env, only `stdio`
+  entries may select `surface-0.2`; attached `unix`/`iroh` peers cannot.
+- A pinned catalog is a separate trusted fixture input: `COGLET_FIXTURE_CATALOG`
+  (path) with `COGLET_FIXTURE_CATALOG_SHA256` (the independent pin), supplied together.
+
+### `surface02` suite (separately selected)
+
+`conformance/surface02/` holds `surface-0.2` runtime-role cases (version selection,
+pinned-catalog read and action, input-schema rejection, built-in-only downgrade to
+`0.1`). Their trusted inputs live in `conformance/surface02-fixtures/`
+(`adapter-config.json`, `app-catalog.json`). Run only with
+`conformance/impls-surface02.toml`:
+
+    conformance/run --registry conformance/impls-surface02.toml --contract-profile surface-0.2
+
+The Python (`python -m coglet_surface.reference --conformance-clock`) and Go
+(`sdk/surface-go/cmd/conformance`, built to `target/coglet-go-surface`) adapters read the
+environment through their SDK provisioning entry points (`coglet_surface.reference.provision`,
+Go `provision()`), then pass `contract_profile`/`TrustedCatalog` to the SDK constructor.
+
+Swift's compiled reference surface consumes the same profile/catalog/config inputs and runs
+these **exact same five files**, with production real time (`fixture_clock = false`):
+
+    swift build --package-path sdk/surface-swift
+    conformance/run --registry conformance/impls-surface02-swift.toml --contract-profile surface-0.2
+
+The separate registry keeps Python/Go CI independent of a Swift toolchain; native `swift.yml`
+builds the executable first, executes both frozen and selected suites, and retains both reports.
+Local Swift-on-Linux success does not establish native Mac qualification.
+
+**Peer-role boundary:** `peer_role: runtime` is the HARNESS role. These cases test surface
+implementations, not the production Rust runtime. The latter receives `hello` and issues
+`read`/`act`, the opposite direction; registering a surface SDK or fabricating surface responses
+cannot establish runtime conformance. Complementary runtime-facing `peer_role: surface` cases
+must reuse the same pinned catalog and operation payloads and drive the actual runtime.
+The Rust surface SDK remains unqualified for `surface-0.2` and is not registered here.
+These cases cover wire/dispatch seams only, not all generated `s02-*` rules or native hardware.
+The Go reference filters grants only on positively negotiated `0.1` downgrade via the SDK's
+`NegotiatedVersion()` accessor; arbitrary `0.2` grant refusal is not retried as downgrade.
+
+### `surface02-runtime` suite (actual production runtime)
+
+The six complementary `peer_role: surface` cases use the **same** pinned catalog and
+read/rename/Face operation arguments, with distinct identities for the opposite endpoint.
+The Linux-only registry `impls-surface02-runtime.toml` launches an opaque stdio bridge to
+an actual fresh `cogletd` process. It authenticates both PID and UID with SO_PEERCRED;
+production code retains all framing/schema/grant/action/journal handling. No CBOR
+response, app callback or clock is synthesized by the bridge.
+
+    cargo build --locked -p coglet-runtime --bin cogletd
+    export COGLET_FIXTURE_COGLETD="$PWD/target/debug/cogletd"
+    export TMPDIR="${TMPDIR:?set a short private scratch root}"
+    python3 crates/coglet-runtime/tools/test_profile_fixture_bridge.py
+    conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
+
+`rust.yml` builds the daemon, runs bridge and harness regressions, executes all six
+runtime cases under Python3.12 and uploads their report. The new selected rename-accept
+and post-read health expectation watchdogs allow1000ms, not an asserted200ms latency SLA;
+the action's1000000µs wire deadline and production clocks are unchanged. Original
+review failures at200ms remain recorded; these allowances do not diagnose their cause.
+Each case gets private trusted
+setup/binding plus a fresh WAL/socket. Action tests check pending 1→0; read tests prove
+query issuance and post-reply liveness, **not** durable supervisor consumption. Production
+translated deadlines are not asserted byte-exact. These fixtures do not schedule guests
+or claim app UI/native effects/replay. See `surface02-runtime-fixtures/README.md` and
+`crates/coglet-runtime/tools/profile_fixture_bridge.md` for the launch/proof boundary.
 
 ## Reports and proof boundaries
 

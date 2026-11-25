@@ -1,10 +1,10 @@
 name: WAMR platforms
 on:
   pull_request:
-    paths: ['scripts/test_apple_factory_slice.py', 'scripts/tests/test_apple_factory_slice.py', 'spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   push:
     branches: [main]
-    paths: ['scripts/test_apple_factory_slice.py', 'scripts/tests/test_apple_factory_slice.py', 'spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
+    paths: ['spikes/wamr-platforms/**', 'crates/coglet-engine/**', 'crates/coglet-engine-wamr/**', 'crates/coglet-proto/**', 'crates/coglet-runtime/**', 'Cargo.lock', 'scripts/build-ios-runtime-xcframework.sh', 'scripts/tests/test_ios_runtime.py', 'release/ios_framework.py', 'release/test_ios_framework.py', '.github/workflows/ios-runtime-release.yml', '.github/workflows/wamr-platforms.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +14,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  # Preserve the required context and fail closed on every bounded platform job.
   apple:
+    if: always()
+    needs: [apple-runtime, apple-factory, apple-release-smoke, ios-runtime, armv7-qemu]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+      - name: Check partition and dependency regressions
+        run: uv run --no-project --with pyyaml python crates/coglet-runtime/tools/test_apple_native_tests.py
+      - name: Require all platform jobs to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 crates/coglet-runtime/tools/apple-native-gate.py
+  apple-runtime:
     # coglet Mac minis (self-hosted). The iroh fault test binds loopback only, so the
     # minis' macOS application firewall no longer affects it.
     runs-on: [self-hosted, macOS, coglet-mac]
@@ -41,9 +58,8 @@ jobs:
       - name: Build and test native WAMR runtime (C ABI start/stop and real Wasm)
         run: |
           cargo build --locked -p coglet-runtime --features native-engine
-          # Slow Factory interpreter scenarios have their own bounded shards below.
-          # Keep the remaining runtime tests (including the base Factory cases).
-          cargo test --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine -- --test-threads=1 --skip factory_goals:: --skip factory_research::
+          cargo test --locked -p coglet-engine-wamr -- --test-threads=1
+          python3 crates/coglet-runtime/tools/apple-native-tests.py runtime
           cargo test --locked -p coglet-engine-wamr --no-default-features --features aot
       - name: Compile production echo without ambient WASI imports
         run: |
@@ -54,35 +70,30 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
-  # Keep real-WAMR Factory coverage without raising the 25-minute Apple cap.
-  # Goals, research acceptance and the multi-completion backlog are disjoint;
-  # apple above still executes all other native runtime/engine tests.
+  # The successful main run spent 1142.92s in Factory alone; on PR200 it
+  # exhausted the shared 25m cap. Partition the actual inventory, not a skip list.
   apple-factory:
-    needs: apple
-    runs-on: [self-hosted, macOS, coglet-mac]
-    timeout-minutes: 25
+    needs: apple-runtime
     strategy:
       fail-fast: false
       matrix:
-        slice: [goals, research, backlog]
+        shard: [0, 1, 2]
+    runs-on: [self-hosted, macOS, coglet-mac]
+    timeout-minutes: 25
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.0'
     steps:
       - uses: actions/checkout@v4
-      - name: Install Factory guest target
-        run: rustup target add wasm32-wasip1
-      - name: Qualify Factory slice on native WAMR (nonzero test manifest)
-        env:
-          FACTORY_SLICE: ${{ matrix.slice }}
+      - name: Assert native arm64 host and install Factory target
         run: |
-          python3 scripts/tests/test_apple_factory_slice.py
-          python3 scripts/test_apple_factory_slice.py "$FACTORY_SLICE"
-  # Own 25-minute budget. On a slow runner the debug suites above already use
-  # about 21 of the apple job's 25 minutes, and this release rebuild was
-  # cancelled mid-smoke (job cap, not a test failure). Splitting does not raise
-  # either cap and does not take a second runner until apple has finished.
+          test "$(uname -m)" = arm64
+          rustup show active-toolchain
+          rustup target add wasm32-wasip1
+      - name: Execute exhaustive Factory native partition
+        run: python3 crates/coglet-runtime/tools/apple-native-tests.py factory --shard ${{ matrix.shard }}
+  # Release smoke retains its own cap and waits for the native runtime proof.
   apple-release-smoke:
-    needs: apple
+    needs: apple-runtime
     runs-on: macos-latest
     timeout-minutes: 25
     steps:

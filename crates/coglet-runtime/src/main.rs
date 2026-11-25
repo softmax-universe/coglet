@@ -107,42 +107,78 @@ fn main() {
             .is_some_and(|flag| flag == "--surface-service-socket") =>
         {
             let result = (|| {
-                let (path, binding, uid, wal, setup, catalog) = match args {
-                    [_, path, binding, uid, wal, setup] => (
-                        path,
-                        binding,
-                        uid,
-                        wal,
-                        setup,
-                        coglet_runtime::TrustedExtensionCatalog::default(),
-                    ),
-                    [_, path, binding, uid, wal, setup, option, file, pin]
-                        if option == "--trusted-extension-catalog" =>
-                    {
-                        let raw = std::fs::read(file).map_err(|e| e.to_string())?;
-                        (
-                            path,
-                            binding,
-                            uid,
-                            wal,
-                            setup,
-                            coglet_runtime::TrustedExtensionCatalog::from_pinned_bytes(&raw, pin)?,
-                        )
-                    }
-                    _ => return Err("invalid surface service/catalog arguments".to_owned()),
+                let [_, path, binding, uid, wal, setup_file, options @ ..] = args else {
+                    return Err("invalid surface service arguments".to_owned());
                 };
+                let mut selected_profile = None;
+                let mut catalog_config = None;
+                let mut remaining = options;
+                while !remaining.is_empty() {
+                    remaining = match remaining {
+                        [option, value, rest @ ..] if option == "--contract-profile" => {
+                            if selected_profile.is_some() {
+                                return Err("duplicate contract-profile selector".into());
+                            }
+                            selected_profile =
+                                Some(value.parse::<coglet_runtime::ContractProfile>()?);
+                            rest
+                        }
+                        [option, file, pin, rest @ ..]
+                            if option == "--trusted-extension-catalog" =>
+                        {
+                            if catalog_config.is_some() {
+                                return Err("duplicate trusted-extension-catalog selector".into());
+                            }
+                            catalog_config = Some((file, pin));
+                            rest
+                        }
+                        _ => return Err("invalid surface service/profile/catalog arguments".into()),
+                    };
+                }
+                let profile = selected_profile.unwrap_or_default();
+                let mut setup: Value =
+                    serde_json::from_slice(&std::fs::read(setup_file).map_err(|e| e.to_string())?)
+                        .map_err(|e| e.to_string())?;
+                let setup_object = setup.as_object_mut().ok_or("setup must be an object")?;
+                if let Some(saved) = setup_object.get("contract_profile") {
+                    let saved: coglet_runtime::ContractProfile =
+                        serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+                    if saved != profile {
+                        return Err(
+                            "conflicting setup and daemon contract_profile selectors".into()
+                        );
+                    }
+                }
+                // Omission remains the exact legacy setup bytes; nondefault selection
+                // becomes trusted setup before manifest/catalog admission or listening.
+                if profile != coglet_runtime::ContractProfile::Surface01 {
+                    setup_object.insert(
+                        "contract_profile".into(),
+                        serde_json::to_value(profile).unwrap(),
+                    );
+                }
                 let binding = coglet_runtime::SurfaceBinding::from_config(
                     &std::fs::read(binding).map_err(|e| e.to_string())?,
                 )?;
-                let setup: Value =
-                    serde_json::from_slice(&std::fs::read(setup).map_err(|e| e.to_string())?)
-                        .map_err(|e| e.to_string())?;
-                let mut service = coglet_runtime::RuntimeService::open_with_catalog(
-                    std::path::Path::new(wal),
-                    &setup,
-                    128,
-                    catalog,
-                )?;
+                let mut service = match catalog_config {
+                    Some((file, pin)) => {
+                        let raw = std::fs::read(file).map_err(|e| e.to_string())?;
+                        let catalog = coglet_runtime::TrustedExtensionCatalog::from_pinned_bytes_with_profile(
+                            &raw, pin, profile,
+                        )?;
+                        coglet_runtime::RuntimeService::open_with_catalog(
+                            std::path::Path::new(wal),
+                            &setup,
+                            128,
+                            catalog,
+                        )?
+                    }
+                    None => coglet_runtime::RuntimeService::open(
+                        std::path::Path::new(wal),
+                        &setup,
+                        128,
+                    )?,
+                };
                 if let Some(schedule) = setup.get("native_schedule") {
                     #[cfg(feature = "native-engine")]
                     service.enable_native(
@@ -232,7 +268,7 @@ fn main() {
         ),
         _ => {
             eprintln!(
-                "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session."
+                "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--contract-profile surface-0.1|surface-0.2] [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session."
             );
             std::process::exit(2);
         }

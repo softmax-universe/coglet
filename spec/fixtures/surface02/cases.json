@@ -1,0 +1,1150 @@
+[
+  {
+    "name": "name-0",
+    "type": "s02-capability-name",
+    "value": "speech.start",
+    "valid": true,
+    "cbor_hex": "6c7370656563682e7374617274"
+  },
+  {
+    "name": "frozen-name-0",
+    "type": "capability-name",
+    "value": "speech.start",
+    "valid": true,
+    "cbor_hex": "6c7370656563682e7374617274"
+  },
+  {
+    "name": "name-1",
+    "type": "s02-capability-name",
+    "value": "softmax.app",
+    "valid": true,
+    "cbor_hex": "6b736f66746d61782e617070"
+  },
+  {
+    "name": "frozen-name-1",
+    "type": "capability-name",
+    "value": "softmax.app",
+    "valid": true,
+    "cbor_hex": "6b736f66746d61782e617070"
+  },
+  {
+    "name": "name-2",
+    "type": "s02-capability-name",
+    "value": "softmax.app_sensitive",
+    "valid": true,
+    "cbor_hex": "75736f66746d61782e6170705f73656e736974697665"
+  },
+  {
+    "name": "frozen-name-2",
+    "type": "capability-name",
+    "value": "softmax.app_sensitive",
+    "valid": true,
+    "cbor_hex": "75736f66746d61782e6170705f73656e736974697665"
+  },
+  {
+    "name": "name-3",
+    "type": "s02-capability-name",
+    "value": "softmax.app.state",
+    "valid": true,
+    "cbor_hex": "71736f66746d61782e6170702e7374617465"
+  },
+  {
+    "name": "frozen-name-3",
+    "type": "capability-name",
+    "value": "softmax.app.state",
+    "valid": false
+  },
+  {
+    "name": "name-4",
+    "type": "s02-capability-name",
+    "value": "softmax.app.a0000000000000000000000000000000",
+    "valid": true,
+    "cbor_hex": "782c736f66746d61782e6170702e6130303030303030303030303030303030303030303030303030303030303030"
+  },
+  {
+    "name": "frozen-name-4",
+    "type": "capability-name",
+    "value": "softmax.app.a0000000000000000000000000000000",
+    "valid": false
+  },
+  {
+    "name": "name-5",
+    "type": "s02-capability-name",
+    "value": "softmax.app.",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-5",
+    "type": "capability-name",
+    "value": "softmax.app.",
+    "valid": false
+  },
+  {
+    "name": "name-6",
+    "type": "s02-capability-name",
+    "value": "softmax.app.a00000000000000000000000000000000",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-6",
+    "type": "capability-name",
+    "value": "softmax.app.a00000000000000000000000000000000",
+    "valid": false
+  },
+  {
+    "name": "name-7",
+    "type": "s02-capability-name",
+    "value": "softmax.app.a.b",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-7",
+    "type": "capability-name",
+    "value": "softmax.app.a.b",
+    "valid": false
+  },
+  {
+    "name": "name-8",
+    "type": "s02-capability-name",
+    "value": "other.app.state",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-8",
+    "type": "capability-name",
+    "value": "other.app.state",
+    "valid": false
+  },
+  {
+    "name": "name-9",
+    "type": "s02-capability-name",
+    "value": "softmax.apple.state",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-9",
+    "type": "capability-name",
+    "value": "softmax.apple.state",
+    "valid": false
+  },
+  {
+    "name": "name-10",
+    "type": "s02-capability-name",
+    "value": "softmax.app.State",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-10",
+    "type": "capability-name",
+    "value": "softmax.app.State",
+    "valid": false
+  },
+  {
+    "name": "name-11",
+    "type": "s02-capability-name",
+    "value": "softmax.app.state\n",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-11",
+    "type": "capability-name",
+    "value": "softmax.app.state\n",
+    "valid": false
+  },
+  {
+    "name": "name-12",
+    "type": "s02-capability-name",
+    "value": "softmax.app.state\r",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-12",
+    "type": "capability-name",
+    "value": "softmax.app.state\r",
+    "valid": false
+  },
+  {
+    "name": "name-13",
+    "type": "s02-capability-name",
+    "value": "softmax.app.state\u0000",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-13",
+    "type": "capability-name",
+    "value": "softmax.app.state\u0000",
+    "valid": false
+  },
+  {
+    "name": "name-14",
+    "type": "s02-capability-name",
+    "value": "softmax.app.é",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-14",
+    "type": "capability-name",
+    "value": "softmax.app.é",
+    "valid": false
+  },
+  {
+    "name": "name-15",
+    "type": "s02-capability-name",
+    "value": "softmax..state",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-15",
+    "type": "capability-name",
+    "value": "softmax..state",
+    "valid": false
+  },
+  {
+    "name": "name-16",
+    "type": "s02-capability-name",
+    "value": "softmax.app.0state",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-16",
+    "type": "capability-name",
+    "value": "softmax.app.0state",
+    "valid": false
+  },
+  {
+    "name": "name-17",
+    "type": "s02-capability-name",
+    "value": "",
+    "valid": false
+  },
+  {
+    "name": "frozen-name-17",
+    "type": "capability-name",
+    "value": "",
+    "valid": false
+  },
+  {
+    "name": "event-app-opt-in",
+    "type": "s02-event",
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "softmax.app.view_changed",
+      "seq": 0,
+      "logical_time": 0,
+      "payload": {},
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a66373657100646b696e647818736f66746d61782e6170702e766965775f6368616e67656466736f757263657848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "event-app-frozen-refused",
+    "type": "event",
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "softmax.app.view_changed",
+      "seq": 0,
+      "logical_time": 0,
+      "payload": {},
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "event-closed",
+    "type": "s02-event",
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "softmax.app.view_changed",
+      "seq": 0,
+      "logical_time": 0,
+      "payload": {},
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "event-two-component-compatible",
+    "type": "s02-event",
+    "value": {
+      "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "speech.view_changed",
+      "seq": 0,
+      "logical_time": 0,
+      "payload": {},
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a66373657100646b696e64737370656563682e766965775f6368616e67656466736f757263657848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "action-app-opt-in",
+    "type": "s02-action",
+    "value": {
+      "id": "11111111111111111111111111111111",
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.navigate",
+      "args": {},
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c69747974736f66746d61782e6170702e6e617669676174656e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "action-app-frozen-refused",
+    "type": "action",
+    "value": {
+      "id": "11111111111111111111111111111111",
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.navigate",
+      "args": {},
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "action-closed",
+    "type": "s02-action",
+    "value": {
+      "id": "11111111111111111111111111111111",
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.navigate",
+      "args": {},
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "action-two-component-compatible",
+    "type": "s02-action",
+    "value": {
+      "id": "11111111111111111111111111111111",
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "speech.navigate",
+      "args": {},
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c6974796f7370656563682e6e617669676174656e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "capabilities-app-opt-in",
+    "type": "s02-capabilities",
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "softmax.app",
+          "events": [
+            "softmax.app.view_changed"
+          ],
+          "reads": [
+            "softmax.app.state"
+          ],
+          "actions": [
+            "softmax.app.navigate"
+          ],
+          "exclusive": [
+            "softmax.app_control"
+          ],
+          "schemas": {
+            "softmax.app.state": "https://example.org/state"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a465636c6f636b0067656e747269657381a6646e616d656b736f66746d61782e6170706572656164738171736f66746d61782e6170702e7374617465666576656e7473817818736f66746d61782e6170702e766965775f6368616e67656467616374696f6e738174736f66746d61782e6170702e6e6176696761746567736368656d6173a171736f66746d61782e6170702e7374617465781968747470733a2f2f6578616d706c652e6f72672f7374617465696578636c75736976658173736f66746d61782e6170705f636f6e74726f6c687265766973696f6e016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "capabilities-app-frozen-refused",
+    "type": "capabilities",
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "softmax.app",
+          "events": [
+            "softmax.app.view_changed"
+          ],
+          "reads": [
+            "softmax.app.state"
+          ],
+          "actions": [
+            "softmax.app.navigate"
+          ],
+          "exclusive": [
+            "softmax.app_control"
+          ],
+          "schemas": {
+            "softmax.app.state": "https://example.org/state"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "capabilities-closed",
+    "type": "s02-capabilities",
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "softmax.app",
+          "events": [
+            "softmax.app.view_changed"
+          ],
+          "reads": [
+            "softmax.app.state"
+          ],
+          "actions": [
+            "softmax.app.navigate"
+          ],
+          "exclusive": [
+            "softmax.app_control"
+          ],
+          "schemas": {
+            "softmax.app.state": "https://example.org/state"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "capabilities-two-component-compatible",
+    "type": "s02-capabilities",
+    "value": {
+      "revision": 1,
+      "clock": 0,
+      "entries": [
+        {
+          "name": "softmax.app",
+          "events": [
+            "speech.view_changed"
+          ],
+          "reads": [
+            "speech.state"
+          ],
+          "actions": [
+            "speech.navigate"
+          ],
+          "exclusive": [
+            "softmax.app_control"
+          ],
+          "schemas": {
+            "speech.state": "https://example.org/state"
+          }
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a465636c6f636b0067656e747269657381a6646e616d656b736f66746d61782e617070657265616473816c7370656563682e7374617465666576656e747381737370656563682e766965775f6368616e67656467616374696f6e73816f7370656563682e6e6176696761746567736368656d6173a16c7370656563682e7374617465781968747470733a2f2f6578616d706c652e6f72672f7374617465696578636c75736976658173736f66746d61782e6170705f636f6e74726f6c687265766973696f6e016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "grants-app-opt-in",
+    "type": "s02-grants",
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "softmax.app.navigate"
+          ],
+          "resources": [
+            "softmax.app_control"
+          ],
+          "expires": 1000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a36565706f63680167656e747269657381a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731903e8697265736f75726365738173736f66746d61782e6170705f636f6e74726f6c6a6f7065726174696f6e738174736f66746d61782e6170702e6e617669676174656e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "grants-app-frozen-refused",
+    "type": "grants",
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "softmax.app.navigate"
+          ],
+          "resources": [
+            "softmax.app_control"
+          ],
+          "expires": 1000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "grants-closed",
+    "type": "s02-grants",
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "softmax.app.navigate"
+          ],
+          "resources": [
+            "softmax.app_control"
+          ],
+          "expires": 1000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "grants-two-component-compatible",
+    "type": "s02-grants",
+    "value": {
+      "epoch": 1,
+      "entries": [
+        {
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "operations": [
+            "speech.navigate"
+          ],
+          "resources": [
+            "softmax.app_control"
+          ],
+          "expires": 1000
+        }
+      ],
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a36565706f63680167656e747269657381a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731903e8697265736f75726365738173736f66746d61782e6170705f636f6e74726f6c6a6f7065726174696f6e73816f7370656563682e6e617669676174656e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "read-app-opt-in",
+    "type": "s02-read",
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.state",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a66461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c69747971736f66746d61782e6170702e73746174656b6772616e745f65706f6368016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "read-app-frozen-refused",
+    "type": "read",
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.state",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "read-closed",
+    "type": "s02-read",
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "softmax.app.state",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111",
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "read-two-component-compatible",
+    "type": "s02-read",
+    "value": {
+      "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "capability": "speech.state",
+      "args": {},
+      "grant_epoch": 1,
+      "deadline": 1000,
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": true,
+    "cbor_hex": "a66461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c6974796c7370656563682e73746174656b6772616e745f65706f6368016e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "act-app-opt-in",
+    "type": "s02-act",
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "softmax.app.navigate",
+        "args": {},
+        "deadline": 1000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a266616374696f6ea6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c69747974736f66746d61782e6170702e6e617669676174656e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316b6772616e745f65706f636801"
+  },
+  {
+    "name": "act-app-frozen-refused",
+    "type": "act",
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "softmax.app.navigate",
+        "args": {},
+        "deadline": 1000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "act-closed",
+    "type": "s02-act",
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "softmax.app.navigate",
+        "args": {},
+        "deadline": 1000,
+        "correlation_id": "11111111111111111111111111111111"
+      },
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "act-two-component-compatible",
+    "type": "s02-act",
+    "value": {
+      "grant_epoch": 1,
+      "action": {
+        "id": "11111111111111111111111111111111",
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "speech.navigate",
+        "args": {},
+        "deadline": 1000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a266616374696f6ea6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c6974796f7370656563682e6e617669676174656e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316b6772616e745f65706f636801"
+  },
+  {
+    "name": "manifest-app-opt-in",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e316d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+  },
+  {
+    "name": "manifest-app-frozen-refused",
+    "type": "manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-closed",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-two-component-compatible",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e316d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+  },
+  {
+    "name": "db-manifest-app-opt-in",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e32686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+  },
+  {
+    "name": "db-manifest-app-frozen-refused",
+    "type": "db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "db-manifest-closed",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "unexpected": true
+    },
+    "valid": false
+  },
+  {
+    "name": "db-manifest-two-component-compatible",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e32686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+  },
+  {
+    "name": "manifest-format-not-profile",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "db-manifest-format-not-profile",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-subscriptions-namespace-refused",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "other.app.state"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-required_capabilities-namespace-refused",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "other.app.state"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-exclusive_outputs-namespace-refused",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "other.app.state"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "wire-event",
+    "type": "s02-surface-message",
+    "value": {
+      "type": "event",
+      "body": {
+        "source": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "softmax.app.view_changed",
+        "seq": 0,
+        "logical_time": 0,
+        "payload": {},
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a264626f6479a66373657100646b696e647818736f66746d61782e6170702e766965775f6368616e67656466736f757263657848737572666163653a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065656576656e74"
+  },
+  {
+    "name": "wire-capabilities",
+    "type": "s02-surface-message",
+    "value": {
+      "type": "capabilities",
+      "body": {
+        "revision": 1,
+        "clock": 0,
+        "entries": [
+          {
+            "name": "softmax.app",
+            "events": [
+              "softmax.app.view_changed"
+            ],
+            "reads": [
+              "softmax.app.state"
+            ],
+            "actions": [
+              "softmax.app.navigate"
+            ],
+            "exclusive": [
+              "softmax.app_control"
+            ],
+            "schemas": {
+              "softmax.app.state": "https://example.org/state"
+            }
+          }
+        ],
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a264626f6479a465636c6f636b0067656e747269657381a6646e616d656b736f66746d61782e6170706572656164738171736f66746d61782e6170702e7374617465666576656e7473817818736f66746d61782e6170702e766965775f6368616e67656467616374696f6e738174736f66746d61782e6170702e6e6176696761746567736368656d6173a171736f66746d61782e6170702e7374617465781968747470733a2f2f6578616d706c652e6f72672f7374617465696578636c75736976658173736f66746d61782e6170705f636f6e74726f6c687265766973696f6e016e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656c6361706162696c6974696573"
+  },
+  {
+    "name": "wire-grants",
+    "type": "s02-surface-message",
+    "value": {
+      "type": "grants",
+      "body": {
+        "epoch": 1,
+        "entries": [
+          {
+            "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "operations": [
+              "softmax.app.navigate"
+            ],
+            "resources": [
+              "softmax.app_control"
+            ],
+            "expires": 1000
+          }
+        ],
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a264626f6479a36565706f63680167656e747269657381a466636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626267657870697265731903e8697265736f75726365738173736f66746d61782e6170705f636f6e74726f6c6a6f7065726174696f6e738174736f66746d61782e6170702e6e617669676174656e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316474797065666772616e7473"
+  },
+  {
+    "name": "wire-read",
+    "type": "s02-surface-message",
+    "value": {
+      "type": "read",
+      "body": {
+        "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "capability": "softmax.app.state",
+        "args": {},
+        "grant_epoch": 1,
+        "deadline": 1000,
+        "correlation_id": "11111111111111111111111111111111"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a264626f6479a66461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c69747971736f66746d61782e6170702e73746174656b6772616e745f65706f6368016e636f7272656c6174696f6e5f69647820313131313131313131313131313131313131313131313131313131313131313164747970656472656164"
+  },
+  {
+    "name": "wire-act",
+    "type": "s02-surface-message",
+    "value": {
+      "type": "act",
+      "body": {
+        "grant_epoch": 1,
+        "action": {
+          "id": "11111111111111111111111111111111",
+          "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "capability": "softmax.app.navigate",
+          "args": {},
+          "deadline": 1000,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a264626f6479a266616374696f6ea6626964782031313131313131313131313131313131313131313131313131313131313131316461726773a066636f676c65747847636f676c65743a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626268646561646c696e651903e86a6361706162696c69747974736f66746d61782e6170702e6e617669676174656e636f7272656c6174696f6e5f6964782031313131313131313131313131313131313131313131313131313131313131316b6772616e745f65706f636801647479706563616374"
+  }
+]

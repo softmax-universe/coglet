@@ -8,7 +8,7 @@ from .errors import ProtocolError
 
 
 class Ledger:
-    def __init__(self, path, identity, create):
+    def __init__(self, path, identity, create, *, contract_profile='surface-0.1', catalog=None):
         self.fd = None
         self.db = None
         try:
@@ -33,6 +33,12 @@ class Ledger:
                 if not required <= tables:
                     raise ProtocolError('incomplete ledger; reconcile and rotate identity')
             self.db.execute('PRAGMA journal_mode=WAL')
+            if not create:
+                saved = dict(self.db.execute('SELECT key,value FROM meta'))
+                if (saved.get('contract_profile', 'surface-0.1') != contract_profile
+                        or saved.get('catalog_pin') != (catalog.sha256 if catalog else None)
+                        or saved.get('catalog') != (catalog.raw.hex() if catalog else None)):
+                    raise ProtocolError('catalog/profile replay identity mismatch')
             self.db.execute('PRAGMA synchronous=FULL')
             if create:
                 with self.db:
@@ -40,6 +46,10 @@ class Ledger:
                     self.db.execute('CREATE TABLE actions (coglet TEXT, id TEXT, envelope BLOB, '
                                     'receipt BLOB, outcome BLOB, PRIMARY KEY (coglet,id))')
                     self.db.execute("INSERT INTO meta VALUES ('identity', ?)", (identity,))
+                    self.db.execute("INSERT INTO meta VALUES ('contract_profile', ?)", (contract_profile,))
+                    if catalog is not None:
+                        self.db.executemany('INSERT INTO meta VALUES (?,?)',
+                            [('catalog_pin', catalog.sha256), ('catalog', catalog.raw.hex())])
         except BaseException as exc:
             self.close()
             if isinstance(exc, FileExistsError):

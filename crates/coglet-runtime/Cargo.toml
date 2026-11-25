@@ -29,13 +29,16 @@ wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 # ADR-0031: existing implementation remains hub/0 until its separate migration.
 coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
+# Selected surface-0.2 roots are not present in the frozen hub/0 snapshot.
+# Keep legacy hub/default validation pinned; route only qualified surface02 roots here.
+coglet-types-current = { package = "coglet-types", path = "../coglet-types" }
 coglet-proto = { path = "../coglet-proto", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"], optional = true }
-tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
 coglet-factory-host = { path = "../../coglets/factory/host" }
@@ -64,6 +67,10 @@ required-features = ["native-engine"]
 
 [[example]]
 name = "generate_archive_companions"
+required-features = ["native-engine"]
+
+[[example]]
+name = "runtime_receiver_peer"
 required-features = ["native-engine"]
 
 [[test]]

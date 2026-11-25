@@ -199,6 +199,24 @@ where
     R: tokio::io::AsyncRead + Unpin,
     B: tokio::io::AsyncRead + Unpin,
 {
+    send_chunks_guarded(send, recv, id, size, source, &|| Ok(())).await
+}
+
+/// The application supplies fresh authority after source I/O and before each
+/// publication. Transfer credit never substitutes for permission.
+pub async fn send_chunks_guarded<W, R, B>(
+    send: &mut W,
+    recv: &mut R,
+    id: &str,
+    size: u64,
+    source: &mut B,
+    authorize: &(dyn Fn() -> std::io::Result<()> + Sync),
+) -> Result<(), StreamError>
+where
+    W: tokio::io::AsyncWrite + Unpin,
+    R: tokio::io::AsyncRead + Unpin,
+    B: tokio::io::AsyncRead + Unpin,
+{
     use tokio::io::AsyncReadExt;
     let mut state = Sender::new(id, size)?;
     let mut remaining = size;
@@ -209,9 +227,11 @@ where
         }
         let count = state.available().min(remaining).min(buffer.len() as u64) as usize;
         source.read_exact(&mut buffer[..count]).await?;
+        authorize()?;
         crate::wire::write_frame(send, &state.chunk(&buffer[..count])?).await?;
         remaining -= count as u64;
     }
+    authorize()?;
     crate::wire::write_frame(send, &state.finish()?).await?;
     Ok(())
 }

@@ -98,6 +98,12 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
         if !config.wal.is_absolute() {
             return -1;
         }
+        // Trusted setup selects local validation before loading catalog bytes.
+        // Never infer a profile from peer negotiation or catalog operation names.
+        let profile = match crate::ContractProfile::from_setup(&config.setup) {
+            Ok(profile) => profile,
+            Err(_) => return -1,
+        };
         let catalog = match config.trusted_extension_catalog {
             Some(fields) => {
                 match serde_json::from_value::<CatalogConfig>(serde_json::Value::Object(fields)) {
@@ -114,9 +120,10 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
             return -1;
         }
         let opened = match catalog {
-            Some(catalog) => crate::TrustedExtensionCatalog::from_pinned_bytes(
+            Some(catalog) => crate::TrustedExtensionCatalog::from_pinned_bytes_with_profile(
                 catalog.json.as_bytes(),
                 &catalog.sha256,
+                profile,
             )
             .and_then(|catalog| {
                 crate::RuntimeService::open_with_catalog(&config.wal, &config.setup, 128, catalog)

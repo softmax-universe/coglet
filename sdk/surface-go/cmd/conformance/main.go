@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -38,6 +39,65 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// provision reads the trusted local contract profile and optional pinned catalog from the
+// supervisor environment (ADR-0030 1a). Absent selector means surface-0.1; a present empty or
+// unknown one fails closed in surface.New (Go's "" spelling is only for omitted Config).
+func provision() (profile string, catalog *surface.TrustedCatalog, err error) {
+	profile = surface.ProfileSurface01
+	if v, ok := os.LookupEnv("COGLET_CONFORMANCE_CONTRACT_PROFILE"); ok {
+		if v == "" {
+			return "", nil, errors.New("empty contract profile")
+		}
+		profile = v
+	}
+	path, hasPath := os.LookupEnv("COGLET_FIXTURE_CATALOG")
+	pin, hasPin := os.LookupEnv("COGLET_FIXTURE_CATALOG_SHA256")
+	if hasPath != hasPin {
+		return "", nil, errors.New("catalog path and sha256 pin must be supplied together")
+	}
+	if hasPath {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", nil, err
+		}
+		if catalog, err = surface.NewTrustedCatalog(raw, pin); err != nil {
+			return "", nil, err
+		}
+	}
+	return profile, catalog, nil
+}
+
+// fixtureGrants selects built-in-only grants only for an actual 0.1 downgrade.
+func fixtureGrants(profile, version string, entries []types.Grant) []types.Grant {
+	if profile == surface.ProfileSurface02 && version == "0.1" {
+		return builtinGrants(entries)
+	}
+	return entries
+}
+
+func builtinGrants(in []types.Grant) []types.Grant {
+	out := []types.Grant{}
+	for _, g := range in {
+		g.Operations = append([]string{}, g.Operations...)
+		g.Resources = append([]string{}, g.Resources...)
+		ops, res := []string{}, []string{}
+		for _, o := range g.Operations {
+			if !strings.HasPrefix(o, "softmax.app.") {
+				ops = append(ops, o)
+			}
+		}
+		for _, r := range g.Resources {
+			if !strings.HasPrefix(r, "softmax.") {
+				res = append(res, r)
+			}
+		}
+		g.Operations, g.Resources = ops, res
+		out = append(out, g)
+	}
+	return out
+}
+
 func run() error {
 	raw, err := os.ReadFile(os.Getenv("COGLET_FIXTURE_CONFIG"))
 	if err != nil {
@@ -89,7 +149,12 @@ func run() error {
 	if epoch == 0 {
 		epoch = 1
 	}
-	s, err := surface.New(surface.Config{Identity: f.Surface, Coglets: ids, Ledger: filepath.Join(dir, "ledger"), Create: true, Clock: clock, Stop: stop, EpochFloor: epoch - 1})
+	profile, trusted, err := provision()
+	if err != nil {
+		return err
+	}
+	s, err := surface.New(surface.Config{Identity: f.Surface, Coglets: ids, Ledger: filepath.Join(dir, "ledger"), Create: true, Clock: clock, Stop: stop, EpochFloor: epoch - 1,
+		ContractProfile: profile, TrustedCatalog: trusted})
 	if err != nil {
 		return err
 	}
@@ -119,6 +184,15 @@ func run() error {
 			switch name {
 			case "speech.config":
 				return f.SpeechConfig, nil
+			}
+			if strings.HasPrefix(name, "softmax.app.") {
+				// Test-only stand-in for an app: one fixed title, no real app.
+				if strings.HasSuffix(name, ".state") {
+					return map[string]any{"title": "hello"}, nil
+				}
+				return map[string]any{}, nil
+			}
+			switch name {
 			case "expression.set_expression":
 				d := args["duration_ms"].(uint64)
 				if d == 0 {
@@ -141,7 +215,10 @@ func run() error {
 			}
 			return nil, surface.Refuse("unavailable")
 		}
-		op, err := surface.BoundOperation(name, prepare, execute)
+		if strings.HasPrefix(name, "softmax.app.") {
+			prepare = func(map[string]any, surface.RequestContext) error { return nil }
+		}
+		op, err := s.BoundOperation(name, prepare, execute)
 		if err != nil {
 			return err
 		}
@@ -162,7 +239,10 @@ func run() error {
 		HelloID: f.Hello.Body.CorrelationID,
 		Ready:   func() { fmt.Fprintln(os.Stderr, "COGLET_CONFORMANCE_READY") },
 		Configured: func() error {
-			if err := s.Grant(f.Grant.Entries); err != nil {
+			// Filter only an actual negotiated downgrade, before granting. Never
+			// reinterpret a failed 0.2 grant as a reason to fall back to built-ins.
+			err := s.Grant(fixtureGrants(profile, s.NegotiatedVersion(), f.Grant.Entries))
+			if err != nil {
 				return err
 			}
 			started = time.Now()

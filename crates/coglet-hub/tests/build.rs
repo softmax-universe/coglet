@@ -1,4 +1,6 @@
 #![cfg(target_os = "linux")]
+#[path = "build/r3.rs"]
+mod r3;
 use coglet_hub::{
     Error, Store,
     build::{Artifact, BuildRequest, Builder, Candidate, Delegation, Profile, SignRequest, Target},
@@ -154,6 +156,21 @@ impl Signing {
                 .is_none()
         );
     }
+}
+#[test]
+fn digest_addressed_build_evidence_roundtrip() {
+    let f = fixture();
+    let mut s = Signing::new();
+    let candidate = f.builder.compile(&f.request).unwrap();
+    let a = s.sign(candidate, || Some(100)).unwrap();
+    let bytes = s
+        .store
+        .build_evidence(a.provenance["original_sha256"].as_str().unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(bytes, wat::parse_str(WAT).unwrap());
+
+    assert_eq!(s.store.build_evidence(&"00".repeat(32)).unwrap(), None);
 }
 #[test]
 fn real_pinned_integer_fixture_compiles_with_exact_provenance() {
@@ -368,6 +385,33 @@ fn delegation_revocation_during_validation_is_rechecked_before_router_signing() 
     );
     assert_eq!(calls.get(), 3);
     s.absent();
+}
+#[test]
+fn final_publication_authority_is_checked_inside_retention_transaction() {
+    let f = fixture();
+    let mut s = Signing::new();
+    let database = s.root.path().join("kernel.db");
+    let calls = std::cell::Cell::new(0);
+    let fenced = std::cell::Cell::new(false);
+    s.sign(f.builder.compile(&f.request).unwrap(), || {
+        let call = calls.get() + 1;
+        calls.set(call);
+        if call >= 3 {
+            let probe = rusqlite::Connection::open(&database).unwrap();
+            probe.busy_timeout(std::time::Duration::ZERO).unwrap();
+            let blocked = probe.execute_batch("BEGIN IMMEDIATE").is_err();
+            if !blocked {
+                probe.execute_batch("ROLLBACK").unwrap();
+            }
+            fenced.set(blocked);
+        }
+        Some(100)
+    })
+    .unwrap();
+    assert!(
+        fenced.get(),
+        "final authority sampling must hold the Store write fence"
+    );
 }
 #[test]
 fn key_isolation_source_scripts_and_repository_hooks_cannot_run() {

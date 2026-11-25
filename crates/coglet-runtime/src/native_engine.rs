@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
     code: Vec<u8>,
+    /// Immutable admission proof for `code`; every step still gets a fresh native instance.
+    module: coglet_engine_wamr::Module,
     runtime_bytes: u32,
     stack_bytes: u32,
     prepared: Option<(coglet_engine_wamr::WamrInstance, StepInput, Instant, u32)>,
@@ -21,18 +23,27 @@ impl NativeEngine {
         runtime_bytes: u32,
         stack_bytes: u32,
     ) -> Result<Self> {
-        let engine = Self {
+        let limits = Self::limits_for(budgets, runtime_bytes, stack_bytes, Instant::now())?;
+        let module = Wamr::interpreter()
+            .load(&code, &limits)
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
             code,
+            module,
             runtime_bytes,
             stack_bytes,
             prepared: None,
-        };
-        Wamr::interpreter()
-            .load(&engine.code, &engine.limits(budgets, Instant::now())?)
-            .map_err(|e| e.to_string())?;
-        Ok(engine)
+        })
     }
     fn limits(&self, budgets: &Value, started: Instant) -> Result<Limits> {
+        Self::limits_for(budgets, self.runtime_bytes, self.stack_bytes, started)
+    }
+    fn limits_for(
+        budgets: &Value,
+        runtime_bytes: u32,
+        stack_bytes: u32,
+        started: Instant,
+    ) -> Result<Limits> {
         validate("budgets", budgets)?;
         Ok(Limits {
             compute_mode: budgets["compute_mode"]
@@ -43,8 +54,8 @@ impl NativeEngine {
             memory_pages: u32::try_from(budgets["memory_pages"].as_u64().ok_or("memory pages")?)
                 .map_err(|_| "memory pages overflow")?,
             host_bytes: budgets["host_bytes"].as_u64().ok_or("host bytes")?,
-            runtime_bytes: self.runtime_bytes,
-            stack_bytes: self.stack_bytes,
+            runtime_bytes,
+            stack_bytes,
             deadline: started
                 .checked_add(Duration::from_micros(
                     budgets["wall_time_us"].as_u64().ok_or("wall time")?,
@@ -116,11 +127,10 @@ impl Engine for NativeEngine {
         let memory_pages = limits.memory_pages;
         let engine = Wamr::interpreter();
         // Admission failures return before any guest attempt/batch consumption.
-        let module = engine
-            .load(&self.code, &limits)
-            .map_err(|e| e.to_string())?;
+        // The engine rechecks static policy if it differs from the cached proof and
+        // always checks mode/compute/deadline; the instance is fresh every step.
         let instance = engine
-            .instantiate(&module, limits)
+            .instantiate(&self.module, limits)
             .map_err(|e| e.to_string())?;
         let input = StepInput {
             events: cbor(&inputs["events"])?,
@@ -194,6 +204,9 @@ impl crate::RuntimeService {
         self.native.is_some() && self.managed_running()
     }
     pub fn enable_native(&mut self, mut config: NativeSchedule) -> Result<()> {
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
         if self
             .state
             .completed_segments
@@ -230,30 +243,65 @@ impl crate::RuntimeService {
         self.native = Some((config, engine));
         Ok(())
     }
-    pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
-        if !self.managed_running()
-            || self.native.is_none()
-            || self.state.runtime.unresolved_attempt.is_some()
-            || self.surface_epoch(session.surface()) != session.grant_epoch()
-        {
-            return Ok(());
-        }
-        let manifest = &self.state.runtime.manifest;
-        let Some(grants) = session.execution_grants(manifest, now)? else {
+    pub(crate) fn run_native(
+        service: &std::sync::Arc<std::sync::Mutex<Self>>,
+        session: &crate::SurfaceSession,
+        now: u64,
+    ) -> Result<()> {
+        let Some((run, config, mut engine)) = ({
+            let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+            if !locked.managed_running()
+                || locked.managed_paused()
+                || locked.code_pending()
+                || locked.receiver_pending_for_execution()
+                || locked.native.is_none()
+                || locked.detached_execution
+                || locked.state.runtime.unresolved_attempt.is_some()
+                || locked.surface_epoch(session.surface()) != session.grant_epoch()
+            {
+                None
+            } else {
+                let manifest = &locked.state.runtime.manifest;
+                if let Some(grants) = session.execution_grants(manifest, now)? {
+                    let config = &locked.native.as_ref().unwrap().0;
+                    let seed_bytes = cbor(&json!([config.seed, locked.state.runtime.step]))?;
+                    let seed = u64::from_str_radix(&digest(&seed_bytes)[..16], 16)
+                        .map_err(|e| e.to_string())?;
+                    let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
+                        "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
+                    locked.prepare_detached(&context)?.map(|run| {
+                        let (config, engine) = locked.native.take().unwrap();
+                        (run, config, engine)
+                    })
+                } else {
+                    None
+                }
+            }
+        }) else {
             return Ok(());
         };
-        let Some((config, mut engine)) = self.native.take() else {
-            return Ok(());
-        };
-        // Derive seeds from supervisor seed + durable step. Restart never resets
-        // step identity. No OS randomness enters the guest or replay path.
-        let seed_bytes = cbor(&json!([config.seed, self.state.runtime.step]))?;
-        let hash = digest(&seed_bytes);
-        let seed = u64::from_str_radix(&hash[..16], 16).map_err(|e| e.to_string())?;
-        let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
-            "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
-        let result = self.run_next(&context, &mut engine);
-        self.native = Some((config, engine));
-        result.map(|_| ())
+        let result = Self::execute_detached(
+            service,
+            run,
+            &mut engine,
+            &|fence| fence(),
+            &|locked, inputs| {
+                if locked.surface_epoch(session.surface()) != session.grant_epoch() {
+                    return Err("permission_denied".into());
+                }
+                let fresh = locked.supervised_now()?;
+                if session
+                    .execution_grants(&locked.state.runtime.manifest, fresh)?
+                    .is_none_or(|grants| json!(grants) != inputs["grants"])
+                {
+                    return Err("permission_denied".into());
+                }
+                Ok(())
+            },
+        );
+        let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+        locked.native = Some((config, engine));
+        locked.detached_execution = false;
+        result
     }
 }
