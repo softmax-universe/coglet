@@ -588,6 +588,15 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                     _ => Err("regexp bounded text mismatch".into()),
                 };
             }
+            if pattern == "^([0-9a-f]{2})*$" {
+                // Exactly the regex's language: even-length lowercase ASCII
+                // hex, empty allowed; `$` is end-of-text (no trailing \n).
+                return match v {
+                    Value::Text(t) if is_lower_hex_pairs(t) => Ok(()),
+                    Value::Text(_) => Err("regexp mismatch".into()),
+                    _ => Err("expected text".into()),
+                };
+            }
             let re = regex_for(pattern)?;
             match v {
                 Value::Text(t) if re.is_match(t) => Ok(()),
@@ -680,5 +689,134 @@ mod lazy_schema_tests {
             assert_eq!(serde_json::from_str::<Json>(raw).unwrap(), all[name]);
             previous = Some(name);
         }
+    }
+}
+/// Fast path for the portable `^([0-9a-f]{2})*$` regexp: even-length, lowercase
+/// ASCII hex only. Non-ASCII bytes can never match `[0-9a-f]`.
+fn is_lower_hex_pairs(t: &str) -> bool {
+    t.len().is_multiple_of(2) && t.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+#[cfg(test)]
+mod hex_pattern_tests {
+    use super::*;
+
+    const FAST: &str = "^([0-9a-f]{2})*$";
+    // Same language, different spelling: forces the general regex engine.
+    const REGEX: &str = "^(?:[0-9a-f]{2})*$";
+
+    fn check(pattern: &str, v: &Value) -> Result<(), String> {
+        let ir = serde_json::json!({"r": {"op": "regexp", "pattern": pattern}});
+        validate_in(&parse_schema(&ir.to_string()).unwrap(), "r", v)
+    }
+
+    fn text(s: &str) -> Value {
+        Value::Text(s.to_string())
+    }
+
+    #[test]
+    fn fast_path_matches_regex_engine_on_exhaustive_short_and_adversarial_text() {
+        // Every one- and two-byte ASCII string, plus all-ASCII 3-/4-char
+        // strings drawn from the boundary characters of each class.
+        let mut cases: Vec<String> = vec![String::new()];
+        let alphabet: Vec<char> = (0u8..128).map(char::from).collect();
+        for &a in &alphabet {
+            cases.push(a.to_string());
+            for &b in &alphabet {
+                cases.push(format!("{a}{b}"));
+            }
+        }
+        let edge = ['0', '9', 'a', 'f', 'g', 'A', 'F', '/', ':', '`', '\n', ' '];
+        for &a in &edge {
+            for &b in &edge {
+                for &c in &edge {
+                    cases.push(format!("{a}{b}{c}"));
+                    for &d in &edge {
+                        cases.push(format!("{a}{b}{c}{d}"));
+                    }
+                }
+            }
+        }
+        for s in [
+            "00ff",
+            "00FF",
+            "00fF",
+            "0",
+            "abc",
+            "00\n",
+            "0\n",
+            "00ff\n",
+            "\n00",
+            " 00",
+            "00 ",
+            "0x00",
+            "é",
+            "éé",
+            "0é",
+            "é0",
+            "ée",               // 3 bytes, odd length
+            "\u{ff10}\u{ff10}", // fullwidth digits
+            "\u{0660}\u{0661}", // Arabic-Indic digits
+            "00\u{0}",
+            "\u{0}\u{0}",
+            "😀",
+            "00😀",
+        ] {
+            cases.push(s.into());
+        }
+        cases.push("a".repeat(1 << 16));
+        cases.push("a".repeat((1 << 16) + 1));
+        cases.push(format!("{}g", "0f".repeat(4096)));
+        cases.push("0f".repeat(4096));
+        let mut accepted = 0;
+        for s in &cases {
+            let fast = check(FAST, &text(s));
+            assert_eq!(fast, check(REGEX, &text(s)), "{s:?}");
+            accepted += usize::from(fast.is_ok());
+        }
+        assert!(accepted > 256, "differential set must include accepts");
+    }
+
+    #[test]
+    fn fast_path_accepts_and_rejects_exact_cases() {
+        for ok in ["", "00", "ff", "0a9f", "deadbeef"] {
+            assert_eq!(check(FAST, &text(ok)), Ok(()), "{ok:?}");
+        }
+        for bad in [
+            "0", "abc", "FF", "0F", "g0", "0g", "00\n", "\n00", "é", "0é", "0x", " 00",
+        ] {
+            assert_eq!(
+                check(FAST, &text(bad)),
+                Err("regexp mismatch".into()),
+                "{bad:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn fast_path_rejects_non_text_like_regex_engine() {
+        for v in [
+            Value::Null,
+            Value::Bool(true),
+            Value::Integer(0u8.into()),
+            Value::Array(vec![]),
+        ] {
+            assert_eq!(check(FAST, &v), Err("expected text".into()), "{v:?}");
+            assert_eq!(check(FAST, &v), check(REGEX, &v));
+        }
+    }
+
+    #[test]
+    fn fast_path_is_only_for_the_exact_pattern_string() {
+        // Look-alike patterns have different languages and must still use the
+        // regex engine, not the fast path.
+        let plus = "^([0-9a-f]{2})+$";
+        assert_eq!(check(plus, &text("")), Err("regexp mismatch".into()));
+        assert_eq!(check(plus, &text("00")), Ok(()));
+        let upper = "^([0-9A-F]{2})*$";
+        assert_eq!(check(upper, &text("00")), Ok(()));
+        assert_eq!(check(upper, &text("ff")), Err("regexp mismatch".into()));
+        let one_more = "^([0-9a-f]{2})*x$";
+        assert_eq!(check(one_more, &text("00")), Err("regexp mismatch".into()));
     }
 }
