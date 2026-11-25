@@ -1,5 +1,29 @@
 import Foundation
 
+/// One native pairing presentation, not a grant. Dismissal permanently retires
+/// it and synchronously cancels only its bound command. No invitation is stored.
+@MainActor
+public final class HubEnrollmentLifetime {
+    public private(set) var isActive = true
+    private var command: (id: UUID, cancel: () -> Void)?
+    public init() {}
+    public func cancel() {
+        isActive = false
+        let old = command; command = nil
+        old?.cancel()
+    }
+    fileprivate func bind(_ id: UUID, cancel: @escaping () -> Void) throws {
+        guard isActive, command == nil else { throw CancellationError() }
+        command = (id, cancel)
+    }
+    fileprivate func check(_ id: UUID) throws {
+        guard isActive, command?.id == id else { throw CancellationError() }
+    }
+    fileprivate func finish(_ id: UUID) {
+        if command?.id == id { command = nil }
+    }
+}
+
 public enum HubLinkEvent: Sendable { case ready(device: String), connected, offline, failed }
 public enum HubConnectionState: String, Sendable { case offline, connecting, connected }
 @MainActor
@@ -99,31 +123,39 @@ public final class HubConnection {
     /// Enrollment uses the same correlated completion path as reconnect. The
     /// invitation exists only in the live command, never a background retry.
     /// Success requires the helper's actual connection AND persisted enrollment.
-    public func enrollOnce(_ target: HubPairing, authorized: @escaping @MainActor () throws -> Void = {}) async throws {
+    public func enrollOnce(_ target: HubPairing, lifetime: HubEnrollmentLifetime? = nil,
+                           authorized: @escaping @MainActor () throws -> Void = {}) async throws {
         guard reconnectCommand == nil, pending == nil, pairing == nil,
               running, ready, let deviceID,
               target.device == nil || target.device == deviceID else { throw HubError.pairing }
-        try await connectOnce(target, enrolling: true, authorized: authorized)
+        try await connectOnce(target, enrolling: true, lifetime: lifetime, authorized: authorized)
     }
     private func connectOnce(_ target: HubPairing, enrolling: Bool,
+                             lifetime: HubEnrollmentLifetime? = nil,
                              authorized: @escaping @MainActor () throws -> Void) async throws {
         try Task.checkCancellation()
         let id = UUID()
+        defer { lifetime?.finish(id) }
+        let authorize: @MainActor () throws -> Void = {
+            try lifetime?.check(id)
+            try authorized()
+        }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 var installed = false
                 do {
                     try authorized()
+                    try lifetime?.bind(id) { [weak self] in self?.finishReconnect(id: id, error: CancellationError()) }
                     retry?.cancel(); retry = nil
                     stopLink()
                     reconnectCommand = ReconnectCommand(id: id, target: target, enrolling: enrolling,
-                                                        authorize: authorized, completion: continuation)
+                                                        authorize: authorize, completion: continuation)
                     installed = true
                     let key = try account.identity()
                     // Keychain/storage may block beyond the original custody.
                     // Treat authority/cancellation loss separately from an
                     // ordinary provider error: never re-arm this failed attempt.
-                    do { try Task.checkCancellation(); try authorized() }
+                    do { try Task.checkCancellation(); try authorize() }
                     catch { finishReconnect(id: id, error: error); return }
                     let current = generation
                     running = true; state = .connecting; errorMessage = nil

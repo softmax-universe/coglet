@@ -135,6 +135,51 @@ final class HubEnrollmentCommandTests: XCTestCase {
         try await successor.value
         XCTAssertEqual(hub.state, .connected)
     }
+    func testDismissedPairingLifetimeRefusesNotYetStartedNativeTask() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let lifetime = HubEnrollmentLifetime()
+        lifetime.cancel()
+        do { try await hub.enrollOnce(invitation(), lifetime: lifetime); XCTFail("Dismissed sheet started enrollment") } catch {}
+        XCTAssertEqual(link.starts, 1)
+        XCTAssertEqual(link.connects, 0)
+        XCTAssertNil(try store.loadHub())
+    }
+    func testPairingDismissalSynchronouslyRetiresExactAttemptAndLateCallbacks() async throws {
+        for dismissAfterReady in [false, true] {
+            let (hub, store, link) = ready()
+            defer { hub.stop() }
+            let lifetime = HubEnrollmentLifetime()
+            let target = try invitation()
+            let started = expectation(description: "sheet enrollment started")
+            link.didStart = { started.fulfill() }
+            let task = Task { try await hub.enrollOnce(target, lifetime: lifetime) }
+            await fulfillment(of: [started], timeout: 2)
+            link.didStart = nil
+            let stale = link.callback
+            if dismissAfterReady { link.emit(.ready(device: String(repeating: "a", count: 64))) }
+            lifetime.cancel()
+            XCTAssertEqual(hub.state, .offline, "Cancel must fence synchronously, before awaiting the task")
+            stale?(.ready(device: String(repeating: "a", count: 64)))
+            stale?(.connected)
+            do { try await task.value; XCTFail("Dismissed enrollment succeeded") } catch {}
+            XCTAssertEqual(link.connects, dismissAfterReady ? 1 : 0)
+            XCTAssertNil(try store.loadHub())
+            hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+            let successorLifetime = HubEnrollmentLifetime()
+            let successorStarted = expectation(description: "new sheet enrollment")
+            link.didStart = { successorStarted.fulfill() }
+            let successor = Task { try await hub.enrollOnce(target, lifetime: successorLifetime) }
+            await fulfillment(of: [successorStarted], timeout: 2)
+            link.didStart = nil
+            lifetime.cancel(); stale?(.connected)
+            XCTAssertEqual(hub.state, .connecting)
+            XCTAssertNil(try store.loadHub())
+            link.emit(.ready(device: String(repeating: "a", count: 64))); link.emit(.connected)
+            try await successor.value
+            XCTAssertEqual(hub.state, .connected)
+        }
+    }
     func testEnrollmentRechecksDeviceOnFreshHelper() async throws {
         let (hub, store, link) = ready()
         defer { hub.stop() }

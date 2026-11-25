@@ -126,6 +126,7 @@ private struct HubPairingSheet: View {
     @State private var relay = ""
     @State private var invite = ""
     @State private var error: String?
+    @State private var enrollmentLifetime = HubEnrollmentLifetime()
     @FocusState private var focusedField: String?
     private var configuration: HubPairing? {
         if !manual { return try? HubPairing.parse(code) }
@@ -179,7 +180,9 @@ private struct HubPairingSheet: View {
             }
             HStack {
                 CogletButton("Cancel", id: "\(idPrefix).pairing.cancel", registry: model.appControls, window: window,
-                    route: route, failure: model.appControlFailure) { clearSecrets(); dismiss() }.keyboardShortcut(.cancelAction)
+                    route: route, failure: model.appControlFailure) {
+                        enrollmentLifetime.cancel(); clearSecrets(); dismiss()
+                    }.keyboardShortcut(.cancelAction)
                 Spacer()
                 CogletAsyncButton("Connect router", id: "\(idPrefix).pairing.connect", registry: model.appControls, window: window,
                     route: route, sensitive: true, failure: model.appControlFailure,
@@ -191,7 +194,7 @@ private struct HubPairingSheet: View {
             .modifier(SoftmaxTheme())
             .onAppear { model.hubPairingRoute = route }
             .onChange(of: manual) { _, _ in model.hubPairingRoute = route }
-            .onDisappear { clearSecrets(); model.hubPairingRoute = nil }
+            .onDisappear { enrollmentLifetime.cancel(); clearSecrets(); model.hubPairingRoute = nil }
             .background(AppSheetOwner { old, new in
                 if new != nil || model.hubPairingNativeWindow === old {
                     model.hubPairingNativeWindow = new
@@ -223,12 +226,15 @@ private struct HubPairingSheet: View {
             throw HubError.unavailable
         }
         do {
-            try await connection.enrollOnce(configuration, authorized: { if let context { try context.perform {} } })
+            try await connection.enrollOnce(configuration, lifetime: enrollmentLifetime,
+                                            authorized: { if let context { try context.perform {} } })
+            guard enrollmentLifetime.isActive else { throw CancellationError() }
             // Do not dismiss (and retire the mount) until actual persisted
             // completion. The same command is used for user and adapter presses.
             if let context { try context.perform { clearSecrets(); dismiss() } }
             else { clearSecrets(); dismiss() }
         } catch {
+            guard enrollmentLifetime.isActive else { throw error }
             let showError = { self.error = "Could not complete pairing. Check the invitation’s device ID and router configuration." }
             if let context { try? context.perform(showError) } else { showError() }
             throw error
