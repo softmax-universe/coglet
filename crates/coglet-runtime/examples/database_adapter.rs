@@ -243,7 +243,7 @@ impl Fixture {
             let lines: Vec<_> = preparation.lines().collect();
             assert_eq!(lines[0], "COGLET-PREPARED-1");
             let raw = hex::decode(lines[6]).unwrap();
-            let committed: Value = coglet_types::decode("database::db-step-record", &raw)
+            let committed: Value = coglet_types_current::decode("database::db-step-record", &raw)
                 .unwrap()
                 .deserialized()
                 .unwrap();
