@@ -1,6 +1,13 @@
 use coglet_types_hub0::{Value, validate};
 use serde_json::json;
 
+// Deserialize JSON tokens rather than using a generic serde serialization bridge:
+// workspace feature unification enables serde_json/arbitrary_precision, whose
+// Number serializer exposes a private map instead of an integer to ciborium.
+fn profile(json: &serde_json::Value) -> Value {
+    serde_json::from_str(&serde_json::to_string(json).unwrap()).unwrap()
+}
+
 #[test]
 fn shared_database_schema_is_identical() {
     let old: serde_json::Value = serde_json::from_str(coglet_types_hub0::SCHEMA_JSON).unwrap();
@@ -26,15 +33,15 @@ fn frozen_git_contract_is_strict_and_not_a_current_protocol_alias() {
         .map(|v| &v["statement"])
         .find(|s| s["purpose"] == "logs-ref")
         .unwrap();
-    let value = Value::serialized(statement).unwrap();
+    let value = profile(statement);
     validate("hub-ref-statement", &value).unwrap();
     assert!(current_types::validate("hub-ref-statement", &value).is_err());
     let mut extra = statement.clone();
     extra["unknown"] = json!(true);
-    assert!(validate("hub-ref-statement", &Value::serialized(&extra).unwrap()).is_err());
+    assert!(validate("hub-ref-statement", &profile(&extra)).is_err());
     let mut bad = statement.clone();
     bad["new"] = json!("not-a-sha1");
-    assert!(validate("hub-ref-statement", &Value::serialized(&bad).unwrap()).is_err());
+    assert!(validate("hub-ref-statement", &profile(&bad)).is_err());
 }
 
 #[test]
@@ -43,14 +50,14 @@ fn provenance_revisions_do_not_cross_validate() {
         "recipe_sha256":"aa".repeat(32), "policy_sha256":"bb".repeat(32),
         "transform_sha256":"cc".repeat(32), "original_sha256":"dd".repeat(32),
         "rewritten_sha256":"ee".repeat(32)});
-    let value = Value::serialized(&old).unwrap();
+    let value = profile(&old);
     validate("hub-build-record", &value).unwrap();
     assert!(current_types::validate("hub-build-record", &value).is_err());
     let mut new = old.clone();
     new.as_object_mut().unwrap().remove("source_commit");
     new["version"] = json!("1.0");
     new["source_tree"] = json!("ab".repeat(32));
-    let value = Value::serialized(&new).unwrap();
+    let value = profile(&new);
     current_types::validate("hub-build-record", &value).unwrap();
     assert!(validate("hub-build-record", &value).is_err());
 }
