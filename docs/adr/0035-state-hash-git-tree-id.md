@@ -156,7 +156,7 @@ that a stage-1 state hash equals a later root tree id.
   above.
 - PR #164 has to adopt the git tree id before it merges, or this change waits
   for the router protocol's next major version (see Versioning).
-- Later stages (proof test, centre cold path, router on unforged, one effect
+- Later stages (proof test, hosted cold path, router on unforged, one effect
   path) each need their own ADR and start only after the previous stage passes.
 
 ## Verification
