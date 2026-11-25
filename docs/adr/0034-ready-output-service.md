@@ -117,10 +117,15 @@ Implementation must provide real C-entry tests with real WAMR:
 - `ready_output_not_obstructed_by_pump`: controlled, explicitly labelled
   source-bound counterexample. Establish a negotiated, open, pre-heard session;
   let tick naturally queue health; latch at the optional pump boundary. On
-  unmodified ordering, prove ready health is withheld while the entered call
-  reaches the unchanged SDK health threshold. After repair, query and copy the
-  same ready health without entering the obstructed pump. Keep a finite cleanup
-  watchdog, release gates unconditionally and join the entered call before close.
+  unmodified ordering, prove ready health is withheld and the actual SDK host
+  reports `protocolViolation("health timeout")` at age >=3,000,000 us before
+  heard, without refreshing SDK lastReceived. Observe prompt local native stop,
+  no released effect, and exclusive-handle close custody. After repair, query
+  and copy the same ready health without entering the obstructed pump, deliver
+  it through the actual SDK receive path and observe refreshed lastReceived
+  without that timeout. Apply the same SDK oracle to the no-obstruction control.
+  Keep a finite cleanup watchdog, release gates unconditionally and join the
+  entered call and serial worker before close/stop attestation.
 - `ready_health_latency_bounded_under_pump_load`: real guest execution and
   committed-journal evidence, with measured ABI query/copy times and first-failure
   timing. A test latency threshold qualifies that test environment, not hard
