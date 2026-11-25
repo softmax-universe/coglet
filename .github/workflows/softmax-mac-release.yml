@@ -14,7 +14,8 @@ permissions:
   contents: read
 concurrency:
   group: softmax-mac-release-${{ startsWith(github.ref, 'refs/tags/softmax-mac-v') && 'publish' || github.ref }}
-  cancel-in-progress: false
+  # Cancel superseded PR proofs, never interrupt signing/feed publication.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   proof:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.adhoc)
