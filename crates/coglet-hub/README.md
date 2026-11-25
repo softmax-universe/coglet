@@ -140,9 +140,12 @@ syntax. There are no ticket grants or wildcard peers/methods/targets. Each exact
 policy ceiling bounds both grant provisioning and initial invite grants; even an
 empty invite needs an allowed peer. Absence of `operator` keeps the listener but
 refuses **all** admissions; it never derives an actor from the UID. A missing
-operation or ceiling denies admission. This producer supports configuration only:
-`deploy`, `push`, `stop` and `status` remain refused until the qualified saga
-producer supplies their executor. No deployment is claimed.
+operation or ceiling denies admission. Configuration operations use the caller's
+atomic Store transaction. `serve` also installs the qualified initial-deploy saga
+executor for `deploy`, `push`, `stop` and `status`; build operations additionally
+require protected `recipes` and current exact downstream authority. See
+[operator-saga.md](operator-saga.md) for the executed real-iroh mock/runtime matrix,
+explicit binary and privileged proofs, and initial-deploy-only limits.
 
 New installations keep shared Authority tables in `kernel.db`. Any existing
 `authority.db` entry fails startup with an explicit offline-migration requirement,
