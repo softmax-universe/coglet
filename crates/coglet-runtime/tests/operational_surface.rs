@@ -712,6 +712,34 @@ fn private_queued_input_is_not_revived_on_wal_reopen() {
     std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
 }
 #[test]
+fn read_expiry_diagnostics_are_bounded_and_metadata_only() {
+    let mut s = session();
+    caps(&mut s);
+    grants(&mut s, 1);
+    for n in 0..130u64 {
+        let now = 130 + n * 2;
+        let id = format!("{n:032x}");
+        s.request_read(C, "expression.state", json!({}), &id, now + 1, now)
+            .unwrap();
+        s.pop().unwrap();
+        s.tick(now + 1);
+        assert_eq!(
+            s.take_read_result(C, now + 1).unwrap()["error"]["code"],
+            "deadline_exceeded"
+        );
+    }
+    let entries: Vec<_> = s.read_expiry_diagnostics().cloned().collect();
+    assert_eq!(entries.len(), 128);
+    assert_eq!(entries[0]["read_id"], format!("{:032x}", 2));
+    for entry in entries {
+        assert_eq!(entry.as_object().unwrap().len(), 5);
+        assert_eq!(entry["event"], "surface.read_expired");
+        assert!(entry["queued_inbound_frames_ahead"].is_null());
+        assert_eq!(entry["issued_deadline"], entry["expiry_tick"]);
+    }
+}
+
+#[test]
 fn native_read_pending_and_completed_share_one_bounded_queue() {
     let mut s = session();
     caps(&mut s);

@@ -10,7 +10,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: "login startup appearance theme dock orb face"
         case .hotkey: "shortcut keyboard hold toggle push talk"
         case .audio: "microphone input output sound volume"
-        case .hub: "account connect enrollment offline"
+        case .hub: "router account connect enrollment offline"
         case .coglets: "runtime grants capabilities"
         case .updates: "version download install release"
         case .privacy: "permissions security diagnostics"
@@ -104,8 +104,7 @@ struct SettingsView: View {
                             Text("Default system input · voice processing and echo cancellation enabled.")
                             Toggle("Play sound cues", isOn: $model.startSound)
                         case .hub:
-                            Text("Hub disconnected").fontWeight(.semibold)
-                            Text("No hub configured. Enrollment and connectivity are not implemented yet.")
+                            HubSettings(model: model)
                         case .coglets:
                             RuntimeSettings(host: model.runtime, openLogs: model.openRuntimeLogs, restart: {
                                 model.ptt.cancel(); model.recognizer.cancel()
@@ -190,8 +189,7 @@ struct OnboardingView: View {
                             }
                         }
                     default:
-                        Text("Hub disconnected").fontWeight(.semibold)
-                        Text("Enrollment is not implemented yet. Voice delivery requires a runtime connection; microphone permission alone does not make voice ready.")
+                        HubSettings(model: model)
                         LoginItemControls(model: model)
                         Text("Voice not set up · return to Settings to review permissions and connection.")
                     }

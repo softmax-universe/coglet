@@ -15,9 +15,39 @@ on:
 permissions:
   contents: read
 jobs:
+  transform-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute native R3 component inventory without skips
+        env:
+          CARGO_BUILD_JOBS: 2
+          COGLET_TRANSFORM_EVIDENCE_DIR: ${{ runner.temp }}/transform-proof
+        run: |
+          test "$(uname -m)" = '${{ matrix.arch }}'
+          rustup show active-toolchain
+          python3 crates/coglet-transform/tests/check_runner.py
+          python3 crates/coglet-transform/check.py --native-leg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: transform-native-${{ matrix.arch }}-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/transform-proof
+          if-no-files-found: error
   rust:
+    needs: transform-native
+    if: always()
     runs-on: ubuntu-24.04
     steps:
+      - name: Both native architecture legs are mandatory
+        run: test '${{ needs.transform-native.result }}' = 'success'
       - uses: actions/checkout@v4
       - uses: ./.github/actions/dependency-restore
         with:
@@ -31,8 +61,20 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo build --workspace --locked
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: transform-native-*-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/transform-native-pair
+      - name: R3 native cross-architecture aggregation (required)
+        run: |
+          echo "COGLET_TRANSFORM_NATIVE_PAIR=$RUNNER_TEMP/transform-native-pair" >>"$GITHUB_ENV"
+          COGLET_TRANSFORM_NATIVE_PAIR="$RUNNER_TEMP/transform-native-pair" python3 crates/coglet-transform/check.py --aggregate-test
       - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
         run: scripts/ci/cargo-test --workspace --locked
+      - name: Device lifecycle and ADR-0027 real-daemon restart admission
+        env:
+          RUST_TEST_THREADS: "1"
+        run: scripts/ci/cargo-test --locked -p coglet-runtime --features native-engine --test device_lifecycle
       - name: AOT feature fails closed under ABI v0
         run: scripts/ci/cargo-test --locked -p coglet-engine-wamr --no-default-features --features aot
       - run: cargo build -p coglet-guest-rust --target wasm32-wasip1 --locked
@@ -43,7 +85,11 @@ jobs:
           enable-cache: ${{ inputs.bundle-mode != 'proof' }}
       - name: Duplex-audio simulator to runtime heard history and offline replay
         if: ${{ (inputs.bundle-mode || 'normal') == 'normal' }}
-        run: cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored
+        run: |
+          args=$(python3 scripts/ci/quarantine.py rust-args)
+          extra=()
+          if [ -n "$args" ]; then mapfile -t extra <<< "$args"; fi
+          cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored "${extra[@]}"
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
       - name: Factory opt-in DB guest slice (not runtime DB conformance)

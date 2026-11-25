@@ -2,6 +2,8 @@
 """Archive, inside-out sign, notarize, staple, package and validate. No fallback."""
 import argparse
 import base64
+import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -26,6 +28,33 @@ def run(*args, input=None, capture=False, sensitive=False):
 
 
 def sign_tree(app, identity, mode):
+    entitlements = ROOT/'release.entitlements'
+    generated = None
+    if mode == 'developer-id':
+        encoded = os.environ.get('PROVISIONING_PROFILE')
+        if not encoded:
+            raise ValueError('Developer ID Keychain access requires a provisioning profile')
+        profile_path = app/'Contents/embedded.provisionprofile'
+        profile_path.write_bytes(base64.b64decode(encoded, validate=True))
+        profile = plistlib.loads(run('security','cms','-D','-i',profile_path,capture=True).encode())
+        app_id = TEAM + '.com.softmax.app'
+        authorized = profile.get('Entitlements', {})
+        if (profile.get('TeamIdentifier') != [TEAM]
+            or profile.get('ApplicationIdentifierPrefix') != [TEAM]
+            or authorized.get('com.apple.application-identifier') != app_id
+            or authorized.get('com.apple.developer.team-identifier') != TEAM
+            or profile.get('ExpirationDate', datetime.datetime.min) <= datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            or IDENTITY not in {hashlib.sha1(c).hexdigest().upper() for c in profile.get('DeveloperCertificates', [])}
+            or plistlib.loads((app/'Contents/Info.plist').read_bytes()).get('CFBundleIdentifier') != 'com.softmax.app'):
+            raise ValueError('Unexpected or expired Softmax provisioning profile')
+        values = plistlib.loads(entitlements.read_bytes())
+        # The profile-authorized application identifier is the private default
+        # Keychain group. Do not enable sharing or grant arbitrary profile keys.
+        values['com.apple.application-identifier'] = app_id
+        values['com.apple.developer.team-identifier'] = TEAM
+        generated = app.parent/'Softmax-signing.entitlements'
+        generated.write_bytes(plistlib.dumps(values))
+        entitlements = generated
     options = ['--options', 'runtime', '--timestamp'] if mode == 'developer-id' else ['--timestamp=none']
     # Resolve framework-version symlinks and sign every real Mach-O before its
     # containing .xpc/.app/.framework, deepest first. Never --deep for signing.
@@ -42,7 +71,11 @@ def sign_tree(app, identity, mode):
                 candidates.add(p)
     for p in sorted(candidates, key=lambda x: (-len(x.parts),str(x))):
         run('codesign','--force','--sign',identity,*options,p)
-    run('codesign','--force','--sign',identity,*options,'--entitlements',ROOT/'release.entitlements',app)
+    try:
+        run('codesign','--force','--sign',identity,*options,'--entitlements',entitlements,app)
+    finally:
+        if generated is not None:
+            generated.unlink(missing_ok=True)
     run('codesign','--verify','--deep','--strict','--verbose=2',app)
 
 

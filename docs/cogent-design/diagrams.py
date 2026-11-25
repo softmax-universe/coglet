@@ -289,7 +289,7 @@ def cogent() -> Svg:
 def coglet() -> Svg:
     svg = Svg("coglet", 960, 430, "A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.")
     svg.text(280, 40, "FRONT END: EVENTS AND CAPABILITIES", "dg-cap")
-    svg.text(685, 40, "BACK CHANNEL: PATCHES AND LOGS", "dg-cap")
+    svg.text(685, 40, "MANAGE PORT: PATCHES AND LOGS", "dg-cap")
 
     # the coglet, in the centre
     svg.rect(370, 64, 220, 214, "dg-coglet")
@@ -469,7 +469,7 @@ def calls() -> Svg:
     group(530, 280, "", ["submit"], "middle")
     svg.arrow(655, 248, 655, 128, "teal", both=True)
     group(667, 178, "memory", ["query"])
-    # the back channel, drawn separately from ordinary messages
+    # the manage port, drawn separately from ordinary messages
     svg.path("M328 116H270V278H194", "blue")
     svg.text(282, 204, "patch", "dg-b", "start")
     svg.path("M470 128V190H620V248", "blue", dashed=True)

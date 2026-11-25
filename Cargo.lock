@@ -591,10 +591,15 @@ dependencies = [
 name = "coglet-hub"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
+ "coglet-mock",
  "coglet-proto",
+ "coglet-runtime",
  "coglet-types",
  "hex",
  "iroh",
+ "libc",
+ "nix",
  "rusqlite",
  "serde",
  "serde_json",
@@ -602,6 +607,8 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "wasmparser 0.245.1",
+ "wat",
 ]
 
 [[package]]
@@ -704,6 +711,21 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+]
+
+[[package]]
+name = "coglet-transform"
+version = "0.1.0"
+dependencies = [
+ "coglet-engine",
+ "coglet-engine-wamr",
+ "coglet-engine-wasmtime",
+ "ed25519-dalek 2.2.0",
+ "hex",
+ "sha2 0.10.9",
+ "wasm-encoder 0.245.1",
+ "wasmparser 0.245.1",
+ "wat",
 ]
 
 [[package]]

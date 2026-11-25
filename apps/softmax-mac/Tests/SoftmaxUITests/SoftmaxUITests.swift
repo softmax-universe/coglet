@@ -298,6 +298,48 @@ final class SoftmaxUITests: XCTestCase {
         app.terminate()
     }
 
+    /// The shared configuration entry must exist in both host surfaces without
+    /// changing Settings navigation or hiding onboarding's login/voice controls.
+    @MainActor
+    func testRouterEnrollmentConfigurationInOnboardingAndSettings() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+        app.launch()
+        defer { app.terminate() }
+        let onboarding = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+        onboarding.buttons["Continue"].click()
+        onboarding.buttons["Continue"].click()
+        let pair = onboarding.buttons["Pair router…"]
+        guard pair.waitForExistence(timeout: 5) else {
+            XCTFail("Final onboarding must expose router enrollment"); return
+        }
+        XCTAssertTrue(onboarding.buttons["Login Item Settings"].exists)
+        XCTAssertTrue(onboarding.buttons["Finish"].exists)
+        pair.click()
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(sheet.secureTextFields["Pairing code"].exists)
+        XCTAssertTrue(sheet.buttons["Import QR image…"].exists)
+        XCTAssertFalse(sheet.buttons["Connect router"].isEnabled, "An empty code must never enroll")
+        sheet.buttons["Cancel"].click()
+        XCTAssertFalse(sheet.exists)
+        onboarding.buttons["Open Settings…"].click()
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.buttons["Hub"].click()
+        XCTAssertTrue(settings.textFields["Search settings"].exists)
+        XCTAssertTrue(settings.buttons["Keyboard shortcuts  ?"].exists)
+        XCTAssertTrue(settings.buttons["Pair router…"].exists)
+        settings.buttons["Pair router…"].click()
+        XCTAssertTrue(sheet.waitForExistence(timeout: 5))
+        XCTAssertTrue(sheet.secureTextFields["Pairing code"].exists)
+        XCTAssertTrue(sheet.buttons["Import QR image…"].exists)
+        sheet.buttons["Cancel"].click()
+        XCTAssertFalse(sheet.exists)
+        XCTAssertTrue(settings.buttons["General"].exists)
+    }
+
     @MainActor
     func testLaunchAndOpenSettings() {
         let app = XCUIApplication()

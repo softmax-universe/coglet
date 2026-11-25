@@ -8,13 +8,15 @@ import Foundation
     private let ptt: PushToTalk
     private var operation: UInt64?
     public var onFinish: (() -> Void)?
+    public var onResult: ((Bool) -> Void)?
     public init(ptt: PushToTalk, speech: FaceSpeechSink) {
         self.ptt = ptt; self.speech = speech
-        speech.onFinish = { [weak self] _ in
+        speech.onFinish = { [weak self] cancelled in
             guard let self else { return }
             let completed = operation; operation = nil
             if let completed { ptt.complete(operation: completed, state: .speaking) }
             onFinish?()
+            onResult?(cancelled)
         }
     }
     public func begin() -> UUID {

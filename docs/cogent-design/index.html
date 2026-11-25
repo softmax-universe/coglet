@@ -129,7 +129,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 </nav>
 <main>
 <h1 id="cogent">Cogent<a class="headerlink" href="#cogent" title="Permanent link">#</a></h1>
-<p><img alt="A friendly critter with a tiny workshop in its head, its long arms reaching behind a monitor, a laptop, a phone and a robot dog, with its hands inside each one." src="images/cogent.png" /></p>
+<p><img alt="The Softmax logo as the router at the centre, with pipes to a robot dog, a monitor, a laptop, a phone, two factories with gears inside and a database; the pipes to the dog, the factories and the database are lit." src="images/cogent.png" /></p>
 <p>A <strong>cogent</strong> is one logical agent. It has an <strong>identity</strong>, a <strong>name</strong> and an
 <strong>owner</strong>, and it runs as a <strong>collection of coglets</strong>: a few always running at
 its centre, and more on the devices it reaches. This is the design, split into
@@ -487,7 +487,7 @@ which adapters exist, and each one is granted separately.</p>
 <p>Detail: <a href="app-integration.html#adapter">App integration</a>.</p>
 <h2 id="coglet">Coglet<a class="headerlink" href="#coglet" title="Permanent link">#</a></h2>
 <p>A coglet is a <strong>policy</strong>, a <strong>memory</strong>, an <strong>event loop</strong> and <strong>capabilities</strong>.
-It handles events, and it has a <strong>back channel</strong> for receiving patches and
+It handles events, and it has a <strong>manage port</strong> for receiving patches and
 streaming logs to its manager.</p>
 <p><strong>What it does.</strong> It does one job: being the face, driving one app, running the
 factory. It waits for events, and for each one decides what to do using its
@@ -547,7 +547,7 @@ one. On a robot, both the face and the controller use the camera.</p>
 <defs><marker id="coglet-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="coglet-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="coglet-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="coglet-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="coglet-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="coglet-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="coglet-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="coglet-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
 <rect x="0.5" y="0.5" width="959" height="429" rx="12" class="dg-bg"/>
 <text x="280" y="40" text-anchor="middle" class="dg-cap">FRONT END: EVENTS AND CAPABILITIES</text>
-<text x="685" y="40" text-anchor="middle" class="dg-cap">BACK CHANNEL: PATCHES AND LOGS</text>
+<text x="685" y="40" text-anchor="middle" class="dg-cap">MANAGE PORT: PATCHES AND LOGS</text>
 <rect x="370" y="64" width="220" height="214" rx="8" class="dg-coglet"/>
 <text x="480" y="90" text-anchor="middle" class="dg-b">Coglet</text>
 <rect x="384" y="104" width="192" height="34" rx="6" class="dg-runtime"/>
@@ -615,7 +615,7 @@ wants when it registers, and can use only those.</p>
   <span class="nf">handle</span>(<span class="ty">event</span>)
       <span class="sd">Process an event, or a small batch of them.</span>
 
-  -- back channel, to its manager
+  -- manage port, to its manager
 
   <span class="nf">patch</span>(<span class="ty">change</span>)
       <span class="sd">Receive a patch to its policy: code, prompts or skills. This is how it learns.</span>
@@ -655,7 +655,7 @@ wants when it registers, and can use only those.</p>
 <p><strong>What it does.</strong> It loads each coglet and runs its event loop. It <strong>delivers events</strong> to the coglets that subscribed to them, and <strong>carries
 what a coglet asks for</strong> to the right place: an adapter, another coglet, a
 model. It also serves each
-coglet's back channel, so the coglet's own code never has to. A runtime can sit
+coglet's manage port, so the coglet's own code never has to. A runtime can sit
 inside an app, on the user's machine, or on Softmax infrastructure, and it can
 be connected to several adapters at once.</p>
 <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1180" height="392" viewBox="0 0 1180 392" role="img" aria-label="Two runtimes joined by a network link. Each has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers; it runs coglets and connects to adapters outside it. Messages pass between coglets inside a runtime and between runtimes over the network.">
@@ -1041,14 +1041,14 @@ coglet there handles the request; see the note below.</em></p>
    nothing, and a ticket is filed with the factory.</li>
 <li>The factory writes the new skill, tests it against a local Blender
    simulator, and returns the patch in its ticket result.</li>
-<li>The patch is applied to the Blender coglet through its back channel, and
+<li>The patch is applied to the Blender coglet through its manage port, and
    Face is told. Face tells the user it can now draw tori.</li>
 </ol>
 <p><strong>Not settled: who files the ticket.</strong> It could be the fast loop, acting on the
 request as it arrives, or the optimizer, acting on what it sees in the fast
 loop's interactions. The same question applies to who applies the patch. The
 messages are the same either way (<code>ticket.submit</code> to the factory, <code>patch</code> on
-the back channel), so the other pieces can be built before this is decided.</p>
+the manage port), so the other pieces can be built before this is decided.</p>
 </main>
 </div>
 <script>

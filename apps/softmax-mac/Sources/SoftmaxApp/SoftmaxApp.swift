@@ -33,8 +33,8 @@ struct StatusLabel: View {
     var body: some View {
         Image("menu-\(model.menuPresentation.rawValue)\(animated ? "-\(frame)" : "")").renderingMode(.template)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Softmax, \(model.menuPresentation.label), hub disconnected")
-            .help("Softmax, \(model.menuPresentation.label), hub disconnected")
+            .accessibilityLabel("Softmax, \(model.menuPresentation.label), \(model.hubStatus)")
+            .help("Softmax, \(model.menuPresentation.label), \(model.hubStatus)")
             .task(id: model.menuPresentation.rawValue + String(reduceMotion)) {
                 frame = 0
                 while animated && !Task.isCancelled {
@@ -50,12 +50,39 @@ struct StatusLabel: View {
 final class ShellModel: ObservableObject {
     let updates = UpdateController()
     let runtime = RuntimeHost()
+    lazy var faceHost = FaceHost(shell: self)
     let recognizer = LocalSpeechInput()
+    @Published private(set) var hubConnection: HubConnection?
+    var hubStatus: String {
+        switch hubConnection?.state ?? .offline {
+        case .connected: return "Router connected"
+        case .connecting: return "Router connecting…"
+        case .offline: return "Router offline"
+        }
+    }
+    /// Startup is independent of microphone permissions and voice lifecycle.
+    /// Isolated UI/snapshot runs never instantiate a Keychain store or transport.
+    func configureHub() {
+        guard !testing else { return }
+        if hubConnection == nil {
+            let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/softmax-hub-link")
+            let connection = HubConnection(account: HubAccount(store: KeychainHubStore()),
+                                           link: ProcessHubLink(executable: helper))
+            connection.changed = { [weak self] in self?.objectWillChange.send() }
+            hubConnection = connection
+        }
+        hubConnection?.start()
+    }
     private var runtimeSubscription: AnyCancellable?
     private var speechDelivery: Task<Void, Never>?
     func configureRuntime() {
         guard !testing, speechDelivery == nil else { return }
         runtimeSubscription = runtime.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        runtime.onStopOutput = { [weak self] in self?.faceHost.stopRuntimeOutput() }
+        runtime.onAction = { [weak self] action in
+            guard let self else { return }
+            faceHost.perform(action) { [weak self] error in self?.runtime.complete(action, error: error) }
+        }
         Task { await runtime.start() }
         speechDelivery = Task { [weak self] in
             guard let self else { return }
@@ -138,7 +165,9 @@ final class ShellModel: ObservableObject {
                 microphone: .microphone(rawValue: AVCaptureDevice.authorizationStatus(for: .audio).rawValue),
                 inputMonitoring: .inputMonitoring(granted: CGPreflightListenEventAccess()))
         }
-        ptt.stopPlayback = { [weak self] in self?.stopFacePlayback?(); self?.stopFacePlayback = nil }
+        ptt.stopPlayback = { [weak self] in
+            self?.runtime.cancelOutput(); self?.stopFacePlayback?(); self?.stopFacePlayback = nil
+        }
         ptt.playStartSound = { [weak self] in if self?.startSound == true { self?.cues.play(.start) } }
         ptt.onChange = { [weak self] in
             guard let self else { return }
@@ -283,6 +312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             talkHUD.update(model: model)
             face.host.updateFromShell()
         }
+        model.configureHub()
         model.routePermissions = { [weak self] in self?.showSettings(tab: .privacy) }
         if model.state == .onboarding { showOnboarding() }
         else { model.configureTalk() }
@@ -297,6 +327,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     func applicationWillTerminate(_ notification: Notification) {
         if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
+        model.hubConnection?.stop()
         face.hide(); model.ptt.shutdown()
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

@@ -101,9 +101,13 @@ fn exact_database_record_bytes(
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CompletedSegment {
-    initial_setup: Value,
-    trace_id: Value,
+    pub(super) initial_setup: Value,
+    pub(super) trace_id: Value,
     pub(super) end: usize,
+    #[serde(default)]
+    pub(super) successor_trace: Option<Value>,
+    #[serde(default)]
+    pub(super) code_revision: Option<CodeRevision>,
 }
 
 impl RuntimeService {
@@ -117,36 +121,60 @@ impl RuntimeService {
         let mut time_floor = 0;
         let mut source_floor = 0;
         let mut seen = std::collections::BTreeSet::new();
+        if let Some(managed) = &state.managed {
+            managed.validate_code_history(&state.completed_segments)?;
+        } else if state
+            .completed_segments
+            .iter()
+            .any(|s| s.code_revision.is_some())
+        {
+            return Err("uninstalled code transition".into());
+        }
         for segment in &state.completed_segments {
             validate("correlation-id", &segment.trace_id)?;
             if !seen.insert(segment.trace_id.as_str().unwrap())
                 || segment.initial_setup != expected
-                || segment.end <= offset
+                || segment.end < offset
+                || (segment.end == offset && segment.code_revision.is_none())
                 || segment.end > records.len()
             {
                 return Err("invalid recovered segment header/cutoff/identity".into());
             }
             let old = Runtime::reconstruct(&segment.initial_setup, &records[offset..segment.end])?;
-            if records[offset]["logical_time"]
-                .as_u64()
-                .ok_or("missing segment clock")?
-                < time_floor
+            if records
+                .get(offset)
+                .filter(|_| offset < segment.end)
+                .is_some_and(|r| r["logical_time"].as_u64().is_none_or(|t| t < time_floor))
             {
                 return Err("segment journal clock precedes predecessor".into());
             }
             time_floor = time_floor.max(old.time);
             source_floor = source_floor.max(old.next_source_seq);
-            if !old.sealed || old.trace_id.as_ref() != Some(&segment.trace_id) {
+            if (segment.code_revision.is_none() && !old.sealed)
+                || old
+                    .trace_id
+                    .as_ref()
+                    .is_some_and(|id| id != &segment.trace_id)
+            {
                 return Err("completed segment lacks matching durable seal".into());
             }
-            let next_id = state
-                .completed_segments
-                .iter()
-                .find(|s| s.end > segment.end)
-                .map(|s| &s.trace_id)
-                .or(state.runtime.trace_id.as_ref())
+            let next_id = segment
+                .successor_trace
+                .as_ref()
+                .or_else(|| {
+                    state
+                        .completed_segments
+                        .iter()
+                        .find(|s| s.end > segment.end)
+                        .map(|s| &s.trace_id)
+                        .or(state.runtime.trace_id.as_ref())
+                })
                 .ok_or("missing successor trace identity")?;
-            expected = old.start_segment(next_id)?.initial_setup;
+            expected = if let Some(revision) = &segment.code_revision {
+                revision.successor(&old, next_id)?.initial_setup
+            } else {
+                old.start_segment(next_id)?.initial_setup
+            };
             offset = segment.end;
         }
         if state.runtime.initial_setup != expected
@@ -193,6 +221,8 @@ impl RuntimeService {
                 .clone()
                 .ok_or("missing predecessor trace ID")?,
             end: self.store.records().len(),
+            successor_trace: Some(trace_id.clone()),
+            code_revision: None,
         });
         next.runtime = runtime;
         self.store.commit(

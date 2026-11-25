@@ -12,13 +12,23 @@ uv build
 ```
 
 The existing `python` CI job runs these tests. `test_conformance.py` runs the
-unchanged `conformance/surface/*.json` black-box harness against the reference
-surface over a real private AF_UNIX socket. It asserts that **every surface-side
-case** executed, rather than accepting exit zero with missing fixtures. The two
-runtime-under-test cases are explicitly skipped, not claimed as passes. The
-provisioner creates the isolated ledger/device before the wire timeline starts;
-no protocol responses are substituted. This also avoids counting filesystem
-initialization latency against a 200 ms wire expectation.
+unchanged `conformance/surface/*.json` black-box harness against the actual SDK
+and durable SQLite reference device through a test-only stdio binding. It uses
+ADR-0021's existing acknowledged fixture clock: durable work does not advance
+logical case time; clock advances and wire dispatch are acknowledged only after
+SDK processing and output flush. Startup has an explicit readiness line. The
+unchanged case deadlines are not host latency promises. Every surface-side case
+must execute; the two runtime-under-test cases remain explicit skips.
+
+`test_reference_readiness.py` injects 400 ms negotiation stalls and proves a
+failed Unix wire cannot kill the supervisor and fill its control backlog to
+Linux EAGAIN. `test_live_serve.py` separately exercises the production transport
+loop with a real monotonic clock, grant expiry, health, silence disconnect and
+local kill notification. Existing SDK deadline/native-stop and Unix credentials,
+framing and revocation tests remain in the required Python suite. Functional
+clock results do not establish native-device latency or physical-off-switch
+qualification. `tests/repeat_registry.py` retains 20 complete functional registry
+JUnit reports under two owned CPU burners; this proof is non-required CI.
 
 ## Supervisor integration
 

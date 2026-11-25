@@ -45,6 +45,18 @@ class DevSigningTests(unittest.TestCase):
         self.assertIn('SoftmaxCore.framework', signing[0])
         self.assertTrue(signing[1].endswith('Softmax.app'))
 
+    def test_bundled_hub_helper_is_signed_before_outer_app(self):
+        helper = self.app / 'Contents/Helpers/softmax-hub-link'
+        helper.parent.mkdir()
+        helper.write_bytes(b'fixture: not a Mach-O signing proof')
+        result = self.run_sign()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        signing = [line for line in (self.root/'sign.log').read_text().splitlines() if '--force' in line]
+        helper_lines = [i for i, line in enumerate(signing) if line.endswith('/Helpers/softmax-hub-link')]
+        self.assertEqual(len(helper_lines), 1, signing)
+        self.assertLess(helper_lines[0], len(signing) - 1)
+        self.assertTrue(signing[-1].endswith('Softmax.app'))
+
     def test_missing_pinned_identity_fails_instead_of_changing_tcc_identity(self):
         self.assertEqual(self.run_sign().returncode, 0)
         self.env['FAKE_IDENTITIES'] = ''

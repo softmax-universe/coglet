@@ -20,6 +20,27 @@ concurrency:
   group: stability
   cancel-in-progress: false
 jobs:
+  scheduler-stall:
+    # Deliberately non-required; execute the script directly, never Go's test cache.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: sdk/surface-go/go.mod
+          cache: false
+      - run: python3 -m pip install -r spec/tests/requirements.txt
+      - name: Build real Go adapter
+        working-directory: sdk/surface-go
+        run: go build -o ../../target/stability-go-surface ./cmd/conformance
+      - name: Scheduler-stall comparisons under owned CPU and scheduling load
+        env:
+          REPEATS: ${{ inputs.repeats || 20 }}
+        run: python3 sdk/surface-go/stress_fixture_clock.py target/stability-go-surface --repeats "$REPEATS"
   quarantine-age:
     runs-on: ubuntu-24.04
     steps:
@@ -38,6 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       # Plain cargo (network allowed): this job is not required, so it skips the
       # offline dependency bundle that rust.yml restores.
+      - uses: astral-sh/setup-uv@v6
       - name: Install pinned toolchain
         run: rustup show active-toolchain
       - name: Every quarantined Rust id names a real test
@@ -61,6 +83,6 @@ jobs:
           mapfile -t only <<< "$args"
           for iteration in $(seq 1 "$REPEATS"); do
             echo "::group::iteration $iteration"
-            cargo test --workspace --locked -- "${only[@]}"
+            cargo test --workspace --locked -- --include-ignored "${only[@]}"
             echo "::endgroup::"
           done

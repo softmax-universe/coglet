@@ -1,5 +1,10 @@
 # Runtime core and native surface service
 
+Installed router pushes activate at a serialized runtime boundary, preserve
+private data and reconcile the original push receipt across daemon crashes.
+See [installed push qualification](installed-push-qualification.md) for custody,
+named tests, native/default distinctions and finite storage bounds.
+
 This crate is **not yet an M1-qualified runtime**. The current library provides:
 
 - arrival-ordered bounded batching (`Router`);
@@ -39,6 +44,10 @@ step overlay with `/code`, `/data` and `/logs` preopens. Forbidden imports
 still fail admission; no ambient host filesystem is exposed.
 
 ## Verification
+
+See [daemon-restart.md](daemon-restart.md) for ADR-0027 boot revalidation,
+real guest-after-SIGKILL proof, the named requirement matrix, CPU-loaded stress
+method and the explicit supervisor socket-cleanup / queued-pause boundaries.
 
 See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
 trusted supervisor configuration and its remaining qualification limits.

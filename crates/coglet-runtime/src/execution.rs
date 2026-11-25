@@ -9,6 +9,7 @@ use std::path::Path;
 
 #[path = "clock.rs"]
 mod clock;
+
 #[cfg(feature = "native-engine")]
 #[path = "database_replay.rs"]
 mod database_replay;
@@ -24,6 +25,10 @@ mod heard_deadline_tests;
 mod live_heard;
 #[path = "managed.rs"]
 mod managed;
+pub(crate) use managed::CodeRevision;
+pub(crate) use managed::ReceiptScope;
+#[cfg(feature = "device")]
+pub(crate) use managed::StartRecovery;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
@@ -205,8 +210,9 @@ impl RuntimeService {
                 .map(|(p, b)| (p.clone(), b.clone()))
                 .collect::<BTreeMap<_, _>>()
         };
-        if state.runtime.manifest != configured.manifest
-            || code_files(&state.runtime) != code_files(configured)
+        let live_configured = Runtime::from_fixture(&state.runtime.initial_setup)?;
+        if state.runtime.manifest != live_configured.manifest
+            || code_files(&state.runtime) != code_files(&live_configured)
         {
             return Err("recovery code/manifest pins differ from configuration".into());
         }
@@ -272,6 +278,7 @@ impl RuntimeService {
         queue_capacity: usize,
         identity: &Value,
         operation_id: &str,
+        scope: &ReceiptScope,
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         Self::open_configured(
@@ -279,7 +286,7 @@ impl RuntimeService {
             setup,
             queue_capacity,
             crate::TrustedExtensionCatalog::default(),
-            Some((identity, operation_id)),
+            Some((identity, operation_id, Some(scope))),
             gate,
         )
     }
@@ -289,7 +296,7 @@ impl RuntimeService {
         setup: &Value,
         queue_capacity: usize,
         catalog: crate::TrustedExtensionCatalog,
-        install: Option<(&Value, &str)>,
+        install: Option<(&Value, &str, Option<&ReceiptScope>)>,
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         let catalog = std::sync::Arc::new(catalog);
@@ -302,7 +309,7 @@ impl RuntimeService {
                 serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
             if let Some(managed) = &saved_state.managed {
                 managed.validate()?;
-                if install.is_some_and(|(identity, _)| managed.identity() != identity) {
+                if install.is_some_and(|(identity, _, _)| managed.identity() != identity) {
                     return Err("conflict: managed install identity differs".into());
                 }
             } else if install.is_some() {
@@ -405,9 +412,9 @@ impl RuntimeService {
             #[cfg(feature = "native-engine")]
             native: None,
         };
-        if let Some((identity, operation_id)) = install {
+        if let Some((identity, operation_id, scope)) = install {
             gate()?;
-            service.managed_install(identity, operation_id)?;
+            service.managed_install_scoped(identity, operation_id, scope)?;
         } else if fresh {
             service.store.commit(
                 &serde_json::to_value(&service.state).map_err(|e| e.to_string())?,
@@ -526,6 +533,9 @@ impl RuntimeService {
     }
 
     pub fn run_next(&mut self, context: &Value, engine: &mut impl Engine) -> Result<Option<Value>> {
+        if self.code_pending() {
+            return Ok(None);
+        }
         self.require_deliverable()?;
         let Some((inputs, events, mut next)) = self.begin_attempt(context)? else {
             return Ok(None);

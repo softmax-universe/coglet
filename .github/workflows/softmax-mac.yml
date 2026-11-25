@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Hub account tests (before native runtime build)
+        run: swift test --package-path apps/softmax-mac --filter 'Hub(Connection|Keychain)Tests'
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
@@ -25,11 +27,20 @@ jobs:
         run: |
           cargo check --locked -p coglet-proto --target aarch64-apple-darwin
           cargo test --locked -p coglet-proto --test bundle_envelope unsupported_platform_refuses_validator_execution -- --exact
-      - name: Darwin ADAPTER SDK randomness and real ROUTER launcher build
+      - name: Darwin ADAPTER SDK randomness
         run: |
           cargo check --locked -p coglet-surface-rust --target aarch64-apple-darwin
           cargo test --locked -p coglet-surface-rust --lib ids::tests::
-          cargo build --locked -p coglet-mock --example hub
+      - name: Build real hub helper and mock launcher
+        run: |
+          cargo build --locked --manifest-path apps/softmax-mac/HubTransport/Cargo.toml -j 2
+          cargo build --locked -p coglet-mock --example hub -j 2
+      - name: HubConnectionTests against real coglet-mock
+        env:
+          SOFTMAX_HUB_HELPER: ${{ github.workspace }}/apps/softmax-mac/HubTransport/target/debug/softmax-hub-link
+          SOFTMAX_MOCK_HUB: ${{ github.workspace }}/target/debug/examples/hub
+          SOFTMAX_REQUIRE_HUB_TESTS: '1'
+        run: swift test --package-path apps/softmax-mac --filter HubNativeConnectionTests
       - name: Install pinned header generator
         run: cargo install cbindgen --version 0.29.2 --locked
       - name: Build test runtime xcframework (real WAMR, both Apple architectures)
@@ -87,6 +98,20 @@ jobs:
           name: Softmax-live-window-audit-evidence
           path: apps/softmax-mac/build/LiveWindowAttachments
           if-no-files-found: warn
+      - name: Verify bundled universal ROUTER helper and inside-out signing
+        if: ${{ !cancelled() }}
+        working-directory: apps/softmax-mac
+        env:
+          SOFTMAX_DEV_SIGNING_IDENTITY: '-'
+          SOFTMAX_DEV_IDENTITY_FILE: ${{ runner.temp }}/softmax-hub-signing-identity
+        run: |
+          app=build/Build/Products/Debug/Softmax.app
+          helper="$app/Contents/Helpers/softmax-hub-link"
+          test -x "$helper"
+          lipo "$helper" -verify_arch arm64 x86_64
+          bash scripts/sign-dev.sh "$app"
+          codesign --verify --strict --verbose=2 "$helper"
+          codesign --verify --deep --strict --verbose=2 "$app"
       - name: Package app artifact
         if: always()
         working-directory: apps/softmax-mac
