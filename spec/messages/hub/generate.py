@@ -107,8 +107,10 @@ methods = ['hub.enroll', 'hub.install', 'hub.start', 'hub.stop', 'hub.status',
            'manage.patch', 'manage.tail_log', 'hub.events', 'hub.actions',
            'manage.read', 'manage.write', 'manage.pause', 'manage.step',
            'hub.inbox', 'hub.health', 'hub.receipt', 'hub.cancel']
-enum('hub-method', methods)
-array('hub-methods', 'hub-method', len(methods))
+presence_methods = ['presence.get', 'presence.set', 'presence.request',
+                    'presence.changed', 'presence.check_in', 'presence.attention']
+enum('hub-method', methods + presence_methods)
+array('hub-methods', 'hub-method', len(methods + presence_methods))
 enum('hub-purpose-delegation', ['delegation'])
 obj('hub-delegation-statement', {'purpose': 'hub-purpose-delegation', 'coglet': 'coglet-id', 'device': 'node-id',
     'hub': 'node-id', 'generation': 'uint64', 'expires': 'uint64', 'methods': 'hub-methods'})
@@ -165,6 +167,11 @@ for method, p in zip(methods, params):
         fields['context'] = 'hub-context'
     obj(name, fields)
     requests.append(name)
+# Preserve the entire router 1.0 request root. Presence is negotiated at 1.1.
+union('hub-v1-request', requests)
+from presence import shapes as presence_shapes, requests as presence_requests
+presence_shapes(add, obj, enum, array, text, bounded, union)
+requests += presence_requests(obj, enum)
 union('hub-request', requests)
 obj('hub-enroll-result', {'selection': 'version-selection', 'device': 'node-id', 'hub': 'node-id'})
 obj('hub-read-result', {'step': 'uint64', 'snapshot_hash': 'hub-hash', 'text': 'hub-text',
@@ -172,7 +179,7 @@ obj('hub-read-result', {'step': 'uint64', 'snapshot_hash': 'hub-hash', 'text': '
 obj('hub-events-result', {'next_offset': 'uint64'})
 obj('hub-step-result', {'receipt': 'hub-mutation-receipt', 'step': 'uint64'})
 results = ['hub-enroll-result', 'hub-mutation-receipt', 'hub-status', 'action-accept',
-           'hub-read-result', 'hub-events-result', 'hub-step-result', 'hub-empty']
+           'hub-read-result', 'hub-events-result', 'hub-step-result', 'hub-empty', 'presence']
 union('hub-result', results)
 obj('hub-success', {'type': enum('hub-success-type', ['reply']), 'correlation_id': 'correlation-id', 'result': 'hub-result'})
 obj('hub-failure', {'type': enum('hub-failure-type', ['error']), 'correlation_id': 'correlation-id', 'error': 'error'})
@@ -270,6 +277,9 @@ for i, path in enumerate(['/logs', '/logs/', '/data/a', 'logs/a', '/logs//a', '/
     fixture(f'log-path-invalid-{i}', 'manage-log-path', path, False)
     fixture(f'log-entry-invalid-{i}', 'manage-log-entry',
             {'path': path, 'file_offset': 0, 'hex': 'ff'}, False)
+
+from presence import fixtures as presence_fixtures
+presence_fixtures(fixture, EX)
 
 folder = SPEC / 'fixtures/hub'
 folder.mkdir(exist_ok=True)
