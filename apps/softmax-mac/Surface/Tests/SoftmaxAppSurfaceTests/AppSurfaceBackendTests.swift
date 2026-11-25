@@ -125,6 +125,25 @@ private actor BackendHarness {
 }
 
 final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
+    func testMailboxClockRollbackCannotExtendQueuedAuthority() async throws {
+        let clock = BackendClock()
+        let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
+        let harness = try BackendHarness(capture: capture, clock: clock)
+        _ = try await harness.act("softmax.app.invoke", args: invoke("settings.general.button"))
+        let mailbox = harness.mailbox
+        let ticket = try XCTUnwrap(mailbox.queuedCommands().first)
+        clock.advance(9)
+        await MainActor.run { mailbox.execute(ticket, adapter: host.adapter); XCTAssertEqual(host.pressCalls, 0) }
+        clock.advance(10)
+        let frames = try await harness.reconcile()
+        XCTAssertEqual(frames.first?["body"]?["payload"]?["status"], .text("failed"))
+        let refused = try await harness.read("softmax.app.state")
+        XCTAssertEqual(refused["body"]?["ok"], .boolean(false))
+        XCTAssertThrowsError(try mailbox.activate(incarnation: 2, epoch: 1,
+            grant: .init(coglet: owner, operations: [], resources: [], expires: 1000), capture: capture))
+        try await harness.close()
+    }
+
     func testSaturationRejectsBeforeAdmissionAndRecoversAfterDrain() async throws {
         let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
         let harness = try BackendHarness(capture: capture, clock: BackendClock())

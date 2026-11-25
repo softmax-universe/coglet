@@ -105,11 +105,24 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
     private var capture: AppSurfaceCapture?
     private var pending: [UUID: Pending] = [:]
     private let clock: @Sendable () -> UInt64
+    private var lastClock: UInt64?
+    /// Must use the SAME monotonic microsecond clock/epoch as the SDK session.
+    /// This mailbox is a single app-owner backend, not a shared speech backend.
     public init(clock: @escaping @Sendable () -> UInt64 = { DispatchTime.now().uptimeNanoseconds / 1_000 }) { self.clock = clock }
+    private func sampleLocked() throws -> UInt64 {
+        let now = clock()
+        if let lastClock, now < lastClock {
+            active = false; retired = true; capture = nil; grant = nil
+            throw NativeSurfaceError("unavailable")
+        }
+        lastClock = now
+        return now
+    }
 
     public func activate(incarnation: UInt64, epoch: UInt64, grant: EffectiveSurfaceGrant, capture: AppSurfaceCapture) throws {
         lock.lock(); defer { lock.unlock() }
-        guard !everActive, !retired, grant.expires > clock() else { throw NativeSurfaceError("unavailable") }
+        let now = try sampleLocked()
+        guard !everActive, !retired, grant.expires > now else { throw NativeSurfaceError("unavailable") }
         self.incarnation = incarnation; self.epoch = epoch; self.grant = grant; self.capture = capture
         everActive = true; active = true
     }
@@ -128,7 +141,8 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
     }
     fileprivate func snapshot(requireCapacity: Bool = false) throws -> AppSurfaceCapture {
         lock.lock(); defer { lock.unlock() }
-        guard active, let capture, let grant, grant.expires > clock() else { throw NativeSurfaceError("unavailable") }
+        let now = try sampleLocked()
+        guard active, let capture, let grant, grant.expires > now else { throw NativeSurfaceError("unavailable") }
         // Only the serialized SDK owner can enqueue; native code only completes
         // or drains, so this side-effect-free preflight check needs no reservation.
         if requireCapacity, pending.count >= 16 { throw NativeSurfaceError("resource_exhausted") }
@@ -136,7 +150,8 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
     }
     fileprivate func isCurrent(_ snapshot: AppSurfaceCapture) -> Bool {
         lock.lock(); defer { lock.unlock() }
-        return active && capture?.cursorIdentity == snapshot.cursorIdentity && (grant?.expires ?? 0) > clock()
+        guard let now = try? sampleLocked() else { return false }
+        return active && capture?.cursorIdentity == snapshot.cursorIdentity && (grant?.expires ?? 0) > now
     }
     fileprivate func enqueue(command: AppSurfaceAdapter.CapturedCommand, action: CogletTypes.CBORValue, epoch: UInt64) throws {
         guard case .text(let owner)? = action["coglet"], case .text(let id)? = action["id"],
@@ -144,8 +159,9 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
             throw NativeSurfaceError("invalid_argument")
         }
         lock.lock(); defer { lock.unlock() }
+        let now = try sampleLocked()
         guard active, self.epoch == epoch, let grant, grant.coglet == owner,
-              grant.operations.contains(operation), grant.expires > clock(), deadline > clock() else { throw NativeSurfaceError("permission_denied") }
+              grant.operations.contains(operation), grant.expires > now, deadline > now else { throw NativeSurfaceError("permission_denied") }
         guard pending.count < 16 else { throw NativeSurfaceError("resource_exhausted") }
         let ticket = Ticket(identity: UUID(), command: command, owner: owner, id: id, epoch: epoch, deadline: deadline)
         pending[ticket.identity] = Pending(ticket: ticket, stage: .queued)
@@ -168,7 +184,7 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
             let prepared = try adapter.prepareCaptured(ticket.command)
             let value = try adapter.perform(prepared, authorized: {
                 self.lock.lock(); defer { self.lock.unlock() }
-                let now = self.clock()
+                guard let now = try? self.sampleLocked() else { return false }
                 guard self.active, self.epoch == ticket.epoch, let grant = self.grant,
                       grant.coglet == ticket.owner, grant.expires > now, ticket.deadline > now,
                       self.pending[ticket.identity]?.stage == .queued,
