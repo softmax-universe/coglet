@@ -8,33 +8,43 @@ use std::{
 };
 
 unsafe extern "C" {
-    fn ce_create(bytes: *mut u8, len: u32, pool: u32, stack: u32, pages: u32) -> *mut c_void;
+    fn ce_create(
+        lease_id: u64,
+        bytes: *const u8,
+        len: u32,
+        pool: u32,
+        stack: u32,
+        pages: u32,
+        allow_db: i32,
+    ) -> *mut c_void;
     fn ce_call(ctx: *mut c_void, name: *const c_char, argc: u32, argv: *mut u32) -> i32;
     fn ce_set_budget(ctx: *mut c_void, budget: i32);
     fn ce_remaining(ctx: *mut c_void) -> i32;
     fn ce_terminate(ctx: *mut c_void);
     fn ce_copy_exception(ctx: *mut c_void, output: *mut c_char, capacity: u32) -> i32;
     fn ce_destroy(ctx: *mut c_void);
+    fn ce_release_owner(lease_id: u64);
 }
 static LOCK: Mutex<()> = Mutex::new(());
 struct Native {
     ctx: *mut c_void,
-    _bytes: Vec<u8>,
 }
 impl Native {
     fn new(wat: &str) -> Self {
-        let mut bytes = wat::parse_str(wat).unwrap();
+        let bytes = wat::parse_str(wat).unwrap();
         let ctx = unsafe {
             ce_create(
-                bytes.as_mut_ptr(),
+                1, // Private test process, LOCK held, owner retired on each drop.
+                bytes.as_ptr(),
                 bytes.len() as u32,
                 8 * 1024 * 1024,
                 64 * 1024,
                 2,
+                0,
             )
         };
         assert!(!ctx.is_null());
-        Self { ctx, _bytes: bytes }
+        Self { ctx }
     }
     fn call(&mut self, name: &str, arg: u32) -> (i32, u32) {
         let mut argv = [arg];
@@ -45,7 +55,10 @@ impl Native {
 }
 impl Drop for Native {
     fn drop(&mut self) {
-        unsafe { ce_destroy(self.ctx) }
+        unsafe {
+            ce_destroy(self.ctx);
+            ce_release_owner(1);
+        }
     }
 }
 const GUEST: &str = r#"(module

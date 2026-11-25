@@ -1,13 +1,20 @@
 use coglet_engine::{Error, GuestMemory, Host, Limits, Result, StepBudget, StepInput, StepOutcome};
 use std::cell::{Cell, RefCell};
+#[cfg(all(test, feature = "interpreter"))]
+#[path = "owner_tests.rs"]
+mod owner_tests;
 use std::{
     ffi::{CStr, CString, c_char, c_void},
-    sync::{Arc, Condvar, Mutex},
+    sync::{
+        Arc, Condvar, Mutex, MutexGuard, Weak,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Instant,
 };
 unsafe extern "C" {
     fn ce_create(
-        bytes: *mut u8,
+        lease_id: u64,
+        bytes: *const u8,
         len: u32,
         pool: u32,
         stack: u32,
@@ -22,6 +29,7 @@ unsafe extern "C" {
     fn ce_copy_exception(ctx: *mut c_void, output: *mut c_char, capacity: u32) -> i32;
     fn ce_write(ctx: *mut c_void, ptr: u32, bytes: *const u8, len: u32) -> i32;
     fn ce_destroy(ctx: *mut c_void);
+    fn ce_release_owner(lease_id: u64);
     fn ce_read(ctx: *mut c_void, ptr: u32, bytes: *mut u8, len: u32) -> i32;
     fn ce_valid(ctx: *mut c_void, ptr: u32, len: u32) -> i32;
     fn ce_memory_size(ctx: *mut c_void) -> u64;
@@ -177,10 +185,114 @@ unsafe extern "C" fn ce_host_call(
 }
 // WAMR runtime init/allocator/native registry are process-global. Serialize the
 // entire native lifetime; no pointer escapes. Waiting NEVER renews the deadline.
-static RUNTIME: Mutex<()> = Mutex::new(());
+static RUNTIME: Mutex<Option<OwnerLease>> = Mutex::new(None);
+static NEXT_LEASE: AtomicU64 = AtomicU64::new(1);
+thread_local! { static IN_RUNTIME: Cell<bool> = const { Cell::new(false) }; }
+pub(super) struct ModuleLease {
+    id: u64,
+}
+impl ModuleLease {
+    pub(super) fn new() -> Result<Arc<Self>> {
+        let mut id = NEXT_LEASE.load(Ordering::Relaxed);
+        loop {
+            let next = id.checked_add(1).ok_or(Error::UnqualifiedModule)?;
+            match NEXT_LEASE.compare_exchange_weak(id, next, Ordering::Relaxed, Ordering::Relaxed) {
+                Ok(_) => break,
+                Err(current) => id = current,
+            }
+        }
+        Ok(Arc::new(Self { id }))
+    }
+}
+impl Drop for ModuleLease {
+    fn drop(&mut self) {
+        try_reclaim();
+    }
+}
+struct OwnerLease {
+    id: u64,
+    lease: Weak<ModuleLease>,
+}
+fn reclaim(owner: &mut Option<OwnerLease>) {
+    // Never upgrade: dropping a temporary strong lease here could recurse into
+    // reclamation. The mutex prevents replacing or using this native owner.
+    if owner.as_ref().is_some_and(|o| o.lease.strong_count() == 0) {
+        let stale = owner.take().expect("stale owner");
+        unsafe { ce_release_owner(stale.id) };
+    }
+}
+fn try_reclaim() {
+    loop {
+        let lock = match RUNTIME.try_lock() {
+            Ok(lock) => lock,
+            Err(std::sync::TryLockError::Poisoned(e)) => e.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) => return,
+        };
+        // Even a nonblocking cleanup attempt can race ANOTHER lease's final
+        // drop. It must use the same unlock protocol as an execution guard.
+        if !unlock_and_check(lock, false) {
+            return;
+        }
+    }
+}
+fn unlock_and_check(mut lock: MutexGuard<'static, Option<OwnerLease>>, test_hooks: bool) -> bool {
+    #[cfg(not(all(test, feature = "interpreter")))]
+    let _ = test_hooks;
+    #[cfg(all(test, feature = "interpreter"))]
+    owner_tests::exit_hook(if test_hooks { 0 } else { 3 });
+    reclaim(&mut lock);
+    // A weak snapshot is safe outside the lock; never retain a strong lease.
+    let pending = lock.as_ref().map(|o| o.lease.clone());
+    #[cfg(all(test, feature = "interpreter"))]
+    owner_tests::exit_hook(if test_hooks { 1 } else { 4 });
+    drop(lock);
+    #[cfg(all(test, feature = "interpreter"))]
+    owner_tests::exit_hook(if test_hooks { 2 } else { 5 });
+    // Checking BEFORE unlock would leave a hole. After this check a final drop
+    // can acquire the idle lock, or a new holder repeats this exact protocol.
+    pending.is_some_and(|lease| lease.strong_count() == 0)
+}
+struct RuntimeGuard {
+    lock: Option<MutexGuard<'static, Option<OwnerLease>>>,
+}
+impl RuntimeGuard {
+    fn enter() -> Result<Self> {
+        if IN_RUNTIME.with(|active| active.replace(true)) {
+            return Err(Error::Trap(
+                "nested native execution is not supported".into(),
+            ));
+        }
+        let (lock, poisoned) = match RUNTIME.lock() {
+            Ok(lock) => (lock, false),
+            Err(e) => (e.into_inner(), true),
+        };
+        let mut guard = Self { lock: Some(lock) };
+        reclaim(guard.lock.as_mut().expect("runtime lock"));
+        if poisoned {
+            return Err(Error::UnqualifiedModule);
+        }
+        Ok(guard)
+    }
+    fn set_owner(&mut self, lease: &Arc<ModuleLease>) {
+        **self.lock.as_mut().expect("runtime lock") = Some(OwnerLease {
+            id: lease.id,
+            lease: Arc::downgrade(lease),
+        });
+    }
+}
+impl Drop for RuntimeGuard {
+    fn drop(&mut self) {
+        // Close the final-drop race between the locked cleanup and unlock.
+        // If another guard wins this attempt, its exit performs the same sweep.
+        // Otherwise a later final drop can acquire the now-idle mutex itself.
+        if unlock_and_check(self.lock.take().expect("runtime lock"), true) {
+            try_reclaim();
+        }
+        IN_RUNTIME.with(|active| active.set(false));
+    }
+}
 struct Native {
     ctx: *mut c_void,
-    _bytes: Vec<u8>,
 }
 impl Drop for Native {
     fn drop(&mut self) {
@@ -275,6 +387,7 @@ impl Native {
     }
 }
 pub(super) fn execute(
+    lease: &Arc<ModuleLease>,
     bytes: &[u8],
     limits: Limits,
     input: StepInput,
@@ -292,17 +405,17 @@ pub(super) fn execute(
     {
         return failure(Error::InvalidArgument);
     }
-    let _lock = match RUNTIME.lock() {
+    let mut guard = match RuntimeGuard::enter() {
         Ok(v) => v,
-        Err(_) => return failure(Error::UnqualifiedModule),
+        Err(e) => return failure(e),
     };
     if Instant::now() >= limits.deadline {
         return failure(Error::DeadlineExceeded);
     }
-    let mut bytes = bytes.to_vec();
     let ctx = unsafe {
         ce_create(
-            bytes.as_mut_ptr(),
+            lease.id,
+            bytes.as_ptr(),
             bytes.len() as u32,
             limits.runtime_bytes,
             limits.stack_bytes,
@@ -313,7 +426,8 @@ pub(super) fn execute(
     if ctx.is_null() {
         return failure(Error::MemoryExhausted);
     }
-    let mut native = Native { ctx, _bytes: bytes };
+    guard.set_owner(lease);
+    let mut native = Native { ctx };
     unsafe { ce_set_budget(ctx, limits.compute as i32) };
     let budget = match StepBudget::new(limits.compute, limits.host_bytes, limits.deadline) {
         Ok(v) => v,
