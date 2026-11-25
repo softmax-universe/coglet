@@ -78,7 +78,9 @@ empty tree id. It is not the id of the `code/` subtree.
 **Versioning.** ABI trace, step and boundary records move from `"0.1"` to
 `"1.0"`, and database records from `"0.2"` to `"1.1"`, so the version string
 still tells a database record from a plain ABI one, as
-`spec/capabilities/database.md` relies on today. A `spec-v0` verifier rejects
+`spec/capabilities/database.md` relies on today. Manifests move with them
+(`manifest.schema.json` `"0.1"` to `"1.0"`, the database manifest `"0.2"` to
+`"1.1"`), so one ABI version still names both. A `spec-v0` verifier rejects
 the new hashes by design; there is no dual-hash window.
 
 On the router protocol, the hub `debug.*` 0.1 methods are not redefined in
