@@ -314,6 +314,15 @@ func (s *Surface) BoundOperation(name string, prepare func(map[string]any, Reque
 	return Operation{Name: name, Resources: append([]string{}, s.required(name)...), Prepare: prepare, Execute: execute}, nil
 }
 
+// NegotiatedVersion returns the selected wire minor for the current connection,
+// or the empty string before negotiation and after disconnection. It does not
+// describe or change the trusted provisioning profile.
+func (s *Surface) NegotiatedVersion() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.version
+}
+
 // wireSchema is selected by the NEGOTIATED version, never by the profile alone.
 func (s *Surface) wireSchema() *codec.Schema {
 	if s.version == wire02 {

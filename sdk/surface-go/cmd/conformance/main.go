@@ -68,7 +68,14 @@ func provision() (profile string, catalog *surface.TrustedCatalog, err error) {
 	return profile, catalog, nil
 }
 
-// builtinGrants drops the test app's operations and private resource (downgrade path).
+// fixtureGrants selects built-in-only grants only for an actual 0.1 downgrade.
+func fixtureGrants(profile, version string, entries []types.Grant) []types.Grant {
+	if profile == surface.ProfileSurface02 && version == "0.1" {
+		return builtinGrants(entries)
+	}
+	return entries
+}
+
 func builtinGrants(in []types.Grant) []types.Grant {
 	out := []types.Grant{}
 	for _, g := range in {
@@ -232,13 +239,9 @@ func run() error {
 		HelloID: f.Hello.Body.CorrelationID,
 		Ready:   func() { fmt.Fprintln(os.Stderr, "COGLET_CONFORMANCE_READY") },
 		Configured: func() error {
-			err := s.Grant(f.Grant.Entries)
-			if err != nil && profile == surface.ProfileSurface02 {
-				// A 0.1 peer on a surface-0.2 provisioning cannot be granted catalog operations:
-				// the supervisor then grants only built-ins (the SDK has no negotiated-version
-				// accessor yet, so the adapter retries instead of inspecting it).
-				err = s.Grant(builtinGrants(f.Grant.Entries))
-			}
+			// Filter only an actual negotiated downgrade, before granting. Never
+			// reinterpret a failed 0.2 grant as a reason to fall back to built-ins.
+			err := s.Grant(fixtureGrants(profile, s.NegotiatedVersion(), f.Grant.Entries))
 			if err != nil {
 				return err
 			}
