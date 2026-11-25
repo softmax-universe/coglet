@@ -1,6 +1,7 @@
 //! Real-WAMR qualification for the Phase 3 ingestion slice. This is not the
 //! complete Phase 3 budget/priority/deferral acceptance suite.
 use super::*;
+mod acceptance;
 const GOAL: &str = "44444444444444444444444444444444";
 
 #[test]

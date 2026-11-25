@@ -1,0 +1,10 @@
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/iroh-base/ff83f7335092f951/out/iroh_base-ff83f7335092f951.d: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/endpoint_addr.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/key.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/relay_url.rs
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/iroh-base/ff83f7335092f951/out/libiroh_base-ff83f7335092f951.rlib: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/endpoint_addr.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/key.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/relay_url.rs
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/iroh-base/ff83f7335092f951/out/libiroh_base-ff83f7335092f951.rmeta: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/endpoint_addr.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/key.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/relay_url.rs
+
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/lib.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/endpoint_addr.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/key.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iroh-base-1.5.0/src/relay_url.rs:

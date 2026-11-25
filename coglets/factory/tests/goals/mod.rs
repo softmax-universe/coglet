@@ -12,7 +12,11 @@ fn authorize(h: &mut TestHost) {
         .unwrap();
 }
 fn goal_event(h: &mut TestHost, seq: u64, input: serde_json::Value) -> Event {
-    let mut inner = event("factory.goal", seq, []);
+    command_event(h, seq, "factory.goal", input)
+}
+mod acceptance;
+fn command_event(h: &mut TestHost, seq: u64, kind: &str, input: serde_json::Value) -> Event {
+    let mut inner = event(kind, seq, []);
     inner.payload = serde_json::from_value(input).unwrap();
     let message_id = format!("{seq:032x}");
     let line = json!({"index":0,"id":message_id,"sender":inner.source,"event":inner});

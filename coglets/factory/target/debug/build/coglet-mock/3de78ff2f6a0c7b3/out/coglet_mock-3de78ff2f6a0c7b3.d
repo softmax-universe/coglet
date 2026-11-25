@@ -1,0 +1,14 @@
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/coglet-mock/3de78ff2f6a0c7b3/out/coglet_mock-3de78ff2f6a0c7b3.d: /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lib.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/engine.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/hub.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lifecycle.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/llm.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/surface.rs
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/coglet-mock/3de78ff2f6a0c7b3/out/libcoglet_mock-3de78ff2f6a0c7b3.rlib: /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lib.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/engine.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/hub.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lifecycle.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/llm.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/surface.rs
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/coglet-mock/3de78ff2f6a0c7b3/out/libcoglet_mock-3de78ff2f6a0c7b3.rmeta: /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lib.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/engine.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/hub.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lifecycle.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/llm.rs /home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/surface.rs
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lib.rs:
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/engine.rs:
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/hub.rs:
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/lifecycle.rs:
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/llm.rs:
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/crates/coglet-mock/src/surface.rs:
+
+# env-dep:CARGO_PKG_VERSION=0.1.0

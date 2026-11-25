@@ -631,6 +631,8 @@ fn invalid_ops_rejected_without_partial_mutation() {
             Decision::CreateGoal {
                 id: "44444444444444444444444444444444".into(),
                 description: "must not persist".into(),
+                priority: 0,
+                budget: 1,
             },
             Decision::Prioritize { priority: 101 },
         ],

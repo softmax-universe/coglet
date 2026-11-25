@@ -1,0 +1,11 @@
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/serdect/08b99236cc0b19d3/out/serdect-08b99236cc0b19d3.d: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/array.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/common.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/slice.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/../README.md
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/serdect/08b99236cc0b19d3/out/libserdect-08b99236cc0b19d3.rlib: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/array.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/common.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/slice.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/../README.md
+
+/home/ubuntu/.hermes/kanban/workspaces/t_01a210ea51bab75b/repo/coglets/factory/target/debug/build/serdect/08b99236cc0b19d3/out/libserdect-08b99236cc0b19d3.rmeta: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/lib.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/array.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/common.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/slice.rs /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/../README.md
+
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/lib.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/array.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/common.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/slice.rs:
+/home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serdect-0.4.3/src/../README.md:

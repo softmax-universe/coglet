@@ -1,6 +1,6 @@
-# Factory Phase 3 — work in progress
+# Factory Phase 3 — goal generation and prioritization
 
-This branch is **not Phase 3 acceptance** or a deployment. Phase 2 is the base.
+Phase 2 is the base. This is not a deployment.
 
 ## Implemented ingestion slice
 
@@ -57,21 +57,47 @@ cargo test --locked -j2 -p coglet-runtime --features native-engine \
 The owned `coglets/factory/check.sh` remains the final full check; passing these
 focused tests does not substitute for it.
 
-## Still required
+## Review, admission, deferral and cancellation
 
-Periodic bounded agenda review, model-generated goal validation/linking,
-deterministic priority and dependency eligibility, per-goal budget reservation,
-deferral/resumption, cancellation through the attempt-aware outbox, and stale
-model/attempt regression coverage are **not implemented yet**. The three card
-acceptance names remain unfulfilled until full native and real-WAMR scenarios
-exercise those paths and committed outbox effects. No PR or review approval is
-claimed by this document.
+- **Commands** (authenticated `runtime.inbox`, same goal-authority allowlist):
+  `factory.goal` (create), `factory.goal_cancel {goal_id}`, `factory.goal_defer
+  {goal_id, until}`. Cancellation is terminal and idempotent; deferral never
+  touches a cancelled/active/terminal goal. Model `CREATE_GOAL` now carries
+  `priority` and `budget` (defaults 0/1, bounded by policy) plus a
+  `derived_from` relation; `PRIORITIZE`/`DEFER` on a goal subject use the same
+  fields. Decisions for a cancelled/completed/exhausted subject are rejected and
+  stale replies for them are never replanned.
+- **Periodic bounded review** (`factory.goal_review` or the `runtime.timer` it
+  arms): scan steps are strictly read-only pages of 4 goals (`open`, then due
+  `deferred`) with the continuation, a constant-size best candidate and the last
+  processed `(source, seq)` in the transactional guest file `/data/goal-scan.json`.
+  A cursor invalidated by any write restarts the scan deliberately. The final
+  step re-reads fresh goal/dependency/policy state and, only if the same
+  candidate is still eligible, admits it: goal budget -1, task object, one
+  `factory.dispatch` outbox intent (existing attempt-aware dispatcher), global
+  budget and worker -1, audit event, receipt. No LLM, network or backlog cap.
+- **Order**: higher priority first, then lexicographically smaller goal id.
+  Eligible = open or due-deferred, per-goal budget > 0, dependencies
+  (`context_ids`, <= 2) completed, global budget and a free worker.
+- **Goal-task results**: completion completes the goal; failure/cancel returns
+  it to `open` (budget left) or `exhausted`, never to the model, so retries obey
+  the goal's own budget. A cancelled goal stays cancelled.
+- **Cancellation of a dispatched attempt** is intentionally not a guest command:
+  the `goal.cancelled` audit event names the active task and the host's
+  lease-fenced `cancel_intent` path produces the `task.cancelled` result, which
+  the executive already fences by attempt and lease. `HttpKanban` cancel remains
+  unsupported and fails closed.
 
-Paging constraint for the remaining design: the database prohibits writes in a
-step consuming **or minting** a cursor; a committed write invalidates a cursor.
-Do not implement the periodic scan by appending a DB receipt or updating the
-executive root after a partial page. A bounded read-only scan may persist its
-continuation in transactional guest files and schedule a later step; any selected
-context and policy must be revalidated before mutation. The approved SQL catalog
-also intentionally disallows joins, expressions and LIMIT in read statements.
-Do not widen that host grammar merely to smuggle Factory ranking into SQL.
+## Acceptance mapping
+
+| Name | Native (`coglets/factory/tests/goals/acceptance.rs`) | Real WAMR (`crates/coglet-runtime/tests/factory_goals/acceptance.rs`) |
+| --- | --- | --- |
+| `goal_budget_and_priority_enforced` | yes | yes (7 goals, multi-page cursor, reopen) |
+| `goal_replay_does_not_duplicate` | yes | yes (reopen + offline `replay_database`) |
+| `goal_deferral_and_cancellation` | yes (real command events, stale model reply) | yes (seeded deferred/cancelled state, logical time advance) |
+
+The WAMR cancel/defer *commands* are covered natively; the WAMR run proves that
+cancelled and not-yet-due goals never dispatch and that a due deferral resumes.
+Run the focused WAMR tests with `cargo test --locked -j4 -p coglet-runtime
+--features native-engine --test factory_database factory_goals -- --test-threads=1`.
+The owned `coglets/factory/check.sh` remains the final full check.
