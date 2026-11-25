@@ -4,6 +4,7 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/../../../.." && pwd)
 out=$1
 mkdir -p "$out"
+out=$(cd "$out" && pwd)
 swiftc -swift-version 5 -emit-library -emit-module -module-name CogletTypes \
   "$repo"/sdk/surface-swift/Sources/CogletTypes/*.swift \
   "$repo"/sdk/surface-swift/Sources/CogletTypes/Generated/*.swift \

@@ -44,9 +44,9 @@ final class Backend: SurfaceNativeBackend {
 // Only this box crosses queues; SDK state remains on the main control thread.
 final class Reply: @unchecked Sendable {
     let lock = NSLock()
-    var result: Result<[UInt8]?, Error>?
-    func put(_ value: Result<[UInt8]?, Error>) { lock.lock(); result = value; lock.unlock() }
-    func get() -> Result<[UInt8]?, Error>? { lock.lock(); defer { lock.unlock() }; return result }
+    var result: Result<[UInt8]?, Swift.Error>?
+    func put(_ value: Result<[UInt8]?, Swift.Error>) { lock.lock(); result = value; lock.unlock() }
+    func get() -> Result<[UInt8]?, Swift.Error>? { lock.lock(); defer { lock.unlock() }; return result }
 }
 let root = URL(fileURLWithPath: CommandLine.arguments[2])
 let obstruct = CommandLine.arguments[3] == "obstruct"
