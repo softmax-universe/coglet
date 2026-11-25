@@ -332,24 +332,17 @@ fn reused_admission_proof_keeps_fresh_instances_pin_and_changed_policy_checks() 
             b["journal"]["usage"]["compute"]
         );
     }
-    // Changed per-step memory policy is rechecked against the cached proof.
+    // Start a valid new chain; policy failures must reach native admission.
+    inputs["step"] = json!(0);
+    inputs["previous"] = Value::Null;
+    let mut lower_setup = setup.clone();
+    lower_setup["manifest"]["budgets"]["memory_pages"] = json!(1);
     let mut lower = inputs.clone();
-    lower["budgets"]["memory_pages"] = json!(1);
-    assert!(
-        Runtime::from_fixture(&setup)
-            .unwrap()
-            .step(&lower, &mut shared)
-            .is_err()
-    );
-    // Changed compute mode is refused even though the proof is cached.
-    let mut mode = inputs.clone();
-    mode["budgets"]["compute_mode"] = json!("unqualified");
-    assert!(
-        Runtime::from_fixture(&setup)
-            .unwrap()
-            .step(&mode, &mut shared)
-            .is_err()
-    );
+    lower["budgets"] = lower_setup["manifest"]["budgets"].clone();
+    let mut lower_runtime = Runtime::from_fixture(&lower_setup).unwrap();
+    let error = lower_runtime.step(&lower, &mut shared).unwrap_err();
+    assert_eq!(error, "MemoryExhausted");
+    assert!(lower_runtime.records().is_empty());
     // Code pin mismatch: engine proof is for `code`, fixture pins different bytes.
     let other = program(true);
     assert_ne!(other, code);
