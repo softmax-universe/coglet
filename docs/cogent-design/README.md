@@ -10,7 +10,11 @@ pieces so they can be built in parallel.
 Pages: [Coglets and runtime](coglets-and-runtime.md) ·
 [App integration](app-integration.md) ·
 [The Softmax app](softmax-app.md) ·
-[Cognitive architecture](cognitive-architecture.md)
+[Cognitive architecture](cognitive-architecture.md) ·
+[Coglets on unforged](unforged.md) ·
+[Staged integration](unforged-staging.md) ·
+[Secrets and adapters](secrets.md) ·
+[LLMs on unforged](llms.md)
 
 ![A cogent sits at the centre: a set of coglets plus a router. Around it are devices and hosted apps, and for each one it runs coglets that talk to the apps through their adapters.](diagrams/cogent.svg)
 
