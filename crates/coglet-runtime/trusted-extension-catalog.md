@@ -42,9 +42,16 @@ same trusted setup field; omission selects `surface-0.1`, and any explicit setup
 selector must agree with the daemon selector. Unknown, malformed or duplicate
 selectors are refused before listening. The profile is not a catalog field or
 manifest format version. Catalog-free startup persists it too; recovery fences
-both the catalog digest and profile. These local provisioning APIs do **not**
-qualify wire `0.2`, app registration or native app control: wire negotiation
-remains `0.1` until its executable validators/dispatch and downgrade proofs land.
+both the catalog digest and profile. A service provisioned with `surface-0.2`
+now selects wire `0.2` when offered, using its generated version-specific rules.
+Otherwise it selects `0.1`; a local `surface-0.2` service withholds all product
+extensions (including two-component product names and empty entries/resources)
+on that downgraded connection while preserving built-in Face/speech. The stored
+catalog/profile pair and pending extension receipts are not rewritten. Retained
+extension retries remain unavailable until a suitable `0.2` connection. Existing
+`surface-0.1` provisioning retains its two-component trusted-extension behavior.
+Wire transport tests use a synthetic closed catalog; they do **not** qualify the
+Softmax app catalog, Swift SDK, native app controls or actual UI coverage.
 
 The optional catalog must be a closed JSON object with both
 string members; arrays, unknown fields and missing members return -1. Invalid

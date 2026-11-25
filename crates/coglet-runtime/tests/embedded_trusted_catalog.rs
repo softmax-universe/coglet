@@ -75,6 +75,7 @@ fn scenario_child() {
         "live_link_stop_fence" => live_link_stop_fence(),
         "reopen_pin_fence" => reopen_pin_fence(),
         "profile_provisioning" => profile_provisioning(),
+        "wire_profile_downgrade" => wire_profile_downgrade(),
         other => panic!("unknown scenario {other}"),
     }
     println!("scenario-ok:{name}");
@@ -103,6 +104,121 @@ fn embedded_trusted_catalog_failure_fences() {
 #[test]
 fn embedded_local_contract_profile_provisioning() {
     run_scenario("profile_provisioning", Duration::from_secs(120));
+}
+
+#[test]
+fn embedded_wire_profile_negotiation_and_downgrade() {
+    run_scenario("wire_profile_downgrade", Duration::from_secs(120));
+}
+
+/// Actual C pointer ABI: selected 0.2 product wire, then a live 0.1 downgrade of
+/// the SAME provisioned 0.2 WAL. SYNTHETIC CLOSED catalog, not the app catalog.
+fn wire_profile_downgrade() {
+    let face = json!({"coglet":C,"id":"4".repeat(32),"capability":"expression.set_expression","args":{"expression":"happy","intensity":500,"duration_ms":10},"deadline":50_000_000,"correlation_id":"5".repeat(32)});
+    let app = json!({"coglet":C,"id":"6".repeat(32),"capability":"softmax.app.navigate","args":{},"deadline":50_000_000,"correlation_id":"7".repeat(32)});
+    let mut s = setup(false);
+    s["contract_profile"] = json!("surface-0.2");
+    s["manifest"]["subscriptions"] = json!(["softmax.app.view_changed"]);
+    s["initial_actions"] = json!([face, app]);
+    s["initial_effect_ids"]["actions"] = json!(["4".repeat(32), "6".repeat(32)]);
+    let uri = "https://example.invalid/softmax/1#empty";
+    let raw = serde_json::to_vec(&json!({"version":1,"namespace":"softmax",
+        "entries":{"softmax.app":["softmax.app_control"]},
+        "schemas":{uri:"empty"},"rules":{"empty":{"op":"record","fields":[]}},
+        "operations":{
+            "softmax.app.view_changed":{"entry":"softmax.app","direction":"event","input":uri,"resources":[],"single_owner":true},
+            "softmax.app.navigate":{"entry":"softmax.app","direction":"action","input":uri,"output":uri,"resources":["softmax.app_control"],"single_owner":true}}}))
+    .unwrap();
+    let env = Env::new("wire", s);
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    let face_entry = json!({"name":"expression.control","events":[],"reads":[],"actions":["expression.set_expression"],"exclusive":["display.face"],"schemas":{"expression.set_expression":"https://coglet.dev/spec/messages/expression.schema.json#/$defs/set-expression"}});
+    let app_entry = json!({"name":"softmax.app","events":["softmax.app.view_changed"],"reads":[],"actions":["softmax.app.navigate"],"exclusive":["softmax.app_control"],"schemas":{"softmax.app.view_changed":uri,"softmax.app.navigate":uri}});
+    let caps = |entries: Value| json!({"revision":1,"clock":1100,"entries":entries,"correlation_id":"2".repeat(32)});
+    let grants = |epoch: u64, ops: Value, resources: Value| json!({"epoch":epoch,"entries":[{"coglet":C,"operations":ops,"resources":resources,"expires":100_000_000}],"correlation_id":"3".repeat(32)});
+    let hello = |versions: Value| json!({"surface":S,"offer":{"versions":versions},"clock":1000,"correlation_id":"1".repeat(32)});
+    let event = json!({"source":S,"kind":"softmax.app.view_changed","seq":1,"logical_time":1200,"payload":{},"correlation_id":"9".repeat(32)});
+
+    let mut link = Link::open();
+    link.send_ok("hello", hello(json!(["0.1", "0.2"])));
+    assert_eq!(
+        link.recv_until("hello_reply")["body"]["selection"]["version"],
+        "0.2"
+    );
+    link.send_ok("capabilities", caps(json!([face_entry, app_entry])));
+    link.send_ok(
+        "grants",
+        grants(
+            1,
+            json!([
+                "expression.set_expression",
+                "softmax.app.view_changed",
+                "softmax.app.navigate"
+            ]),
+            json!(["display.face", "softmax.app_control"]),
+        ),
+    );
+    let first = link.recv_until("act")["body"]["action"].clone();
+    let second = link.recv_until("act")["body"]["action"].clone();
+    assert_eq!(first["capability"], "expression.set_expression");
+    assert_eq!(second["capability"], "softmax.app.navigate");
+    link.send_ok("event", event.clone());
+    link.barrier();
+    let before = env.snapshot("before");
+    assert_eq!(private_events(&before).len(), 1);
+    let retained = before.state().unwrap()["dispatches"].clone();
+    link.close();
+
+    // Same live process/WAL, peer offers only 0.1: Face retry remains, app is unavailable.
+    let mut link = Link::open();
+    link.send_ok("hello", hello(json!(["0.1"])));
+    assert_eq!(
+        link.recv_until("hello_reply")["body"]["selection"]["version"],
+        "0.1"
+    );
+    link.send_ok("capabilities", caps(json!([face_entry])));
+    link.send_ok(
+        "grants",
+        grants(
+            2,
+            json!(["expression.set_expression"]),
+            json!(["display.face"]),
+        ),
+    );
+    assert_eq!(
+        link.recv_until("act")["body"]["action"],
+        first,
+        "retained Face retry"
+    );
+    link.barrier(); // an app retry would precede this barrier and fail recv_until
+    let mut fresh = event.clone();
+    fresh["seq"] = json!(2); // fresh seq: refusal must be the profile fence, not rollback
+    fresh["logical_time"] = json!(1300);
+    link.assert_refused("event", fresh);
+    drop(link);
+    for bad in [
+        caps(
+            json!([face_entry, {"name":"softmax.app","events":[],"reads":[],"actions":[],"exclusive":[],"schemas":{}}]),
+        ),
+        caps(json!([app_entry])),
+    ] {
+        let mut link = Link::open();
+        link.send_ok("hello", hello(json!(["0.1"])));
+        link.recv_until("hello_reply");
+        link.assert_refused("capabilities", bad);
+    }
+    let after = env.snapshot("after");
+    let state = after.state().unwrap();
+    assert_eq!(state["contract_profile"], "surface-0.2");
+    assert_eq!(state["catalog_pin"], digest(&raw));
+    assert_eq!(
+        state["dispatches"], retained,
+        "downgrade never rewrites retained dispatches"
+    );
+    assert!(
+        private_events(&after).is_empty(),
+        "0.2 queued event not restored on 0.1"
+    );
+    assert_eq!(coglet_runtime_stop(), 0);
 }
 
 fn profile_provisioning() {
@@ -244,10 +360,14 @@ fn observation(op: &str, args: Value, value: Value) -> Value {
     json!({"source":S,"kind":"game.observation","seq":1,"logical_time":1200,"payload":{"query_id":"6".repeat(32),"operation":op,"args":args,"value":value,"revision":1,"world_generation":1,"grant_epoch":1},"correlation_id":"7".repeat(32)})
 }
 fn decode(raw: &[u8]) -> Value {
-    coglet_types::decode("surface-message", raw)
-        .unwrap()
-        .deserialized()
-        .unwrap()
+    // 0.2 is the superset inspection rule; wire validity is asserted elsewhere.
+    coglet_types::decode(
+        coglet_runtime::ContractProfile::Surface02.rule("surface-message"),
+        raw,
+    )
+    .unwrap()
+    .deserialized()
+    .unwrap()
 }
 
 // ---------------------------------------------------------------- C pointer helpers

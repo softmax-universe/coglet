@@ -176,6 +176,11 @@ pub struct RuntimeService {
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    /// Trusted local provisioning identity, already fenced against the WAL on open.
+    pub fn contract_profile(&self) -> crate::ContractProfile {
+        self.state.contract_profile
+    }
+
     /// Validate a saved WAL state against the configured pins and the exact
     /// journal. Shared by `open` and by database recovery reload, so a state
     /// published by a collaborator is checked as strictly as a restart.
@@ -1402,7 +1407,7 @@ impl Runtime {
         let mut hashes = Vec::new();
         for record in records {
             let is_step = record.get("step").is_some();
-            validate(
+            candidate.contract_profile.validate(
                 if is_step {
                     "step-record"
                 } else {
