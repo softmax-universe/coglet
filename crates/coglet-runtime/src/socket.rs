@@ -230,13 +230,15 @@ fn flush(
                 .map_err(|e| e.to_string())
         };
         match gate {
-            Some(gate) => match gate.publish(|| write(stream)) {
-                Ok(result) => result?,
-                Err(error) => {
+            Some(gate) => {
+                let mut frame = Vec::with_capacity(4 + response.len());
+                frame.extend_from_slice(&(response.len() as u32).to_be_bytes());
+                frame.extend_from_slice(&response);
+                if let Err(error) = gate.send(stream, &frame) {
                     session.disconnect();
                     return Err(error);
                 }
-            },
+            }
             None => write(stream)?,
         }
     }

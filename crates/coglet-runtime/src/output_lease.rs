@@ -2,8 +2,8 @@
 //! obligation seam.
 //!
 //! `OutputGate` is deliberately independent of router SQL, the runtime service
-//! mutex and every guest call: it is two atomics-and-a-mutex object whose only
-//! blocking section is one bounded socket write. It is created CLOSED at every
+//! mutex and every guest call: its only publication critical section is a
+//! single nonblocking socket send. It is created CLOSED at every
 //! process start; nothing restores it from storage.
 //!
 //! The durable half (the pre-armed stop obligation in the SAME WAL as the
@@ -17,16 +17,13 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU8, Ordering},
 };
-use std::time::{Duration, Instant};
+#[cfg(test)]
+use std::time::Duration;
 
 const CLOSED: u8 = 0;
 const ENABLED: u8 = 1;
 const REVOKED: u8 = 2;
 const UNCERTAIN: u8 = 3;
-
-/// Longest a revoke waits for an already-started physical write. Exposure writes
-/// carry a 3 s socket timeout, so a healthy process always drains sooner.
-const DRAIN_BOUND: Duration = Duration::from_secs(6);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LeaseState {
@@ -83,13 +80,10 @@ impl OutputGate {
             .map(|_| ())
             .map_err(|_| "permission_denied: output lease cannot be enabled in this state".into())
     }
-    /// Close synchronously. Never touches SQL, the runtime mutex or any guest.
-    /// The state store is the linearization point: a publication that checked
-    /// the gate before it holds the publication mutex, and this call waits (at
-    /// most one bounded write) for that write to finish, so after return nothing
-    /// is being or will be newly exposed. Returns `Ok(())` when drained, and
-    /// `Err` (gate STILL closed, marked uncertain) if an in-flight write exceeded
-    /// the bound.
+    /// Close synchronously, independently of SQL, runtime custody and guests.
+    /// The state change excludes new publishers; draining the one nonblocking
+    /// send already holding publication custody excludes post-return exposure.
+    /// Never abandon a still-running publisher on a timeout.
     pub fn revoke(&self) -> Result<()> {
         // Preserve a prior UNCERTAIN; otherwise REVOKED.
         let mut cur = self.state.load(Ordering::SeqCst);
@@ -103,28 +97,44 @@ impl OutputGate {
                 Err(actual) => cur = actual,
             }
         }
-        let deadline = Instant::now() + DRAIN_BOUND;
-        loop {
-            match self.publication.try_lock() {
-                Ok(_) => return Ok(()),
-                Err(std::sync::TryLockError::Poisoned(_)) => return Ok(()),
-                Err(std::sync::TryLockError::WouldBlock) => {
-                    if Instant::now() >= deadline {
-                        self.mark_uncertain();
-                        return Err("unavailable: in-flight output write did not drain".into());
-                    }
-                    std::thread::sleep(Duration::from_millis(1));
-                }
-            }
-        }
+        // Only a single nonblocking send may own this mutex in production.
+        // Never return while a publisher can still expose bytes: a timeout here
+        // would turn an uncertainty report into a post-return physical effect.
+        let _drained = self.publication.lock().unwrap_or_else(|p| p.into_inner());
+        Ok(())
     }
     /// Sticky closed-and-unknown (failed durable record, drain overrun).
     pub fn mark_uncertain(&self) {
         self.state.store(UNCERTAIN, Ordering::SeqCst);
     }
-    /// Run one physical exposure under the gate. The check and the closure are
-    /// one critical section with respect to `revoke`'s drain.
-    pub fn publish<R>(&self, expose: impl FnOnce() -> R) -> Result<R> {
+    /// Expose one complete framed buffer with exactly one nonblocking syscall.
+    /// A short write or backpressure ends the connection; never wait for a peer
+    /// while holding publication custody. Buffer construction happens outside.
+    pub(crate) fn send(&self, stream: &std::os::unix::net::UnixStream, frame: &[u8]) -> Result<()> {
+        use std::os::fd::AsRawFd;
+        self.publish(|| {
+            // SAFETY: stream owns a live fd; frame is readable for frame.len().
+            // MSG_DONTWAIT is per-call and does not alter concurrent reads.
+            let sent = unsafe {
+                libc::send(
+                    stream.as_raw_fd(),
+                    frame.as_ptr().cast(),
+                    frame.len(),
+                    libc::MSG_DONTWAIT | libc::MSG_NOSIGNAL,
+                )
+            };
+            if sent < 0 {
+                Err(std::io::Error::last_os_error().to_string())
+            } else if sent as usize != frame.len() {
+                Err("unavailable: partial output frame; closing connection".into())
+            } else {
+                Ok(())
+            }
+        })?
+    }
+    /// The only production caller is `send`: do not place blocking callbacks,
+    /// allocations, retries, service locks or guest calls in this critical section.
+    fn publish<R>(&self, expose: impl FnOnce() -> R) -> Result<R> {
         let _held = self
             .publication
             .lock()
@@ -200,6 +210,34 @@ pub(crate) trait EmergencyCustody {
 mod tests {
     use super::*;
     use std::sync::atomic::AtomicBool;
+
+    #[test]
+    fn nonreading_peer_cannot_hold_revoke_or_expose_after_return() {
+        use std::io::Read;
+        let (writer, mut reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        let gate = OutputGate::new_closed();
+        gate.enable().unwrap();
+        let bytes = [42u8; 4096];
+        let started = std::time::Instant::now();
+        let mut writes = 0;
+        while gate.send(&writer, &bytes).is_ok() {
+            writes += 1;
+            assert!(writes < 4096, "socket buffer never reached backpressure");
+        }
+        assert!(writes > 0, "authorized pre-revoke publication control");
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "send blocked on a nonreading peer"
+        );
+        gate.revoke().unwrap();
+        assert!(gate.send(&writer, b"post-return").is_err());
+        drop(writer);
+        let mut received = Vec::new();
+        reader.read_to_end(&mut received).unwrap();
+        assert!(received.len() >= writes * bytes.len());
+        assert!(received.iter().all(|b| *b == 42));
+        assert!(!gate.is_open());
+    }
 
     #[test]
     fn gate_boots_closed_and_refuses_publication() {

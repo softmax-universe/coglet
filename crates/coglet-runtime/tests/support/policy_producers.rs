@@ -1,10 +1,14 @@
 //! Real ADR-0033 producer endpoint/daemon tests. No in-process producer substitutes.
 use super::*;
 use std::io::Write;
+use std::os::fd::AsRawFd;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
+
+include!("policy_producer_helpers.rs");
+include!("policy_producer_cases.rs");
 
 struct Daemon {
     env: Env,
@@ -18,9 +22,33 @@ struct Daemon {
     nonce: u64,
     // Separate short, private socket directory: Linux sockaddr_un is bounded.
     private: tempfile::TempDir,
+    /// Environment of every cogletd spawn (initial and restarts), e.g. the
+    /// subprocess-local LD_PRELOAD fault shim. Empty for production-like runs.
+    child_env: Vec<(String, String)>,
+    action: bool,
+    barrier: Option<Barrier>,
+}
+/// Validator wrapper: while `arm` exists the SECOND validation of a push (the
+/// one that follows durable queued admission) waits for `release`.
+#[derive(Clone)]
+struct Barrier {
+    arm: PathBuf,
+    entered: PathBuf,
+    release: PathBuf,
+}
+#[derive(Clone, Copy, Default)]
+struct Opts {
+    /// Installed guest emits one real `speech.speak_chunk` action per step.
+    action: bool,
+    barrier: bool,
+    /// LD_PRELOAD WAL-write/BOOTTIME fault shim (inert until armed).
+    shim: bool,
 }
 impl Daemon {
     async fn new(seed: u8) -> Self {
+        Self::with(seed, Opts::default()).await
+    }
+    async fn with(seed: u8, opts: Opts) -> Self {
         let mut options = Options::receipts();
         options.delegation_methods.push("hub.git.push");
         let mut env = Env::new(seed, options.clone()).await.unwrap();
@@ -100,6 +128,65 @@ impl Daemon {
             )
             .await
             .unwrap();
+        let mut validator = validator_path();
+        let mut barrier = None;
+        if opts.barrier {
+            let b = Barrier {
+                arm: root.join("barrier-arm"),
+                entered: root.join("barrier-entered"),
+                release: root.join("barrier-release"),
+            };
+            let (first, second) = (root.join("barrier-first"), root.join("barrier-second"));
+            let wrapper = root.join("validator-barrier");
+            std::fs::write(&wrapper, format!(
+                "#!/bin/sh\nif [ -f '{arm}' ]; then\n if /bin/mkdir '{first}' 2>/dev/null; then :; elif /bin/mkdir '{second}' 2>/dev/null; then : > '{entered}'; while [ ! -f '{release}' ]; do /bin/sleep 0.01; done; fi\nfi\nexec '{real}' \"$@\"\n",
+                arm = b.arm.display(), first = first.display(), second = second.display(),
+                entered = b.entered.display(), release = b.release.display(), real = validator.display()
+            )).unwrap();
+            std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o700)).unwrap();
+            validator = wrapper;
+            barrier = Some(b);
+        }
+        let mut child_env = vec![];
+        if opts.shim {
+            let library = root.join("policy_faults.so");
+            let source =
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/support/policy_faults.c");
+            assert!(
+                Command::new("cc")
+                    .args(["-shared", "-fPIC", "-Wall", "-Wextra", "-Werror"])
+                    .arg(&source)
+                    .arg("-o")
+                    .arg(&library)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+            let canonical = std::fs::canonicalize(&root).unwrap();
+            let wal = canonical
+                .join("wal")
+                .join(coglet_runtime::digest(env.coglet.as_bytes()))
+                .join("state.wal");
+            for (k, v) in [
+                ("LD_PRELOAD", library.display().to_string()),
+                ("COGLET_FAULT_WAL", wal.display().to_string()),
+                (
+                    "COGLET_FAULT_ARM",
+                    root.join("fault-arm").display().to_string(),
+                ),
+                (
+                    "COGLET_FAULT_HITS",
+                    root.join("fault-hits").display().to_string(),
+                ),
+                ("COGLET_FAULT_LEFT", "4".into()),
+                (
+                    "COGLET_FAULT_CLOCK",
+                    root.join("fault-clock").display().to_string(),
+                ),
+            ] {
+                child_env.push((k.into(), v));
+            }
+        }
         let private = tempfile::Builder::new().prefix("pp-").tempdir().unwrap();
         std::fs::set_permissions(private.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
         let socket = private.path().join("a");
@@ -113,10 +200,10 @@ impl Daemon {
         )
         .unwrap();
         let config = json!({"hub":env.hub.id().to_string(),"device":device.to_string(),
-            "identity_path":identity,"authority_path":authority_path,"validator_path":validator_path(),
+            "identity_path":identity,"authority_path":authority_path,"validator_path":validator,
             "wal_root":root.join("wal"),"quarantine":root.join("quarantine"),
-            "catalog":restart_adapter::catalog(),
-            "grants":{"coglet":env.coglet,"operations":["speech.start"],"resources":["audio.mic","audio.speaker"]},
+            "catalog":if opts.action { act_catalog() } else { restart_adapter::catalog() },
+            "grants":{"coglet":env.coglet,"operations":operations(opts.action),"resources":["audio.mic","audio.speaker"]},
             "targets":{(env.coglet.clone()):{"grant_generation":GRANT_GEN,"delegation_generation":DELEGATION_GEN,
                 "native_schedule":{"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}}},
             "kill_switch":env.root.join("kill.json"),"hub_addr":env.hub.addr().ip_addrs().next().unwrap(),"invite":invite,
@@ -127,7 +214,7 @@ impl Daemon {
         let path = root.join("router.json");
         std::fs::write(&path, serde_json::to_vec(&config).unwrap()).unwrap();
         let log = root.join("child.log");
-        let mut child = ChildGuard::spawn(&path, &log);
+        let mut child = spawn_child(&path, &log, &child_env);
         env.session = child_session(&env.hub, device, &mut child, &log).await;
         assert_eq!(env.simple("hub.status").await["result"]["state"], "stopped");
         Self {
@@ -141,6 +228,9 @@ impl Daemon {
             surface,
             nonce: 0,
             private,
+            child_env,
+            action: opts.action,
+            barrier,
         }
     }
     fn pins(&self, bundle: &Bundle) -> Value {
@@ -181,7 +271,7 @@ impl Daemon {
     }
     async fn install(&mut self, wat: &str) -> Bundle {
         let manifest = serde_json::to_vec(&json!({"version":"0.1","id":self.env.coglet,
-            "subscriptions":["speech.start"],"required_capabilities":["speech.start"],
+            "subscriptions":["speech.start"],"required_capabilities":operations(self.action),
             "exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,
             "compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();
         let bundle = self
@@ -245,6 +335,10 @@ impl Daemon {
             .join("state.wal")
     }
     async fn restart(&mut self) -> Vec<Value> {
+        self.restart_with(|_| {}).await
+    }
+    /// SIGKILL, take exclusive WAL custody, then respawn with edited config.
+    async fn restart_with(&mut self, edit: impl FnOnce(&mut Value)) -> Vec<Value> {
         self.child.kill_and_wait();
         // Exclusive WAL custody is obtained only after the exact child was reaped.
         let records = {
@@ -274,10 +368,11 @@ impl Daemon {
         .await
         .expect("old SIGKILL transport retires");
         self.config["invite"] = Value::Null;
+        edit(&mut self.config);
         let path = self.root.join("router.json");
         std::fs::write(&path, serde_json::to_vec(&self.config).unwrap()).unwrap();
         let log = self.root.join("restart.log");
-        self.child = ChildGuard::spawn(&path, &log);
+        self.child = spawn_child(&path, &log, &self.child_env);
         self.env.session = child_session(&self.env.hub, self.device, &mut self.child, &log).await;
         records
     }
@@ -334,6 +429,16 @@ async fn attestation_matches_applied_generation_after_restart() {
     let mut forged = d.frame("attest_applied", d.pins(&a));
     forged["actor"] = json!(d.env.other_actor);
     assert_eq!(d.raw(forged).await["error"]["code"], "permission_denied");
+    // Unknown method / principal / extra member through the real daemon.
+    let mut unknown = d.frame("attest_applied", d.pins(&a));
+    unknown["method"] = json!("promote_generation");
+    assert_eq!(d.raw(unknown).await["ok"], false);
+    let mut stranger = d.frame("attest_applied", d.pins(&a));
+    stranger["principal"] = json!("stranger");
+    assert_eq!(d.raw(stranger).await["error"]["code"], "permission_denied");
+    let mut extra = d.pins(&a);
+    extra["generation_hint"] = json!(2);
+    assert_eq!(d.local("attest_applied", extra).await["ok"], false);
     let mut changed = d.pins(&a);
     changed["executable_sha256"] = json!("00".repeat(32));
     assert_eq!(d.local("attest_applied", changed).await["ok"], false);
@@ -411,9 +516,26 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn emergency_output_revoke_is_synchronous_without_router() {
-    let mut d = Daemon::new(0x93).await;
-    let a = d.install(WASM_WAT).await;
-    let link = d.execute(&a).await;
+    let mut d = Daemon::with(
+        0x93,
+        Opts {
+            action: true,
+            ..Opts::default()
+        },
+    )
+    .await;
+    let a = d.install(&action_wat(&d.env.coglet)).await;
+    // Real guest action output is physically received BEFORE the revoke.
+    let (mut link, act) = d.execute_action(&a).await;
+    assert!(
+        put(
+            &mut link,
+            "accept",
+            json!({"id":act["body"]["action"]["id"],
+        "correlation_id":act["body"]["action"]["correlation_id"],"accepted":true})
+        )
+        .await
+    );
     // A real SQLite exclusive writer makes receiving-side authority unavailable.
     let db = rusqlite::Connection::open(d.root.join("authority.sqlite")).unwrap();
     db.execute_batch("BEGIN EXCLUSIVE;").unwrap();
@@ -425,7 +547,21 @@ async fn emergency_output_revoke_is_synchronous_without_router() {
     );
     assert_eq!(revoked["ok"], true, "{revoked}");
     assert_eq!(revoked["result"]["gate"], "closed");
+    assert_eq!(revoked["result"]["in_flight_drained"], true, "{revoked}");
     db.execute_batch("ROLLBACK;").unwrap();
+    // The guest KEEPS running after revoke (observation continues) and keeps
+    // producing actions, but not one further byte reaches the adapter.
+    let queued = queued_bytes(&link);
+    let step = d.step().await;
+    for seq in 3..=6 {
+        let _ = feed(&mut link, &d.surface, seq).await;
+    }
+    restart_adapter::step_at_least(&mut d.env, step + 1).await;
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    assert_eq!(queued_bytes(&link), queued, "action exposed after revoke");
+    let mut raw = vec![0; queued];
+    link.read_exact(&mut raw).await.unwrap();
+    whole_frames(&raw);
     // The profile fences ALL adapter frames, including a new hello reply.
     let mut probe = UnixStream::connect(&d.socket).await.unwrap();
     let hello=coglet_runtime::cbor(&json!({"type":"hello","body":{"surface":d.surface,"offer":{"versions":["0.1"]},"clock":1000,"correlation_id":"d".repeat(32)}})).unwrap();
@@ -457,8 +593,34 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
     let mut wrong = d.frame("reconcile_emergency_stop", json!({}));
     wrong["ticket"] = json!(TICKET);
     assert_eq!(d.raw(wrong).await["error"]["code"], "permission_denied");
+    // Held pending-stop authority: a real exclusive SQL writer makes the original
+    // stop unknowable. Reconcile fails retryably, applies nothing, and the
+    // exact original obligation remains available afterwards.
+    let held = d.hold_authority();
+    let unavailable = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(unavailable["ok"], false, "{unavailable}");
+    assert_eq!(unavailable["error"]["retryable"], true, "{unavailable}");
+    held.execute_batch("ROLLBACK;").unwrap();
+    drop(held);
+    let unapplied = receipt_of(&mut d.env, &correlation(0xeeee)).await;
+    assert!(
+        unapplied["type"] == "error" || unapplied["result"]["state"] != "applied",
+        "held reconcile applied the stop: {unapplied}"
+    );
+    // Other principal fields are equally bound; only the retained original runs.
+    let mut wrong_actor = d.frame("reconcile_emergency_stop", json!({}));
+    wrong_actor["actor"] = json!(d.env.other_actor);
+    assert_eq!(
+        d.raw(wrong_actor).await["error"]["code"],
+        "permission_denied"
+    );
     let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
     assert_eq!(reconciled["ok"], true, "{reconciled}");
+    let repeated = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(
+        repeated["result"], reconciled["result"],
+        "same original is idempotent"
+    );
     assert_eq!(reconciled["result"]["state"], "stopped");
     assert_eq!(reconciled["result"]["operation_id"], correlation(0xeeee));
     let receipt = receipt_of(&mut d.env, &correlation(0xeeee)).await;

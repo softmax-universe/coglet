@@ -2,6 +2,9 @@
 use super::*;
 use serde_json::Value;
 
+#[cfg(test)]
+mod tests;
+
 impl Authority {
     /// Local runtime application guard. The callback must not call Authority or
     /// accepted-ref APIs (the same write lock is held). It receives the current

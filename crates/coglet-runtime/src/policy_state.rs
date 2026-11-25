@@ -480,6 +480,11 @@ mod tests {
         let target = setup["manifest"]["id"].as_str().unwrap();
         let commit = "a".repeat(40);
         let applied = service.policy_attest_applied(target, 1, &commit).unwrap();
+        crate::policy_local::reply_tests::assert_result_conforms(
+            "attest_applied",
+            target,
+            &applied,
+        );
         assert_eq!(applied["code"]["scope"]["actor"], "original-code-actor");
         assert_eq!(
             applied["initial"]["install"]["scope"]["actor"],
@@ -495,6 +500,7 @@ mod tests {
         let sample = service
             .policy_observe_health(target, 1, &commit, &[], "closed")
             .unwrap();
+        crate::policy_local::reply_tests::assert_result_conforms("observe_health", target, &sample);
         assert_eq!(sample["observation_sequence"], 1);
         assert_eq!(sample["counters"]["attempted"], 0);
         assert_eq!(sample["lifecycle"], "stopped");
