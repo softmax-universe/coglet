@@ -16,6 +16,8 @@ pub(super) struct ManagedState {
     install_receipt: Value,
     live_commit: Value,
     running: bool,
+    #[serde(default)]
+    pub(super) paused: bool,
     /// Persisted before SQL push admission: no next-step pinning until the
     /// authority-serialized recovery driver has drained admitted code work.
     #[serde(default)]
@@ -205,18 +207,26 @@ impl RuntimeService {
     }
 
     #[cfg(feature = "device")]
+    pub(crate) fn managed_contains_lifecycle_operation(&self, id: &str) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| {
+            m.install_receipt["operation_id"] == id || m.operations.contains_key(id)
+        })
+    }
+
+    #[cfg(feature = "device")]
     pub(crate) fn managed_push_conflicts(
         &self,
         id: &str,
         intent: &str,
         scope: &ReceiptScope,
     ) -> bool {
-        self.state.managed.as_ref().is_some_and(|m| {
-            m.install_receipt["operation_id"] == id
-                || m.operations
-                    .get(id)
-                    .is_some_and(|r| r.intent != intent || r.scope.as_ref() != Some(scope))
-        })
+        self.receiver_contains(id)
+            || self.state.managed.as_ref().is_some_and(|m| {
+                m.install_receipt["operation_id"] == id
+                    || m.operations
+                        .get(id)
+                        .is_some_and(|r| r.intent != intent || r.scope.as_ref() != Some(scope))
+            })
     }
 
     /// Original code/manifest/private-files configuration, not live private data.
@@ -273,6 +283,10 @@ impl RuntimeService {
         scope: Option<&ReceiptScope>,
     ) -> Result<Value> {
         validate("correlation-id", &json!(operation_id))?;
+        #[cfg(feature = "device")]
+        if self.receiver_contains(operation_id) {
+            return Err("conflict: operation belongs to the back channel".into());
+        }
         if let Some(saved) = &self.state.managed {
             // An identical installed identity is not permission to borrow a
             // different caller's receipt or collide with another method's ID.
@@ -319,6 +333,7 @@ impl RuntimeService {
             install_receipt: receipt.clone(),
             live_commit,
             running: false,
+            paused: false,
             code_pending: false,
             recovery: None,
             recovery_fault: None,
@@ -369,14 +384,15 @@ impl RuntimeService {
             Self::cancel_managed_undelivered(&mut next, now)?;
         }
         next.managed.as_mut().unwrap().running = true;
+        next.managed.as_mut().unwrap().paused = false;
         next.managed.as_mut().unwrap().recovery = recovery.cloned();
         next.managed.as_mut().unwrap().recovery_fault = None;
         Self::record_operation(&mut next, operation, None, self.managed_last_step())?;
         self.commit_managed(next)
     }
 
-    /// Exclusive &mut access is the safe serialized boundary: no guest can be
-    /// running concurrently. Retained translated envelopes may have escaped to
+    /// Fence new execution immediately, retaining a queued stop receipt while
+    /// a detached guest still owns its attempt. Retained envelopes may escape to
     /// an adapter, so never invent outcomes for them or erase their receipts.
     pub fn managed_stop(&mut self, now: u64) -> Result<()> {
         self.managed_stop_inner(now, None)
@@ -395,6 +411,7 @@ impl RuntimeService {
             dispatch.stopped = true;
         }
         managed.running = false;
+        managed.paused = false;
         managed.cancellation_pending = true;
         managed.stopped_at = now.max(next.runtime.time).max(managed.stopped_at);
         let now = managed.stopped_at;
@@ -419,7 +436,56 @@ impl RuntimeService {
             }
         }
         Self::record_operation(&mut next, operation, None, self.managed_last_step())?;
+        if next.runtime.unresolved_attempt.is_some()
+            && let Some((id, _, _)) = operation
+        {
+            let receipt = &mut next
+                .managed
+                .as_mut()
+                .unwrap()
+                .operations
+                .get_mut(id)
+                .unwrap()
+                .receipt;
+            receipt["state"] = json!("queued");
+            receipt["step"] = Value::Null;
+            validate("hub-mutation-receipt", receipt)?;
+        }
         self.commit_managed(next)
+    }
+
+    /// Complete stops only in the same transition that reconciles the original
+    /// guest journal. Unknown attempts retain queued receipts across reopen.
+    pub(super) fn finish_pending_stops(next: &mut ServiceState, step: u64) -> Result<()> {
+        let Some(managed) = &next.managed else {
+            return Ok(());
+        };
+        if !managed.cancellation_pending || next.runtime.unresolved_attempt.is_some() {
+            return Ok(());
+        }
+        let now = managed.stopped_at.max(next.runtime.time);
+        // Cancellation failure retains the durable stopped obligation, matching
+        // the synchronous stop path, without partially publishing cancellation.
+        let mut candidate = next.clone();
+        let error = Self::cancel_managed_undelivered(&mut candidate, now).err();
+        if error.is_none() {
+            *next = candidate;
+        }
+        for saved in next.managed.as_mut().unwrap().operations.values_mut() {
+            if saved.scope.as_ref().is_some_and(|s| s.method == "hub.stop")
+                && saved.receipt["state"] == "queued"
+            {
+                saved.receipt["state"] = json!(if error.is_some() { "failed" } else { "applied" });
+                saved.receipt["step"] = if error.is_some() {
+                    Value::Null
+                } else {
+                    json!(step)
+                };
+                saved.receipt["error"] = error.as_ref().map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false})).unwrap_or(Value::Null);
+                validate("hub-mutation-receipt", &saved.receipt)?;
+            }
+        }
+        Ok(())
     }
 
     /// Authenticated caller supplies a digest of peer/method/target/params/context,
@@ -431,6 +497,9 @@ impl RuntimeService {
         intent: &str,
     ) -> Result<Option<Value>> {
         validate("correlation-id", &json!(id))?;
+        if self.receiver_contains(id) {
+            return Err("conflict: operation ID already used by receiver".into());
+        }
         let managed = self.state.managed.as_ref().ok_or("not installed")?;
         if managed.install_receipt["operation_id"] == id {
             return Err("conflict: operation ID already used for install".into());
@@ -539,6 +608,9 @@ impl RuntimeService {
         actor: &str,
         ticket: Option<&str>,
     ) -> Option<(String, Value)> {
+        if self.receiver_contains(id) {
+            return self.receiver_receipt_for(id, actor, ticket);
+        }
         let managed = self.state.managed.as_ref()?;
         let same = |s: &ReceiptScope| s.actor == actor && s.ticket.as_deref() == ticket;
         if managed.install_receipt["operation_id"] == id {
@@ -548,6 +620,15 @@ impl RuntimeService {
         let saved = managed.operations.get(id)?;
         let scope = saved.scope.as_ref().filter(|s| same(s))?;
         Some((scope.method.clone(), saved.receipt.clone()))
+    }
+
+    pub(super) fn last_step(state: &ServiceState) -> u64 {
+        state
+            .runtime
+            .records
+            .last()
+            .and_then(|r| r["step"].as_u64())
+            .unwrap_or(0)
     }
 
     fn managed_last_step(&self) -> u64 {
@@ -616,12 +697,15 @@ impl RuntimeService {
                 .cloned()
                 .unwrap_or(Value::Null)
         };
-        json!({"state":if fault.is_some() {"faulted"} else if self.managed_running() {"running"} else {"stopped"},
+        json!({"state":if fault.is_some() {"faulted"} else if self.managed_paused() {"paused"} else if self.managed_running() {"running"} else {"stopped"},
             "live_commit":self.state.managed.as_ref().map(|m| &m.live_commit),
             "step":self.managed_last_step(),
-            // This seam has no queued router mutation API. Runtime receipts and
-            // event batches are not pending router mutations.
-            "pending":0,"error":error})
+            // Event batches and adapter receipts are not router mutations.
+            "pending":self.receiver_pending_count(),"error":error})
+    }
+
+    pub(super) fn managed_paused(&self) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| m.paused)
     }
 
     pub(super) fn managed_running(&self) -> bool {
@@ -630,6 +714,22 @@ impl RuntimeService {
             .as_ref()
             .is_none_or(|m| m.running && !m.cancellation_pending && m.recovery_fault.is_none())
     }
+    #[cfg(feature = "native-engine")]
+    pub(super) fn receiver_pending_for_execution(&self) -> bool {
+        self.receiver_pending_count() != 0
+    }
+
+    fn receiver_pending_count(&self) -> usize {
+        #[cfg(feature = "device")]
+        {
+            self.receiver_pending_len()
+        }
+        #[cfg(not(feature = "device"))]
+        {
+            0
+        }
+    }
+
     pub(super) fn require_managed_running(&self) -> Result<()> {
         if self.managed_running() {
             Ok(())

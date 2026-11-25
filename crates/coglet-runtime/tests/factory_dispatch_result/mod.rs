@@ -29,11 +29,14 @@ pub(super) fn dispatch_result_consumed(fx: &mut Fx, engine: &Wamr, previous: &Va
         1,
         "reconciliation must not create a second remote task"
     );
-    server.post_result(
-        &db.get_binding(&intent).unwrap().unwrap(),
-        true,
-        "Wasm diagnostic done",
-    );
+    let binding = db.get_binding(&intent).unwrap().unwrap_or_else(|| {
+        panic!(
+            "recovery did not bind original intent: outbox={:?}; requests={}",
+            db.get_outbox(&intent).unwrap(),
+            serde_json::to_string(&server.requests()).unwrap()
+        )
+    });
+    server.post_result(&binding, true, "Wasm diagnostic done");
     let result = host.run(&mut db, 22).unwrap();
     assert_eq!(result.follow_ups.len(), 1);
     let follow = result.follow_ups[0].clone();

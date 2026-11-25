@@ -10,7 +10,9 @@ pub use trusted_catalog::TrustedExtensionCatalog;
 #[cfg(feature = "device")]
 mod device;
 #[cfg(feature = "device")]
-pub use device::{AdapterConfig, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin};
+pub use device::{
+    AdapterConfig, BackChannelLimits, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin,
+};
 #[cfg(feature = "native-engine")]
 pub mod database;
 mod execution;

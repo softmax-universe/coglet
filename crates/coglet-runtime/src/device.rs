@@ -20,6 +20,14 @@ use coglet_proto::{
 };
 use iroh::EndpointId;
 use receipt::receipt_scope;
+#[path = "back_channel.rs"]
+mod back_channel;
+pub use back_channel::BackChannelLimits;
+#[path = "receiver_fetch.rs"]
+mod receiver_fetch;
+pub use receiver_fetch::PublishedSnapshot;
+#[path = "receiver_actions.rs"]
+mod receiver_actions;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -60,6 +68,11 @@ pub struct DeviceConfig {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetPin {
+    /// Explicit publications only; empty by default. Keys are exact Git refs.
+    #[serde(default)]
+    pub fetch_snapshots: BTreeMap<String, PublishedSnapshot>,
+    #[serde(default)]
+    pub back_channel: BackChannelLimits,
     pub grant_generation: u64,
     pub delegation_generation: u64,
     #[serde(default)]
@@ -84,6 +97,7 @@ struct Inner {
     validator: PathBuf,
     clock: Arc<dyn Fn() -> Option<u64> + Send + Sync>,
     services: Mutex<BTreeMap<String, Arc<Mutex<RuntimeService>>>>,
+    receiver_drains: BTreeMap<String, Arc<tokio::sync::Mutex<()>>>,
     adapter_started: AtomicBool,
 }
 
@@ -111,9 +125,15 @@ impl DeviceHandler {
         create_private_dir(&config.wal_root)?;
         create_private_dir(&config.quarantine)?;
         let store = AcceptedRefStore::new(authority.clone()).map_err(store_text)?;
+        let receiver_drains = config
+            .targets
+            .keys()
+            .map(|id| (id.clone(), Arc::new(tokio::sync::Mutex::new(()))))
+            .collect();
         let handler = Self {
             inner: Arc::new(Inner {
                 config,
+                receiver_drains,
                 authority,
                 store,
                 validator: validator.as_ref().to_owned(),
@@ -123,6 +143,7 @@ impl DeviceHandler {
             }),
         };
         handler.resume_initial_pushes()?;
+        handler.resume_receiver()?;
         Ok(handler)
     }
 
@@ -728,6 +749,9 @@ impl DeviceHandler {
     }
 
     async fn handle_lifecycle(&self, context: RequestContext, request: Value) -> Value {
+        if validate("hub-request", &request).is_err() {
+            return fail(&request, "invalid_argument");
+        }
         if let Err(code) = self.pinned_peer(&context) {
             return fail(&request, code);
         }
@@ -738,10 +762,10 @@ impl DeviceHandler {
             return fail(&request, "invalid_argument");
         };
         match method {
-            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt" => {}
-            "hub.git.push" | "hub.git.fetch" | "hub.actions" | "hub.events" | "hub.inbox"
-            | "hub.health" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
-            | "debug.step" | "hub.enroll" => {
+            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt"
+            | "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
+            | "debug.step" | "hub.actions" => {}
+            "hub.git.push" | "hub.git.fetch" | "hub.events" | "hub.health" | "hub.enroll" => {
                 return fail(&request, "permission_denied");
             }
             _ => return fail(&request, "invalid_argument"),
@@ -756,6 +780,45 @@ impl DeviceHandler {
             "hub.stop" => self.stop(context, request.clone(), coglet, pin).await,
             "hub.status" => self.status(context, request.clone(), coglet, pin).await,
             "hub.receipt" => self.receipt(context, request.clone(), coglet, pin).await,
+            "hub.actions" => {
+                self.receive_action(context, request.clone(), coglet, pin)
+                    .await
+            }
+            "debug.pause" | "debug.step" => {
+                let first = self
+                    .back_channel(
+                        context.clone(),
+                        request.clone(),
+                        coglet.clone(),
+                        pin.clone(),
+                    )
+                    .await;
+                match first {
+                    Ok(result) if result["state"] == "queued" => {
+                        match self.drain_receiver(&coglet).await {
+                            Ok(()) => {
+                                let result = self
+                                    .back_channel(context, request.clone(), coglet, pin)
+                                    .await;
+                                if result.as_ref().is_ok_and(|r| r["state"] == "queued") {
+                                    Err("unavailable".into())
+                                } else {
+                                    result
+                                }
+                            }
+                            Err(error) => Err(error),
+                        }
+                    }
+                    other => other,
+                }
+            }
+            "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" => {
+                // The owned retry driver drains durable queued work. Spawning
+                // one strong handler/permit waiter per admission would turn a
+                // full queue into an unbounded tail behind a single guest.
+                self.back_channel(context, request.clone(), coglet.clone(), pin)
+                    .await
+            }
             _ => Err("permission_denied".into()),
         };
         match result {
@@ -870,6 +933,34 @@ impl DeviceHandler {
     }
 
     async fn stop(
+        &self,
+        context: RequestContext,
+        request: Value,
+        coglet: String,
+        pin: TargetPin,
+    ) -> Result<Value> {
+        loop {
+            // A queued receipt durably fences new execution while the original
+            // detached guest finishes. Never wait with SQL/service custody held.
+            let receipt = self
+                .stop_once(
+                    context.clone(),
+                    request.clone(),
+                    coglet.clone(),
+                    pin.clone(),
+                )
+                .await?;
+            if receipt["state"] != "queued" {
+                return Ok(receipt);
+            }
+            if tokio::time::Instant::now() >= context.deadline {
+                return Err("unavailable".into());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }
+
+    async fn stop_once(
         &self,
         context: RequestContext,
         request: Value,
@@ -1103,6 +1194,9 @@ impl OperationHandler for DeviceHandler {
         mut stream: GitStream<'a>,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<Value, TransportError>> + Send + 'a>> {
         Box::pin(async move {
+            if request["method"] == "hub.git.fetch" {
+                return self.fetch_snapshot(context, request, stream).await;
+            }
             if request["method"] != "hub.git.push" {
                 return Ok(fail(&request, "permission_denied"));
             }

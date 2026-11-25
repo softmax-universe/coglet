@@ -152,10 +152,7 @@ impl SurfaceSession {
         };
         self.pump_supervisor_reads(now)?;
         #[cfg(feature = "native-engine")]
-        service
-            .lock()
-            .map_err(|_| "runtime service poisoned")?
-            .run_native(self, now)?;
+        crate::RuntimeService::run_native(&service, self, now)?;
         while self.output.len() < SURFACE_QUEUE {
             // Guest execution and fsync can outlive the admission lease. Native
             // routes recheck the supervised clock for EACH new dispatch, never
