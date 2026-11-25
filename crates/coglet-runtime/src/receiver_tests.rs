@@ -123,7 +123,7 @@ fn receiver_append_preserves_selected_app_inbox_history() {
     assert_eq!(service.receiver_admit(&append).unwrap()["state"], "applied");
     let runtime = service.receiver_snapshot();
     let messages =
-        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile()).unwrap();
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap();
     assert_eq!(messages.len(), 2);
     assert_eq!(messages[0], historical);
     assert_eq!(messages[1]["event"], append["params"]["message"]["event"]);
@@ -135,7 +135,7 @@ fn receiver_append_preserves_selected_app_inbox_history() {
     let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
     let runtime = reopened.receiver_snapshot();
     assert_eq!(
-        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile()).unwrap(),
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap(),
         messages
     );
 }
