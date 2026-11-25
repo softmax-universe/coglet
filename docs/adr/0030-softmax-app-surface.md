@@ -53,6 +53,23 @@ new alternative. A session selected at `0.1` cannot advertise, grant or publish
 new app operations. Offer `0.2` only when both runtime and adapter implement its
 validators; old-only peers negotiate `0.1` with app operations unavailable, not
 a flattened alias. Version-aware validation must precede new-name dispatch.
+At negotiated `0.1`, Face and speech operations remain usable unchanged; hiding
+app operations must not remove their advertisements, grants, observation channels
+or action paths. The same Face coglet must continue to run unchanged on Mac,
+Echo Dot and EO1 bodies, including Echo Dot/EO1 adapters that remain on `0.1`.
+App catalog provisioning must therefore permit a built-in-only `0.1` session,
+not refuse the entire session merely because the bundled app catalog needs `0.2`.
+
+Python, Go and product-owned Java SDKs and the conformance harness keep their
+existing `0.1` defaults and contracts. Until a consumer implements version-aware
+validation and negotiation, it must not offer/select `0.2` or admit new app names;
+it continues to interoperate on `0.1` with Face/speech intact. A consumer opting
+into `0.2` must validate the selected version's names and operation schemas before
+dispatch, retain prior two-component operations and refuse unknown profiles.
+Generating new types alone does not qualify a consumer's `0.2` support. Any
+needed Python/Go/Java/harness implementation is tracked by separate follow-up
+owner cards filed by the orchestrator after this docs-only ADR merges; this PR
+changes none of those implementations.
 
 The implementation must update the common CDDL/JSON Schema sources, compiler
 IR and every generated consumer, plus handwritten grammar checks such as
@@ -66,7 +83,11 @@ Bundle closed CDDL/JSON Schema sources, generated local schema IR, catalog bytes
 and a separately reviewed SHA-256 pin. Provision that catalog in the embedded
 runtime through ADR-0022. Extend `sdk/surface-swift` with a generic immutable
 trusted-catalog input: its current `SurfaceSession` admits built-ins only and
-does not yet have product extension support. The SDK must load the same closed
+does not yet have product extension support. The new input is optional and
+product-neutral; omitting it preserves the existing built-in-only public API,
+initializers, defaults and behavior, including `0.1` negotiation. Face, Baby Bear
+Mac/iOS and other callers must not supply an empty product catalog or change
+source to keep their current operation paths. The SDK must load the same closed
 artifact format/limits as the runtime, verify its separately supplied digest,
 validate all rule references and reject overrides before opening a session.
 Add selected input/output validation against local generated IR, with exact
@@ -316,6 +337,16 @@ pass in this docs-only PR:
    naming boundaries, owner/epoch replacement, deadlines, kill, restart and
    identical retry receipts. Prove sensitive negatives reach an advertised and
    granted ordinary action rather than vacuously rejecting an unknown name.
+
+Required compatibility proofs additionally run existing `conformance/surface`
+and `conformance/speech` cases unchanged at `0.1`; add `0.2` cases separately,
+never rewrite a frozen `0.1` case to test the new profile. Cover a new app-capable
+peer negotiating down to `0.1` with live Face/speech and no app operations, an
+old-only peer, and positive `0.2` app plus Face/speech coexistence. Compile and
+exercise existing built-in-only Swift `SurfaceSession` call sites unchanged,
+including omitted catalog input; separately test optional pinned extension
+provisioning. Independent exact-head ADR review must explicitly cover both the
+Face/speech `0.1` preservation and the optional generic Swift SDK API contract.
 
 Required CI must execute schema/CDDL differential fixtures, regeneration drift
 checks, all affected SDK/compiler regressions, native Swift compile/unit/UI and
