@@ -24,6 +24,7 @@ final class HubEnrollmentCommandTests: XCTestCase {
         var done = false
         let task = Task { try await hub.enrollOnce(target); done = true }
         await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
         XCTAssertFalse(done); XCTAssertNil(try store.loadHub())
         stale?(.connected)
         XCTAssertNil(try store.loadHub())
@@ -48,6 +49,7 @@ final class HubEnrollmentCommandTests: XCTestCase {
         let target = try invitation()
         let task = Task { try await hub.enrollOnce(target) { guard authorized else { throw HubError.unavailable } } }
         await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
         let stale = link.callback
         authorized = false
         link.emit(.ready(device: String(repeating: "a", count: 64)))
@@ -67,6 +69,7 @@ final class HubEnrollmentCommandTests: XCTestCase {
         let target = try invitation()
         let task = Task { try await hub.enrollOnce(target) }
         await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
         let stale = link.callback
         link.emit(.ready(device: String(repeating: "a", count: 64)))
         store.failHubSave = true
@@ -86,6 +89,7 @@ final class HubEnrollmentCommandTests: XCTestCase {
         link.didStart = { started.fulfill() }
         let first = Task { try await hub.enrollOnce(target) }
         await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
         let stale = link.callback
         first.cancel()
         do { try await first.value; XCTFail("cancelled enrollment succeeded") } catch {}
@@ -108,6 +112,7 @@ final class HubEnrollmentCommandTests: XCTestCase {
         let target = try invitation(device: String(repeating: "a", count: 64))
         let task = Task { try await hub.enrollOnce(target) }
         await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
         link.emit(.ready(device: String(repeating: "d", count: 64)))
         do { try await task.value; XCTFail("wrong device enrollment succeeded") } catch {}
         XCTAssertEqual(link.connects, 0); XCTAssertNil(try store.loadHub())
