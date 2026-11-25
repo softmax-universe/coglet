@@ -17,8 +17,13 @@ func symbol<T>(_ name: String, _: T.Type) -> T {
 }
 let realOpen = symbol("coglet_surface_open", SurfaceRuntimeABI.Open.self)
 var rawLink: OpaquePointer?
+var openBefore: UInt64 = 0
+var openAfter: UInt64 = 0
 func trackingOpen(_ version: UInt32, _ out: UnsafeMutablePointer<OpaquePointer?>?) -> Int32 {
-    let status = realOpen(version, out); rawLink = out?.pointee; return status
+    openBefore = now()
+    let status = realOpen(version, out); rawLink = out?.pointee
+    openAfter = now()
+    return status
 }
 let hold = symbol("coglet_surface_test_hold", Hold.self)
 let release = symbol("coglet_surface_test_release", Release.self)
@@ -74,9 +79,9 @@ func flush() throws {
 }
 try session.start(); try flush()
 guard let hello = try transport.receive() else { fatalError("no hello reply") }
-try session.receive(hello); try flush() // grants run the real no-effect WAMR guest
-// Establish a real SDK receipt/clock origin before the naturally due health.
+// Calibration precedes the actual SDK receipt sample (never subtract epochs).
 let baseline = now()
+try session.receive(hello); try flush() // grants run the real no-effect WAMR guest
 let stopsBefore = backend.stops
 let control = obstruct ? hold(rawLink) : nil
 if obstruct { require(control != nil, "hold installation") }
@@ -114,6 +119,7 @@ require(timings(rawLink, nil, 0, &n) == 2 && n < 32768, "timing query")
 var capture = [UInt8](repeating: 0, count: n)
 let cap = n
 require(capture.withUnsafeMutableBufferPointer { timings(rawLink, $0.baseAddress, cap, &n) } == 0, "timing copy")
+print("ADR0034 calibration per_link_zero_sdk_bracket_us=[\(openBefore),\(openAfter)]")
 print("ADR0034 SOURCE-BOUND mode=\(obstruct ? "obstruct" : "control") sdk_baseline_us=\(baseline) abi_entry_sdk_us=\(abiEntry) receipt_sdk_us=\(String(describing: receipt)) timeout_sdk_us=\(String(describing: timeout)) paired_capture_sdk_us=\(now()) entries=\(pumpEntries) stop=\(stopObserved) effects=\(backend.effects)")
 print(String(decoding: capture, as: UTF8.self))
 if let control { freeHold(control) }
