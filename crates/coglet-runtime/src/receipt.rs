@@ -10,7 +10,8 @@
 //! * Records are returned verbatim. The device reports no applied generation
 //!   (ADR-0019). Initial pushes complete only through the separate verified
 //!   pre-install boundary driver (ADR-0026); accepted-ref presence alone is not
-//!   completion. Installed-target pushes remain queued in this slice.
+//!   completion. Installed pushes complete through the serialized runtime WAL
+//!   boundary and reconcile their original SQL receipt after restart.
 //! * Reading a receipt never executes, retries or mutates an operation.
 use super::*;
 use crate::execution::ReceiptScope;
@@ -129,7 +130,11 @@ impl DeviceHandler {
             if let Some(found) =
                 locked.managed_receipt_for(operation_id, &scope.actor, scope.ticket.as_deref())
             {
-                return Ok(Some(found));
+                // Git receipts need the ref-store's exact original push grant
+                // snapshot, including after its WAL completion was reconciled.
+                if found.0 != "hub.git.push" {
+                    return Ok(Some(found));
+                }
             }
         }
         Ok(self

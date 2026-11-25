@@ -194,7 +194,22 @@ impl crate::RuntimeService {
     pub(crate) fn native_enabled(&self) -> bool {
         self.native.is_some() && self.managed_running()
     }
-    pub fn enable_native(&mut self, config: NativeSchedule) -> Result<()> {
+    pub fn enable_native(&mut self, mut config: NativeSchedule) -> Result<()> {
+        if self
+            .state
+            .completed_segments
+            .iter()
+            .any(|s| s.code_revision.is_some())
+        {
+            config.trace_id = self
+                .state
+                .runtime
+                .trace_id
+                .as_ref()
+                .and_then(Value::as_str)
+                .ok_or("missing live code trace")?
+                .to_owned();
+        }
         validate("correlation-id", &json!(config.trace_id))?;
         if self
             .state

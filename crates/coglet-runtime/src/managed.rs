@@ -2,6 +2,10 @@
 //! local grants; this module owns the serialized runtime/WAL boundary only.
 use super::*;
 
+#[path = "code_update.rs"]
+mod code_update;
+pub(crate) use code_update::CodeRevision;
+
 /// Retained start/stop receipts. Entries are never evicted.
 const OPERATION_LEDGER: usize = 4096;
 
@@ -12,6 +16,10 @@ pub(super) struct ManagedState {
     install_receipt: Value,
     live_commit: Value,
     running: bool,
+    /// Persisted before SQL push admission: no next-step pinning until the
+    /// authority-serialized recovery driver has drained admitted code work.
+    #[serde(default)]
+    code_pending: bool,
     #[serde(default)]
     recovery: Option<StartRecovery>,
     #[serde(default)]
@@ -67,6 +75,53 @@ impl ManagedState {
         &self.identity
     }
 
+    pub(super) fn validate_code_history(&self, segments: &[trace::CompletedSegment]) -> Result<()> {
+        let mut commit = self
+            .identity
+            .get("live_commit")
+            .or_else(|| self.identity.pointer("/initial/statement/new"))
+            .or_else(|| self.identity.pointer("/update/statement/new"))
+            .ok_or("missing install code pin")?;
+        let mut generation = self
+            .identity
+            .pointer("/initial/statement/generation")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let mut ids = std::collections::BTreeSet::new();
+        for revision in segments.iter().filter_map(|s| s.code_revision.as_ref()) {
+            let next_generation = revision.signed_ref["statement"]["generation"]
+                .as_u64()
+                .ok_or("missing code generation")?;
+            if next_generation <= generation || !ids.insert(&revision.operation_id) {
+                return Err("recovered code generation/operation did not advance".into());
+            }
+            let saved = self
+                .operations
+                .get(&revision.operation_id)
+                .ok_or("missing code operation receipt")?;
+            if saved.intent != revision.intent
+                || saved.scope.as_ref() != Some(&revision.scope)
+                || saved.receipt["state"] != "applied"
+            {
+                return Err("recovered code receipt differs from transition".into());
+            }
+            generation = next_generation;
+            commit = &revision.signed_ref["statement"]["new"];
+        }
+        if commit != &self.live_commit
+            || self.operations.iter().any(|(id, op)| {
+                op.scope
+                    .as_ref()
+                    .is_some_and(|s| s.method == "hub.git.push")
+                    && op.receipt["state"] == "applied"
+                    && !ids.contains(id)
+            })
+        {
+            return Err("recovered live code lacks exact transition custody".into());
+        }
+        Ok(())
+    }
+
     pub(super) fn validate(&self) -> Result<()> {
         if !self.identity.is_object() || (self.running && self.cancellation_pending) {
             return Err("invalid recovered managed lifecycle".into());
@@ -81,7 +136,14 @@ impl ManagedState {
             .get("live_commit")
             .or_else(|| self.identity.pointer("/initial/statement/new"))
             .or_else(|| self.identity.pointer("/update/statement/new"));
-        if pin != Some(&self.live_commit) {
+        if pin != Some(&self.live_commit)
+            && !self.operations.values().any(|op| {
+                op.scope
+                    .as_ref()
+                    .is_some_and(|s| s.method == "hub.git.push")
+                    && op.receipt["state"] == "applied"
+            })
+        {
             return Err("recovered managed live commit differs from install identity".into());
         }
         for (id, saved) in &self.operations {
@@ -105,6 +167,32 @@ impl ManagedState {
 }
 
 impl RuntimeService {
+    pub(crate) fn code_pending(&self) -> bool {
+        self.state.managed.as_ref().is_some_and(|m| m.code_pending)
+    }
+
+    #[cfg(any(feature = "device", test))]
+    pub(crate) fn fence_code(&mut self, pending: bool) -> Result<()> {
+        if self.code_pending() == pending {
+            return Ok(());
+        }
+        let mut next = self.state.clone();
+        next.managed.as_mut().ok_or("not installed")?.code_pending = pending;
+        self.commit_managed(next)
+    }
+    #[cfg(feature = "device")]
+    pub(crate) fn fence_new_code(&mut self, id: &str) -> Result<()> {
+        if self
+            .state
+            .managed
+            .as_ref()
+            .is_some_and(|m| m.operations.contains_key(id))
+        {
+            return Ok(());
+        }
+        self.fence_code(true)
+    }
+
     /// Immutable verified install metadata, including signed delegation/ref and
     /// caller configuration. Correlation IDs belong to the receipt, not identity.
     pub fn managed_identity(&self) -> Option<&Value> {
@@ -117,15 +205,57 @@ impl RuntimeService {
     }
 
     #[cfg(feature = "device")]
-    pub(crate) fn managed_contains_operation(&self, id: &str) -> bool {
+    pub(crate) fn managed_push_conflicts(
+        &self,
+        id: &str,
+        intent: &str,
+        scope: &ReceiptScope,
+    ) -> bool {
         self.state.managed.as_ref().is_some_and(|m| {
-            m.install_receipt["operation_id"] == id || m.operations.contains_key(id)
+            m.install_receipt["operation_id"] == id
+                || m.operations
+                    .get(id)
+                    .is_some_and(|r| r.intent != intent || r.scope.as_ref() != Some(scope))
         })
     }
 
     /// Original code/manifest/private-files configuration, not live private data.
     pub fn managed_setup(&self) -> &Value {
-        &self.state.runtime.initial_setup
+        self.state
+            .completed_segments
+            .first()
+            .map(|s| &s.initial_setup)
+            .unwrap_or(&self.state.runtime.initial_setup)
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_code_ref(&self) -> Option<&Value> {
+        self.state
+            .completed_segments
+            .iter()
+            .rev()
+            .find_map(|s| s.code_revision.as_ref().map(|r| &r.signed_ref))
+            .or_else(|| self.managed_identity()?.get("initial"))
+    }
+
+    #[cfg(feature = "device")]
+    pub(crate) fn managed_verify_code(&self, setup: &Value) -> Result<()> {
+        let expected: BTreeMap<String, String> =
+            serde_json::from_value(setup["initial_files"].clone())
+                .map_err(|_| "permission_denied")?;
+        let actual: BTreeMap<_, _> = self
+            .state
+            .runtime
+            .files
+            .files()
+            .iter()
+            .filter(|(p, _)| p.starts_with("/code/"))
+            .map(|(p, b)| (p.clone(), b.clone()))
+            .collect();
+        if self.state.runtime.manifest != setup["manifest"] || actual != expected {
+            return Err("permission_denied".into());
+        }
+        Ok(())
     }
 
     /// Pin an already verified identity and create a stopped service. Repeating
@@ -189,6 +319,7 @@ impl RuntimeService {
             install_receipt: receipt.clone(),
             live_commit,
             running: false,
+            code_pending: false,
             recovery: None,
             recovery_fault: None,
             cancellation_pending: false,
@@ -240,7 +371,7 @@ impl RuntimeService {
         next.managed.as_mut().unwrap().running = true;
         next.managed.as_mut().unwrap().recovery = recovery.cloned();
         next.managed.as_mut().unwrap().recovery_fault = None;
-        Self::record_operation(&mut next, operation, None)?;
+        Self::record_operation(&mut next, operation, None, self.managed_last_step())?;
         self.commit_managed(next)
     }
 
@@ -277,12 +408,17 @@ impl RuntimeService {
                 // Queue pressure must never leave execution enabled. Preserve a
                 // durable stop obligation and report that cancellation is pending.
                 let mut stopped = stopped;
-                Self::record_operation(&mut stopped, operation, Some(&error))?;
+                Self::record_operation(
+                    &mut stopped,
+                    operation,
+                    Some(&error),
+                    self.managed_last_step(),
+                )?;
                 self.commit_managed(stopped)?;
                 return Err(error);
             }
         }
-        Self::record_operation(&mut next, operation, None)?;
+        Self::record_operation(&mut next, operation, None, self.managed_last_step())?;
         self.commit_managed(next)
     }
 
@@ -378,27 +514,6 @@ impl RuntimeService {
         Ok(recovery.clone())
     }
 
-    /// Match recovered executable bytes to the newly verified installed archive,
-    /// not merely to a hash retained in the same WAL as those bytes.
-    #[cfg(feature = "device")]
-    pub(crate) fn managed_verify_code(&self, setup: &Value) -> Result<()> {
-        let verified = setup["initial_files"]
-            .as_object()
-            .ok_or("invalid verified setup")?;
-        let recovered = self.state.runtime.files.files();
-        if self.state.runtime.manifest != setup["manifest"]
-            || verified
-                .iter()
-                .any(|(path, bytes)| recovered.get(path).map(String::as_str) != bytes.as_str())
-            || recovered
-                .keys()
-                .any(|path| path.starts_with("/code/") && !verified.contains_key(path))
-        {
-            return Err("recovered code differs from installed artifact".into());
-        }
-        Ok(())
-    }
-
     #[cfg(feature = "device")]
     pub(crate) fn managed_recovery_fault(&mut self) -> Result<()> {
         let mut next = self.state.clone();
@@ -435,24 +550,27 @@ impl RuntimeService {
         Some((scope.method.clone(), saved.receipt.clone()))
     }
 
-    fn last_step(state: &ServiceState) -> u64 {
-        state
-            .runtime
-            .records
-            .last()
-            .and_then(|r| r["step"].as_u64())
-            .unwrap_or(0)
+    fn managed_last_step(&self) -> u64 {
+        // Router status/receipt steps span code revisions; ABI record steps
+        // remain trace-local and restart at zero for each separately pinned code.
+        self.store
+            .records()
+            .iter()
+            .filter(|r| r.get("step").is_some())
+            .count()
+            .saturating_sub(1) as u64
     }
 
     fn record_operation(
         next: &mut ServiceState,
         operation: Option<Operation<'_>>,
         error: Option<&str>,
+        step: u64,
     ) -> Result<()> {
         let Some((id, intent, scope)) = operation else {
             return Ok(());
         };
-        let step = Self::last_step(next);
+
         // A failed receipt carries no step (`hub-receipt-failed`). With a step
         // it would not validate, and the `?` below would return before the
         // stopped fence and this receipt were committed.
@@ -500,7 +618,7 @@ impl RuntimeService {
         };
         json!({"state":if fault.is_some() {"faulted"} else if self.managed_running() {"running"} else {"stopped"},
             "live_commit":self.state.managed.as_ref().map(|m| &m.live_commit),
-            "step":last.and_then(|r| r["step"].as_u64()).unwrap_or(0),
+            "step":self.managed_last_step(),
             // This seam has no queued router mutation API. Runtime receipts and
             // event batches are not pending router mutations.
             "pending":0,"error":error})

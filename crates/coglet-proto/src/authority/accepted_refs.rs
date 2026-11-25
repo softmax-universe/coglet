@@ -5,6 +5,7 @@
 //! other connections' commits. Only fully validated private artifacts enter.
 //! Retained bundles are audit/recovery data, never unchecked activation handles.
 use super::{Authority, AuthorityError, Scope, delegation, valid};
+mod installed;
 mod preinstall;
 #[cfg(test)]
 mod retention_tests;

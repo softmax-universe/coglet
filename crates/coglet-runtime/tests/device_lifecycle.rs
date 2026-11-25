@@ -191,6 +191,7 @@ struct Env {
     serve: JoinHandle<()>,
     config: DeviceConfig,
     seq: u64,
+    delegation_methods: Vec<&'static str>,
 }
 
 impl Env {
@@ -332,6 +333,7 @@ impl Env {
             serve,
             config,
             seq: 0,
+            delegation_methods: options.delegation_methods,
         })
     }
 
@@ -361,7 +363,7 @@ impl Env {
             self.endpoint.id().to_string(),
             DELEGATION_GEN,
             DELEGATION_EXPIRES,
-            &Options::default().delegation_methods,
+            &self.delegation_methods,
         )
     }
 
@@ -400,10 +402,20 @@ impl Env {
     /// Real signed Git bundle containing manifest.json, bin/step.wasm and
     /// build/provenance.cbor. `old` is the previous signed tip for generation > 1.
     fn bundle(&self, generation: u64, old: Option<&str>, extra: &[(&str, &[u8])]) -> Bundle {
+        self.bundle_wasm(generation, old, extra, WASM_WAT)
+    }
+
+    fn bundle_wasm(
+        &self,
+        generation: u64,
+        old: Option<&str>,
+        extra: &[(&str, &[u8])],
+        wasm_wat: &str,
+    ) -> Bundle {
         let work = self.root.join(format!("git-{generation}"));
         std::fs::create_dir_all(&work).unwrap();
         git(&work, &["init", "--initial-branch=hub"]);
-        let wasm = wat::parse_str(WASM_WAT).unwrap();
+        let wasm = wat::parse_str(wasm_wat).unwrap();
         let mode = native_compute_mode();
         let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
             "required_capabilities":[],"exclusive_outputs":[],
@@ -658,6 +670,9 @@ macro_rules! timed {
             .expect("test exceeded its bounded deadline")
     };
 }
+
+#[path = "support/installed_push_cases.rs"]
+mod installed_push_cases;
 
 // ---- tests ---------------------------------------------------------------
 
@@ -1141,9 +1156,9 @@ async fn start_and_restart_revalidate_installed_artifact_not_newer_staged_ref() 
             applied(&env.simple("hub.start").await);
             assert_eq!(state(&env.simple("hub.status").await).0, "running");
         }
-        // ADR-0027: a newer staged ref never selects code for an installed target.
+        // An invalid replacement fails without changing the live installed code.
         let next = env.bundle(2, Some(&bundle.tip), &[("next.txt", b"n")]);
-        assert_eq!(env.push(&next).await["result"]["state"], "queued");
+        assert_eq!(env.push(&next).await["result"]["state"], "failed");
         let started = env.simple("hub.start").await;
         if NATIVE {
             applied(&started);
@@ -2059,18 +2074,14 @@ async fn hub_receipt_pending_recovery_selects_current_original_intent() {
         )
         .unwrap();
         let pending = store.pending_pushes(env.hub.id(), &env.coglet).unwrap();
-        assert_eq!(pending.len(), 1);
-        assert_eq!(
-            pending[0].request["correlation_id"],
-            operation_id(&queued_third)
-        );
-        assert_eq!(pending[0].metadata.signed(), &third.signed);
-        // Neither queued installed-target operation is falsely activated.
+        assert!(pending.is_empty());
+        // Each installed intent lacks the delegated push method. The installed
+        // boundary now resolves it to an original-ID failure instead of leaving
+        // the initial-deploy selector to keep it queued indefinitely.
         for original in [&queued_second, &queued_third] {
-            assert_eq!(
-                receipt_of(&mut env, &operation_id(original)).await["result"]["state"],
-                "queued"
-            );
+            let receipt = receipt_of(&mut env, &operation_id(original)).await;
+            assert_eq!(receipt["result"]["state"], "failed");
+            assert_eq!(receipt["result"]["error"]["code"], "permission_denied");
         }
     });
 }
@@ -2081,12 +2092,26 @@ async fn hub_receipt_pending_recovery_selects_current_original_intent() {
 /// queued recovery, not ref activation: install has a separate terminal receipt.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install() {
+    original_push_daemon_crash(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn installed_push_crash_reconciles_exactly_once() {
+    original_push_daemon_crash(true).await;
+}
+
+async fn original_push_daemon_crash(installed_target: bool) {
     timed!(async {
         use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
         use std::time::{SystemTime, UNIX_EPOCH};
-        let mut env = Env::new(0x4a, Options::receipts()).await.unwrap();
-        let device_key = key(0x4a, 4);
+        let seed = if installed_target { 0x5a } else { 0x4a };
+        let mut options = Options::receipts();
+        if installed_target {
+            options.delegation_methods.push("hub.git.push");
+        }
+        let mut env = Env::new(seed, options.clone()).await.unwrap();
+        let device_key = key(seed, 4);
         let device = device_key.public();
         let root = env.root.join("receipt-child");
         std::fs::create_dir(&root).unwrap();
@@ -2102,7 +2127,7 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
             device.to_string(),
             DELEGATION_GEN,
             expires,
-            &Options::receipts().delegation_methods,
+            &options.delegation_methods,
         );
         let authority_path = root.join("authority.sqlite");
         {
@@ -2187,7 +2212,18 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
         let mut child = ChildGuard::spawn(&config_path, &log);
         env.session = child_session(&env.hub, device, &mut child, &log).await;
         assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
-        let bundle = env.bundle(1, None, &[]);
+        let bundle = if installed_target {
+            std::fs::write(&release, b"initial verification may complete").unwrap();
+            let initial = env.bundle(1, None, &[]);
+            env.push(&initial).await;
+            applied(&env.install(&initial.signed, &delegation).await);
+            std::fs::remove_file(&release).unwrap();
+            std::fs::remove_file(&first).unwrap();
+            std::fs::remove_file(&entered).unwrap();
+            env.bundle(2, Some(&initial.tip), &[("revision", b"two")])
+        } else {
+            env.bundle(1, None, &[])
+        };
         let push_request = env.request("hub.git.push", json!({"update":bundle.signed,"size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}));
         let push_id = push_request["correlation_id"].as_str().unwrap().to_owned();
         let session = env.session.clone();
@@ -2221,8 +2257,50 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
         let mut restarted = ChildGuard::spawn(&config_path, &restart_log);
         env.session = child_session(&env.hub, device, &mut restarted, &restart_log).await;
         assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), queued);
-        denied(&env.install(&bundle.signed, &delegation).await);
+        if !installed_target {
+            denied(&env.install(&bundle.signed, &delegation).await);
+        }
+        if installed_target {
+            // Force the exact WAL -> SQL-mirror crash window without a daemon
+            // fault switch. The WAL may confirm the effect but SQL stays queued.
+            rusqlite::Connection::open(&authority_path)
+                .unwrap()
+                .execute_batch(
+                    "CREATE TRIGGER test_hold_terminal BEFORE UPDATE ON proto_git_operations
+                 WHEN json_extract(NEW.receipt,'$.state')='applied'
+                 BEGIN SELECT RAISE(ABORT,'test mirror interruption'); END;",
+                )
+                .unwrap();
+        }
         std::fs::write(&release, b"release").unwrap();
+        if installed_target {
+            tokio::time::timeout(Duration::from_secs(15), async {
+                loop {
+                    if env.simple("hub.status").await["result"]["live_commit"] == bundle.tip {
+                        break;
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await
+            .expect("runtime WAL completion before SQL mirror");
+            assert_eq!(result_of(&receipt_of(&mut env, &push_id).await), queued);
+            restarted.kill_and_wait();
+            for _ in 0..2000 {
+                if env.hub.session(device).await.is_none() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            assert!(env.hub.session(device).await.is_none());
+            rusqlite::Connection::open(&authority_path)
+                .unwrap()
+                .execute_batch("DROP TRIGGER test_hold_terminal")
+                .unwrap();
+            let mirror_log = root.join("mirror-restart.log");
+            restarted = ChildGuard::spawn(&config_path, &mirror_log);
+            env.session = child_session(&env.hub, device, &mut restarted, &mirror_log).await;
+        }
         let terminal = tokio::time::timeout(Duration::from_secs(15), async {
             loop {
                 let receipt = result_of(&receipt_of(&mut env, &push_id).await);
@@ -2239,7 +2317,11 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
         assert_eq!(terminal["step"], 0);
         assert_eq!(
             env.simple("hub.status").await["result"]["live_commit"],
-            Value::Null
+            if installed_target {
+                json!(bundle.tip)
+            } else {
+                Value::Null
+            }
         );
         let db = rusqlite::Connection::open(&authority_path).unwrap();
         assert_eq!(
@@ -2256,6 +2338,49 @@ async fn hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_in
         let unknown = receipt_as(&mut env, &correlation(424_250), &actor, Some(OTHER_TICKET)).await;
         assert_eq!(error_code(&denied), "not_found", "{denied}");
         assert_eq!(error_of(&denied), error_of(&unknown));
+        if installed_target {
+            let wal = root
+                .join("wal")
+                .join(coglet_runtime::digest(env.coglet.as_bytes()))
+                .join("state.wal");
+            let before = std::fs::read(&wal).unwrap();
+            let retry = env.request_with(
+                "hub.git.push",
+                push_id.clone(),
+                json!({"update":bundle.signed,
+                "size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
+                &env.actor,
+                Some(env.ticket.clone()),
+            );
+            let retried = env
+                .session
+                .push_git(retry, &mut bundle.bytes.as_slice())
+                .await
+                .unwrap();
+            assert_eq!(result_of(&retried), terminal);
+            assert_eq!(
+                std::fs::read(&wal).unwrap(),
+                before,
+                "confirmed update must not append another WAL effect"
+            );
+            restarted.kill_and_wait();
+            let saved = coglet_runtime::DurableStore::open(&wal).unwrap();
+            let state = saved.state().unwrap();
+            assert_eq!(
+                state["completed_segments"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|s| !s["code_revision"].is_null())
+                    .count(),
+                1
+            );
+            assert_eq!(
+                state["managed"]["operations"][&push_id]["receipt"],
+                terminal
+            );
+            return;
+        }
         let installed = env.install(&bundle.signed, &delegation).await;
         applied(&installed);
         let id = operation_id(&installed);
@@ -2339,11 +2464,20 @@ impl InitialBoundaryBarrier {
 }
 
 fn begin_push(env: &mut Env, bundle: &Bundle) -> (String, JoinHandle<Value>) {
-    let request = env.request(
+    begin_push_with_timeout(env, bundle, 30_000)
+}
+
+fn begin_push_with_timeout(
+    env: &mut Env,
+    bundle: &Bundle,
+    timeout_ms: u64,
+) -> (String, JoinHandle<Value>) {
+    let mut request = env.request(
         "hub.git.push",
         json!({"update":bundle.signed,
         "size":bundle.bytes.len(),"sha256":hex::encode(Sha256::digest(&bundle.bytes))}),
     );
+    request["timeout_ms"] = json!(timeout_ms);
     let id = request["correlation_id"].as_str().unwrap().to_owned();
     let session = env.session.clone();
     let bytes = bundle.bytes.clone();
@@ -2885,10 +3019,10 @@ async fn hub_receipt_queued_never_applied_without_boundary() {
         for round in 0..2 {
             let polled = receipt_of(&mut env, &id).await;
             let result = result_of(&polled);
-            assert_eq!(result["state"], "queued", "round {round}: {polled}");
+            assert_eq!(result["state"], "failed", "round {round}: {polled}");
             assert_eq!(result["step"], Value::Null);
-            assert_eq!(result["error"], Value::Null);
-            coglet_runtime::validate("hub-receipt-queued", &result).unwrap();
+            assert_eq!(result["error"]["code"], "permission_denied");
+            coglet_runtime::validate("hub-receipt-failed", &result).unwrap();
             // Status still names the original installed commit, not staging.
             assert_eq!(
                 state(&env.simple("hub.status").await),
@@ -2903,23 +3037,67 @@ async fn hub_receipt_queued_never_applied_without_boundary() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn hub_receipt_git_push_queued_not_applied() {
+async fn installed_push_original_id_queued_then_applied() {
     timed!(async {
-        let mut env = Env::new(0x48, Options::receipts()).await.unwrap();
+        let mut options = Options::receipts();
+        options.delegation_methods.push("hub.git.push");
+        let mut env = Env::new(0x48, options).await.unwrap();
         let (initial, installed) = pushed_and_installed(&mut env).await;
         let bundle = env.bundle(2, Some(&initial.tip), &[]);
-        let pushed = env.push(&bundle).await;
-        // An installed-target push is not completed at the initial-deploy
-        // quarantine boundary, by a later stop, or by restart.
+        let barrier = InitialBoundaryBarrier::install(&mut env).await;
+        let (original_id, pushing) = begin_push(&mut env, &bundle);
+        barrier.wait().await;
+        assert_eq!(
+            result_of(&receipt_of(&mut env, &original_id).await)["state"],
+            "queued"
+        );
+        // Verification is outside the step mutex, but durable admission must
+        // prevent any next-step input/code pinning while it is pending.
+        {
+            let service = env
+                .handler
+                .as_ref()
+                .unwrap()
+                .share_service(&env.coglet)
+                .unwrap();
+            let mut locked = service.lock().unwrap();
+            assert!(
+                locked
+                    .run_next(
+                        &Value::Null,
+                        &mut coglet_runtime::MockEngine::new(Value::Null)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        barrier.release();
+        let pushed = pushing.await.unwrap();
         applied(&installed);
+        assert_eq!(pushed["result"]["state"], "applied");
+        assert_eq!(operation_id(&pushed), original_id);
+        let mut terminal = Value::Null;
         for _ in 0..2 {
-            let polled = receipt_of(&mut env, &operation_id(&pushed)).await;
+            let polled = receipt_of(&mut env, &original_id).await;
             let result = result_of(&polled);
-            assert_eq!(result["state"], "queued", "{polled}");
-            assert_eq!(result["step"], Value::Null);
-            assert_eq!(result, pushed["result"]);
+            assert_eq!(result["state"], "applied", "{polled}");
+            assert_eq!(result["operation_id"], original_id);
+            if terminal.is_null() {
+                terminal = result.clone();
+            } else {
+                assert_eq!(terminal, result);
+            }
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("stopped".into(), json!(bundle.tip))
+            );
             env.restart_handler().await;
         }
+        // A historical install retry cannot overwrite the new live code.
+        let delegation = env.delegation();
+        let reply = env.install(&initial.signed, &delegation).await;
+        assert_eq!(error_code(&reply), "permission_denied");
+        assert_eq!(state(&env.simple("hub.status").await).1, bundle.tip);
     });
 }
 
