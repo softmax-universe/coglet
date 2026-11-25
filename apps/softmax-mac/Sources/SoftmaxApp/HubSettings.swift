@@ -126,6 +126,7 @@ private struct HubPairingSheet: View {
     @State private var relay = ""
     @State private var invite = ""
     @State private var error: String?
+    @FocusState private var focusedField: String?
     private var configuration: HubPairing? {
         if !manual { return try? HubPairing.parse(code) }
         var fields: [String: Any] = ["name": name, "hub": node,
@@ -160,6 +161,16 @@ private struct HubPairingSheet: View {
                                 .pairingField("pairing.invitation", "Invitation", $invite, secure: true, sheet: self)
                         }.padding(.top, SoftmaxDesignTokens.spacing[1])
                     }
+                    .coglet(id: "\(idPrefix).pairing.manual", registry: model.appControls, window: window, route: route,
+                        role: "disclosure", label: "Developer: manual router address", sensitive: true,
+                        verbs: ["toggle"], value: { .map([.init("kind", .text("redacted"))]) },
+                        failure: model.appControlFailure, invoke: { args in
+                            guard case .map(let fields) = args,
+                                  let field = fields.first(where: { $0.key == "value" }), case .boolean(let value) = field.value else {
+                                throw ControlRegistryFailure.unsupported
+                            }
+                            manual = value
+                        })
                     if let error { Text(error).modifier(SoftmaxErrorText()) }
                     if !model.testing && model.hubConnection?.deviceID == nil {
                         Text("Preparing device identity… Close this sheet and retry if the router helper is unavailable.")
@@ -189,13 +200,15 @@ private struct HubPairingSheet: View {
             })
     }
     @MainActor fileprivate func registerField(_ view: some View, _ id: String, _ label: String, _ text: Binding<String>, secure: Bool) -> some View {
-        view.coglet(id: "\(idPrefix).\(id)", registry: model.appControls, window: window, route: route,
+        view.focused($focusedField, equals: id)
+            .coglet(id: "\(idPrefix).\(id)", registry: model.appControls, window: window, route: route,
             role: secure ? "secure_field" : "text_field", label: label, sensitive: true, secure: secure,
             verbs: ["type_text"], value: {
                 // Secure fields never expose their binding to the registry.
                 secure ? .map([.init("kind", .text("redacted"))])
                        : .map([.init("kind", .text("text")), .init("value", .text(text.wrappedValue))])
-            }, failure: model.appControlFailure, invoke: { args in
+            }, focus: { focusedField = id; return true }, focused: { focusedField == id },
+            failure: model.appControlFailure, invoke: { args in
                 guard case .map(let fields) = args,
                       let field = fields.first(where: { $0.key == "value" }), case .text(let value) = field.value else {
                     throw ControlRegistryFailure.unsupported
