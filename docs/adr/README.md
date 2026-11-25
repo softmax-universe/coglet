@@ -27,6 +27,7 @@ and the other ADR status decisions remain separate.
 | 0022 | [Embedded product catalogs and recorded pod command admission](0022-embedded-product-catalogs.md) | Proposed |
 | 0027 | [Revalidate and resume running coglets after daemon restart](0027-daemon-restart-resume.md) | Proposed; implementation qualification separate |
 | 0031 | [Manage port, and patches on a plain filesystem](0031-manage-port-and-filesystem-patches.md) | Accepted decision (#157); hub 1.0 wire effective on reviewed merge of #164; implementation qualification separate |
+| 0033 | [Runtime policy attestations and emergency output custody](0033-runtime-policy-producers.md) | Proposed; docs-first producer contract, implementation qualification separate |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,
