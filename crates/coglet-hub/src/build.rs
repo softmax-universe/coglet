@@ -273,7 +273,7 @@ impl Store {
         &mut self,
         request: &SignRequest,
         intent: &str,
-        artifact: Artifact,
+        make_artifact: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<Artifact>,
     ) -> Result<Artifact> {
         let tx = self
             .db
@@ -294,6 +294,7 @@ impl Store {
                 Err(Error::Conflict(0))
             };
         }
+        let artifact = make_artifact(&tx)?;
         let metadata = serde_json::to_vec(&artifact)?;
         if metadata.len() > 1024 * 1024
             || artifact.bundle.is_empty()
@@ -502,25 +503,26 @@ impl Candidate {
         }
         drop(verified);
         self.delegation(provision, key, clock())?;
-        authority.authorize_delegation(
-            key.public(),
-            self.target.device.parse().map_err(|_| Error::Invalid)?,
-            &self.target.coglet,
-            "hub.git.push",
-            &clock,
-            provision.signed["statement"]["generation"]
-                .as_u64()
-                .ok_or(Error::Denied)?,
-        )?;
-        statement["hub"] = json!(key.public().to_string());
-        let signature = signed(key, statement)?;
-        let artifact = Artifact {
-            bundle,
-            signed: signature,
-            provenance: self.provenance.clone(),
-            reproduction: json!({"source":hex::encode(&self.source),"manifest":hex::encode(&self.manifest),"recipe":hex::encode(&recipe),"policy":hex::encode(POLICY),"transform":hex::encode(include_bytes!("build.rs")),"original":hex::encode(&self.wasm),"rewritten":hex::encode(&self.wasm),"delegation":provision,"profile":self.profile,"target":self.target,"request":self.request}),
-        };
-        store.retain_build(request, &intent, artifact)
+        store.retain_build(request, &intent, |tx| {
+            // Query the exact current binding in the SAME Store transaction.
+            // Do not acquire Authority's mutex while holding the SQL writer lock.
+            coglet_proto::authority::Authority::authorize_publication_in(
+                tx,
+                key.public(),
+                self.target.device.parse().map_err(|_| Error::Invalid)?,
+                &self.target.coglet,
+                &provision.signed,
+                &clock,
+            )?;
+            statement["hub"] = json!(key.public().to_string());
+            let signature = signed(key, statement)?;
+            Ok(Artifact {
+                bundle,
+                signed: signature,
+                provenance: self.provenance.clone(),
+                reproduction: json!({"source":hex::encode(&self.source),"manifest":hex::encode(&self.manifest),"recipe":hex::encode(&recipe),"policy":hex::encode(POLICY),"transform":hex::encode(include_bytes!("build.rs")),"original":hex::encode(&self.wasm),"rewritten":hex::encode(&self.wasm),"delegation":provision,"profile":self.profile,"target":self.target,"request":self.request}),
+            })
+        })
     }
 }
 /// Fixed Git executable, clean configuration and bounded output. No shell and no

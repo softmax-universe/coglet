@@ -370,6 +370,33 @@ fn delegation_revocation_during_validation_is_rechecked_before_router_signing() 
     s.absent();
 }
 #[test]
+fn final_publication_authority_is_checked_inside_retention_transaction() {
+    let f = fixture();
+    let mut s = Signing::new();
+    let database = s.root.path().join("kernel.db");
+    let calls = std::cell::Cell::new(0);
+    let fenced = std::cell::Cell::new(false);
+    s.sign(f.builder.compile(&f.request).unwrap(), || {
+        let call = calls.get() + 1;
+        calls.set(call);
+        if call >= 3 {
+            let probe = rusqlite::Connection::open(&database).unwrap();
+            probe.busy_timeout(std::time::Duration::ZERO).unwrap();
+            let blocked = probe.execute_batch("BEGIN IMMEDIATE").is_err();
+            if !blocked {
+                probe.execute_batch("ROLLBACK").unwrap();
+            }
+            fenced.set(blocked);
+        }
+        Some(100)
+    })
+    .unwrap();
+    assert!(
+        fenced.get(),
+        "final authority sampling must hold the Store write fence"
+    );
+}
+#[test]
 fn key_isolation_source_scripts_and_repository_hooks_cannot_run() {
     let mut f = fixture();
     let mut s = Signing::new();
