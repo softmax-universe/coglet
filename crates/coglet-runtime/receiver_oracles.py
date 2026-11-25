@@ -12,6 +12,9 @@ OTHER = "8" * 32
 INBOX_OP = f"{15:032x}"
 MESSAGE = "f" * 32
 HOLD_OP = f"{6:032x}"
+# Crate-owned harness input shared with examples/support/receiver_fixture.rs.
+# It is not a spec fixture; tests/receiver_harness_inputs.rs guards it in CI.
+FETCH_LOGS_SNAPSHOT = Path(__file__).resolve().parent / "examples/support/receiver-fetch-logs-snapshot.json"
 
 
 def require(condition, message):
@@ -117,9 +120,12 @@ def validate(d):
                 require(reply["result"] == {"state":"stopped", "step":0, "pending":0, "error":None,
                     "live_commit":s["managed"]["live_commit"]}, "not exact committed scoped status")
             else:
-                root = Path(__file__).resolve().parents[2]
-                fixture = next(r for r in json.loads((root / "spec/fixtures/hub/fetch.json").read_text())
-                               if r["ref"] == request["params"]["ref"])["history"][-1]
+                import hashlib
+                fixture = json.loads(FETCH_LOGS_SNAPSHOT.read_text())
+                require(fixture["ref"] == request["params"]["ref"]
+                        and fixture["update"]["statement"]["ref"] == fixture["ref"]
+                        and hashlib.sha256(bytes.fromhex(fixture["bundle_hex"])).hexdigest() == fixture["sha256"],
+                        "crate-owned fetch snapshot input does not match the frozen request")
                 require(reply == {"type":"transfer", "correlation_id":request["correlation_id"],
                     "size":len(bytes.fromhex(fixture["bundle_hex"])), "sha256":fixture["sha256"],
                     "update":fixture["update"]}, "fetch metadata not exact granted snapshot")
