@@ -3,6 +3,34 @@
 This branch is unfinished. No frozen case has been marked qualified by this
 checkpoint. It contains no spec or wire changes, and no Factory DB/WASI edits.
 
+## Current stop: frozen receipt ownership contract conflict
+
+Implementation is stopped pending the owning orchestrator's ADR ruling, not
+acceptance-complete. The reference fixture now grants the hub actor BOTH
+`hub.receipt` and the original `debug.write`; it no longer manufactures an
+ownership refusal by withholding the receipt grant. With another authenticated
+actor's applied write at operation `88888888888888888888888888888888`, the
+unchanged frozen `cross-owner-receipt` case fails over the actual device-dialed
+encrypted iroh receiver: expected `permission_denied`, actual `not_found`.
+`spec/hub-protocol.md` says receipt `not_found` means never admitted for that
+caller/target; the landed `receipt.rs` deliberately hides foreign-owner and
+unknown IDs identically. No frozen input or production receipt behavior was
+changed to force a pass. Resolve this through the orchestrator's ADR process.
+
+The harness committed in `c50cc0b` is WIP, NOT qualification. Its prior 25 wire
+matches are rejected as acceptance: default completed-step-zero provisioning and
+stronger reopened receipt/audit/queue oracles remain incomplete. In particular,
+a byte copy of a still-owned WAL is not a final reopened-owner boundary proof.
+
+The recovered installed-push merge includes `c46b214`; `code_pending` now fences
+the common deliverability gate and the detached guest preflight. The seven
+`installed_code_` tests and eleven native encrypted receiver regression tests
+pass after integration. Native runtime/proto all-target Clippy `-D warnings`,
+fmt and diff checks pass. These are selected regressions, not a fresh whole
+workspace/native run or exact-head ship review/CI. No PR or merge exists yet.
+The historical sections below record earlier checkpoints, not current-head
+whole-suite qualification.
+
 ## Implemented and exercised
 
 - Actual `DeviceHandler` receives debug.read/write, hub.inbox/cancel, pause/step
