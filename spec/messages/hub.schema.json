@@ -9,17 +9,13 @@
     "hub-bool": {
       "type": "boolean"
     },
-    "hub-oid": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{40}(?![\\s\\S])"
-    },
     "hub-hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
     },
     "hub-build-version": {
       "enum": [
-        "0.1"
+        "1.0"
       ]
     },
     "hub-build-record": {
@@ -28,8 +24,8 @@
         "version": {
           "$ref": "#/$defs/hub-build-version"
         },
-        "source_commit": {
-          "$ref": "#/$defs/hub-oid"
+        "source_tree": {
+          "$ref": "#/$defs/hub-hash"
         },
         "recipe_sha256": {
           "$ref": "#/$defs/hub-hash"
@@ -49,7 +45,7 @@
       },
       "required": [
         "version",
-        "source_commit",
+        "source_tree",
         "recipe_sha256",
         "policy_sha256",
         "transform_sha256",
@@ -102,10 +98,20 @@
       "minimum": 0,
       "maximum": 256
     },
-    "hub-maybe-oid": {
+    "hub-maybe-tree": {
       "anyOf": [
         {
-          "$ref": "#/$defs/hub-oid"
+          "$ref": "#/$defs/hub-hash"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-maybe-generation": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/uint64"
         },
         {
           "$ref": "#/$defs/hub-null"
@@ -166,19 +172,6 @@
         "faulted"
       ]
     },
-    "hub-ref": {
-      "enum": [
-        "refs/heads/hub",
-        "refs/published/main",
-        "refs/heads/logs"
-      ]
-    },
-    "hub-fetch-ref": {
-      "enum": [
-        "refs/published/main",
-        "refs/heads/logs"
-      ]
-    },
     "hub-method": {
       "enum": [
         "hub.enroll",
@@ -186,14 +179,14 @@
         "hub.start",
         "hub.stop",
         "hub.status",
-        "hub.git.push",
-        "hub.git.fetch",
+        "manage.patch",
+        "manage.tail_log",
         "hub.events",
         "hub.actions",
-        "debug.read",
-        "debug.write",
-        "debug.pause",
-        "debug.step",
+        "manage.read",
+        "manage.write",
+        "manage.pause",
+        "manage.step",
         "hub.inbox",
         "hub.health",
         "hub.receipt",
@@ -248,53 +241,6 @@
       ],
       "additionalProperties": false
     },
-    "hub-ref-purpose": {
-      "enum": [
-        "hub-ref",
-        "published-ref",
-        "logs-ref"
-      ]
-    },
-    "hub-ref-statement": {
-      "type": "object",
-      "properties": {
-        "purpose": {
-          "$ref": "#/$defs/hub-ref-purpose"
-        },
-        "hub": {
-          "$ref": "common.schema.json#/$defs/node-id"
-        },
-        "coglet": {
-          "$ref": "common.schema.json#/$defs/coglet-id"
-        },
-        "ref": {
-          "$ref": "#/$defs/hub-ref"
-        },
-        "old": {
-          "$ref": "#/$defs/hub-maybe-oid"
-        },
-        "new": {
-          "$ref": "#/$defs/hub-oid"
-        },
-        "archive_sha256": {
-          "$ref": "#/$defs/hub-hash"
-        },
-        "generation": {
-          "$ref": "common.schema.json#/$defs/uint64"
-        }
-      },
-      "required": [
-        "purpose",
-        "hub",
-        "coglet",
-        "ref",
-        "old",
-        "new",
-        "archive_sha256",
-        "generation"
-      ],
-      "additionalProperties": false
-    },
     "hub-signed-delegation": {
       "type": "object",
       "properties": {
@@ -315,23 +261,91 @@
       ],
       "additionalProperties": false
     },
-    "hub-signed-ref": {
+    "manage-file-bytes": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{2})*(?![\\s\\S])"
+    },
+    "manage-code-path": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*(?![\\s\\S])"
+    },
+    "manage-file-change": {
       "type": "object",
       "properties": {
-        "statement": {
-          "$ref": "#/$defs/hub-ref-statement"
+        "path": {
+          "$ref": "#/$defs/manage-code-path"
         },
-        "signer": {
-          "$ref": "common.schema.json#/$defs/node-id"
+        "bytes": {
+          "$ref": "#/$defs/manage-file-bytes"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "manage-files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/manage-file-change"
+      },
+      "maxItems": 4096
+    },
+    "manage-patch": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "revision": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "generation": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "files": {
+          "$ref": "#/$defs/manage-files"
         },
         "signature": {
           "$ref": "#/$defs/hub-signature"
         }
       },
       "required": [
-        "statement",
-        "signer",
+        "revision",
+        "generation",
+        "files",
         "signature"
+      ],
+      "additionalProperties": false
+    },
+    "manage-patch-signing": {
+      "type": "object",
+      "properties": {
+        "hub": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "base": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "revision": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "generation": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "files": {
+          "$ref": "#/$defs/manage-files"
+        }
+      },
+      "required": [
+        "hub",
+        "coglet",
+        "revision",
+        "generation",
+        "files"
       ],
       "additionalProperties": false
     },
@@ -341,8 +355,11 @@
         "state": {
           "$ref": "#/$defs/hub-state"
         },
-        "live_commit": {
-          "$ref": "#/$defs/hub-maybe-oid"
+        "live_tree": {
+          "$ref": "#/$defs/hub-maybe-tree"
+        },
+        "generation": {
+          "$ref": "#/$defs/hub-maybe-generation"
         },
         "step": {
           "$ref": "common.schema.json#/$defs/uint64"
@@ -356,7 +373,8 @@
       },
       "required": [
         "state",
-        "live_commit",
+        "live_tree",
+        "generation",
         "step",
         "pending",
         "error"
@@ -568,7 +586,7 @@
           "$ref": "#/$defs/hub-signed-delegation"
         },
         "initial": {
-          "$ref": "#/$defs/hub-signed-ref"
+          "$ref": "#/$defs/hub-hash"
         }
       },
       "required": [
@@ -577,12 +595,9 @@
       ],
       "additionalProperties": false
     },
-    "hub-push-params": {
+    "manage-patch-params": {
       "type": "object",
       "properties": {
-        "update": {
-          "$ref": "#/$defs/hub-signed-ref"
-        },
         "size": {
           "$ref": "#/$defs/hub-size"
         },
@@ -591,21 +606,20 @@
         }
       },
       "required": [
-        "update",
         "size",
         "sha256"
       ],
       "additionalProperties": false
     },
-    "hub-fetch-params": {
+    "manage-tail-log-params": {
       "type": "object",
       "properties": {
-        "ref": {
-          "$ref": "#/$defs/hub-fetch-ref"
+        "from_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
         }
       },
       "required": [
-        "ref"
+        "from_offset"
       ],
       "additionalProperties": false
     },
@@ -939,16 +953,16 @@
       ],
       "additionalProperties": false
     },
-    "hub-git-push-request-method": {
+    "manage-patch-request-method": {
       "enum": [
-        "hub.git.push"
+        "manage.patch"
       ]
     },
-    "hub-git-push-request": {
+    "manage-patch-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/hub-git-push-request-method"
+          "$ref": "#/$defs/manage-patch-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -960,7 +974,7 @@
           "$ref": "#/$defs/hub-timeout"
         },
         "params": {
-          "$ref": "#/$defs/hub-push-params"
+          "$ref": "#/$defs/manage-patch-params"
         },
         "context": {
           "$ref": "#/$defs/hub-context"
@@ -976,16 +990,16 @@
       ],
       "additionalProperties": false
     },
-    "hub-git-fetch-request-method": {
+    "manage-tail_log-request-method": {
       "enum": [
-        "hub.git.fetch"
+        "manage.tail_log"
       ]
     },
-    "hub-git-fetch-request": {
+    "manage-tail_log-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/hub-git-fetch-request-method"
+          "$ref": "#/$defs/manage-tail_log-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -997,7 +1011,7 @@
           "$ref": "#/$defs/hub-timeout"
         },
         "params": {
-          "$ref": "#/$defs/hub-fetch-params"
+          "$ref": "#/$defs/manage-tail-log-params"
         },
         "context": {
           "$ref": "#/$defs/hub-context"
@@ -1083,16 +1097,16 @@
       ],
       "additionalProperties": false
     },
-    "debug-read-request-method": {
+    "manage-read-request-method": {
       "enum": [
-        "debug.read"
+        "manage.read"
       ]
     },
-    "debug-read-request": {
+    "manage-read-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/debug-read-request-method"
+          "$ref": "#/$defs/manage-read-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -1120,16 +1134,16 @@
       ],
       "additionalProperties": false
     },
-    "debug-write-request-method": {
+    "manage-write-request-method": {
       "enum": [
-        "debug.write"
+        "manage.write"
       ]
     },
-    "debug-write-request": {
+    "manage-write-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/debug-write-request-method"
+          "$ref": "#/$defs/manage-write-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -1153,16 +1167,16 @@
       ],
       "additionalProperties": false
     },
-    "debug-pause-request-method": {
+    "manage-pause-request-method": {
       "enum": [
-        "debug.pause"
+        "manage.pause"
       ]
     },
-    "debug-pause-request": {
+    "manage-pause-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/debug-pause-request-method"
+          "$ref": "#/$defs/manage-pause-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -1190,16 +1204,16 @@
       ],
       "additionalProperties": false
     },
-    "debug-step-request-method": {
+    "manage-step-request-method": {
       "enum": [
-        "debug.step"
+        "manage.step"
       ]
     },
-    "debug-step-request": {
+    "manage-step-request": {
       "type": "object",
       "properties": {
         "method": {
-          "$ref": "#/$defs/debug-step-request-method"
+          "$ref": "#/$defs/manage-step-request-method"
         },
         "target": {
           "$ref": "common.schema.json#/$defs/coglet-id"
@@ -1385,10 +1399,10 @@
           "$ref": "#/$defs/hub-status-request"
         },
         {
-          "$ref": "#/$defs/hub-git-push-request"
+          "$ref": "#/$defs/manage-patch-request"
         },
         {
-          "$ref": "#/$defs/hub-git-fetch-request"
+          "$ref": "#/$defs/manage-tail_log-request"
         },
         {
           "$ref": "#/$defs/hub-events-request"
@@ -1397,16 +1411,16 @@
           "$ref": "#/$defs/hub-actions-request"
         },
         {
-          "$ref": "#/$defs/debug-read-request"
+          "$ref": "#/$defs/manage-read-request"
         },
         {
-          "$ref": "#/$defs/debug-write-request"
+          "$ref": "#/$defs/manage-write-request"
         },
         {
-          "$ref": "#/$defs/debug-pause-request"
+          "$ref": "#/$defs/manage-pause-request"
         },
         {
-          "$ref": "#/$defs/debug-step-request"
+          "$ref": "#/$defs/manage-step-request"
         },
         {
           "$ref": "#/$defs/hub-inbox-request"
@@ -1651,36 +1665,68 @@
       ],
       "additionalProperties": false
     },
-    "hub-transfer-type": {
+    "manage-log-path": {
+      "type": "string",
+      "pattern": "^/logs/([^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][.][^/\\u0000-\\u001f\\u007f\\\\]+)(/([^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][.][^/\\u0000-\\u001f\\u007f\\\\]+))*(?![\\s\\S])"
+    },
+    "manage-log-entry": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/manage-log-path"
+        },
+        "file_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "hex": {
+          "$ref": "#/$defs/hub-chunk-hex"
+        }
+      },
+      "required": [
+        "path",
+        "file_offset",
+        "hex"
+      ],
+      "additionalProperties": false
+    },
+    "manage-tail-log-result": {
+      "type": "object",
+      "properties": {
+        "next_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "next_offset"
+      ],
+      "additionalProperties": false
+    },
+    "manage-log-type": {
       "enum": [
-        "transfer"
+        "log"
       ]
     },
-    "hub-transfer": {
+    "manage-log": {
       "type": "object",
       "properties": {
         "type": {
-          "$ref": "#/$defs/hub-transfer-type"
+          "$ref": "#/$defs/manage-log-type"
         },
         "correlation_id": {
           "$ref": "common.schema.json#/$defs/correlation-id"
         },
-        "size": {
-          "$ref": "#/$defs/hub-size"
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
         },
-        "sha256": {
-          "$ref": "#/$defs/hub-hash"
-        },
-        "update": {
-          "$ref": "#/$defs/hub-signed-ref"
+        "hex": {
+          "$ref": "#/$defs/hub-chunk-hex"
         }
       },
       "required": [
         "type",
         "correlation_id",
-        "size",
-        "sha256",
-        "update"
+        "offset",
+        "hex"
       ],
       "additionalProperties": false
     },
@@ -1705,7 +1751,7 @@
           "$ref": "#/$defs/hub-end"
         },
         {
-          "$ref": "#/$defs/hub-transfer"
+          "$ref": "#/$defs/manage-log"
         }
       ]
     }

@@ -189,11 +189,11 @@ impl GuestMemory for ObservedMemory<'_> {
     }
     fn read(&self, ptr: u32, len: u32) -> coglet_engine::Result<Vec<u8>> {
         let bytes = self.memory.read(ptr, len)?;
-        let argument = match coglet_types::decode(self.profile.rule("database::db-request"), &bytes)
-        {
-            Ok(value) => (true, value),
-            Err(_) => (false, V::Text(hex::encode(&bytes))),
-        };
+        let argument =
+            match crate::profile_codec::decode(self.profile.rule("database::db-request"), &bytes) {
+                Ok(value) => (true, value),
+                Err(_) => (false, V::Text(hex::encode(&bytes))),
+            };
         *self.argument.borrow_mut() = Some(argument);
         Ok(bytes)
     }
@@ -293,7 +293,7 @@ impl Host for DatabaseHost<'_, '_> {
             ));
         }
         let call = V::Map(call);
-        coglet_types::validate(
+        crate::profile_codec::validate(
             self.unit.contract_profile().rule("database::db-host-call"),
             &call,
         )

@@ -373,7 +373,7 @@ pub(crate) fn database_projection_with_profile(
     raw: &[u8],
     profile: crate::ContractProfile,
 ) -> Result<Value> {
-    let record = coglet_types::decode(profile.rule("database::db-step-record"), raw)?;
+    let record = crate::profile_codec::decode(profile.rule("database::db-step-record"), raw)?;
     let V::Map(entries) = &record else {
         return Err("database record is not a map".into());
     };

@@ -143,7 +143,7 @@ class MCContracts(unittest.IsolatedAsyncioTestCase):
             DispatchContract().map_once('surface',intent,None,None)
 
     async def test_heard_rehashed_traces_and_harness(self):
-        cases=json.loads((SPEC.parent/'conformance/abi/heard-archive.json').read_text())
+        cases=json.loads((SPEC/'fixtures/abi/heard-archive-timeline.fixture').read_text())
         schema=Schema('selected = trace\n'+self.validators.cddl)
         for v,case in zip(self.vectors,cases,strict=True):
             with self.subTest(name=v['name']):

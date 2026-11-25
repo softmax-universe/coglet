@@ -1,4 +1,4 @@
-# Router protocol — 0.1
+# Router protocol — 1.0
 
 > **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
@@ -29,8 +29,10 @@ bad arguments receives `invalid_argument`; a valid operation failure receives
 SHOULD send a failure before closing when it can safely identify the request.
 
 Every connection begins with `hub.enroll`, initiated by the device, with common
-`version-offer`; a success carries common `version-selection`. Only 0.1 is
-supported here. No other operation is admitted before success. The initiator
+`version-offer`; a success carries common `version-selection`. Only 1.0 is
+supported here. The ALPN suffix identifies unchanged transport framing, not
+the selected message version. Common and surface 0.1 shapes remain unchanged;
+there is no negotiation fallback to the removed hub 0.1 method set. No other operation is admitted before success. The initiator
 verifies selection. An already enrolled node sends `invite: null`; this still
 negotiates a fresh connection, with no grants expanded. Re-enrollment on an
 existing connection MUST offer/select only its selected version. Streams racing
@@ -76,11 +78,11 @@ Grant lookup is `(authenticated peer, exact method, target)` with expiry and
 generation. No wildcard/prefix implication and no transitive grant. Effective
 authority is the intersection of router policy, enrollment grants, delegation and
 local adapter grants. The router remains the only remote caller of device methods;
-external debug clients authenticate to the router separately, never to the runtime.
+external manage clients authenticate to the router separately, never to the runtime.
 A request delivered by the trusted router is still checked against local method and
 path limits. Revocation is checked at admission AND before boundary application,
 each chunk and action dispatch. Outstanding reads terminate and unapplied writes
-fail `permission_denied`. No default debug/log/state export. A ticket ending
+fail `permission_denied`. No default manage/log/state export. A ticket ending
 revokes its grants and cancels its unapplied writes; provenance records carry its
 `actor` and optional `ticket` even though the device authenticates the router.
 
@@ -89,46 +91,46 @@ revokes its grants and cancels its unapplied writes; provenance records carry it
 | `hub.enroll` | device → router | null; invite or existing allowlist |
 | `hub.install` | router → device | coglet; explicit install grant + delegation |
 | `hub.start`, `hub.stop`, `hub.status` | router → device | coglet; each distinct grant |
-| `hub.git.push` | router → device | coglet; only `refs/heads/hub` |
-| `hub.git.fetch` | router → device | coglet; only published/main or logs |
+| `manage.patch` | router → device | coglet; signed `/code` patch only |
+| `manage.tail_log` | router → device | coglet; explicit ordered log stream grant |
 | `hub.events` | device → router | coglet; enrolled source + relay binding |
 | `hub.actions` | router → device | coglet; action/capability/adapter grants too |
-| `debug.read` | router → device | coglet; read paths/step/log range |
-| `debug.write` | router → device | coglet; bounded `/data` paths only |
-| `debug.pause`, `debug.step` | router → device | coglet; independent control grants |
+| `manage.read` | router → device | coglet; read paths/step/log range |
+| `manage.write` | router → device | coglet; bounded `/data` paths only |
+| `manage.pause`, `manage.step` | router → device | coglet; independent control grants |
 | `hub.inbox` | router → device | coglet; append only |
 | `hub.health` | device → router | null; metadata only |
 | `hub.receipt`, `hub.cancel` | either | original target; original authenticated caller only |
 
-All router-originated requests, including status, debug.read and git.fetch,
-MUST carry `context: {actor, ? ticket}` at request level, except debug.write
+All router-originated requests, including status, manage.read and manage.tail_log,
+MUST carry `context: {actor, ? ticket}` at request level, except manage.write
 and hub.inbox which carry the same fields in params. Receipt/cancel also carry
 context to identify the original actor/ticket scope. The router authenticates its
 client and asserts this provenance; devices intersect peer authority with local
-`(actor, ticket-or-absent, method, target)` grants and path/ref limits. Missing
+`(actor, ticket-or-absent, method, target)` grants and path limits. Missing
 context is invalid; an unknown actor, ended ticket or missing scoped grant is
 `permission_denied`. Omitting a ticket selects only explicitly provisioned
 non-ticket authority, never the union of that actor's ticket grants. The router
 MUST NOT remove/substitute a client's ticket or actor to borrow kernel authority.
-These checks precede status/read disclosure and fetch metadata, and repeat before
+These checks precede status/read disclosure and tail metadata, and repeat before
 each response/data frame. Revocation terminates the stream without further data;
 already disclosed bytes cannot be recalled. Receipt lookup cannot cross scopes.
 All intervention audits and cancellation checks use that context, never an action
 payload actor override. Device-originated events/health use the authenticated
 relay binding instead, and enroll uses its one-use invite/allowlist.
 
-`debug.read` and `debug.write` never imply one another or pause/step. A debug
+`manage.read` and `manage.write` never imply one another or pause/step. A manage
 reader needing pause or single-step needs those additional explicit grants.
-All methods above are the entire 0.1 method set; unknown methods fail
+All methods above are the entire 1.0 method set; unknown methods fail
 `invalid_argument`, not extension fallback. Grant provisioning/revocation is
 operator configuration, not a remotely self-authorizing method.
 
 The successful `hub-success.result` union is selected by the original method,
 not freely interchangeable: enroll → hub-enroll-result; status → hub-status;
 read → hub-read-result; events → hub-events-result; actions → common
-action-accept; step → hub-step-result; fetch/health → hub-empty; all other
+action-accept; step → hub-step-result; tail_log → manage-tail-log-result; health → hub-empty; all other
 methods → hub-mutation-receipt. Reply shape mismatch fails the operation.
-Mutation receipts may be queued or terminal except pause/stop/step/git.push,
+Mutation receipts may be queued or terminal except pause/stop/step/manage.patch,
 which wait for their specified boundary or time out; receipt polling recovers
 their state. `hub.cancel` returns the original operation's cancelled receipt;
 if already applied it returns `conflict` without changing that receipt.
@@ -136,18 +138,16 @@ if already applied it returns `conflict` without changing that receipt.
 ## Lifecycle and boundary ordering
 
 Install creates a stopped coglet with verified delegation, an empty private data
-namespace, and a verified initial signed router commit (objects must already be in
-local quarantined storage from a git push or local provisioning). Install checks
-manifest capabilities against local grants and the signed artifact. No compiler
-runs on the device. A repeated identical durable operation returns its original
-receipt; a different install for an existing coglet is `conflict`. Initial git
-push may stage objects for an authorized uninstalled target but cannot run code.
+namespace and an initial verified staged code tree. Its `initial` field is the
+exact staged revision hash; see the patch apply boundary below. No compiler runs
+on the device. Identical durable retries return the original receipt; a different
+install for an existing coglet is `conflict`. Initial patch staging cannot run code.
 Start checks verified code, capability grants and kill switch; starting an
 already running coglet is a no-op. Stop waits for a safe boundary, prevents the
 next step and cancels pending actions using the adapter's cancellation rules;
 it cannot retract physical effects. A hung step is interrupted by runtime
 budgets. Paused is distinct from stopped. Start resumes paused operation.
-Status returns state (`stopped`, `running`, `paused`, `faulted`), live commit,
+Status returns state (`stopped`, `running`, `paused`, `faulted`), live tree and generation,
 last committed step, pending mutation count and last shared error or null.
 
 After daemon restart, before exposing device readiness, recover locally configured
@@ -181,8 +181,8 @@ input is ready, not continuous CPU use. See
 [ADR-0027](../docs/adr/0027-daemon-restart-resume.md).
 
 Boundary processing is serialized per coglet and durable: (1) finish or abort the
-current step; (2) append audit and apply queued debug/inbox mutations in receipt
-order; (3) verify/apply an admitted router ref change; (4) pin inputs and code for the
+current step; (2) append audit and apply queued manage/inbox mutations in receipt
+order; (3) verify/apply an admitted filesystem patch; (4) pin inputs and code for the
 next step; (5) run at most one fresh Wasm instance; (6) journal intents before
 dispatch. No writes, code changes or new inbox bytes become visible mid-step.
 If the ABI refines journal encoding, it must preserve this ordering/provenance.
@@ -191,107 +191,185 @@ ones. Queue changes and their receipt/audit records commit atomically with data
 so crash recovery cannot append an inbox message twice. Stopped/paused coglets
 still process boundary mutations without executing guest code.
 
-`debug.pause` is acknowledged `applied` only once no guest step is running;
-it does not pause real-time adapter reflexes or the kill switch. `debug.step`
+`manage.pause` is acknowledged `applied` only once no guest step is running;
+it does not pause real-time adapter reflexes or the kill switch. `manage.step`
 requires paused state, applies pending boundary work, executes exactly one nonempty
 event batch, and stays paused, returning the committed step number. If no event
-is queued, the runtime records a synthetic common `runtime.debug_step` event
+is queued, the runtime records a synthetic common `runtime.manage_step` event
 (source = target coglet, next durable source sequence, current runtime logical
 time, payload = `{}`, correlation_id = this step operation ID). This wake uses
 the same source sequencer as other runtime-generated events, bypasses subscription
 filtering and is journaled; no empty batch is passed to the ABI.
 Concurrent step requests serialize; no implicit resume. On failure, remain
 paused or faulted, never silently run. A step timeout can have committed; inspect
-its receipt. `debug.read` uses one committed snapshot, never partially running
+its receipt. `manage.read` uses one committed snapshot, never partially running
 state. Its result includes step and data-tree hash. Reads/tails are bounded
 ranges; polling is opt-in, no unsolicited private-state stream.
 
-## Git control plane
+<a id="git-control-plane"></a>
 
-Each coglet has its own repository. Version 0.1 uses git SHA-1 object IDs (40
-lowercase hex) strictly as object identifiers, NOT as signature algorithms.
-The transfer is a self-contained git bundle v2 (no prerequisites), max 64 MiB,
-encoded as lowercase even-length hex chunks (max 32768 raw bytes each). Validate
-bundle header, declared ref/tip, object connectivity and `git fsck --strict` in
-quarantine, with hooks, alternates, replace refs and external filters disabled.
-Only the requested ref may be imported. A transfer SHA-256 binds the complete
-raw bundle; a signed SHA-256 digest of `git archive --format=tar <commit>` bytes
-(with no user tar configuration) additionally binds the exact code archive.
-Untrusted trees MUST reject symlinks, gitlinks, absolute paths, traversal, `.git`
-entries, `.gitattributes` and `.gitmodules` at any depth, and any `data` or `/data`
-subtree, including logs transfers. Rejecting attributes prevents archive export
-rules from omitting code from the signed SHA-256 archive. Imports MUST
-NOT overwrite working state or private data. Reject mismatching artifact digest,
-missing `bin/step.wasm`, or invalid Wasm before activation for code refs. Logs
-refs instead require a logs-only path allowlist and never require Wasm. No ref fallback.
-During import enforce finite configured expanded-byte, object-count, delta-depth,
-quarantine-disk and CPU/time limits (defaults: 256 MiB, 100000 objects, depth 50,
-256 MiB and 30 seconds). Stop before exceeding a limit with `resource_exhausted`;
-remove quarantine without updating refs. Compressed size/credit alone is not a
-resource bound.
+## Filesystem patches and log tails
 
-| Ref | Authoritative writer and verification |
-|---|---|
-| `refs/heads/hub` | Router kernel signs `hub-ref` with the pinned **router iroh Ed25519 node key**; runtime verifies. Only router pushes. |
-| `refs/published/main` | Hosted coglet runtime signs `published-ref` with that **coglet's own iroh Ed25519 node key**, not the device or router key. Router verifies delegation/binding and key. |
-| `refs/heads/logs` | Runtime batch-commits append-only `/logs`; coglet key signs `logs-ref`. Router fetches only when explicitly granted. |
+A coglet is a plain filesystem: `/code` is policy, `/data` is private state,
+and `/logs` is append-only. There are no repository objects, refs or bundles.
+`manage.patch` changes only `/code`; `manage.tail_log` observes only explicitly
+granted logs. Each has its own exact-method grant; neither implies read, write,
+pause, step or installation authority.
 
-For each update, `ref-statement` includes purpose, hub node, coglet ID, exact ref,
-old commit (null only for creation), new commit, archive SHA-256 and increasing
-generation. The authoritative writer (including the receiver of router pushes)
-MUST compare `old` with its current authoritative tip and require a strictly
-higher generation in one durable CAS; mismatch/replay is `conflict`.
+### Patch and FileChange
 
-Fetch is authenticated snapshot observation, NOT replay of a publisher CAS.
-After verifying signer, current delegation, purpose/hub/target/ref, complete
-bundle and archive digest, an observer atomically compares the signed generation
-with its durable watermark scoped by (router, coglet, ref):
-- No watermark: pin the verified current statement as the baseline.
-- Higher generation: accept the current snapshot even if `old` differs from the
-  observed tip. For A(gen 1) → B(gen 2) → C(gen 3), an observer at A accepts the
-  signed B→C statement and C bundle without retrieving B. `old` describes the
-  publisher transition, not the observer's precondition.
-- Equal generation: only the identical previously verified statement is a no-op;
-  any different statement is `conflict`, even if its new tip matches.
-- Lower generation: reject with `conflict`; never rewind the observed watermark.
+The closed `manage-patch` record is `{? base, revision, generation, files,
+signature}`. `base` and `revision` are tree hashes (64 lowercase hex characters).
+A code tree hash is the ABI state-hash algorithm restricted to `/code`: SHA-256
+of core-deterministic CBOR of the absolute `/code/...` path-to-lowercase-hex map.
+It is not the full ABI snapshot hash; `/data` and `/logs` are excluded. Empty
+code trees use the hash of the empty map. No new tree serialization is introduced.
 
-Recheck against the latest watermark at commit so concurrent fetch completions
-cannot overwrite a newer observation. Persist statement, watermark and tracked
-ref atomically; reconnect/restart cannot erase anti-replay state. A same-statement
-retry still verifies its transfer and current authority. Fetch may skip historical
-observations but MUST retain its own accepted-statement audit. It does not prove
-possession of every intermediate publication; that is not a 0.1 guarantee.
-An exact duplicate operation returns its original receipt instead. No forced ref
-rewind: rollback is a new authorized generation whose new commit restores a
-last-known-good tree, with correct old ref; signed history never loses audit.
-Admission stages router pushes; their terminal receipt becomes `applied` only at the
-boundary after verification. Status exposes the live commit, not just staged tip.
-The published ref attests an explicitly published code tree, never `/data` or
-unfiltered private state. It need not move with every step. Logs commits contain
-only approved log files, no code or data; roughly every 30 seconds or on rotation,
-not each step. Debug live log reads do not require a git commit.
+`files` contains 1..4096 whole-file changes, sorted strictly by UTF-8 path bytes,
+with unique paths. A `FileChange` is `{path, ? bytes}`; `bytes` is **lowercase
+even-length hex**, as required by the shared no-CBOR-byte-string profile.
+Present `bytes: ""` puts an empty file; absence deletes (an absent file is a
+no-op). Null is not absence. A file cannot also be an ancestor directory.
+Paths are relative beneath `/code`: 1..32 ASCII segments, each 1..128 characters
+from `[a-zA-Z0-9_.-]`, excluding `.` and `..` segments. No absolute path,
+traversal, empty segment, backslash, control byte, symlink or non-regular-file
+entry is allowed. Paths are case-sensitive bytes; never resolve through the host
+filesystem or normalize case. An entry named `data` is still `/code/data`, never
+`/data`. The private namespaces are inaccessible to patches.
+
+`generation` is uint64 and MUST strictly exceed the durable watermark (initially
+zero), scoped by pinned router and target coglet; never reset it on restart,
+uninstall/reinstall or key rotation without explicit reprovisioning. At exhaustion
+fail closed; rollback is a new higher generation, never a rewind. For an installed
+target `base` MUST be present and equal the current code tree; for initial staging
+it MUST be absent. Subsequent initial staging can replace a staged candidate only
+with a higher generation. Staging's durable watermark fences replay too, but
+status remains null until install. Stale base or non-increasing generation is
+`conflict` (`details.reason`: `stale_base` or `generation`).
+
+`signature` is lowercase 128-hex Ed25519 by the pinned router node key. Sign UTF-8
+`coglet/hub/0:manage.patch\n` followed by deterministic CBOR of
+`{hub, coglet, ? base, revision, generation, files}`: the Patch fields excluding
+signature plus the pinned router node ID and request target. No signer supplied
+by a caller can override that pin. Delegation still signs UTF-8
+`coglet/hub/0:delegation\n` followed by its statement, excluding signer/signature;
+its signer is the target coglet key, verified against the authenticated binding.
+A signature never grants authority or binds an actor/ticket by itself.
+
+A patch MUST leave valid `bin/step.wasm`, including the ABI exports/imports and
+selected admission policy, and valid manifest/build provenance. Recompute the
+candidate tree and require `revision` equality. Preserve `/data` and `/logs`.
+Invalid path, revision, module or provenance is `invalid_argument`; a bad signer
+or signature is `unauthenticated`; revoked authority is `permission_denied`.
+Validate shape/encoding/limits, authority/signature, paths, base, generation,
+resulting revision and executable/provenance in that order. No failure changes
+live code, private data or generation. Bounded staging storage is released on
+failed transfer or cancellation, not confused with durable admitted operations.
+
+### Transfer, CAS and the apply boundary
+
+`manage.patch` params are `{size, sha256}` for the complete core-deterministic
+CBOR Patch, including its signature. `size` is 1..67108864 **encoded bytes**;
+hex overhead counts toward this 64 MiB cap, not just file contents. Reject size
+excess before allocation with `resource_exhausted`. Frame size stays 1 MiB.
+Responder sends cumulative `hub-credit`; initiator sends contiguous `hub-chunk`
+frames (max 32768 raw encoded-patch bytes each) from offset zero, then `hub-end`.
+The raw concatenation MUST have exactly the declared length and SHA-256, decode
+as `manage-patch`, and re-encode byte-identically. Missing/trailing chunks,
+wrong offsets, digest mismatch or malformed bytes fail atomically. No partial
+resume. Cumulative credit never decreases or exceeds size; unconsumed allowance
+is at most 65536 bytes. Reject oversend/overflow; no credit by timeout is
+`deadline_exceeded`. Credit/end/terminal frames are exempt from byte credit.
+
+Admission durably records the original operation ID, canonical intent digest,
+actor/ticket scope and pinned authority generations. Recheck authority at each
+chunk and application. At application, signature, base, generation, candidate
+revision, verified bytes, audit and terminal receipt MUST commit in one serialized
+durable CAS. Status exposes only the applied live tree and generation. Concurrent
+candidates cannot pass against an obsolete base. An exact operation retry returns
+its retained receipt before fresh CAS checks; a different operation with the same
+generation conflicts. Receipts never renew authority for a still-unapplied effect.
+
+For installed targets, terminal `applied` occurs only at the serialized runtime
+step boundary after the current attempt finishes/aborts and before input/code
+pinning; replace the executable safely without running guest code during apply.
+For an uninstalled target, ADR-0026's boundary is durable **verified staging**
+consumed by install, together with the original operation's immutable completion
+receipt and scope. No guest execution, installed private namespace or live tree
+is created. A queued record or candidate's presence alone never proves completion.
+Install's `initial` is the exact staged revision; require its applied receipt,
+current authority, verified bytes and delegation, then atomically consume staging
+and expose its generation. Locally trusted provisioning is a distinct source,
+never a way to relabel queued remote work as applied. Crash recovery reconciles
+the same original ID and receipt, never allocates a replacement operation or
+repeats a confirmed effect. Installed hot-apply and pre-install staging are
+separate implementation qualification gates.
+
+### Log tail
+
+`manage.tail_log` params are `{from_offset}`. It returns `manage-log` frames
+`{type: "log", correlation_id, offset, hex}`, then one terminal success
+`{next_offset}`. The offset is a byte position in a **per-coglet** durable,
+ordered logical `/logs` append stream, not a directory enumeration, file-local
+position, source event sequence or router-global counter. Every committed log
+append contributes one canonical JSONL entry `{file_offset, hex, path}` in durable
+append order. JSON bytes follow ABI inbox serialization (compact sorted keys,
+unescaped Unicode, standard escapes, one LF). `path` MUST be a canonical absolute
+`/logs/...` path in the full ABI UTF-8 domain, not the bounded ASCII subset
+accepted by management read/write requests. Preserve spaces and exact Unicode
+bytes without normalization or a separate log-entry path-length cap; forbid C0
+controls, DEL, backslash, empty/dot/dot-dot components and trailing slash as in
+the ABI. `file_offset` is that file's prior byte length; `hex` is nonempty
+lowercase hex of the appended bytes, max 32768 raw bytes per entry (split larger
+appends in order). These entries describe all committed log-file writes, including
+stdout/stderr and structured log output; they are not extra guest-writable files.
+
+Persist append bytes, entry order, logical cursor and highwater atomically with
+the originating committed step/boundary. Expose only committed bytes; failed
+attempts expose no entries. Restart or rotation never resets/reassigns an offset.
+The logical stream is retained for the provisioning lifetime; storage pressure
+refuses new appends before commit, never silently discards history. A tail cursor
+survives process restart, independent of file rotation and request correlation ID.
+
+The requester sends cumulative `hub-credit.bytes` relative to `from_offset`,
+initially zero. The log owner sends contiguous chunks within credit, max 32768
+raw logical-stream bytes each. A chunk may split a JSONL record or UTF-8 sequence;
+concatenate before parsing. Each operation returns at most 65536 raw stream bytes;
+credit cannot exceed that cap and unconsumed credit is at most 65536. Offset plus
+length is checked for uint64 overflow. Recheck current actor/ticket and log/path
+grants before every frame. A grant must cover every path represented by this
+target's stream; otherwise refuse the whole tail, never filter bytes and corrupt
+cursors. A narrower path grant may use bounded `manage.read` instead.
+
+`from_offset` above highwater is `invalid_argument`; equality waits for new
+committed bytes. End successfully at the 65536-byte cap or request timeout with
+`next_offset` equal the first unsent byte, including empty successful timeout at
+highwater. Credit starvation by timeout is `deadline_exceeded`, not permission
+to buffer unbounded output. FIN/reset cancels this observation only; reconnect
+with the first unconsumed byte. No mutation receipt or implicit subscription,
+unsolicited stream, private-data export or batch publication is created.
 
 ### Build, rewrite, sign and replay
 
-Build-then-commit is a router responsibility. Pin source and build recipe/toolchain,
+Build-then-patch is a router responsibility. Pin source and build recipe/toolchain,
 compile core Wasm into a temporary **original** module, then apply the selected
 publication policy before gates, signing or transfer. When the proposed
 [ADR-0003](../docs/adr/0003-determinism-rules.md) policy is selected, run its
 R1/R2/R4/R5 admission checks and R3 NaN-result rewrite on the router; validate the
-rewritten module and run gates against those exact output bytes. Commit the
+rewritten module and run gates against those exact output bytes. Include the
 output as `bin/step.wasm` together with source, manifest, prompts and the build
-record below. Do not commit the original under the executable path, run gates
+record below. Do not include the original under the executable path, run gates
 only on the original, or rewrite on the device or during replay. Rewriting,
-lint, validation or gate failure leaves authoritative refs and live code unchanged.
+lint, validation or gate failure leaves staged and live code unchanged.
 This defines the publication boundary, **not acceptance of ADR-0003** or a claim
 that its transform/cross-architecture behavior has been qualified. Until policy
 qualification, production admission under that policy fails closed.
 
 `build/provenance.cbor` is a core-deterministic CBOR `hub-build-record`, included
-in the signed code archive. Its closed fields are:
+in the signed resulting code tree. Its closed fields are:
 
-- `version`: `"0.1"`;
-- `source_commit`: Git object ID of the pinned source before build;
+- `version`: `"1.0"`;
+- `source_tree`: code tree hash of the pinned source before build;
 - `recipe_sha256`: SHA-256 of the retained build recipe/toolchain lock bytes;
 - `policy_sha256`: SHA-256 of the retained policy document/parameters bytes;
 - `transform_sha256`: SHA-256 of the retained rewrite tool artifact bytes;
@@ -307,49 +385,26 @@ module hashes may be equal; record the tool/policy anyway. Missing provenance or
 an output hash mismatch is `invalid_argument` at code admission, with no activation.
 Older transfer-only fixtures without this record do not establish code admission.
 
-The router's `hub-ref` signature authenticates the commit **and its SHA-256 archive**,
-which includes the rewritten bytes and provenance binding both original and output
-hashes. There is no separate signature on the original module, and the original
-hash never authorizes execution. The coglet-key `published-ref` signature similarly
-binds the explicitly published archive and its preserved build record; publication
-MUST NOT silently rebuild/rewrite or replace provenance. A new build requires a new
-record, gates and signed ref generation. Logs refs need no build record.
+The router's patch signature authenticates the resulting code tree, including
+the exact rewritten bytes and provenance binding both original and output hashes.
+There is no signature on the original module that authorizes execution. A new
+build requires a new record, gates and signed patch generation. Log tails require
+no build record. Publication/history outside management is deferred to a Gitlet.
 
-At activation, verify the signed archive and record/output hash before pinning the
-code at the boundary. Record the admitted signed statement and provenance in the
+At activation, verify the signed patch and resulting code tree and record/output hash before pinning the
+code at the boundary. Record the admitted signed patch and provenance in the
 local admission audit; retain provenance at `/code/build/provenance.cbor` in ABI
 snapshots. ABI `code_hash` and its retained `blobs` entry identify the **rewritten**
 `bin/step.wasm`, not the original or a freshly compiled substitute. Replay loads
 exactly that blob, verifies its SHA-256 and provenance output digest, and never
-re-runs the compiler/transform or substitutes a current ref. Missing/mismatched
+re-runs the compiler/transform or substitutes current code. Missing/mismatched
 bytes fail replay closed. Promotion starts a new ABI trace with the new code;
 rollback selects a previously admitted rewritten artifact with its provenance,
 not a rebuild. Gate evidence must name that same rewritten digest.
 
 Factory or builder output is never a promotion signature. Policy/gates and
-probation remain kernel responsibilities, not bypasses granted by `hub.git.push`.
-
-All signed values use Ed25519, lowercase 128-hex signature. Sign exactly UTF-8
-`coglet/hub/0:<purpose>\n` followed by core-deterministic CBOR of `statement`,
-excluding `signer` and `signature`. Purposes are `delegation`, `hub-ref`,
-`published-ref`, `logs-ref`. Verifiers select the expected purpose before checking
-and reject foreign router, target, ref, expired delegation or signer. Domain
-separation prevents replay across purposes/protocols. Public signing fixtures
-contain test-only seeds; never deploy them.
-
-Git push: request declares size/hash and signed ref statement; responder sends
-`hub-credit`; initiator sends numbered `hub-chunk` frames until exactly size
-bytes, then `hub-end`. Responder validates, queues update and eventually replies.
-Fetch: request specifies ref; responder sends `hub-transfer` metadata and signed
-statement, waits for initiator credit, sends chunks/end, then terminal success.
-Receiver verifies before accepting/importing. A fetch observer MUST check signed
-metadata against its current watermark before issuing credit; an older or
-equal-but-different statement is a local `conflict` and resets the stream with
-application code 1 without credit. Recheck the watermark after transfer as well.
-Zero/missing/trailing chunks,
-incorrect offsets, bytes beyond declared size or hash mismatch fail atomically.
-No partial resume; retry same operation or start a new fetch. Rejected transfers
-have no ref/data effects and quarantines are removed on timeout/cancellation.
+probation remain kernel responsibilities, not bypasses granted by `manage.patch`.
+Signing fixtures contain test-only keys, never deployment keys.
 
 ## Event and action relay
 
@@ -403,7 +458,7 @@ unknown, report failed with `unavailable` and explicit unknown-effect details,
 never blindly replay. No exactly-once physical-effect guarantee. A kill switch
 always wins. Expired actions cannot be dispatched even after reconnect.
 
-## Inbox and debug mutation receipts
+## Inbox and manage mutation receipts
 
 `hub.inbox` queues one delivery `{id, sender, event}`; event is the unchanged
 common event envelope and `event.source` MUST equal sender. The persisted line
@@ -419,19 +474,19 @@ escaped; integers retain full precision. `sender` is authenticated router identi
 (or the router-validated original source on relay); never trust an arbitrary sender
 string. The router checks sender authority and the runtime trusts only the pinned
 router's explicit provenance. LLM results/steering/factory notes use this primitive.
-Runtime owns append; coglet owns its separate read cursor. Neither debug.write
+Runtime owns append; coglet owns its separate read cursor. Neither manage.write
 nor guest code may truncate/rewrite the inbox. No embedded inbox import and no
-implicit git export. Message `id` dedupes per target permanently, or until explicit
+implicit private export. Message `id` dedupes per target permanently, or until explicit
 operator reprovisioning; same ID/different message is `conflict`.
 
-`debug.write` replaces a bounded file at a canonical absolute `/data/...` path,
+`manage.write` replaces a bounded file at a canonical absolute `/data/...` path,
 with UTF-8 text content and an expected pre-write ABI snapshot hash. No traversal,
 empty components, C0 controls (U+0000–U+001F), DEL (U+007F), backslashes,
 symlink resolution, inbox or runtime cursor/
 receipt/audit internals. Permission/path limits and expected hash are checked
 again at application. Failure is atomic `conflict`/`permission_denied`. There is
-no arbitrary command execution or `/code` write via debug. Binary debug writes
-are not in 0.1. Reads use similarly canonical `/data` or `/logs` paths (and
+no arbitrary command execution or `/code` write via manage. Binary manage writes
+are not in 1.0. Reads use similarly canonical `/data` or `/logs` paths (and
 `@step/<decimal>` for recorded inputs/outputs); grant scopes may narrow them.
 
 A mutation result is a receipt `{operation_id, state, step, error}`. State is
@@ -455,7 +510,7 @@ cursor probes reserve nothing; storage pressure refuses new admission, never
 evicts an old receipt to admit work.
 `not_found` on receipt means never admitted for that caller/target, not permission
 to retry someone else's ID. An authorized caller can retry its original mutation
-unchanged. Fetch/status/read/health are observation operations and may be retried
+unchanged. Tail/status/read/health are observation operations and may be retried
 with fresh correlation IDs; action IDs still retain their common meaning.
 
 Each intervention audit record contains operation ID, actor, optional ticket,
@@ -468,32 +523,25 @@ paths. If audit/receipt cannot commit, do not apply a write or inbox append.
 ## Health, limits and backpressure
 
 Health is explicit metadata: device node ID, monotonic uptime milliseconds,
-queue depth, available bytes, and per-coglet state/step/live commit. No file
+queue depth, available bytes, and per-coglet state/step/live tree and generation. No file
 contents, prompts or transcript. Device reports every 10 seconds while connected;
 a router marks degraded after 30 seconds without accepted health and disconnected
 on transport loss. These are router-local elapsed durations, not clock comparison.
 Health alone cannot authorize enrollment/start. Reconnection resumes no expired
 grants, and queued operations are recovered from receipts.
 
-At most 16 concurrent operation streams per peer, including at most 2 git
+At most 16 concurrent operation streams per peer, including at most 2 patch/tail
 transfers, and 4 MiB of queued decoded request data per peer. Reserve one stream
 slot for stop/cancel/health/receipt. Requests carry at most 64 events; individual
-inbox/debug text is at most 65536 UTF-8 bytes. Queue capacity is also bounded per
+inbox/manage text is at most 65536 UTF-8 bytes. Queue capacity is also bounded per
 target to 256 pending mutations; reject over capacity before admission. Reads
 return at most 65536 bytes per call; a text slice must end on UTF-8 boundaries.
 Wire/schema text character limits are coarse bounds; byte limits are additional
 semantic checks. Router and device advertise no arbitrary unbounded windows.
 
-QUIC credit is necessary but insufficient. Only git transfers have multiple data
-frames: receiver sends cumulative `hub-credit.bytes` measured in raw decoded
-bundle bytes (initially zero; max declared size, never decreasing). Sender may
-send chunks only within credit, offsets start at zero and advance contiguously.
-Receiver extends credit only as bounded storage is durably consumed; total
-unconsumed allowance MUST stay <=65536 raw bytes. Credit/end/terminal control
-frames are exempt from byte credit, bounded by frame/concurrency limits. No
-credit within request timeout aborts transfer with `deadline_exceeded`. Reject
-credit overflow/decrease/oversend; no wraparound. Event/action/inbox calls use
-bounded unary admission, so no hidden infinite queue or streaming subscription.
+QUIC credit is necessary but insufficient. Only patch/tail operations have
+multiple data frames, with the explicit bounded credit rules above. Other
+operations use bounded unary admission, never an unbounded hidden queue.
 Unclassified streams have a 2-second deadline to supply a complete request
 frame; at most two may be unclassified concurrently. Reset stalled/extra streams
 without admitting work. Set QUIC incoming stream capacity to allow classification
@@ -512,12 +560,37 @@ Run `python3 -m unittest discover -s spec/tests -v` with
 `spec/tests/requirements.txt` installed (Python 3.12 matches CI).
 `test_hub.py` validates every request/result/transfer/signing shape against both
 schemas, exact golden CBOR, framing negatives and test-key signatures.
-[Case data](../conformance/hub/) defines black-box temporal scenarios;
-[the suite contract](../conformance/hub/README.md) specifies observable assertions.
-Case data/schema checks are NOT a claim that a router/runtime or mock already passes
-wire conformance. The harness owner must execute the same cases against both.
+The legacy 0.1 `conformance/hub/` cases and runtime implementations are migrated
+separately, not accepted as 1.0 coverage by these spec-only tests. The filesystem
+patch, signed-negative and fresh-process tail vectors here are specification
+oracles, not proof that a router/runtime or mock implements the new wire revision.
 Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
 SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including
-`/code`, `/data`, `/logs`, excluding journal storage. `debug.read.snapshot_hash`
-and `debug.write.expected_hash` use that definition. No alternate hash or inbox
+`/code`, `/data`, `/logs`, excluding journal storage. `manage.read.snapshot_hash`
+and `manage.write.expected_hash` use that definition. No alternate hash or inbox
 format is standardized here.
+
+## Compatibility alias table (temporary)
+
+Hub 1.0 peers MUST normalize the following method names before canonical schema
+validation, grant lookup, operation-intent digesting, audit and receipt storage.
+Provisioned grants use that same canonicalization; aliases confer no additional
+authority. Reject an alias at or after **2027-02-25T00:00:00Z**, using trusted
+authority time (fail closed if unavailable). No protocol downgrade is implied.
+Canonical schemas, emitted events, journals and new clients use only new names.
+Retained original signed delegation bytes MUST NOT be rewritten before signature
+verification; normalize its method entries only afterwards for authorization.
+Do not rewrite historical immutable journals or receipts during recovery.
+
+| Accepted input before removal | Canonical name |
+|---|---|
+| `debug.read` | `manage.read` |
+| `debug.write` | `manage.write` |
+| `debug.pause` | `manage.pause` |
+| `debug.step` | `manage.step` |
+| `runtime.debug_step` (historical import only) | `runtime.manage_step` |
+
+The removed Git control methods have **no aliases**, even during this window;
+unknown/removed names fail `invalid_argument`. Runtime-generated wakes are never
+accepted from a remote producer. The historical event mapping is an explicit
+archive-import conversion into a new trace, never in-place hash mutation.

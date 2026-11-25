@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="unforged-stack-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="unforged-stack-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="unforged-stack-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="unforged-stack-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="unforged-stack-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="unforged-stack-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="unforged-stack-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="unforged-stack-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="469" rx="12" class="dg-bg"/>
+<rect x="24" y="24" width="300" height="300" rx="12" class="dg-group"/>
+<text x="40" y="48" text-anchor="start" class="dg-cap">DEVICE</text>
+<rect x="40" y="62" width="128" height="36" rx="8" class="dg-adapter"/>
+<text x="104.0" y="84.0" text-anchor="middle" class="dg-b">Mic, speaker</text>
+<line x1="104" y1="100" x2="104" y2="128" class="dg-warm" stroke-width="1.6" marker-end="url(#unforged-stack-warm)" marker-start="url(#unforged-stack-warm-s)"/>
+<rect x="180" y="62" width="128" height="36" rx="8" class="dg-adapter"/>
+<text x="244.0" y="84.0" text-anchor="middle" class="dg-b">Blender</text>
+<line x1="244" y1="100" x2="244" y2="128" class="dg-warm" stroke-width="1.6" marker-end="url(#unforged-stack-warm)" marker-start="url(#unforged-stack-warm-s)"/>
+<rect x="40" y="130" width="268" height="178" rx="8" class="dg-runtime"/>
+<text x="54" y="151" text-anchor="start" class="dg-code">cogletd</text>
+<text x="294" y="151" text-anchor="end" class="dg-m">hot path</text>
+<rect x="54" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
+<text x="112.0" y="186.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="178" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
+<text x="236.0" y="186.0" text-anchor="middle" class="dg-b">Blender</text>
+<rect x="54" y="212" width="240" height="34" rx="8" class="dg-e-wasm"/>
+<text x="174.0" y="233.0" text-anchor="middle" class="dg-b">WAMR engine</text>
+<rect x="54" y="254" width="240" height="42" rx="8" class="dg-runtime"/>
+<text x="174.0" y="272.0" text-anchor="middle" class="dg-b">object store, in process</text>
+<text x="174.0" y="288.0" text-anchor="middle" class="dg-m">git trees and commits, no git binary</text>
+<rect x="352" y="24" width="256" height="300" rx="12" class="dg-group"/>
+<text x="368" y="48" text-anchor="start" class="dg-cap">ROUTER</text>
+<rect x="368" y="62" width="224" height="246" rx="8" class="dg-hub"/>
+<text x="480" y="86" text-anchor="middle" class="dg-code">unforged</text>
+<text x="480" y="102" text-anchor="middle" class="dg-m">the cogent&#x27;s repository</text>
+<rect x="380" y="112" width="200" height="36" rx="6" class="dg-runtime"/>
+<text x="392" y="127" text-anchor="start" class="dg-code">refs/coglets/*</text>
+<text x="392" y="141" text-anchor="start" class="dg-m">every coglet&#x27;s state</text>
+<rect x="380" y="152" width="200" height="36" rx="6" class="dg-runtime"/>
+<text x="392" y="167" text-anchor="start" class="dg-code">refs/published/*</text>
+<text x="392" y="181" text-anchor="start" class="dg-m">promoted policies</text>
+<rect x="380" y="192" width="200" height="36" rx="6" class="dg-runtime"/>
+<text x="392" y="207" text-anchor="start" class="dg-code">allowed_signers</text>
+<text x="392" y="221" text-anchor="start" class="dg-m">who may do what</text>
+<rect x="380" y="232" width="200" height="36" rx="6" class="dg-runtime"/>
+<text x="392" y="247" text-anchor="start" class="dg-code">iroh ticket</text>
+<text x="392" y="261" text-anchor="start" class="dg-m">reach it from anywhere</text>
+<rect x="380" y="274" width="200" height="30" rx="8" class="dg-coglet"/>
+<text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet</text>
+<rect x="636" y="24" width="300" height="300" rx="12" class="dg-group"/>
+<text x="652" y="48" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
+<rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
+<text x="666" y="83" text-anchor="start" class="dg-code">cogletd</text>
+<rect x="666" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
+<text x="724.0" y="119.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<rect x="790" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
+<text x="848.0" y="119.0" text-anchor="middle" class="dg-b">Factory</text>
+<rect x="666" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
+<text x="724.0" y="171.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<rect x="790" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
+<text x="848.0" y="171.0" text-anchor="middle" class="dg-b">Memory</text>
+<rect x="652" y="236" width="268" height="72" rx="8" class="dg-hub"/>
+<text x="786.0" y="269.0" text-anchor="middle" class="dg-b">unforged workers on CAOS</text>
+<text x="786.0" y="285.0" text-anchor="middle" class="dg-m">river exec: replays, forks, tests</text>
+<line x1="786" y1="206" x2="786" y2="234" class="dg-teal" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
+<text x="796" y="224" text-anchor="start" class="dg-m">a step as a job</text>
+<line x1="310" y1="200" x2="366" y2="200" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)" marker-start="url(#unforged-stack-blue-s)"/>
+<line x1="594" y1="140" x2="650" y2="140" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)" marker-start="url(#unforged-stack-blue-s)"/>
+<line x1="310" y1="250" x2="366" y2="250" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
+<line x1="594" y1="270" x2="650" y2="270" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
+<text x="480" y="372" text-anchor="middle" class="dg-t">Every box speaks the same objects: a coglet is a ref, a step is a commit, a patch is a merge.</text>
+<text x="480" y="394" text-anchor="middle" class="dg-m">Only the transport differs: messages ride QUIC streams, state and patches ride git fetch and push over iroh.</text>
+<line x1="190" y1="440" x2="224" y2="440" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)"/>
+<text x="232" y="444" text-anchor="start" class="dg-m">messages, health</text>
+<line x1="346" y1="440" x2="380" y2="440" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)"/>
+<text x="388" y="444" text-anchor="start" class="dg-m">git fetch / push of refs</text>
+<line x1="550" y1="440" x2="584" y2="440" class="dg-warm" stroke-width="1.6" marker-end="url(#unforged-stack-warm)"/>
+<text x="592" y="444" text-anchor="start" class="dg-m">adapter events, actions</text>
+</svg>

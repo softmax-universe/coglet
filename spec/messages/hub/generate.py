@@ -19,7 +19,6 @@ N = 'a' * 64
 H = 'b' * 64
 ID = 'c' * 32
 COG = 'coglet:' + N
-OID = 'd' * 40
 HASH = 'e' * 64
 
 
@@ -73,18 +72,17 @@ def bounded(name, low, high):
 # Examples for imported definitions only; no copied schema definitions.
 EX.update({'node-id': N, 'coglet-id': COG, 'hub-id': 'hub:' + H,
            'source-id': 'hub:' + H, 'correlation-id': ID, 'action-id': ID,
-           'uint64': 0, 'profile-map': {}, 'method-name': 'debug.read',
-           'capability-name': 'hub.note', 'version-offer': {'versions': ['0.1']},
-           'version-selection': {'version': '0.1'}, 'error': {'code': 'conflict', 'message': 'Conflict', 'retryable': False},
+           'uint64': 0, 'profile-map': {}, 'method-name': 'manage.read',
+           'capability-name': 'hub.note', 'version-offer': {'versions': ['1.0']},
+           'version-selection': {'version': '1.0'}, 'error': {'code': 'conflict', 'message': 'Conflict', 'retryable': False},
            'event': {'source': COG, 'kind': 'hub.note', 'seq': 0, 'logical_time': 0, 'payload': {}, 'correlation_id': ID},
            'action': {'id': ID, 'coglet': COG, 'capability': 'test.move', 'args': {}, 'deadline': 100, 'correlation_id': ID},
            'action-accept': {'id': ID, 'correlation_id': ID, 'accepted': True}})
 add('hub-null', 'null', {'type': 'null'}, None)
 add('hub-bool', 'bool', {'type': 'boolean'}, True)
-text('hub-oid', '^[0-9a-f]{40}$', OID)
 text('hub-hash', '^[0-9a-f]{64}$', HASH)
-enum('hub-build-version', ['0.1'])
-obj('hub-build-record', {'version': 'hub-build-version', 'source_commit': 'hub-oid',
+enum('hub-build-version', ['1.0'])
+obj('hub-build-record', {'version': 'hub-build-version', 'source_tree': 'hub-hash',
     'recipe_sha256': 'hub-hash', 'policy_sha256': 'hub-hash', 'transform_sha256': 'hub-hash',
     'original_sha256': 'hub-hash', 'rewritten_sha256': 'hub-hash'})
 text('hub-signature', '^[0-9a-f]{128}$', 'f' * 128)
@@ -97,31 +95,38 @@ bounded('hub-timeout', 1, 300000)
 bounded('hub-size', 1, 67108864)
 bounded('hub-read-size', 1, 65536)
 bounded('hub-queue', 0, 256)
-union('hub-maybe-oid', ['hub-oid', 'hub-null'])
+union('hub-maybe-tree', ['hub-hash', 'hub-null'])
+union('hub-maybe-generation', ['uint64', 'hub-null'])
 union('hub-target', ['coglet-id', 'hub-null'])
 union('hub-maybe-step', ['uint64', 'hub-null'])
 union('hub-maybe-error', ['error', 'hub-null'])
 union('hub-maybe-secret', ['hub-secret', 'hub-null'])
 obj('hub-empty', {})
 enum('hub-state', ['stopped', 'running', 'paused', 'faulted'])
-enum('hub-ref', ['refs/heads/hub', 'refs/published/main', 'refs/heads/logs'])
-enum('hub-fetch-ref', ['refs/published/main', 'refs/heads/logs'])
 methods = ['hub.enroll', 'hub.install', 'hub.start', 'hub.stop', 'hub.status',
-           'hub.git.push', 'hub.git.fetch', 'hub.events', 'hub.actions',
-           'debug.read', 'debug.write', 'debug.pause', 'debug.step',
+           'manage.patch', 'manage.tail_log', 'hub.events', 'hub.actions',
+           'manage.read', 'manage.write', 'manage.pause', 'manage.step',
            'hub.inbox', 'hub.health', 'hub.receipt', 'hub.cancel']
 enum('hub-method', methods)
 array('hub-methods', 'hub-method', len(methods))
 enum('hub-purpose-delegation', ['delegation'])
 obj('hub-delegation-statement', {'purpose': 'hub-purpose-delegation', 'coglet': 'coglet-id', 'device': 'node-id',
     'hub': 'node-id', 'generation': 'uint64', 'expires': 'uint64', 'methods': 'hub-methods'})
-enum('hub-ref-purpose', ['hub-ref', 'published-ref', 'logs-ref'])
-obj('hub-ref-statement', {'purpose': 'hub-ref-purpose', 'hub': 'node-id', 'coglet': 'coglet-id',
-    'ref': 'hub-ref', 'old': 'hub-maybe-oid', 'new': 'hub-oid', 'archive_sha256': 'hub-hash', 'generation': 'uint64'})
-for kind in ['delegation', 'ref']:
-    obj(f'hub-signed-{kind}', {'statement': f'hub-{kind}-statement', 'signer': 'node-id', 'signature': 'hub-signature'})
-obj('hub-status', {'state': 'hub-state', 'live_commit': 'hub-maybe-oid', 'step': 'uint64',
-                  'pending': 'hub-queue', 'error': 'hub-maybe-error'})
+obj('hub-signed-delegation', {'statement': 'hub-delegation-statement', 'signer': 'node-id', 'signature': 'hub-signature'})
+# bytes remains a diagnostic/profile hex string, never CBOR major 2.
+text('manage-file-bytes', '^([0-9a-f]{2})*$', '')
+# Segment length/count are semantic bounds: nesting bounded repetitions exceeds
+# Go RE2's repeat-product limit. The portable shape rejects separators/controls.
+text('manage-code-path', '^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*$', 'bin/step.wasm')
+obj('manage-file-change', {'path': 'manage-code-path', 'bytes': 'manage-file-bytes'}, optional=['bytes'])
+EX['manage-file-change']['bytes'] = '0061736d01000000'
+array('manage-files', 'manage-file-change', 4096)
+obj('manage-patch', {'base': 'hub-hash', 'revision': 'hub-hash', 'generation': 'uint64',
+                     'files': 'manage-files', 'signature': 'hub-signature'}, optional=['base'])
+obj('manage-patch-signing', {'hub': 'node-id', 'coglet': 'coglet-id', 'base': 'hub-hash',
+    'revision': 'hub-hash', 'generation': 'uint64', 'files': 'manage-files'}, optional=['base'])
+obj('hub-status', {'state': 'hub-state', 'live_tree': 'hub-maybe-tree', 'generation': 'hub-maybe-generation',
+                  'step': 'uint64', 'pending': 'hub-queue', 'error': 'hub-maybe-error'})
 obj('hub-receipt-queued', {'operation_id': 'correlation-id', 'state': enum('hub-queued', ['queued']), 'step': 'hub-null', 'error': 'hub-null'})
 obj('hub-receipt-applied', {'operation_id': 'correlation-id', 'state': enum('hub-applied', ['applied']), 'step': 'uint64', 'error': 'hub-null'})
 obj('hub-receipt-cancelled', {'operation_id': 'correlation-id', 'state': enum('hub-cancelled', ['cancelled']), 'step': 'hub-null', 'error': 'hub-null'})
@@ -132,9 +137,9 @@ array('hub-event-batch', 'event', 64)
 obj('hub-health-item', {'coglet': 'coglet-id', 'status': 'hub-status'})
 array('hub-health-items', 'hub-health-item', 256)
 obj('hub-enroll-params', {'offer': 'version-offer', 'invite': 'hub-maybe-secret'})
-obj('hub-install-params', {'delegation': 'hub-signed-delegation', 'initial': 'hub-signed-ref'})
-obj('hub-push-params', {'update': 'hub-signed-ref', 'size': 'hub-size', 'sha256': 'hub-hash'})
-obj('hub-fetch-params', {'ref': 'hub-fetch-ref'})
+obj('hub-install-params', {'delegation': 'hub-signed-delegation', 'initial': 'hub-hash'})
+obj('manage-patch-params', {'size': 'hub-size', 'sha256': 'hub-hash'})
+obj('manage-tail-log-params', {'from_offset': 'uint64'})
 obj('hub-events-params', {'offset': 'uint64', 'events': 'hub-event-batch'})
 obj('hub-actions-params', {'action': 'action'})
 obj('hub-read-params', {'path': 'hub-path', 'offset': 'uint64', 'limit': 'hub-read-size'})
@@ -145,7 +150,7 @@ obj('hub-health-params', {'device': 'node-id', 'uptime_ms': 'uint64', 'queue_dep
                           'available_bytes': 'uint64', 'coglets': 'hub-health-items'})
 obj('hub-operation-params', {'operation_id': 'correlation-id'})
 params = ['hub-enroll-params', 'hub-install-params', 'hub-empty', 'hub-empty', 'hub-empty',
-          'hub-push-params', 'hub-fetch-params', 'hub-events-params', 'hub-actions-params',
+          'manage-patch-params', 'manage-tail-log-params', 'hub-events-params', 'hub-actions-params',
           'hub-read-params', 'hub-write-params', 'hub-empty', 'hub-empty', 'hub-inbox-params',
           'hub-health-params', 'hub-operation-params', 'hub-operation-params']
 requests = []
@@ -156,7 +161,7 @@ for method, p in zip(methods, params):
     target = 'hub-null' if method in ['hub.enroll', 'hub.health'] else 'coglet-id'
     fields = {'method': m, 'target': target, 'correlation_id': 'correlation-id',
               'timeout_ms': 'hub-timeout', 'params': p}
-    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'hub.git.push', 'hub.git.fetch', 'debug.read', 'hub.actions', 'debug.pause', 'debug.step', 'hub.receipt', 'hub.cancel']:
+    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'manage.patch', 'manage.tail_log', 'manage.read', 'hub.actions', 'manage.pause', 'manage.step', 'hub.receipt', 'hub.cancel']:
         fields['context'] = 'hub-context'
     obj(name, fields)
     requests.append(name)
@@ -174,9 +179,19 @@ obj('hub-failure', {'type': enum('hub-failure-type', ['error']), 'correlation_id
 obj('hub-credit', {'type': enum('hub-credit-type', ['credit']), 'correlation_id': 'correlation-id', 'bytes': 'uint64'})
 obj('hub-chunk', {'type': enum('hub-chunk-type', ['chunk']), 'correlation_id': 'correlation-id', 'offset': 'uint64', 'hex': 'hub-chunk-hex'})
 obj('hub-end', {'type': enum('hub-end-type', ['end']), 'correlation_id': 'correlation-id'})
-obj('hub-transfer', {'type': enum('hub-transfer-type', ['transfer']), 'correlation_id': 'correlation-id',
-                     'size': 'hub-size', 'sha256': 'hub-hash', 'update': 'hub-signed-ref'})
-frames = ['hub-request', 'hub-success', 'hub-failure', 'hub-credit', 'hub-chunk', 'hub-end', 'hub-transfer']
+# Log entries describe ABI paths, NOT the narrower management request grammar.
+# Portable (including RE2) component alternatives exclude exactly . and .. .
+log_char = r'[^/\x00-\x1f\x7f\\]'
+log_non_dot = r'[^/.\x00-\x1f\x7f\\]'
+log_component = f'({log_non_dot}{log_char}*|[.]{log_non_dot}{log_char}*|[.][.]{log_char}+)'
+text('manage-log-path', f'^/logs/{log_component}(/{log_component})*$', '/logs/stdout')
+# JSON Schema uses ECMA Unicode escapes; CDDL/generated RE2 uses hex escapes.
+D['manage-log-path']['pattern'] = D['manage-log-path']['pattern'].replace(r'\x', r'\u00')
+obj('manage-log-entry', {'path': 'manage-log-path', 'file_offset': 'uint64', 'hex': 'hub-chunk-hex'})
+obj('manage-tail-log-result', {'next_offset': 'uint64'})
+obj('manage-log', {'type': enum('manage-log-type', ['log']), 'correlation_id': 'correlation-id',
+                   'offset': 'uint64', 'hex': 'hub-chunk-hex'})
+frames = ['hub-request', 'hub-success', 'hub-failure', 'hub-credit', 'hub-chunk', 'hub-end', 'manage-log']
 union('hub-frame', frames)
 # Use a literal root rule first so concatenating common.cddl cannot change it.
 (SPEC / 'messages/hub.cddl').write_text('; Generated by hub/generate.py; import common.cddl unchanged.\nwire = hub-frame\n' + '\n'.join(C) + '\n')
@@ -199,7 +214,7 @@ for name, value in EX.items():
 for name, value in [('hub-timeout', 0), ('hub-timeout', 300001), ('hub-chunk-hex', 'a'),
                     ('hub-signature', 'x' * 128), ('hub-write-path', '/code/main'),
                     ('hub-receipt-applied', {'operation_id': ID, 'state': 'applied', 'step': None, 'error': None}),
-                    ('hub-event-batch', [EX['event']] * 65), ('hub-ref', 'refs/heads/main')]:
+                    ('hub-event-batch', [EX['event']] * 65)]:
     cases.append({'name': f'negative-{len(cases)}', 'type': name, 'valid': False, 'value': value})
 # Whole-string grammar regressions, including both path alternatives, selected
 # rules, method-specific requests, and the enclosing public frame union.
@@ -219,12 +234,11 @@ for rule, schema in D.items():
             fixture(f'{rule}-final-lf-{i}', rule, sample + '\n', False)
 
 nested_patterns = [
-    ('hub-oid', 'hub-git-push-request', ('params', 'update', 'statement', 'new')),
-    ('hub-hash', 'hub-git-push-request', ('params', 'sha256')),
+    ('hub-hash', 'manage-patch-request', ('params', 'sha256')),
     ('hub-signature', 'hub-install-request', ('params', 'delegation', 'signature')),
     ('hub-secret', 'hub-enroll-request', ('params', 'invite')),
-    ('hub-path', 'debug-read-request', ('params', 'path')),
-    ('hub-write-path', 'debug-write-request', ('params', 'path')),
+    ('hub-path', 'manage-read-request', ('params', 'path')),
+    ('hub-write-path', 'manage-write-request', ('params', 'path')),
     ('hub-chunk-hex', 'hub-chunk', ('hex',)),
 ]
 for pattern_rule, request_rule, path in nested_patterns:
@@ -243,6 +257,19 @@ for pattern_rule, request_rule, path in nested_patterns:
                 roots.append('hub-request')
             for root_rule in roots:
                 fixture(f'{pattern_rule}-nested-{i}-{valid}-{root_rule}', root_rule, value, valid)
+
+# These golden paths run through every generated SDK as well as both references.
+for i, path in enumerate(['/logs/café', '/logs/a b', '/logs/e\u0301', '/logs/😀/日誌',
+                          '/logs/' + 'é' * 600, '/logs/.hidden', '/logs/...', '/logs/quote"name', '/logs/\u0085']):
+    fixture(f'log-path-utf8-{i}', 'manage-log-path', path, True)
+    fixture(f'log-entry-utf8-{i}', 'manage-log-entry',
+            {'path': path, 'file_offset': 0, 'hex': 'ff'}, True)
+for i, path in enumerate(['/logs', '/logs/', '/data/a', 'logs/a', '/logs//a', '/logs/a/',
+                          '/logs/.', '/logs/..', '/logs/a/../b', '/logs/a/./b', '/logs/a\\b']
+                         + ['/logs/a' + chr(c) + 'b' for c in [*range(32), 127]]):
+    fixture(f'log-path-invalid-{i}', 'manage-log-path', path, False)
+    fixture(f'log-entry-invalid-{i}', 'manage-log-entry',
+            {'path': path, 'file_offset': 0, 'hex': 'ff'}, False)
 
 folder = SPEC / 'fixtures/hub'
 folder.mkdir(exist_ok=True)

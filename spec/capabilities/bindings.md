@@ -61,7 +61,7 @@ uses recorded replies. Real dispatch/spend/crash qualification is an M1 gate.
 All `runtime.*` names are reserved to the local runtime, never advertised as
 adapter operations, minted by an external producer or accepted merely because a
 payload claims runtime origin. Defined event names are `runtime.inbox`,
-`runtime.timer`, `runtime.debug_step`, and terminal inbox
+`runtime.timer`, `runtime.manage_step`, and terminal inbox
 `runtime.action_rejected`. Their source is the target coglet; the ABI defines
 their exact payloads and authorized triggers. `runtime.receipt` and `runtime.heard`
 are audit methods, NOT events, capabilities or remotely callable RPCs. The latter

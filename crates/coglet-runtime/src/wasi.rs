@@ -43,16 +43,7 @@ pub(super) struct Wasi {
 
 impl Wasi {
     pub(super) fn new(files: &Snapshot) -> crate::Result<Self> {
-        let mut map = BTreeMap::new();
-        for (path, encoded) in files.files() {
-            map.insert(
-                path.clone(),
-                hex::decode(encoded).map_err(|e| e.to_string())?,
-            );
-        }
-        let overlay = coglet_fs::Snapshot::from_files(map)
-            .map_err(fs_string)?
-            .transaction();
+        let overlay = files.decoded_fs()?.transaction();
         Ok(Self {
             overlay,
             fds: BTreeMap::from([
@@ -68,7 +59,7 @@ impl Wasi {
     }
 
     pub(super) fn commit(self, files: &mut Snapshot) -> crate::Result<()> {
-        *files = Snapshot::new(self.overlay.commit().export())?;
+        *files = files.project_fs(self.overlay.commit())?;
         Ok(())
     }
 
@@ -76,7 +67,7 @@ impl Wasi {
         let Some(encoded) = files.files().get("/logs/events.jsonl") else {
             return Ok(());
         };
-        let bytes = hex::decode(encoded).map_err(|e| e.to_string())?;
+        let bytes = crate::filesystem::decode_hex(encoded)?;
         let current = self
             .overlay
             .snapshot()
