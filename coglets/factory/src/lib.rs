@@ -2,6 +2,7 @@
 //! There is deliberately no guest commit, DDL, SQL-text or migration capability.
 pub mod catalog;
 pub mod executive;
+pub mod goals;
 pub use coglet_guest_rust::database::DbHost;
 use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
@@ -269,6 +270,13 @@ pub struct Repository<'a, H: DbHost> {
     client: Client<'a, H>,
 }
 impl<'a, H: DbHost> Repository<'a, H> {
+    /// Admission revision without paging or writing. Used to fence guest scans
+    /// even when their previous page did not return a continuation cursor.
+    pub fn revision(&mut self) -> Result<u64> {
+        Ok(self
+            .call("objects_get", vec![text("factory-policy")])?
+            .revision)
+    }
     pub fn new(host: &'a mut H) -> Self {
         Self {
             client: Client::new(host),
@@ -362,6 +370,20 @@ impl<'a, H: DbHost> Repository<'a, H> {
                 uint(object.updated_at)?,
                 text(&object.id),
                 uint(object.version)?,
+            ],
+        )?;
+        Ok(())
+    }
+    pub fn create_relation(&mut self, relation: &Relation) -> Result<()> {
+        self.call(
+            "relations_create",
+            vec![
+                text(&relation.id),
+                text(&relation.source_id),
+                text(&relation.target_id),
+                text(&relation.relation_type),
+                text(&relation.data_json),
+                uint(relation.version)?,
             ],
         )?;
         Ok(())

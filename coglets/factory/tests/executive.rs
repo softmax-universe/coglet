@@ -12,10 +12,14 @@ use rusqlite::{Connection, params};
 use serde_json::json;
 
 const TASK: &str = "11111111111111111111111111111111";
+mod goals;
 struct TestHost {
     db: Connection,
     staged: Vec<LlmRequest>,
     calls: usize,
+    files: std::collections::BTreeMap<String, Vec<u8>>,
+    timers: Vec<serde_json::Value>,
+    revision: u64,
 }
 impl TestHost {
     fn new() -> Self {
@@ -26,6 +30,9 @@ impl TestHost {
             db,
             staged: vec![],
             calls: 0,
+            files: Default::default(),
+            timers: vec![],
+            revision: 0,
         };
         let mut repo = Repository::new(&mut host);
         repo.create_object(&object(TASK, "task", "pending", json!({"context_ids":[]})))
@@ -51,13 +58,21 @@ impl TestHost {
     fn run_failure(&mut self, e: Event, abort: bool) -> Result<(), HostError> {
         self.calls = 0;
         let before = self.staged.len();
+        let files_before = self.files.clone();
+        let timers_before = self.timers.len();
+        let changes_before = self.db.total_changes();
         self.db.execute_batch("BEGIN IMMEDIATE").unwrap();
         let result = coglet_factory::wake(&mut Context::new(self, e.seq, e.logical_time, 3), &[e]);
         if result.is_err() || abort {
             self.db.execute_batch("ROLLBACK").unwrap();
             self.staged.truncate(before);
+            self.files = files_before;
+            self.timers.truncate(timers_before);
         } else {
             self.db.execute_batch("COMMIT").unwrap();
+            if self.db.total_changes() != changes_before {
+                self.revision += 1;
+            }
         }
         result
     }
@@ -135,8 +150,17 @@ fn task_event(kind: &str, seq: u64) -> Event {
     event(kind, seq, [("task_id", Value::Text(TASK.into()))])
 }
 impl Host for TestHost {
+    fn read_file(&mut self, path: &str) -> Result<Option<Vec<u8>>, HostError> {
+        Ok(self.files.get(path).cloned())
+    }
+    fn write_file(&mut self, path: &str, bytes: &[u8]) -> Result<(), HostError> {
+        self.files.insert(path.into(), bytes.into());
+        Ok(())
+    }
     fn call(&mut self, operation: Operation, bytes: &[u8]) -> i32 {
         if operation == Operation::Timer {
+            let value = coglet_types::decode_profile(bytes).unwrap();
+            self.timers.push(serde_json::to_value(value).unwrap());
             return 0;
         }
         assert_eq!(operation, Operation::Llm);
@@ -251,7 +275,7 @@ impl DbHost for TestHost {
                 columns,
                 rows,
                 affected,
-                revision: 0,
+                revision: self.revision,
                 next_cursor: Value::Null,
             }
             .to_cbor()
@@ -336,6 +360,9 @@ fn crash_after_commit_recovers() {
         db: Connection::open(&path).unwrap(),
         staged: vec![],
         calls: 0,
+        files: h.files.clone(),
+        timers: h.timers.clone(),
+        revision: h.revision,
     };
     reopened.run(task_event("task.failed", 1));
     assert!(reopened.staged.is_empty());
@@ -510,6 +537,9 @@ fn backlog_completes_after_restart() {
         db: Connection::open(&path).unwrap(),
         staged: vec![],
         calls: 0,
+        files: h.files.clone(),
+        timers: h.timers.clone(),
+        revision: h.revision,
     };
     restarted.run(event("runtime.timer", 4, []));
     assert_eq!(restarted.staged.len(), 1);
@@ -577,6 +607,9 @@ fn large_persisted_backlog_drains_one_bounded_context_per_wake() {
         db: Connection::open(&path).unwrap(),
         staged: saved,
         calls: 0,
+        files: h.files.clone(),
+        timers: h.timers.clone(),
+        revision: h.revision,
     };
     for n in 0..12 {
         let response = h.response(
@@ -616,6 +649,8 @@ fn invalid_ops_rejected_without_partial_mutation() {
             Decision::CreateGoal {
                 id: "44444444444444444444444444444444".into(),
                 description: "must not persist".into(),
+                priority: 0,
+                budget: 1,
             },
             Decision::Prioritize { priority: 101 },
         ],
