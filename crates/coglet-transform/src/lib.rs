@@ -11,7 +11,7 @@ pub mod oracle;
 pub mod rewrite;
 
 pub use admit::{
-    AdmissionStatement, Allowlist, Authority, Evidence, QualifiedPins, SignedAdmission,
+    AdmissionStatement, Allowlist, Authority, Evidence, GatePins, PublicationInputs, SignedAdmission,
     admit_publication, integer_profile_admitted,
 };
 pub use oracle::{Op, Width, r3_bits};

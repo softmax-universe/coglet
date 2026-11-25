@@ -2,11 +2,11 @@
 //! The caller owns provisioning the allowlist from authenticated CI, sampling
 //! current delegation/revocation/time, retaining evidence, and atomic signing/CAS.
 //! No function here turns caller-provided CI identity strings into authority.
-use crate::{PROFILE, Refuse, sha256_hex};
+use crate::{PROFILE, Refuse, sha256_hex, CiQualification};
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QualifiedPins {
+pub struct GatePins {
     pub profile: String,
     pub transform_artifact_sha256: String,
     pub profile_bytes_sha256: String,
@@ -14,7 +14,6 @@ pub struct QualifiedPins {
     pub compute_mode: String,
     pub arch: String,
     pub exec_mode: String,
-    pub source_commit: String,
     pub transform_source_sha256: String,
     pub toolchain_sha256: String,
     pub dependency_lock_sha256: String,
@@ -22,6 +21,12 @@ pub struct QualifiedPins {
     pub corpus_sha256: String,
     pub gate_outputs_sha256: String,
     pub engine_artifact_sha256: String,
+}
+
+/// Expected per-publication inputs are produced by the builder, not by CI.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PublicationInputs {
+    pub source_sha256: String,
     pub original_sha256: String,
     pub output_sha256: String,
 }
@@ -32,14 +37,17 @@ pub struct QualifiedPins {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Allowlist {
     pub issuer: [u8; 32],
-    pub entries: Vec<QualifiedPins>,
+    pub entries: Vec<GatePins>,
 }
 
 /// Actual retained bytes, not hashes of labels. The containing builder must
 /// retain these in its existing custody transaction before sign/commit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evidence {
-    pub pins: QualifiedPins,
+    pub pins: GatePins,
+    pub qualification: CiQualification,
+    pub inputs: PublicationInputs,
+    pub source: Vec<u8>,
     pub transform_artifact: Vec<u8>,
     pub transform_source: Vec<u8>,
     pub profile: Vec<u8>,
@@ -70,7 +78,6 @@ impl Evidence {
             &p.compute_mode,
             &p.arch,
             &p.exec_mode,
-            &p.source_commit,
             &p.transform_source_sha256,
             &p.toolchain_sha256,
             &p.dependency_lock_sha256,
@@ -78,23 +85,35 @@ impl Evidence {
             &p.corpus_sha256,
             &p.gate_outputs_sha256,
             &p.engine_artifact_sha256,
-            &p.original_sha256,
-            &p.output_sha256,
+            &self.inputs.source_sha256,
+            &self.inputs.original_sha256,
+            &self.inputs.output_sha256,
         ] {
             frame(&mut out, value.as_bytes());
+        }
+        let q = &self.qualification;
+        for s in [q.repo(), q.workflow_path(), q.head_sha(), q.transform_exe_sha256(), q.corpus_sha256()] {
+            frame(&mut out, s.as_bytes());
+        }
+        out.extend(q.run_id().to_be_bytes());
+        out.extend(q.run_attempt().to_be_bytes());
+        for entries in [q.jobs(), q.artifacts()] {
+            out.extend((entries.len() as u64).to_be_bytes());
+            for (name, value) in entries { frame(&mut out, name.as_bytes()); frame(&mut out, value.as_bytes()); }
         }
         sha256_hex(&out)
     }
 
-    fn verify(&self) -> Result<(), Refuse> {
+    pub fn verify(&self) -> Result<(), Refuse> {
         let p = &self.pins;
         if p.profile != PROFILE
             || self.profile != crate::profile_bytes()
-            || p.source_commit.is_empty()
             || p.engine.is_empty()
             || p.compute_mode.is_empty()
             || p.arch.is_empty()
             || p.exec_mode.is_empty()
+            || p.transform_artifact_sha256 != self.qualification.transform_exe_sha256()
+            || p.corpus_sha256 != self.qualification.corpus_sha256()
         {
             return Err(Refuse::Unqualified);
         }
@@ -108,17 +127,16 @@ impl Evidence {
             (&self.corpus, &p.corpus_sha256),
             (&self.gate_outputs, &p.gate_outputs_sha256),
             (&self.engine_artifact, &p.engine_artifact_sha256),
-            (&self.original, &p.original_sha256),
-            (&self.output, &p.output_sha256),
+            (&self.source, &self.inputs.source_sha256),
+            (&self.original, &self.inputs.original_sha256),
+            (&self.output, &self.inputs.output_sha256),
         ] {
             if bytes.is_empty() || sha256_hex(bytes) != *hash {
                 return Err(Refuse::BindingMismatch);
             }
         }
-        // These are explicitly source bytes, not a claimed executable artifact.
-        if self.transform_source != crate::transform_source_bytes() {
-            return Err(Refuse::Unqualified);
-        }
+        // The builder retains the verified CI artifact's source closure, never
+        // substitutes its own potentially different checkout for tool identity.
         Ok(())
     }
 }
@@ -169,7 +187,9 @@ pub struct Authority {
     pub ref_new_tip: String,
     pub ref_generation: u64,
     pub issuer: [u8; 32],
-    pub qualification: QualifiedPins,
+    pub qualification: GatePins,
+    pub ci_qualification: CiQualification,
+    pub inputs: PublicationInputs,
     pub now_unix: u64,
     pub delegation_expires_at_unix: u64,
     pub revoked: bool,
@@ -278,13 +298,13 @@ pub fn admit_publication(
     }
     evidence.verify()?;
     let p = &evidence.pins;
-    if *p != now.qualification || !allowlist.entries.contains(p) {
+    if *p != now.qualification || !allowlist.entries.contains(p) || evidence.qualification != now.ci_qualification {
         return Err(Refuse::Unqualified);
     }
     if p.profile != s.profile
-        || p.source_commit != s.source_commit
-        || p.original_sha256 != s.original_sha256
-        || p.output_sha256 != s.output_sha256
+        || evidence.inputs != now.inputs
+        || evidence.inputs.original_sha256 != s.original_sha256
+        || evidence.inputs.output_sha256 != s.output_sha256
         || evidence.digest() != s.evidence_sha256
     {
         return Err(Refuse::BindingMismatch);
