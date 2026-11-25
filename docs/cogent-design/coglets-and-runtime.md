@@ -12,9 +12,9 @@ streaming logs to its manager.
 The policy is whatever decides what the coglet does: **symbolic code**, **LLM
 prompts** and **skills**, or any mix of them. A patch can change any of it.
 
-![A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.](diagrams/coglet.svg)
+![A coglet in the middle, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.](diagrams/coglet.svg)
 
-*The coglet in the centre. Apps and hardware, reached through adapters, on the
+*The coglet in the middle. Apps and hardware, reached through adapters, on the
 left. What the runtime provides below. Its manager on the right, with patches
 coming in and logs going out.*
 

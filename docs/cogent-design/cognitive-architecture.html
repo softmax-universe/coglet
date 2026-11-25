@@ -129,10 +129,12 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 </nav>
 <main>
 <h1 id="cogent-cognitive-architecture">Cogent cognitive architecture<a class="headerlink" href="#cogent-cognitive-architecture" title="Permanent link">#</a></h1>
-<p>Part of the <a href="index.html">cogent design</a>: which coglets sit at the cogent's
-centre and how they are wired.</p>
+<p>Part of the <a href="index.html">cogent design</a>: the coglets that do the cogent's
+thinking and learning, and how they are wired. None of them is a centre; each
+runs on some runtime and reaches the others through the router
+(<a href="../adr/0036-distributed-cogent-and-presence.md">ADR-0036</a>).</p>
 <h2 id="who-talks-to-whom">Who talks to whom<a class="headerlink" href="#who-talks-to-whom" title="Permanent link">#</a></h2>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="770" height="344" viewBox="0 0 770 344" role="img" aria-label="Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent&#x27;s centre the fast loop and the optimizer use memory and file tickets with the factory.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="770" height="344" viewBox="0 0 770 344" role="img" aria-label="Face exchanges intents with app coglets on the device and feature requests with the fast loop; the fast loop and the optimizer use memory and file tickets with the factory, wherever those coglets run.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -153,6 +155,7 @@ centre and how they are wired.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -173,6 +176,7 @@ centre and how they are wired.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -188,7 +192,7 @@ centre and how they are wired.</p>
 <text x="115.0" y="275.0" text-anchor="middle" class="dg-b">App coglets</text>
 <text x="115.0" y="291.0" text-anchor="middle" class="dg-m">drive the apps</text>
 <rect x="310" y="30" width="440" height="294" rx="14" class="dg-group"/>
-<text x="328" y="54" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<text x="328" y="54" text-anchor="start" class="dg-cap">LEARNING AND MEMORY</text>
 <rect x="330" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
 <text x="405.0" y="95.0" text-anchor="middle" class="dg-b">FastLoop</text>
 <text x="405.0" y="111.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
@@ -281,21 +285,21 @@ the table below.</em></p>
 <td><code>ticket.submit</code>, <code>.answer</code>, <code>.amend</code>, <code>.cancel</code>, <code>.replay</code></td>
 <td>ticket requests</td>
 <td>factory</td>
-<td>the cogent's runtime</td>
+<td>the router, or their runtime if they share one</td>
 </tr>
 <tr>
 <td>optimizer</td>
 <td><code>ticket.submit</code>, <code>.replay</code></td>
 <td>ticket requests</td>
 <td>factory</td>
-<td>the cogent's runtime</td>
+<td>the router, or their runtime if they share one</td>
 </tr>
 <tr>
 <td>factory</td>
 <td><code>ticket.receipt</code>, <code>.update</code>, <code>.result</code></td>
 <td>ticket reports</td>
 <td>the submitter</td>
-<td>the cogent's runtime</td>
+<td>the router, or their runtime if they share one</td>
 </tr>
 <tr>
 <td>fast loop, optimizer</td>
@@ -316,19 +320,40 @@ the table below.</em></p>
 <td><code>memory.write</code>, <code>memory.query</code></td>
 <td><code>MemoryWrite</code>, <code>MemoryQuery</code></td>
 <td>memory</td>
-<td>the cogent's runtime</td>
+<td>the router, or their runtime if they share one</td>
 </tr>
 <tr>
 <td>memory</td>
 <td><code>memory.result</code></td>
 <td><code>MemoryResult</code></td>
 <td>the asker</td>
-<td>the cogent's runtime</td>
+<td>the router, or their runtime if they share one</td>
+</tr>
+<tr>
+<td>fast loop, owner</td>
+<td><code>presence.set</code></td>
+<td><code>PresenceChange</code></td>
+<td>router</td>
+<td>the router</td>
+</tr>
+<tr>
+<td>any coglet</td>
+<td><code>presence.request</code></td>
+<td><code>PresenceRequest</code></td>
+<td>fast loop</td>
+<td>the router</td>
+</tr>
+<tr>
+<td>router</td>
+<td><code>presence.check_in</code></td>
+<td><code>CheckIn</code></td>
+<td>fast loop</td>
+<td>the router</td>
 </tr>
 </tbody>
 </table></div>
 <h2 id="where-everything-runs">Where everything runs<a class="headerlink" href="#where-everything-runs" title="Permanent link">#</a></h2>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-label="The Softmax app on the user&#x27;s machine runs Face and the coglets for its connected apps; the cogent&#x27;s centre runs the fast loop, factory, optimizer and memory.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-label="The Softmax app on the user&#x27;s machine runs Face and the coglets for its connected apps; a Softmax-hosted runtime runs the fast loop, factory, optimizer and memory; the router joins them.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -349,6 +374,7 @@ the table below.</em></p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -369,6 +395,7 @@ the table below.</em></p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -409,7 +436,7 @@ the table below.</em></p>
 <line x1="260.0" y1="324" x2="260.0" y2="408" class="dg-blue" stroke-width="1.6" marker-end="url(#deployment-blue)" marker-start="url(#deployment-blue-s)"/>
 <text x="270.0" y="384" text-anchor="start" class="dg-m">messages, patches</text>
 <rect x="528" y="92" width="404" height="262" rx="12" class="dg-group"/>
-<text x="540" y="344" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<text x="540" y="344" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
 <rect x="548.0" y="24" width="364.0" height="40" rx="8" class="dg-world"/>
 <text x="730.0" y="48.0" text-anchor="middle" class="dg-b">Workers</text>
 <rect x="540.0" y="108" width="380.0" height="50" rx="8" class="dg-adapter"/>
@@ -437,9 +464,10 @@ the table below.</em></p>
 <text x="480" y="456" text-anchor="middle" class="dg-m">finds runtimes · carries messages between them · carries patches and logs</text>
 </svg>
 </figure>
-<p><em>One device in detail. The Softmax app runs Face and the coglets for its
-connected apps, next to their adapters. The cogent's centre runs in its own runtime, and
-the router joins them.</em></p>
+<p><em>One possible placement. The Softmax app runs Face and the coglets for its
+connected apps, next to their adapters. A Softmax-hosted runtime runs the fast
+loop, factory, optimizer and memory. Neither is the centre: any of
+these coglets could run on either runtime, and the router joins them.</em></p>
 <h2 id="facecoglet">FaceCoglet<a class="headerlink" href="#facecoglet" title="Permanent link">#</a></h2>
 <p>The local half of the conversation. It subscribes to the Softmax app's
 push-to-talk and voice events, controls the floating orb, and talks to the
@@ -503,15 +531,17 @@ the factory and applies the patches. Both are written below as able to; only
 one may end up doing it.</p>
 </blockquote>
 <h2 id="fastloopcoglet">FastLoopCoglet<a class="headerlink" href="#fastloopcoglet" title="Permanent link">#</a></h2>
-<p>Handles events from other coglets: it responds, or forwards them on. Today
-that means taking feature requests from Face, checking memory,
-filing tickets with the factory, applying the patches that come back, and
-telling Face.</p>
+<p>The cogent's <strong>attention</strong>. It handles what present coglets send: it responds,
+or forwards it on. Today that means taking feature requests from Face, checking
+memory, filing tickets with the factory, applying the patches that come back,
+and telling Face. It also decides where the cogent is present, and reads the
+check-ins of the coglets it is not attending to
+(<a href="index.html#presence">presence</a>).</p>
 <h3 id="fastloopcoglet_1"><code>FastLoopCoglet</code><a class="headerlink" href="#fastloopcoglet_1" title="Permanent link">#</a></h3>
 <div class="codehilite idl"><pre><span class="nc">FastLoopCoglet</span>
   <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
   <span class="kw">needs</span>       <span class="op">llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,</span>
-              <span class="sd">ticket.cancel, ticket.replay, memory.write, memory.query</span>
+              <span class="sd">ticket.cancel, ticket.replay, memory.write, memory.query, presence.set</span>
   <span class="kw">owns</span>        <span class="op">(nothing)</span>
 
   <span class="kw">provides</span>  <span class="op">feature.request</span>     <span class="ty">FeatureRequest</span>  <span class="rt">bound</span>
@@ -530,7 +560,12 @@ telling Face.</p>
   <span class="kw">calls</span>     <span class="op">ticket.replay</span>       <span class="ty">TicketReplay</span>    <span class="rt">bound</span>
   <span class="kw">provides</span>  <span class="op">memory.result</span>       <span class="ty">MemoryResult</span>    <span class="rt">addressed</span>
   <span class="kw">calls</span>     <span class="op">memory.write</span>        <span class="ty">MemoryWrite</span>     <span class="rt">bound</span>
-  <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span></pre></div>
+  <span class="kw">calls</span>     <span class="op">memory.query</span>        <span class="ty">MemoryQuery</span>     <span class="rt">bound</span>
+  <span class="kw">provides</span>  <span class="op">presence.request</span>    <span class="ty">PresenceRequest addressed</span>
+            <span class="sd">An absent coglet asks for attention. Decide whether to make it present.</span>
+  <span class="kw">provides</span>  <span class="op">presence.check_in</span>   <span class="ty">CheckIn</span>         <span class="rt">addressed</span>
+            <span class="sd">What an absent coglet held for the cogent. Answer, manage it, or move on.</span>
+  <span class="kw">calls</span>     <span class="op">presence.set</span>        <span class="ty">PresenceChange</span>  <span class="rt">bound</span></pre></div>
 <p>It also uses the manage port's <code>patch</code> on the coglets it is granted.</p>
 <h2 id="factorycoglet">FactoryCoglet<a class="headerlink" href="#factorycoglet" title="Permanent link">#</a></h2>
 <p>Takes tickets and produces artifacts: a new skill, a changed coglet. It tests
@@ -730,7 +765,7 @@ own: it reads through the manage port and files ordinary tickets.</p>
 <code>patch</code> on the coglets it is granted.</p>
 <h2 id="memorycoglet">MemoryCoglet<a class="headerlink" href="#memorycoglet" title="Permanent link">#</a></h2>
 <p>The cogent's memory: what it has learned about the user, the apps and what has
-worked, kept in one place so every coglet in the centre can read and add to it.
+worked, kept in one place so every coglet of the cogent can read and add to it.
 Each coglet still keeps its own working state in its own files; this is what is
 shared. Version 0 matches on tags and keywords and uses no model.</p>
 <h3 id="memorycoglet_1"><code>MemoryCoglet</code><a class="headerlink" href="#memorycoglet_1" title="Permanent link">#</a></h3>
@@ -772,10 +807,14 @@ shared. Version 0 matches on tags and keywords and uses no model.</p>
   <span class="na">writer</span>      <span class="ty">CogletId</span>  <span class="sd">The caller that wrote it, as checked by its runtime.</span>
   <span class="na">written_at</span>  <span class="ty">u64</span>       <span class="sd">The memory coglet&#x27;s logical time when it was stored.</span></pre></div>
 <h2 id="routercoglet">RouterCoglet<a class="headerlink" href="#routercoglet" title="Permanent link">#</a></h2>
-<p>The coglet that reaches devices. It knows which runtimes the cogent may use,
-installs coglets on them, and carries two things between runtimes: messages
-from one coglet to another, and manage operations such as <code>patch</code>.</p>
-<p>It is a coglet like the others in the centre: it has a policy, memory and a
+<p>The coglet that holds the cogent together. It knows which runtimes the cogent
+may use, installs coglets on them, and carries two things between runtimes:
+messages from one coglet to another, and manage operations such as <code>patch</code>. It
+also holds the cogent's presence: it delivers what present coglets send to the
+fast loop at once, holds what absent coglets send until their check-in, and
+answers <code>presence.get</code> and <code>presence.set</code>
+(<a href="../adr/0036-distributed-cogent-and-presence.md">ADR-0036</a>).</p>
+<p>It is a coglet like the others: it has a policy, memory and a
 manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 <a href="coglets-and-runtime.html#runtime-and-router">Runtime and router</a>.</p>

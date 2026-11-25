@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; the centre runs steps the same way, and can hand any step to unforged workers on CAOS.">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -19,6 +19,7 @@
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -39,6 +40,7 @@
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -85,7 +87,7 @@
 <rect x="380" y="274" width="200" height="30" rx="8" class="dg-coglet"/>
 <text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet</text>
 <rect x="636" y="24" width="300" height="300" rx="12" class="dg-group"/>
-<text x="652" y="48" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<text x="652" y="48" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
 <text x="666" y="83" text-anchor="start" class="dg-code">cogletd</text>
 <rect x="666" y="94" width="116" height="42" rx="8" class="dg-coglet"/>

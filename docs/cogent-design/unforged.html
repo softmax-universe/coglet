@@ -194,7 +194,7 @@ SHA-256 ids</strong>, the format unforged is already built on.</p>
 steps, grants, and the rule that nothing leaves a runtime until a step has
 committed. Coglets do not see any of this; their code still reads and writes
 <code>/data</code> and returns.</p>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; the centre runs steps the same way, and can hand any step to unforged workers on CAOS.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -215,6 +215,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -235,6 +236,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -281,7 +283,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 <rect x="380" y="274" width="200" height="30" rx="8" class="dg-coglet"/>
 <text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet</text>
 <rect x="636" y="24" width="300" height="300" rx="12" class="dg-group"/>
-<text x="652" y="48" text-anchor="start" class="dg-cap">THE COGENT&#x27;S CENTRE</text>
+<text x="652" y="48" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
 <text x="666" y="83" text-anchor="start" class="dg-code">cogletd</text>
 <rect x="666" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
@@ -312,7 +314,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 </svg>
 </figure>
 <p><em>Three places, one object format. Devices step coglets in process. The router
-is an unforged daemon. The centre steps its own coglets the same way and can
+is an unforged daemon. A Softmax-hosted runtime steps its coglets the same way and can
 send any step to unforged workers on CAOS.</em></p>
 <p><strong>Two speeds.</strong> unforged as it stands runs every program as a separate process
 and calls the <code>git</code> binary for most operations. That is fine for jobs and far
@@ -322,7 +324,7 @@ runners that produce the same objects:</p>
 <li>the <strong>hot path</strong>, <code>cogletd</code>, which writes git objects in process with no
   fork and no <code>git</code> binary, on every device;</li>
 <li>the <strong>cold path</strong>, unforged's <code>river exec</code>, which runs one step as a cached
-  job, at the centre or on CAOS workers.</li>
+  job, on Softmax-hosted runtimes or on CAOS workers.</li>
 </ul>
 <p>The rule that ties them together: <strong>for the same state and the same input,
 both runners produce the same commit id.</strong> That is the conformance check.</p>
@@ -348,6 +350,7 @@ both runners produce the same commit id.</strong> That is the conformance check.
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -368,6 +371,7 @@ both runners produce the same commit id.</strong> That is the conformance check.
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -524,6 +528,7 @@ them.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -544,6 +549,7 @@ them.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -642,8 +648,8 @@ covers which engine ran, not just which coglet.</em></p>
 <tbody>
 <tr>
 <td>Where</td>
-<td>Every device, and the centre's live coglets</td>
-<td>The centre and CAOS workers</td>
+<td>Every runtime with live coglets, devices and hosted</td>
+<td>Softmax-hosted runtimes and CAOS workers</td>
 </tr>
 <tr>
 <td>Process model</td>
@@ -724,6 +730,7 @@ coglet many times a second, so the three clocks are kept apart:</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -744,6 +751,7 @@ coglet many times a second, so the three clocks are kept apart:</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -844,7 +852,7 @@ action, the dispatcher and its live adapter connections, timers (firing one
 needs a clock), and anything with a latency budget, such as speech playback and
 barge-in.</p>
 <h2 id="replays-forks-and-gates">Replays, forks and gates<a class="headerlink" href="#replays-forks-and-gates" title="Permanent link">#</a></h2>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="380" viewBox="0 0 960 380" role="img" aria-label="One journal, two runners. A device produces step commits in process; the centre re-runs any of them as unforged jobs to replay, fork or test a candidate policy.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="380" viewBox="0 0 960 380" role="img" aria-label="One journal, two runners. A device produces step commits in process; a Softmax-hosted runtime re-runs any of them as unforged jobs to replay, fork or test a candidate policy.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -865,6 +873,7 @@ barge-in.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -885,6 +894,7 @@ barge-in.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -932,7 +942,7 @@ barge-in.</p>
 <text x="30" y="274" text-anchor="start" class="dg-code">which cache served it</text>
 </svg>
 </figure>
-<p><em>The device writes the journal; the centre re-runs it.</em></p>
+<p><em>The device writes the journal; a hosted runtime re-runs it.</em></p>
 <div class="tablewrap"><table>
 <thead>
 <tr>
@@ -1003,6 +1013,7 @@ run:</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -1023,6 +1034,7 @@ run:</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -1178,7 +1190,7 @@ storage and its git transport.</p>
 <li><strong>Private data stays private.</strong> A runtime pushes its <code>state</code> commits with
   <code>data/</code> blobs left out, as a partial push; the router holds the trees and
   ids but not the bytes. Fetching <code>data/</code> blobs needs the same read grant as
-  <code>read_state</code>, and replays at the centre need it explicitly. This keeps the
+  <code>read_state</code>, and replays on another runtime need it explicitly. This keeps the
   current rule that <code>/data</code> never leaves a device without a grant.</li>
 </ul>
 <h2 id="signatures">Signatures<a class="headerlink" href="#signatures" title="Permanent link">#</a></h2>
@@ -1220,7 +1232,7 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td>The cold path needs <code>git</code> and process spawning</td>
-<td>Only at the centre and on workers, never on devices</td>
+<td>Only on hosted runtimes and workers, never on devices</td>
 </tr>
 <tr>
 <td>Two runners can drift</td>

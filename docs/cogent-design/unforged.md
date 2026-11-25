@@ -40,10 +40,10 @@ steps, grants, and the rule that nothing leaves a runtime until a step has
 committed. Coglets do not see any of this; their code still reads and writes
 `/data` and returns.
 
-![Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; the centre runs steps the same way, and can hand any step to unforged workers on CAOS.](diagrams/unforged-stack.svg)
+![Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.](diagrams/unforged-stack.svg)
 
 *Three places, one object format. Devices step coglets in process. The router
-is an unforged daemon. The centre steps its own coglets the same way and can
+is an unforged daemon. A Softmax-hosted runtime steps its coglets the same way and can
 send any step to unforged workers on CAOS.*
 
 **Two speeds.** unforged as it stands runs every program as a separate process
@@ -54,7 +54,7 @@ runners that produce the same objects:
 - the **hot path**, `cogletd`, which writes git objects in process with no
   fork and no `git` binary, on every device;
 - the **cold path**, unforged's `river exec`, which runs one step as a cached
-  job, at the centre or on CAOS workers.
+  job, on Softmax-hosted runtimes or on CAOS workers.
 
 The rule that ties them together: **for the same state and the same input,
 both runners produce the same commit id.** That is the conformance check.
@@ -173,7 +173,7 @@ Decisions this makes:
 
 | | Hot path: `cogletd` | Cold path: unforged `river exec` |
 |---|---|---|
-| Where | Every device, and the centre's live coglets | The centre and CAOS workers |
+| Where | Every runtime with live coglets, devices and hosted | Softmax-hosted runtimes and CAOS workers |
 | Process model | One process; steps run in it | One sandboxed process per step |
 | Git | In-process object writer; no `git` binary | unforged, which calls `git` |
 | Engine | WAMR, with compute and deadline metering | The same engine build, named by the resolver |
@@ -237,9 +237,9 @@ barge-in.
 
 ## Replays, forks and gates
 
-![One journal, two runners. A device produces step commits in process; the centre re-runs any of them as unforged jobs to replay, fork or test a candidate policy.](diagrams/unforged-replay.svg)
+![One journal, two runners. A device produces step commits in process; a Softmax-hosted runtime re-runs any of them as unforged jobs to replay, fork or test a candidate policy.](diagrams/unforged-replay.svg)
 
-*The device writes the journal; the centre re-runs it.*
+*The device writes the journal; a hosted runtime re-runs it.*
 
 | Use | What runs | Passes when |
 |---|---|---|
@@ -358,7 +358,7 @@ storage and its git transport.
 - **Private data stays private.** A runtime pushes its `state` commits with
   `data/` blobs left out, as a partial push; the router holds the trees and
   ids but not the bytes. Fetching `data/` blobs needs the same read grant as
-  `read_state`, and replays at the centre need it explicitly. This keeps the
+  `read_state`, and replays on another runtime need it explicitly. This keeps the
   current rule that `/data` never leaves a device without a grant.
 
 ## Signatures
@@ -384,7 +384,7 @@ storage and its git transport.
 | A few object writes per step on every device | Writes are in process, batched to disk, and packed in the background |
 | History grows with every step | Compaction: keep recent steps, roll older ones into checkpoints (`river compact` / `gc` already exist) |
 | Recorded model replies make inputs large | Replies are blobs, shared when identical, and dropped with old inputs |
-| The cold path needs `git` and process spawning | Only at the centre and on workers, never on devices |
+| The cold path needs `git` and process spawning | Only on hosted runtimes and workers, never on devices |
 | Two runners can drift | Conformance runs every fixture through both and compares commit ids |
 
 ## Spec changes
