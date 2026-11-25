@@ -1,127 +1,70 @@
 {
-  "producer_pr": "https://github.com/softmax-universe/coglet/pull/83",
-  "producer_sha": "dd98c4239d505401c9403213b9efd931d392234f",
+  "producer_sha": "edfafbfbab7f6397911f5c02633cca09c454ac69",
   "engine": "wamr",
-  "engine_build": "0e47872fb4e57833dbeccf7c312a406fa2dac2bc+cumulative-v1",
-  "engine_policy": "wamr-2.4.3-fast-cumulative-v1",
-  "episode": "Gridbot(42) via the PR83 sim/tests/test_native.py episode; four actions east, east, south, south; goal reached",
-  "command": [
-    "bash sim/check-native.sh",
-    "coglet-sandbox-proof SETUP WAL OUTPUT (independent WAMR replay, changed seed/guest rejected)"
-  ],
+  "state_hash_definition": "git-sha256-tree-id (ADR-0035)",
+  "producer_command": "tools/visualizer/regenerate_state_hash_fixtures.py (real evaluate + stopped-WAL export)",
+  "full_trace_sha256": "40b3ecddfc665c03f66aae74b549b76dc2f580873be2c17e6e7d19f58a4a6797",
+  "proof_output_sha256": "1bd2fecc33c5fb52f52291537a51986feb0d5122909b63b26714438e66e238f1",
   "independent_guest_reexecution": true,
   "changed_seed_rejected": true,
   "changed_guest_rejected": true,
+  "world": "gridbot-v1",
+  "seed": 42,
+  "config": {
+    "width": 8,
+    "height": 8,
+    "max_steps": 16
+  },
   "actions": [
     "east",
     "east",
     "south",
     "south"
   ],
-  "wasm_sha256": "99a4755df3d9a63c596ccf0b7bd2dbeba8c7c9159a1e9e093a0a086710bb1a07",
-  "full_records_sha256": "85df5b8f584d0ea2e58d13b213fe519392af537dc64e2ba6b48d9cb1211dc425",
-  "full_records_bytes": 44275377,
   "display_omits": [
-    "input_files",
-    "/code",
-    "/logs",
-    "calls",
+    "initial_files",
     "blobs",
-    "initial_files"
+    "/code",
+    "calls",
+    "usage"
   ],
-  "display_omission_reason": "Each committed step repeats the 1227566-byte guest under /code and input_files. The full records file is 44275377 bytes, above the viewer's 16 MiB cap. /data file hex, events, engine and step hashes are copied verbatim from that file.",
-  "clock_note": "Receipt logical_time is the producer clock, so a second episode is not byte-identical. This fixture is the exact export of the run hashed above, not a regenerated or edited journal.",
   "steps": [
     {
-      "step": 0,
-      "output_hash": "fe398c50b598ee1a187085c758510d420894398fc28160ecf2e9d7a966f33074",
-      "count": "0",
-      "inbox_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "inbox_bytes": 0,
-      "event_kinds": [
-        "sim.gridbot_state"
-      ]
+      "output_hash": "cc19a0db7cd442cb30c2d14697ded429fdc3f182810657648394f755d66a1928",
+      "inbox_bytes": 0
     },
     {
-      "step": 1,
-      "output_hash": "fe398c50b598ee1a187085c758510d420894398fc28160ecf2e9d7a966f33074",
-      "count": "0",
-      "inbox_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      "inbox_bytes": 0,
-      "event_kinds": [
-        "sim.gridbot_state"
-      ]
+      "output_hash": "cc19a0db7cd442cb30c2d14697ded429fdc3f182810657648394f755d66a1928",
+      "inbox_bytes": 0
     },
     {
-      "step": 2,
-      "output_hash": "d3f0bf3e826058eb0be2c34de5cce51430334e960bc5f1e9d2ac79be24599c48",
-      "count": "0",
-      "inbox_sha256": "503bfbf51631c476476a49add0332cd9776ff7ca996d4391d87ce6b2503b77fb",
-      "inbox_bytes": 479,
-      "event_kinds": [
-        "runtime.inbox"
-      ]
+      "output_hash": "5d6176615ea06dbcb2dca605a5d548d95c5f1ab4f4102957b0411b92fd069add",
+      "inbox_bytes": 479
     },
     {
-      "step": 3,
-      "output_hash": "d3f0bf3e826058eb0be2c34de5cce51430334e960bc5f1e9d2ac79be24599c48",
-      "count": "0",
-      "inbox_sha256": "503bfbf51631c476476a49add0332cd9776ff7ca996d4391d87ce6b2503b77fb",
-      "inbox_bytes": 479,
-      "event_kinds": [
-        "sim.gridbot_state"
-      ]
+      "output_hash": "5d6176615ea06dbcb2dca605a5d548d95c5f1ab4f4102957b0411b92fd069add",
+      "inbox_bytes": 479
     },
     {
-      "step": 4,
-      "output_hash": "c6813e950054b56cb9d1db2846e1f0ec2ed9054193c73310409934552564f989",
-      "count": "0",
-      "inbox_sha256": "3cd3f4942a882e185e84e3d88b4dbecef10f9b8fdc52e44ae02814d2762a7009",
-      "inbox_bytes": 958,
-      "event_kinds": [
-        "runtime.inbox"
-      ]
+      "output_hash": "b6076db063e94467608c9b5fe357a6cdda65c5e1b163e2e280ef5b2f0b30978d",
+      "inbox_bytes": 958
     },
     {
-      "step": 5,
-      "output_hash": "c6813e950054b56cb9d1db2846e1f0ec2ed9054193c73310409934552564f989",
-      "count": "0",
-      "inbox_sha256": "3cd3f4942a882e185e84e3d88b4dbecef10f9b8fdc52e44ae02814d2762a7009",
-      "inbox_bytes": 958,
-      "event_kinds": [
-        "sim.gridbot_state"
-      ]
+      "output_hash": "b6076db063e94467608c9b5fe357a6cdda65c5e1b163e2e280ef5b2f0b30978d",
+      "inbox_bytes": 958
     },
     {
-      "step": 6,
-      "output_hash": "f3b5d0a4863c57725e4c132717d0dd8567d2f1dca89d3b0f9027a7cba2f43922",
-      "count": "0",
-      "inbox_sha256": "5bf84cd7e100363c384b84b1319da5628e1a7262b15d388211c33c13d0f11ece",
-      "inbox_bytes": 1437,
-      "event_kinds": [
-        "runtime.inbox"
-      ]
+      "output_hash": "d666b5b9a2218fb8211b51f3c4e6cb9b496b0aa6acc1bd1d46c4cf3fb1ea826a",
+      "inbox_bytes": 1437
     },
     {
-      "step": 7,
-      "output_hash": "f3b5d0a4863c57725e4c132717d0dd8567d2f1dca89d3b0f9027a7cba2f43922",
-      "count": "0",
-      "inbox_sha256": "5bf84cd7e100363c384b84b1319da5628e1a7262b15d388211c33c13d0f11ece",
-      "inbox_bytes": 1437,
-      "event_kinds": [
-        "sim.gridbot_state"
-      ]
+      "output_hash": "d666b5b9a2218fb8211b51f3c4e6cb9b496b0aa6acc1bd1d46c4cf3fb1ea826a",
+      "inbox_bytes": 1437
     },
     {
-      "step": 8,
-      "output_hash": "631ccb8b7e0b73566b65414b6ff1f238b1aaa887f207462bff2c8996ea7c9f98",
-      "count": "0",
-      "inbox_sha256": "17b1a2ab8f5e191bd24a10d7e7d57cfc1d7702b905a53f67a4f93a505d0fe63f",
-      "inbox_bytes": 1916,
-      "event_kinds": [
-        "runtime.inbox"
-      ]
+      "output_hash": "37ac194fee783af831bac2cd016f33288355dda2d766a75777d58adb1b26db80",
+      "inbox_bytes": 1916
     }
   ],
-  "note": "Actual child-cogletd WAMR Gridbot episode from reviewed unmerged PR83. Not rc1 --mock-stdio, not hub debug, not a hand-written output_files map. /data/count is the guest's stable byte 0x30. /data/inbox.jsonl is runtime-owned action.outcome receipts and grows across steps. No /data world observation file is present, so this does not drive the canvas."
+  "records_only_sha256": "2b339afe2f6e9b3c44a239696ff5ef71efde4d1dc38dc4e551a4e93c2c433ed9"
 }

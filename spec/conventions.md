@@ -39,7 +39,7 @@ are open text-key maps but remain restricted to profile values.
 ## Names and identities
 
 Filesystem state hashes are the Git SHA-256 tree object ids specified in
-[the ABI](abi.md#journal-and-trace), not hashes of CBOR snapshot maps
+[the ABI](abi.md#journal-and-trace-one-format), not hashes of CBOR snapshot maps
 ([ADR-0035](../docs/adr/0035-state-hash-git-tree-id.md)). Files use mode `100644`,
 directories `40000`, Git entry ordering and raw 32-byte ids inside trees; ids
 elsewhere are 64 lowercase hex. The empty snapshot is the SHA-256 empty tree.
