@@ -1,0 +1,39 @@
+{
+  "run_id": 45690352967,
+  "run_attempt": 1,
+  "expires_at": "2027-02-23T19:58:10Z",
+  "runtime_engine": {
+    "build": "0e47872fb4e57833dbeccf7c312a406fa2dac2bc+cumulative-v1",
+    "policy": "wamr-2.4.3-fast-cumulative-v1"
+  },
+  "engine_gates": {
+    "x86_64": "1aba2a2a073db4d706af30173d36ca0de46020176b7f87e06b72895c0e1c9f40",
+    "aarch64": "8e6f3435afdc1c0a1fe46337658707753f0874ab188e9f00be3537d96e589c73"
+  },
+  "trust": {
+    "github_client": "/usr/bin/gh",
+    "head_sha": "4a0207e95d246bd3fcacdd7fc765f1d0ea8c86c6",
+    "required_jobs": ["source", "rust", "transform-native (ubuntu-24.04, x86_64)", "transform-native (ubuntu-24.04-arm, aarch64)"],
+    "target_artifact": "transform-native-x86_64-normal",
+    "artifacts": {
+      "transform-native-x86_64-normal": {
+        "archive_sha256": "9636879b71cfb7962edaeb2ee1e8735b53944d0533931515a454250ee01663e9",
+        "arch": "x86_64",
+        "transform_exe_sha256": "27c1e0b4068cc4ae36c74d59bb9355851fbc3d1a10b2453fb969e2b4bb0b19ae",
+        "corpus_sha256": "23f96e9c133393d4f4b2a6519de3c296d772b29813b02dabed11fe8641f51635",
+        "results_sha256": "81407ccd1383cc5952bbfe519ac1010484609c08cd067242d88a5dae51ad90f8",
+        "lock_sha256": "16ebac456bf38524184d55159899d387c50e47aaef739000d78f6e8142236cf2",
+        "compiler_sha256": "be69adad9137eaa0bdac1dd07e2fe286b1831fc8bad193ea27806ca0c7c8e7c6"
+      },
+      "transform-native-aarch64-normal": {
+        "archive_sha256": "41968994cbaa62f9b36b57d929e706753df368bf07a44afa3e1b77e07cc2c2e8",
+        "arch": "aarch64",
+        "transform_exe_sha256": "7b004e80c5a14c3ed98c4b52030b81db5f12f7947afe50adab76ebc16d600853",
+        "corpus_sha256": "23f96e9c133393d4f4b2a6519de3c296d772b29813b02dabed11fe8641f51635",
+        "results_sha256": "81407ccd1383cc5952bbfe519ac1010484609c08cd067242d88a5dae51ad90f8",
+        "lock_sha256": "16ebac456bf38524184d55159899d387c50e47aaef739000d78f6e8142236cf2",
+        "compiler_sha256": "f85b3d8bd6685c881e56b98f7d07917001e58e0e1b5d5067d94212758867a816"
+      }
+    }
+  }
+}
