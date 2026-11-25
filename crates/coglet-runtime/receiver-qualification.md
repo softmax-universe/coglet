@@ -127,6 +127,14 @@ python3 -m unittest discover -s crates/coglet-runtime -p test_receiver_oracles.p
 python3 crates/coglet-runtime/check_receiver_evidence.py <evidence-directory>
 ```
 
+Harness inputs are the frozen `conformance/hub/*.json` cases plus one
+crate-owned file, `examples/support/receiver-fetch-logs-snapshot.json` (the
+signed `refs/heads/logs` publication the fixture pins and the fetch oracle
+compares against). It is a harness input, not a spec fixture: the harness reads
+nothing under the spec tree. `tests/receiver_harness_inputs.rs` runs in the
+required workspace test job and fails if any input is missing or unparsable,
+if the case lists drift, or if a harness source starts reading the spec tree.
+
 The runner owns every escaped implementation child by PID plus Linux start-time
 identity in a fresh test-only evidence directory, and cleans it in a finalizer.
 The pipe proxy's child has private pipes, not inherited harness stdout/stderr.

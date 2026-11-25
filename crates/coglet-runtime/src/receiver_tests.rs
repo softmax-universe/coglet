@@ -57,6 +57,50 @@ fn service(path: &Path, setup: &Value, capacity: usize) -> RuntimeService {
 }
 
 #[test]
+fn receiver_inbox_preserves_selected_profile_across_stage_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let mut setup = setup();
+    let mut existing = inbox(&setup, 90, 90)["params"]["message"].clone();
+    existing["event"]["kind"] = json!("softmax.app.focus_changed");
+    existing["index"] = json!(0);
+    let mut raw = serde_json::to_vec(&existing).unwrap();
+    raw.push(b'\n');
+    setup["initial_files"]["/data/inbox.jsonl"] = json!(hex::encode(raw));
+    assert!(RuntimeService::open(&path, &setup, 8).is_err());
+    setup["contract_profile"] = json!("surface-0.2");
+    // Installing a managed checkout requires an empty private namespace. The
+    // inbox here is already present in the selected-profile runtime snapshot;
+    // exercise staging directly rather than bypassing that install fence.
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let request = inbox(&setup, 1, 100);
+    let mut next = service.state.clone();
+    RuntimeService::receiver_stage(&mut next, &request).unwrap();
+    let files = next.staged_boundary.as_ref().unwrap().runtime.files.clone();
+    assert!(
+        crate::boundary::inbox_with_profile(&files, crate::ContractProfile::Surface01).is_err()
+    );
+    let messages = crate::boundary::inbox_with_profile(&files, service.contract_profile()).unwrap();
+    assert_eq!(messages.len(), 2);
+    assert_eq!(messages[0], existing);
+    assert_eq!(messages[1]["event"], request["params"]["message"]["event"]);
+    RuntimeService::receiver_stage(&mut next, &request).unwrap();
+    assert_eq!(next.staged_boundary.as_ref().unwrap().runtime.files, files);
+    drop(service);
+    let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(
+        reopened.contract_profile(),
+        crate::ContractProfile::Surface02
+    );
+    let retained = crate::boundary::inbox_with_profile(
+        &reopened.receiver_snapshot().files,
+        reopened.contract_profile(),
+    )
+    .unwrap();
+    assert_eq!(retained, vec![existing]);
+}
+
+#[test]
 fn receiver_append_preserves_selected_app_inbox_history() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.wal");
@@ -79,7 +123,7 @@ fn receiver_append_preserves_selected_app_inbox_history() {
     assert_eq!(service.receiver_admit(&append).unwrap()["state"], "applied");
     let runtime = service.receiver_snapshot();
     let messages =
-        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap();
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile()).unwrap();
     assert_eq!(messages.len(), 2);
     assert_eq!(messages[0], historical);
     assert_eq!(messages[1]["event"], append["params"]["message"]["event"]);
@@ -91,7 +135,7 @@ fn receiver_append_preserves_selected_app_inbox_history() {
     let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
     let runtime = reopened.receiver_snapshot();
     assert_eq!(
-        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap(),
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile()).unwrap(),
         messages
     );
 }
@@ -196,7 +240,7 @@ fn inbox_queue_receipt_and_wake_commit_together_and_dedup_across_restart() {
     assert_eq!(service.queued(), 1);
     let messages = crate::boundary::inbox_with_profile(
         &service.receiver_snapshot().files,
-        service.receiver_snapshot().contract_profile,
+        service.contract_profile(),
     )
     .unwrap();
     assert_eq!(messages.len(), 1);
@@ -216,7 +260,7 @@ fn inbox_queue_receipt_and_wake_commit_together_and_dedup_across_restart() {
     assert_eq!(
         crate::boundary::inbox_with_profile(
             &service.receiver_snapshot().files,
-            service.receiver_snapshot().contract_profile,
+            service.contract_profile()
         )
         .unwrap()
         .len(),
@@ -357,7 +401,7 @@ fn inbox_id_from_another_append_path_cannot_hide_different_content() {
     );
     let messages = crate::boundary::inbox_with_profile(
         &service.receiver_snapshot().files,
-        service.receiver_snapshot().contract_profile,
+        service.contract_profile(),
     )
     .unwrap();
     assert_eq!(messages, vec![line]);

@@ -89,7 +89,7 @@ fn binding() -> SurfaceBinding {
 }
 fn dec(raw: &[u8]) -> Value {
     // 0.2 is the superset decoder for inspection; assertions on 0.1 validity are explicit.
-    coglet_profile_types::decode(ContractProfile::Surface02.rule("surface-message"), raw)
+    coglet_types_current::decode(ContractProfile::Surface02.rule("surface-message"), raw)
         .unwrap()
         .deserialized()
         .unwrap()
@@ -1311,7 +1311,7 @@ fn native_guest_selected_02_app_event_emits_action_persisted_and_replayed() {
     );
     let rec_bytes = cbor(rec).unwrap();
     assert!(
-        coglet_profile_types::decode(ContractProfile::Surface02.rule("step-record"), &rec_bytes)
+        coglet_types_current::decode(ContractProfile::Surface02.rule("step-record"), &rec_bytes)
             .is_ok()
     );
     assert!(coglet_types::decode("step-record", &rec_bytes).is_err());

@@ -2,9 +2,8 @@ name: Softmax Mac
 on:
   push:
     branches: [main, feat/softmax-mac-shell, feat/softmax-embedded-runtime]
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
   pull_request:
-    paths: ['apps/softmax-mac/**', 'surfaces/face-mac/**', 'sdk/surface-swift/**', 'crates/coglet-proto/**', 'sdk/surface-rust/**', 'crates/coglet-mock/**', 'crates/coglet-runtime/**', 'crates/coglet-engine-wamr/**', 'coglets/speech-echo/**', 'scripts/build-runtime-xcframework.sh', '.github/workflows/softmax-mac.yml']
+  merge_group:
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,7 +11,54 @@ concurrency:
   group: softmax-mac-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      macos: ${{ steps.paths.outputs.macos }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test Mac path selection
+        run: python3 -m unittest discover -s scripts/ci -p 'test_softmax_mac_paths.py' -v
+      - name: Select native build (always on main and in the merge queue)
+        id: paths
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          build=true
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            build=$(git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" | python3 scripts/ci/softmax_mac_paths.py)
+          fi
+          echo "macos=$build" >> "$GITHUB_OUTPUT"
+  # Stable required status: a legitimate Rust-only skip succeeds, but a failed
+  # classifier or native build must never look like a successful skip.
+  softmax-mac-gate:
+    if: always()
+    needs: [changes, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require path selection and selected native build
+        env:
+          PATHS_RESULT: ${{ needs.changes.result }}
+          BUILD_SELECTED: ${{ needs.changes.outputs.macos }}
+          BUILD_RESULT: ${{ needs.macos.result }}
+        run: |
+          test "$PATHS_RESULT" = success
+          if [[ "$BUILD_SELECTED" == true ]]; then
+            test "$BUILD_RESULT" = success
+          else
+            test "$BUILD_SELECTED" = false
+            test "$BUILD_RESULT" = skipped
+          fi
   macos:
+    needs: changes
+    # A skipped job reports success without reserving a macOS runner. Classifier
+    # failures fail the workflow; non-PR events always build the merged tree.
+    if: needs.changes.outputs.macos == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:

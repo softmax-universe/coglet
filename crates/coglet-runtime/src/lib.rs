@@ -164,28 +164,10 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-pub fn validate(rule: &str, value: &Value) -> Result<()> {
-    validate_contract(rule, &profile_value(value, 0)?)
-}
+mod profile_codec;
 
-/// Explicit codec-family selection. The legacy hub implementation stays pinned
-/// to hub/0; ADR-0030's named surface02 roots come from the current generator.
-/// There is no try-both fallback and no selection inferred from payload bytes.
-pub(crate) fn validate_contract(rule: &str, value: &coglet_types::Value) -> Result<()> {
-    if rule.starts_with("surface02::") {
-        coglet_profile_types::validate(rule, value)
-    } else {
-        coglet_types::validate(rule, value)
-    }
-}
-pub(crate) fn decode_contract(rule: &str, raw: &[u8]) -> Result<coglet_types::Value> {
-    let value = coglet_types::decode_profile(raw)?;
-    validate_contract(rule, &value)?;
-    Ok(value)
-}
-pub(crate) fn encode_contract(rule: &str, value: &coglet_types::Value) -> Result<Vec<u8>> {
-    validate_contract(rule, value)?;
-    coglet_types::encode_profile(value)
+pub fn validate(rule: &str, value: &Value) -> Result<()> {
+    profile_codec::validate(rule, &profile_value(value, 0)?)
 }
 
 #[cfg(test)]

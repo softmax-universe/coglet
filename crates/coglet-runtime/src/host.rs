@@ -54,7 +54,7 @@ impl StepHost {
             _ => return Err(format!("unimplemented host operation: {op}")),
         };
         let argument: Option<Value> =
-            crate::decode_contract(self.contract_profile.rule(schema), raw)
+            crate::profile_codec::decode(self.contract_profile.rule(schema), raw)
                 .ok()
                 .and_then(|v| v.deserialized().ok());
         let mut result = 0;

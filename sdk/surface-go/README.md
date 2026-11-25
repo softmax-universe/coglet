@@ -66,6 +66,23 @@ disconnected clears the latch. No wire message, reconnect or ready health does.
 
 ## Durability and limits
 
+Trusted local `Config.ContractProfile` defaults to `surface-0.1` (including the
+Go zero value). Explicit `surface-0.2` adds the narrow app-operation grammar and
+offers wire 0.2 with unchanged 0.1 fallback. `NewTrustedCatalog(raw, sha256)`
+verifies exact distribution bytes and the separate digest before `Config.TrustedCatalog`
+can provision operations. Use `s.BoundOperation` for these local bindings.
+The existing ledger retains the exact catalog bytes, digest and normalized
+profile; a changed or removed catalog/profile requires an explicitly new ledger.
+Entry/resource names remain two-component under both profiles.
+
+Catalog regex rules deliberately admit a portable subset, not Rust's complete
+Unicode regex dialect. Explicit classes and ordinary repetitions are supported;
+shorthand classes/boundaries, inline flags, lookaround, backreferences,
+nested/set-algebra/POSIX classes and possessive repetitions are refused instead
+of silently changing their language under Go RE2. The exact counted universal
+form `^[\s\S]{min,max}$` is supported. Other RE2 limitations (including general
+repeat counts over 1000) fail closed. Frozen generated validators are unchanged.
+
 - Single-owner, owned 0600 ledger and stable side-lock file in an owned 0700,
   nonsymlinked directory. Each checksummed snapshot is fsynced, atomically renamed,
   then the directory is fsynced. Native work starts only after durable admission;

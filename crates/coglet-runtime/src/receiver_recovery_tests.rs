@@ -123,7 +123,7 @@ fn detached_preguest_boundary_change_refuses_without_guest_and_preserves_publica
     assert_eq!(
         crate::boundary::inbox_with_profile(
             &reopened.receiver_snapshot().files,
-            reopened.receiver_snapshot().contract_profile,
+            reopened.contract_profile()
         )
         .unwrap()
         .len(),

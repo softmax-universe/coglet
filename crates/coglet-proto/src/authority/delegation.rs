@@ -113,6 +113,39 @@ impl Authority {
         Ok(())
     }
 
+    /// Check the exact current signed delegation using the caller's publication
+    /// transaction. The IMMEDIATE writer fence must remain held through signing
+    /// and artifact/audit retention. No Authority mutex or second connection is
+    /// acquired: this avoids SQL-writer/Authority-lock inversion. A separate
+    /// runtime ref CAS and fresh dispatch authority are still required.
+    pub fn authorize_publication_in(
+        tx: &rusqlite::Transaction<'_>,
+        hub: EndpointId,
+        device: EndpointId,
+        coglet: &str,
+        expected: &Value,
+        trusted_clock: impl Fn() -> Option<u64>,
+    ) -> Result<()> {
+        let serialized: Option<String> = tx.query_row(
+            "SELECT signed FROM proto_delegations WHERE hub=?1 AND coglet=?2 AND purpose='delegation' AND active=1 AND device=?3",
+            params![hub.to_string(), coglet, device.to_string()], |r| r.get(0),
+        ).optional()?;
+        let current: Value =
+            serde_json::from_str(&serialized.ok_or(AuthorityError::PermissionDenied)?)
+                .map_err(|_| AuthorityError::Storage)?;
+        if &current != expected {
+            return Err(AuthorityError::PermissionDenied);
+        }
+        verified(hub, device, coglet, &current, trusted_clock)?;
+        if !current["statement"]["methods"]
+            .as_array()
+            .is_some_and(|methods| methods.iter().any(|m| m.as_str() == Some("hub.git.push")))
+        {
+            return Err(AuthorityError::PermissionDenied);
+        }
+        Ok(())
+    }
+
     /// Recheck current binding on admission and each disclosure/chunk/effect.
     /// This check is NOT a lease or an atomic application boundary. Intersect it
     /// with peer grants, exact actor/ticket, policy and path/ref/surface limits.

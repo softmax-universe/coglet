@@ -428,9 +428,10 @@ impl Runtime {
                 .ok_or("missing manifest blob")?,
         )
         .map_err(|e| e.to_string())?;
-        let manifest: Value = crate::decode_contract(profile.rule(manifest_rule), &manifest_raw)?
-            .deserialized()
-            .map_err(|e| e.to_string())?;
+        let manifest: Value =
+            crate::profile_codec::decode(profile.rule(manifest_rule), &manifest_raw)?
+                .deserialized()
+                .map_err(|e| e.to_string())?;
         if manifest["id"] != trace["coglet"] {
             return Err("trace manifest identity mismatch".into());
         }

@@ -29,8 +29,9 @@ wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 # ADR-0031: existing implementation remains hub/0 until its separate migration.
 coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
-# ADR-0030 selected surface contracts coexist with the frozen hub/0 implementation.
-coglet-profile-types = { package = "coglet-types", path = "../coglet-types" }
+# Selected surface-0.2 roots are not present in the frozen hub/0 snapshot.
+# Keep legacy hub/default validation pinned; route only qualified surface02 roots here.
+coglet-types-current = { package = "coglet-types", path = "../coglet-types" }
 coglet-proto = { path = "../coglet-proto", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -1,0 +1,35 @@
+{
+  "name": "runtime-app-version-selection",
+  "description": "Actual runtime chooses 0.2 under explicit trusted 0.2 provisioning; opposite direction to surface-peer cases.",
+  "contract_profile": "surface-0.2",
+  "peer_role": "surface",
+  "fixtures": [
+    "runtime02-base"
+  ],
+  "steps": [
+    {
+      "send": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.2",
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "hello_reply",
+        "body.selection.version": "0.2",
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    }
+  ]
+}

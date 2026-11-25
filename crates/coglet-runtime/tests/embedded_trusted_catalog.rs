@@ -360,8 +360,8 @@ fn observation(op: &str, args: Value, value: Value) -> Value {
     json!({"source":S,"kind":"game.observation","seq":1,"logical_time":1200,"payload":{"query_id":"6".repeat(32),"operation":op,"args":args,"value":value,"revision":1,"world_generation":1,"grant_epoch":1},"correlation_id":"7".repeat(32)})
 }
 fn decode(raw: &[u8]) -> Value {
-    // 0.2 is the superset inspection rule; wire validity is asserted elsewhere.
-    coglet_profile_types::decode(
+    // The current generated family owns 0.2; the hub/0 snapshot does not.
+    coglet_types_current::decode(
         coglet_runtime::ContractProfile::Surface02.rule("surface-message"),
         raw,
     )

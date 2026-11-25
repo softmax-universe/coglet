@@ -35,6 +35,20 @@ fn production_transform_tool_native_proof() {
     let original =
         guest("i32.const 256 local.get $seed f64.reinterpret_i64 f64.const 1 f64.add f64.store");
     let output = production_rewrite(&original);
+    let gate = std::env::var_os("COGLET_TRANSFORM_GATE")
+        .unwrap_or_else(|| env!("CARGO_BIN_EXE_coglet-transform-gate").into());
+    let mut child = Command::new(gate)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(&output).unwrap();
+    let result = child.wait_with_output().unwrap();
+    assert!(result.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&result.stdout).unwrap();
+    assert_eq!(report["output_sha256"], sha256_hex(&output));
+    assert_eq!(report["compute_mode"], coglet_engine_wamr::COMPUTE_MODE);
+    assert_eq!(report["cases"], 2);
     assert_ne!(output, original);
     assert_eq!(output, rewrite(&original, &Pins::default()).unwrap().output);
     assert_eq!(
