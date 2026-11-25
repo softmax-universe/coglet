@@ -2,6 +2,28 @@ import XCTest
 @testable import SoftmaxAppSurface
 
 final class NativeObservationTests: XCTestCase {
+    func testOffActorPreparationRemainsBoundToCapturedMount() async throws {
+        let (registry, directory, mount) = try await MainActor.run {
+            let registry = ControlRegistry(revision: 0) { _ in "general" }
+            let mount = try registry.mount(id: "button", window: "settings", route: "general", role: "button",
+                label: "Button", verbs: ["press"], value: { .map([.init("kind", .text("none"))]) },
+                invoke: { _ in XCTFail("old native command") })
+            return (registry, registry.captureDirectory(), mount)
+        }
+        let args: CBORValue = .map([.init("window", .text("settings")), .init("control", .text("button")), .init("verb", .text("press"))])
+        let request = try await Task.detached {
+            XCTAssertFalse(Thread.isMainThread)
+            return try directory.prepare(args, sensitive: false)
+        }.value
+        try await MainActor.run {
+            try registry.unmount(mount)
+            _ = try registry.mount(id: "button", window: "settings", route: "general", role: "button",
+                label: "Replacement", verbs: ["press"], value: { .map([.init("kind", .text("none"))]) },
+                invoke: { _ in XCTFail("replacement borrowed") })
+            XCTAssertThrowsError(try registry.perform(request, authorized: { true }))
+        }
+    }
+
     func testAppliedSelfDismissDoesNotBorrowSuccessorValueOrFail() async throws {
         try await MainActor.run {
             let registry = ControlRegistry(revision: 0) { _ in "general" }

@@ -20,6 +20,44 @@ public final class ControlRegistry {
         fileprivate let args: CBORValue
         fileprivate let sensitive: Bool
     }
+    /// Immutable, value-free mount directory copied to the runtime control owner.
+    /// Preparing from it performs no MainActor hop, native getter, ledger I/O or
+    /// effect. The returned request still needs SDK durable admission and a live
+    /// effect-time grant/deadline check before `perform` on the MainActor.
+    public struct CapturedDirectory: Sendable {
+        fileprivate struct Target: Sendable {
+            let mount: Mount
+            let window: String
+            let sensitive: Bool
+        }
+        fileprivate let targets: [String: Target]
+        public let revision: UInt64
+
+        public func prepare(_ args: CBORValue, sensitive: Bool) throws -> Request {
+            try CBORCodec.validate("app-invoke-args", args)
+            let fields = try args.requireMap()
+            guard let control = fields.first(where: { $0.key == "control" }), case .text(let id) = control.value,
+                  let window = fields.first(where: { $0.key == "window" }), case .text(let name) = window.value,
+                  let target = targets[id], target.window == name else { throw ControlRegistryFailure.unavailable }
+            guard target.sensitive == sensitive else { throw ControlRegistryFailure.permissionDenied }
+            return Request(mount: target.mount, args: args, sensitive: sensitive)
+        }
+        public func prepareFocus(_ args: CBORValue) throws -> Mount {
+            try CBORCodec.validate("app-focus-args", args)
+            let fields = try args.requireMap()
+            guard let control = fields.first(where: { $0.key == "control" }), case .text(let id) = control.value,
+                  let window = fields.first(where: { $0.key == "window" }), case .text(let name) = window.value,
+                  let target = targets[id], target.window == name else { throw ControlRegistryFailure.unavailable }
+            return target.mount
+        }
+    }
+
+    public func captureDirectory() -> CapturedDirectory {
+        CapturedDirectory(targets: Dictionary(uniqueKeysWithValues: entries.values.map {
+            ($0.mount.id, CapturedDirectory.Target(mount: $0.mount, window: $0.window, sensitive: $0.sensitive))
+        }), revision: revision)
+    }
+
     private struct Entry {
         let mount: Mount
         let window: String
