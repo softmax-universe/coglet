@@ -1844,7 +1844,9 @@ func asPath(x any) (Path, error) {
 type Snapshot = map[string]AbiHex
 
 func asSnapshot(x any) (Snapshot, error) {
-	return (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(x)
+	return (func(x any) (map[string]AbiHex, error) {
+		return codec.AsMap(x, asAbiHex)
+	})(x)
 }
 
 // Budgets is CDDL rule 'budgets'. Optional fields are pointers; nil means absent.
@@ -2003,7 +2005,9 @@ func asHeardItem(x any) (HeardItem, error) {
 	if out.Stopped, err = codec.AsBool(m["stopped"]); err != nil {
 		return out, err
 	}
-	if out.Spans, err = (func(x any) ([]AbiHeardSpan, error) { return codec.AsList(x, asAbiHeardSpan) })(m["spans"]); err != nil {
+	if out.Spans, err = (func(x any) ([]AbiHeardSpan, error) {
+		return codec.AsList(x, asAbiHeardSpan)
+	})(m["spans"]); err != nil {
 		return out, err
 	}
 	if out.Heard, err = codec.AsString(m["heard"]); err != nil {
@@ -2046,7 +2050,9 @@ func asHeardState(x any) (HeardState, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Items, err = (func(x any) ([]AbiHeardItem, error) { return codec.AsList(x, asAbiHeardItem) })(m["items"]); err != nil {
+	if out.Items, err = (func(x any) ([]AbiHeardItem, error) {
+		return codec.AsList(x, asAbiHeardItem)
+	})(m["items"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -3094,28 +3100,44 @@ func asStepRecord1(x any) (StepRecord1, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]CommonEvent, error) {
+		return codec.AsList(x, asCommonEvent)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]AbiCall, error) { return codec.AsList(x, asAbiCall) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]AbiCall, error) {
+		return codec.AsList(x, asAbiCall)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -3271,28 +3293,44 @@ func asStepRecord2(x any) (StepRecord2, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]CommonEvent, error) {
+		return codec.AsList(x, asCommonEvent)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]AbiCall, error) { return codec.AsList(x, asAbiCall) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]AbiCall, error) {
+		return codec.AsList(x, asAbiCall)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -3383,13 +3421,19 @@ func asEffectLedger(x any) (EffectLedger, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Actions, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonCorrelationId, error) {
+		return codec.AsList(x, asCommonCorrelationId)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]CommonCorrelationId, error) {
+		return codec.AsList(x, asCommonCorrelationId)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]CommonCorrelationId, error) { return codec.AsList(x, asCommonCorrelationId) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]CommonCorrelationId, error) {
+		return codec.AsList(x, asCommonCorrelationId)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -3471,7 +3515,9 @@ func asBoundaryRecord(x any) (BoundaryRecord, error) {
 	if out.RecordHash, err = asAbiHash(m["record_hash"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
 	if out.OutputFiles, err = asAbiSnapshot(m["output_files"]); err != nil {
@@ -3563,10 +3609,14 @@ func asTrace(x any) (Trace, error) {
 	if out.InitialEffectIds, err = asAbiEffectLedger(m["initial_effect_ids"]); err != nil {
 		return out, err
 	}
-	if out.InitialActions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["initial_actions"]); err != nil {
+	if out.InitialActions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["initial_actions"]); err != nil {
 		return out, err
 	}
-	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) { return codec.AsList(x, asCommonUint64) })(m["initial_inbox_wakes"]); err != nil {
+	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) {
+		return codec.AsList(x, asCommonUint64)
+	})(m["initial_inbox_wakes"]); err != nil {
 		return out, err
 	}
 	if out.InitialHash, err = asAbiHash(m["initial_hash"]); err != nil {
@@ -3587,16 +3637,24 @@ func asTrace(x any) (Trace, error) {
 	if out.TrailingBoundary, err = codec.AsAny(m["trailing_boundary"]); err != nil {
 		return out, err
 	}
-	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["initial_timers"]); err != nil {
+	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["initial_timers"]); err != nil {
 		return out, err
 	}
-	if out.InitialLlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["initial_llm_requests"]); err != nil {
+	if out.InitialLlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["initial_llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Records, err = (func(x any) ([]AbiStepRecord, error) { return codec.AsList(x, asAbiStepRecord) })(m["records"]); err != nil {
+	if out.Records, err = (func(x any) ([]AbiStepRecord, error) {
+		return codec.AsList(x, asAbiStepRecord)
+	})(m["records"]); err != nil {
 		return out, err
 	}
-	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(m["blobs"]); err != nil {
+	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) {
+		return codec.AsMap(x, asAbiHex)
+	})(m["blobs"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -3652,13 +3710,19 @@ func asManifest(x any) (Manifest, error) {
 	if out.Id, err = asCommonCogletId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.Subscriptions, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["subscriptions"]); err != nil {
+	if out.Subscriptions, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["subscriptions"]); err != nil {
 		return out, err
 	}
-	if out.RequiredCapabilities, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["required_capabilities"]); err != nil {
+	if out.RequiredCapabilities, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["required_capabilities"]); err != nil {
 		return out, err
 	}
-	if out.ExclusiveOutputs, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["exclusive_outputs"]); err != nil {
+	if out.ExclusiveOutputs, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["exclusive_outputs"]); err != nil {
 		return out, err
 	}
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
@@ -3714,7 +3778,9 @@ func asProfileValue(x any) (ProfileValue, error) {
 type ProfileMap = map[string]CommonProfileValue
 
 func asProfileMap(x any) (ProfileMap, error) {
-	return (func(x any) (map[string]CommonProfileValue, error) { return codec.AsMap(x, asCommonProfileValue) })(x)
+	return (func(x any) (map[string]CommonProfileValue, error) {
+		return codec.AsMap(x, asCommonProfileValue)
+	})(x)
 }
 
 // NodeId is CDDL rule 'node-id'; constraints are enforced by Encode/Decode.
@@ -3806,7 +3872,9 @@ func asVersionOffer(x any) (VersionOffer, error) {
 		return out, codec.ErrShape
 	}
 	var err error
-	if out.Versions, err = (func(x any) ([]CommonSpecVersion, error) { return codec.AsList(x, asCommonSpecVersion) })(m["versions"]); err != nil {
+	if out.Versions, err = (func(x any) ([]CommonSpecVersion, error) {
+		return codec.AsList(x, asCommonSpecVersion)
+	})(m["versions"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -4431,7 +4499,9 @@ func asDbStatement(x any) (DbStatement, error) {
 	if out.Mode, err = codec.AsString(m["mode"]); err != nil {
 		return out, err
 	}
-	if out.Params, err = (func(x any) ([]DatabaseDbCell, error) { return codec.AsList(x, asDatabaseDbCell) })(m["params"]); err != nil {
+	if out.Params, err = (func(x any) ([]DatabaseDbCell, error) {
+		return codec.AsList(x, asDatabaseDbCell)
+	})(m["params"]); err != nil {
 		return out, err
 	}
 	if out.MaxRows, err = codec.AsUint64(m["max_rows"]); err != nil {
@@ -4541,7 +4611,9 @@ func asDbRequest(x any) (DbRequest, error) {
 type DbRow = []DatabaseDbCell
 
 func asDbRow(x any) (DbRow, error) {
-	return (func(x any) ([]DatabaseDbCell, error) { return codec.AsList(x, asDatabaseDbCell) })(x)
+	return (func(x any) ([]DatabaseDbCell, error) {
+		return codec.AsList(x, asDatabaseDbCell)
+	})(x)
 }
 
 // DbPage is CDDL rule 'db-page'. Optional fields are pointers; nil means absent.
@@ -4576,10 +4648,14 @@ func asDbPage(x any) (DbPage, error) {
 	if out.Status, err = codec.AsString(m["status"]); err != nil {
 		return out, err
 	}
-	if out.Columns, err = (func(x any) ([]string, error) { return codec.AsList(x, codec.AsString) })(m["columns"]); err != nil {
+	if out.Columns, err = (func(x any) ([]string, error) {
+		return codec.AsList(x, codec.AsString)
+	})(m["columns"]); err != nil {
 		return out, err
 	}
-	if out.Rows, err = (func(x any) ([]DatabaseDbRow, error) { return codec.AsList(x, asDatabaseDbRow) })(m["rows"]); err != nil {
+	if out.Rows, err = (func(x any) ([]DatabaseDbRow, error) {
+		return codec.AsList(x, asDatabaseDbRow)
+	})(m["rows"]); err != nil {
 		return out, err
 	}
 	if out.Affected, err = asCommonUint64(m["affected"]); err != nil {
@@ -5225,13 +5301,19 @@ func asDbManifest(x any) (DbManifest, error) {
 	if out.Id, err = asCommonCogletId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.Subscriptions, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["subscriptions"]); err != nil {
+	if out.Subscriptions, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["subscriptions"]); err != nil {
 		return out, err
 	}
-	if out.RequiredCapabilities, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["required_capabilities"]); err != nil {
+	if out.RequiredCapabilities, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["required_capabilities"]); err != nil {
 		return out, err
 	}
-	if out.ExclusiveOutputs, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["exclusive_outputs"]); err != nil {
+	if out.ExclusiveOutputs, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["exclusive_outputs"]); err != nil {
 		return out, err
 	}
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
@@ -5401,28 +5483,44 @@ func asDbStepRecord1(x any) (DbStepRecord1, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]CommonEvent, error) {
+		return codec.AsList(x, asCommonEvent)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]any, error) {
+		return codec.AsList(x, codec.AsAny)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -5598,28 +5696,44 @@ func asDbStepRecord2(x any) (DbStepRecord2, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]CommonEvent, error) {
+		return codec.AsList(x, asCommonEvent)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]any, error) {
+		return codec.AsList(x, codec.AsAny)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -5752,10 +5866,14 @@ func asDbTrace(x any) (DbTrace, error) {
 	if out.InitialEffectIds, err = asAbiEffectLedger(m["initial_effect_ids"]); err != nil {
 		return out, err
 	}
-	if out.InitialActions, err = (func(x any) ([]CommonAction, error) { return codec.AsList(x, asCommonAction) })(m["initial_actions"]); err != nil {
+	if out.InitialActions, err = (func(x any) ([]CommonAction, error) {
+		return codec.AsList(x, asCommonAction)
+	})(m["initial_actions"]); err != nil {
 		return out, err
 	}
-	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) { return codec.AsList(x, asCommonUint64) })(m["initial_inbox_wakes"]); err != nil {
+	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) {
+		return codec.AsList(x, asCommonUint64)
+	})(m["initial_inbox_wakes"]); err != nil {
 		return out, err
 	}
 	if out.InitialHash, err = asAbiHash(m["initial_hash"]); err != nil {
@@ -5776,16 +5894,24 @@ func asDbTrace(x any) (DbTrace, error) {
 	if out.TrailingBoundary, err = codec.AsAny(m["trailing_boundary"]); err != nil {
 		return out, err
 	}
-	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["initial_timers"]); err != nil {
+	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["initial_timers"]); err != nil {
 		return out, err
 	}
-	if out.InitialLlmRequests, err = (func(x any) ([]AbiLlmRequest, error) { return codec.AsList(x, asAbiLlmRequest) })(m["initial_llm_requests"]); err != nil {
+	if out.InitialLlmRequests, err = (func(x any) ([]AbiLlmRequest, error) {
+		return codec.AsList(x, asAbiLlmRequest)
+	})(m["initial_llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Records, err = (func(x any) ([]DatabaseDbStepRecord, error) { return codec.AsList(x, asDatabaseDbStepRecord) })(m["records"]); err != nil {
+	if out.Records, err = (func(x any) ([]DatabaseDbStepRecord, error) {
+		return codec.AsList(x, asDatabaseDbStepRecord)
+	})(m["records"]); err != nil {
 		return out, err
 	}
-	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(m["blobs"]); err != nil {
+	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) {
+		return codec.AsMap(x, asAbiHex)
+	})(m["blobs"]); err != nil {
 		return out, err
 	}
 	if out.InitialDbRevision, err = asCommonUint64(m["initial_db_revision"]); err != nil {
@@ -5873,7 +5999,9 @@ func asDbBoundaryRecord(x any) (DbBoundaryRecord, error) {
 	if out.RecordHash, err = asAbiHash(m["record_hash"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
 	if out.OutputFiles, err = asAbiSnapshot(m["output_files"]); err != nil {
@@ -6232,7 +6360,9 @@ func asHubMaybeSecret(x any) (HubMaybeSecret, error) {
 type HubEmpty = map[string]CommonProfileValue
 
 func asHubEmpty(x any) (HubEmpty, error) {
-	return (func(x any) (map[string]CommonProfileValue, error) { return codec.AsMap(x, asCommonProfileValue) })(x)
+	return (func(x any) (map[string]CommonProfileValue, error) {
+		return codec.AsMap(x, asCommonProfileValue)
+	})(x)
 }
 
 // HubState is CDDL rule 'hub-state'; constraints are enforced by Encode/Decode.
@@ -6267,7 +6397,9 @@ func asHubMethod(x any) (HubMethod, error) {
 type HubMethods = []HubHubMethod
 
 func asHubMethods(x any) (HubMethods, error) {
-	return (func(x any) ([]HubHubMethod, error) { return codec.AsList(x, asHubHubMethod) })(x)
+	return (func(x any) ([]HubHubMethod, error) {
+		return codec.AsList(x, asHubHubMethod)
+	})(x)
 }
 
 // HubPurposeDelegation is CDDL rule 'hub-purpose-delegation'; constraints are enforced by Encode/Decode.
@@ -6898,7 +7030,9 @@ func DecodeHubInboxDelivery(raw []byte) (HubInboxDelivery, error) {
 type HubEventBatch = []CommonEvent
 
 func asHubEventBatch(x any) (HubEventBatch, error) {
-	return (func(x any) ([]CommonEvent, error) { return codec.AsList(x, asCommonEvent) })(x)
+	return (func(x any) ([]CommonEvent, error) {
+		return codec.AsList(x, asCommonEvent)
+	})(x)
 }
 
 // HubHealthItem is CDDL rule 'hub-health-item'. Optional fields are pointers; nil means absent.
@@ -6950,7 +7084,9 @@ func DecodeHubHealthItem(raw []byte) (HubHealthItem, error) {
 type HubHealthItems = []HubHubHealthItem
 
 func asHubHealthItems(x any) (HubHealthItems, error) {
-	return (func(x any) ([]HubHubHealthItem, error) { return codec.AsList(x, asHubHubHealthItem) })(x)
+	return (func(x any) ([]HubHubHealthItem, error) {
+		return codec.AsList(x, asHubHubHealthItem)
+	})(x)
 }
 
 // HubEnrollParams is CDDL rule 'hub-enroll-params'. Optional fields are pointers; nil means absent.
@@ -10949,7 +11085,9 @@ func DecodeHelloReply(raw []byte) (HelloReply, error) {
 type SchemaRefs = map[string]string
 
 func asSchemaRefs(x any) (SchemaRefs, error) {
-	return (func(x any) (map[string]string, error) { return codec.AsMap(x, codec.AsString) })(x)
+	return (func(x any) (map[string]string, error) {
+		return codec.AsMap(x, codec.AsString)
+	})(x)
 }
 
 // CapEntry is CDDL rule 'cap-entry'. Optional fields are pointers; nil means absent.
@@ -10984,16 +11122,24 @@ func asCapEntry(x any) (CapEntry, error) {
 	if out.Name, err = asCommonCapabilityName(m["name"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Reads, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["reads"]); err != nil {
+	if out.Reads, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["reads"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Exclusive, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["exclusive"]); err != nil {
+	if out.Exclusive, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["exclusive"]); err != nil {
 		return out, err
 	}
 	if out.Schemas, err = asSurfaceSchemaRefs(m["schemas"]); err != nil {
@@ -11048,7 +11194,9 @@ func asCapabilities(x any) (Capabilities, error) {
 	if out.Clock, err = asCommonUint64(m["clock"]); err != nil {
 		return out, err
 	}
-	if out.Entries, err = (func(x any) ([]SurfaceCapEntry, error) { return codec.AsList(x, asSurfaceCapEntry) })(m["entries"]); err != nil {
+	if out.Entries, err = (func(x any) ([]SurfaceCapEntry, error) {
+		return codec.AsList(x, asSurfaceCapEntry)
+	})(m["entries"]); err != nil {
 		return out, err
 	}
 	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
@@ -11100,10 +11248,14 @@ func asGrant(x any) (Grant, error) {
 	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
 		return out, err
 	}
-	if out.Operations, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["operations"]); err != nil {
+	if out.Operations, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["operations"]); err != nil {
 		return out, err
 	}
-	if out.Resources, err = (func(x any) ([]CommonCapabilityName, error) { return codec.AsList(x, asCommonCapabilityName) })(m["resources"]); err != nil {
+	if out.Resources, err = (func(x any) ([]CommonCapabilityName, error) {
+		return codec.AsList(x, asCommonCapabilityName)
+	})(m["resources"]); err != nil {
 		return out, err
 	}
 	if out.Expires, err = asCommonUint64(m["expires"]); err != nil {
@@ -11153,7 +11305,9 @@ func asGrants(x any) (Grants, error) {
 	if out.Epoch, err = codec.AsUint64(m["epoch"]); err != nil {
 		return out, err
 	}
-	if out.Entries, err = (func(x any) ([]SurfaceGrant, error) { return codec.AsList(x, asSurfaceGrant) })(m["entries"]); err != nil {
+	if out.Entries, err = (func(x any) ([]SurfaceGrant, error) {
+		return codec.AsList(x, asSurfaceGrant)
+	})(m["entries"]); err != nil {
 		return out, err
 	}
 	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
@@ -12772,13 +12926,19 @@ func asS02Manifest(x any) (S02Manifest, error) {
 	if out.Id, err = asCommonCogletId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.Subscriptions, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["subscriptions"]); err != nil {
+	if out.Subscriptions, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["subscriptions"]); err != nil {
 		return out, err
 	}
-	if out.RequiredCapabilities, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["required_capabilities"]); err != nil {
+	if out.RequiredCapabilities, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["required_capabilities"]); err != nil {
 		return out, err
 	}
-	if out.ExclusiveOutputs, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["exclusive_outputs"]); err != nil {
+	if out.ExclusiveOutputs, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["exclusive_outputs"]); err != nil {
 		return out, err
 	}
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
@@ -12925,28 +13085,44 @@ func asS02StepRecord1(x any) (S02StepRecord1, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]Surface02S02Event, error) { return codec.AsList(x, asSurface02S02Event) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]Surface02S02Event, error) {
+		return codec.AsList(x, asSurface02S02Event)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]Surface02S02Call, error) { return codec.AsList(x, asSurface02S02Call) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]Surface02S02Call, error) {
+		return codec.AsList(x, asSurface02S02Call)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -13102,28 +13278,44 @@ func asS02StepRecord2(x any) (S02StepRecord2, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]Surface02S02Event, error) { return codec.AsList(x, asSurface02S02Event) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]Surface02S02Event, error) {
+		return codec.AsList(x, asSurface02S02Event)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]Surface02S02Call, error) { return codec.AsList(x, asSurface02S02Call) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]Surface02S02Call, error) {
+		return codec.AsList(x, asSurface02S02Call)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -13252,10 +13444,14 @@ func asS02Trace(x any) (S02Trace, error) {
 	if out.InitialEffectIds, err = asAbiEffectLedger(m["initial_effect_ids"]); err != nil {
 		return out, err
 	}
-	if out.InitialActions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["initial_actions"]); err != nil {
+	if out.InitialActions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["initial_actions"]); err != nil {
 		return out, err
 	}
-	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) { return codec.AsList(x, asCommonUint64) })(m["initial_inbox_wakes"]); err != nil {
+	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) {
+		return codec.AsList(x, asCommonUint64)
+	})(m["initial_inbox_wakes"]); err != nil {
 		return out, err
 	}
 	if out.InitialHash, err = asAbiHash(m["initial_hash"]); err != nil {
@@ -13276,16 +13472,24 @@ func asS02Trace(x any) (S02Trace, error) {
 	if out.TrailingBoundary, err = codec.AsAny(m["trailing_boundary"]); err != nil {
 		return out, err
 	}
-	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["initial_timers"]); err != nil {
+	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["initial_timers"]); err != nil {
 		return out, err
 	}
-	if out.InitialLlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["initial_llm_requests"]); err != nil {
+	if out.InitialLlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["initial_llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Records, err = (func(x any) ([]Surface02S02StepRecord, error) { return codec.AsList(x, asSurface02S02StepRecord) })(m["records"]); err != nil {
+	if out.Records, err = (func(x any) ([]Surface02S02StepRecord, error) {
+		return codec.AsList(x, asSurface02S02StepRecord)
+	})(m["records"]); err != nil {
 		return out, err
 	}
-	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(m["blobs"]); err != nil {
+	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) {
+		return codec.AsMap(x, asAbiHex)
+	})(m["blobs"]); err != nil {
 		return out, err
 	}
 	return out, nil
@@ -13763,13 +13967,19 @@ func asS02DbManifest(x any) (S02DbManifest, error) {
 	if out.Id, err = asCommonCogletId(m["id"]); err != nil {
 		return out, err
 	}
-	if out.Subscriptions, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["subscriptions"]); err != nil {
+	if out.Subscriptions, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["subscriptions"]); err != nil {
 		return out, err
 	}
-	if out.RequiredCapabilities, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["required_capabilities"]); err != nil {
+	if out.RequiredCapabilities, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["required_capabilities"]); err != nil {
 		return out, err
 	}
-	if out.ExclusiveOutputs, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["exclusive_outputs"]); err != nil {
+	if out.ExclusiveOutputs, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["exclusive_outputs"]); err != nil {
 		return out, err
 	}
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
@@ -13946,28 +14156,44 @@ func asS02DbStepRecord1(x any) (S02DbStepRecord1, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]Surface02S02Event, error) { return codec.AsList(x, asSurface02S02Event) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]Surface02S02Event, error) {
+		return codec.AsList(x, asSurface02S02Event)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]any, error) {
+		return codec.AsList(x, codec.AsAny)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -14143,28 +14369,44 @@ func asS02DbStepRecord2(x any) (S02DbStepRecord2, error) {
 	if out.Budgets, err = asAbiBudgets(m["budgets"]); err != nil {
 		return out, err
 	}
-	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["grants"]); err != nil {
+	if out.Grants, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["grants"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]Surface02S02Event, error) { return codec.AsList(x, asSurface02S02Event) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]Surface02S02Event, error) {
+		return codec.AsList(x, asSurface02S02Event)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) { return codec.AsList(x, asAbiBoundaryChange) })(m["boundary"]); err != nil {
+	if out.Boundary, err = (func(x any) ([]AbiBoundaryChange, error) {
+		return codec.AsList(x, asAbiBoundaryChange)
+	})(m["boundary"]); err != nil {
 		return out, err
 	}
-	if out.Calls, err = (func(x any) ([]any, error) { return codec.AsList(x, codec.AsAny) })(m["calls"]); err != nil {
+	if out.Calls, err = (func(x any) ([]any, error) {
+		return codec.AsList(x, codec.AsAny)
+	})(m["calls"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["timers"]); err != nil {
+	if out.Timers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["timers"]); err != nil {
 		return out, err
 	}
-	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["llm_requests"]); err != nil {
+	if out.LlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) { return codec.AsList(x, asAbiLogEntry) })(m["logs"]); err != nil {
+	if out.Logs, err = (func(x any) ([]AbiLogEntry, error) {
+		return codec.AsList(x, asAbiLogEntry)
+	})(m["logs"]); err != nil {
 		return out, err
 	}
 	if out.InputFiles, err = asAbiSnapshot(m["input_files"]); err != nil {
@@ -14297,10 +14539,14 @@ func asS02DbTrace(x any) (S02DbTrace, error) {
 	if out.InitialEffectIds, err = asAbiEffectLedger(m["initial_effect_ids"]); err != nil {
 		return out, err
 	}
-	if out.InitialActions, err = (func(x any) ([]Surface02S02Action, error) { return codec.AsList(x, asSurface02S02Action) })(m["initial_actions"]); err != nil {
+	if out.InitialActions, err = (func(x any) ([]Surface02S02Action, error) {
+		return codec.AsList(x, asSurface02S02Action)
+	})(m["initial_actions"]); err != nil {
 		return out, err
 	}
-	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) { return codec.AsList(x, asCommonUint64) })(m["initial_inbox_wakes"]); err != nil {
+	if out.InitialInboxWakes, err = (func(x any) ([]CommonUint64, error) {
+		return codec.AsList(x, asCommonUint64)
+	})(m["initial_inbox_wakes"]); err != nil {
 		return out, err
 	}
 	if out.InitialHash, err = asAbiHash(m["initial_hash"]); err != nil {
@@ -14321,16 +14567,24 @@ func asS02DbTrace(x any) (S02DbTrace, error) {
 	if out.TrailingBoundary, err = codec.AsAny(m["trailing_boundary"]); err != nil {
 		return out, err
 	}
-	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) { return codec.AsList(x, asAbiTimerRequest) })(m["initial_timers"]); err != nil {
+	if out.InitialTimers, err = (func(x any) ([]AbiTimerRequest, error) {
+		return codec.AsList(x, asAbiTimerRequest)
+	})(m["initial_timers"]); err != nil {
 		return out, err
 	}
-	if out.InitialLlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) { return codec.AsList(x, asSurface02S02LlmRequest) })(m["initial_llm_requests"]); err != nil {
+	if out.InitialLlmRequests, err = (func(x any) ([]Surface02S02LlmRequest, error) {
+		return codec.AsList(x, asSurface02S02LlmRequest)
+	})(m["initial_llm_requests"]); err != nil {
 		return out, err
 	}
-	if out.Records, err = (func(x any) ([]Surface02S02DbStepRecord, error) { return codec.AsList(x, asSurface02S02DbStepRecord) })(m["records"]); err != nil {
+	if out.Records, err = (func(x any) ([]Surface02S02DbStepRecord, error) {
+		return codec.AsList(x, asSurface02S02DbStepRecord)
+	})(m["records"]); err != nil {
 		return out, err
 	}
-	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) { return codec.AsMap(x, asAbiHex) })(m["blobs"]); err != nil {
+	if out.Blobs, err = (func(x any) (map[string]AbiHex, error) {
+		return codec.AsMap(x, asAbiHex)
+	})(m["blobs"]); err != nil {
 		return out, err
 	}
 	if out.InitialDbRevision, err = asCommonUint64(m["initial_db_revision"]); err != nil {
@@ -14434,16 +14688,24 @@ func asS02CapEntry(x any) (S02CapEntry, error) {
 	if out.Name, err = asSurface02S02CapabilityName(m["name"]); err != nil {
 		return out, err
 	}
-	if out.Events, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["events"]); err != nil {
+	if out.Events, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["events"]); err != nil {
 		return out, err
 	}
-	if out.Reads, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["reads"]); err != nil {
+	if out.Reads, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["reads"]); err != nil {
 		return out, err
 	}
-	if out.Actions, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["actions"]); err != nil {
+	if out.Actions, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["actions"]); err != nil {
 		return out, err
 	}
-	if out.Exclusive, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["exclusive"]); err != nil {
+	if out.Exclusive, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["exclusive"]); err != nil {
 		return out, err
 	}
 	if out.Schemas, err = asSurface02S02SchemaRefs(m["schemas"]); err != nil {
@@ -14498,7 +14760,9 @@ func asS02Capabilities(x any) (S02Capabilities, error) {
 	if out.Clock, err = asCommonUint64(m["clock"]); err != nil {
 		return out, err
 	}
-	if out.Entries, err = (func(x any) ([]Surface02S02CapEntry, error) { return codec.AsList(x, asSurface02S02CapEntry) })(m["entries"]); err != nil {
+	if out.Entries, err = (func(x any) ([]Surface02S02CapEntry, error) {
+		return codec.AsList(x, asSurface02S02CapEntry)
+	})(m["entries"]); err != nil {
 		return out, err
 	}
 	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
@@ -14550,10 +14814,14 @@ func asS02Grant(x any) (S02Grant, error) {
 	if out.Coglet, err = asCommonCogletId(m["coglet"]); err != nil {
 		return out, err
 	}
-	if out.Operations, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["operations"]); err != nil {
+	if out.Operations, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["operations"]); err != nil {
 		return out, err
 	}
-	if out.Resources, err = (func(x any) ([]Surface02S02CapabilityName, error) { return codec.AsList(x, asSurface02S02CapabilityName) })(m["resources"]); err != nil {
+	if out.Resources, err = (func(x any) ([]Surface02S02CapabilityName, error) {
+		return codec.AsList(x, asSurface02S02CapabilityName)
+	})(m["resources"]); err != nil {
 		return out, err
 	}
 	if out.Expires, err = asCommonUint64(m["expires"]); err != nil {
@@ -14603,7 +14871,9 @@ func asS02Grants(x any) (S02Grants, error) {
 	if out.Epoch, err = codec.AsUint64(m["epoch"]); err != nil {
 		return out, err
 	}
-	if out.Entries, err = (func(x any) ([]Surface02S02Grant, error) { return codec.AsList(x, asSurface02S02Grant) })(m["entries"]); err != nil {
+	if out.Entries, err = (func(x any) ([]Surface02S02Grant, error) {
+		return codec.AsList(x, asSurface02S02Grant)
+	})(m["entries"]); err != nil {
 		return out, err
 	}
 	if out.CorrelationId, err = asCommonCorrelationId(m["correlation_id"]); err != nil {
@@ -14696,7 +14966,9 @@ func DecodeS02Read(raw []byte) (S02Read, error) {
 type S02SchemaRefs = map[string]string
 
 func asS02SchemaRefs(x any) (S02SchemaRefs, error) {
-	return (func(x any) (map[string]string, error) { return codec.AsMap(x, codec.AsString) })(x)
+	return (func(x any) (map[string]string, error) {
+		return codec.AsMap(x, codec.AsString)
+	})(x)
 }
 
 // S02SurfaceMessage is one of the record branches of CDDL rule 's02-surface-message'.
