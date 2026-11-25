@@ -370,7 +370,10 @@ pub unsafe extern "C" fn coglet_surface_recv(
                 call.ready_us = Some(link.timings.now());
                 call.ready_bytes = bytes.len();
             }
-            if link.pump(now, call).is_err() {
+            // ADR-0034: tick above is mandatory (expiry/revocation/inactivity).
+            // Once its front is eligible, do not put optional guest/fsync work
+            // ahead of either a size query, short retry or the exact copy.
+            if link.session.front().is_none() && link.pump(now, call).is_err() {
                 link.session.disconnect();
                 return -2;
             }
