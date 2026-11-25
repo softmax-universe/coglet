@@ -5,19 +5,27 @@ use serde_json::json;
 use std::io::Write;
 
 fn fixture() -> (RawCiEvidence, TrustRoot) {
-    fixture_with_executable(None)
+    fixture_with_executable(None, None)
 }
 
 /// Synthetic CI envelope with real selected-host executable bytes, for tests
 /// that execute that exact tool. The other architecture remains a stub: this
 /// never claims real CI custody or cross-architecture execution.
 pub fn evidence_with_executable(bytes: Vec<u8>) -> (RawCiEvidence, TrustRoot) {
-    let (raw, trust) = fixture_with_executable(Some(bytes));
+    let (raw, trust) = fixture_with_executable(Some(bytes), None);
     verify_ci_qualification(&raw, &trust).unwrap();
     (raw, trust)
 }
 
-fn fixture_with_executable(executable: Option<Vec<u8>>) -> (RawCiEvidence, TrustRoot) {
+pub fn evidence_with_tools(executable: Vec<u8>, gate: Vec<u8>) -> (RawCiEvidence, TrustRoot) {
+    let (raw, trust) = fixture_with_executable(Some(executable), Some(gate));
+    verify_ci_qualification(&raw, &trust).unwrap();
+    (raw, trust)
+}
+fn fixture_with_executable(
+    executable: Option<Vec<u8>>,
+    gate: Option<Vec<u8>>,
+) -> (RawCiEvidence, TrustRoot) {
     let head = "a".repeat(40);
     let repo = json!({"id": REPO_ID, "full_name": REPO, "fork":false});
     let run = json!({"repository":repo,"head_repository":repo,"head_sha":head,"path":WORKFLOW,"workflow_id":WORKFLOW_ID,"id":7,"run_attempt":2,"status":"completed","conclusion":"success","event":"push"});
@@ -42,7 +50,13 @@ fn fixture_with_executable(executable: Option<Vec<u8>>) -> (RawCiEvidence, Trust
         {
             exe = bytes.clone();
         }
+        let gate = if arch == std::env::consts::ARCH {
+            gate.clone().unwrap_or_else(|| exe.clone())
+        } else {
+            exe.clone()
+        };
         let mut files = BTreeMap::from([
+            ("coglet-transform-gate", gate),
             ("transform.source", crate::transform_source_bytes().to_vec()),
             ("coglet-transform", exe),
             ("Cargo.lock", b"fixture lock".to_vec()),

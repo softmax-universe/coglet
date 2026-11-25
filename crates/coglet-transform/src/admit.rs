@@ -2,7 +2,7 @@
 //! The caller owns provisioning the allowlist from authenticated CI, sampling
 //! current delegation/revocation/time, retaining evidence, and atomic signing/CAS.
 //! No function here turns caller-provided CI identity strings into authority.
-use crate::{PROFILE, Refuse, sha256_hex, CiQualification};
+use crate::{CiQualification, PROFILE, Refuse, sha256_hex};
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,6 +56,7 @@ pub struct Evidence {
     pub recipe: Vec<u8>,
     pub corpus: Vec<u8>,
     pub gate_outputs: Vec<u8>,
+    pub publication_gate_outputs: Vec<u8>,
     pub engine_artifact: Vec<u8>,
     pub original: Vec<u8>,
     pub output: Vec<u8>,
@@ -92,20 +93,36 @@ impl Evidence {
             frame(&mut out, value.as_bytes());
         }
         let q = &self.qualification;
-        for s in [q.repo(), q.workflow_path(), q.head_sha(), q.transform_exe_sha256(), q.corpus_sha256()] {
+        for s in [
+            q.repo(),
+            q.workflow_path(),
+            q.head_sha(),
+            q.transform_exe_sha256(),
+            q.corpus_sha256(),
+        ] {
             frame(&mut out, s.as_bytes());
         }
         out.extend(q.run_id().to_be_bytes());
         out.extend(q.run_attempt().to_be_bytes());
         for entries in [q.jobs(), q.artifacts()] {
             out.extend((entries.len() as u64).to_be_bytes());
-            for (name, value) in entries { frame(&mut out, name.as_bytes()); frame(&mut out, value.as_bytes()); }
+            for (name, value) in entries {
+                frame(&mut out, name.as_bytes());
+                frame(&mut out, value.as_bytes());
+            }
         }
+        frame(
+            &mut out,
+            sha256_hex(&self.publication_gate_outputs).as_bytes(),
+        );
         sha256_hex(&out)
     }
 
     pub fn verify(&self) -> Result<(), Refuse> {
         let p = &self.pins;
+        if self.publication_gate_outputs.is_empty() {
+            return Err(Refuse::BindingMismatch);
+        }
         if p.profile != PROFILE
             || self.profile != crate::profile_bytes()
             || p.engine.is_empty()
@@ -141,7 +158,7 @@ impl Evidence {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct AdmissionStatement {
     pub publisher: String,
     pub router: String,
@@ -161,7 +178,7 @@ pub struct AdmissionStatement {
     pub expires_at_unix: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct SignedAdmission {
     pub issuer: String,
     pub signature: String,
@@ -298,7 +315,10 @@ pub fn admit_publication(
     }
     evidence.verify()?;
     let p = &evidence.pins;
-    if *p != now.qualification || !allowlist.entries.contains(p) || evidence.qualification != now.ci_qualification {
+    if *p != now.qualification
+        || !allowlist.entries.contains(p)
+        || evidence.qualification != now.ci_qualification
+    {
         return Err(Refuse::Unqualified);
     }
     if p.profile != s.profile

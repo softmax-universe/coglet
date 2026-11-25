@@ -24,7 +24,10 @@ pub(super) fn run(mut command: Command, max: usize, wall: Duration) -> Result<Ve
             Ok(())
         });
     }
-    let mut child = command.spawn().map_err(|_| Error::Invalid)?;
+    let mut child = command.spawn().map_err(|e| {
+        eprintln!("build supervisor spawn: {e:?}");
+        Error::Invalid
+    })?;
     drop(command);
     let pid = Pid::from_raw(child.id() as i32);
     let stdout = child.stdout.take().ok_or(Error::Invalid)?;

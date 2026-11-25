@@ -22,6 +22,8 @@ use std::{
 
 mod evidence;
 mod process;
+mod r3;
+pub use r3::{R3Config, R3Profile};
 const MAX_INPUT: usize = 64 * 1024;
 const MAX_WASM: usize = 64 * 1024;
 const POLICY: &[u8] =
@@ -64,8 +66,22 @@ pub struct Profile {
     source_sha256: String,
     manifest_sha256: String,
     output_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    r3: Option<R3Config>,
 }
 impl Profile {
+    /// Opt-in on the existing protected saga Recipe, not an untrusted request.
+    pub fn r3_wat(
+        id: &str,
+        source_sha256: String,
+        manifest_sha256: String,
+        output_sha256: String,
+        config: R3Config,
+    ) -> Self {
+        let mut profile = Self::integer_wat(id, source_sha256, manifest_sha256, output_sha256);
+        profile.r3 = Some(config);
+        profile
+    }
     pub fn integer_wat(
         id: &str,
         source_sha256: String,
@@ -77,6 +93,7 @@ impl Profile {
             source_sha256,
             manifest_sha256,
             output_sha256,
+            r3: None,
         }
     }
 }
@@ -89,6 +106,7 @@ pub struct BuildRequest {
 pub struct Builder {
     target: Target,
     profile: Profile,
+    r3: Option<R3Profile>,
 }
 /// Key-free compiled output; fields are private to prevent caller substitution.
 pub struct Candidate {
@@ -99,6 +117,8 @@ pub struct Candidate {
     manifest: Vec<u8>,
     wasm: Vec<u8>,
     provenance: Value,
+    r3: Option<r3::Built>,
+    original: Vec<u8>,
 }
 impl Candidate {
     pub fn wasm(&self) -> &[u8] {
@@ -122,7 +142,18 @@ impl Builder {
         ] {
             checked("hub-hash", &json!(pin))?;
         }
-        Ok(Self { target, profile })
+        let r3 = profile.r3.as_ref().map(R3Config::load).transpose()?;
+        Ok(Self {
+            target,
+            profile,
+            r3,
+        })
+    }
+    /// Trusted-local opt-in only; requests still select only the configured id.
+    pub fn new_r3(target: Target, profile: Profile, r3: R3Profile) -> Result<Self> {
+        let mut builder = Self::new(target, profile)?;
+        builder.r3 = Some(r3);
+        Ok(builder)
     }
     /// Bounded synchronous work: invoke on the service's blocking budget, never
     /// the async reactor. Reads pinned blobs only; no checkout, hooks, submodules,
@@ -151,6 +182,17 @@ impl Builder {
         }
         let parsed: Value = serde_json::from_slice(&manifest)?;
         checked("manifest", &parsed)?;
+        if self.r3.is_some()
+            && (parsed["budgets"]["compute_mode"] != "wamr-2.4.3-fast-cumulative-v1"
+                || parsed["budgets"]["memory_pages"]
+                    .as_u64()
+                    .is_none_or(|n| n > 2)
+                || parsed["budgets"]["compute"]
+                    .as_u64()
+                    .is_none_or(|n| n < 10000))
+        {
+            return Err(Error::Denied);
+        }
         if parsed["id"] != self.target.coglet {
             return Err(Error::Denied);
         }
@@ -160,11 +202,23 @@ impl Builder {
         if wasm.len() > MAX_WASM {
             return Err(Error::Full);
         }
-        let features = wasmparser::WasmFeatures::MUTABLE_GLOBAL
+        let original = wasm.clone();
+        let wasm = match &self.r3 {
+            Some(profile) => profile.rewrite(&original)?,
+            None => original.clone(),
+        };
+        if wasm.len() > MAX_WASM {
+            return Err(Error::Full);
+        }
+        let mut features = wasmparser::WasmFeatures::MUTABLE_GLOBAL
             | wasmparser::WasmFeatures::SIGN_EXTENSION
             | wasmparser::WasmFeatures::MULTI_VALUE
             | wasmparser::WasmFeatures::BULK_MEMORY
             | wasmparser::WasmFeatures::REFERENCE_TYPES;
+        if self.r3.is_some() {
+            features |= wasmparser::WasmFeatures::FLOATS
+                | wasmparser::WasmFeatures::SATURATING_FLOAT_TO_INT;
+        }
         wasmparser::Validator::new_with_features(features)
             .validate_all(&wasm)
             .map_err(|_| Error::Denied)?;
@@ -187,7 +241,21 @@ impl Builder {
         if hash(&wasm) != self.profile.output_sha256 {
             return Err(Error::Denied);
         }
-        let provenance = json!({"version":"0.1","source_commit":request.source_commit,"recipe_sha256":hash(&recipe()),"policy_sha256":hash(POLICY),"transform_sha256":hash(include_bytes!("build.rs")),"original_sha256":hash(&wasm),"rewritten_sha256":hash(&wasm)});
+        let r3 = self
+            .r3
+            .as_ref()
+            .map(|profile| profile.evidence(&source, &original, &wasm))
+            .transpose()?;
+        let policy = if r3.is_some() {
+            coglet_transform::profile_bytes()
+        } else {
+            POLICY
+        };
+        let transform = r3
+            .as_ref()
+            .map(|r| r.evidence.pins.transform_artifact_sha256.clone())
+            .unwrap_or_else(|| hash(include_bytes!("build.rs")));
+        let provenance = json!({"version":"0.1","source_commit":request.source_commit,"recipe_sha256":hash(&recipe()),"policy_sha256":hash(policy),"transform_sha256":transform,"original_sha256":hash(&original),"rewritten_sha256":hash(&wasm)});
         checked("hub-build-record", &provenance)?;
         Ok(Candidate {
             target: self.target.clone(),
@@ -197,6 +265,8 @@ impl Builder {
             manifest,
             wasm,
             provenance,
+            original,
+            r3,
         })
     }
 }
@@ -415,7 +485,7 @@ impl Candidate {
             checked("hub-oid", &json!(old))?;
         }
         let intent = hash(&serde_json::to_vec(
-            &json!({"target":self.target,"profile":self.profile,"build":self.request,"sign":request,"delegation":provision,"hub":key.public().to_string(),"recipe":hash(&recipe()),"policy":hash(POLICY),"transform":self.provenance["transform_sha256"]}),
+            &json!({"target":self.target,"profile":self.profile,"build":self.request,"sign":request,"delegation":provision,"hub":key.public().to_string(),"recipe":hash(&recipe()),"policy":self.provenance["policy_sha256"],"transform":self.provenance["transform_sha256"],"r3":self.r3.as_ref().map(|r| json!({"evidence":r.evidence.digest(),"issuer":hex::encode(r.issuer())}))}),
         )?);
         if let Some(artifact) = store.retained_build(request, &intent)? {
             return Ok(artifact);
@@ -436,12 +506,23 @@ impl Candidate {
             io(std::fs::create_dir(stage.path().join(dir)))?;
         }
         let recipe = recipe();
+        let policy = if self.r3.is_some() {
+            coglet_transform::profile_bytes()
+        } else {
+            POLICY
+        };
+        if let Some(r3) = &self.r3 {
+            io(std::fs::write(
+                stage.path().join("build/evidence.json"),
+                serde_json::to_vec(&r3.manifest)?,
+            ))?;
+        }
         for (name, bytes) in [
             ("source/guest.wat", self.source.as_slice()),
             ("manifest.json", self.manifest.as_slice()),
             ("bin/step.wasm", self.wasm.as_slice()),
             ("build/recipe.lock", recipe.as_slice()),
-            ("build/policy.txt", POLICY),
+            ("build/policy.txt", policy),
         ] {
             io(std::fs::write(stage.path().join(name), bytes))?;
         }
@@ -458,7 +539,15 @@ impl Candidate {
         )?;
         git(
             stage.path(),
-            &["commit", "-m", "qualified integer-WAT publication"],
+            &[
+                "commit",
+                "-m",
+                if self.r3.is_some() {
+                    "qualified R3 publication"
+                } else {
+                    "qualified integer-WAT publication"
+                },
+            ],
             None,
             1024,
         )?;
@@ -496,7 +585,9 @@ impl Candidate {
         )
         .map_err(|_| Error::Invalid)?;
         let mut sink = io(BundleSink::create(quarantine, bundle.len() as u64).await)?;
-        io(sink.append(&bundle).await)?;
+        for chunk in bundle.chunks(16 * 1024) {
+            io(sink.append(chunk).await)?;
+        }
         let envelope = io(sink.check_envelope(&metadata, &hash(&bundle), 100000).await)?;
         let verified = envelope
             .validate(validator, Limits::default())
@@ -507,7 +598,16 @@ impl Candidate {
         }
         drop(verified);
         self.delegation(provision, key, clock())?;
-        store.retain_build(request, &intent, &[self.wasm.clone()], |tx| {
+        let blobs: Vec<Vec<u8>> = match &self.r3 {
+            Some(r3) => r3
+                .blobs
+                .values()
+                .cloned()
+                .chain([serde_json::to_vec(&r3.manifest)?])
+                .collect(),
+            None => vec![self.wasm.clone()],
+        };
+        store.retain_build(request, &intent, &blobs, |tx| {
             // Query the exact current binding in the SAME Store transaction.
             // Do not acquire Authority's mutex while holding the SQL writer lock.
             coglet_proto::authority::Authority::authorize_publication_in(
@@ -518,13 +618,19 @@ impl Candidate {
                 &provision.signed,
                 &clock,
             )?;
+            let admission = self.r3.as_ref().map(|r3| r3.admit(&self, request, provision, key, &tip, clock().ok_or(Error::Denied)?)).transpose()?;
             statement["hub"] = json!(key.public().to_string());
             let signature = signed(key, statement)?;
+            let reproduction = if let Some(r3) = &self.r3 {
+                json!({"evidence_manifest_sha256":hash(&serde_json::to_vec(&r3.manifest)?),"evidence":r3.manifest,"admission":admission,"delegation":provision,"profile":self.profile,"target":self.target,"request":self.request})
+            } else {
+                json!({"source":hex::encode(&self.source),"manifest":hex::encode(&self.manifest),"recipe":hex::encode(&recipe),"policy":hex::encode(POLICY),"transform":hex::encode(include_bytes!("build.rs")),"original":hex::encode(&self.original),"rewritten":hex::encode(&self.wasm),"delegation":provision,"profile":self.profile,"target":self.target,"request":self.request})
+            };
             Ok(Artifact {
                 bundle,
                 signed: signature,
                 provenance: self.provenance.clone(),
-                reproduction: json!({"source":hex::encode(&self.source),"manifest":hex::encode(&self.manifest),"recipe":hex::encode(&recipe),"policy":hex::encode(POLICY),"transform":hex::encode(include_bytes!("build.rs")),"original":hex::encode(&self.wasm),"rewritten":hex::encode(&self.wasm),"delegation":provision,"profile":self.profile,"target":self.target,"request":self.request}),
+                reproduction,
             })
         })
     }

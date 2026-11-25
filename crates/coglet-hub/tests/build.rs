@@ -1,4 +1,6 @@
 #![cfg(target_os = "linux")]
+#[path = "build/r3.rs"]
+mod r3;
 use coglet_hub::{
     Error, Store,
     build::{Artifact, BuildRequest, Builder, Candidate, Delegation, Profile, SignRequest, Target},

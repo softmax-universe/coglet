@@ -11,8 +11,8 @@ pub mod oracle;
 pub mod rewrite;
 
 pub use admit::{
-    AdmissionStatement, Allowlist, Authority, Evidence, GatePins, PublicationInputs, SignedAdmission,
-    admit_publication, integer_profile_admitted,
+    AdmissionStatement, Allowlist, Authority, Evidence, GatePins, PublicationInputs,
+    SignedAdmission, admit_publication, integer_profile_admitted,
 };
 pub use oracle::{Op, Width, r3_bits};
 pub use rewrite::{DigestRecord, Pins, Rewrite, rewrite};
@@ -67,6 +67,8 @@ pub fn transform_source_bytes() -> &'static [u8] {
         include_str!("admit.rs"),
         "\0bin/coglet-transform.rs\0",
         include_str!("bin/coglet-transform.rs"),
+        "\0bin/coglet-transform-gate.rs\0",
+        include_str!("bin/coglet-transform-gate.rs"),
         "\0Cargo.toml\0",
         include_str!("../Cargo.toml"),
         "\0Cargo.lock\0",
