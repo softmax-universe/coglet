@@ -591,10 +591,15 @@ dependencies = [
 name = "coglet-hub"
 version = "0.1.0"
 dependencies = [
+ "coglet-engine",
+ "coglet-mock",
  "coglet-proto",
+ "coglet-runtime",
  "coglet-types",
  "hex",
  "iroh",
+ "libc",
+ "nix",
  "rusqlite",
  "serde",
  "serde_json",
@@ -602,6 +607,8 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "wasmparser 0.245.1",
+ "wat",
 ]
 
 [[package]]

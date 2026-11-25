@@ -57,8 +57,9 @@ receipt without new effects or audit. Conflicting bytes/context cannot replace i
 
 Admission holds the State → boundary fence and an IMMEDIATE SQL transaction,
 serializing registry/current-policy/generation reads through commit. Actor authority
-uses a revision CAS witness. Shared enrollment/delegation Authority has a separate
-DB and is freshly rechecked before commit, **not** atomically leased across DBs.
+uses a revision CAS witness. Shared enrollment/delegation Authority uses a separate
+connection to `kernel.db` and is freshly rechecked before commit. Those existing
+cross-connection checks are **not** a single transaction-bound authority lease.
 Build/signature, required policy+ticket gate union, original-propose approval and
 capability/state compatibility are rechecked at promote, including after adapter
 preparation. Even optional approval references must authenticate before audit.
@@ -105,6 +106,87 @@ fixture provenance and unsigned results are **not** authenticated production gat
 artifacts or build authority. Durable promotion/ticket/audit receipts, signed-ref
 boundary activation, health/emergency-fence producers, rollback integration,
 clock recovery, final CI/review/merge and `policy-v0` are still unfinished.
+
+## Local operator configuration (not deployment qualification)
+
+`serve` now starts the production bounded AF_UNIX Handler at
+`<state-dir>/operator.sock`. OS credentials must match the service UID, including
+for root; the socket retains the exclusive state lock. Framing, capacity,
+permissions and stale-entry refusal use the existing driver. No iroh method,
+ALPN or TCP listener is added for administration.
+
+The optional trusted startup `operator` configuration is closed JSON:
+
+```json
+{
+  "operator": {
+    "uid": 1000,
+    "actor": "hub:REPLACE_WITH_PROVISIONED_64_HEX_ID",
+    "operations": ["grant.provision", "grant.revoke", "enrollment.window", "enrollment.invite"],
+    "max_window_ms": 60000,
+    "grants": [{
+      "peer": "REPLACE_WITH_EXACT_RUNTIME_NODE_ID",
+      "method": "hub.status",
+      "target": null,
+      "max_expires_unix_s": 1800000000
+    }]
+  }
+}
+```
+
+Replace the illustrative identity/expiry values with explicit local provisioning.
+The UID must equal the actual service UID; the actor uses the common source-ID
+syntax. There are no ticket grants or wildcard peers/methods/targets. Each exact
+policy ceiling bounds both grant provisioning and initial invite grants; even an
+empty invite needs an allowed peer. Absence of `operator` keeps the listener but
+refuses **all** admissions; it never derives an actor from the UID. A missing
+operation or ceiling denies admission. Configuration operations use the caller's
+atomic Store transaction. `serve` also installs the qualified initial-deploy saga
+executor for `deploy`, `push`, `stop` and `status`; build operations additionally
+require protected `recipes` and current exact downstream authority. See
+[operator-saga.md](operator-saga.md) for the executed real-iroh mock/runtime matrix,
+explicit binary and privileged proofs, and initial-deploy-only limits.
+
+New installations keep shared Authority tables in `kernel.db`. Any existing
+`authority.db` entry fails startup with an explicit offline-migration requirement,
+before creating replacement state; there is no automatic migration or deletion.
+Configuration, terminal receipt and audit use Store's **exact caller-owned SQL
+transaction**, under State → boundary → Authority locks. Shared Authority methods
+never independently commit from inside it. A failed effect rolls back before a
+semantic failure receipt is retained. Storage/audit failure leaves the admitted
+queued receipt available for identical retry, rather than claiming no admission.
+
+Grant revocation retains a strictly higher-generation, expired tombstone. Current
+transport polls recheck exact Authority under State → boundary and are woken after
+commit; a blocked real-iroh write is reset. Old provision IDs/generations do not
+resurrect the grant. Peer grants do not implicitly provision actor/ticket scopes.
+The health-generation index changes in the same transaction; incompatible pending
+health invitations are refused rather than corrupting the first invite.
+
+Window configuration and hash-only invitations write through that same transaction.
+Monotonic liveness is staged under the Authority lock and published only after the
+receipt/audit commit. Invites are bounded to their referenced window, one-use and
+expected-runtime-bound; no plaintext enters storage or audit. Replacement/close
+clears old liveness. Restart never reconstructs it, and retrying an old applied
+window/invite returns its retained receipt without reopening it.
+
+Named production-seam proofs in `operator_service` cover socket configuration,
+actual lost-reply retry, missing mapping/local-policy denial, hash-only retention,
+restart/expiry/close, configuration+receipt+audit rollback and grant tombstones.
+`operator_startup_socket_uses_explicit_service_actor` exercises the real binary.
+`hardening::operator_socket_revocation_resets_blocked_real_iroh_write` observes a
+code-1 stream reset after a socket revoke. The privileged Linux negative is explicit:
+
+```sh
+cargo test --locked -p coglet-hub --test operator_peer_process -- --ignored --exact operator_peer_uid_nonowner_subprocess
+```
+
+It requires passwordless sudo to launch a genuine root client against an ordinary
+service UID, verifies credential rejection despite DAC bypass, and includes the
+same request under the owner UID as a positive control. Both privileged test/helper
+are ignored in ordinary portable runs; their skipped presence is not this proof.
+The remaining ADR deploy saga and runtime/mock lifecycle matrix belong to the
+integration producer, not these configuration tests.
 
 ## Local fixture controls (not production)
 
@@ -245,4 +327,10 @@ review, green CI, merge and this card's final review handoff remain landing gate
 
 Full scheduler/Git/reference+mock integration stays with the producer-split owners
 listed in `crates/coglet-proto/README.md`; do not duplicate their transport state.
+
+## Local initial-deploy coordinator
+
+See [operator-saga.md](operator-saga.md) for protected recipe configuration,
+original-child receipt recovery, real-iroh lifecycle qualification and its named
+test matrix. Installed-target activation remains outside this initial-deploy slice.
 
