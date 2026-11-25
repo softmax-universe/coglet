@@ -11,7 +11,7 @@ import struct SoftmaxAppSurface.CBORMapEntry
 /// Real C ABI/WAMR and production RuntimeHost with a MainActor command fixture.
 /// NOT the app's live AppDelegate/SwiftUI tree or a coglet-mock acceptance proof.
 final class RuntimeAppSurfaceTests: XCTestCase {
-    @MainActor func testProductionHostDispatchesPinnedAppActionWithoutSpeechDecoding() async throws {
+    @MainActor func testProductionHostCompletesPinnedAsyncAppActionOnlyAfterNativeCallback() async throws {
         typealias N = SoftmaxAppSurface.CBORValue
         func object(_ fields: [String: N]) -> N { .map(fields.map { SoftmaxAppSurface.CBORMapEntry($0.key, $0.value) }) }
         let source = try XCTUnwrap(ProcessInfo.processInfo.environment["SOFTMAX_ECHO_INSTALL"])
@@ -41,9 +41,16 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         try JSONSerialization.data(withJSONObject: configuration, options: [.sortedKeys]).write(to: root.appendingPathComponent("runtime.json"))
         var presses = 0
         let userPress = { presses += 1 }
+        let entered = expectation(description: "async native command entered")
+        let finished = expectation(description: "actual native callback finished")
+        var resume: CheckedContinuation<Void, Never>?
         let registry = ControlRegistry(revision: 1, currentRoute: { $0 == "settings" ? "general" : nil })
         _ = try registry.mount(id: "settings.general.test_button", window: "settings", route: "general", role: "button", label: "Test button",
-            verbs: ["press"], value: { object(["kind": .text("none")]) }, invoke: { _ in userPress() })
+            verbs: ["press"], value: { object(["kind": .text("none")]) }, invokeAsync: { _, context in
+                await withCheckedContinuation { continuation in resume = continuation; entered.fulfill() }
+                try context.perform { userPress() }
+                finished.fulfill()
+            }, invoke: { _ in XCTFail("async command used sync fallback") })
         let adapter = AppSurfaceAdapter(registry: registry, captureState: {
             let meter = object(["state": .text("idle"), "visible": .boolean(false), "elapsed_ms": .unsigned(0), "level": .unsigned(0)])
             return object(["revision": .unsigned(registry.revision),
@@ -62,6 +69,13 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         XCTAssertEqual(presses, 0, "SDK acceptance cannot fake a native effect")
         await host.poll()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        await fulfillment(of: [entered], timeout: 2)
+        XCTAssertEqual(presses, 0, "Suspension must not manufacture terminal success")
+        let pendingLedger = try CogletTypes.CBORCodec.decodeProfile(Array(Data(contentsOf: root.appendingPathComponent("surface/ledger.cbor"))))
+        XCTAssertEqual(pendingLedger["records"]?[owner + "/" + actionID]?["outcome"], .array([]))
+        try XCTUnwrap(resume).resume()
+        await fulfillment(of: [finished], timeout: 2)
+        await host.poll()
         XCTAssertEqual(presses, 1)
         XCTAssertTrue(host.actions.isEmpty, "app actions must never enter RuntimeAction speech decoding")
         let ledger = try CogletTypes.CBORCodec.decodeProfile(Array(Data(contentsOf: root.appendingPathComponent("surface/ledger.cbor"))))
