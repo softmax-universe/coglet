@@ -87,6 +87,15 @@ they are not measured performance improvements or production deployments.
 | `research_replay_uses_recorded_responses` | Same real-WAMR module, `coglet-llm` + `coglet-mock::llm`, immutable inbox, reopen and offline `replay_database` after removing both SQLite databases |
 | `candidate_baseline_comparison_is_reproducible` | Native `tests/research/mod.rs`; same real-WAMR module, repeated fixtures plus regression/tie/inconclusive cases |
 
+Annotations are type-gated: generic EVALUATE/REPLAN/PRIORITIZE/DEFER cannot
+mutate experiment, evidence or knowledge payloads. Multi-row deliberation
+selection uses a strictly read-only page and a bounded transactional guest-file
+identity/revision, then revalidates before the next step mutates anything; no
+post-write existence query may mint a cursor. The real-WAMR
+`factory_research::backlog::two_research_completions_drain_via_revision_fenced_read_only_selection`
+test queues two completions behind another provider request and drains both
+through emitted timers across reopen.
+
 Additional native regressions in `tests/research/regressions.rs` reject mismatched
 input/config/recordings/evaluator/budget/code/task/experiment/run identities,
 malformed hashes, cost overruns and unknown fields; `backlog.rs` consumes an

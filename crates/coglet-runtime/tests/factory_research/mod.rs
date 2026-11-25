@@ -1,6 +1,7 @@
 //! Actual WASI guest, normal outbox host, durable gateway recordings and offline
 //! replay. Receiver authentication is supplied by the existing embedding fixture.
 use super::*;
+mod backlog;
 use coglet_factory_host::{ContractKanbanServer, FactoryHost};
 const HYP: &str = "22222222222222222222222222222222";
 const EXP: &str = "33333333333333333333333333333333";

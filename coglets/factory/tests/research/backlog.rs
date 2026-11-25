@@ -27,15 +27,20 @@ fn completed_research_is_queued_while_another_decision_is_pending() {
         }],
     );
     h.run(reply);
-    let timer = h.timers.last().unwrap().clone();
-    let at = timer["at"].as_u64().unwrap();
-    let mut wake = event(
-        "runtime.timer",
-        6,
-        [("id", Value::Text(timer["id"].as_str().unwrap().into()))],
-    );
-    wake.logical_time = at;
-    h.run(wake);
+    for seq in 6..10 {
+        let timer = h.timers.last().unwrap().clone();
+        let at = timer["at"].as_u64().unwrap();
+        let mut wake = event(
+            "runtime.timer",
+            seq,
+            [("id", Value::Text(timer["id"].as_str().unwrap().into()))],
+        );
+        wake.logical_time = at;
+        h.run(wake);
+        if h.get("factory-executive").1["pending"]["context"]["subject"]["id"] == EXP {
+            break;
+        }
+    }
     let (_, root, _) = h.get("factory-executive");
     assert_eq!(root["pending"]["context"]["subject"]["id"], EXP);
     assert_eq!(root["pending"]["context"]["purpose"], "evaluation");
