@@ -25,6 +25,44 @@ impl FromStr for ContractProfile {
 }
 
 impl ContractProfile {
+    /// Select only transitive name-bearing contracts; unchanged leaves and
+    /// operation-specific bindings retain their frozen grammar. This is local
+    /// validation selection, not connection negotiation or registration.
+    pub fn rule(self, frozen: &str) -> &str {
+        if self == Self::Surface01 {
+            return frozen;
+        }
+        match frozen {
+            "capability-name" | "common::capability-name" => "surface02::s02-capability-name",
+            "event" | "common::event" => "surface02::s02-event",
+            "action" | "common::action" => "surface02::s02-action",
+            "call" | "abi::call" => "surface02::s02-call",
+            "inbox-message" | "abi::inbox-message" => "surface02::s02-inbox-message",
+            "llm-request" | "abi::llm-request" => "surface02::s02-llm-request",
+            "manifest" | "abi::manifest" => "surface02::s02-manifest",
+            "step-record" | "abi::step-record" => "surface02::s02-step-record",
+            "trace" | "abi::trace" => "surface02::s02-trace",
+            "database::db-enqueue" => "surface02::s02-db-enqueue",
+            "database::db-request" => "surface02::s02-db-request",
+            "database::db-host-call" => "surface02::s02-db-host-call",
+            "database::db-manifest" => "surface02::s02-db-manifest",
+            "database::db-step-record" => "surface02::s02-db-step-record",
+            "database::db-trace" => "surface02::s02-db-trace",
+            "surface-message" | "surface::surface-message" => "surface02::s02-surface-message",
+            "capabilities" | "surface::capabilities" => "surface02::s02-capabilities",
+            "cap-entry" | "surface::cap-entry" => "surface02::s02-cap-entry",
+            "schema-refs" | "surface::schema-refs" => "surface02::s02-schema-refs",
+            "grant" | "surface::grant" => "surface02::s02-grant",
+            "grants" | "surface::grants" => "surface02::s02-grants",
+            "read" | "surface::read" => "surface02::s02-read",
+            "act" | "surface::act" => "surface02::s02-act",
+            _ => frozen,
+        }
+    }
+    pub fn validate(self, rule: &str, value: &Value) -> Result<()> {
+        validate(self.rule(rule), value)
+    }
+
     pub(crate) fn from_setup(setup: &Value) -> Result<Self> {
         match setup.get("contract_profile") {
             None => Ok(Self::Surface01),

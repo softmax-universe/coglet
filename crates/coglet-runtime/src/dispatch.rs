@@ -34,7 +34,7 @@ impl Dispatch {
         runtime: &Runtime,
         catalog: &TrustedExtensionCatalog,
     ) -> Result<()> {
-        validate("action", &self.intent)?;
+        runtime.contract_profile.validate("action", &self.intent)?;
         validate("surface-id", &json!(self.surface))?;
         if self.intent["id"] != id
             || self.intent["coglet"] != runtime.manifest["id"]
@@ -50,9 +50,10 @@ impl Dispatch {
             return Err("recovered dispatch differs from committed ABI intent".into());
         }
         let raw = hex::decode(&self.envelope_hex).map_err(|e| e.to_string())?;
-        let envelope: Value = coglet_types::decode("surface-message", &raw)?
-            .deserialized()
-            .map_err(|e| e.to_string())?;
+        let envelope: Value =
+            coglet_types::decode(runtime.contract_profile.rule("surface-message"), &raw)?
+                .deserialized()
+                .map_err(|e| e.to_string())?;
         let mut original = envelope["body"]["action"].clone();
         original["deadline"] = self.intent["deadline"].clone();
         if envelope["type"] != "act" || original != self.intent || cbor(&envelope)? != raw {
@@ -191,7 +192,8 @@ impl RuntimeService {
                 runtime: next.runtime.clone(),
             });
         let runtime = &mut staged.runtime;
-        let index = crate::boundary::inbox(&runtime.files)?.len();
+        let index =
+            crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile)?.len();
         let identity = digest(&cbor(&json!([
             "runtime.receipt",
             runtime.manifest["id"],
@@ -368,7 +370,7 @@ impl RuntimeService {
             self.state.runtime.manifest["id"].as_str().unwrap(),
             now,
         )?;
-        validate("event", event)?;
+        self.state.contract_profile.validate("event", event)?;
         if event["source"] != session.surface()
             || event["kind"] != "action.outcome"
             || event["correlation_id"] != event["payload"]["correlation_id"]
