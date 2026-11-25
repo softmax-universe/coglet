@@ -48,7 +48,7 @@ All grammars are ASCII and case-sensitive; regexes match the whole string.
 | `hub-id` | `hub:<node-id>` |
 | `component` | `[a-z][a-z0-9_]{0,31}` |
 | `capability-name` | `<component>.<component>` (e.g. `speech.speak`, `game.move`) |
-| `method-name` | 2..4 dot-separated components (e.g. `debug.data.read`) |
+| `method-name` | 2..4 dot-separated components (e.g. `manage.data.read`) |
 | `correlation-id`, `action-id` | `[0-9a-f]{32}`: opaque 128-bit ids |
 
 Each coglet has its own node key even when hosted by a shared runtime. Prefixes
@@ -126,8 +126,10 @@ not valid at 0.1; additions require a negotiated minor version.
 ## Versioning and negotiation
 
 A spec version is `MAJOR.MINOR`, each a decimal integer 0..9999 without leading
-zeros (except zero). This document defines **0.1**; there is no implicit 0.x
-compatibility exception. Major changes may break compatibility. Minor changes
+zeros (except zero). This document defines **0.1** common shapes. The router
+protocol separately negotiates **1.0** under ADR-0031; other protocol specs define
+their own supported versions. There is no implicit 0.x compatibility exception.
+Major changes may break compatibility. Minor changes
 MUST be additive only: no removals, changed meanings, stricter bounds or new
 required fields in existing messages. A feature introduced at a higher minor
 MUST NOT be emitted at a lower selected version.

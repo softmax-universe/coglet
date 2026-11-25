@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the five Markdown pages in this folder to HTML.
+"""Render the nine Markdown pages in this folder to HTML.
 
 Needs the `markdown` and `pygments` packages:
     python3 docs/cogent-design/render.py
@@ -165,6 +165,10 @@ PAGES = [
     ("app-integration.md", "app-integration.html", "App integration"),
     ("softmax-app.md", "softmax-app.html", "The Softmax app"),
     ("cognitive-architecture.md", "cognitive-architecture.html", "Cognitive architecture"),
+    ("unforged.md", "unforged.html", "Coglets on unforged"),
+    ("unforged-staging.md", "unforged-staging.html", "Staged integration"),
+    ("secrets.md", "secrets.html", "Secrets and adapters"),
+    ("llms.md", "llms.html", "LLMs on unforged"),
 ]
 COGLET_ROW = re.compile(r"^  (subscribes|needs|owns|on|provides|calls)(\s{2,})(.*)$")
 METHOD = re.compile(r"^  (\w+)\((.*?)\)(?: -> (.*?))?(\s+\[[^\]]+\])?$")

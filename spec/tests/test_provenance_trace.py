@@ -20,7 +20,7 @@ class ProvenanceTrace(unittest.IsolatedAsyncioTestCase):
         test_abi.AbiFixtures.setUpClass()
         cls.validators = test_abi.AbiFixtures()
         cls.vectors = json.loads((SPEC / 'fixtures/abi/provenance-cases.fixture').read_text())
-        cls.timelines = json.loads((SPEC.parent / 'conformance/abi/provenance.json').read_text())
+        cls.timelines = json.loads((SPEC / 'fixtures/abi/provenance-timeline.fixture').read_text())
 
     async def test_rehashed_provenance_and_timelines(self):
         self.assertEqual(len(self.vectors), len(self.timelines))

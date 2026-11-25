@@ -14,7 +14,7 @@ is about latency and isolation, per app.
 |---|---|---|
 | Inside the app | In the same process | The app is ours, or wants to embed a runtime. |
 | On the user's machine | A local link | **The default.** The user already runs the Softmax app for push-to-talk, so it also runs the coglets for every app they connect. |
-| On Softmax infrastructure | Over the network | The app is remote, or the coglet is one of those at the cogent's centre. |
+| On Softmax infrastructure | Over the network | The app is remote, or the coglet runs on a Softmax-hosted runtime. |
 
 An app may have several adapters (one for its UI, one for a player, one for a
 game master), and a runtime may be connected to several adapters at once.

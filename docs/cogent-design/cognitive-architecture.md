@@ -1,11 +1,13 @@
 # Cogent cognitive architecture
 
-Part of the [cogent design](README.md): which coglets sit at the cogent's
-centre and how they are wired.
+Part of the [cogent design](README.md): the coglets that do the cogent's
+thinking and learning, and how they are wired. None of them is a centre; each
+runs on some runtime and reaches the others through the router
+([ADR-0036](../adr/0036-distributed-cogent-and-presence.md)).
 
 ## Who talks to whom
 
-![Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent's centre the fast loop and the optimizer use memory and file tickets with the factory.](diagrams/calls.svg)
+![Face exchanges intents with app coglets on the device and feature requests with the fast loop; the fast loop and the optimizer use memory and file tickets with the factory, wherever those coglets run.](diagrams/calls.svg)
 
 *Teal arrows are families of messages between two coglets, with the calls
 listed beside them. Blue arrows are the manage port, which is separate: a
@@ -18,21 +20,25 @@ the table below.*
 | app coglet | `intent.report` | `IntentReport` | Face | the Softmax app's runtime |
 | Face | `feature.request` | `FeatureRequest` | fast loop | the router |
 | fast loop | `feature.update` | `FeatureUpdate` | Face | the router |
-| fast loop | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the cogent's runtime |
-| optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the cogent's runtime |
-| factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the cogent's runtime |
+| fast loop | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the router, or their runtime if they share one |
+| optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the router, or their runtime if they share one |
+| factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the router, or their runtime if they share one |
 | fast loop, optimizer | `patch` | a `Candidate` | any coglet | the manage port, through the router |
 | optimizer | `tail_log`, `read_state` | | fast loop | the manage port |
-| fast loop, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the cogent's runtime |
-| memory | `memory.result` | `MemoryResult` | the asker | the cogent's runtime |
+| fast loop, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the router, or their runtime if they share one |
+| memory | `memory.result` | `MemoryResult` | the asker | the router, or their runtime if they share one |
+| fast loop, owner | `presence.set` | `PresenceChange` | router | the router |
+| any coglet, usually an absent one | `presence.request` | `PresenceRequest` | fast loop | the router |
+| router | `presence.check_in` | `CheckIn` | fast loop | the router |
 
 ## Where everything runs
 
-![The Softmax app on the user's machine runs Face and the coglets for its connected apps; the cogent's centre runs the fast loop, factory, optimizer and memory.](diagrams/deployment.svg)
+![The Softmax app on the user's machine runs Face and the coglets for its connected apps; a Softmax-hosted runtime runs the fast loop, factory, optimizer and memory; the router joins them.](diagrams/deployment.svg)
 
-*One device in detail. The Softmax app runs Face and the coglets for its
-connected apps, next to their adapters. The cogent's centre runs in its own runtime, and
-the router joins them.*
+*One possible placement. The Softmax app runs Face and the coglets for its
+connected apps, next to their adapters. A Softmax-hosted runtime runs the fast
+loop, factory, optimizer and memory. Neither is the centre: any of
+these coglets could run on either runtime, and the router joins them.*
 
 ## FaceCoglet
 
@@ -107,18 +113,21 @@ FeatureUpdate
 
 ## FastLoopCoglet
 
-Handles events from other coglets: it responds, or forwards them on. Today
-that means taking feature requests from Face, checking memory,
-filing tickets with the factory, applying the patches that come back, and
-telling Face.
+The cogent's **attention**. It handles what present coglets send: it responds,
+or forwards it on. Today that means taking feature requests from Face, checking
+memory, filing tickets with the factory, applying the patches that come back,
+and telling Face. It also decides where the cogent is present, and reads the
+check-ins of the coglets it is not attending to
+([presence](README.md#presence)).
 
 ### `FastLoopCoglet`
 
 ```idl
 FastLoopCoglet
-  subscribes  (nothing)
+  subscribes  presence.changed
   needs       llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,
-              ticket.cancel, ticket.replay, memory.write, memory.query
+              ticket.cancel, ticket.replay, memory.write, memory.query, presence.get,
+              presence.set
   owns        (nothing)
 
   provides  feature.request     FeatureRequest  bound
@@ -138,6 +147,13 @@ FastLoopCoglet
   provides  memory.result       MemoryResult    addressed
   calls     memory.write        MemoryWrite     bound
   calls     memory.query        MemoryQuery     bound
+  provides  presence.request    PresenceRequest addressed
+            An absent coglet asks for attention. Decide whether to make it present.
+  provides  presence.check_in   CheckIn         addressed
+            What an absent coglet held for the cogent. Answer, manage it, or move on.
+  calls     presence.get        (none)          bound
+            Read the current presence and its revision before changing it.
+  calls     presence.set        PresenceChange  bound
 ```
 
 It also uses the manage port's `patch` on the coglets it is granted.
@@ -375,7 +391,7 @@ It uses the manage port's `tail_log` and `read_state` on the fast loop, and
 ## MemoryCoglet
 
 The cogent's memory: what it has learned about the user, the apps and what has
-worked, kept in one place so every coglet in the centre can read and add to it.
+worked, kept in one place so every coglet of the cogent can read and add to it.
 Each coglet still keeps its own working state in its own files; this is what is
 shared. Version 0 matches on tags and keywords and uses no model.
 
@@ -427,11 +443,15 @@ MemoryRecord
 
 ## RouterCoglet
 
-The coglet that reaches devices. It knows which runtimes the cogent may use,
-installs coglets on them, and carries two things between runtimes: messages
-from one coglet to another, and manage operations such as `patch`.
+The coglet that holds the cogent together. It knows which runtimes the cogent
+may use, installs coglets on them, and carries two things between runtimes:
+messages from one coglet to another, and manage operations such as `patch`. It
+also holds the cogent's presence: it delivers what present coglets send to the
+fast loop at once, holds what absent coglets send until their check-in, and
+answers `presence.get` and `presence.set`
+([ADR-0036](../adr/0036-distributed-cogent-and-presence.md)).
 
-It is a coglet like the others in the centre: it has a policy, memory and a
+It is a coglet like the others: it has a policy, memory and a
 manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 [Runtime and router](coglets-and-runtime.md#runtime-and-router).
