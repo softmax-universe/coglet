@@ -45,7 +45,7 @@ impl RuntimeService {
             .as_array()
             .ok_or("invalid attempted grants")?
         {
-            validate("capability-name", grant)?;
+            state.contract_profile.validate("capability-name", grant)?;
         }
         let mut candidate = state.runtime.clone();
         candidate.unresolved_attempt = None;
@@ -176,9 +176,10 @@ impl RuntimeService {
             .unwrap_or(&state.runtime);
         // Initial inbox contents are supplied state, not reservations made by
         // this coordinator. Later lines cannot be removed or rewritten.
-        let initial_count = crate::boundary::inbox(&root.files)?.len();
+        let initial_count =
+            crate::boundary::inbox_with_profile(&root.files, state.contract_profile)?.len();
         let mut external_reservations = BTreeSet::new();
-        for message in crate::boundary::inbox(&runtime.files)?
+        for message in crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?
             .iter()
             .skip(initial_count)
         {
@@ -209,7 +210,7 @@ impl RuntimeService {
             .as_ref()
             .map(|s| &s.runtime)
             .unwrap_or(&state.runtime);
-        let inbox = crate::boundary::inbox(&runtime.files)?;
+        let inbox = crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?;
         let mut inbox_indices = Vec::new();
         let mut timers = BTreeSet::new();
         let mut source_sequences = BTreeSet::new();

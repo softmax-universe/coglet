@@ -1,4 +1,4 @@
-use crate::{Result, Snapshot, cbor, validate};
+use crate::{ContractProfile, Result, Snapshot, cbor};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,9 +18,15 @@ pub struct StepHost {
     grants: Value,
     host_limit: u64,
     host_used: u64,
+    pub(crate) contract_profile: ContractProfile,
 }
 impl StepHost {
-    pub(crate) fn new(files: Snapshot, ledger: EffectLedger, inputs: &Value) -> Self {
+    pub(crate) fn new(
+        files: Snapshot,
+        ledger: EffectLedger,
+        inputs: &Value,
+        contract_profile: ContractProfile,
+    ) -> Self {
         Self {
             files,
             ledger,
@@ -33,6 +39,7 @@ impl StepHost {
             grants: inputs["grants"].clone(),
             host_limit: inputs["budgets"]["host_bytes"].as_u64().unwrap(),
             host_used: 0,
+            contract_profile,
         }
     }
 
@@ -46,7 +53,7 @@ impl StepHost {
             "log" => ("log-entry", "logs"),
             _ => return Err(format!("unimplemented host operation: {op}")),
         };
-        let argument: Option<Value> = coglet_types::decode(schema, raw)
+        let argument: Option<Value> = coglet_types::decode(self.contract_profile.rule(schema), raw)
             .ok()
             .and_then(|v| v.deserialized().ok());
         let mut result = 0;
@@ -104,7 +111,7 @@ impl StepHost {
         } else {
             json!({"op":op,"argument_hex":hex::encode(raw),"result":1})
         };
-        validate("call", &call)?;
+        self.contract_profile.validate("call", &call)?;
         self.calls.push(call);
         Ok(result)
     }

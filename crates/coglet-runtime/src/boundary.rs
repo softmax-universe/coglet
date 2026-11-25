@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 /// Parse exact canonical JSONL, then validate the embedded event as well as its
 /// container. Canonical reserialization also rejects duplicate JSON object keys.
-pub fn inbox(files: &Snapshot) -> Result<Vec<Value>> {
+pub fn inbox_with_profile(files: &Snapshot, profile: crate::ContractProfile) -> Result<Vec<Value>> {
     let raw = hex::decode(
         files
             .files()
@@ -21,7 +21,7 @@ pub fn inbox(files: &Snapshot) -> Result<Vec<Value>> {
     for terminated in raw.split_inclusive(|b| *b == b'\n') {
         let line = &terminated[..terminated.len() - 1];
         let message: Value = serde_json::from_slice(line).map_err(|e| e.to_string())?;
-        validate("inbox-message", &message)?;
+        profile.validate("inbox-message", &message)?;
         if serde_json::to_vec(&message).map_err(|e| e.to_string())? != line {
             return Err("noncanonical inbox JSONL".into());
         }
@@ -55,7 +55,12 @@ pub fn inbox(files: &Snapshot) -> Result<Vec<Value>> {
 
 /// Input is an already authenticated applied mutation, not an authorization API.
 /// The hub link must authenticate the operation before passing it to this seam.
-pub fn apply(files: &Snapshot, change: &Value, coglet: &Value) -> Result<Snapshot> {
+pub fn apply_with_profile(
+    files: &Snapshot,
+    change: &Value,
+    coglet: &Value,
+    profile: crate::ContractProfile,
+) -> Result<Snapshot> {
     validate("boundary-change", change)?;
     if &change["target"] != coglet {
         return Err("boundary target mismatch".into());
@@ -114,8 +119,8 @@ pub fn apply(files: &Snapshot, change: &Value, coglet: &Value) -> Result<Snapsho
     }
     let next = Snapshot::new(next)?;
     if matches!(method, "hub.inbox" | "runtime.receipt") {
-        let old_count = inbox(files)?.len();
-        let messages = inbox(&next)?;
+        let old_count = inbox_with_profile(files, profile)?.len();
+        let messages = inbox_with_profile(&next, profile)?;
         if messages.len() != old_count + 1 {
             return Err("one inbox append required per boundary".into());
         }

@@ -115,6 +115,14 @@ fn local_contract_profile_replay_pair_fenced() {
             let mut state = store.state().unwrap().clone();
             assert_eq!(state["contract_profile"], "surface-0.1");
             state.as_object_mut().unwrap().remove("contract_profile");
+            state["runtime"]
+                .as_object_mut()
+                .unwrap()
+                .remove("contract_profile");
+            state["router"]
+                .as_object_mut()
+                .unwrap()
+                .remove("contract_profile");
             store.commit(&state, None).unwrap();
         }
         drop(open(&original, ContractProfile::Surface01).unwrap());

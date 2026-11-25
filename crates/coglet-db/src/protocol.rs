@@ -234,7 +234,7 @@ impl Unit<'_> {
             return self.reject(1);
         }
         let value = match coglet_types::decode_profile(&input).and_then(|v| {
-            coglet_types::validate("database::db-request", &v)?;
+            coglet_types::validate(self.profile.rule("database::db-request"), &v)?;
             Ok(v)
         }) {
             Ok(v) => v,

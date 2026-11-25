@@ -93,6 +93,21 @@ impl TrustedExtensionCatalog {
     pub fn contract_profile(&self) -> ContractProfile {
         self.profile
     }
+    /// True for a provisioned product operation, in any direction.
+    pub(crate) fn is_extension_operation(&self, name: &str) -> bool {
+        self.extension(name).is_some()
+    }
+    /// True for any capability/entry/resource name owned by the provisioned
+    /// product namespace, including empty entries and resources that no
+    /// operation uses. Local trusted data only; never peer-derived.
+    pub(crate) fn is_extension_name(&self, name: &str) -> bool {
+        self.artifact.as_ref().is_some_and(|a| {
+            a.operations.contains_key(name)
+                || a.entries.contains_key(name)
+                || a.entries.values().flatten().any(|r| r == name)
+                || name.split('.').next() == Some(a.namespace.as_str())
+        })
+    }
     fn extension(&self, name: &str) -> Option<&Operation> {
         self.artifact.as_ref()?.operations.get(name)
     }

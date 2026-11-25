@@ -21,6 +21,9 @@ pub(super) struct Dispatch {
     pub(super) stopped: bool,
 }
 impl Dispatch {
+    pub(super) fn operation(&self) -> &str {
+        self.intent["capability"].as_str().unwrap_or_default()
+    }
     pub(super) fn matches_tool_result(&self, surface: &str, args: &Value) -> bool {
         self.surface == surface
             && self.accept.as_ref().is_none_or(|v| v["accepted"] != false)
@@ -34,7 +37,7 @@ impl Dispatch {
         runtime: &Runtime,
         catalog: &TrustedExtensionCatalog,
     ) -> Result<()> {
-        validate("action", &self.intent)?;
+        runtime.contract_profile.validate("action", &self.intent)?;
         validate("surface-id", &json!(self.surface))?;
         if self.intent["id"] != id
             || self.intent["coglet"] != runtime.manifest["id"]
@@ -50,9 +53,10 @@ impl Dispatch {
             return Err("recovered dispatch differs from committed ABI intent".into());
         }
         let raw = hex::decode(&self.envelope_hex).map_err(|e| e.to_string())?;
-        let envelope: Value = coglet_types::decode("surface-message", &raw)?
-            .deserialized()
-            .map_err(|e| e.to_string())?;
+        let envelope: Value =
+            coglet_types::decode(runtime.contract_profile.rule("surface-message"), &raw)?
+                .deserialized()
+                .map_err(|e| e.to_string())?;
         let mut original = envelope["body"]["action"].clone();
         original["deadline"] = self.intent["deadline"].clone();
         if envelope["type"] != "act" || original != self.intent || cbor(&envelope)? != raw {
@@ -91,6 +95,11 @@ impl Dispatch {
     }
 }
 impl RuntimeService {
+    /// A retained product dispatch is unavailable on a downgraded link; its
+    /// stored bytes and identity stay untouched for a later 0.2 reconnect.
+    fn dispatch_unavailable(&self, session: &SurfaceSession, operation: &str) -> bool {
+        !session.extensions_enabled() && self.catalog.is_extension_operation(operation)
+    }
     pub(crate) fn admitted_pending(&self, surface: &str) -> usize {
         self.state
             .dispatches
@@ -121,6 +130,7 @@ impl RuntimeService {
                 if saved.stopped
                     || saved.terminal_at.is_some()
                     || saved.surface != session.surface()
+                    || self.dispatch_unavailable(session, saved.operation())
                 {
                     continue;
                 }
@@ -139,6 +149,10 @@ impl RuntimeService {
                 let Some(action) = pending.pending_actions.get(&id).cloned() else {
                     continue;
                 };
+                // Unavailable here, but still pending for a later 0.2 link.
+                if self.dispatch_unavailable(session, action["capability"].as_str().unwrap_or("")) {
+                    continue;
+                }
                 if action["deadline"].as_u64().is_some_and(|d| d <= now) {
                     self.reject_undispatched(&action, now, "deadline_exceeded")?;
                     continue;
@@ -191,7 +205,8 @@ impl RuntimeService {
                 runtime: next.runtime.clone(),
             });
         let runtime = &mut staged.runtime;
-        let index = crate::boundary::inbox(&runtime.files)?.len();
+        let index =
+            crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile)?.len();
         let identity = digest(&cbor(&json!([
             "runtime.receipt",
             runtime.manifest["id"],
@@ -252,6 +267,9 @@ impl RuntimeService {
             if saved.surface != session.surface() {
                 return Err("dispatch belongs to another authenticated surface".into());
             }
+            if self.dispatch_unavailable(session, saved.operation()) {
+                return Err("extension dispatch unavailable at negotiated 0.1".into());
+            }
             if self.catalog.single_owner(
                 saved.intent["capability"]
                     .as_str()
@@ -260,6 +278,9 @@ impl RuntimeService {
                 session
                     .check_single_owner(saved.intent["coglet"].as_str().ok_or("missing owner")?)?;
             }
+            // The exact retained bytes must also be valid under this link's minor.
+            let retained = hex::decode(&saved.envelope_hex).map_err(|e| e.to_string())?;
+            coglet_types::decode(session.wire_profile().rule("surface-message"), &retained)?;
             // Completed records may expire at the surface. Never silently retry
             // beyond even the minimum guaranteed retention window.
             let retained_until = saved.intent["deadline"]
@@ -270,7 +291,7 @@ impl RuntimeService {
             if now < saved.prepared_at || now >= retained_until {
                 return Err("dispatch requires explicit retention reconciliation".into());
             }
-            return hex::decode(&saved.envelope_hex).map_err(|e| e.to_string());
+            return Ok(retained);
         }
         self.require_managed_running()?;
         if self.state.runtime.unresolved_attempt.is_some() {
@@ -331,6 +352,11 @@ impl RuntimeService {
         if dispatch.surface != session.surface() {
             return Err("accept from wrong authenticated surface".into());
         }
+        if !session.extensions_enabled()
+            && self.catalog.is_extension_operation(dispatch.operation())
+        {
+            return Err("extension accept unavailable at negotiated 0.1".into());
+        }
         if self.catalog.single_owner(
             dispatch.intent["capability"]
                 .as_str()
@@ -368,7 +394,7 @@ impl RuntimeService {
             self.state.runtime.manifest["id"].as_str().unwrap(),
             now,
         )?;
-        validate("event", event)?;
+        session.wire_profile().validate("event", event)?;
         if event["source"] != session.surface()
             || event["kind"] != "action.outcome"
             || event["correlation_id"] != event["payload"]["correlation_id"]
@@ -384,6 +410,11 @@ impl RuntimeService {
             .ok_or("outcome without retained dispatch")?;
         if dispatch.surface != session.surface() {
             return Err("outcome from wrong authenticated surface".into());
+        }
+        if !session.extensions_enabled()
+            && self.catalog.is_extension_operation(dispatch.operation())
+        {
+            return Err("extension outcome unavailable at negotiated 0.1".into());
         }
         if self.catalog.single_owner(
             dispatch.intent["capability"]
@@ -409,7 +440,7 @@ impl RuntimeService {
             .ok_or("missing operation")?;
         let publish = if self.catalog.single_owner(operation) {
             let envelope: Value = coglet_types::decode(
-                "surface-message",
+                self.state.contract_profile.rule("surface-message"),
                 &hex::decode(&dispatch.envelope_hex).map_err(|e| e.to_string())?,
             )?
             .deserialized()
@@ -480,9 +511,10 @@ impl RuntimeService {
             return Err("permission_denied: not the item's speaker owner".into());
         }
         let raw = hex::decode(&d.envelope_hex).map_err(|e| e.to_string())?;
-        let envelope: Value = coglet_types::decode("surface-message", &raw)?
-            .deserialized()
-            .map_err(|e| e.to_string())?;
+        let envelope: Value =
+            coglet_types::decode(self.state.contract_profile.rule("surface-message"), &raw)?
+                .deserialized()
+                .map_err(|e| e.to_string())?;
         if envelope["body"]["grant_epoch"] != session.grant_epoch() {
             return Err("permission_denied: item owner revoked".into());
         }
@@ -579,7 +611,13 @@ impl RuntimeService {
                     .is_some_and(|v| v["status"] == "succeeded")
                 && hex::decode(&d.envelope_hex)
                     .ok()
-                    .and_then(|raw| coglet_types::decode("surface-message", &raw).ok())
+                    .and_then(|raw| {
+                        coglet_types::decode(
+                            self.state.contract_profile.rule("surface-message"),
+                            &raw,
+                        )
+                        .ok()
+                    })
                     .and_then(|v| v.deserialized::<Value>().ok())
                     .is_some_and(|v| v["body"]["grant_epoch"] == session.grant_epoch())
         });

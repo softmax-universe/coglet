@@ -1,4 +1,4 @@
-use crate::{Result, cbor, digest, profile_value, validate};
+use crate::{Result, cbor, digest, profile_value};
 use coglet_types::Value as V;
 use serde_json::{Value, json};
 #[cfg(unix)]
@@ -175,7 +175,8 @@ impl DurableStore {
                 if !record.is_null() {
                     return Err("WAL database frame also carries a JSON record".into());
                 }
-                let projection = database_projection(&bytes)?;
+                let profile = crate::ContractProfile::from_setup(&transaction["state"])?;
+                let projection = database_projection_with_profile(&bytes, profile)?;
                 if db_artifacts_hash.is_some() && projection["status"] != "committed" {
                     return Err("WAL artifacts receipt on non-committed record".into());
                 }
@@ -183,7 +184,10 @@ impl DurableStore {
                 raw_records.push(Some(bytes));
                 db_artifacts_hashes.push(db_artifacts_hash);
             } else if !record.is_null() {
-                validate_record(record)?;
+                validate_record(
+                    record,
+                    crate::ContractProfile::from_setup(&transaction["state"])?,
+                )?;
                 journal.push(record.clone());
                 raw_records.push(None);
                 db_artifacts_hashes.push(None);
@@ -217,7 +221,7 @@ impl DurableStore {
             hook();
         }
         if let Some(record) = record {
-            validate_record(record)?;
+            validate_record(record, crate::ContractProfile::from_setup(state)?)?;
         }
         let mut transaction = json!({"state":state, "journal":record, "previous":self.previous});
         let hash = digest(&cbor(&transaction)?);
@@ -256,7 +260,8 @@ impl DurableStore {
         record: &[u8],
         artifacts_hash: Option<String>,
     ) -> Result<()> {
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, crate::ContractProfile::from_setup(state)?)?;
         if artifacts_hash.is_some() && projection["status"] != "committed" {
             return Err("artifacts receipt requires committed record".into());
         }
@@ -339,8 +344,8 @@ impl DurableStore {
     }
 }
 
-fn validate_record(record: &Value) -> Result<()> {
-    validate(
+fn validate_record(record: &Value, profile: crate::ContractProfile) -> Result<()> {
+    profile.validate(
         if record.get("step").is_some() {
             "step-record"
         } else if record["version"] == "0.2" {
@@ -364,8 +369,11 @@ fn validate_record(record: &Value) -> Result<()> {
 
 /// Strictly validate exact ABI 0.2 record bytes (profile, closed schema,
 /// canonical encoding, correct hash) and derive their JSON projection.
-pub(crate) fn database_projection(raw: &[u8]) -> Result<Value> {
-    let record = coglet_types::decode("database::db-step-record", raw)?;
+pub(crate) fn database_projection_with_profile(
+    raw: &[u8],
+    profile: crate::ContractProfile,
+) -> Result<Value> {
+    let record = coglet_types::decode(profile.rule("database::db-step-record"), raw)?;
     let V::Map(entries) = &record else {
         return Err("database record is not a map".into());
     };
