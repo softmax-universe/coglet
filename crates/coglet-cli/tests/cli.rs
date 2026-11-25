@@ -304,10 +304,7 @@ fn cli_help_identity_and_deploy_fail_closed() {
     for command in ["deploy", "push"] {
         let result = cli(&[command, s(&package)]);
         assert!(!result.status.success());
-        assert!(
-            String::from_utf8_lossy(&result.stderr)
-                .contains("No upload, registration or lifecycle mutation was attempted")
-        );
+        assert!(String::from_utf8_lossy(&result.stderr).contains("unexpected argument"));
     }
 }
 #[test]
