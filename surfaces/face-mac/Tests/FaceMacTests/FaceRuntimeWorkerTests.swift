@@ -62,9 +62,11 @@ private final class WorkerSendStep: @unchecked Sendable {
         self.result = result; self.elapsedUS = elapsedUS
     }
     func awaitEntry() async -> Bool {
-        await Task.detached { [self] in
-            entered.wait(timeout: .now() + 2) == .success
-        }.value
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().async { [self] in
+                continuation.resume(returning: entered.wait(timeout: .now() + 2) == .success)
+            }
+        }
     }
 }
 private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: Int) -> Int32 {
