@@ -15,6 +15,7 @@ private func health() -> CBORValue {
 }
 private final class NativeProbe {
     var bytes = try! SurfaceWire.encode(health(), from: .runtime)
+    var profile: SurfaceContractProfile = .surface01
     var sent: [[UInt8]] = []
     var blocked = true
     var closed = false
@@ -34,7 +35,7 @@ private func nativeSend(_ link: OpaquePointer?, _ bytes: UnsafePointer<UInt8>?, 
     let state = probe(link)
     if state.blocked { state.blocked = false; return 1 }
     let owned = Array(UnsafeBufferPointer(start: bytes, count: n))
-    guard (try? SurfaceWire.decode(owned, from: .surface)) != nil else { return -2 }
+    guard (try? SurfaceWire.decode(owned, from: .surface, contractProfile: state.profile)) != nil else { return -2 }
     state.sent.append(owned)
     return 0
 }
@@ -55,6 +56,50 @@ private func nativeClose(_ link: OpaquePointer?) {
 }
 
 final class TransportTests: XCTestCase {
+    func testEmbeddedProfileFollowsActualSelectionNotLocalCeiling() throws {
+        let state = NativeProbe()
+        Thread.current.threadDictionary["coglet-abi-test"] = state
+        defer { Thread.current.threadDictionary.removeObject(forKey: "coglet-abi-test") }
+        let abi = SurfaceRuntimeABI(open: nativeOpen, send: nativeSend, recv: nativeRecv, close: nativeClose)
+        let owner = "coglet:" + String(repeating: "b", count: 64)
+        let action = CBORValue.message("act", .record([("grant_epoch", .unsigned(1)), ("action", .record([
+            ("id", .text(correlation)), ("coglet", .text(owner)), ("capability", .text("softmax.app.invoke")),
+            ("args", .map([])), ("deadline", .unsigned(100)), ("correlation_id", .text(correlation))]))]))
+        let incoming = try SurfaceWire.encode(action, from: .runtime, contractProfile: .surface02)
+        let outgoing = try SurfaceWire.encode(.message("grants", .record([
+            ("epoch", .unsigned(1)), ("entries", .array([.record([
+                ("coglet", .text(owner)), ("operations", .array([.text("softmax.app.invoke")])),
+                ("resources", .array([])), ("expires", .unsigned(100))
+            ])])), ("correlation_id", .text(correlation))])), from: .surface, contractProfile: .surface02)
+        func reply(_ version: String) throws -> [UInt8] {
+            try SurfaceWire.encode(.message("hello_reply", .record([
+                ("selection", .record([("version", .text(version))])), ("correlation_id", .text(correlation))])), from: .runtime)
+        }
+        let selected = try EmbeddedSurfaceTransport(abi: abi, contractProfile: .surface02)
+        XCTAssertThrowsError(try selected.send(outgoing)) // local ceiling is not negotiation
+        let selection = try reply("0.2")
+        state.bytes = selection
+        XCTAssertEqual(try selected.receive(), selection)
+        state.profile = .surface02
+        XCTAssertFalse(try selected.send(outgoing)) // identical whole-frame would-block
+        XCTAssertTrue(try selected.send(outgoing))
+        XCTAssertEqual(state.sent.last, outgoing)
+        state.bytes = incoming
+        XCTAssertEqual(try selected.receive(), incoming)
+        state.bytes = try reply("0.1")
+        XCTAssertThrowsError(try selected.receive()) // never switch after first selection
+        XCTAssertTrue(state.closed)
+
+        let downgraded = try EmbeddedSurfaceTransport(abi: abi, contractProfile: .surface02)
+        state.bytes = try reply("0.1"); _ = try downgraded.receive()
+        XCTAssertThrowsError(try downgraded.send(outgoing))
+        state.bytes = incoming
+        XCTAssertThrowsError(try downgraded.receive())
+        let frozen = try EmbeddedSurfaceTransport(abi: abi)
+        state.bytes = try reply("0.2")
+        XCTAssertThrowsError(try frozen.receive())
+    }
+
     func testSchemaDirectionAndProfile() throws {
         let bytes = try SurfaceWire.encode(health(), from: .runtime)
         XCTAssertEqual(try SurfaceWire.decode(bytes, from: .runtime), try CBORCodec.decodeProfile(bytes))

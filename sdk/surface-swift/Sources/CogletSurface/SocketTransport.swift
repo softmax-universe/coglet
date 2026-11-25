@@ -31,11 +31,13 @@ public final class SurfaceSocketListener {
     private let directory: String
     public let path: String
     private let runtimeUID: uid_t
+    private let contractProfile: SurfaceContractProfile
     private var ownsDirectory = false
-    public init(directory: String, runtimeUID: uid_t) throws {
+    public init(directory: String, runtimeUID: uid_t, contractProfile: SurfaceContractProfile = .surface01) throws {
         self.directory = directory
         self.path = directory + "/surface.sock"
         self.runtimeUID = runtimeUID
+        self.contractProfile = contractProfile
         guard mkdir(directory, 0o700) == 0 else { throw systemError() }
         ownsDirectory = true
         do {
@@ -72,7 +74,7 @@ public final class SurfaceSocketListener {
             if errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR { return nil }
             throw systemError()
         }
-        do { return try SurfaceSocketTransport(authenticatedDescriptor: fd, runtimeUID: runtimeUID) }
+        do { return try SurfaceSocketTransport(authenticatedDescriptor: fd, runtimeUID: runtimeUID, contractProfile: contractProfile) }
         catch { closeFD(fd); throw error }
     }
 }
@@ -86,7 +88,9 @@ public final class SurfaceSocketTransport {
     private var offset = 0
     private var incoming: [[UInt8]] = []
     private var decoder = SurfaceFrameDecoder()
-    public init(authenticatedDescriptor fd: Int32, runtimeUID: uid_t) throws {
+    private var version: SurfaceTransportVersion
+    public init(authenticatedDescriptor fd: Int32, runtimeUID: uid_t, contractProfile: SurfaceContractProfile = .surface01) throws {
+        version = SurfaceTransportVersion(contractProfile)
 #if canImport(Darwin)
         var uid: uid_t = 0, gid: gid_t = 0
         guard getpeereid(fd, &uid, &gid) == 0, uid == runtimeUID else { throw SurfaceFailure.unauthenticated }
@@ -109,7 +113,7 @@ public final class SurfaceSocketTransport {
     }
     public func enqueue(_ bytes: [UInt8]) throws {
         guard descriptor >= 0 else { throw SurfaceFailure.closed }
-        _ = try SurfaceWire.decode(bytes, from: .surface)
+        try version.validateOutgoing(bytes)
         guard outgoing.count < SurfaceWire.maximumQueuedMessages else {
             close(); throw SurfaceFailure.exhausted
         }
@@ -153,7 +157,7 @@ public final class SurfaceSocketTransport {
             }
             var decoded: [[UInt8]] = []
             try decoder.consume(bytes.prefix(count)) { frame in
-                _ = try SurfaceWire.decode(frame, from: .runtime)
+                try version.validateIncoming(frame)
                 guard decoded.count < SurfaceWire.maximumQueuedMessages else { throw SurfaceFailure.exhausted }
                 decoded.append(frame)
             }

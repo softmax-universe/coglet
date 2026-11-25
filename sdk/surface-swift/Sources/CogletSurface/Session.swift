@@ -179,6 +179,31 @@ public final class SurfaceSession {
     }
     public func drain() -> [[UInt8]] { let bytes = output.map(\.bytes); output = []; return bytes }
 
+    /// Durably reserves one source incarnation for host subscription setup and
+    /// returns the OLD value of the ledger's existing event-sequence allocator.
+    /// The counter is advanced and saved BEFORE return, so the returned value can
+    /// never equal any event `seq` (past or future) of this identity; consumed
+    /// values are never rolled back (gaps are allowed, including after a failed
+    /// or stopped reservation). Needs no negotiation and mints no grant. Same
+    /// serialized-owner contract as every other method: never call concurrently.
+    /// Any failure (closed/killed/retired session, save error, clock rollback,
+    /// exhaustion, or a disconnect/kill/retire observed after the save, e.g. from
+    /// a store callback) is terminal for this instance and returns no value.
+    public func reserveSourceIncarnation() throws -> UInt64 {
+        guard !retired else { throw SurfaceFailure.closed }
+        var reserved: UInt64 = 0
+        try guarded {
+            guard connected, !ledger.killed else { throw SurfaceFailure.closed }
+            guard ledger.sequence < UInt64.max else { throw SurfaceFailure.exhausted }
+            let value = ledger.sequence; ledger.sequence += 1
+            try ledger.save()
+            _ = try sample()
+            guard connected, !ledger.killed, !retired else { throw SurfaceFailure.closed }
+            reserved = value
+        }
+        return reserved
+    }
+
     /// Called before capture/provider generation begins. Replacing the token
     /// fences a native session even within the SAME grant epoch.
     public func openNativeObservationSession(owner: String, epoch: UInt64) throws -> NativeObservationToken {
