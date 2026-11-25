@@ -206,10 +206,14 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.typeText("/")
         settings.typeText("o") // Multiple matches including General, Hotkey and Audio.
+        let search = settings.textFields["Search settings"]
+        XCTAssertEqual(search.value as? String, "o", "Type-ahead must reach the search field")
+        print("SETTINGS_ARROW_PROBE before first Down: \(settings.debugDescription)")
         XCTAssertTrue(settings.buttons["General"].exists)
         XCTAssertTrue(settings.buttons["Hotkey"].exists)
         XCTAssertTrue(settings.buttons["Audio"].exists)
         settings.typeKey(.downArrow, modifierFlags: [])
+        print("SETTINGS_ARROW_PROBE after first Down: \(settings.debugDescription)")
         settings.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Focused search Down must select Hotkey")
         settings.typeKey(.downArrow, modifierFlags: [])
