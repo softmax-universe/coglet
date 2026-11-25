@@ -92,29 +92,29 @@ pub struct Proposal {
     pub operations: Vec<Decision>,
 }
 
-fn bad() -> HostError {
+pub(super) fn bad() -> HostError {
     HostError::InvalidArgument
 }
-fn db(error: coglet_guest_rust::database::DbError) -> HostError {
+pub(super) fn db(error: coglet_guest_rust::database::DbError) -> HostError {
     match error {
         coglet_guest_rust::database::DbError::Host(e) => e,
         _ => bad(),
     }
 }
-fn parse<T: serde::de::DeserializeOwned>(text: &str) -> Result<T> {
+pub(super) fn parse<T: serde::de::DeserializeOwned>(text: &str) -> Result<T> {
     if text.len() > MAX_JSON {
         return Err(HostError::ResourceExhausted);
     }
     serde_json::from_str(text).map_err(|_| bad())
 }
-fn json<T: Serialize>(value: &T) -> Result<String> {
+pub(super) fn json<T: Serialize>(value: &T) -> Result<String> {
     let text = serde_json::to_string(value).map_err(|_| bad())?;
     if text.len() > MAX_JSON {
         return Err(HostError::ResourceExhausted);
     }
     Ok(text)
 }
-fn id(parts: &[&str]) -> String {
+pub(super) fn id(parts: &[&str]) -> String {
     let mut h = Sha256::new();
     h.update(b"factory-v1");
     for part in parts {
@@ -126,7 +126,7 @@ fn id(parts: &[&str]) -> String {
         .map(|b| format!("{b:02x}"))
         .collect()
 }
-fn new_object(id: &str, kind: &str, status: &str, data: String, at: u64) -> Object {
+pub(super) fn new_object(id: &str, kind: &str, status: &str, data: String, at: u64) -> Object {
     Object {
         id: id.into(),
         object_type: kind.into(),
@@ -146,7 +146,7 @@ fn record(o: Object) -> Result<Record> {
         version: o.version,
     })
 }
-fn get<H: DbHost>(repo: &mut Repository<'_, H>, key: &str) -> Result<Object> {
+pub(super) fn get<H: DbHost>(repo: &mut Repository<'_, H>, key: &str) -> Result<Object> {
     repo.get_object(key).map_err(db)?.ok_or_else(bad)
 }
 
@@ -221,6 +221,35 @@ fn audit<H: DbHost>(
     .map_err(db)
 }
 
+// Called only after immutable inbox and wake bindings have been validated.
+fn ingest_goal<H: Host + DbHost>(
+    context: &mut Context<'_, H>,
+    event: &coglet_guest_rust::Event,
+) -> Result<()> {
+    let payload = coglet_types::Value::serialized(&event.payload).map_err(|_| bad())?;
+    let input = payload
+        .deserialized::<super::goals::GoalInput>()
+        .map_err(|_| bad())?;
+    let event_key = id(&[&event.source, &event.seq.to_string()]);
+    let receipt = id(&["receipt", &event_key]);
+    let digest = json(&id(&[&json(event)?]))?;
+    let at = context.logical_time;
+    let mut repo = Repository {
+        client: context.database(),
+    };
+    if let Some(previous) = repo.get_object(&receipt).map_err(db)? {
+        return if previous.data_json == digest {
+            Ok(())
+        } else {
+            Err(HostError::Conflict)
+        };
+    }
+    super::goals::ingest(&mut repo, &event.source, input, at)?;
+    repo.create_object(&new_object(&receipt, "receipt", "processed", digest, at))
+        .map_err(db)?;
+    Ok(())
+}
+
 /// Domain input fields are Factory-owned JSON inside the ordinary event payload.
 /// LLM replies retain the frozen ABI envelope and carry output.decisions_json.
 pub fn handle<H: Host + DbHost>(
@@ -260,6 +289,9 @@ pub fn handle<H: Host + DbHost>(
             || enclosed.correlation_id != event.correlation_id
         {
             return Err(bad());
+        }
+        if enclosed.kind == "factory.goal" {
+            return ingest_goal(context, &enclosed);
         }
         if enclosed.kind == "llm.reply" {
             let payload = coglet_types::Value::serialized(&enclosed.payload).map_err(|_| bad())?;
@@ -653,13 +685,13 @@ fn release_capacity<H: DbHost>(
     }
     Ok(())
 }
-fn valid_id(key: &str) -> bool {
+pub(super) fn valid_id(key: &str) -> bool {
     key.len() == 32
         && key
             .bytes()
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
-fn description(text: &str) -> bool {
+pub(super) fn description(text: &str) -> bool {
     !text.trim().is_empty() && text.len() <= 1024
 }
 fn validate<H: DbHost>(

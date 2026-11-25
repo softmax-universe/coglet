@@ -2,6 +2,7 @@
 //! There is deliberately no guest commit, DDL, SQL-text or migration capability.
 pub mod catalog;
 pub mod executive;
+pub mod goals;
 pub use coglet_guest_rust::database::DbHost;
 use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
@@ -362,6 +363,20 @@ impl<'a, H: DbHost> Repository<'a, H> {
                 uint(object.updated_at)?,
                 text(&object.id),
                 uint(object.version)?,
+            ],
+        )?;
+        Ok(())
+    }
+    pub fn create_relation(&mut self, relation: &Relation) -> Result<()> {
+        self.call(
+            "relations_create",
+            vec![
+                text(&relation.id),
+                text(&relation.source_id),
+                text(&relation.target_id),
+                text(&relation.relation_type),
+                text(&relation.data_json),
+                uint(relation.version)?,
             ],
         )?;
         Ok(())
