@@ -2,6 +2,7 @@
 use super::*;
 use std::time::Instant;
 
+#[cfg(feature = "ffi-test-hooks")]
 fn ready_host(name: &str) -> (Host, Link) {
     ready_host_with(name, &program(false))
 }
@@ -22,6 +23,7 @@ fn ready_host_with(name: &str, wasm: &[u8]) -> (Host, Link) {
     }
     (host, link)
 }
+#[cfg(feature = "ffi-test-hooks")]
 fn verify_guest(host: &mut Host, link: Link) {
     drop(link);
     host.stop();
