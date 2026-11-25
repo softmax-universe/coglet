@@ -25,6 +25,7 @@ pub use admission::{Admission, Pins};
 pub use catalog::{CellType, Column, TypedStatement};
 pub use coordinator::{
     CORRUPTION, Decision, HALTED, HELD, Journal, Recovered, StepId, recovery_abort_record,
+    recovery_abort_record_with_profile,
 };
 pub use maintenance::{
     ArchivedDecision, CodeRange, CompatibilityFloor, Migration, OperatorApproval, RecoveryBundle,
@@ -36,6 +37,27 @@ pub use outbox::{
 pub use protocol::{CallResult, HostBudget};
 
 pub type Result<T> = std::result::Result<T, String>;
+
+/// Trusted local naming selection, independent of the database format version.
+/// The supervising runtime fences this identity alongside its catalog/WAL pin.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ContractProfile {
+    #[default]
+    Surface01,
+    Surface02,
+}
+impl ContractProfile {
+    /// Only name-bearing database contracts change; all other rules stay frozen.
+    pub fn rule(self, frozen: &str) -> &str {
+        match (self, frozen) {
+            (Self::Surface02, "database::db-request") => "surface02::s02-db-request",
+            (Self::Surface02, "database::db-enqueue") => "surface02::s02-db-enqueue",
+            (Self::Surface02, "database::db-host-call") => "surface02::s02-db-host-call",
+            (Self::Surface02, "database::db-step-record") => "surface02::s02-db-step-record",
+            _ => frozen,
+        }
+    }
+}
 
 fn sqlite_failure(error: rusqlite::Error) -> String {
     use rusqlite::ErrorCode;
@@ -363,6 +385,7 @@ impl Database {
         }
         Ok(Unit {
             db: self,
+            profile: ContractProfile::default(),
             catalog,
             grants,
             deadline,
@@ -390,6 +413,7 @@ impl Database {
 /// the recovery protocol (not exposed in this initial substrate).
 pub struct Unit<'a> {
     db: &'a mut Database,
+    profile: ContractProfile,
     catalog: &'a Catalog,
     grants: Grants,
     deadline: Instant,
@@ -405,6 +429,9 @@ pub struct Unit<'a> {
     transaction: bool,
 }
 impl Unit<'_> {
+    pub fn contract_profile(&self) -> ContractProfile {
+        self.profile
+    }
     pub fn statement(
         &mut self,
         id: &str,

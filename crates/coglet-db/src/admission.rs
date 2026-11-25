@@ -98,6 +98,21 @@ impl Database {
         executing_code_hash: &str,
         admission: Admission,
     ) -> Result<Unit<'a>> {
+        self.admit_with_profile(
+            catalog,
+            executing_code_hash,
+            admission,
+            ContractProfile::default(),
+        )
+    }
+    /// Select the trusted naming profile before any guest call is validated.
+    pub fn admit_with_profile<'a>(
+        &'a mut self,
+        catalog: &'a Catalog,
+        executing_code_hash: &str,
+        admission: Admission,
+        profile: ContractProfile,
+    ) -> Result<Unit<'a>> {
         let p = admission.pins;
         let valid_hash = |s: &str| {
             s.len() == 64
@@ -147,6 +162,7 @@ impl Database {
         }
         Ok(Unit {
             db: self,
+            profile,
             catalog,
             grants: p.grants,
             deadline: admission.deadline,

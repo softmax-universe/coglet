@@ -706,6 +706,7 @@ dependencies = [
  "coglet-mock",
  "coglet-proto",
  "coglet-surface-rust",
+ "coglet-types",
  "coglet-types-hub0",
  "hex",
  "iroh",

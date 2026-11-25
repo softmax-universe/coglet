@@ -1,0 +1,18 @@
+# Swift SURFACE peer: runs the exact same surface02 cases and pinned fixtures as
+# impls-surface02.toml. Separate registration lets native Swift CI execute the
+# compiled adapter without requiring Go/Python SDK builds on its Mac runner.
+# peer_roles names the HARNESS role; these are not Rust-runtime conformance claims.
+# Local Linux executable proof is not native Mac qualification; swift.yml owns that gate.
+[[implementations]]
+name = "surface-swift-reference-02"
+suites = ["surface02"]
+peer_roles = ["runtime"]
+transport = "stdio"
+contract_profile = "surface-0.2"
+command = ["sdk/surface-swift/.build/debug/coglet-swift-reference"]
+ready_line = "COGLET_CONFORMANCE_READY"
+fixture_clock = false
+[implementations.fixtures.surface02-base.env]
+COGLET_FIXTURE_CONFIG = "conformance/surface02-fixtures/adapter-config.json"
+COGLET_FIXTURE_CATALOG = "conformance/surface02-fixtures/app-catalog.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "e1f07da1f671daa8c71a2a9027f3f744d7a972a6718d3e765cec5c883be77198"

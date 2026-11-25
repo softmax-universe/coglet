@@ -1,4 +1,4 @@
-use crate::{Result, validate};
+use crate::{ContractProfile, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::VecDeque;
@@ -10,10 +10,19 @@ pub struct Router {
     capacity: usize,
     next_ordinal: u64,
     queue: VecDeque<(u64, Value)>,
+    #[serde(default)]
+    contract_profile: ContractProfile,
 }
 
 impl Router {
     pub fn new(capacity: usize) -> Result<Self> {
+        Self::with_contract_profile(capacity, ContractProfile::Surface01)
+    }
+
+    pub fn with_contract_profile(
+        capacity: usize,
+        contract_profile: ContractProfile,
+    ) -> Result<Self> {
         if capacity == 0 {
             return Err("queue capacity must be positive".into());
         }
@@ -21,11 +30,12 @@ impl Router {
             capacity,
             next_ordinal: 0,
             queue: VecDeque::new(),
+            contract_profile,
         })
     }
 
     pub fn enqueue(&mut self, event: Value) -> Result<u64> {
-        validate("event", &event)?;
+        self.contract_profile.validate("event", &event)?;
         if self.queue.len() == self.capacity {
             return Err("resource_exhausted: router full".into());
         }
@@ -66,7 +76,7 @@ impl Router {
             if *ordinal >= self.next_ordinal || previous.is_some_and(|old| old >= *ordinal) {
                 return Err("invalid recovered router arrival order".into());
             }
-            validate("event", event)?;
+            self.contract_profile.validate("event", event)?;
             previous = Some(*ordinal);
         }
         Ok(())
@@ -74,6 +84,9 @@ impl Router {
 
     pub(crate) fn events(&self) -> impl Iterator<Item = &Value> {
         self.queue.iter().map(|(_, event)| event)
+    }
+    pub fn contract_profile(&self) -> ContractProfile {
+        self.contract_profile
     }
     pub(crate) fn entries(&self) -> impl Iterator<Item = &(u64, Value)> {
         self.queue.iter()

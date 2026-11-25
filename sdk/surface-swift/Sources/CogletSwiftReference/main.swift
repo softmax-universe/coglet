@@ -12,11 +12,17 @@ import Glibc
 // Optional native routes are unavailable until a product supplies a real backend.
 final class ReferenceBackend: SurfaceNativeBackend {
     let speechConfig: CBORValue
+    let fixtureExtensions: Set<String>
+    var fixtureTitle = "hello"
     var state: CBORValue
     var expires: UInt64 = 0
-    init(config: CBORValue) { speechConfig = config["speech_config"]!; state = config["initial_expression"]! }
+    init(config: CBORValue, fixtureExtensions: Set<String> = []) {
+        speechConfig = config["speech_config"]!; state = config["initial_expression"]!
+        self.fixtureExtensions = fixtureExtensions
+    }
     func preflight(action: CBORValue, now: UInt64) throws {
         switch action["capability"] {
+        case .text("softmax.app.rename") where fixtureExtensions.contains("softmax.app.rename"): break
         case .text("expression.set_expression"): break
         case .text("speech.stop"): throw NativeSurfaceError("not_found")
         default: throw NativeSurfaceError("unavailable")
@@ -24,6 +30,11 @@ final class ReferenceBackend: SurfaceNativeBackend {
     }
     func begin(action: CBORValue, epoch: UInt64, now: UInt64) throws -> NativeSurfaceResult? {
         let args = action["args"]!
+        if action["capability"] == .text("softmax.app.rename"), fixtureExtensions.contains("softmax.app.rename") {
+            guard case .text(let title) = args["title"] else { throw NativeSurfaceError("invalid_argument") }
+            fixtureTitle = title
+            return .succeeded(.map([]))
+        }
         guard case .unsigned(let duration) = args["duration_ms"] else { throw NativeSurfaceError("invalid_argument") }
         if duration == 0 { stop(owner: nil) }
         else {
@@ -35,6 +46,7 @@ final class ReferenceBackend: SurfaceNativeBackend {
     }
     func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
         switch operation {
+        case "softmax.app.state" where fixtureExtensions.contains(operation): return .record([("title", .text(fixtureTitle))])
         case "speech.config": return speechConfig
         case "expression.state":
             if now >= expires { stop(owner: nil) }
@@ -75,12 +87,23 @@ final class FixtureClock {
 
 func run() throws {
     let environment = ProcessInfo.processInfo.environment
+    let profileName = environment["COGLET_CONFORMANCE_CONTRACT_PROFILE"] ?? "surface-0.1"
+    guard let profile = SurfaceContractProfile(rawValue: profileName) else { throw SurfaceFailure.protocolViolation("unknown fixture contract profile") }
+    let trustedCatalog: TrustedExtensionCatalog?
+    if let path = environment["COGLET_FIXTURE_CATALOG"], let pin = environment["COGLET_FIXTURE_CATALOG_SHA256"] {
+        trustedCatalog = try TrustedExtensionCatalog(json: Array(Data(contentsOf: URL(fileURLWithPath: path))), sha256: pin, contractProfile: profile)
+    } else {
+        guard environment["COGLET_FIXTURE_CATALOG"] == nil, environment["COGLET_FIXTURE_CATALOG_SHA256"] == nil else {
+            throw SurfaceFailure.protocolViolation("incomplete fixture catalog pin")
+        }
+        trustedCatalog = nil
+    }
     let configPath = environment["COGLET_FIXTURE_CONFIG"] ?? "spec/fixtures/surface/adapter-config.json"
     let config = try JSONDecoder().decode(FixtureValue.self, from: Data(contentsOf: URL(fileURLWithPath: configPath))).cbor
     guard case .text(let identity) = config["surface"], case .array(let entries) = config["grant"]?["entries"] else {
         throw SurfaceFailure.invalidFrame
     }
-    let grants = try entries.map { entry -> EffectiveSurfaceGrant in
+    var grants = try entries.map { entry -> EffectiveSurfaceGrant in
         guard case .text(let owner) = entry["coglet"], case .array(let operations) = entry["operations"],
               case .array(let resources) = entry["resources"], case .unsigned(let expires) = entry["expires"] else { throw SurfaceFailure.invalidFrame }
         func text(_ value: CBORValue) throws -> String {
@@ -96,12 +119,20 @@ func run() throws {
     // Only documented provisioning labels select startup state, never responses.
     if case .unsigned(let epoch) = config["startup_epoch_by_case"]?[name], epoch > 1 {
         try store.save(CBORCodec.encodeProfile(.record([("identity", .text(identity)), ("epoch", .unsigned(epoch - 1)),
-            ("sequence", .unsigned(0)), ("killed", .boolean(false)), ("records", .map([]))])))
+            ("sequence", .unsigned(0)), ("killed", .boolean(false)), ("records", .map([])),
+            ("contract_profile", .text(profile.rawValue)), ("catalog_pin", trustedCatalog.map { .text($0.pin) } ?? .null)])))
     }
     let selected = Set(grants.flatMap { $0.operations })
-    let backend = ReferenceBackend(config: config), clock = FixtureClock()
+    let operations = (SurfaceOperation.builtins + (trustedCatalog?.operations ?? [])).filter { selected.contains($0.name) }
+    // The shared fixture grants optional audio leases although it advertises
+    // only speech.config. This fixture backend needs none: least privilege.
+    if profile == .surface02 {
+        let needed = Set(operations.flatMap(\.resources))
+        grants = grants.map { .init(coglet: $0.coglet, operations: $0.operations, resources: $0.resources.intersection(needed), expires: $0.expires) }
+    }
+    let backend = ReferenceBackend(config: config, fixtureExtensions: Set(trustedCatalog?.operations.map(\.name) ?? [])), clock = FixtureClock()
     let session = try SurfaceSession(identity: identity, boundCoglets: Set(grants.map(\.coglet)),
-        operations: SurfaceOperation.builtins.filter { selected.contains($0.name) }, store: store, backend: backend,
+        operations: operations, store: store, backend: backend, contractProfile: profile, trustedCatalog: trustedCatalog,
         initialGrants: grants, clock: { clock.now }, correlation: {
             // Fixture supplies a stable hello/cap/grant correlation; event identity
             // is still distinguished by the durable monotonically increasing seq.

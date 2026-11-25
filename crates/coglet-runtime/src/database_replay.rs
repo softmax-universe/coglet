@@ -13,7 +13,7 @@
 //! applied only after the guest reproduced a successful `handle` == 0 with the
 //! complete recorded calls and an unpoisoned unit.
 use super::*;
-use crate::journal::database_projection;
+use crate::journal::database_projection_with_profile;
 use coglet_engine::{
     Engine as SharedEngine, Error as EngineError, GuestMemory, Host, Instance, Limits, StepBudget,
     StepInput,
@@ -98,7 +98,10 @@ impl ReplayHost<'_> {
         let call = self.recorded("db")?.clone();
         let sent = memory.read(ptr, len)?;
         let wanted = if let Some(argument) = get(&call, "argument") {
-            coglet_types::encode(REQUEST_RULE, argument)
+            crate::profile_codec::encode(
+                self.ordinary.contract_profile.rule(REQUEST_RULE),
+                argument,
+            )
         } else {
             get(&call, "argument_hex")
                 .and_then(V::as_text)
@@ -346,9 +349,10 @@ impl Runtime {
         let mut hashes = Vec::new();
         for raw in records {
             // Checks the schema and the record hash over the exact bytes.
-            let record = database_projection(raw)?;
-            let native = coglet_types::decode(RECORD_RULE, raw)?;
-            if coglet_types::encode(RECORD_RULE, &native)? != *raw {
+            let record = database_projection_with_profile(raw, candidate.contract_profile)?;
+            let rule = candidate.contract_profile.rule(RECORD_RULE);
+            let native = crate::profile_codec::decode(rule, raw)?;
+            if crate::profile_codec::encode(rule, &native)? != *raw {
                 return Err("replay record bytes are not canonical".into());
             }
             let calls = get(&native, "calls")

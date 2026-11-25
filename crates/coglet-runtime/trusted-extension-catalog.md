@@ -34,7 +34,26 @@ Embedded C ABI start (after the unchanged immutable `coglet_runtime_configure`):
 ```
 
 `setup` above is a placeholder for the normal complete runtime setup, not an
-executable example. The optional catalog must be a closed JSON object with both
+executable example. ADR-0030 adds explicit trusted local naming selection:
+`setup.contract_profile` is `surface-0.1` (omitted default) or `surface-0.2`.
+The embedded loader uses that selector before catalog admission. The daemon
+accepts `--contract-profile surface-0.2` in service-socket mode and injects the
+same trusted setup field; omission selects `surface-0.1`, and any explicit setup
+selector must agree with the daemon selector. Unknown, malformed or duplicate
+selectors are refused before listening. The profile is not a catalog field or
+manifest format version. Catalog-free startup persists it too; recovery fences
+both the catalog digest and profile. A service provisioned with `surface-0.2`
+now selects wire `0.2` when offered, using its generated version-specific rules.
+Otherwise it selects `0.1`; a local `surface-0.2` service withholds all product
+extensions (including two-component product names and empty entries/resources)
+on that downgraded connection while preserving built-in Face/speech. The stored
+catalog/profile pair and pending extension receipts are not rewritten. Retained
+extension retries remain unavailable until a suitable `0.2` connection. Existing
+`surface-0.1` provisioning retains its two-component trusted-extension behavior.
+Wire transport tests use a synthetic closed catalog; they do **not** qualify the
+Softmax app catalog, Swift SDK, native app controls or actual UI coverage.
+
+The optional catalog must be a closed JSON object with both
 string members; arrays, unknown fields and missing members return -1. Invalid
 catalog/pin or WAL pin mismatch returns -2 without publishing a service (status
 remains 1). The outer config is bounded to 16 MiB; decoded `json` bytes to 1 MiB.

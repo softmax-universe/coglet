@@ -1,0 +1,137 @@
+{
+  "name": "runtime-app-read-state",
+  "description": "Actual runtime issues the same pinned app read query and remains live after the selected state reply; health is a liveness check, not independent proof of durable supervisor result consumption. Real-clock translated deadlines are not asserted byte-for-byte here.",
+  "contract_profile": "surface-0.2",
+  "peer_role": "surface",
+  "fixtures": [
+    "runtime02-read"
+  ],
+  "steps": [
+    {
+      "send": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.2",
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "hello_reply",
+        "body.selection.version": "0.2",
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "capabilities",
+        "body": {
+          "revision": 1,
+          "clock": 0,
+          "entries": [
+            {
+              "name": "softmax.app",
+              "events": [],
+              "reads": [
+                "softmax.app.state"
+              ],
+              "actions": [],
+              "exclusive": [],
+              "schemas": {
+                "softmax.app.state": "https://example.invalid/softmax/v1#state"
+              }
+            },
+            {
+              "name": "softmax.app_sensitive",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "softmax.app.rename"
+              ],
+              "exclusive": [
+                "softmax.control"
+              ],
+              "schemas": {
+                "softmax.app.rename": "https://example.invalid/softmax/v1#state"
+              }
+            }
+          ],
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "send": {
+        "type": "grants",
+        "body": {
+          "epoch": 1,
+          "entries": [
+            {
+              "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "operations": [
+                "softmax.app.state"
+              ],
+              "resources": [],
+              "expires": 10000000
+            }
+          ],
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "read",
+        "body.capability": "softmax.app.state",
+        "body.args": {
+          "id": 1
+        },
+        "body.coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "body.grant_epoch": 1,
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "read_reply",
+        "body": {
+          "correlation_id": "11111111111111111111111111111111",
+          "ok": true,
+          "value": {
+            "title": "hello"
+          },
+          "snapshot": 100
+        }
+      }
+    },
+    {
+      "send": {
+        "type": "health",
+        "body": {
+          "state": "ready",
+          "clock": 100,
+          "pending": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "health",
+        "body.pending": 0,
+        "body.correlation_id": "11111111111111111111111111111111"
+      },
+      "within_ms": 1000
+    }
+  ]
+}
