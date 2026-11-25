@@ -12,7 +12,9 @@ use coglet_runtime::{
     Engine, EngineReport, Runtime, RuntimeService, StepHost, SurfaceBinding, SurfaceSession, cbor,
 };
 use serde_json::{Value, json};
-use std::io::{Read, Write};
+use std::collections::{BTreeSet, VecDeque};
+use std::io::{BufRead, BufReader, Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex, mpsc};
@@ -100,9 +102,15 @@ struct Sim {
     child: Child,
     stdin: Option<ChildStdin>,
     frames: mpsc::Receiver<Vec<u8>>,
+    control: BufReader<UnixStream>,
+    received_bytes: u64,
+    time: u64,
 }
 impl Sim {
-    fn spawn() -> Self {
+    fn spawn(dir: &Path) -> Self {
+        let socket = dir.join("clock");
+        let listener = UnixListener::bind(&socket).unwrap();
+        listener.set_nonblocking(true).unwrap();
         let mut child = Command::new(std::env::var("COGLET_UV").unwrap_or_else(|_| "uv".into()))
             .args([
                 "run",
@@ -110,10 +118,11 @@ impl Sim {
                 "--quiet",
                 "python",
                 "-m",
-                "coglet_sim.host",
+                "coglet_sim.fixture_peer",
             ])
             .current_dir(root().join("sim"))
             .env("COGLET_DUPLEX_CASE", "heard-history")
+            .env("COGLET_FIXTURE_CLOCK_SOCKET", &socket)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -132,18 +141,73 @@ impl Sim {
                 }
             }
         });
+        let deadline = Instant::now() + Duration::from_secs(20);
+        let control = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    if Instant::now() >= deadline || child.try_wait().unwrap().is_some() {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        panic!("simulator did not connect its fixture clock");
+                    }
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                Err(e) => panic!("fixture clock accept: {e}"),
+            }
+        };
+        control
+            .set_read_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+        control
+            .set_write_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
         let stdin = child.stdin.take();
         Self {
             child,
             stdin,
             frames,
+            control: BufReader::new(control),
+            received_bytes: 0,
+            time: 0,
         }
     }
-    fn send(&mut self, raw: &[u8]) {
+    // ACK is a cross-channel barrier, not a sleep-based quiescence guess.
+    // Do not advance either logical clock until stdout reaches its watermark.
+    fn acknowledged(&mut self) -> Vec<Vec<u8>> {
+        let mut line = String::new();
+        assert!(
+            self.control.read_line(&mut line).unwrap() > 0,
+            "fixture clock EOF"
+        );
+        let ack: Value = serde_json::from_str(&line).unwrap();
+        let time = ack["time"].as_u64().unwrap();
+        assert!(time >= self.time);
+        self.time = time;
+        let bytes = ack["bytes"].as_u64().unwrap();
+        assert!(bytes >= self.received_bytes);
+        let mut frames = Vec::new();
+        while self.received_bytes < bytes {
+            let raw = self
+                .frames
+                .recv_timeout(Duration::from_secs(3))
+                .expect("fixture stdout watermark");
+            self.received_bytes += 4 + raw.len() as u64;
+            frames.push(raw);
+        }
+        assert_eq!(self.received_bytes, bytes, "inconsistent fixture watermark");
+        frames
+    }
+    fn next(&mut self, target: u64) -> Vec<Vec<u8>> {
+        writeln!(self.control.get_mut(), "{}", json!({"next": target})).unwrap();
+        self.acknowledged()
+    }
+    fn send(&mut self, raw: &[u8]) -> Vec<Vec<u8>> {
         let stdin = self.stdin.as_mut().unwrap();
         stdin.write_all(&(raw.len() as u32).to_be_bytes()).unwrap();
         stdin.write_all(raw).unwrap();
         stdin.flush().unwrap();
+        self.acknowledged()
     }
 }
 impl Drop for Sim {
@@ -180,55 +244,90 @@ fn run_once(name: &str) -> Run {
         service.clone(),
     )
     .unwrap();
-    let started = Instant::now();
-    let clock = || 1_000 + started.elapsed().as_micros() as u64;
-    let mut sim = Sim::spawn();
+    // Functional history/replay uses ADR-0024's real SDK/ledger peer with an
+    // explicit fixture clock. Runner scheduling/fsync must not spend read leases.
+    // Native expiry behavior remains covered by heard_deadline_tests.
+    let mut sim = Sim::spawn(&dir);
     let mut seen = Vec::new();
-    let (mut reads, mut replies) = (0, 0);
+    let (mut reads, mut replies) = (BTreeSet::new(), BTreeSet::new());
+    let mut inbound: VecDeque<_> = sim.next(0).into();
     let deadline = Instant::now() + Duration::from_secs(20);
     loop {
         assert!(
             Instant::now() < deadline,
             "simulator session timed out: {seen:#?}"
         );
-        let now = clock();
+        let now = 1_000 + sim.time;
         session.tick(now);
+        // Finish every acknowledged inbound frame and all resulting outbound
+        // dispatches before requesting the next chronological media callback.
+        while let Some(raw) = inbound.pop_front() {
+            let message = decode(&raw);
+            if message["type"] == "read_reply" {
+                assert_eq!(
+                    message["body"]["ok"], true,
+                    "failed heard snapshot: {message}"
+                );
+                assert!(
+                    replies.insert(
+                        message["body"]["correlation_id"]
+                            .as_str()
+                            .unwrap()
+                            .to_owned()
+                    ),
+                    "duplicate reply"
+                );
+            }
+            assert_eq!(session.send(&raw, now), 0, "runtime refused {message}");
+            seen.push(message);
+        }
         session.pump_dispatch(now).unwrap();
         while let Some(raw) = session.pop() {
-            if decode(&raw)["type"] == "read" {
-                reads += 1;
+            let message = decode(&raw);
+            if message["type"] == "read" {
+                assert!(
+                    reads.insert(
+                        message["body"]["correlation_id"]
+                            .as_str()
+                            .unwrap()
+                            .to_owned()
+                    ),
+                    "duplicate read"
+                );
             }
-            sim.send(&raw);
+            inbound.extend(sim.send(&raw));
         }
         assert!(
             !session.is_closed(),
             "runtime closed the session: {seen:#?}"
         );
-        while let Ok(raw) = sim.frames.recv_timeout(Duration::from_millis(2)) {
-            let message = decode(&raw);
-            if message["type"] == "read_reply" {
-                replies += 1;
-            }
-            assert_eq!(session.send(&raw, clock()), 0, "runtime refused {message}");
-            seen.push(message);
+        if !inbound.is_empty() {
+            continue;
         }
         let outcomes = seen
             .iter()
             .filter(|m| m["body"]["kind"] == "action.outcome")
             .count();
-        if outcomes == SPEAK.len() && reads == replies && reads > 0 {
-            // Allow any trailing frames, then require the exchange quiescent.
-            std::thread::sleep(Duration::from_millis(50));
-            if sim.frames.try_recv().is_err() && session.front().is_none() {
-                break;
-            }
+        if outcomes == SPEAK.len() && reads == replies && !reads.is_empty() {
+            break;
         }
+        assert!(
+            sim.time < 2_000_000,
+            "logical simulator deadline: {seen:#?}"
+        );
+        let previous = sim.time;
+        inbound.extend(sim.next(previous + 10_000));
+        assert!(
+            sim.time > previous || !inbound.is_empty(),
+            "fixture clock stalled"
+        );
     }
+    let sealed_at = 1_001 + sim.time;
     drop(sim);
     drop(session);
     let mut service = Arc::try_unwrap(service).ok().unwrap().into_inner().unwrap();
     let sealed = service
-        .seal_boundary(&setup["inputs"]["trace_id"], clock() + 1, &[])
+        .seal_boundary(&setup["inputs"]["trace_id"], sealed_at, &[])
         .unwrap();
     let records = service.records().to_vec();
     assert_eq!(records.last(), Some(&sealed));
