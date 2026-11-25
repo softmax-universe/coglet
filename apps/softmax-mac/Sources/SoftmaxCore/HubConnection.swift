@@ -120,6 +120,11 @@ public final class HubConnection {
                                                         authorize: authorized, completion: continuation)
                     installed = true
                     let key = try account.identity()
+                    // Keychain/storage may block beyond the original custody.
+                    // Treat authority/cancellation loss separately from an
+                    // ordinary provider error: never re-arm this failed attempt.
+                    do { try Task.checkCancellation(); try authorized() }
+                    catch { finishReconnect(id: id, error: error); return }
                     let current = generation
                     running = true; state = .connecting; errorMessage = nil
                     try link.start(key: key) { [weak self] event in

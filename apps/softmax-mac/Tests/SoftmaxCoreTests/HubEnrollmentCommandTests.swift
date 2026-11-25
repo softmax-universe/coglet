@@ -14,6 +14,23 @@ final class HubEnrollmentCommandTests: XCTestCase {
         hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
         return (hub, store, link)
     }
+    func testEnrollmentRechecksCustodyAfterIdentityStorageBeforeStartingHelper() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        var authorized = true
+        store.didLoadKey = { authorized = false }
+        // On the unfenced implementation, a started helper's ready callback
+        // terminates the operation so this negative control fails, not hangs.
+        link.didStart = { link.emit(.ready(device: String(repeating: "a", count: 64))) }
+        do {
+            try await hub.enrollOnce(invitation()) { guard authorized else { throw HubError.unavailable } }
+            XCTFail("Expired storage-bound command succeeded")
+        } catch {}
+        XCTAssertEqual(link.starts, 1, "Original pairing helper only; expired command must not launch a fresh helper")
+        XCTAssertEqual(link.connects, 0)
+        XCTAssertNil(try store.loadHub())
+        XCTAssertEqual(hub.state, .offline)
+    }
     func testSignOutCommandPropagatesStorageFailureAndCanRetry() throws {
         let (hub, store, link) = ready()
         let stale = link.callback

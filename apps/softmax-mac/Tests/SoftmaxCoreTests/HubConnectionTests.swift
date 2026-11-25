@@ -287,7 +287,8 @@ final class HubConnectionTests: XCTestCase {
 final class MemoryHubStore: HubStore {
     var key: Data?, hub: HubPairing?, fail = false
     var failHubSave = false
-    func loadKey() throws -> Data? { if fail { throw HubError.storage }; return key }
+    var didLoadKey: (() -> Void)?
+    func loadKey() throws -> Data? { if fail { throw HubError.storage }; didLoadKey?(); return key }
     func saveKey(_ value: Data) throws { if fail { throw HubError.storage }; key = value }
     func deleteKey() throws { if fail { throw HubError.storage }; key = nil }
     func loadHub() throws -> HubPairing? { hub }
