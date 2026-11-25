@@ -57,8 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|d| d.as_secs())
         }),
     )?;
-    let signatures: Value =
-        serde_json::from_slice(&std::fs::read("spec/fixtures/hub/signatures.json")?)?;
+    let signatures: Value = serde_json::from_str(include_str!(
+        "../../coglet-types-hub0/fixtures/signatures.json"
+    ))?;
     let mut delegation = signatures[0].clone();
     delegation
         .as_object_mut()

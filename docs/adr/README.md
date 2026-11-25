@@ -26,7 +26,7 @@ and the other ADR status decisions remain separate.
 | 0020 | [Vocabulary: router, adapter, runtime](0020-vocabulary.md) | Proposed; stage 1 (prose) only |
 | 0022 | [Embedded product catalogs and recorded pod command admission](0022-embedded-product-catalogs.md) | Proposed |
 | 0027 | [Revalidate and resume running coglets after daemon restart](0027-daemon-restart-resume.md) | Proposed; implementation qualification separate |
-| 0031 | [Manage port, and patches on a plain filesystem](0031-manage-port-and-filesystem-patches.md) | Proposed; direction decided by David 2026-11-25 |
+| 0031 | [Manage port, and patches on a plain filesystem](0031-manage-port-and-filesystem-patches.md) | Accepted decision (#157); hub 1.0 wire effective on reviewed merge of #164; implementation qualification separate |
 | 0033 | [Runtime policy attestations and emergency output custody](0033-runtime-policy-producers.md) | Proposed; docs-first producer contract, implementation qualification separate |
 | 0036 | [A cogent has no centre; it is present on a few coglets](0036-distributed-cogent-and-presence.md) | Proposed; direction decided by David 2026-11-25, presence messages not yet in the spec |
 | 0034 | [Ready-output retrieval before optional embedded runtime pumping](0034-ready-output-service.md) | Proposed; implementation qualification separate |
