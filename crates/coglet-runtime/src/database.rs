@@ -6,7 +6,7 @@
 //! `RuntimeService::recover_database` (re-exported below): both publish through
 //! one idempotent WAL `Journal` collaborator, so live completion and no-guest
 //! recovery cannot diverge.
-use crate::{Result, StepHost, digest, profile_value, validate};
+use crate::{ContractProfile, Result, StepHost, digest, profile_value};
 use coglet_db::{Admission, CallResult, Catalog, Database, Pins, Unit};
 use coglet_engine::{
     Engine, Error, GuestMemory, Host, Instance, Limits, StepBudget, StepInput, StepOutcome,
@@ -33,14 +33,35 @@ pub fn admit<'a, E: Engine>(
     catalog: &'a Catalog,
     limits: Limits,
 ) -> Result<(Unit<'a>, E::Instance)> {
+    admit_with_profile(
+        engine,
+        code,
+        deployment,
+        db,
+        catalog,
+        limits,
+        ContractProfile::Surface01,
+    )
+}
+
+/// Selected only by trusted local provisioning, never by the manifest format.
+pub fn admit_with_profile<'a, E: Engine>(
+    engine: &E,
+    code: &[u8],
+    deployment: Deployment<'_>,
+    db: &'a mut Database,
+    catalog: &'a Catalog,
+    limits: Limits,
+    profile: ContractProfile,
+) -> Result<(Unit<'a>, E::Instance)> {
     let Deployment {
         manifest,
         grants,
         pins,
     } = deployment;
-    validate("database::db-manifest", manifest)?;
+    profile.validate("database::db-manifest", manifest)?;
     for grant in grants {
-        validate("capability-name", &serde_json::json!(grant))?;
+        profile.validate_name(grant)?;
     }
     if limits.compute_mode
         != manifest["budgets"]["compute_mode"]
@@ -76,7 +97,7 @@ pub fn admit<'a, E: Engine>(
     }
     // Static engine validation does not instantiate or execute the guest.
     let module = engine.load(code, &limits).map_err(|e| e.to_string())?;
-    let unit = db.admit(
+    let unit = db.admit_with_profile(
         catalog,
         &digest(code),
         Admission {
@@ -89,11 +110,19 @@ pub fn admit<'a, E: Engine>(
                 .ok_or("schema_max")?,
             deadline: limits.deadline,
         },
+        database_profile(profile),
     )?;
     let instance = engine
         .instantiate(&module, limits)
         .map_err(|e| e.to_string())?;
     Ok((unit, instance))
+}
+
+pub(crate) fn database_profile(profile: ContractProfile) -> coglet_db::ContractProfile {
+    match profile {
+        ContractProfile::Surface01 => coglet_db::ContractProfile::Surface01,
+        ContractProfile::Surface02 => coglet_db::ContractProfile::Surface02,
+    }
 }
 
 /// One invocation-order stream, retaining native profile values (including
@@ -151,6 +180,7 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
 // or a clone of all guest memory. Recording never invents bytes after a fault.
 struct ObservedMemory<'a> {
     memory: &'a mut dyn GuestMemory,
+    profile: coglet_db::ContractProfile,
     argument: RefCell<Option<(bool, V)>>,
 }
 impl GuestMemory for ObservedMemory<'_> {
@@ -159,7 +189,8 @@ impl GuestMemory for ObservedMemory<'_> {
     }
     fn read(&self, ptr: u32, len: u32) -> coglet_engine::Result<Vec<u8>> {
         let bytes = self.memory.read(ptr, len)?;
-        let argument = match coglet_types::decode("database::db-request", &bytes) {
+        let argument = match coglet_types::decode(self.profile.rule("database::db-request"), &bytes)
+        {
             Ok(value) => (true, value),
             Err(_) => (false, V::Text(hex::encode(&bytes))),
         };
@@ -231,6 +262,7 @@ impl Host for DatabaseHost<'_, '_> {
             .map_err(|_| Error::InvalidArgument)?;
         let mut observed = ObservedMemory {
             memory,
+            profile: self.unit.contract_profile(),
             argument: RefCell::new(None),
         };
         let result = self.unit.call_engine(&mut observed, args, budget)?;
@@ -261,7 +293,11 @@ impl Host for DatabaseHost<'_, '_> {
             ));
         }
         let call = V::Map(call);
-        coglet_types::validate("database::db-host-call", &call).map_err(Error::Trap)?;
+        coglet_types::validate(
+            self.unit.contract_profile().rule("database::db-host-call"),
+            &call,
+        )
+        .map_err(Error::Trap)?;
         self.calls.push(call);
         Ok(result)
     }

@@ -369,11 +369,6 @@ fn validate_record(record: &Value, profile: crate::ContractProfile) -> Result<()
 
 /// Strictly validate exact ABI 0.2 record bytes (profile, closed schema,
 /// canonical encoding, correct hash) and derive their JSON projection.
-#[cfg(feature = "native-engine")]
-pub(crate) fn database_projection(raw: &[u8]) -> Result<Value> {
-    database_projection_with_profile(raw, crate::ContractProfile::Surface01)
-}
-
 pub(crate) fn database_projection_with_profile(
     raw: &[u8],
     profile: crate::ContractProfile,

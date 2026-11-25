@@ -18,7 +18,7 @@ pub struct StepHost {
     grants: Value,
     host_limit: u64,
     host_used: u64,
-    contract_profile: ContractProfile,
+    pub(crate) contract_profile: ContractProfile,
 }
 impl StepHost {
     pub(crate) fn new(
