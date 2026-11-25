@@ -67,6 +67,29 @@ def test_slow_real_negotiation_keeps_logical_deadline():
     assert result[3] is None, result
 
 
+@pytest.mark.parametrize('name', ['barge-in-stop', 'duplicate-call',
+                                 'heard-truncation', 'over-talk-duck'])
+def test_slow_session_initialization_stays_in_startup_budget(name):
+    # Startup has its existing 5 s budget; fixture steps have a 3 s liveness
+    # bound. Delay real ledger/device initialization beyond the latter only.
+    child = '''
+import time
+from coglet_sim import host
+original = host.bind_session
+def bind(*args, **kwargs):
+    time.sleep(3.2)
+    return original(*args, **kwargs)
+host.bind_session = bind
+from coglet_sim.fixture_peer import main
+main()
+'''
+    case = json.loads((ROOT / f'conformance/speech/{name}.json').read_text())
+    impl = implementation([sys.executable, '-c', child])
+    impl['fixtures'] = {label: {'setup': []} for label in case['fixtures']}
+    result = asyncio.run(run_case(impl, 'speech', case))
+    assert result[3] is None, result
+
+
 def test_missing_scheduled_frame_fails_at_original_logical_deadline():
     case = copy.deepcopy(CASE)
     case['steps'] = case['steps'][:5] + [{'expect': {}, 'within_ms': 1}]
