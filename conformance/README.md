@@ -241,6 +241,29 @@ These cases cover wire/dispatch seams only, not all generated `s02-*` rules or n
 The Go reference filters grants only on positively negotiated `0.1` downgrade via the SDK's
 `NegotiatedVersion()` accessor; arbitrary `0.2` grant refusal is not retried as downgrade.
 
+### `surface02-runtime` suite (actual production runtime)
+
+The six complementary `peer_role: surface` cases use the **same** pinned catalog and
+read/rename/Face operation arguments, with distinct identities for the opposite endpoint.
+The Linux-only registry `impls-surface02-runtime.toml` launches an opaque stdio bridge to
+an actual fresh `cogletd` process. It authenticates both PID and UID with SO_PEERCRED;
+production code retains all framing/schema/grant/action/journal handling. No CBOR
+response, app callback or clock is synthesized by the bridge.
+
+    cargo build --locked -p coglet-runtime --bin cogletd
+    export COGLET_FIXTURE_COGLETD="$PWD/target/debug/cogletd"
+    export TMPDIR="${TMPDIR:?set a short private scratch root}"
+    python3 crates/coglet-runtime/tools/test_profile_fixture_bridge.py
+    conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
+
+`rust.yml` builds the daemon, runs bridge and harness regressions, executes all six
+runtime cases under Python3.12 and uploads their report. Each case gets private trusted
+setup/binding plus a fresh WAL/socket. Action tests check pending 1→0; read tests prove
+query issuance and post-reply liveness, **not** durable supervisor consumption. Production
+translated deadlines are not asserted byte-exact. These fixtures do not schedule guests
+or claim app UI/native effects/replay. See `surface02-runtime-fixtures/README.md` and
+`crates/coglet-runtime/tools/profile_fixture_bridge.md` for the launch/proof boundary.
+
 ## Reports and proof boundaries
 
 `--junit PATH` writes a JUnit XML report (default `target/conformance-results.xml`)

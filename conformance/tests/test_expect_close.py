@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import sys
+import tomllib
 import unittest
 
 CONF = Path(__file__).resolve().parents[1]
@@ -24,6 +25,27 @@ class CloseValidation(unittest.TestCase):
         self.assertTrue(all(c['peer_role'] == 'surface' for c in cases))
         self.assertTrue(all(c['contract_profile'] == 'surface-0.2' for c in cases))
         self.assertFalse({c['name'] for c in cases} & {c['name'] for c in cases_for(CONF, 'surface02')})
+
+    def test_runtime_registry_is_actual_daemon_with_exact_shared_catalog(self):
+        data = tomllib.loads((CONF / 'impls-surface02-runtime.toml').read_text())
+        self.assertEqual(len(data['implementations']), 1)
+        impl = data['implementations'][0]
+        self.assertEqual(impl['name'], 'runtime-cogletd-02')
+        self.assertEqual(impl['suites'], ['surface02-runtime'])
+        self.assertEqual(impl['peer_roles'], ['surface'])
+        self.assertEqual(impl['contract_profile'], 'surface-0.2')
+        self.assertEqual(impl['command'], ['python3', 'crates/coglet-runtime/tools/profile_fixture_bridge.py'])
+        self.assertIs(impl['fixture_clock'], False)
+        self.assertEqual(impl['ready_line'], 'COGLET_CONFORMANCE_READY')
+        shared = tomllib.loads((CONF / 'impls-surface02.toml').read_text())['implementations'][0]['fixtures']['surface02-base']['env']
+        self.assertEqual(set(impl['fixtures']), {'runtime02-' + x for x in ('base', 'read', 'rename', 'face')})
+        for name, fixture in impl['fixtures'].items():
+            env = fixture['env']
+            for key, value in shared.items():
+                self.assertEqual(env[key], value)
+            setup = name.removeprefix('runtime02-')
+            self.assertEqual(env['COGLET_FIXTURE_RUNTIME_SETUP'], f'conformance/surface02-runtime-fixtures/{setup}-setup.json')
+            self.assertEqual(env['COGLET_FIXTURE_RUNTIME_BINDING'], 'conformance/surface02-runtime-fixtures/runtime-binding.json')
 
     def test_runtime_provisioning_reuses_exact_surface_payloads(self):
         def load(path):

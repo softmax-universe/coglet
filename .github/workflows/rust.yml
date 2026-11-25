@@ -127,6 +127,21 @@ jobs:
           name: visualizer-native-proof-${{ inputs.bundle-mode || 'normal' }}
           path: tools/visualizer/proof/native/
           if-no-files-found: error
+      - name: Production runtime selected-profile peer qualification
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          cargo build --locked -p coglet-runtime --bin cogletd
+          export COGLET_FIXTURE_COGLETD="$PWD/target/debug/cogletd"
+          uv run --no-project --python 3.12 python crates/coglet-runtime/tools/test_profile_fixture_bridge.py
+          uv run --no-project --python 3.12 python -m unittest discover -s conformance/tests -p test_expect_close.py -v
+          uv run --no-project --python 3.12 python conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-surface02-${{ inputs.bundle-mode || 'normal' }}
+          path: target/runtime-surface02.xml
+          if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
       - uses: ./.github/actions/dependency-capture

@@ -42,5 +42,10 @@ No setup has `native_schedule`: these cases cover the actual runtime surface
 boundary and receipt routing, not NativeEngine guest execution, replay or real
 app effects. Those retain their independently named runtime/native proofs.
 
-**Preparation is not qualification.** No production runtime registration is
-published until the actual bridge is built and these cases execute against it.
+The published Linux production bridge is registered in
+`../impls-surface02-runtime.toml` after executing these six cases against an
+actual rebuilt daemon (not a surface SDK). `rust.yml` repeats that executable
+proof and retains the JUnit report; local proof does not replace required CI.
+Set absolute `COGLET_FIXTURE_COGLETD` and an existing short `TMPDIR`; see
+`../../crates/coglet-runtime/tools/profile_fixture_bridge.md` for the bridge
+contract and independent byte/cleanup/refusal tests.
