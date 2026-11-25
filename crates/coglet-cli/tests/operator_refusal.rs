@@ -37,7 +37,7 @@ async fn cli_operator_queued_failed_and_malformed_never_report_success() {
                 stream.write_all(b"{}").await.unwrap();
                 return;
             }
-            let error = if state == "queued" {
+            let error = if state == "queued" || state == "cancelled" {
                 Value::Null
             } else {
                 json!({"code":"permission_denied","message":"fixture refusal","retryable":false})
@@ -73,10 +73,18 @@ async fn cli_operator_queued_failed_and_malformed_never_report_success() {
         .await
         .unwrap();
         assert!(!out.status.success(), "{state}");
-        if state == "queued" {
-            assert_eq!(out.status.code(), Some(3));
+        if ["queued", "failed", "cancelled"].contains(&state) {
+            assert_eq!(
+                out.status.code(),
+                Some(if state == "queued" { 3 } else { 1 })
+            );
             let r: Value = serde_json::from_slice(&out.stdout).unwrap();
-            assert_eq!(r["receipt"]["state"], "queued");
+            assert_eq!(r["receipt"]["state"], state);
+        } else {
+            assert!(
+                out.stdout.is_empty(),
+                "invalid response must not be published"
+            );
         }
         server.await.unwrap();
     }
