@@ -12,6 +12,9 @@ use std::{
     time::Instant,
 };
 
+#[path = "ffi_timing.rs"]
+pub mod timing;
+
 static BINDING: OnceLock<SurfaceBinding> = OnceLock::new();
 static RUNTIME: Mutex<Option<Arc<Mutex<crate::RuntimeService>>>> = Mutex::new(None);
 static FENCED: AtomicBool = AtomicBool::new(false);
@@ -175,8 +178,46 @@ pub struct CogletSurfaceLink {
     session: SurfaceSession,
     clock: Instant,
     generation: u64,
+    timings: timing::History,
+    #[cfg(feature = "ffi-test-hooks")]
+    recv_pump_hold: Option<Arc<timing::obstruction::PumpHold>>,
 }
 impl CogletSurfaceLink {
+    /// Native diagnostic snapshot, with the same exclusive custody as recv.
+    /// Contains no private payloads. Production builds retain these timings too.
+    pub fn timings(&self) -> (Vec<timing::CallTiming>, Option<timing::CallTiming>) {
+        self.timings.snapshot()
+    }
+    #[cfg(feature = "ffi-test-hooks")]
+    pub fn hold_recv_pump(&mut self, hold: Arc<timing::obstruction::PumpHold>) {
+        self.recv_pump_hold = Some(hold);
+    }
+    fn timed(
+        &mut self,
+        send: bool,
+        call: impl FnOnce(&mut Self, &mut timing::CallTiming) -> i32,
+    ) -> i32 {
+        let mut observation = self.timings.begin(send);
+        let result = catch_unwind(AssertUnwindSafe(|| call(self, &mut observation)));
+        self.timings
+            .finish(observation, result.as_ref().copied().unwrap_or(-2));
+        match result {
+            Ok(status) => status,
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
+    }
+    fn pump(&mut self, now: u64, call: &mut timing::CallTiming) -> crate::Result<()> {
+        call.pump_entry_us = Some(self.timings.now());
+        #[cfg(feature = "ffi-test-hooks")]
+        if !call.send
+            && let Some(hold) = &self.recv_pump_hold
+        {
+            hold.enter();
+        }
+        let result = self.session.pump_dispatch(now);
+        call.pump_exit_us = Some(self.timings.now());
+        result
+    }
     fn fenced(&self) -> bool {
         FENCED.load(Ordering::SeqCst) || self.generation != GENERATION.load(Ordering::SeqCst)
     }
@@ -247,6 +288,9 @@ pub unsafe extern "C" fn coglet_surface_open(
             session,
             clock: Instant::now(),
             generation: GENERATION.load(Ordering::SeqCst),
+            timings: timing::History::default(),
+            #[cfg(feature = "ffi-test-hooks")]
+            recv_pump_hold: None,
         });
         unsafe {
             out.write(Box::into_raw(link));
@@ -270,21 +314,24 @@ pub unsafe extern "C" fn coglet_surface_send(
             return -1;
         }
         let link = unsafe { &mut *link };
-        if link.fenced() {
-            return -2;
-        }
-        let Ok(now) = link.session.transport_now(link.clock) else {
-            link.session.disconnect();
-            return -2;
-        };
-        let status = link
-            .session
-            .send(unsafe { slice::from_raw_parts(cbor, n) }, now);
-        if status == 0 && link.session.pump_dispatch(now).is_err() {
-            link.session.disconnect();
-            return -2;
-        }
-        status
+        link.timed(true, |link, call| {
+            if link.fenced() {
+                return -2;
+            }
+            let Ok(now) = link.session.transport_now(link.clock) else {
+                link.session.disconnect();
+                return -2;
+            };
+            call.clock_us = Some(link.timings.now());
+            let status = link
+                .session
+                .send(unsafe { slice::from_raw_parts(cbor, n) }, now);
+            if status == 0 && link.pump(now, call).is_err() {
+                link.session.disconnect();
+                return -2;
+            }
+            status
+        })
     })
 }
 
@@ -308,32 +355,44 @@ pub unsafe extern "C" fn coglet_surface_recv(
             n.write(0);
         }
         let link = unsafe { &mut *link };
-        if link.fenced() {
-            return -2;
-        }
-        let Ok(now) = link.session.transport_now(link.clock) else {
-            link.session.disconnect();
-            return -2;
-        };
-        link.session.tick(now);
-        if link.session.pump_dispatch(now).is_err() {
-            link.session.disconnect();
-            return -2;
-        }
-        let Some(bytes) = link.session.front() else {
-            return if link.session.is_closed() { -2 } else { 1 };
-        };
-        unsafe {
-            n.write(bytes.len());
-        }
-        if cap < bytes.len() {
-            return 2;
-        }
-        unsafe {
-            ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len());
-        }
-        link.session.pop();
-        0
+        link.timed(false, |link, call| {
+            if link.fenced() {
+                return -2;
+            }
+            let Ok(now) = link.session.transport_now(link.clock) else {
+                link.session.disconnect();
+                return -2;
+            };
+            call.clock_us = Some(link.timings.now());
+            link.session.tick(now);
+            call.tick_us = Some(link.timings.now());
+            if let Some(bytes) = link.session.front() {
+                call.ready_us = Some(link.timings.now());
+                call.ready_bytes = bytes.len();
+            }
+            if link.pump(now, call).is_err() {
+                link.session.disconnect();
+                return -2;
+            }
+            let Some(bytes) = link.session.front() else {
+                return if link.session.is_closed() { -2 } else { 1 };
+            };
+            if call.ready_us.is_none() {
+                call.ready_us = Some(link.timings.now());
+                call.ready_bytes = bytes.len();
+            }
+            unsafe {
+                n.write(bytes.len());
+            }
+            if cap < bytes.len() {
+                return 2;
+            }
+            unsafe {
+                ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len());
+            }
+            link.session.pop();
+            0
+        })
     })
 }
 

@@ -2,6 +2,8 @@ use super::*;
 use coglet_runtime::{NativeEngine, Runtime, RuntimeService, digest};
 #[path = "native_expiry.rs"]
 mod expiry;
+#[path = "native_ready.rs"]
+mod ready;
 
 fn escaped(raw: &[u8]) -> String {
     raw.iter().map(|b| format!("\\{b:02x}")).collect()
