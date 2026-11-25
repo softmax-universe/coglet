@@ -221,6 +221,15 @@ fn main() {
         // and never claims to have started a production daemon.
         [] => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--version" => println!("cogletd {}", env!("CARGO_PKG_VERSION")),
+        [flag] if flag == "--features" => println!(
+            "engine={} device={} validator=coglet-runtime-git-validator",
+            if cfg!(feature = "native-engine") {
+                "wamr"
+            } else {
+                "reference"
+            },
+            cfg!(feature = "device")
+        ),
         _ => {
             eprintln!(
                 "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session."

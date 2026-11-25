@@ -19,7 +19,8 @@ at 1. `v0.0.0-rc1` is the first dry-run prerelease, not a production endorsement
    git push origin refs/tags/v0.0.0-rc1
    ```
 3. Follow the `release` workflow and link its successful run in the PR. All four
-   binary jobs, source/wheel checks, SwiftPM tests and exact inventory sealing
+   reference binary jobs, the separate native ARMv7 job, source/wheel checks,
+   SwiftPM tests and exact inventory sealing
    must pass before the publisher runs. The publisher rejects commits outside
    main history, uploads a draft Release, downloads the uploaded bytes and
    verifies their checksums, creates the matching Go submodule tag, rechecks
@@ -45,6 +46,18 @@ For tag `vX.Y.Z[-rcN]`, every Release contains:
   libc/sysroot of Ubuntu 24.04; use a compatible deployment image and verify
   runtime library requirements for your target. They are **not musl/static binaries**.
   macOS binaries are arm64, unsigned and not notarized.
+- `coglet-<tag>-linux-armv7-native.tar.gz`: **separate native-engine profile**,
+  containing `cogletd` (features `device,native-engine`, WAMR interpreter) and
+  `coglet-runtime-git-validator`. Install the helper beside the daemon and set
+  the router-service configuration's `validator_path` to its absolute path.
+  This is not a router/hub bundle. It uses GNU hard-float ARMv7, dynamic loader
+  `/lib/ld-linux-armhf.so.3`, and a **glibc 2.27** target via pinned
+  cargo-zigbuild 0.20.1 / Zig 0.13.0 (not Ubuntu 24.04's glibc baseline).
+  The job checks ELF architecture, hard-float ABI, glibc symbol requirements
+  <=2.27, the loader and shared-library allowlist for BOTH executables, then
+  runs version/features and the validator's invalid-arguments refusal under QEMU.
+  No fixture/fault-injection features are enabled. Existing unsuffixed assets
+  retain their original reference-engine build and packaging.
 - `coglet-<tag>-rust-source.tar.gz`: complete Rust workspace and SDK crates,
   preserving path dependencies and `Cargo.lock`. These private crates remain
   `publish = false`; this is a buildable source distribution, **not individual
@@ -72,15 +85,37 @@ may require network access.
 
 ### Qualification limits
 
-The default `cogletd` build packages the runtime's **reference/mock engine**, not
-WAMR guest scheduling. The operational socket service is currently Linux-only;
+The unsuffixed `cogletd` assets package the runtime's **reference/mock engine**, not
+WAMR guest scheduling. Select the explicit `linux-armv7-native` asset for WAMR.
+`cogletd --features` distinguishes `engine=wamr` from `engine=reference` without
+opening sockets, enrolling, or running guests; `--version` retains its existing
+package-version output. Neither command is lifecycle or guest conformance proof.
+The operational socket service is currently Linux-only;
 macOS's binary exposes only the portable CLI/test-adapter modes. A macOS product
 must embed the library/Swift SDK according to their documented contracts instead
-of assuming this binary is a production socket daemon. Native-engine WAMR
-`build.rs` currently qualifies Linux x86_64/ARMv7 only and rejects aarch64/macOS.
-This release workflow does not silently change that boundary or label a
-version-printing CLI smoke as native engine conformance. Check each component's
+of assuming this binary is a production socket daemon. WAMR's current target
+allowlist also includes Linux aarch64 and Apple targets; the only native binary
+profile published by this workflow is ARMv7. This is packaging and smoke
+qualification, not native engine conformance or EO1 deployment qualification.
+Check each component's
 qualification/README documents before selecting it for a production product.
+
+### EO1 userspace baseline (read-only observation)
+
+On 2026-11-25, one right EO1 frame was inventoried through Baby Bear's supported
+private file-control endpoint on the mini, using `remote.submit`/`remote.get`.
+`pod.status` and `playlist.status` succeeded; a non-sudo shell job ran only
+`uname -a; getconf GNU_LIBC_VERSION; ldd --version; df -k / /opt; readlink -f /opt/bb-pod/current`.
+Observed: ARMv7 Linux `4.14.98-16-boundary-17b`, userspace Ubuntu glibc
+`2.27-3ubuntu1` (GNU libc 2.27), 858300 KiB free of 3607276 KiB on `/dev/root`.
+Baby Bear `0.4.0-rc.54`, release `eo1-45513156834-1`; playlist was playing,
+not offline. No playback/configuration/enrollment changes were made.
+
+This determines the native asset's GNU hard-float/glibc 2.27 target. QEMU uses
+the runner's newer ARM sysroot and proves only executable smoke; the ELF gate
+rejects newer glibc requirements independently. The observed frame still needs
+the released bytes' read-only version/features check. That check does not
+qualify guest scheduling, side-by-side product behaviour or authorize cutover.
 
 ## Verify and pin
 

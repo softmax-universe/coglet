@@ -23,6 +23,7 @@ def version(tag):
 def expected(tag):
     py = version(tag)
     return [*(f'coglet-{tag}-{platform}.tar.gz' for platform in PLATFORMS),
+            f'coglet-{tag}-linux-armv7-native.tar.gz',
             *(f'coglet-{tag}-{name}.tar.gz' for name in ('rust-source', 'swift-source', 'go-source', 'harness')),
             f'coglet_surface-{py}-py3-none-any.whl', f'coglet_surface-{py}.tar.gz']
 
@@ -42,12 +43,15 @@ def source_bundles(root, out, tag, sha):
         (out / f'coglet-{tag}-{name}.tar.gz').write_bytes(data)
 
 
-def binary_bundle(bins, out, tag, platform):
+def binary_bundle(bins, out, tag, platform, native=False):
     version(tag)
     if platform not in PLATFORMS:
         raise ValueError('unsupported platform')
+    if native and platform != 'linux-armv7':
+        raise ValueError('native release profile requires linux-armv7')
     payloads = {}
-    for name in ('cogletd', 'coglet-hub'):
+    names = ('cogletd', 'coglet-runtime-git-validator') if native else ('cogletd', 'coglet-hub')
+    for name in names:
         path = bins / name
         raw = path.read_bytes()
         magic = b'\x7fELF' if platform.startswith('linux-') else b'\xcf\xfa\xed\xfe'
@@ -69,7 +73,8 @@ def binary_bundle(bins, out, tag, platform):
             entry.mode = 0o755
             archive.addfile(entry, io.BytesIO(raw))
     out.mkdir(parents=True, exist_ok=True)
-    (out / f'coglet-{tag}-{platform}.tar.gz').write_bytes(gzip.compress(stream.getvalue(), mtime=0))
+    suffix = '-native' if native else ''
+    (out / f'coglet-{tag}-{platform}{suffix}.tar.gz').write_bytes(gzip.compress(stream.getvalue(), mtime=0))
 
 
 def seal(out, tag, sha):
@@ -86,7 +91,7 @@ def seal(out, tag, sha):
             raise ValueError(f'invalid asset {name}')
         assets.append({'name': name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'size': path.stat().st_size})
     manifest = {'tag': tag, 'commit': sha, 'assets': assets,
-                'qualification': 'Reference-engine cogletd; native WAMR and product qualification are not implied.',
+                'qualification': 'Unsuffixed binaries use the reference engine. linux-armv7-native contains WAMR and its lifecycle validator, GNU hard-float glibc 2.27 target; QEMU smoke is not product qualification.',
                 'go_tag': f'sdk/surface-go/{tag}', 'swift_tag': tag}
     path = out / 'release.json'
     path.write_text(json.dumps(manifest, indent=2) + '\n')
@@ -121,6 +126,7 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--bins', type=Path)
     parser.add_argument('--platform', choices=PLATFORMS)
+    parser.add_argument('--native', action='store_true', help='separate ARMv7 WAMR daemon + validator asset')
     args = parser.parse_args()
     try:
         version(args.tag)
@@ -129,7 +135,7 @@ def main():
         elif args.operation == 'binaries':
             if args.bins is None or args.platform is None:
                 parser.error('binaries requires --bins and --platform')
-            binary_bundle(args.bins, args.out, args.tag, args.platform)
+            binary_bundle(args.bins, args.out, args.tag, args.platform, native=args.native)
         elif args.operation == 'python-stage':
             python_stage(args.root, args.out, args.tag, args.sha)
         else:
