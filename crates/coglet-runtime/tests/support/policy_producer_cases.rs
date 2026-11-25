@@ -335,3 +335,201 @@ async fn configured_uid_principal_and_stop_id_collision_are_refused_by_real_daem
         assert_eq!(d.health(&a).await["result"]["output_lease_state"], "closed");
     }
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn all_five_daemon_methods_return_shared_schema_conforming_results() {
+    // Every reply on this path went through `Daemon::conform` (shared closed
+    // schema + envelope echo + pins + counter reconciliation) inside `raw`.
+    let mut d = Daemon::new(0x9c).await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await; // attest_applied + enable_output_lease
+    let health = d.health(&a).await;
+    assert_eq!(health["ok"], true, "{health}");
+    let revoked = d.local("revoke_output_lease", json!({})).await;
+    assert_eq!(revoked["ok"], true, "{revoked}");
+    drop(link);
+    d.restart().await;
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["ok"], true, "{reconciled}");
+    assert_eq!(reconciled["result"]["state"], "stopped");
+    // Negative controls: the validator rejects mutations of REAL daemon replies.
+    let schema: Value = serde_json::from_str(reply_schema::SCHEMA).unwrap();
+    assert!(reply_schema::valid(&schema, &schema, &health));
+    for mutate in [
+        |r: &mut Value| r["result"]["unexpected"] = json!(1),
+        |r: &mut Value| r["result"]["counters"]["committed"] = json!(-1),
+        |r: &mut Value| r["method"] = json!("promote_generation"),
+        |r: &mut Value| r["result"]["output_lease_state"] = json!("open"),
+    ] {
+        let mut forged = health.clone();
+        mutate(&mut forged);
+        assert!(!reply_schema::valid(&schema, &schema, &forged), "{forged}");
+    }
+    let mut seen = d.seen.lock().unwrap().clone();
+    seen.sort();
+    seen.dedup();
+    assert_eq!(
+        seen,
+        [
+            "attest_applied",
+            "enable_output_lease",
+            "observe_health",
+            "reconcile_emergency_stop",
+            "revoke_output_lease"
+        ],
+        "a method never produced a validated daemon success"
+    );
+}
+
+fn wal_sequence(wal: &Path) -> (u64, usize) {
+    let store = coglet_runtime::DurableStore::open(wal).unwrap();
+    let sequence = store.state().unwrap()["managed"]["policy"]["observation_sequence"]
+        .as_u64()
+        .unwrap();
+    (sequence, store.records().len())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn order_exhaustion_after_real_wal_reopen_refuses_without_wrapping() {
+    let mut d = Daemon::new(0x9d).await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await;
+    let baseline = d.health(&a).await;
+    assert_eq!(baseline["ok"], true, "{baseline}");
+    drop(link);
+    // The sequence is an independent durable order domain (not derived from
+    // journal length), so a legitimate near-limit frame is seeded through the real
+    // DurableStore after the daemon is SIGKILLed and reaped; recovery must admit it.
+    d.restart_full(
+        |_| {},
+        |store| {
+            let mut state = store.state().unwrap().clone();
+            let sequence = state
+                .pointer_mut("/managed/policy/observation_sequence")
+                .unwrap();
+            assert!(sequence.as_u64().unwrap() < 100);
+            *sequence = json!(u64::MAX - 1);
+            store.commit(&state, None).unwrap();
+        },
+    )
+    .await;
+    let last = d.health(&a).await;
+    assert_eq!(last["ok"], true, "recovery rejected the seeded frame: {last}");
+    assert_eq!(last["result"]["observation_sequence"], u64::MAX);
+    assert_eq!(last["result"]["counters"], baseline["result"]["counters"]);
+    for _ in 0..2 {
+        let refused = d.health(&a).await;
+        assert_eq!(producer_code(&refused), "resource_exhausted", "{refused}");
+    }
+    // Other methods are not poisoned by an exhausted observation order.
+    assert_eq!(d.local("attest_applied", d.pins(&a)).await["ok"], true);
+    // Real reopen again: still exhausted, never wrapped back to a smaller value.
+    let records = d.restart().await;
+    let again = d.health(&a).await;
+    assert_eq!(producer_code(&again), "resource_exhausted", "{again}");
+    d.child.kill_and_wait();
+    assert_eq!(
+        wal_sequence(&d.wal()),
+        (u64::MAX, records.len()),
+        "exhausted order wrapped or executed a guest"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn forged_near_limit_counters_are_refused_by_real_wal_recovery() {
+    // Counters are a pure function of retained journal records after the
+    // activation offset (policy_validate), so near-u64::MAX counter exhaustion
+    // cannot be legitimately seeded: it would need ~2^64 journal records. This
+    // control proves the forged alternative is NOT admitted, which is why counter
+    // exhaustion remains unit-tested only (policy_counter_exhaustion_refuses_before_entry).
+    let mut d = Daemon::new(0x9f).await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await;
+    drop(link);
+    d.child.kill_and_wait();
+    {
+        let mut store = coglet_runtime::DurableStore::open(&d.wal()).unwrap();
+        let mut state = store.state().unwrap().clone();
+        *state
+            .pointer_mut("/managed/policy/counters/attempted")
+            .unwrap() = json!(u64::MAX);
+        store.commit(&state, None).unwrap();
+    }
+    if d.socket.exists() {
+        std::fs::remove_file(&d.socket).unwrap();
+    }
+    d.config["invite"] = Value::Null;
+    let (path, log) = (d.root.join("router.json"), d.root.join("forged.log"));
+    std::fs::write(&path, serde_json::to_vec(&d.config).unwrap()).unwrap();
+    let mut child = spawn_child(&path, &log, &d.child_env);
+    let status = tokio::time::timeout(Duration::from_secs(30), async {
+        loop {
+            if let Some(status) = child.0.try_wait().unwrap() {
+                return status;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("daemon kept serving forged near-limit counters");
+    assert_eq!(status.code(), Some(1), "{status}");
+    let log = std::fs::read_to_string(&log).unwrap();
+    assert!(
+        log.contains("recovered policy counters differ from actual boundaries"),
+        "{log}"
+    );
+    assert!(!d.private.path().join("p").exists() || UnixStream::connect(d.private.path().join("p")).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stop_applied_but_custody_unrecorded_reconciles_once_and_refuses_id_reuse() {
+    // Unknown stop outcome: the original hub.stop committed its receipt, but the
+    // daemon was SIGKILLed before the emergency custody record moved to Stopped.
+    let mut d = Daemon::new(0x9e).await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await;
+    let actor = d.env.actor.clone();
+    let stop = |d: &Daemon, ticket: &str| {
+        d.env.request_with(
+            "hub.stop",
+            correlation(0xeeee),
+            json!({}),
+            &actor,
+            Some(ticket.into()),
+        )
+    };
+    let original = stop(&d, TICKET);
+    let stopped = d.env.call(original).await;
+    assert_eq!(applied(&stopped)["operation_id"], correlation(0xeeee));
+    // The retained ID cannot be borrowed by another ticket/scope.
+    let reused = stop(&d, OTHER_TICKET);
+    let refused = d.env.call(reused).await;
+    assert_eq!(refused["type"], "error", "{refused}");
+    drop(link);
+    let records = d.restart().await;
+    assert_eq!(d.env.simple("hub.status").await["result"]["state"], "stopped");
+    // Receipt exists and is applied, but custody still holds the unresolved
+    // obligation until reconciliation: a new lease must be refused.
+    let attested = d.local("attest_applied", d.pins(&a)).await;
+    let mut params = d.pins(&a);
+    params["daemon_instance"] = attested["daemon_instance"].clone();
+    assert_eq!(d.local("enable_output_lease", params).await["ok"], false);
+    let receipt = receipt_of(&mut d.env, &correlation(0xeeee)).await;
+    assert_eq!(receipt["result"]["state"], "applied", "{receipt}");
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["ok"], true, "{reconciled}");
+    assert_eq!(reconciled["result"]["state"], "stopped");
+    assert_eq!(reconciled["result"]["operation_id"], correlation(0xeeee));
+    assert_eq!(
+        receipt_of(&mut d.env, &correlation(0xeeee)).await["result"],
+        receipt["result"],
+        "reconciliation must not mint a second stop effect"
+    );
+    let again = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(again["result"], reconciled["result"]);
+    let reused = stop(&d, OTHER_TICKET);
+    assert_eq!(d.env.call(reused).await["type"], "error");
+    d.child.kill_and_wait();
+    let store = coglet_runtime::DurableStore::open(&d.wal()).unwrap();
+    assert_eq!(store.records().len(), records.len(), "guest entered");
+}

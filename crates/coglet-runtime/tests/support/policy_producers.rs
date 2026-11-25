@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
+include!("policy_reply_schema.rs");
 include!("policy_producer_helpers.rs");
 include!("policy_producer_cases.rs");
 
@@ -27,6 +28,8 @@ struct Daemon {
     child_env: Vec<(String, String)>,
     action: bool,
     barrier: Option<Barrier>,
+    /// Methods whose successful daemon reply was validated against the shared schema.
+    seen: std::sync::Mutex<Vec<String>>,
 }
 /// Validator wrapper: while `arm` exists the SECOND validation of a push (the
 /// one that follows durable queued admission) waits for `release`.
@@ -231,6 +234,7 @@ impl Daemon {
             child_env,
             action: opts.action,
             barrier,
+            seen: Default::default(),
         }
     }
     fn pins(&self, bundle: &Bundle) -> Value {
@@ -263,7 +267,56 @@ impl Daemon {
         .await
         .unwrap()
         .unwrap();
-        serde_json::from_str(&line).unwrap_or_else(|e| panic!("producer reply {line:?}: {e}"))
+        let reply: Value =
+            serde_json::from_str(&line).unwrap_or_else(|e| panic!("producer reply {line:?}: {e}"));
+        self.conform(&frame, &reply);
+        reply
+    }
+    /// EVERY actual daemon reply (success and failure) must satisfy the shared
+    /// closed schema; successes must also satisfy the envelope-echo, pin and
+    /// counter-reconciliation rules the schema cannot express.
+    fn conform(&self, frame: &Value, reply: &Value) {
+        let schema: Value = serde_json::from_str(reply_schema::SCHEMA).unwrap();
+        assert!(
+            reply_schema::valid(&schema, &schema, reply),
+            "daemon reply violates the shared schema: {reply}"
+        );
+        if reply["ok"] != true {
+            assert!(
+                reply["nonce"].is_null() || reply["nonce"] == frame["nonce"],
+                "{reply}"
+            );
+            return;
+        }
+        let method = reply["method"].as_str().unwrap().to_owned();
+        for field in ["method", "nonce", "principal", "actor", "target", "ticket"] {
+            assert_eq!(reply[field], frame[field], "envelope {field}: {reply}");
+        }
+        let (result, params) = (&reply["result"], &frame["params"]);
+        if matches!(
+            method.as_str(),
+            "attest_applied" | "observe_health" | "enable_output_lease"
+        ) {
+            for pin in ["generation", "commit", "executable_sha256"] {
+                assert_eq!(result[pin], params[pin], "{method} pin {pin}: {reply}");
+            }
+        }
+        if method == "enable_output_lease" {
+            assert_eq!(result["daemon_instance"], params["daemon_instance"]);
+        }
+        if matches!(
+            method.as_str(),
+            "enable_output_lease" | "revoke_output_lease"
+        ) {
+            assert_eq!(result["daemon_instance"], reply["daemon_instance"]);
+        }
+        if method == "observe_health" {
+            let n = |k: &str| result["counters"][k].as_u64().unwrap();
+            let unresolved = u64::from(result["attempt_fence"] == "uncertain");
+            assert_eq!(n("committed") + n("failed") + unresolved, n("attempted"));
+            assert!(n("budget_exceeded") <= n("failed"), "{reply}");
+        }
+        self.seen.lock().unwrap().push(method);
     }
     async fn local(&mut self, method: &str, params: Value) -> Value {
         let frame = self.frame(method, params);
@@ -339,10 +392,20 @@ impl Daemon {
     }
     /// SIGKILL, take exclusive WAL custody, then respawn with edited config.
     async fn restart_with(&mut self, edit: impl FnOnce(&mut Value)) -> Vec<Value> {
+        self.restart_full(edit, |_| {}).await
+    }
+    /// As `restart_with`, but `seed` may append ONE legitimate state frame through
+    /// the real DurableStore while the killed child's exclusive WAL custody is held.
+    async fn restart_full(
+        &mut self,
+        edit: impl FnOnce(&mut Value),
+        seed: impl FnOnce(&mut coglet_runtime::DurableStore),
+    ) -> Vec<Value> {
         self.child.kill_and_wait();
         // Exclusive WAL custody is obtained only after the exact child was reaped.
         let records = {
-            let store = coglet_runtime::DurableStore::open(&self.wal()).unwrap();
+            let mut store = coglet_runtime::DurableStore::open(&self.wal()).unwrap();
+            seed(&mut store);
             store.records().to_vec()
         };
         assert!(
