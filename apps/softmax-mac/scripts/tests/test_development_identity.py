@@ -19,11 +19,11 @@ class DevelopmentIdentityPolicyTests(unittest.TestCase):
     def test_development_warning_uses_reviewed_scaled_ink_path(self):
         source = (APP / "Sources/SoftmaxApp/HubSettings.swift").read_text()
         warning = source.split('Text("Development identity', 1)[1].split("#endif", 1)[0]
-        self.assertIn(".softmaxFont(SoftmaxDesignTokens.fontCaption)", warning)
-        # DesignGroup owns explicit opaque ink; a hierarchical override caused
-        # the live AX contrast failure even when it was .primary.
+        # Inherit the reviewed body font and opaque ink from the theme/group.
+        # Even the scaled caption failed the real AX audit on both appearances.
+        self.assertNotIn(".softmaxFont", warning)
+        self.assertNotIn(".font(", warning)
         self.assertNotIn(".foregroundStyle", warning)
-        self.assertNotIn(".font(.caption)", warning)
 
     def test_production_policy_retains_no_legacy_fallback(self):
         source = (APP / "Sources/SoftmaxCore/HubAccount.swift").read_text()
