@@ -8,7 +8,7 @@ centre and how they are wired.
 ![Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent's centre the fast loop and the optimizer use memory and file tickets with the factory.](diagrams/calls.svg)
 
 *Teal arrows are families of messages between two coglets, with the calls
-listed beside them. Blue arrows are the back channel, which is separate: a
+listed beside them. Blue arrows are the manage port, which is separate: a
 patch going in to a coglet, and logs streaming out of one. The full list is in
 the table below.*
 
@@ -21,8 +21,8 @@ the table below.*
 | fast loop | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the cogent's runtime |
 | optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the cogent's runtime |
 | factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the cogent's runtime |
-| fast loop, optimizer | `patch` | a `Candidate` | any coglet | the back channel, through the router |
-| optimizer | `tail_log`, `read_state` | | fast loop | the back channel |
+| fast loop, optimizer | `patch` | a `Candidate` | any coglet | the manage port, through the router |
+| optimizer | `tail_log`, `read_state` | | fast loop | the manage port |
 | fast loop, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the cogent's runtime |
 | memory | `memory.result` | `MemoryResult` | the asker | the cogent's runtime |
 
@@ -127,7 +127,7 @@ FastLoopCoglet
   provides  ticket.update       TicketUpdate    addressed
             Pass progress on to Face.
   provides  ticket.result       TicketResult    addressed
-            On `done`, apply the candidate to the target coglet through its back channel, then
+            On `done`, apply the candidate to the target coglet through its manage port, then
             send a FeatureUpdate.
   calls     feature.update      FeatureUpdate   addressed
   calls     ticket.submit       TicketSubmit    bound
@@ -140,7 +140,7 @@ FastLoopCoglet
   calls     memory.query        MemoryQuery     bound
 ```
 
-It also uses the back channel's `patch` on the coglets it is granted.
+It also uses the manage port's `patch` on the coglets it is granted.
 
 ## FactoryCoglet
 
@@ -201,8 +201,8 @@ ContextRef
 
 TicketCapabilities
   edit_paths   [str]  Repo-relative roots the work may edit. Empty means analysis only.
-  debug_read   bool
-  debug_write  bool
+  manage_read   bool
+  manage_write  bool
 
 TicketGates
   required        ["journal_replay" | "headless_game"]
@@ -249,8 +249,8 @@ TicketReplay
 ### Ticket reports
 
 The `Candidate` in a finished ticket is what gets applied: its commit becomes
-the `revision` of the [`Patch`](coglets-and-runtime.md#back-channel) sent on
-the target coglet's back channel.
+the `revision` of the [`Patch`](coglets-and-runtime.md#manage-port) sent on
+the target coglet's manage port.
 
 Factory to the submitter.
 
@@ -299,7 +299,7 @@ TicketResult
   error      Error?                          Present when failed or abandoned.
 
 Candidate
-  # The patch: what is applied to the target coglet through its back channel.
+  # The patch: what is applied to the target coglet through its manage port.
   commit         str  A signed, built commit. Never a branch name.
   signature_ref  str
 ```
@@ -348,7 +348,7 @@ WorkerDone
 
 Watches how the fast loop's interactions go, files tickets with the factory to
 make things better, and patches coglets as needed. It has no messages of its
-own: it reads through the back channel and files ordinary tickets.
+own: it reads through the manage port and files ordinary tickets.
 
 ### `OptimizerCoglet`
 
@@ -362,14 +362,14 @@ OptimizerCoglet
   provides  ticket.receipt      TicketReceipt   addressed
   provides  ticket.update       TicketUpdate    addressed
   provides  ticket.result       TicketResult    addressed
-            On `done`, apply the candidate through the target coglet's back channel.
+            On `done`, apply the candidate through the target coglet's manage port.
   calls     ticket.submit       TicketSubmit    bound
   calls     ticket.replay       TicketReplay    bound
   calls     memory.write        MemoryWrite     bound
   calls     memory.query        MemoryQuery     bound
 ```
 
-It uses the back channel's `tail_log` and `read_state` on the fast loop, and
+It uses the manage port's `tail_log` and `read_state` on the fast loop, and
 `patch` on the coglets it is granted.
 
 ## MemoryCoglet
@@ -429,10 +429,10 @@ MemoryRecord
 
 The coglet that reaches devices. It knows which runtimes the cogent may use,
 installs coglets on them, and carries two things between runtimes: messages
-from one coglet to another, and back-channel operations such as `patch`.
+from one coglet to another, and manage operations such as `patch`.
 
 It is a coglet like the others in the centre: it has a policy, memory and a
-back channel, so it can be patched and watched the same way. What passes
+manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 [Runtime and router](coglets-and-runtime.md#runtime-and-router).
 
