@@ -2,7 +2,7 @@ import XCTest
 @testable import SoftmaxAppSurface
 
 @MainActor
-private final class Host {
+final class Host {
     var windows: [String: String] = ["settings": "general", "menu_bar": "menu"]
     var appearance = "System", textSize = "standard", orb = true, toggleMode = false, sound = true
     var loginCalls = 0, pressCalls = 0, navigateCalls = 0, openCalls = 0, closeCalls = 0

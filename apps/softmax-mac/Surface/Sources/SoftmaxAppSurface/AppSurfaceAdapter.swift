@@ -15,7 +15,7 @@ public enum AppSurfaceFailure: Swift.Error, Equatable {
 /// the effect.
 @MainActor
 public final class AppSurfaceAdapter {
-    fileprivate enum Payload {
+    fileprivate enum Payload: Sendable {
         case invoke(ControlRegistry.Request)
         case setting(ControlRegistry.Request, key: String, expected: CBORValue)
         case focus(ControlRegistry.Mount)
@@ -36,9 +36,69 @@ public final class AppSurfaceAdapter {
         }
     }
 
+    /// Immutable command identity captured before SDK admission, safe to prepare
+    /// on the off-main control owner. Contains no native closures or user values.
+    public struct CapturedCommand: Sendable {
+        fileprivate let adapter: UUID
+        fileprivate let payload: Payload
+        fileprivate let windowRevision: UInt64?
+    }
+    public struct CommandDirectory: Sendable {
+        fileprivate let adapter: UUID
+        var sourceIdentity: UUID { adapter }
+        fileprivate let controls: ControlRegistry.CapturedDirectory
+
+        public func prepare(_ operation: String, args: CBORValue) throws -> CapturedCommand {
+            let payload: Payload
+            var revision: UInt64?
+            switch operation {
+            case "softmax.app.invoke", "softmax.app.invoke_sensitive":
+                payload = .invoke(try controls.prepare(args, sensitive: operation == "softmax.app.invoke_sensitive"))
+            case "softmax.app.set_focus":
+                payload = .focus(try controls.prepareFocus(args))
+            case "softmax.app.set_setting":
+                try CBORCodec.validate("app-setting-args", args)
+                guard case .text(let key)? = args["key"], let value = args["value"] else { throw AppSurfaceFailure.invalidArguments }
+                if key == "hotkey" { throw AppSurfaceFailure.unsupported }
+                if key == "launch_at_login" { throw AppSurfaceFailure.permissionDenied }
+                guard let control = AppSurfaceAdapter.settingControls[key] else { throw AppSurfaceFailure.unsupported }
+                let verb: String, nativeValue: CBORValue
+                switch (key, value) {
+                case ("appearance", .text), ("text_size", .text): verb = "select"; nativeValue = value
+                case ("floating_orb", .boolean), ("sound_cues", .boolean): verb = "toggle"; nativeValue = value
+                case ("talk_mode", .text(let mode)): verb = "toggle"; nativeValue = .boolean(mode == "toggle")
+                default: throw AppSurfaceFailure.invalidArguments
+                }
+                let invoke = CBORValue.map([.init("verb", .text(verb)), .init("window", .text("settings")),
+                    .init("control", .text(control.id)), .init("value", nativeValue)])
+                payload = .setting(try controls.prepare(invoke, sensitive: false), key: key, expected: value)
+            case "softmax.app.navigate":
+                try CBORCodec.validate("app-location", args)
+                guard case .text(let window)? = args["window"], case .text(let route)? = args["route"] else { throw AppSurfaceFailure.invalidArguments }
+                payload = .navigate(window: window, route: route); revision = controls.revision
+            case "softmax.app.open_window", "softmax.app.close_window":
+                try CBORCodec.validate("app-window-args", args)
+                guard case .text(let window)? = args["window"] else { throw AppSurfaceFailure.invalidArguments }
+                payload = operation == "softmax.app.open_window" ? .open(window: window) : .close(window: window)
+                revision = controls.revision
+            default: throw AppSurfaceFailure.unsupported
+            }
+            return CapturedCommand(adapter: adapter, payload: payload, windowRevision: revision)
+        }
+    }
+    public func captureCommandDirectory() -> CommandDirectory {
+        CommandDirectory(adapter: identity, controls: registry.captureDirectory())
+    }
+    /// Wrap, never re-resolve IDs on the native owner after a queue hop. The host
+    /// mailbox supplies one-shot ticket custody; Prepared retains its own guard.
+    public func prepareCaptured(_ command: CapturedCommand) throws -> Prepared {
+        guard command.adapter == identity else { throw AppSurfaceFailure.conflict }
+        return Prepared(adapter: command.adapter, payload: command.payload, windowRevision: command.windowRevision)
+    }
+
     /// Fixed product mapping from explicit setting keys to actual mounted controls.
-    private struct SettingControl { let id: String; let route: String }
-    private static let settingControls: [String: SettingControl] = [
+    private struct SettingControl: Sendable { let id: String; let route: String }
+    nonisolated private static let settingControls: [String: SettingControl] = [
         "appearance": .init(id: "settings.general.appearance", route: "general"),
         "text_size": .init(id: "settings.general.text_size", route: "general"),
         "floating_orb": .init(id: "floatingOrbToggle", route: "general"),
@@ -48,6 +108,7 @@ public final class AppSurfaceAdapter {
     private static let maxEncodedRead = 250_000
 
     private let identity = UUID()
+    var registryRevision: UInt64 { registry.revision }
     private let registry: ControlRegistry
     private let captureState: () throws -> CBORValue
     private let currentRoute: (String) -> String?
@@ -114,64 +175,7 @@ public final class AppSurfaceAdapter {
     // MARK: Prepare
 
     public func prepare(_ operation: String, args: CBORValue) throws -> Prepared {
-        let payload: Payload
-        switch operation {
-        case "softmax.app.invoke":
-            payload = .invoke(try wrap { try self.registry.prepare(args, sensitive: false) })
-        case "softmax.app.invoke_sensitive":
-            payload = .invoke(try wrap { try self.registry.prepare(args, sensitive: true) })
-        case "softmax.app.set_focus":
-            payload = .focus(try wrap { try self.registry.prepareFocus(args) })
-        case "softmax.app.set_setting":
-            payload = try prepareSetting(args)
-        case "softmax.app.navigate":
-            try validateInput("app-location", args)
-            let fields = try map(args)
-            payload = .navigate(window: try text(fields, "window"), route: try text(fields, "route"))
-        case "softmax.app.open_window":
-            try validateInput("app-window-args", args)
-            payload = .open(window: try text(try map(args), "window"))
-        case "softmax.app.close_window":
-            try validateInput("app-window-args", args)
-            payload = .close(window: try text(try map(args), "window"))
-        default:
-            throw AppSurfaceFailure.unsupported
-        }
-        let windowRevision: UInt64?
-        switch payload {
-        case .navigate, .open, .close: windowRevision = registry.revision
-        default: windowRevision = nil
-        }
-        return Prepared(adapter: identity, payload: payload, windowRevision: windowRevision)
-    }
-
-    private func prepareSetting(_ args: CBORValue) throws -> Payload {
-        try validateInput("app-setting-args", args)
-        let fields = try map(args)
-        let key = try text(fields, "key")
-        guard let value = field(fields, "value") else { throw AppSurfaceFailure.invalidArguments }
-        // Hotkey has no native setter. Login is an approval-bearing operation that
-        // ordinary authority never performs; it must use the sensitive path.
-        if key == "hotkey" { throw AppSurfaceFailure.unsupported }
-        if key == "launch_at_login" { throw AppSurfaceFailure.permissionDenied }
-        guard let control = Self.settingControls[key] else { throw AppSurfaceFailure.unsupported }
-        let invoke: CBORValue
-        switch (key, value) {
-        case ("appearance", .text), ("text_size", .text):
-            invoke = object(["verb": .text("select"), "window": .text("settings"),
-                             "control": .text(control.id), "value": value])
-        case ("floating_orb", .boolean), ("sound_cues", .boolean):
-            invoke = object(["verb": .text("toggle"), "window": .text("settings"),
-                             "control": .text(control.id), "value": value])
-        case ("talk_mode", .text(let mode)):
-            // hold == toggle-mode off; toggle == toggle-mode on.
-            invoke = object(["verb": .text("toggle"), "window": .text("settings"),
-                             "control": .text(control.id), "value": .boolean(mode == "toggle")])
-        default:
-            throw AppSurfaceFailure.invalidArguments
-        }
-        let request = try wrap { try self.registry.prepare(invoke, sensitive: false) }
-        return .setting(request, key: key, expected: value)
+        try wrap { try self.prepareCaptured(self.captureCommandDirectory().prepare(operation, args: args)) }
     }
 
     // MARK: Perform
