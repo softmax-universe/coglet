@@ -120,7 +120,12 @@ impl Engine for NativeEngine {
     fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
         self.prepared = None;
         let started = Instant::now();
-        if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
+        if !host
+            .files
+            .decoded_fs()?
+            .read("/code/bin/step.wasm")
+            .is_ok_and(|bytes| bytes == self.code.as_slice())
+        {
             return Err("native engine code pin mismatch".into());
         }
         let limits = self.limits(&inputs["budgets"], started)?;
@@ -179,6 +184,143 @@ pub(super) fn engine_failure(error: coglet_engine::Error) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn pin_fixture() -> (NativeEngine, Value, StepHost) {
+        let code = wat::parse_str(
+            "(module (memory (export \"memory\") 1 2)
+                (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0)
+                (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))",
+        )
+        .unwrap();
+        let budgets = json!({"compute_mode":coglet_engine_wamr::COMPUTE_MODE,
+            "compute":100_000,"memory_pages":2,"host_bytes":1_000_000,
+            "wall_time_us":5_000_000,"max_events":1});
+        let inputs = json!({"budgets":budgets,"events":[],"step":0,"logical_time":0,"seed":7});
+        let files = crate::Snapshot::new(std::collections::BTreeMap::from([(
+            "/code/bin/step.wasm".into(),
+            hex::encode(&code),
+        )]))
+        .unwrap();
+        let host = StepHost::new(files, Default::default(), &inputs);
+        let engine = NativeEngine::new(code, &budgets, 8_388_608, 65_536).unwrap();
+        (engine, inputs, host)
+    }
+
+    #[test]
+    fn decoded_code_pin_accepts_exact_bytes_with_cold_and_reused_snapshots() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        assert!(
+            engine
+                .execute(&inputs, &mut host)
+                .unwrap()
+                .failure
+                .is_none()
+        );
+        // Exercise the immutable decoded cache and an unchanged projection.
+        let decoded = host.files.decoded_fs().unwrap().clone();
+        host.files = host.files.project_fs(decoded).unwrap();
+        for _ in 0..2 {
+            engine.admit(&inputs, &host).unwrap();
+            assert!(
+                engine
+                    .execute(&inputs, &mut host)
+                    .unwrap()
+                    .failure
+                    .is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn decoded_code_pin_rejects_same_length_foreign_bytes_after_cached_projection() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        let original = host.files.clone();
+        let mut files = original
+            .decoded_fs()
+            .unwrap()
+            .files()
+            .map(|(path, bytes)| (path.to_owned(), bytes.to_vec()))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        let foreign = files.get_mut("/code/bin/step.wasm").unwrap();
+        foreign[0] ^= 1;
+        assert_eq!(foreign.len(), engine.code.len());
+        assert_ne!(foreign.as_slice(), engine.code.as_slice());
+        host.files = original
+            .project_fs(coglet_fs::Snapshot::from_files(files).unwrap())
+            .unwrap();
+        assert_eq!(
+            engine.admit(&inputs, &host).unwrap_err(),
+            "native engine code pin mismatch"
+        );
+        assert_eq!(
+            engine.execute(&inputs, &mut host).err().unwrap(),
+            "native execution requires successful admission"
+        );
+        // A rejected replacement cannot poison the original immutable snapshot.
+        host.files = original;
+        engine.admit(&inputs, &host).unwrap();
+    }
+
+    #[test]
+    fn decoded_code_pin_rejects_missing_code_after_cached_projection() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        let mut files = host
+            .files
+            .decoded_fs()
+            .unwrap()
+            .files()
+            .map(|(path, bytes)| (path.to_owned(), bytes.to_vec()))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        files.remove("/code/bin/step.wasm");
+        host.files = host
+            .files
+            .project_fs(coglet_fs::Snapshot::from_files(files).unwrap())
+            .unwrap();
+        assert_eq!(
+            engine.admit(&inputs, &host).unwrap_err(),
+            "native engine code pin mismatch"
+        );
+        assert!(engine.prepared.is_none());
+    }
+
+    #[test]
+    fn decoded_code_pin_preserves_snapshot_hex_validation() {
+        let (engine, _, _) = pin_fixture();
+        let upper = hex::encode_upper(&engine.code);
+        assert_ne!(upper, hex::encode(&engine.code));
+        // Uppercase is NOT schema-equivalent here: Snapshot requires lowercase.
+        for encoded in ["0".to_owned(), "gg".to_owned(), upper] {
+            let files =
+                std::collections::BTreeMap::from([("/code/bin/step.wasm".to_owned(), encoded)]);
+            assert_eq!(
+                crate::Snapshot::new(files.clone()).unwrap_err(),
+                "snapshot requires lowercase even-length hex"
+            );
+            assert!(serde_json::from_value::<crate::Snapshot>(json!(files)).is_err());
+        }
+    }
+
+    #[test]
+    fn decoded_code_pin_does_not_bypass_reused_admission_budget_checks() {
+        let (mut engine, inputs, host) = pin_fixture();
+        for (field, value) in [
+            ("compute_mode", json!("unqualified")),
+            ("compute", json!(0)),
+            ("memory_pages", json!(1)),
+            ("wall_time_us", json!(0)),
+            ("compute", json!("malformed")),
+        ] {
+            engine.admit(&inputs, &host).unwrap();
+            let mut invalid = inputs.clone();
+            invalid["budgets"][field] = value;
+            assert!(engine.admit(&invalid, &host).is_err(), "{field}");
+            assert!(engine.prepared.is_none());
+        }
+        engine.admit(&inputs, &host).unwrap();
+    }
+
     #[test]
     fn guest_exit_is_guest_return_abort_including_zero_status() {
         // Mapping proof only: proc_exit is intercepted before the file host.
