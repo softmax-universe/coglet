@@ -126,11 +126,34 @@ fn profile_provisioning() {
     assert_eq!(state["contract_profile"], "surface-0.2");
     assert_eq!(state["catalog_pin"], digest(&raw));
     assert_eq!(coglet_runtime_stop(), 0);
-    // Same bytes with a different trusted profile cannot reinterpret the old WAL.
-    let mut conflicting = env.config(Some(Env::pinned(&raw)));
-    conflicting["setup"]["contract_profile"] = json!("surface-0.1");
-    conflicting["setup"]["manifest"]["subscriptions"] = json!([]);
-    assert_ne!(start_value(&conflicting), 0);
+    // A genuinely profile-neutral catalog/manifest isolates the recovery pair
+    // fence: rejection must not merely be the frozen loader rejecting app names.
+    let mut neutral = artifact.clone();
+    let operation = neutral["operations"]
+        .as_object_mut()
+        .unwrap()
+        .remove("softmax.app.invoke")
+        .unwrap();
+    neutral["operations"]["softmax.invoke"] = operation;
+    let neutral_raw = serde_json::to_vec(&neutral).unwrap();
+    let mut pair = env.config(Some(Env::pinned(&neutral_raw)));
+    pair["wal"] = json!(env.dir.join("pair.wal"));
+    pair["setup"]["manifest"]["subscriptions"] = json!([]);
+    assert_eq!(start_value(&pair), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    pair["setup"]["contract_profile"] = json!("surface-0.1");
+    assert_ne!(start_value(&pair), 0);
+    let mut fresh = pair.clone();
+    fresh["wal"] = json!(env.dir.join("neutral-fresh.wal"));
+    assert_eq!(
+        start_value(&fresh),
+        0,
+        "same supplied default pair valid on fresh WAL"
+    );
+    assert_eq!(coglet_runtime_stop(), 0);
+    pair["setup"]["contract_profile"] = json!("surface-0.2");
+    assert_eq!(start_value(&pair), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
     // Invalid explicit selectors refuse before any service is published.
     for profile in [json!(null), json!(""), json!("surface-0.3"), json!([])] {
         let mut invalid = env.config(None);
