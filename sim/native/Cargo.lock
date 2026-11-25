@@ -351,7 +351,7 @@ name = "coglet-proto"
 version = "0.1.0"
 dependencies = [
  "ciborium",
- "coglet-types",
+ "coglet-types-hub0",
  "ed25519-dalek 2.2.0",
  "flate2",
  "hex",
@@ -376,7 +376,7 @@ dependencies = [
  "coglet-engine-wamr",
  "coglet-fs",
  "coglet-proto",
- "coglet-types",
+ "coglet-types-hub0",
  "hex",
  "iroh",
  "libc",
@@ -402,6 +402,17 @@ name = "coglet-types"
 version = "0.1.0"
 dependencies = [
  "ciborium",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "coglet-types-hub0"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "coglet-types",
  "regex",
  "serde",
  "serde_json",
