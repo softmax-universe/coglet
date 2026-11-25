@@ -35,7 +35,7 @@ fn write(service: &RuntimeService, setup: &Value, id: u64, text: &str) -> Value 
         setup,
         "debug.write",
         id,
-        json!({"path":"/data/note.txt","text":text,"expected_hash":service.receiver_snapshot().files.tree_hash().unwrap()}),
+        json!({"path":"/data/note.txt","text":text,"expected_hash":service.receiver_snapshot().files.frozen_hub0_hash().unwrap()}),
     )
 }
 fn inbox(setup: &Value, id: u64, message_id: u64) -> Value {
@@ -54,6 +54,36 @@ fn service(path: &Path, setup: &Value, capacity: usize) -> RuntimeService {
         .managed_install(&json!({"live_commit":"a".repeat(40)}), &"f".repeat(32))
         .unwrap();
     service
+}
+
+#[test]
+fn frozen_debug_hash_stays_cbor_while_current_abi_is_git() {
+    let dir = tempfile::tempdir().unwrap();
+    let setup = setup();
+    let mut service = service(&dir.path().join("state.wal"), &setup, 8);
+    let files = &service.receiver_snapshot().files;
+    let frozen = digest(&cbor(&json!(files.files())).unwrap());
+    let current = files.tree_hash().unwrap();
+    assert_ne!(frozen, current);
+
+    let mut wrong = write(&service, &setup, 1, "wrong identity");
+    wrong["params"]["expected_hash"] = json!(current);
+    assert_eq!(service.receiver_admit(&wrong).unwrap_err(), "conflict");
+    assert_eq!(service.receiver_pending_len(), 0);
+
+    let correct = write(&service, &setup, 2, "frozen protocol");
+    assert_eq!(correct["params"]["expected_hash"], frozen);
+    service.receiver_admit(&correct).unwrap();
+    service
+        .receiver_apply(correct["correlation_id"].as_str().unwrap(), &|| Ok(()))
+        .unwrap();
+    let files = &service.receiver_snapshot().files;
+    let expected = digest(&cbor(&json!(files.files())).unwrap());
+    let read = service.receiver_read("/data/note.txt", 0, 64).unwrap();
+    assert_eq!(read["snapshot_hash"], expected);
+    assert_ne!(read["snapshot_hash"], files.tree_hash().unwrap());
+    assert_eq!(service.state.receiver.audit[0]["before_hash"], frozen);
+    assert_eq!(service.state.receiver.audit[1]["after_hash"], expected);
 }
 
 #[test]
@@ -233,7 +263,11 @@ fn inbox_backpressure_commits_no_partial_append_or_wake() {
     service
         .receiver_apply(first["correlation_id"].as_str().unwrap(), &|| Ok(()))
         .unwrap();
-    let before = service.receiver_snapshot().files.tree_hash().unwrap();
+    let before = service
+        .receiver_snapshot()
+        .files
+        .frozen_hub0_hash()
+        .unwrap();
     service
         .receiver_apply(second["correlation_id"].as_str().unwrap(), &|| Ok(()))
         .unwrap();
@@ -242,7 +276,11 @@ fn inbox_backpressure_commits_no_partial_append_or_wake() {
         "resource_exhausted"
     );
     assert_eq!(
-        service.receiver_snapshot().files.tree_hash().unwrap(),
+        service
+            .receiver_snapshot()
+            .files
+            .frozen_hub0_hash()
+            .unwrap(),
         before
     );
     assert_eq!(service.queued(), 1);

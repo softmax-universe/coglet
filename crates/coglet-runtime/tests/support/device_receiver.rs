@@ -51,11 +51,8 @@ fn initial_hash(env: &Env) -> String {
         .share_service(&env.coglet)
         .unwrap();
     let setup = service.lock().unwrap().managed_setup().clone();
-    let files = serde_json::from_value(setup["initial_files"].clone()).unwrap();
-    coglet_runtime::Snapshot::new(files)
-        .unwrap()
-        .tree_hash()
-        .unwrap()
+    // Frozen debug.*0.1 uses deterministic-CBOR identity, not ABI1.0 Git ID.
+    coglet_runtime::digest(&coglet_runtime::cbor(&setup["initial_files"]).unwrap())
 }
 
 fn intervention(env: &mut Env, method: &str, mut params: Value) -> Value {

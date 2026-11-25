@@ -209,6 +209,12 @@ impl Snapshot {
             .or_default()
             .push_str(&hex::encode(line));
     }
+    /// Frozen hub0 debug read/write/audit identity, not the current ABI state ID.
+    /// ADR-0035 forbids redefining the published debug protocol in place.
+    pub(crate) fn frozen_hub0_hash(&self) -> Result<String> {
+        Ok(digest(&crate::cbor(&serde_json::json!(self.files()))?))
+    }
+
     pub fn tree_hash(&self) -> Result<String> {
         if let Some(hash) = self.1.get() {
             return Ok(hash.clone());

@@ -222,7 +222,9 @@ fn write_paths(case: &str) -> Vec<&'static str> {
 }
 
 fn fetch_logs_snapshot() -> Result<Value> {
-    let fixtures: Value = serde_json::from_slice(&std::fs::read("spec/fixtures/hub/fetch.json")?)?;
+    let fixtures: Value = serde_json::from_slice(&std::fs::read(
+        "crates/coglet-runtime/tests/data/hub0/fetch.json",
+    )?)?;
     let entry = fixtures
         .as_array()
         .ok_or("fetch.json")?

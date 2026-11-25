@@ -118,7 +118,7 @@ def validate(d):
                     "live_commit":s["managed"]["live_commit"]}, "not exact committed scoped status")
             else:
                 root = Path(__file__).resolve().parents[2]
-                fixture = next(r for r in json.loads((root / "spec/fixtures/hub/fetch.json").read_text())
+                fixture = next(r for r in json.loads((root / "crates/coglet-runtime/tests/data/hub0/fetch.json").read_text())
                                if r["ref"] == request["params"]["ref"])["history"][-1]
                 require(reply == {"type":"transfer", "correlation_id":request["correlation_id"],
                     "size":len(bytes.fromhex(fixture["bundle_hex"])), "sha256":fixture["sha256"],

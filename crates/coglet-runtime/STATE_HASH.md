@@ -23,6 +23,8 @@ reconciliation. It never rewrites an old record or re-enters the guest.
 | Cut discriminator, empty history, staged mutations/queues/blobs | remaining `hash_upgrade_tests` library cases |
 | Restricted code snapshot includes `/code` root | spec `code_tree_hash_is_restricted_snapshot_id` |
 | Independent engine and CLI replay identities | Wasmtime `cross_engine_state_hash`, `engine_trait_conformance`; CLI `cli_build_run_replay_equal_hash_list_and_inspect` |
+| Frozen debug0.1 CBOR identity is distinct from current ABI Git identity | `frozen_debug_hash_stays_cbor_while_current_abi_is_git`; receiver25 unchanged cases / independent oracle |
+| Frozen serving Git-transfer artifacts remain available | runtime `tests/data/hub0/fetch.json`, byte-identical historical blob, receiver fetch cases |
 | Full runtime corpus and actual archived guest replay | `tools/check-abi.py`: 170 harness cases, zero skips; 5 named WAMR archive tests / all 32 guest records |
 | Runtime generator freshness, no spec corpus mutation | spec `test_runtime_abi_corpus_fresh_and_spec_unchanged` |
 | New observed visualizer traces, not old trace conversion | `tools/visualizer/regenerate_state_hash_fixtures.py`; visualizer/native/browser tests |
