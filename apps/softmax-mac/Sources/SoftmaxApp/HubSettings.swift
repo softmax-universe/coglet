@@ -45,7 +45,8 @@ struct HubSettings: View {
             if model.hubConnection?.pairing != nil {
                 if model.hubConnection?.state != .connected {
                     CogletAsyncButton("Reconnect router", id: "\(idPrefix).reconnect", registry: model.appControls, window: window,
-                        route: route, failure: model.appControlFailure) { context in
+                        route: route, failure: model.appControlFailure,
+                        userFailure: { model.message = "Could not complete router reconnection." }) { context in
                             guard let connection = model.hubConnection else { throw ControlRegistryFailure.unavailable }
                             try await connection.reconnectOnce(authorized: { if let context { try context.perform {} } })
                         }

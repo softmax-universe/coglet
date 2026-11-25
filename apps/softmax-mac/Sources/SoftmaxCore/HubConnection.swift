@@ -114,7 +114,7 @@ public final class HubConnection {
                     }
                     changed?()
                 } catch {
-                    if installed { finishReconnect(id: id, error: error) }
+                    if installed { finishReconnect(id: id, error: error, recover: true) }
                     else { continuation.resume(throwing: error) }
                 }
             }
@@ -124,8 +124,9 @@ public final class HubConnection {
     }
     private func receiveReconnect(_ event: HubLinkEvent, id: UUID) {
         guard let command = reconnectCommand, command.id == id else { return }
+        do { try command.authorize() }
+        catch { finishReconnect(id: id, error: error); return }
         do {
-            try command.authorize()
             switch event {
             case .ready(let device):
                 guard HubPairing.isHex(device) else { throw HubError.unavailable }
@@ -135,23 +136,30 @@ public final class HubConnection {
             case .connected:
                 guard ready else { throw HubError.unavailable }
                 try account.store.saveHub(command.target.withoutInvite)
-                try command.authorize() // persistence can block past native authority
+                // Persistence can block past authority. Losing command custody
+                // never re-arms its failed attempt as background work.
+                do { try command.authorize() }
+                catch { finishReconnect(id: id, error: error); return }
                 pairing = command.target.withoutInvite; state = .connected; attempts = 0; errorMessage = nil
                 // Keep this exact generation as the normal live connection.
                 reconnectCommand = nil
                 command.completion.resume()
             case .offline, .failed: throw HubError.unavailable
             }
-        } catch { finishReconnect(id: id, error: error) }
+        } catch { finishReconnect(id: id, error: error, recover: true) }
         changed?()
     }
-    private func finishReconnect(id: UUID, error: any Error) {
+    private func finishReconnect(id: UUID, error: any Error, recover: Bool = false) {
         guard let command = reconnectCommand, command.id == id else { return }
         reconnectCommand = nil
         retry?.cancel(); retry = nil
         stopLink(); state = .offline
         errorMessage = "Could not complete router reconnection."
         command.completion.resume(throwing: error)
+        // Restore the pre-existing product's background connection lifecycle,
+        // not this action: no command, continuation or authorization is retained.
+        // Explicit stop/sign-out, cancellation and custody refusal do not restart.
+        if recover { scheduleRetry(restart: true) }
         changed?()
     }
     private func receive(_ event: HubLinkEvent) {

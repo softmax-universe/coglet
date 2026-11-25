@@ -3,6 +3,33 @@ import XCTest
 
 @MainActor
 final class HubConnectionTests: XCTestCase {
+    func testFailedExplicitReconnectRestoresBackgroundRecoveryWithoutOldAuthority() async throws {
+        for failure in [HubLinkEvent.offline, .failed] {
+            let store = MemoryHubStore(), link = FakeHubLink()
+            store.key = Data(repeating: 8, count: 32)
+            store.hub = try HubPairing.parse(#"{"name":"Stored router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"]}"#)
+            let hub = HubConnection(account: HubAccount(store: store), link: link)
+            hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+            let started = expectation(description: "explicit attempt started")
+            link.didStart = { started.fulfill() }
+            var live = true
+            let task = Task { try await hub.reconnectOnce { guard live else { throw HubError.unavailable } } }
+            await fulfillment(of: [started], timeout: 2)
+            let stale = link.callback
+            let recovered = expectation(description: "ordinary lifecycle restored")
+            link.didStart = { recovered.fulfill() }
+            link.emit(failure)
+            do { try await task.value; XCTFail("failed attempt succeeded") } catch {}
+            live = false // Background lifecycle must not borrow this old command.
+            await fulfillment(of: [recovered], timeout: 3)
+            XCTAssertEqual(link.starts, 3)
+            stale?(.connected)
+            XCTAssertEqual(hub.state, .offline)
+            link.emit(.ready(device: String(repeating: "a", count: 64))); link.emit(.connected)
+            XCTAssertEqual(hub.state, .connected)
+            hub.stop()
+        }
+    }
     func testExplicitReconnectHasFreshCorrelationAndActualCompletion() async throws {
         let store = MemoryHubStore(), link = FakeHubLink()
         store.key = Data(repeating: 8, count: 32)
