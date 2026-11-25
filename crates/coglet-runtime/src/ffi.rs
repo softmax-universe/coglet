@@ -276,6 +276,7 @@ pub unsafe extern "C" fn coglet_surface_send(
         if link.is_null() || cbor.is_null() || n == 0 || n > SURFACE_MAX_FRAME {
             return -1;
         }
+        timing_span!("ffi.send", n);
         let link = unsafe { &mut *link };
         if link.fenced() {
             return -2;
@@ -314,6 +315,7 @@ pub unsafe extern "C" fn coglet_surface_recv(
         unsafe {
             n.write(0);
         }
+        timing_span!("ffi.recv", cap);
         let link = unsafe { &mut *link };
         if link.fenced() {
             #[cfg(feature = "ffi-test-hooks")]
@@ -326,7 +328,10 @@ pub unsafe extern "C" fn coglet_surface_recv(
             link.session.disconnect();
             return -2;
         };
-        link.session.tick(now);
+        {
+            timing_span!("recv.tick");
+            link.session.tick(now);
+        }
         if link.session.pump_dispatch(now).is_err() {
             #[cfg(feature = "ffi-test-hooks")]
             link.session
