@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import SoftmaxAppSurface
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general = "General", hotkey = "Hotkey", audio = "Audio", hub = "Hub"
@@ -88,21 +89,30 @@ struct SettingsView: View {
                                     Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
                                 }.pickerStyle(.radioGroup).labelsHidden()
                             }
-                            Toggle("Show floating orb", isOn: $model.orbEnabled).accessibilityIdentifier("floatingOrbToggle")
+                            CogletToggle("Show floating orb", id: "floatingOrbToggle", registry: model.appControls,
+                                window: "settings", route: "general", isOn: $model.orbEnabled, failure: model.appControlFailure)
                             Text("Click the orb for chat, right-click for voice, or drag it to a screen edge.")
                             LoginItemControls(model: model)
                         case .hotkey:
                             Text("Push-to-talk: \(model.hotkeyName)")
-                            Button(model.recordingKey ? "Cancel Recording" : "Record Hotkey…") { model.recordHotkey() }
-                            Button("Reset to Right Option") { model.resetHotkey() }
+                            CogletButton(model.recordingKey ? "Cancel Recording" : "Record Hotkey…",
+                                id: "settings.hotkey.record", registry: model.appControls, window: "settings", route: "hotkey",
+                                failure: model.appControlFailure, action: model.recordHotkey)
+                            CogletButton("Reset to Right Option", id: "settings.hotkey.reset", registry: model.appControls,
+                                window: "settings", route: "hotkey", failure: model.appControlFailure, action: model.resetHotkey)
                             if model.recordingKey { Text("Press a key or chord. Modifier-only keys are supported.") }
-                            Toggle("Toggle mode (press to start, press again to stop)", isOn: $model.toggleMode)
+                            CogletToggle("Toggle mode (press to start, press again to stop)", id: "settings.hotkey.toggle_mode",
+                                registry: model.appControls, window: "settings", route: "hotkey", isOn: $model.toggleMode,
+                                failure: model.appControlFailure)
                             Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")
-                            Button("Input Monitoring Settings") { model.openPrivacy("Privacy_ListenEvent") }
+                            CogletButton("Input Monitoring Settings", id: "settings.hotkey.input_monitoring",
+                                registry: model.appControls, window: "settings", route: "hotkey", sensitive: true,
+                                failure: model.appControlFailure) { model.openPrivacy("Privacy_ListenEvent") }
                         case .audio:
                             MicrophoneControls(model: model)
                             Text("Default system input · voice processing and echo cancellation enabled.")
-                            Toggle("Play sound cues", isOn: $model.startSound)
+                            CogletToggle("Play sound cues", id: "settings.audio.sound_cues", registry: model.appControls,
+                                window: "settings", route: "audio", isOn: $model.startSound, failure: model.appControlFailure)
                         case .hub:
                             HubSettings(model: model)
                         case .coglets:

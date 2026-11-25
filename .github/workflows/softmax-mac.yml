@@ -17,6 +17,16 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Product app catalog differential and native registry tests
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/spec/tests/Gemfile
+          BUNDLE_PATH: ${{ runner.temp }}/softmax-product-gems
+        run: |
+          bundle install --jobs 2
+          uv run --python 3.12 --with-requirements apps/softmax-mac/Surface/requirements.txt python apps/softmax-mac/Surface/generate.py --check
+          uv run --python 3.12 --with-requirements apps/softmax-mac/Surface/requirements.txt python apps/softmax-mac/Surface/test_surface.py
+          swift test --package-path apps/softmax-mac/Surface
       - name: Hub account tests (before native runtime build)
         run: swift test --package-path apps/softmax-mac --filter 'Hub(Connection|Keychain)Tests'
       - uses: dtolnay/rust-toolchain@stable

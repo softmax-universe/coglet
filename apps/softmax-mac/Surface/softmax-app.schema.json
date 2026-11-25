@@ -1,0 +1,2465 @@
+{
+  "$comment": "Requires the mandatory UTF-8 byte-length vocabulary; use schema_validation.validator. No root payload union.",
+  "$defs": {
+    "app-appearance": {
+      "anyOf": [
+        {
+          "const": "System"
+        },
+        {
+          "const": "Light"
+        },
+        {
+          "const": "Dark"
+        }
+      ]
+    },
+    "app-control": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "$ref": "#/$defs/app-id"
+        },
+        "label": {
+          "$ref": "#/$defs/app-label"
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/app-id"
+            },
+            {
+              "const": null
+            }
+          ]
+        },
+        "role": {
+          "$ref": "#/$defs/app-role"
+        },
+        "sensitive": {
+          "type": "boolean"
+        },
+        "value": {
+          "$ref": "#/$defs/app-value"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "id",
+        "parent",
+        "window",
+        "role",
+        "label",
+        "value",
+        "enabled",
+        "visible",
+        "sensitive"
+      ],
+      "type": "object"
+    },
+    "app-control-changed": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "$ref": "#/$defs/app-id"
+        },
+        "revision": {
+          "$ref": "#/$defs/app-revision"
+        },
+        "value": {
+          "$ref": "#/$defs/app-value"
+        },
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "revision",
+        "window",
+        "control",
+        "value"
+      ],
+      "type": "object"
+    },
+    "app-controls-args": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "const": null
+            },
+            "limit": {
+              "maximum": 128,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "revision": {
+              "const": null
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "window",
+            "after",
+            "limit",
+            "revision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "$ref": "#/$defs/app-cursor"
+            },
+            "limit": {
+              "maximum": 128,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "window",
+            "after",
+            "limit",
+            "revision"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-controls-result": {
+      "additionalProperties": false,
+      "properties": {
+        "controls": {
+          "items": {
+            "$ref": "#/$defs/app-control"
+          },
+          "maxItems": 128,
+          "minItems": 0,
+          "type": "array"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/app-cursor"
+            },
+            {
+              "const": null
+            }
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/app-revision"
+        },
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "revision",
+        "window",
+        "controls",
+        "next"
+      ],
+      "type": "object"
+    },
+    "app-cursor": {
+      "allOf": [
+        {
+          "type": "string"
+        },
+        {
+          "maxUtf8Bytes": 128,
+          "minUtf8Bytes": 1,
+          "type": "string"
+        }
+      ]
+    },
+    "app-empty": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "app-face": {
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "anyOf": [
+            {
+              "const": "neutral"
+            },
+            {
+              "const": "listening"
+            },
+            {
+              "const": "thinking"
+            },
+            {
+              "const": "speaking"
+            },
+            {
+              "const": "happy"
+            },
+            {
+              "const": "concerned"
+            }
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "const": "full"
+            },
+            {
+              "const": "compact"
+            }
+          ]
+        },
+        "status": {
+          "anyOf": [
+            {
+              "const": "idle"
+            },
+            {
+              "const": "listening"
+            },
+            {
+              "const": "thinking"
+            },
+            {
+              "const": "speaking"
+            }
+          ]
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "visible",
+        "mode",
+        "expression",
+        "status"
+      ],
+      "type": "object"
+    },
+    "app-focus-args": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "$ref": "#/$defs/app-id"
+        },
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "window",
+        "control"
+      ],
+      "type": "object"
+    },
+    "app-focus-changed": {
+      "additionalProperties": false,
+      "properties": {
+        "control": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/app-id"
+            },
+            {
+              "const": null
+            }
+          ]
+        },
+        "revision": {
+          "$ref": "#/$defs/app-revision"
+        },
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "revision",
+        "window",
+        "control"
+      ],
+      "type": "object"
+    },
+    "app-hotkey": {
+      "additionalProperties": false,
+      "properties": {
+        "key_code": {
+          "maximum": 127,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "modifiers": {
+          "items": {
+            "$ref": "#/$defs/app-modifier"
+          },
+          "maxItems": 4,
+          "minItems": 0,
+          "type": "array"
+        }
+      },
+      "required": [
+        "key_code",
+        "modifiers"
+      ],
+      "type": "object"
+    },
+    "app-hud": {
+      "additionalProperties": false,
+      "properties": {
+        "elapsed_ms": {
+          "maximum": 120000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "level": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/app-hud-state"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "visible",
+        "elapsed_ms",
+        "level"
+      ],
+      "type": "object"
+    },
+    "app-hud-state": {
+      "anyOf": [
+        {
+          "const": "idle"
+        },
+        {
+          "const": "listening"
+        },
+        {
+          "const": "thinking"
+        },
+        {
+          "const": "speaking"
+        },
+        {
+          "const": "cancelled"
+        },
+        {
+          "const": "microphone-denied"
+        },
+        {
+          "const": "offline"
+        },
+        {
+          "const": "error"
+        }
+      ]
+    },
+    "app-id": {
+      "allOf": [
+        {
+          "type": "string"
+        },
+        {
+          "maxUtf8Bytes": 128,
+          "minUtf8Bytes": 1,
+          "type": "string"
+        }
+      ]
+    },
+    "app-invoke-args": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "control": {
+              "$ref": "#/$defs/app-id"
+            },
+            "verb": {
+              "const": "press"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "verb",
+            "window",
+            "control"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "control": {
+              "$ref": "#/$defs/app-id"
+            },
+            "value": {
+              "type": "boolean"
+            },
+            "verb": {
+              "const": "toggle"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "verb",
+            "window",
+            "control",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "control": {
+              "$ref": "#/$defs/app-id"
+            },
+            "value": {
+              "$ref": "#/$defs/app-selection"
+            },
+            "verb": {
+              "const": "select"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "verb",
+            "window",
+            "control",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "control": {
+              "$ref": "#/$defs/app-id"
+            },
+            "value": {
+              "$ref": "#/$defs/app-settable-value"
+            },
+            "verb": {
+              "const": "set_value"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "verb",
+            "window",
+            "control",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "control": {
+              "$ref": "#/$defs/app-id"
+            },
+            "value": {
+              "$ref": "#/$defs/app-text"
+            },
+            "verb": {
+              "const": "type_text"
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "verb",
+            "window",
+            "control",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-label": {
+      "allOf": [
+        {
+          "type": "string"
+        },
+        {
+          "maxUtf8Bytes": 256,
+          "minUtf8Bytes": 0,
+          "type": "string"
+        }
+      ]
+    },
+    "app-location": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "main"
+            },
+            "window": {
+              "const": "main"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "menu"
+            },
+            "window": {
+              "const": "menu_bar"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "$ref": "#/$defs/app-settings-route"
+            },
+            "window": {
+              "const": "settings"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "$ref": "#/$defs/app-onboarding-route"
+            },
+            "window": {
+              "const": "onboarding"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "face"
+            },
+            "window": {
+              "const": "face"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "anyOf": [
+                {
+                  "const": "chat"
+                },
+                {
+                  "const": "voice"
+                }
+              ]
+            },
+            "window": {
+              "const": "chat"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "orb"
+            },
+            "window": {
+              "const": "orb"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "hud"
+            },
+            "window": {
+              "const": "hud"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "commands"
+            },
+            "window": {
+              "const": "command_palette"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "about"
+            },
+            "window": {
+              "const": "about"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "shortcuts"
+            },
+            "window": {
+              "const": "keyboard_shortcuts"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "anyOf": [
+                {
+                  "const": "code"
+                },
+                {
+                  "const": "manual"
+                }
+              ]
+            },
+            "window": {
+              "const": "hub_pairing"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "sign_out"
+            },
+            "window": {
+              "const": "sign_out_confirmation"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "const": "quit"
+            },
+            "window": {
+              "const": "quit_confirmation"
+            }
+          },
+          "required": [
+            "window",
+            "route"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-login-status": {
+      "anyOf": [
+        {
+          "const": "disabled"
+        },
+        {
+          "const": "enabled"
+        },
+        {
+          "const": "requiresApproval"
+        },
+        {
+          "const": "unavailable"
+        },
+        {
+          "const": "unknown"
+        }
+      ]
+    },
+    "app-modifier": {
+      "anyOf": [
+        {
+          "const": "command"
+        },
+        {
+          "const": "control"
+        },
+        {
+          "const": "option"
+        },
+        {
+          "const": "shift"
+        }
+      ]
+    },
+    "app-onboarding-route": {
+      "anyOf": [
+        {
+          "const": "welcome"
+        },
+        {
+          "const": "permissions"
+        },
+        {
+          "const": "hub"
+        }
+      ]
+    },
+    "app-ptt": {
+      "additionalProperties": false,
+      "properties": {
+        "elapsed_ms": {
+          "maximum": 120000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "level": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/app-talk-state"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "visible",
+        "elapsed_ms",
+        "level"
+      ],
+      "type": "object"
+    },
+    "app-revision": {
+      "maximum": 18446744073709551615,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "app-role": {
+      "anyOf": [
+        {
+          "const": "button"
+        },
+        {
+          "const": "toggle"
+        },
+        {
+          "const": "picker"
+        },
+        {
+          "const": "text_field"
+        },
+        {
+          "const": "secure_field"
+        },
+        {
+          "const": "text_editor"
+        },
+        {
+          "const": "slider"
+        },
+        {
+          "const": "menu"
+        },
+        {
+          "const": "menu_item"
+        },
+        {
+          "const": "tab"
+        },
+        {
+          "const": "disclosure"
+        },
+        {
+          "const": "group"
+        },
+        {
+          "const": "label"
+        },
+        {
+          "const": "window"
+        },
+        {
+          "const": "gesture"
+        }
+      ]
+    },
+    "app-selection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/app-appearance"
+        },
+        {
+          "$ref": "#/$defs/app-text-size"
+        },
+        {
+          "$ref": "#/$defs/app-talk-mode"
+        },
+        {
+          "const": "chat"
+        },
+        {
+          "const": "voice"
+        },
+        {
+          "$ref": "#/$defs/app-settings-route"
+        },
+        {
+          "$ref": "#/$defs/app-onboarding-route"
+        }
+      ]
+    },
+    "app-settable-value": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "boolean"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "integer"
+            },
+            "value": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "value": {
+              "$ref": "#/$defs/app-text"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "selection"
+            },
+            "value": {
+              "$ref": "#/$defs/app-selection"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-setting-args": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "appearance"
+            },
+            "value": {
+              "$ref": "#/$defs/app-appearance"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "text_size"
+            },
+            "value": {
+              "$ref": "#/$defs/app-text-size"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "floating_orb"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "talk_mode"
+            },
+            "value": {
+              "$ref": "#/$defs/app-talk-mode"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "sound_cues"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "hotkey"
+            },
+            "value": {
+              "$ref": "#/$defs/app-hotkey"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "const": "launch_at_login"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-settings": {
+      "additionalProperties": false,
+      "properties": {
+        "appearance": {
+          "$ref": "#/$defs/app-appearance"
+        },
+        "floating_orb": {
+          "type": "boolean"
+        },
+        "hotkey": {
+          "$ref": "#/$defs/app-hotkey"
+        },
+        "launch_at_login": {
+          "$ref": "#/$defs/app-login-status"
+        },
+        "sound_cues": {
+          "type": "boolean"
+        },
+        "talk_mode": {
+          "$ref": "#/$defs/app-talk-mode"
+        },
+        "text_size": {
+          "$ref": "#/$defs/app-text-size"
+        }
+      },
+      "required": [
+        "appearance",
+        "text_size",
+        "floating_orb",
+        "talk_mode",
+        "sound_cues",
+        "hotkey",
+        "launch_at_login"
+      ],
+      "type": "object"
+    },
+    "app-settings-route": {
+      "anyOf": [
+        {
+          "const": "general"
+        },
+        {
+          "const": "hotkey"
+        },
+        {
+          "const": "audio"
+        },
+        {
+          "const": "hub"
+        },
+        {
+          "const": "coglets"
+        },
+        {
+          "const": "updates"
+        },
+        {
+          "const": "privacy"
+        }
+      ]
+    },
+    "app-state-result": {
+      "additionalProperties": false,
+      "properties": {
+        "face": {
+          "$ref": "#/$defs/app-face"
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "control": {
+                  "$ref": "#/$defs/app-id"
+                },
+                "window": {
+                  "$ref": "#/$defs/app-window"
+                }
+              },
+              "required": [
+                "window",
+                "control"
+              ],
+              "type": "object"
+            },
+            {
+              "const": null
+            }
+          ]
+        },
+        "hub": {
+          "anyOf": [
+            {
+              "const": "offline"
+            },
+            {
+              "const": "connecting"
+            },
+            {
+              "const": "connected"
+            }
+          ]
+        },
+        "hud": {
+          "$ref": "#/$defs/app-hud"
+        },
+        "ptt": {
+          "$ref": "#/$defs/app-ptt"
+        },
+        "revision": {
+          "$ref": "#/$defs/app-revision"
+        },
+        "settings": {
+          "$ref": "#/$defs/app-settings"
+        },
+        "windows": {
+          "items": {
+            "$ref": "#/$defs/app-window-state"
+          },
+          "maxItems": 64,
+          "minItems": 0,
+          "type": "array"
+        }
+      },
+      "required": [
+        "revision",
+        "windows",
+        "focus",
+        "settings",
+        "ptt",
+        "hud",
+        "hub",
+        "face"
+      ],
+      "type": "object"
+    },
+    "app-talk-mode": {
+      "anyOf": [
+        {
+          "const": "hold"
+        },
+        {
+          "const": "toggle"
+        }
+      ]
+    },
+    "app-talk-state": {
+      "anyOf": [
+        {
+          "const": "onboarding"
+        },
+        {
+          "const": "offline"
+        },
+        {
+          "const": "idle"
+        },
+        {
+          "const": "listening"
+        },
+        {
+          "const": "thinking"
+        },
+        {
+          "const": "speaking"
+        },
+        {
+          "const": "error"
+        }
+      ]
+    },
+    "app-text": {
+      "allOf": [
+        {
+          "type": "string"
+        },
+        {
+          "maxUtf8Bytes": 4096,
+          "minUtf8Bytes": 0,
+          "type": "string"
+        }
+      ]
+    },
+    "app-text-size": {
+      "anyOf": [
+        {
+          "const": "standard"
+        },
+        {
+          "const": "large"
+        },
+        {
+          "const": "largest"
+        }
+      ]
+    },
+    "app-value": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "boolean"
+            },
+            "value": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "integer"
+            },
+            "value": {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "value": {
+              "$ref": "#/$defs/app-text"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "selection"
+            },
+            "value": {
+              "$ref": "#/$defs/app-selection"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "redacted"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-view-changed": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "main"
+            },
+            "window": {
+              "const": "main"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "menu"
+            },
+            "window": {
+              "const": "menu_bar"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "$ref": "#/$defs/app-settings-route"
+            },
+            "window": {
+              "const": "settings"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "$ref": "#/$defs/app-onboarding-route"
+            },
+            "window": {
+              "const": "onboarding"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "face"
+            },
+            "window": {
+              "const": "face"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "chat"
+                },
+                {
+                  "const": "voice"
+                }
+              ]
+            },
+            "window": {
+              "const": "chat"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "orb"
+            },
+            "window": {
+              "const": "orb"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "hud"
+            },
+            "window": {
+              "const": "hud"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "commands"
+            },
+            "window": {
+              "const": "command_palette"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "about"
+            },
+            "window": {
+              "const": "about"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "shortcuts"
+            },
+            "window": {
+              "const": "keyboard_shortcuts"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "code"
+                },
+                {
+                  "const": "manual"
+                }
+              ]
+            },
+            "window": {
+              "const": "hub_pairing"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "sign_out"
+            },
+            "window": {
+              "const": "sign_out_confirmation"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "quit"
+            },
+            "window": {
+              "const": "quit_confirmation"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-window": {
+      "anyOf": [
+        {
+          "const": "main"
+        },
+        {
+          "const": "menu_bar"
+        },
+        {
+          "const": "settings"
+        },
+        {
+          "const": "onboarding"
+        },
+        {
+          "const": "face"
+        },
+        {
+          "const": "chat"
+        },
+        {
+          "const": "orb"
+        },
+        {
+          "const": "hud"
+        },
+        {
+          "const": "command_palette"
+        },
+        {
+          "const": "about"
+        },
+        {
+          "const": "keyboard_shortcuts"
+        },
+        {
+          "const": "hub_pairing"
+        },
+        {
+          "const": "sign_out_confirmation"
+        },
+        {
+          "const": "quit_confirmation"
+        }
+      ]
+    },
+    "app-window-args": {
+      "additionalProperties": false,
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/app-window"
+        }
+      },
+      "required": [
+        "window"
+      ],
+      "type": "object"
+    },
+    "app-window-changed": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "main"
+            },
+            "window": {
+              "const": "main"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "menu"
+            },
+            "window": {
+              "const": "menu_bar"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "$ref": "#/$defs/app-settings-route"
+            },
+            "window": {
+              "const": "settings"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "$ref": "#/$defs/app-onboarding-route"
+            },
+            "window": {
+              "const": "onboarding"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "face"
+            },
+            "window": {
+              "const": "face"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "chat"
+                },
+                {
+                  "const": "voice"
+                }
+              ]
+            },
+            "window": {
+              "const": "chat"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "orb"
+            },
+            "window": {
+              "const": "orb"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "hud"
+            },
+            "window": {
+              "const": "hud"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "commands"
+            },
+            "window": {
+              "const": "command_palette"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "about"
+            },
+            "window": {
+              "const": "about"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "shortcuts"
+            },
+            "window": {
+              "const": "keyboard_shortcuts"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "code"
+                },
+                {
+                  "const": "manual"
+                }
+              ]
+            },
+            "window": {
+              "const": "hub_pairing"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "sign_out"
+            },
+            "window": {
+              "const": "sign_out_confirmation"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": "quit"
+            },
+            "window": {
+              "const": "quit_confirmation"
+            }
+          },
+          "required": [
+            "revision",
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": false
+            },
+            "revision": {
+              "$ref": "#/$defs/app-revision"
+            },
+            "route": {
+              "const": null
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "revision",
+            "window",
+            "open",
+            "route"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "app-window-state": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "main"
+            },
+            "window": {
+              "const": "main"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "menu"
+            },
+            "window": {
+              "const": "menu_bar"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "$ref": "#/$defs/app-settings-route"
+            },
+            "window": {
+              "const": "settings"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "$ref": "#/$defs/app-onboarding-route"
+            },
+            "window": {
+              "const": "onboarding"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "face"
+            },
+            "window": {
+              "const": "face"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "chat"
+                },
+                {
+                  "const": "voice"
+                }
+              ]
+            },
+            "window": {
+              "const": "chat"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "orb"
+            },
+            "window": {
+              "const": "orb"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "hud"
+            },
+            "window": {
+              "const": "hud"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "commands"
+            },
+            "window": {
+              "const": "command_palette"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "about"
+            },
+            "window": {
+              "const": "about"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "shortcuts"
+            },
+            "window": {
+              "const": "keyboard_shortcuts"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "anyOf": [
+                {
+                  "const": "code"
+                },
+                {
+                  "const": "manual"
+                }
+              ]
+            },
+            "window": {
+              "const": "hub_pairing"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "sign_out"
+            },
+            "window": {
+              "const": "sign_out_confirmation"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": true
+            },
+            "route": {
+              "const": "quit"
+            },
+            "window": {
+              "const": "quit_confirmation"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "open": {
+              "const": false
+            },
+            "route": {
+              "const": null
+            },
+            "window": {
+              "$ref": "#/$defs/app-window"
+            }
+          },
+          "required": [
+            "open",
+            "window",
+            "route"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://softmax.com/schemas/app/v1/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true,
+    "https://softmax.com/schemas/vocab/utf8-byte-length/v1": true
+  }
+}

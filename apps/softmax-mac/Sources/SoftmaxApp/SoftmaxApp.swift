@@ -7,6 +7,7 @@ import SoftmaxCore
 import FaceMac
 import Combine
 import SoftmaxRuntime
+import SoftmaxAppSurface
 
 @main
 struct SoftmaxApp: App {
@@ -48,6 +49,18 @@ struct StatusLabel: View {
 
 @MainActor
 final class ShellModel: ObservableObject {
+    /// Actual window visibility and existing Settings selection, not shadow state.
+    lazy var appControls = ControlRegistry(revision: 0) { [weak self] window in
+        guard window == "settings", NSApp.windows.contains(where: {
+            $0.identifier?.rawValue == "softmax.settings" && $0.isVisible
+        }) else { return nil }
+        return self?.selectedTab.rawValue.lowercased()
+    }
+    @Published private(set) var appControlRegistrationFailed = false
+    func appControlFailure(_ failure: ControlRegistryFailure) {
+        // Never log native values, errors, tokens or text-field input.
+        appControlRegistrationFailed = true
+    }
     let updates = UpdateController()
     let runtime = RuntimeHost()
     lazy var faceHost = FaceHost(shell: self)
@@ -111,7 +124,13 @@ final class ShellModel: ObservableObject {
     @Published var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown)
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
-    @Published var selectedTab: SettingsTab = .general
+    @Published var selectedTab: SettingsTab = .general {
+        didSet {
+            guard selectedTab != oldValue else { return }
+            do { try appControls.nativeStateChanged() }
+            catch { appControlFailure(.exhausted) }
+        }
+    }
     @Published var talkState: AppState = .idle
     @Published var level: Float = 0
     @Published var elapsed: TimeInterval = 0
@@ -339,16 +358,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if settingsWindow == nil {
             settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 760, height: 540),
                                     view: SettingsView(model: model))
+            settingsWindow?.identifier = NSUserInterfaceItemIdentifier("softmax.settings")
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+        invalidateAppControlSnapshots()
     }
 
     func windowWillClose(_ notification: Notification) {
+        invalidateAppControlSnapshots()
         if let closed = notification.object as? NSWindow, closed === settingsWindow,
            model.state == .onboarding {
             onboardingWindow?.makeKeyAndOrderFront(nil)
         }
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
+    func windowDidDeminiaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
+    private func invalidateAppControlSnapshots() {
+        do { try model.appControls.nativeStateChanged() }
+        catch { model.appControlFailure(.exhausted) }
     }
 
     func showOnboarding() {
