@@ -153,6 +153,19 @@ impl GitStream<'_> {
         hash: &str,
         source: &mut B,
     ) -> Result<(), TransportError> {
+        self.send_fetch_guarded(metadata, size, hash, source, &|| Ok(()))
+            .await
+    }
+
+    /// Fresh application authority before metadata, each chunk and end marker.
+    pub async fn send_fetch_guarded<B: tokio::io::AsyncRead + Unpin>(
+        &mut self,
+        metadata: &crate::git_metadata::VerifiedRef,
+        size: u64,
+        hash: &str,
+        source: &mut B,
+        authorize: &(dyn Fn() -> Result<(), TransportError> + Sync),
+    ) -> Result<(), TransportError> {
         if self.started || self.request["method"] != "hub.git.fetch" {
             return Err(error("not an unused fetch stream"));
         }
@@ -167,10 +180,13 @@ impl GitStream<'_> {
         let transfer = json!({"type":"transfer", "correlation_id":id,
             "size":size,"sha256":hash,"update":metadata.signed()});
         validate("hub-transfer", &transfer)?;
+        authorize()?;
         write_frame(self.send, &transfer).await.map_err(error)?;
-        crate::transfer::send_chunks(self.send, self.recv, id, size, source)
-            .await
-            .map_err(error)?;
+        crate::transfer::send_chunks_guarded(self.send, self.recv, id, size, source, &|| {
+            authorize().map_err(|e| std::io::Error::other(e.to_string()))
+        })
+        .await
+        .map_err(error)?;
         if self.recv.read(&mut [0]).await.map_err(error)?.is_some() {
             return Err(error("trailing fetch credit"));
         }
