@@ -536,6 +536,7 @@ async def timeline(peer, case):
                     await asyncio.wait_for(peer.clock_ack(), timeout)
                 continue
             if 'expect_close' in step:
+                close_deadline = time.monotonic() + timeout
                 # A timeout is not EOF, and even one unexpected byte (including
                 # a truncated frame prefix) must not count as clean closure.
                 try:
@@ -547,7 +548,7 @@ async def timeline(peer, case):
                     # peer deliberately closed. A bridge must end cleanly too.
                     process = getattr(peer, 'process', None)
                     if process is not None:
-                        status = await asyncio.wait_for(process.wait(), timeout)
+                        status = await asyncio.wait_for(process.wait(), max(0, close_deadline - time.monotonic()))
                         if status != 0:
                             raise AssertionError(f'peer exited with status {status} before close')
                     continue

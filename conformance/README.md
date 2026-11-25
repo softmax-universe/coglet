@@ -80,6 +80,7 @@ supply actual envelope values from `spec/`. Supported step actions (exactly one)
 | `match` | Consume the next frame; require every dotted-path/value equality; numeric components index arrays. Additional fields are allowed. |
 | `journal_hash` | Consume the next frame; compare a lowercase 64-hex journal/state hash. `path` defaults to `state_hash`; the suite specifies the normative hash, never the runner. |
 | `silence_ms` | Require no bytes for this interval. EOF is failure, not silence. |
+| `expect_close: true` | Require clean transport EOF with no intervening byte; timeout/reset are failures. A stdio adapter must also exit zero within the same `within_ms` budget; a crashed bridge is not protocol refusal evidence. |
 
 `within_ms` defaults to 1000 and bounds the **whole** frame read/write, not each
 byte. No messages are silently discarded while searching for a match. A missing
