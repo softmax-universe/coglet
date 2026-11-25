@@ -3,6 +3,80 @@ import XCTest
 
 @MainActor
 final class HubConnectionTests: XCTestCase {
+    func testExplicitReconnectHasFreshCorrelationAndActualCompletion() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        store.key = Data(repeating: 8, count: 32)
+        store.hub = try HubPairing.parse(#"{"name":"Stored router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"]}"#)
+        let hub = HubConnection(account: HubAccount(store: store), link: link)
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let old = link.callback
+        let started = expectation(description: "fresh helper started")
+        link.didStart = { started.fulfill() }
+        var completed = false
+        let task = Task { try await hub.reconnectOnce(); completed = true }
+        await fulfillment(of: [started], timeout: 2)
+        XCTAssertEqual(link.starts, 2)
+        XCTAssertFalse(completed)
+        old?(.connected)
+        XCTAssertEqual(hub.state, .connecting, "Original channel cannot complete new operation")
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertFalse(completed, "Queued connect is not terminal success")
+        link.emit(.connected)
+        try await task.value
+        XCTAssertTrue(completed)
+        XCTAssertEqual(hub.state, .connected)
+        link.emit(.offline)
+        XCTAssertEqual(hub.state, .offline, "Normal callbacks survive successful operation retirement")
+        hub.stop()
+    }
+    func testExplicitReconnectRefusesDeferredEffectAfterCustodyRevoked() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        store.key = Data(repeating: 8, count: 32)
+        store.hub = try HubPairing.parse(#"{"name":"Stored router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"]}"#)
+        let hub = HubConnection(account: HubAccount(store: store), link: link)
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let initialConnects = link.connects
+        let started = expectation(description: "fresh helper started")
+        link.didStart = { started.fulfill() }
+        var live = true
+        let task = Task { try await hub.reconnectOnce { guard live else { throw HubError.unavailable } } }
+        await fulfillment(of: [started], timeout: 2)
+        let stale = link.callback
+        live = false
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        do { try await task.value; XCTFail("revoked reconnect succeeded") } catch {}
+        XCTAssertEqual(link.connects, initialConnects)
+        XCTAssertEqual(hub.state, .offline)
+        stale?(.connected)
+        XCTAssertEqual(hub.state, .offline)
+        hub.stop()
+    }
+    func testExplicitReconnectCancellationStopsOnlyOriginalAttempt() async throws {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        store.key = Data(repeating: 8, count: 32)
+        store.hub = try HubPairing.parse(#"{"name":"Stored router","hub":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","addresses":["127.0.0.1:1234"]}"#)
+        let hub = HubConnection(account: HubAccount(store: store), link: link)
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let started = expectation(description: "fresh helper started")
+        link.didStart = { started.fulfill() }
+        let task = Task { try await hub.reconnectOnce() }
+        await fulfillment(of: [started], timeout: 2)
+        let stale = link.callback
+        task.cancel()
+        do { try await task.value; XCTFail("cancelled reconnect succeeded") } catch {}
+        XCTAssertEqual(hub.state, .offline)
+        stale?(.connected)
+        XCTAssertEqual(hub.state, .offline)
+        let successorStarted = expectation(description: "successor helper started")
+        link.didStart = { successorStarted.fulfill() }
+        let successor = Task { try await hub.reconnectOnce() }
+        await fulfillment(of: [successorStarted], timeout: 2)
+        stale?(.failed)
+        XCTAssertEqual(hub.state, .connecting)
+        link.emit(.ready(device: String(repeating: "a", count: 64))); link.emit(.connected)
+        try await successor.value
+        hub.stop()
+    }
     func testKeychainIdentitySurvivesRestartAndSignOutErasesIt() throws {
         let store = MemoryHubStore()
         let first = HubAccount(store: store, generate: { Data(repeating: 7, count: 32) })
@@ -197,13 +271,16 @@ final class FakeHubLink: HubLink {
     var callback: ((HubLinkEvent) -> Void)?
     var lastPairing: HubPairing?
     var starts = 0
+    var connects = 0
+    var didStart: (() -> Void)?
     var failStarts = 0
     func start(key: Data, event: @escaping (HubLinkEvent) -> Void) throws {
         starts += 1
         if failStarts > 0 { failStarts -= 1; throw HubError.unavailable }
         callback = event
+        didStart?()
     }
-    func connect(_ pairing: HubPairing) throws { lastPairing = pairing }
+    func connect(_ pairing: HubPairing) throws { connects += 1; lastPairing = pairing }
     func stop() { callback = nil }
     func emit(_ event: HubLinkEvent) { callback?(event) }
 }

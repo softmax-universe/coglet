@@ -26,6 +26,13 @@ public final class HubConnection {
     private var retry: Task<Void, Never>?
     private var attempts = 0
     private var pending: HubPairing?
+    private struct ReconnectCommand {
+        let id: UUID
+        let target: HubPairing
+        let authorize: @MainActor () throws -> Void
+        let completion: CheckedContinuation<Void, any Error>
+    }
+    private var reconnectCommand: ReconnectCommand?
     public init(account: HubAccount, link: any HubLink) { self.account = account; self.link = link }
 
     public func start() {
@@ -72,6 +79,7 @@ public final class HubConnection {
         catch { state = .offline; errorMessage = "Could not contact the hub."; scheduleRetry(); changed?(); throw error }
     }
     public func retryNow() {
+        guard reconnectCommand == nil else { return }
         guard running else { return }
         guard ready else {
             // A failed process needs a new generation; a connecting one must finish startup.
@@ -79,6 +87,72 @@ public final class HubConnection {
         }
         guard let target = pending ?? pairing else { return }
         try? connect(target)
+    }
+    /// One explicit user/adapter reconnect, bound to a fresh helper generation.
+    /// It does not swallow errors or complete merely because connect was queued.
+    /// The caller must gate its original custody at every deferred native effect.
+    public func reconnectOnce(authorized: @escaping @MainActor () throws -> Void = {}) async throws {
+        try Task.checkCancellation()
+        guard reconnectCommand == nil, pending == nil, let target = pairing else { throw HubError.unavailable }
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                var installed = false
+                do {
+                    try authorized()
+                    retry?.cancel(); retry = nil
+                    stopLink()
+                    reconnectCommand = ReconnectCommand(id: id, target: target, authorize: authorized, completion: continuation)
+                    installed = true
+                    let key = try account.identity()
+                    let current = generation
+                    running = true; state = .connecting; errorMessage = nil
+                    try link.start(key: key) { [weak self] event in
+                        guard let self, self.running, self.generation == current else { return }
+                        if self.reconnectCommand?.id == id { self.receiveReconnect(event, id: id) }
+                        else { self.receive(event) }
+                    }
+                    changed?()
+                } catch {
+                    if installed { finishReconnect(id: id, error: error) }
+                    else { continuation.resume(throwing: error) }
+                }
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.finishReconnect(id: id, error: CancellationError()) }
+        }
+    }
+    private func receiveReconnect(_ event: HubLinkEvent, id: UUID) {
+        guard let command = reconnectCommand, command.id == id else { return }
+        do {
+            try command.authorize()
+            switch event {
+            case .ready(let device):
+                guard HubPairing.isHex(device) else { throw HubError.unavailable }
+                guard !ready else { return }
+                deviceID = device; ready = true
+                try link.connect(command.target)
+            case .connected:
+                guard ready else { throw HubError.unavailable }
+                try account.store.saveHub(command.target.withoutInvite)
+                try command.authorize() // persistence can block past native authority
+                pairing = command.target.withoutInvite; state = .connected; attempts = 0; errorMessage = nil
+                // Keep this exact generation as the normal live connection.
+                reconnectCommand = nil
+                command.completion.resume()
+            case .offline, .failed: throw HubError.unavailable
+            }
+        } catch { finishReconnect(id: id, error: error) }
+        changed?()
+    }
+    private func finishReconnect(id: UUID, error: any Error) {
+        guard let command = reconnectCommand, command.id == id else { return }
+        reconnectCommand = nil
+        retry?.cancel(); retry = nil
+        stopLink(); state = .offline
+        errorMessage = "Could not complete router reconnection."
+        command.completion.resume(throwing: error)
+        changed?()
     }
     private func receive(_ event: HubLinkEvent) {
         switch event {
@@ -125,6 +199,7 @@ public final class HubConnection {
         }
     }
     public func signOut() {
+        if let id = reconnectCommand?.id { finishReconnect(id: id, error: CancellationError()) }
         retry?.cancel(); retry = nil
         stopLink(); pending = nil; state = .offline
         // Keep deviceID until cleanup succeeds so the UI's Sign out stays reachable for retry.
@@ -133,6 +208,7 @@ public final class HubConnection {
         changed?()
     }
     public func stop() {
+        if let id = reconnectCommand?.id { finishReconnect(id: id, error: CancellationError()) }
         retry?.cancel(); retry = nil; stopLink(); pending = nil; state = .offline; changed?()
     }
 }
