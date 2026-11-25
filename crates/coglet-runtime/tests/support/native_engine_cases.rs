@@ -295,3 +295,74 @@ fn native_admission_refuses_mode_memory_wasi_and_preserves_queued_input() {
     s["inputs"]["budgets"] = s["manifest"]["budgets"].clone();
     let _ = Runtime::from_fixture(&s).unwrap();
 }
+
+#[test]
+fn reused_admission_proof_keeps_fresh_instances_pin_and_changed_policy_checks() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let code = program(false);
+    let setup = with_wasm(setup(), &code);
+    let mut inputs = setup["inputs"].clone();
+    inputs["coglet"] = setup["manifest"]["id"].clone();
+    inputs["budgets"] = setup["manifest"]["budgets"].clone();
+    inputs["grants"] = json!(["expression.set_expression"]);
+    let budgets = &setup["manifest"]["budgets"];
+    let fresh = || NativeEngine::new(code.clone(), budgets, 8_388_608, 65_536).unwrap();
+    // One engine (one cached proof) across steps equals a new engine per step.
+    let mut shared = fresh();
+    let mut live_a = Runtime::from_fixture(&setup).unwrap();
+    let mut live_b = Runtime::from_fixture(&setup).unwrap();
+    for step in 0..3 {
+        inputs["step"] = json!(step);
+        inputs["previous"] = live_a
+            .records()
+            .last()
+            .map(|r| r["record_hash"].clone())
+            .unwrap_or(Value::Null);
+        let a = live_a.step(&inputs, &mut shared).unwrap();
+        let mut inputs_b = inputs.clone();
+        inputs_b["previous"] = live_b
+            .records()
+            .last()
+            .map(|r| r["record_hash"].clone())
+            .unwrap_or(Value::Null);
+        let b = live_b.step(&inputs_b, &mut fresh()).unwrap();
+        assert_eq!(a["state_hash"], b["state_hash"]);
+        assert_eq!(
+            a["journal"]["usage"]["compute"],
+            b["journal"]["usage"]["compute"]
+        );
+    }
+    // Changed per-step memory policy is rechecked against the cached proof.
+    let mut lower = inputs.clone();
+    lower["budgets"]["memory_pages"] = json!(1);
+    assert!(
+        Runtime::from_fixture(&setup)
+            .unwrap()
+            .step(&lower, &mut shared)
+            .is_err()
+    );
+    // Changed compute mode is refused even though the proof is cached.
+    let mut mode = inputs.clone();
+    mode["budgets"]["compute_mode"] = json!("unqualified");
+    assert!(
+        Runtime::from_fixture(&setup)
+            .unwrap()
+            .step(&mode, &mut shared)
+            .is_err()
+    );
+    // Code pin mismatch: engine proof is for `code`, fixture pins different bytes.
+    let other = program(true);
+    assert_ne!(other, code);
+    let pinned = with_wasm(setup.clone(), &other);
+    inputs["step"] = json!(0);
+    inputs["previous"] = Value::Null;
+    assert!(
+        Runtime::from_fixture(&pinned)
+            .unwrap()
+            .step(&inputs, &mut shared)
+            .is_err()
+    );
+    // A changed runtime byte cap is a new admission and is refused when too small.
+    assert!(NativeEngine::new(code.clone(), budgets, 1_024 * 1_024, 65_536).is_ok());
+    assert!(NativeEngine::new(code.clone(), budgets, 4, 65_536).is_err());
+}
