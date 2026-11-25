@@ -156,6 +156,21 @@ impl Signing {
     }
 }
 #[test]
+fn digest_addressed_build_evidence_roundtrip() {
+    let f = fixture();
+    let mut s = Signing::new();
+    let candidate = f.builder.compile(&f.request).unwrap();
+    let a = s.sign(candidate, || Some(100)).unwrap();
+    let bytes = s
+        .store
+        .build_evidence(a.provenance["original_sha256"].as_str().unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(bytes, wat::parse_str(WAT).unwrap());
+
+    assert_eq!(s.store.build_evidence(&"00".repeat(32)).unwrap(), None);
+}
+#[test]
 fn real_pinned_integer_fixture_compiles_with_exact_provenance() {
     let f = fixture();
     let artifact = f.builder.compile(&f.request).unwrap();

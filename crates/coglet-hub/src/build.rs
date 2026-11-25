@@ -20,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod evidence;
 mod process;
 const MAX_INPUT: usize = 64 * 1024;
 const MAX_WASM: usize = 64 * 1024;
@@ -225,6 +226,7 @@ pub struct Artifact {
     pub reproduction: Value,
 }
 pub(crate) fn initialize(db: &Connection) -> Result<()> {
+    evidence::initialize(db)?;
     db.execute_batch("CREATE TABLE IF NOT EXISTS build_artifacts(uid INTEGER NOT NULL,id TEXT NOT NULL,intent TEXT NOT NULL,metadata BLOB NOT NULL CHECK(length(metadata)<=1048576),bundle BLOB NOT NULL CHECK(length(bundle) BETWEEN 1 AND 67108864),bundle_sha256 TEXT NOT NULL,PRIMARY KEY(uid,id));
     CREATE TRIGGER IF NOT EXISTS build_artifacts_no_replace BEFORE INSERT ON build_artifacts WHEN EXISTS(SELECT 1 FROM build_artifacts WHERE uid=NEW.uid AND id=NEW.id) BEGIN SELECT RAISE(ABORT,'retained artifact'); END;
     CREATE TRIGGER IF NOT EXISTS build_artifacts_no_update BEFORE UPDATE ON build_artifacts BEGIN SELECT RAISE(ABORT,'immutable artifact'); END;
@@ -273,6 +275,7 @@ impl Store {
         &mut self,
         request: &SignRequest,
         intent: &str,
+        blobs: &[Vec<u8>],
         make_artifact: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<Artifact>,
     ) -> Result<Artifact> {
         let tx = self
@@ -315,6 +318,7 @@ impl Store {
             return Err(Error::Full);
         }
         let digest = hash(&artifact.bundle);
+        evidence::retain(&tx, blobs)?;
         tx.execute(
             "INSERT INTO build_artifacts VALUES(?1,?2,?3,?4,?5,?6)",
             params![
@@ -503,7 +507,7 @@ impl Candidate {
         }
         drop(verified);
         self.delegation(provision, key, clock())?;
-        store.retain_build(request, &intent, |tx| {
+        store.retain_build(request, &intent, &[self.wasm.clone()], |tx| {
             // Query the exact current binding in the SAME Store transaction.
             // Do not acquire Authority's mutex while holding the SQL writer lock.
             coglet_proto::authority::Authority::authorize_publication_in(
