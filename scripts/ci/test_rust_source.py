@@ -15,7 +15,7 @@ selector = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(selector)
 
 
-class SourceSelection(unittest.TestCase):
+class GitFixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="rust-source-unit-")
         self.addCleanup(self.temp.cleanup)
@@ -47,6 +47,8 @@ class SourceSelection(unittest.TestCase):
     def choose(self, event, run, head=""):
         return selector.select_source(self.repo, event, run, head, contract=self.contract)
 
+
+class SourceSelection(GitFixture):
     def test_legacy_head_without_transform_uses_bound_merge_integration_only(self):
         self.assertFalse((self.repo / "missing").exists())
         self.assertEqual(self.git("ls-tree", self.legacy, "crates/coglet-transform"), "")
@@ -91,7 +93,109 @@ class SourceSelection(unittest.TestCase):
             selector.select_source(self.repo, "pull_request", self.merge, self.legacy, contract="f" * 40)
 
 
+class ProfileGeneration(GitFixture):
+    def setUp(self):
+        super().setUp()
+        for name in selector.PROFILE_INPUTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture input")
+        self.profile = self.commit("profile generation", "profile-marker", "introduced")
+
+    def required(self, selected, boundary=None):
+        return selector.profile_required(self.repo, selected, boundary=boundary or self.profile)
+
+    def test_pre_feature_exact_head_stays_exact_and_is_not_profile_qualified(self):
+        self.git("switch", "-c", "pre-profile-pr", self.modern)
+        head = self.commit("pre-profile head", "head", "change")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "pre-profile merge", head)
+        selected, scope = self.choose("pull_request", self.git("rev-parse", "HEAD"), head)
+        self.assertEqual((selected, scope), (head, "exact-head"))
+        self.assertFalse(self.required(selected))
+        self.assertFalse(self.required(self.contract))
+        self.assertTrue(self.required(self.git("rev-parse", "HEAD")))
+
+    def test_modern_exact_and_push_merge_group_require_profile(self):
+        self.git("switch", "-c", "profile-pr")
+        head = self.commit("profile head", "head", "change")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "profile merge", head)
+        selected, scope = self.choose("pull_request", self.git("rev-parse", "HEAD"), head)
+        self.assertEqual((selected, scope), (head, "exact-head"))
+        self.assertTrue(self.required(selected))
+        for event in ("push", "merge_group"):
+            self.assertEqual(self.choose(event, head), (head, "exact-head"))
+            self.assertTrue(self.required(head))
+
+    def test_legacy_merge_integration_retains_actual_merge_identity_and_profile(self):
+        self.git("switch", "-c", "another-legacy", self.old)
+        head = self.commit("new legacy change", "another-legacy", "change")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "modern legacy merge", head)
+        merge = self.git("rev-parse", "HEAD")
+        selected, scope = self.choose("pull_request", merge, head)
+        self.assertEqual((selected, scope), (merge, "merge-integration-only"))
+        self.assertTrue(self.required(selected))
+
+    def test_every_modern_missing_input_refuses_instead_of_skipping(self):
+        for name in selector.PROFILE_INPUTS:
+            with self.subTest(name=name):
+                self.git("reset", "--hard", self.profile)
+                self.git("rm", name)
+                self.git("commit", "-qm", "delete required input")
+                with self.assertRaises(ValueError):
+                    self.required(self.git("rev-parse", "HEAD"))
+
+    def test_nonregular_modern_inputs_refuse(self):
+        name = selector.PROFILE_INPUTS[0]
+        for kind in ("directory", "symlink"):
+            with self.subTest(kind=kind):
+                self.git("reset", "--hard", self.profile)
+                path = self.repo / name
+                path.unlink()
+                if kind == "directory":
+                    path.mkdir()
+                    (path / "child").write_text("not a bridge")
+                else:
+                    path.symlink_to("profile-marker")
+                self.git("add", ".")
+                self.git("commit", "-qm", "replace required input")
+                with self.assertRaises(ValueError):
+                    self.required(self.git("rev-parse", "HEAD"))
+                # reset --hard restores the tracked regular input next iteration.
+
+    def test_bad_selected_or_boundary_objects_fail_closed(self):
+        for bad in ("main", "", "f" * 40, "--help"):
+            with self.subTest(bad=bad):
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    selector.profile_required(self.repo, self.profile, boundary=bad)
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    self.required(bad)
+
+    def test_shallow_history_cannot_classify_feature_as_absent(self):
+        shallow = self.repo / "shallow"
+        self.git("clone", "--depth", "1", self.repo.as_uri(), str(shallow))
+        with self.assertRaises(subprocess.CalledProcessError):
+            selector.profile_required(shallow, self.profile, boundary=self.contract)
+
+
 class WorkflowBinding(unittest.TestCase):
+    def test_profile_flag_binds_only_profile_step_and_failure_artifact(self):
+        workflow = (ROOT / ".github/workflows/rust.yml").read_text()
+        self.assertIn("profile-required: ${{ steps.select.outputs.profile-required }}", workflow)
+        self.assertIn("profile-boundary: ${{ steps.select.outputs.profile-boundary }}", workflow)
+        steps = workflow.split("      - ")
+        flagged = [s for s in steps if "needs.source.outputs.profile-required" in s]
+        self.assertEqual(len(flagged), 2)
+        qualification = next(s for s in flagged if "Production runtime selected-profile" in s)
+        self.assertIn("if: needs.source.outputs.profile-required == 'true'\n", qualification)
+        self.assertIn("python crates/coglet-runtime/tools/test_profile_fixture_bridge.py", qualification)
+        artifact = next(s for s in flagged if "runtime-surface02-" in s)
+        self.assertIn("if: needs.source.outputs.profile-required == 'true' && always()", artifact)
+        self.assertIn("if-no-files-found: error", artifact)
+
+
     def test_all_producers_and_aggregate_share_selection_and_native_is_required(self):
         # Deliberately strict layout pins, not a general YAML parser. Keep these
         # stdlib-only: dependency-restore discovers every test_*.py before setup.
