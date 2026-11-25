@@ -456,7 +456,7 @@ def calls() -> Svg:
     # the learning coglets, two by two, wherever they run
     svg.rect(310, 30, 440, 294, "dg-group", 14)
     svg.text(328, 54, "LEARNING AND MEMORY", "dg-cap", "start")
-    svg.box(330, 70, 150, 56, "FastLoop", "dg-coglet", "responds, or forwards")
+    svg.box(330, 70, 150, 56, "FastLoop", "dg-coglet", "attention: responds, forwards")
     svg.box(580, 70, 150, 56, "Memory", "dg-coglet", "what the cogent knows")
     svg.box(330, 250, 150, 56, "Factory", "dg-coglet", "tickets in, patches out")
     svg.box(580, 250, 150, 56, "Optimizer", "dg-coglet", "watches, improves")

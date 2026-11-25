@@ -28,7 +28,7 @@ the table below.*
 | fast loop, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the router, or their runtime if they share one |
 | memory | `memory.result` | `MemoryResult` | the asker | the router, or their runtime if they share one |
 | fast loop, owner | `presence.set` | `PresenceChange` | router | the router |
-| any coglet | `presence.request` | `PresenceRequest` | fast loop | the router |
+| any coglet, usually an absent one | `presence.request` | `PresenceRequest` | fast loop | the router |
 | router | `presence.check_in` | `CheckIn` | fast loop | the router |
 
 ## Where everything runs
@@ -124,9 +124,10 @@ check-ins of the coglets it is not attending to
 
 ```idl
 FastLoopCoglet
-  subscribes  (nothing)
+  subscribes  presence.changed
   needs       llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,
-              ticket.cancel, ticket.replay, memory.write, memory.query, presence.set
+              ticket.cancel, ticket.replay, memory.write, memory.query, presence.get,
+              presence.set
   owns        (nothing)
 
   provides  feature.request     FeatureRequest  bound
@@ -150,6 +151,8 @@ FastLoopCoglet
             An absent coglet asks for attention. Decide whether to make it present.
   provides  presence.check_in   CheckIn         addressed
             What an absent coglet held for the cogent. Answer, manage it, or move on.
+  calls     presence.get        (none)          bound
+            Read the current presence and its revision before changing it.
   calls     presence.set        PresenceChange  bound
 ```
 

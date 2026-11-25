@@ -258,10 +258,11 @@ Face on the device the user is using and the app coglet for the app they are
 working in.
 
 Every other coglet runs **autonomously**, on its own policy and memory. What it
-has for the cogent is held and delivered in a **check-in** every few minutes,
-and the cogent manages it now and then through its manage port: reading its
-status and logs, and patching it. An absent coglet that needs the cogent sooner
-asks for attention, and the fast loop decides.
+sends the cogent on its own initiative is held and delivered in a **check-in**
+every few minutes; answers to the cogent's own calls are never held. The cogent
+manages it now and then through its manage port: reading its status and logs,
+and patching it. A coglet that needs the cogent sooner asks for attention, and
+the fast loop decides.
 
 Presence changes no grant and starts or stops nothing. It only says where the
 cogent is looking.
@@ -270,9 +271,9 @@ cogent is looking.
 Router
   presence.get() -> Presence
   presence.set(PresenceChange) -> Presence
-      Only the fast loop and the owner may change presence.
+      Granted by default to the fast loop and to the owner.
   presence.request(PresenceRequest)
-      An absent coglet asks for attention.
+      Any coglet, usually an absent one, asks for attention.
   presence.changed(Presence)
       Tells subscribers, and every coglet that entered or left presence.
   presence.check_in(CheckIn)

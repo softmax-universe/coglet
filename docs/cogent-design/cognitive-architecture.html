@@ -195,7 +195,7 @@ runs on some runtime and reaches the others through the router
 <text x="328" y="54" text-anchor="start" class="dg-cap">LEARNING AND MEMORY</text>
 <rect x="330" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
 <text x="405.0" y="95.0" text-anchor="middle" class="dg-b">FastLoop</text>
-<text x="405.0" y="111.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
+<text x="405.0" y="111.0" text-anchor="middle" class="dg-m">attention: responds, forwards</text>
 <rect x="580" y="70" width="150" height="56" rx="8" class="dg-coglet"/>
 <text x="655.0" y="95.0" text-anchor="middle" class="dg-b">Memory</text>
 <text x="655.0" y="111.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
@@ -337,7 +337,7 @@ the table below.</em></p>
 <td>the router</td>
 </tr>
 <tr>
-<td>any coglet</td>
+<td>any coglet, usually an absent one</td>
 <td><code>presence.request</code></td>
 <td><code>PresenceRequest</code></td>
 <td>fast loop</td>
@@ -539,9 +539,10 @@ check-ins of the coglets it is not attending to
 (<a href="index.html#presence">presence</a>).</p>
 <h3 id="fastloopcoglet_1"><code>FastLoopCoglet</code><a class="headerlink" href="#fastloopcoglet_1" title="Permanent link">#</a></h3>
 <div class="codehilite idl"><pre><span class="nc">FastLoopCoglet</span>
-  <span class="kw">subscribes</span>  <span class="op">(nothing)</span>
+  <span class="kw">subscribes</span>  <span class="op">presence.changed</span>
   <span class="kw">needs</span>       <span class="op">llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,</span>
-              <span class="sd">ticket.cancel, ticket.replay, memory.write, memory.query, presence.set</span>
+              <span class="sd">ticket.cancel, ticket.replay, memory.write, memory.query, presence.get,</span>
+              <span class="sd">presence.set</span>
   <span class="kw">owns</span>        <span class="op">(nothing)</span>
 
   <span class="kw">provides</span>  <span class="op">feature.request</span>     <span class="ty">FeatureRequest</span>  <span class="rt">bound</span>
@@ -565,6 +566,8 @@ check-ins of the coglets it is not attending to
             <span class="sd">An absent coglet asks for attention. Decide whether to make it present.</span>
   <span class="kw">provides</span>  <span class="op">presence.check_in</span>   <span class="ty">CheckIn</span>         <span class="rt">addressed</span>
             <span class="sd">What an absent coglet held for the cogent. Answer, manage it, or move on.</span>
+  <span class="kw">calls</span>     <span class="op">presence.get</span>        <span class="ty">(none)</span>          <span class="rt">bound</span>
+            <span class="sd">Read the current presence and its revision before changing it.</span>
   <span class="kw">calls</span>     <span class="op">presence.set</span>        <span class="ty">PresenceChange</span>  <span class="rt">bound</span></pre></div>
 <p>It also uses the manage port's <code>patch</code> on the coglets it is granted.</p>
 <h2 id="factorycoglet">FactoryCoglet<a class="headerlink" href="#factorycoglet" title="Permanent link">#</a></h2>

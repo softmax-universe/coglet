@@ -940,18 +940,19 @@ and the cogent answers within that coglet's latency budget. Usually that is
 Face on the device the user is using and the app coglet for the app they are
 working in.</p>
 <p>Every other coglet runs <strong>autonomously</strong>, on its own policy and memory. What it
-has for the cogent is held and delivered in a <strong>check-in</strong> every few minutes,
-and the cogent manages it now and then through its manage port: reading its
-status and logs, and patching it. An absent coglet that needs the cogent sooner
-asks for attention, and the fast loop decides.</p>
+sends the cogent on its own initiative is held and delivered in a <strong>check-in</strong>
+every few minutes; answers to the cogent's own calls are never held. The cogent
+manages it now and then through its manage port: reading its status and logs,
+and patching it. A coglet that needs the cogent sooner asks for attention, and
+the fast loop decides.</p>
 <p>Presence changes no grant and starts or stops nothing. It only says where the
 cogent is looking.</p>
 <div class="codehilite idl"><pre><span class="nc">Router</span>
   presence.get() -&gt; Presence
   presence.set(PresenceChange) -&gt; Presence
-      <span class="sd">Only the fast loop and the owner may change presence.</span>
+      <span class="sd">Granted by default to the fast loop and to the owner.</span>
   presence.request(PresenceRequest)
-      <span class="sd">An absent coglet asks for attention.</span>
+      <span class="sd">Any coglet, usually an absent one, asks for attention.</span>
   presence.changed(Presence)
       <span class="sd">Tells subscribers, and every coglet that entered or left presence.</span>
   presence.check_in(CheckIn)

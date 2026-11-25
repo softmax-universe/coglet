@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-25
 - Authors: David Bloomin (design), David's Claude Code session
-- Related PR: the publishing PR
+- Related PR: #182
 - Supersedes / superseded by: none. Amends the [cogent design](../cogent-design/README.md)
   pages, which described "the cogent's centre". Builds on the router of
   [ADR-0020](0020-vocabulary.md) and the manage port of
@@ -36,8 +36,8 @@ number of runtimes, and one **router** that connects them.
 - No coglet and no runtime is the centre. The fast loop, factory, optimizer,
   memory and database coglets run wherever the cogent places them, often on a
   Softmax-hosted runtime, but that runtime has no special role.
-- Coglets reach each other only through the router, or through their own
-  runtime when both are on it. Nothing else changes about routing.
+- Coglets reach each other through the router, or through their own runtime
+  when both are on it. Nothing else changes about routing.
 - The router is itself a coglet, as the design pages already say.
 
 ### 2. Presence
@@ -47,93 +47,127 @@ the cogent is paying attention to those coglets now. Every other coglet runs
 autonomously, on its own policy and memory, with occasional management and
 check-ins.
 
+The cogent's **attention** is one named coglet, normally the fast loop. It
+receives what present coglets send, decides what to do, and sets presence. It
+runs on some runtime like every other coglet.
+
 | | Present coglets | Absent coglets |
 |---|---|---|
 | What they do | Their normal work | Their normal work |
-| What they send to the cogent | Delivered to its attention as it happens, ahead of other traffic | Held and delivered in check-ins |
-| How fast the cogent answers | Within the coglet's latency budget | At the next check-in, or when the coglet asks for attention |
+| What they send the attention on their own initiative | Delivered as it happens, ahead of other traffic | Held, and delivered in check-ins |
+| Answers to calls the attention made | Delivered as they arrive | Delivered as they arrive |
+| How fast the cogent responds | Within the coglet's latency budget | At the next check-in, or when the coglet asks for attention |
 | Who speaks for the cogent | Present coglets, such as Face | Nobody, unless asked |
 | Management | As needed | Occasional: status, logs, patches through the manage port |
 
-The cogent's **attention** is the fast loop coglet: it receives what present
-coglets send, decides what to do, and sets presence. It runs on some runtime like
-every other coglet.
+**What is held.** Only messages an absent coglet sends to the attention on its
+own initiative: reports, requests for help, feature requests. A message that
+answers a call the attention made (it carries that call's `correlation_id`),
+such as `memory.result` or `ticket.result`, is never held, so the attention's
+own work never waits for a check-in. Messages between other coglets are
+unaffected.
+
+**Who holds them.** Whoever would deliver the message. The router holds what
+crosses runtimes. A runtime that delivers locally, because the sender and the
+attention share it, applies the same rule; it learns the cogent's presence from
+the router through `presence.changed`.
 
 Typical presence: Face on the device the user is using, and the app coglet for
 the app they are working in. The factory, memory, database and game coglets are
 usually absent, working through their queues.
 
 Presence does **not** change grants, start or stop coglets, or change what a
-coglet may do. Coglet-to-coglet messages are unaffected; presence governs only
-traffic addressed to the cogent's attention.
+coglet may do.
 
 ### 3. Presence API
 
-The router holds the cogent's presence and offers these messages.
+The router holds the cogent's presence and offers these messages. `CogentId`,
+`Presence`, `PresenceChange`, `PresenceRequest` and `CheckIn` are new types;
+`CogletId` is the existing coglet id, and `CogletStatus` is the result of the
+manage port's `status`.
 
 ```idl
 Presence
-  cogent    CogentId
-  present   [CogletId]   The coglets the cogent is paying attention to.
-  limit     u8           At most this many are present at once. Default 4.
-  revision  u64          Increases on every change.
+  cogent     CogentId
+  attention  CogletId      The coglet that receives what present coglets send, and check-ins.
+  present    [CogletId]    The coglets the cogent is paying attention to.
+  limit      u8            At most this many are present at once. Default 4.
+  revision   u64           Increases on every change.
 
 PresenceChange
-  base      u64          The revision this change was made from. Refused if presence has moved.
-  add       [CogletId]
-  remove    [CogletId]
-  reason    str?
+  base       u64           The revision this change was made from.
+  add        [CogletId]
+  remove     [CogletId]
+  attention  CogletId?     A new attention coglet. Needs the presence.attention grant.
+  limit      u8?           A new limit. Needs the presence.attention grant.
+  reason     str?
 
 PresenceRequest
-  # An absent coglet asking for attention.
-  coglet    CogletId     Filled in by its runtime, never by the coglet.
-  urgency   "low" | "high"
-  reason    str
+  # A coglet asking for attention. Usually an absent one.
+  coglet     CogletId      Filled in by its runtime, never by the coglet.
+  urgency    "low" | "high"   A hint to the attention; it decides.
+  reason     str
 
 CheckIn
   # What the attention receives about one absent coglet.
-  coglet    CogletId
-  status    CogletStatus  From the manage port's status.
-  held      [Message]     What it addressed to the cogent since the last check-in, oldest first.
-  dropped   u64           Messages dropped once the hold limit was reached.
+  coglet     CogletId
+  status     CogletStatus  Read by the router through the manage port.
+  held       [Message]     What it sent the attention on its own initiative since the last check-in, oldest first.
+  dropped    u64           Messages dropped since the last check-in because its hold was full.
 
 Router
   presence.get() -> Presence
   presence.set(PresenceChange) -> Presence
-      Only the attention coglet and the owner may change presence.
+      Refused with `conflict` if `base` is not the current revision, and with
+      `invalid_argument` if the result would exceed `limit`, the same coglet is in
+      both `add` and `remove`, or a coglet is not one of this cogent's.
   presence.request(PresenceRequest)
-      Any coglet may ask. Delivered to the attention at once; it decides.
+      Delivered to the attention at once. Refused with `rate_limited` if the same
+      coglet asked within the last minute and that request is still unanswered.
   presence.changed(Presence)
-      An event to subscribers, and to every coglet that entered or left presence,
-      so a coglet knows whether it is being attended.
+      An event to subscribers, and to every coglet that entered or left presence.
   presence.check_in(CheckIn)
-      Sent to the attention for each absent coglet at the cadence it set, or sooner
-      when the coglet's hold limit is reached.
+      Sent to the attention for each absent coglet at the cadence it set.
 ```
 
-Rules:
+**Authority is by grant**, as everywhere in the router protocol: each caller
+needs a grant for the exact method.
 
-- `presence.set` is a compare-and-swap on `revision`, so two writers cannot undo
-  each other silently.
-- Adding past `limit` is refused; the caller removes something first.
-- A coglet that stops or is removed leaves presence, and `presence.changed`
-  says so.
-- Held messages are bounded per coglet. Past the bound, the oldest are dropped
-  and counted in `dropped`; a `high` `presence.request` is never dropped.
+- `presence.get` and a subscription to `presence.changed` are granted like any
+  other method.
+- `presence.set` is granted by default to the attention coglet, and to the peer
+  the owner acts through (for example the Softmax app's runtime).
+- Changing `attention` or `limit` needs the separate `presence.attention` grant,
+  held by default only by the owner's peer.
+- Every coglet is implicitly granted the `presence.changed` events about itself,
+  so it always learns whether it is being attended, without a subscription.
+- The router holds the manage port's `status` grant for the cogent's coglets, so
+  it can fill `CheckIn.status`.
+
+**Holds and check-ins.**
+
+- Each absent coglet's hold is bounded (64 messages by default). When it fills,
+  the router sends a check-in early, but at most one early check-in per coglet
+  every 10 seconds. While a check-in is rate-limited, the oldest held messages
+  are dropped and counted in `dropped`.
 - The attention sets each absent coglet's check-in cadence. The default is a
-  few minutes, and a coglet with nothing held sends a status-only check-in at a
+  few minutes. A coglet with nothing held gets a status-only check-in at a
   slower rate.
+- A coglet that stops or is removed leaves presence, and `presence.changed`
+  says so. Its hold is delivered in a final check-in.
 
 ### 4. Spec changes
 
-`spec/hub-protocol.md` adds the `presence.*` messages above as an additive
-change, in the next minor version of the router protocol, with CDDL in
-`spec/messages/` and cases in `conformance/hub/`. Nothing existing changes
-meaning. The spec text lands with the implementation card, not in this ADR's PR.
+`spec/hub-protocol.md` adds the `presence.*` messages and the
+`presence.attention` grant above as an additive change, in the next minor
+version of the router protocol, with CDDL in `spec/messages/` and cases in
+`conformance/hub/`. Nothing existing changes meaning. The spec text lands with
+the implementation card, not in this ADR's PR.
 
 The design pages drop "the cogent's centre": the README, the cognitive
-architecture, app integration, and the unforged, LLM and secrets pages say
-"a Softmax-hosted runtime" where they meant a place.
+architecture, coglets and runtime, app integration, and the unforged, staged
+integration, LLM and secrets pages say "a Softmax-hosted runtime" where they
+meant a place.
 
 ## Alternatives
 
@@ -147,6 +181,9 @@ architecture, app integration, and the unforged, LLM and secrets pages say
   no way to let coglets work quietly.
 - **Presence as a grant.** Mixing attention with authority would mean losing
   attention also loses permissions. Kept separate.
+- **Hold everything an absent coglet sends, answers included.** It would stall
+  the attention's own calls to memory and the factory for minutes. Answers are
+  never held.
 
 ## Consequences
 
@@ -155,23 +192,32 @@ architecture, app integration, and the unforged, LLM and secrets pages say
 - The fast loop's role is named: it is the cogent's attention.
 - Model spend and latency budgets concentrate on present coglets. Absent coglets
   need policies that can run without the cogent answering at once.
-- The router protocol grows one additive message family. Existing traffic and
-  spec-v0 fixtures do not change.
-- Only the attention and the owner can change presence, so a coglet cannot pull
-  the cogent's attention to itself except by asking.
+- The router protocol grows one additive message family and one grant. Existing
+  traffic and spec-v0 fixtures do not change.
+- A runtime that delivers locally must apply the hold rule too, so presence is
+  part of what a runtime learns from the router.
+- A coglet cannot pull the cogent's attention to itself except by asking, and
+  asking is rate-limited, so a misbehaving coglet cannot flood the attention.
 
 ## Verification
 
-Named conformance cases, against both the reference router and the mock:
+New golden fixtures in `spec/fixtures/hub/` for each `presence.*` message and
+refusal, and these conformance cases, against both the reference router and the
+mock:
 
-- `presence_set_requires_attention_or_owner`
-- `presence_set_is_cas_on_revision`
-- `presence_limit_refuses_extra`
+- `presence_set_requires_grant`
+- `presence_attention_change_requires_attention_grant`
+- `presence_set_conflict_on_stale_revision`
+- `presence_set_rejects_over_limit_overlap_and_foreign`
 - `presence_present_delivers_immediately`
 - `presence_absent_holds_until_check_in`
-- `presence_request_reaches_attention`
-- `presence_high_request_never_dropped`
+- `presence_answers_never_held`
+- `presence_local_delivery_holds_too`
+- `presence_check_in_cadence_and_early_rate_limit`
+- `presence_hold_full_counts_dropped`
+- `presence_request_reaches_attention_and_is_rate_limited`
 - `presence_changed_reaches_entering_and_leaving_coglets`
+- `presence_stopped_coglet_leaves_with_final_check_in`
 - `presence_changes_no_grants`
 
 ## Approval

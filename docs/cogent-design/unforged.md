@@ -341,7 +341,7 @@ Everything outside is an adapter, reached the same way:
 ## The router is an unforged repository
 
 The router stays what [the cogent design](README.md) says it is: a
-coglet that finds devices and carries messages and patches. unforged is its
+coglet that finds runtimes and carries messages and patches. unforged is its
 storage and its git transport.
 
 - **One repository per cogent.** Every coglet's refs, namespaced by runtime.
