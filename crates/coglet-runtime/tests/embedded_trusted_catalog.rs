@@ -74,6 +74,7 @@ fn scenario_child() {
         "loader_errors" => loader_errors(),
         "live_link_stop_fence" => live_link_stop_fence(),
         "reopen_pin_fence" => reopen_pin_fence(),
+        "profile_provisioning" => profile_provisioning(),
         other => panic!("unknown scenario {other}"),
     }
     println!("scenario-ok:{name}");
@@ -97,6 +98,55 @@ fn embedded_trusted_catalog_failure_fences() {
     run_scenario("loader_errors", t);
     run_scenario("live_link_stop_fence", t);
     run_scenario("reopen_pin_fence", t);
+}
+
+#[test]
+fn embedded_local_contract_profile_provisioning() {
+    run_scenario("profile_provisioning", Duration::from_secs(120));
+}
+
+fn profile_provisioning() {
+    let mut s = setup(false);
+    s["contract_profile"] = json!("surface-0.2");
+    s["manifest"]["subscriptions"] = json!(["softmax.app.view_changed"]);
+    let env = Env::new("profile", s);
+    // Synthetic profile fixture, not the production app catalog. Closed v1;
+    // only trusted setup selects the naming dialect.
+    let artifact = json!({"version":1,"namespace":"softmax",
+        "entries":{"softmax.app":["softmax.app_control"]},
+        "schemas":{"https://example.invalid/softmax/1#empty":"empty"},
+        "rules":{"empty":{"op":"record","fields":[]}},
+        "operations":{"softmax.app.invoke":{"entry":"softmax.app","direction":"action",
+            "input":"https://example.invalid/softmax/1#empty",
+            "output":"https://example.invalid/softmax/1#empty",
+            "resources":["softmax.app_control"],"single_owner":true}}});
+    let raw = serde_json::to_vec(&artifact).unwrap();
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    let state = env.snapshot("profile").state().unwrap().clone();
+    assert_eq!(state["contract_profile"], "surface-0.2");
+    assert_eq!(state["catalog_pin"], digest(&raw));
+    assert_eq!(coglet_runtime_stop(), 0);
+    // Same bytes with a different trusted profile cannot reinterpret the old WAL.
+    let mut conflicting = env.config(Some(Env::pinned(&raw)));
+    conflicting["setup"]["contract_profile"] = json!("surface-0.1");
+    conflicting["setup"]["manifest"]["subscriptions"] = json!([]);
+    assert_ne!(start_value(&conflicting), 0);
+    // Invalid explicit selectors refuse before any service is published.
+    for profile in [json!(null), json!(""), json!("surface-0.3"), json!([])] {
+        let mut invalid = env.config(None);
+        invalid["setup"]["contract_profile"] = profile;
+        assert_ne!(start_value(&invalid), 0);
+    }
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    // Catalog-free startup persists the selected profile as well.
+    let mut bare = env.config(None);
+    bare["wal"] = json!(env.dir.join("bare.wal"));
+    assert_eq!(start_value(&bare), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    let saved = DurableStore::open(&env.dir.join("bare.wal")).unwrap();
+    assert_eq!(saved.state().unwrap()["contract_profile"], "surface-0.2");
+    assert!(saved.state().unwrap()["catalog_pin"].is_null());
 }
 
 // ---------------------------------------------------------------- fixtures

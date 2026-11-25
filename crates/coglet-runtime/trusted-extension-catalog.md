@@ -34,7 +34,19 @@ Embedded C ABI start (after the unchanged immutable `coglet_runtime_configure`):
 ```
 
 `setup` above is a placeholder for the normal complete runtime setup, not an
-executable example. The optional catalog must be a closed JSON object with both
+executable example. ADR-0030 adds explicit trusted local naming selection:
+`setup.contract_profile` is `surface-0.1` (omitted default) or `surface-0.2`.
+The embedded loader uses that selector before catalog admission. The daemon
+accepts `--contract-profile surface-0.2` in service-socket mode and injects the
+same trusted setup field; omission selects `surface-0.1`, and any explicit setup
+selector must agree with the daemon selector. Unknown, malformed or duplicate
+selectors are refused before listening. The profile is not a catalog field or
+manifest format version. Catalog-free startup persists it too; recovery fences
+both the catalog digest and profile. These local provisioning APIs do **not**
+qualify wire `0.2`, app registration or native app control: wire negotiation
+remains `0.1` until its executable validators/dispatch and downgrade proofs land.
+
+The optional catalog must be a closed JSON object with both
 string members; arrays, unknown fields and missing members return -1. Invalid
 catalog/pin or WAL pin mismatch returns -2 without publishing a service (status
 remains 1). The outer config is bounded to 16 MiB; decoded `json` bytes to 1 MiB.
