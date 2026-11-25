@@ -25,7 +25,6 @@ struct SettingsView: View {
     @AppStorage("textScale") private var textScale = 1.0
     @State private var query = ""
     @FocusState private var searchFocused: Bool
-    @State private var shortcuts = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.softmaxHighContrast) private var forceContrast
@@ -86,7 +85,7 @@ struct SettingsView: View {
                 Spacer()
                 CogletButton("Keyboard shortcuts  ?", id: "settings.shortcuts.open", registry: model.appControls,
                     window: "settings", route: model.selectedTab.rawValue.lowercased(),
-                    failure: model.appControlFailure) { shortcuts = true }
+                    failure: model.appControlFailure) { model.keyboardShortcutsOpen = true }
                     .keyboardShortcut("?", modifiers: [])
             }.padding(16).frame(width: 180)
             Divider()
@@ -201,12 +200,21 @@ struct SettingsView: View {
                 query += characters; searchFocused = true
             }
             .onExitCommand { if !query.isEmpty { query = "" } else { searchFocused = false } }
-            .sheet(isPresented: $shortcuts) {
+            .sheet(isPresented: $model.keyboardShortcutsOpen) {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Keyboard shortcuts").softmaxFont(SoftmaxDesignTokens.fontTitle)
                     Text("⌘K  Commands and settings\n/ or type  Filter settings\n↑ ↓  Select section\nReturn  Open first match\nEsc  Clear search or cancel speech\n⌘,  Settings\n\(model.hotkeyName)  Push-to-talk")
-                    Button("Done") { shortcuts = false }.keyboardShortcut(.cancelAction)
+                    CogletButton("Done", id: "keyboard_shortcuts.done", registry: model.appControls,
+                        window: "keyboard_shortcuts", route: "shortcuts", failure: model.appControlFailure) {
+                            model.keyboardShortcutsOpen = false
+                        }.keyboardShortcut(.cancelAction)
                 }.padding(24)
+                    .background(AppSheetOwner { old, new in
+                        if new != nil || model.keyboardShortcutsNativeWindow === old {
+                            model.keyboardShortcutsNativeWindow = new
+                            model.synchronizeAppSurface?()
+                        }
+                    })
             }
     }
 }

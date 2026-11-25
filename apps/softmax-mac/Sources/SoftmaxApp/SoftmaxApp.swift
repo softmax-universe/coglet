@@ -68,6 +68,10 @@ final class ShellModel: ObservableObject {
     var signOutConfirmationOpen = false {
         didSet { if signOutConfirmationOpen != oldValue { synchronizeAppSurface?() } }
     }
+    @Published var keyboardShortcutsOpen = false {
+        didSet { if keyboardShortcutsOpen != oldValue { synchronizeAppSurface?() } }
+    }
+    weak var keyboardShortcutsNativeWindow: NSWindow?
     weak var hubPairingNativeWindow: NSWindow?
     weak var signOutNativeWindow: NSWindow?
     @Published var onboardingStep = 0 {
@@ -511,6 +515,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.appSurfaceRoute = { [weak self] in self?.appRoute($0) }
         model.appInteractionAllowed = { [weak self] window in
             guard let self, !self.hasUnqualifiedAppModal else { return false }
+            if self.model.keyboardShortcutsOpen { return window == "keyboard_shortcuts" }
             if self.model.signOutConfirmationOpen { return window == "sign_out_confirmation" }
             return self.model.hubPairingRoute == nil || window == "hub_pairing"
         }
@@ -530,7 +535,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             navigate: { [weak self] window, route in
                 guard let self else { throw AppSurfaceFailure.unavailable }
                 guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
-                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings":
                     guard let tab = SettingsTab.allCases.first(where: { $0.rawValue.lowercased() == route }) else {
@@ -549,7 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }, open: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
                 guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
-                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "settings": self.showSettings()
                 case "about": self.showAbout()
@@ -564,7 +569,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }, close: { [weak self] window in
                 guard let self else { throw AppSurfaceFailure.unavailable }
                 guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
-                      !self.model.signOutConfirmationOpen else { throw AppSurfaceFailure.unavailable }
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
                 switch window {
                 case "face": self.face.hide()
                 case "orb": self.model.orbEnabled = false
@@ -602,6 +607,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if NSApp.modalWindow != nil { return true }
         return NSApp.windows.contains {
             guard let sheet = $0.attachedSheet, sheet.isVisible else { return false }
+            if model.keyboardShortcutsOpen, sheet === model.keyboardShortcutsNativeWindow { return false }
             if model.hubPairingRoute != nil, sheet === model.hubPairingNativeWindow { return false }
             if model.signOutConfirmationOpen, sheet === model.signOutNativeWindow { return false }
             return true
@@ -609,6 +615,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     private func appRoute(_ window: String) -> String? {
         if window == "menu_bar" { return model.menuBarOpen ? "menu" : nil }
+        if window == "keyboard_shortcuts" {
+            return model.keyboardShortcutsOpen && model.keyboardShortcutsNativeWindow?.isVisible == true ? "shortcuts" : nil
+        }
         if window == "hub_pairing" {
             return model.hubPairingNativeWindow?.isVisible == true ? model.hubPairingRoute : nil
         }

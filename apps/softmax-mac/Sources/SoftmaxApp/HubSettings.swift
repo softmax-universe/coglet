@@ -260,7 +260,7 @@ private struct HubPairingSheet: View {
 
 /// Captures only this view's actual AppKit sheet. It never dismisses a foreign
 /// sheet or treats all native modals as qualified merely because a flag is set.
-private struct AppSheetOwner: NSViewRepresentable {
+struct AppSheetOwner: NSViewRepresentable {
     let changed: (NSWindow?, NSWindow?) -> Void
     final class Probe: NSView {
         var changed: ((NSWindow?, NSWindow?) -> Void)?
