@@ -457,7 +457,9 @@ fn verify_archive(
             return Err(QualificationError::Artifact);
         }
     }
-    if !manifest_files.contains_key("transform.source") {
+    if !manifest_files.contains_key("transform.source")
+        || !manifest_files.contains_key("coglet-transform-gate")
+    {
         return Err(QualificationError::Artifact);
     }
     for (name, digest) in [
