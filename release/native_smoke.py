@@ -21,7 +21,8 @@ def inspect(path):
         raise ValueError(f'{path}: unexpected dynamic interpreter')
     dynamic = subprocess.check_output(['readelf', '--dynamic', str(path)], text=True)
     libraries = set(re.findall(r'\(NEEDED\).*?\[([^]]+)\]', dynamic))
-    if not libraries or libraries - {'libc.so.6', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0', 'librt.so.1', 'libgcc_s.so.1'}:
+    # Zig also records the exact interpreter above as a NEEDED library.
+    if not libraries or libraries - {'ld-linux-armhf.so.3', 'libc.so.6', 'libm.so.6', 'libdl.so.2', 'libpthread.so.0', 'librt.so.1', 'libgcc_s.so.1'}:
         raise ValueError(f'{path}: unqualified shared libraries {sorted(libraries)}')
     print(f'{path.name}: max GLIBC_{".".join(map(str, max(needed)))}; NEEDED={sorted(libraries)}', flush=True)
 

@@ -24,6 +24,7 @@ class NativeGateTests(unittest.TestCase):
                 with patch.object(MODULE.subprocess, 'check_output', side_effect=[version, loader, f'(NEEDED) Shared library: [{library}]']):
                     MODULE.inspect(path)
             check()
+            check(library='ld-linux-armhf.so.3')  # Zig records the selected loader as NEEDED too.
             for version in ['GLIBC_2.28', 'GLIBC_2.34', '']:
                 with self.assertRaises(ValueError):
                     check(version=version)
