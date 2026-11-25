@@ -12,12 +12,15 @@ final class OrbOverlay {
     private var screenObserver: NSObjectProtocol?
     var onChange: (() -> Void)?
     private var orbControl: NativeButtonRegistration?
+    private var orbVoiceControl: OrbVoiceRegistration?
     private lazy var chatControls = NativeWindowControlRegistration(registry: model.appControls)
 
     private func retireControls() {
         do {
             try orbControl?.invalidate()
             orbControl = nil
+            try orbVoiceControl?.invalidate()
+            orbVoiceControl = nil
             try chatControls.invalidate()
         } catch { model.appControlFailure(.exhausted) }
     }
@@ -75,6 +78,10 @@ final class OrbOverlay {
                 orbControl = try NativeButtonRegistration(button: button, registry: model.appControls,
                     id: "orb.open_chat", window: "orb", route: "orb")
             } catch { model.appControlFailure(.invalidRegistration) }
+        }
+        if orbVoiceControl?.isActive != true, let button = orb?.contentView as? OrbButton {
+            do { orbVoiceControl = try OrbVoiceRegistration(button: button, registry: model.appControls) }
+            catch { model.appControlFailure(.invalidRegistration) }
         }
         onChange?()
     }

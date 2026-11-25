@@ -48,6 +48,48 @@ final class NativeButtonRegistrationTests: XCTestCase {
         XCTAssertEqual(calls, 4)
     }
 
+    func testOrbSecondaryMouseAccessibilityAndAdapterShareNativeCommand() throws {
+        _ = NSApplication.shared
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 68, height: 68),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isReleasedWhenClosed = false
+        let button = OrbButton(frame: NSRect(x: 0, y: 0, width: 68, height: 68))
+        var calls = 0
+        button.onVoice = { calls += 1 }
+        panel.contentView = button; panel.orderFrontRegardless()
+        defer { panel.close() }
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "orb" })
+        let owner = try OrbVoiceRegistration(button: button, registry: registry)
+        let request = try registry.prepare(args("orb.open_voice", window: "orb"), sensitive: false)
+        let event = try XCTUnwrap(NSEvent.mouseEvent(with: .rightMouseDown, location: .zero,
+            modifierFlags: [], timestamp: 0, windowNumber: panel.windowNumber, context: nil,
+            eventNumber: 1, clickCount: 1, pressure: 1))
+        button.rightMouseDown(with: event)
+        let action = try XCTUnwrap(button.accessibilityCustomActions()?.first)
+        XCTAssertEqual(action.name, "Open Voice")
+        XCTAssertTrue(action.target === button)
+        let selector = try XCTUnwrap(action.selector)
+        XCTAssertEqual(selector, #selector(OrbButton.performVoice))
+        // Exercise the ACTUAL AX target/BOOL selector, not a shadow callback.
+        typealias AXCommand = @convention(c) (AnyObject, Selector) -> Bool
+        let invokeAX = unsafeBitCast(button.method(for: selector), to: AXCommand.self)
+        XCTAssertTrue(invokeAX(button, selector))
+        try registry.perform(request, authorized: { true })
+        XCTAssertEqual(calls, 3)
+        button.isEnabled = false
+        button.rightMouseDown(with: event)
+        XCTAssertFalse(invokeAX(button, selector))
+        XCTAssertThrowsError(try registry.perform(request, authorized: { true }))
+        XCTAssertEqual(calls, 3)
+        button.isEnabled = true
+        try owner.invalidate(); panel.orderOut(nil); panel.orderFrontRegardless()
+        let successor = try OrbVoiceRegistration(button: button, registry: registry)
+        defer { try? successor.invalidate() }
+        XCTAssertThrowsError(try registry.perform(request, authorized: { true }))
+        try registry.perform(registry.prepare(args("orb.open_voice", window: "orb"), sensitive: false), authorized: { true })
+        XCTAssertEqual(calls, 4)
+    }
+
     func testNativePressUsesExistingTargetActionAndRefusesHiddenDisabledControls() throws {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 240, height: 160),
